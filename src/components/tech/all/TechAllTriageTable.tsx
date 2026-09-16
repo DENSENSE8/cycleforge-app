@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   pickupLineNeedsProcess,
   type PickupLine,

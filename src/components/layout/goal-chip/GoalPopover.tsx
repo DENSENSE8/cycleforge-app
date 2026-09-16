@@ -232,7 +232,6 @@ export function GoalPopover({
                 <ListHead
                   label="Recurring"
                   items={g.recurItems}
-                  onNavigate={onNavigate}
                   touch={touch}
                   onClear={g.clearDoneRecur}
                   onDeleteAll={g.deleteAllRecur}
@@ -262,7 +261,6 @@ export function GoalPopover({
                 <ListHead
                   label="To-do"
                   items={g.todoItems}
-                  onNavigate={onNavigate}
                   touch={touch}
                   onClear={g.clearDoneTodos}
                   onDeleteAll={g.deleteAllTodos}
@@ -303,14 +301,12 @@ export function GoalPopover({
 function ListHead({
   label,
   items,
-  onNavigate,
   touch,
   onClear,
   onDeleteAll,
 }: {
   label: string;
   items: Todo[];
-  onNavigate?: () => void;
   touch: boolean;
   onClear: () => void;
   onDeleteAll: () => void;
@@ -328,7 +324,6 @@ function ListHead({
         listLabel={label}
         doneCount={doneCount}
         total={items.length}
-        onNavigate={onNavigate}
         onClearCompleted={onClear}
         onDeleteAll={onDeleteAll}
         touch={touch}

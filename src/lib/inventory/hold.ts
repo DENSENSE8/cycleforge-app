@@ -3,7 +3,7 @@
  * ────────────────────────────────────────────────────────────────────
  * Shared hold + release transactions. Used by both the
  * /api/serial-units/[id]/{hold,release} routes and the
- * /admin/inventory/holds admin page so the lifecycle semantics live
+ * /inventory/holds admin page so the lifecycle semantics live
  * in exactly one place.
  *
  * Behavior preserved from the original route logic:

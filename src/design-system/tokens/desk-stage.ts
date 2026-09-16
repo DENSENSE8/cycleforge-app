@@ -20,6 +20,9 @@
  * laptop screen.
  */
 
+import { cornerClass } from '@/design-system/tokens/radius';
+import { elevationClass } from '@/design-system/tokens/shadows';
+
 /**
  * Desk stage ceiling (px). Twin of the `max-w-6xl` (72rem) in
  * {@link DESK_STAGE_FIXED_CLASS} — change both together.
@@ -217,3 +220,143 @@ export const DESK_LEAD_PANE_BODY_CLASS =
  * Not painted in fullscreen: there is no ground left to see.
  */
 export const DESK_STAGE_GROUND_CLASS = 'bg-surface-card';
+
+/* ── FIND stage — the third surface (operator ruling 2026-09-13) ──────────────
+ *
+ * A third measure joins the two at the top of this file:
+ *
+ * | Surface | Measure | Corners | Depth |
+ * |---|---|---|---|
+ * | Scan station | edge-to-edge, 720 floor | flush | none |
+ * | Non-scan desk | 1152 max, centered | rounded card, welded to the tab row | none — edge only |
+ * | FIND (`/search?q=`) | 1152 max, centered | rounded on ALL FOUR corners | RAISED |
+ *
+ * Why FIND differs from a desk on both of the last two columns:
+ *
+ * **Four corners, not two.** A desk card welds its top edge to a tab row, so
+ * its top corners are square by construction. FIND has no tab row above the
+ * results — the band above it is the refine toolbar, which belongs INSIDE the
+ * card (it acts on the rows in it). With nothing to weld to, a card with two
+ * square corners reads as a panel that lost its header.
+ *
+ * **Depth, not just an edge.** The desk ruling was "separation by edge, not by
+ * a gap" on a WHITE ground, which is right for a queue an operator lives in
+ * all day. FIND is a transient plane the operator arrives at, reads, and
+ * leaves — so it is an OBJECT on the page rather than the page itself, and it
+ * says so by casting a shadow. That is why the ground here is
+ * {@link FIND_STAGE_GROUND_CLASS} (`surface-canvas`) and not the desk's white.
+ *
+ * CAVEAT since 2026-09-15: light's canvas is now #fafafa — a 2% step under card
+ * white, not the ~6% this paragraph was written against (operator: pin FAFAFA
+ * as the standard light background). The shadow still has a plane, but a much
+ * weaker one: on light, FIND reads as raised mostly by its CORNER and its
+ * edge. If it stops reading as an object, give it a hairline — do not darken
+ * the theme plane back, which is the ruling and not a regression
+ * (`themes/light.ts`).
+ *
+ * Corner and shadow are both TOKENS — `cornerClass('surface')` and
+ * `elevationClass('raised')` — never a `rounded-xl` / `shadow-*` literal, so
+ * `ds_tokens` can see them and a theme can move them.
+ */
+
+/** Ground the FIND card floats on — a real step below card white. */
+export const FIND_STAGE_GROUND_CLASS = 'bg-surface-canvas';
+
+/**
+ * Breathing room around the FIND card. Wider than the desk's `pb-4` floor
+ * because this card is detached on all four sides, not welded at the top.
+ */
+export const FIND_STAGE_GUTTER_CLASS = 'px-4 pb-4 pt-3';
+
+/* ── FIND on a PHONE — the card dissolves (operator law 2026-09-13) ──────────
+ *
+ * Everything above this line is the DESK answer and it stays. What follows is
+ * the same plane at handheld measure, and the answer is not "the desk card,
+ * smaller".
+ *
+ * A card is a statement about FIGURE AND GROUND: this object sits ON the page.
+ * Three things have to be true for that statement to land — a measure the
+ * object is narrower than, a ground it is inset from, and a plane its shadow
+ * can fall across. On a 390px viewport none of them is:
+ *
+ * - **Measure.** `DESK_STAGE_FIXED_CLASS` caps at 1152 and centers. At 390 the
+ *   cap never binds, so `mx-auto max-w-6xl` is three utilities that compute to
+ *   `w-full` — a ceiling nothing reaches is not a measure.
+ * - **Ground.** `FIND_STAGE_GUTTER_CLASS` spends 16px on each side. That is
+ *   8% of the viewport traded for the idea of an edge, taken out of the one
+ *   column the operator actually reads, and it is the width that decides
+ *   whether a tracking number truncates.
+ * - **Plane.** `elevationClass('raised')` needs canvas BEHIND the card to read
+ *   as depth. A surface that fills the screen has nothing behind it, so the
+ *   shadow lands on the viewport bezel: cost paid, nothing bought.
+ *
+ * So the phone FIND plane is FLUSH — card-white to all four edges, square
+ * corners, flat. The separator is the row edge, which is the same ruling the
+ * desk took on 2026-08-31 ("separation by edge, not by a gap") arriving here
+ * for the opposite reason: there the card had a tab row to weld to, here it
+ * has the viewport.
+ *
+ * This is expressed as a DESCRIPTOR, not five loose exports, because the five
+ * values are one decision. A component that reaches for `FIND_STAGE_GROUND_
+ * CLASS` and then picks its own corner has re-opened the question in the
+ * caller, which is exactly how `px-4` ended up on a phone.
+ */
+
+/** Ground the flush phone plane paints — card white, no canvas step. */
+export const FIND_STAGE_PHONE_GROUND_CLASS = 'bg-surface-card';
+
+/** Phone measure: the viewport IS the measure, so there is no cap to center. */
+export const FIND_STAGE_PHONE_MEASURE_CLASS = 'w-full';
+
+/** Phone gutter: none. Every px belongs to the row. */
+export const FIND_STAGE_PHONE_GUTTER_CLASS = '';
+
+/**
+ * Which FIND measure a mount is painting at. Deliberately the ROW's axis
+ * (`SearchRowDensity`) and not a device name: a narrow desktop station pane is
+ * `compact` too, and `SearchResultRow` has refused a viewport query for this
+ * since 2026-09-12 precisely because devices and measures are different facts.
+ */
+export type FindStageDensity = 'compact' | 'comfortable';
+
+/** The five classes that make one FIND stage. */
+export interface FindStageClasses {
+  /** Page ground under the plane. */
+  ground: string;
+  /** Measure + centering of the plane. */
+  measure: string;
+  /** Gutter between the measure and the plane. */
+  gutter: string;
+  /** Plane corners. */
+  corner: string;
+  /** Plane depth. */
+  elevation: string;
+}
+
+/**
+ * The whole FIND stage decision, per density — ground, measure, gutter, corner
+ * and depth as ONE record, because they are one decision.
+ *
+ * `SearchBrowseShell` indexes this and spreads the result; it never picks a
+ * corner or a shadow of its own. Corner and depth resolve through
+ * `cornerClass` / `elevationClass`, so `ds_tokens` still sees token ROLES
+ * rather than a `rounded-xl` literal, and a theme that moves `surface` moves
+ * the FIND card with it.
+ */
+export const FIND_STAGE_BY_DENSITY: Record<FindStageDensity, FindStageClasses> = {
+  comfortable: {
+    ground: FIND_STAGE_GROUND_CLASS,
+    measure: DESK_STAGE_FIXED_CLASS,
+    gutter: FIND_STAGE_GUTTER_CLASS,
+    corner: cornerClass('surface'),
+    elevation: elevationClass('raised'),
+  },
+  compact: {
+    ground: FIND_STAGE_PHONE_GROUND_CLASS,
+    measure: FIND_STAGE_PHONE_MEASURE_CLASS,
+    gutter: FIND_STAGE_PHONE_GUTTER_CLASS,
+    corner: cornerClass('flush'),
+    elevation: elevationClass('flat'),
+  },
+};
+

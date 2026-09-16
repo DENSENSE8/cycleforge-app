@@ -1,4 +1,4 @@
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
@@ -10,6 +10,7 @@ import {
   formatDateTimePST,
   toPSTDateKey,
 } from '@/utils/date';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 /** Incoming Expected date face — civil day; medium weekday+year on hover. */
 export function incomingDateCell(source: string | null | undefined): {
@@ -27,13 +28,8 @@ export function incomingDateCell(source: string | null | undefined): {
 }
 
 export function displayReceivingProductTitle(row: ReceivingLineRow): string {
-  return (
-    row.catalog_product_title ||
-    row.zoho_item_title ||
-    row.item_name ||
-    row.zoho_item_id ||
-    'Unnamed inbound line'
-  );
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  return resolveSkuIdentityTitle(row) || 'Unnamed inbound line';
 }
 
 export function receivingStageTooltip(

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sidebar for /admin?section=bose_models — picker for the Bose model catalog.
+ * Sidebar for /sourcing?mode=models — picker for the Bose model catalog.
  *
  * URL-state contract:
  *   ?search=<q>   — search box value

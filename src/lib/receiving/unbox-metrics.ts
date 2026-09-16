@@ -2,7 +2,7 @@ import type { MetricIntent } from '@/design-system/components/monitor';
 import type { ComputedMetric } from '@/lib/dashboard/outbound-metrics';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import { unboxKpiFeedTab } from '@/utils/unbox-workspace-state';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { toPSTDateKey } from '@/utils/date';
 
 /** URL param a clicked KPI tile toggles; `ReceivingLinesTable` reads it to narrow rows on Unbox. */

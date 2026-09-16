@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/lib/receiving/po-group-title.ts:receivingProductTitle",
+      "kind": "function",
+      "name": "receivingProductTitle",
+      "location": "src/lib/receiving/po-group-title.ts:207",
+      "exported": true,
+      "signature": "function receivingProductTitle(row: ReceivingLineRow): string"
+    },
+    {
+      "node_key": "function:src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts:displayReceivingProductTitle",
+      "kind": "function",
+      "name": "displayReceivingProductTitle",
+      "location": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts:29",
+      "exported": true,
+      "signature": "function displayReceivingProductTitle(row: ReceivingLineRow): string"
+    }
+  ]
+}

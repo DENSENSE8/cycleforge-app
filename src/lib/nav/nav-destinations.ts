@@ -28,6 +28,7 @@ import {
   type SidebarPageNav,
   type SpineSectionId,
 } from '@/lib/sidebar-navigation';
+import { isTabParked } from '@/lib/nav/parked-tabs';
 
 export interface NavDestination {
   /** Stable row key. `pageId` for a page, `pageId:childId` for a child page. */
@@ -97,6 +98,11 @@ export function buildNavDestinations(pages: readonly SidebarPageNav[]): NavDesti
     });
 
     for (const child of page.children ?? []) {
+      // Search is a DOOR. A parked tab keeps its URL and its `resolveChild`
+      // clause, so a bookmark still lands — but offering it here would hand
+      // the operator back the tab the spine just withdrew. Same ledger, same
+      // key shape (`<pageId>:<childId>`) as this row's own `key`.
+      if (isTabParked(page.id, child.id)) continue;
       out.push({
         key: `${page.id}:${child.id}`,
         pageId: page.id,

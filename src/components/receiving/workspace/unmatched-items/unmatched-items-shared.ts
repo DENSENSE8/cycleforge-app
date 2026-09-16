@@ -4,7 +4,7 @@ import type {
   PoLineSerialActions,
 } from '@/components/receiving/workspace/po-lines-accordion-types';
 import type { LineCollapseController } from '@/components/station/collapse';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export interface UnfoundLine {
   id: number;

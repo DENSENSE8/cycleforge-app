@@ -10,6 +10,12 @@
  */
 
 import { z } from 'zod';
+import {
+  KIOSK_COMMAND_IDS,
+  KIOSK_FALLBACK_COMMAND,
+  parseKioskCommandId,
+  type KioskCommandId,
+} from '@/lib/kiosk/commands';
 
 const BrandSchema = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -47,6 +53,22 @@ const KioskSchema = z.object({
    * off (`resolveKioskIdleTiming`). Kept so existing org bags still parse.
    */
   idleTimeoutSeconds: z.number().int().optional(),
+  /**
+   * Which center command a counter OPENS on — the tablet's first frame and a
+   * freshly opened desk session both.
+   *
+   * Operator 2026-09-15: *"Whenever I go to the kiosk page, it defaults to
+   * sales. It must default to repair service. That is the most common thing,
+   * but this must be a selection within settings for a default kiosk selection
+   * to be updated to repair service sales or any different type of buying
+   * service."* So: a per-org CHOICE, not a hard-coded flip. Unset resolves to
+   * `KIOSK_FALLBACK_COMMAND` (repair) via {@link getKioskDefaultCommand} — a
+   * shop whose counter is mostly retail sets `retail` here and gets it.
+   *
+   * Same four strings as `counter_sessions.active_command`'s CHECK; the list
+   * is `KIOSK_COMMAND_IDS`, so the column and this field cannot drift apart.
+   */
+  defaultCommand: z.enum(KIOSK_COMMAND_IDS).optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and
@@ -430,6 +452,42 @@ export type PackingEnforcement = OrgSettings['packing']['enforcement'];
 
 export function getPackingEnforcement(settings: OrgSettings): PackingEnforcement {
   return settings.packing?.enforcement ?? 'advisory';
+}
+
+/**
+ * Which command a counter opens on for this org.
+ *
+ * ## Precedence — this is a SEED, never an override
+ *
+ * A desk-claimed tablet mirrors `counter_sessions.active_command`, which is a
+ * LIVE fact ("the desk is on Sales"), not a default. So this governs exactly
+ * two moments: the pristine local boot (`applyDefaultCommand`, which refuses
+ * once there are lines, a pick, or a mirror) and session CREATION, where the
+ * only prior intent was a column default nobody chose. Letting it outrank an
+ * attached mirror would flip a desk parked on Sales back to Repair on every
+ * tablet reload — the one way this feature can regress the desk workflow.
+ *
+ * ## Coerced, never trusted
+ *
+ * The settings bag is `.passthrough()` tenant JSON, so a hand-edited or stale
+ * `defaultCommand` lands on the fallback rather than handing a counter an id
+ * no pane answers to. Unset → repair (`KIOSK_FALLBACK_COMMAND`); see that
+ * constant for the operator ruling.
+ *
+ * ACCEPTED GAP: this validates the VOCABULARY, not liveness. The Settings
+ * chooser only offers `live` commands (`kioskCommandOptions`), but a stored id
+ * whose tile were later flipped to `status: 'wip'` would still resolve here and
+ * open a pane that renders nothing. Checking liveness would mean importing
+ * `services.ts` — and its `@/components/Icons` JSX — into every server module
+ * that reads org settings, which is the coupling `commands.ts` exists to
+ * avoid. Instead `commands.test.ts` fails the build if a command in the
+ * vocabulary stops being live, so retiring one cannot ship without handling
+ * the stored defaults that point at it.
+ */
+export function getKioskDefaultCommand(
+  settings: OrgSettings | null | undefined,
+): KioskCommandId {
+  return parseKioskCommandId(settings?.kiosk?.defaultCommand, KIOSK_FALLBACK_COMMAND);
 }
 
 /** Per-org photo-analysis settings (see OrgSettingsSchema.photoAnalysis). */

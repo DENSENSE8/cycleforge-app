@@ -40,6 +40,16 @@ export interface TableImportClassification<TField extends string> {
  * derived on read, which is what makes an edit re-classify in place with no
  * extra plumbing.
  */
+export interface TableImportCommitSuccess {
+  ok: true;
+  /** Stable ids of rows newly created by this commit, when the writer has them. */
+  insertedEntityIds?: readonly number[];
+}
+
+export type TableImportCommitResult =
+  | TableImportCommitSuccess
+  | { ok: false; error: string };
+
 export interface TableImportDescriptor<TField extends string, TRowView> {
   /**
    * Stable surface id — the staging store key and the fan-out allowlist entry.
@@ -88,5 +98,5 @@ export interface TableImportDescriptor<TField extends string, TRowView> {
   commit(input: {
     rows: Record<string, string>[];
     mapping: Record<string, string>;
-  }): Promise<{ ok: true } | { ok: false; error: string }>;
+  }): Promise<TableImportCommitResult>;
 }

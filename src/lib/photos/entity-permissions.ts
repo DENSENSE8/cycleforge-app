@@ -12,6 +12,12 @@ export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = 
   BIN_ADJUSTMENT: 'bin.adjust',
   SHARE_PACK: 'photos.share',
   ZENDESK_TICKET: 'integrations.zendesk',
+  // Repair evidence is "internal insurance": attached at counter intake
+  // (drop-off condition photos) and by the tech closing the loop. Gate rides
+  // the repair family's intake verb — the same staff who create the repair
+  // line are the ones photographing the device. Tighten to a dedicated
+  // `repair.upload_photo` permission if techs end up blocked in practice.
+  REPAIR_SERVICE: 'repair.intake',
   // Deliberately the ADMIN perm, not an "everyone" gate: this table answers
   // "may I upload to someone else's scope". A staffer setting their OWN photo
   // goes through /api/staff/[id]/avatar, which checks `id === ctx.staffId`

@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
+import { publishOrderChanged } from '@/lib/realtime/publish';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 
 /**
@@ -284,6 +285,23 @@ export const POST = withAuth(async (request, ctx) => {
 
     if (!result.ok) {
       return NextResponse.json(result, { status: result.status });
+    }
+    // A committed pick changes what the To-ship desk paints (the Pick column),
+    // so it has to reach open desks the way a pack scan does — before this the
+    // route published nothing and a picker's scan was invisible until someone
+    // refetched (operator ruling 2026-09-14). Rides the same `order.changed`
+    // event as packing-logs with its own `source`, so the dashboard subscriber
+    // needs no new branch. Off the response path via after(), and swallowed:
+    // an Ably outage must never fail a pick that is already committed.
+    const changedOrderId = result.orderId;
+    if (changedOrderId != null) {
+      after(() =>
+        publishOrderChanged({
+          organizationId: orgId,
+          orderIds: [changedOrderId],
+          source: 'pick.scan',
+        }).catch(() => {}),
+      );
     }
     return NextResponse.json(result);
   } catch (err) {

@@ -23,6 +23,7 @@ import {
   TECH_ALL_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/tech-all';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -62,8 +63,11 @@ const TECH_ALL_SHEET_BASE: readonly TechAllGridColumn[] = [
     key: 'identity',
     frozen: true,
     width: 'minmax(12rem, 1fr)',
-    label: 'Identity',
-    gridLabel: 'Identity',
+    // The word is the ENGINE's on every identity track, sheet or compound
+    // (`slot-table-id-header-law.ts`). The FACT stays this family's
+    // (`tech-all.item`), and the cell still paints title over its quiet line.
+    label: SLOT_TABLE_ID_HEADER_WORD,
+    gridLabel: SLOT_TABLE_ID_HEADER_WORD,
     type: 'text',
     labelFitRem: 8,
   },

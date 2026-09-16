@@ -2,7 +2,12 @@
 
 /**
  * Scan-station preview of a resolved identifier — the FIND column, not
- * EntityStationPane / ActiveOrderWorkspace Displays.
+ * a station pane / ActiveOrderWorkspace Displays.
+ *
+ * Declares `density="compact"` because this pane is a few hundred px wide on a
+ * desk monitor. That is the case the dossier's old `md:` gates got wrong: a
+ * viewport query saw 1440, fired, and reserved a 224px outline rail inside a
+ * pane with no room for one. The measure is a property of the MOUNT.
  *
  * Callers: TechRightPane shipping preview overlay.
  * User: continue to the next phase (Phase 5 scan preview embed).
@@ -11,6 +16,7 @@
 import { Button } from '@/design-system/primitives';
 import { SearchDossier } from '@/components/search/dossier/SearchDossier';
 import type { SearchSelection } from '@/lib/search/search-selection';
+import { FindDensityProvider } from '@/components/search/find-density-context';
 
 export function SearchFindPreviewEmbed({
   sel,
@@ -20,13 +26,15 @@ export function SearchFindPreviewEmbed({
   onClose: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-      <div className="shrink-0 border-b border-border-hairline px-3 py-2">
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Close
-        </Button>
+    <FindDensityProvider density="compact">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
+        <div className="shrink-0 px-3 py-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+        <SearchDossier sel={sel} hasQuery={false} onExit={onClose} />
       </div>
-      <SearchDossier sel={sel} hasQuery={false} onExit={onClose} />
-    </div>
+    </FindDensityProvider>
   );
 }

@@ -1,55 +1,40 @@
 /**
- * Shared types + constants for the Home ("/") mode switcher.
+ * Shared types + constants for the Home ("/") surface.
  *
- * THREE modes as of 2026-08-21: `daily`, `today` and `tasks`.
+ * ONE mode as of 2026-09-14: `daily`. The Today and Tasks modes were removed
+ * from Home by operator ruling (their workbenches and backends stay on disk,
+ * unmounted — deletion remains a separate, gated pass). Home IS the daily
+ * checklist now; the nav spine names it "Daily" with the lucide ListChecks
+ * glyph.
  *
- * `tasks` is NOT the 2026-08-19 mode of that name coming back. That one was the
- * ops-plan task feed and it was deleted for the reason below. This one is the
- * staffer's OWN `staff_todos` list — the thing the header pace-and-next popover
- * previews — given a real collection surface (`tasks.mine` in the table
- * registry) so it can be triaged, sorted and inspected instead of scrolled in a
- * 290px popover. Same wire token deliberately: a stale `?mode=tasks` deep link
- * lands on a personal task list, which is the closest live thing to what its
- * author was looking for.
+ * `parseHomeMode` survives as the stale-link guard: a bookmark carrying
+ * `?mode=today` / `?mode=tasks` (or the older `?mode=forge` the Plans spine
+ * pin still writes) lands on Daily — the only live thing at `/` — instead of
+ * a dead region. That is the same disposal doctrine every removed Home mode
+ * has used (`inbox`, `collab`, `brief`, ops-plan `tasks`).
  *
- * The original note, still the standard a mode is held to: `inbox` (subscription feed),
- * `tasks` (ops-plan tasks) and `forge` (Plans Live) were removed from Home —
- * `inbox` and `tasks` deleted outright, `forge` moved to its own `/forge` route,
- * which is where its bookmark already pointed. Same disposal as `collab` and
- * `brief` before them: a mode nobody wants costs a slot on the first screen of
- * every shift, and a switcher is not a parking lot.
- *
- * Home is a Workbench (pick a mode → act in the region). `?mode=` in the URL is
- * the single source of truth — never a local `useState` (sidebar-mode law #1).
- *
- * Pure data only — no JSX. The mode LABELS and ICONS live in `SIDEBAR_PAGE_NAV`
- * (the house L2 SoT that `HeaderPageSwitcher` renders); this module keeps only
- * the vocabulary + its parser, which that registry's `resolveChild` imports so
- * the two can never disagree.
+ * `?mode=` in the URL stays the single source of truth for the surface — this
+ * module keeps only the vocabulary + its parser, so the registry and the page
+ * can never disagree.
  */
 
-export type HomeMode = 'daily' | 'today' | 'tasks';
+export type HomeMode = 'daily';
 
-/**
- * `daily` is the landing view: the first screen of a shift is the checklist you
- * run and the report of who has run theirs. Change this one constant to move
- * the landing to `today` — the nav entry below reads it, so the bare `/` path
- * follows automatically.
- */
+/** `daily` is the landing view — the only view. */
 export const DEFAULT_HOME_MODE: HomeMode = 'daily';
 
-/** Live Home modes — includes default `daily` (usually omitted from the URL). */
-export const HOME_MODES = ['daily', 'today', 'tasks'] as const satisfies readonly HomeMode[];
+/** Live Home modes. */
+export const HOME_MODES = ['daily'] as const satisfies readonly HomeMode[];
 
-export function parseHomeMode(raw: string | null | undefined): HomeMode {
-  if (raw === 'today') return 'today';
-  if (raw === 'tasks') return 'tasks';
+export function parseHomeMode(_raw: string | null | undefined): HomeMode {
   return DEFAULT_HOME_MODE;
 }
 
 /**
  * Wire tokens `?mode=` may carry on `/` (route-param hygiene / deep links).
- * Includes `today`. Do not round-trip {@link parseHomeMode}.
+ * Every unknown token — including the removed `today` / `tasks` — resolves to
+ * null, so a round trip through `buildRouteUrl` drops it rather than
+ * round-tripping a mode that no longer exists.
  */
 export function parseHomeModeWire(raw: string): string | null {
   const v = raw.trim().toLowerCase();

@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/composer/ComposerModeRow.tsx:ComposerModeRow",
+      "kind": "component",
+      "name": "ComposerModeRow",
+      "location": "src/components/composer/ComposerModeRow.tsx:189",
+      "exported": true,
+      "signature": "function ComposerModeRow({ mode, onModeChange, progressPercent = 0, progressTone = 'idle', onProgressClick, leading, showModeFaces = true, }: { mode: StationComposerMode; onModeChange: (next: StationComposerMode) => void; progressPercent?: number; progressTone?: 'idle' | 'selected'; onProgressClick?: () => void; leading?: ReactNode; /** When false, only the bottom-right context / procedure ring pa"
+    },
+    {
+      "node_key": "file:src/components/composer/ComposerModeRow.tsx",
+      "kind": "file",
+      "name": "ComposerModeRow.tsx",
+      "location": "src/components/composer/ComposerModeRow.tsx:1",
+      "exported": false,
+      "signature": null
+    }
+  ]
+}

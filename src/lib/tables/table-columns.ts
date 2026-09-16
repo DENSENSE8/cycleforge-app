@@ -103,7 +103,7 @@ export type TableId =
   /** Review › Catalog link chores (`CATALOG_LINK_GRID_COLUMNS`). */
   | 'catalog-link'
   /**
-   * Review › Missing item number (`IMPORT_EXCEPTION_GRID_COLUMNS`) — its own
+   * Review › Missing item number (`IMPORT_EXCEPTION_COMPOUND_COLUMNS`) — its own
    * bucket, not `catalog-link`'s. The two tabs share a surface but not their
    * identity facts, so one bucket would mean hiding `source` on one tab
    * silently hid it on the other.
@@ -121,6 +121,91 @@ export type TableId =
   | 'kiosk-slot-events'
   /** Dashboard › Sales completed visits (slot-materialized; KEEP catalog). */
   | 'walk-in-sales'
+  /** Settings › Active staff sessions (slot-materialized). */
+  | 'auth-sessions'
+  /** Admin › Inventory cycle-count campaigns (slot-materialized). */
+  | 'cycle-counts'
+  /** Admin › Returns dock (slot-materialized; sibling document of the Ledger). */
+  | 'admin-returns'
+  /** Admin › Sourcing compatibility edges (slot-materialized). */
+  | 'part-compatibility'
+  /**
+   * Unit detail › Order allocations (slot-materialized). ONE family for the
+   * entity: `/inventory?unit=` mounts it now and `/inventory/health/sku/[sku]`
+   * mounts the same catalog in a later pass.
+   */
+  | 'unit-allocations'
+  /** Unit detail › v1 tech_serial_numbers cross-refs (slot-materialized; read-only). */
+  | 'unit-tsn-links'
+  /** Settings › Audit log (slot-materialized; read-only, no record plane). */
+  | 'audit-log'
+  /** Admin › Inventory holds — the quarantine queue (slot-materialized). */
+  | 'admin-holds'
+  /** Admin › Inventory bulk-allocate candidates (slot-materialized). */
+  | 'admin-bulk-allocate'
+  /** Admin › Inventory cycle-count LINES, per campaign (slot-materialized). */
+  | 'cycle-count-lines'
+  /** Admin › Inventory open DRIFT alerts (slot-materialized; read-only, cron-owned). */
+  | 'admin-drift-alerts'
+  /** Admin › Inventory sku_stock ↔ ledger drift (slot-materialized; read-only). */
+  | 'admin-sku-drift'
+  /** Settings › Team directory (slot-materialized). */
+  | 'staff-directory'
+  /**
+   * Reports › Bin utilization (slot-materialized; read-only, no record plane).
+   * Its OWN bucket, never `bins`: the report row is an `mv_bin_utilization`
+   * projection and the Warehouse family's row is a `BinsOverviewRow` with
+   * count stamps and four flags this projection does not carry.
+   */
+  | 'report-bin-utilization'
+  /** Reports › SKU velocity, last 30 days (slot-materialized; read-only). */
+  | 'report-velocity'
+  /**
+   * Reports › Dead stock, 90d+ (slot-materialized; read-only). A SIBLING of
+   * `report-velocity`, never a merge: both rows are keyed by SKU but answer
+   * different questions over different windows.
+   */
+  | 'report-dead-stock'
+  /**
+   * Reports › Staff day, one row per (staffer × task) of a day's checklist
+   * report (slot-materialized; read-only — "view only in a manager").
+   */
+  | 'report-staff-day'
+  /**
+   * Reports › Packer day, one row per PACK of a PST day (slot-materialized;
+   * read-only). A sibling of `report-staff-day`, never a merge: both are
+   * day-scoped shift reports, but a pack scan and a checklist tick answer
+   * different questions and share no facts.
+   */
+  | 'report-packer-day'
+  /** Admin › per-SKU bin distribution (slot-materialized; read-only). */
+  | 'sku-bins'
+  /** Admin › per-SKU stock ledger (slot-materialized; read-only). */
+  | 'sku-ledger'
+  /**
+   * Inventory › Stock by location (slot-materialized; read-only). Its OWN
+   * bucket, never `bins` or `sku-bins`: hiding `Room` on the warehouse-wide
+   * pair list must not change the density of the bins overview, and an org's
+   * bind of an overview aggregate would arrive on a table that cannot resolve
+   * it.
+   */
+  | 'location-stock'
+  /**
+   * `/search` cross-entity find plane (slot-materialized; read-only). Its OWN
+   * bucket: the rows are six entity families flattened onto one wire shape,
+   * so binding a column here must not densify any desk those records live on.
+   */
+  | 'search-hits'
+  /**
+   * Admin › per-SKU open allocations — a SIBLING layout DOCUMENT over the
+   * `unit-allocations` entity, not a second family: this feed filters
+   * `state <> 'RELEASED'` and is the only one that selects `allocated_by`,
+   * while the unit desk selects the two release facts and never binds the
+   * actor. One document would leave a permanently dashed track on one of the
+   * two mounts, which is the dead-header failure. `unit-allocations.ts` names
+   * this sibling itself.
+   */
+  | 'sku-allocations'
   /**
    * To-Ship CSV import staging (`CSV_IMPORT_STAGING_GRID_COLUMNS`) — its OWN
    * bucket, never `orders`: hiding a column while triaging a file must not
@@ -397,6 +482,124 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * unbinding a catalog fact. The KEY stays for the `TableId` union.
    */
   'walk-in-sales': [],
+  /**
+   * Active sessions — **deliberately empty**, slot-born. Hiding a session fact
+   * is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'auth-sessions': [],
+  /**
+   * Cycle-count campaigns — **deliberately empty**, slot-born. Same rule as
+   * kiosk-devices: hide by unbinding, never by a hideKey list here.
+   */
+  'cycle-counts': [],
+  /**
+   * Returns dock — **deliberately empty**, slot-born. Hiding a returns fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'admin-returns': [],
+  /**
+   * Compatibility edges — **deliberately empty**, slot-born. Hiding an edge
+   * fact is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'part-compatibility': [],
+  /**
+   * Order allocations — **deliberately empty**, slot-born. Hiding an
+   * allocation fact is unbinding it from a slot. The KEY stays for the
+   * `TableId` union.
+   */
+  'unit-allocations': [],
+  /**
+   * v1 TSN cross-refs — **deliberately empty**, slot-born. Same rule. The KEY
+   * stays for the `TableId` union.
+   */
+  'unit-tsn-links': [],
+  /**
+   * Audit log — **deliberately empty**, slot-born. Hiding an audit fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'audit-log': [],
+  /**
+   * Held units — **deliberately empty**, slot-born. Hiding a hold fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'admin-holds': [],
+  /**
+   * Allocation candidates — **deliberately empty**, slot-born. Hiding a
+   * candidate fact is unbinding it from a slot. The KEY stays for the
+   * `TableId` union.
+   */
+  'admin-bulk-allocate': [],
+  /**
+   * Cycle-count lines — **deliberately empty**, slot-born. Same rule as
+   * `cycle-counts`: hide by unbinding, never by a hideKey list here.
+   */
+  'cycle-count-lines': [],
+  /**
+   * Open DRIFT alerts — **deliberately empty**, slot-born. Hiding an alert
+   * fact is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'admin-drift-alerts': [],
+  /**
+   * SKU stock drift — **deliberately empty**, slot-born. Same rule. The KEY
+   * stays for the `TableId` union.
+   */
+  'admin-sku-drift': [],
+  /**
+   * Team directory — **deliberately empty**, slot-born. Hiding a staff fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'staff-directory': [],
+  /**
+   * Bin utilization — **deliberately empty**, slot-born. Hiding a bin fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'report-bin-utilization': [],
+  /**
+   * SKU velocity — **deliberately empty**, slot-born. Same rule. The KEY stays
+   * for the `TableId` union.
+   */
+  'report-velocity': [],
+  /**
+   * Dead stock — **deliberately empty**, slot-born. Same rule. The KEY stays
+   * for the `TableId` union.
+   */
+  'report-dead-stock': [],
+  /**
+   * Staff day — **deliberately empty**, slot-born. Same rule. The KEY stays
+   * for the `TableId` union.
+   */
+  'report-staff-day': [],
+  /**
+   * Packer day — **deliberately empty**, slot-born. Same rule. The KEY stays
+   * for the `TableId` union.
+   */
+  'report-packer-day': [],
+  /**
+   * Per-SKU bin distribution — **deliberately empty**, slot-born. Hiding a bin
+   * fact is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'sku-bins': [],
+  /**
+   * Per-SKU stock ledger — **deliberately empty**, slot-born. Same rule. The
+   * KEY stays for the `TableId` union.
+   */
+  'sku-ledger': [],
+  /**
+   * `/search` find plane — **deliberately empty**, slot-born. Hiding a result
+   * fact is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'search-hits': [],
+  /**
+   * Per-SKU open allocations — **deliberately empty**, slot-born. A sibling
+   * DOCUMENT over the `unit-allocations` entity, so this bucket exists to keep
+   * the two mounts' Fields prefs from fighting, nothing more.
+   */
+  'sku-allocations': [],
+  /**
+   * Stock by location — **deliberately empty**, slot-born. Hiding a shelf fact
+   * is unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'location-stock': [],
 };
 
 export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

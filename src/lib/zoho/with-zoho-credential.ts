@@ -16,7 +16,10 @@ import { withZohoOrg } from './tenant-context';
 /** Operations the Zoho integration may perform (subset of the zoho allowlist). */
 export type ZohoOperation =
   | 'purchaseorders.read'
+  | 'purchaseorders.write'
   | 'purchasereceives.read'
+  | 'purchasereceives.write'
+  | 'bills.read'
   | 'organizations.read'
   | 'salesorders.read'
   | 'salesorders.write'

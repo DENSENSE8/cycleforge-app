@@ -7,7 +7,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
+import { COMPOUND_COLUMN_KEYS, COMPOUND_TRACKS } from '@/components/tables/compound/compound-columns';
 import type { DailyTaskRow } from '@/features/home/grid/daily-task-row';
 import {
   DAILY_COMPOUND_COLUMNS,
@@ -22,6 +22,9 @@ function row(overrides: Partial<DailyTaskRow> = {}): DailyTaskRow {
     id: 4,
     title: 'Sweep the pack bench',
     sortOrder: 1,
+    kind: 'recurring',
+    assignedStaffId: null,
+    assignedStaffName: null,
     done: true,
     teamDone: 3,
     teamTotal: 5,
@@ -41,22 +44,37 @@ describe('daily catalog', () => {
     }
   });
 
-  it('product default parses against the catalog — compound morph, NOTHING bound', () => {
+  it('product default parses against the catalog — compound morph, Owner bound', () => {
     const parsed = parseSlotLayout(DAILY_PRODUCT_LAYOUT, DAILY_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
     assert.equal(parsed.identityFieldId, 'daily.item');
-    assert.deepEqual(parsed.statusBindings, []);
+    // Owner is the ONE product binding: an owned one-off paints its avatar on
+    // the desk by default (kiosk-devices' enrolled_by precedent). Kind stays
+    // unbound — its word rides the note line.
+    assert.deepEqual(parsed.statusBindings, [{ fieldId: 'daily.owner' }]);
     assert.deepEqual(parsed.subtitleBindings, []);
   });
 });
 
 describe('dailyCompoundColumnsFor — the compound materialization', () => {
-  it('the product default IS the shared compound skeleton, in order', () => {
+  it('the product default is the shared skeleton plus the bound owner track', () => {
+    // Slot tracks materialize AFTER `state` (the status anchor), so the
+    // expected order is the base skeleton with `status:1` spliced there.
+    const stateIdx = COMPOUND_COLUMN_KEYS.indexOf('state');
+    assert.ok(stateIdx >= 0);
+    const expected = [
+      ...COMPOUND_COLUMN_KEYS.slice(0, stateIdx + 1),
+      'status:1' as const,
+      ...COMPOUND_COLUMN_KEYS.slice(stateIdx + 1),
+    ];
     assert.deepEqual(
       DAILY_COMPOUND_COLUMNS.map((c) => c.key),
-      [...COMPOUND_COLUMN_KEYS],
+      expected,
     );
-    assert.ok(DAILY_COMPOUND_COLUMNS.every((c) => c.fieldId === undefined));
+    // Every base track stays the SHARED object; only the slot track is new.
+    const owner = DAILY_COMPOUND_COLUMNS.find((c) => c.fieldId === 'daily.owner');
+    assert.ok(owner);
+    assert.equal(owner.slotDisplayType, 'person');
   });
 
   it('binding Team opens the track the retired flat model spent a column on', () => {
@@ -73,12 +91,37 @@ describe('dailyCompoundColumnsFor — the compound materialization', () => {
 });
 
 describe('resolveDailySlotValue', () => {
+  /** Narrowed read of a resolved value's text — no inline shape casts. */
+  function valueText(v: ReturnType<typeof resolveDailySlotValue>): string | null {
+    return v && v.kind === 'value' ? v.text : null;
+  }
+
   it('resolves each catalog field off the view-model row', () => {
     const r = row();
     assert.deepEqual(resolveDailySlotValue(r, 'daily.item'), { kind: 'value', text: '#4' });
     assert.deepEqual(resolveDailySlotValue(r, 'daily.team'), { kind: 'value', text: '3/5' });
     assert.equal(resolveDailySlotValue(r, 'daily.status')?.kind, 'value');
-    assert.ok((resolveDailySlotValue(r, 'daily.marked') as { text: string | null }).text);
+    assert.ok(valueText(resolveDailySlotValue(r, 'daily.marked')));
+  });
+
+  it('kind resolves the exception word only — recurring says nothing', () => {
+    assert.deepEqual(resolveDailySlotValue(row({ kind: 'once' }), 'daily.kind'), {
+      kind: 'value',
+      text: 'Once',
+    });
+    assert.deepEqual(resolveDailySlotValue(row(), 'daily.kind'), { kind: 'value', text: null });
+  });
+
+  it('owner resolves the person face, and the absence honestly', () => {
+    assert.deepEqual(
+      resolveDailySlotValue(row({ assignedStaffId: 17, assignedStaffName: 'Dana' }), 'daily.owner'),
+      { kind: 'person', staffId: 17, name: 'Dana' },
+    );
+    assert.deepEqual(resolveDailySlotValue(row(), 'daily.owner'), {
+      kind: 'person',
+      staffId: null,
+      name: null,
+    });
   });
 
   it('an empty roster has no denominator — null, never 0/0', () => {
@@ -92,8 +135,8 @@ describe('resolveDailySlotValue', () => {
     const open = row({ done: false, markedAt: null });
     assert.deepEqual(resolveDailySlotValue(open, 'daily.marked'), { kind: 'value', text: null });
     assert.notEqual(
-      (resolveDailySlotValue(open, 'daily.status') as { text: string }).text,
-      (resolveDailySlotValue(row(), 'daily.status') as { text: string }).text,
+      valueText(resolveDailySlotValue(open, 'daily.status')),
+      valueText(resolveDailySlotValue(row(), 'daily.status')),
     );
   });
 
@@ -113,7 +156,32 @@ describe('dailySlotValuesFor', () => {
     });
   });
 
-  it('the product default resolves no slots at all', () => {
-    assert.equal(dailySlotValuesFor(row(), DAILY_COMPOUND_COLUMNS), undefined);
+  it('the product default resolves only the owner track — a dash on unowned rows', () => {
+    assert.deepEqual(dailySlotValuesFor(row(), DAILY_COMPOUND_COLUMNS), {
+      'status:1': { kind: 'person', staffId: null, name: null },
+    });
+    assert.deepEqual(
+      dailySlotValuesFor(row({ assignedStaffId: 17, assignedStaffName: 'Dana' }), DAILY_COMPOUND_COLUMNS),
+      { 'status:1': { kind: 'person', staffId: 17, name: 'Dana' } },
+    );
+  });
+});
+
+describe('daily identity track vocabulary', () => {
+  it('reads Id — the portable word for the identity handle', () => {
+    const track = DAILY_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
+    assert.ok(track, 'daily mounts the shared identity track');
+    assert.equal(track.gridLabel, 'Id');
+  });
+
+  it('takes that word from the SHARED skeleton — never a family-local copy', () => {
+    // The same-OBJECT law lives in compound-row-model.test.ts; this pins the
+    // reason a family must not fork the array to rename a header.
+    const shared = COMPOUND_TRACKS.find((c) => c.key === 'fulfillment');
+    assert.equal(shared?.gridLabel, 'Id');
+    assert.equal(
+      DAILY_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment'),
+      shared,
+    );
   });
 });

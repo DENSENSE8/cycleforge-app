@@ -114,6 +114,35 @@ export function bindSheetColumns(headerRow: unknown[]): SheetColumnBinding {
   return { colIndices, missing };
 }
 
+/** An optional sheet column that row 1 never bound, and what would bind it. */
+export interface UnboundSheetColumn {
+  field: SheetField;
+  /** Header titles that would have matched, for the operator-facing message. */
+  expectedLabels: string[];
+}
+
+/**
+ * Optional fields that found NO header in row 1, with the titles that would
+ * have matched.
+ *
+ * WHY THIS IS EXPORTED AT ALL: a missing OPTIONAL column is silent by design
+ * (index stays -1, `cell()` reads ''), and for `note` or `condition` that is
+ * genuinely fine. For `salePrice` it is not: it is why 4467 orders imported
+ * with 6 prices between them. The header match is exact equality on the
+ * lowercased title, so `Sale Price` binds but `Item Price`, `Sold Price` or
+ * `Sale Price (USD)` do not — and nothing told anyone. The caller reports
+ * these so the operator sees "your sheet has no price column" instead of
+ * discovering it months later in a revenue report.
+ */
+export function unboundOptionalColumns(
+  colIndices: SheetColumnIndices,
+): UnboundSheetColumn[] {
+  return OPTIONAL_SHEET_HEADER_BINDINGS.filter((b) => colIndices[b.field] === -1).map((b) => ({
+    field: b.field,
+    expectedLabels: b.candidates,
+  }));
+}
+
 /** Read a bound cell; an unbound column (-1) reads as ''. */
 function cell(row: SheetRow, index: number): string {
   return index >= 0 ? cleanText(row[index]) : '';

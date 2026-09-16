@@ -60,6 +60,7 @@ const UNSHIPPED_VIEW_PARAMS = [
   'ustatus',
   'staff',
   'late',
+  'aging',
   'attention',
   'packPlaced',
   'packStation',

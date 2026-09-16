@@ -55,7 +55,7 @@
  * It is the frame for **operator desks** — a page whose subject is a collection
  * you triage. It is deliberately NOT the frame for:
  *
- * - **Settings / admin pages** (`/settings/*`, `/admin/inventory/*`). Those are
+ * - **Settings / admin pages** (`/settings/*`, `/inventory/health/*`). Those are
  *   forms and short config tables; `PageHeader` from `@/components/ui/pane-header`
  *   stays their primitive. A fixed-width stage, a detached card and a fullscreen
  *   toggle answer questions a settings form does not ask, and the two-primitive

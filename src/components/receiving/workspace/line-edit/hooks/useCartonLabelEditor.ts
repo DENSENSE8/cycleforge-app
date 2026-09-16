@@ -9,7 +9,7 @@ import {
   printReceivingLabel,
   markReceivingLabelPrinted,
 } from '@/components/receiving/workspace/receiving-label-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { LabelCornerMode, LabelEditDraft } from '../LabelEditPopover';
 import { buildCartonLabelPayloadFromDraft } from '../cartonLabelPayload';
 import type { ReceivingLineCore } from './useReceivingLineCore';

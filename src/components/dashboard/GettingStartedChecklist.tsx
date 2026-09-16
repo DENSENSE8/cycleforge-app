@@ -19,18 +19,14 @@
  */
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
+import { useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, ChevronRight, ClipboardList, X } from '@/components/Icons';
-import {
-  completedStepCount,
-  stepsForEntitlements,
-  type OnboardingStats,
-} from '@/lib/onboarding/steps';
+import { completedStepCount, stepsForEntitlements } from '@/lib/onboarding/steps';
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-accent';
 
@@ -50,18 +46,8 @@ function GettingStartedChecklistInner({ variant }: { variant: ChecklistVariant }
   const entitlements = useEntitlements();
   const { prefs, isLoading: prefsLoading, update } = useStaffPreferences();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['onboarding-stats'],
-    // Activation counts change rarely inside one session; poll lazily.
-    staleTime: 5 * 60 * 1000,
-    queryFn: async (): Promise<OnboardingStats> => {
-      const res = await fetch('/api/onboarding/stats');
-      if (!res.ok) throw new Error(`onboarding-stats ${res.status}`);
-      const body = (await res.json()) as { stats?: OnboardingStats };
-      if (!body.stats) throw new Error('onboarding-stats: empty payload');
-      return body.stats;
-    },
-  });
+  // Shared with the To-ship queue's first-run gate — one query, one answer.
+  const { data, isLoading, isError } = useOnboardingStats();
 
   // Quiet card: while loading, on error, or once dismissed, render nothing —
   // the dashboard never shows a spinner or an error box for an optional nudge.

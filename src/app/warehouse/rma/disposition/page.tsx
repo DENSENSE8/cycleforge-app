@@ -42,7 +42,7 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { conditionLabel } from '@/lib/conditions';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { focusRing } from '@/design-system/tokens/focus-ring';

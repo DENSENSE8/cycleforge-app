@@ -54,9 +54,16 @@ import {
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
-import { COMPOUND_TWO_LINE_CLASS } from './CompoundCell';
+import { CompoundEdgeRail } from './CompoundEdgeRail';
+import { compoundSelectStatusMarks } from './compound-select-status';
 import { isCompoundColumnModel } from './compound-columns';
-import { COMPOUND_ROW_PX } from './compound-row-chrome';
+import {
+  COMPOUND_GUTTER_CHEVRON_BAND_CLASS,
+  COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
+  COMPOUND_GUTTER_RAIL_INSET_CLASS,
+  COMPOUND_ROW_PX,
+  SLOT_TABLE_GROUP_CHILD_RAIL_CLASS,
+} from './compound-row-chrome';
 import type {
   CompoundRowAction,
   CompoundRowView,
@@ -301,7 +308,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         onToggle={select.onToggle}
         label={select.label}
         disabled={select.disabled}
-        edgeMark={view.edgeMark}
+        statuses={compoundSelectStatusMarks(view)}
         chrome="hover"
       />
     ) : null;
@@ -312,8 +319,11 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         // Kept from the Orders row this cell replaced — it is how a spec finds
         // the gutter, and it now means the same thing on every family.
         data-select-gutter
+        // The leading edge rail hangs off THIS box, so `relative` is load-
+        // bearing geometry, not chrome — see the rail below.
+        data-edge-mark-host=""
         data-frozen-edge={frozenEdge}
-        className={className}
+        className={cn(className, 'relative')}
         style={style}
         // Stopped ONLY when this gutter owns a real control.
         //
@@ -334,42 +344,76 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
             : undefined
         }
       >
+        {/*
+          FULL-HEIGHT rail, owned by the CELL (operator 2026-09-15: "it should
+          display the full height, it should not be constrained by the drop down
+          icon"). It used to live inside CompoundSelect, which on a detail row
+          is only the TOP half of this box — so the bar stopped at the chevron
+          and the traveler bobbed out of a clipped container. The rail is a ROW
+          edge mark; the check and the chevron are both guests inside it.
+        */}
+        {view.edgeMark ?? view.importMark ? (
+          <CompoundEdgeRail mark={view.edgeMark ?? view.importMark!} />
+        ) : null}
+        {/*
+          The MARK plane is the whole cell — `CompoundSelect` pins the checklist
+          square / resting status glyph to the TOP (operator 2026-09-04 "most
+          top of the column per rows", reaffirmed 2026-09-15) and the button
+          underneath it keeps every pixel above the chevron band as its hit
+          plane. It used to sit in the top track of a COMPOUND_TWO_LINE_CLASS
+          stack, which boxed the control into a 23.5px half.
+        */}
+        {selectFace}
         {detail ? (
-          <div
-            className={cn(COMPOUND_TWO_LINE_CLASS, 'w-full min-h-0')}
-            data-leaf-detail-stack=""
+          <button
+            type="button"
+            className={cn(
+              'ds-raw-button group/row-detail flex items-center justify-center text-text-soft',
+              // Its own band — the bottom half of the gutter, BELOW the pinned
+              // mark, so the drop-down reads as the second glyph in the column.
+              COMPOUND_GUTTER_CHEVRON_BAND_CLASS,
+              // Same rail reservation as the mark above it, so the two glyphs
+              // sit on one vertical centre line down the gutter.
+              COMPOUND_GUTTER_RAIL_INSET_CLASS,
+              focusRing('control', 'neutral'),
+            )}
+            aria-expanded={detail.open}
+            aria-label={
+              detail.open
+                ? `Hide extra details for ${detail.label}`
+                : `Show more about ${detail.label}`
+            }
+            data-row-detail=""
+            onClick={(event) => {
+              event.stopPropagation();
+              detail.onToggle();
+            }}
           >
-            <div className="flex min-h-0 min-w-0 items-stretch">{selectFace}</div>
-            <button
-              type="button"
+            {/*
+              The chevron is a REACH affordance, not a standing mark (operator
+              2026-09-15). Closed and unreached it paints nothing — same
+              argument that retired the resting faded check: forty chevrons
+              answer "can this expand?" permanently, over the data. OPEN it
+              stands, because then it is state, and keyboard focus / no-hover
+              pointers get it standing too. The BUTTON keeps its full band as a
+              hit plane and its aria-expanded label at every opacity.
+            */}
+            <span
               className={cn(
-                'ds-raw-button flex h-full w-full min-h-0 items-center justify-center text-text-soft',
-                focusRing('control', 'neutral'),
+                COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
+                'transition-opacity',
+                !detail.open &&
+                  'opacity-0 group-hover/row:opacity-100 group-focus-visible/row-detail:opacity-100 [@media(hover:none)]:opacity-100',
               )}
-              aria-expanded={detail.open}
-              aria-label={
-                detail.open
-                  ? `Hide extra details for ${detail.label}`
-                  : `Show more about ${detail.label}`
-              }
-              data-row-detail=""
-              onClick={(event) => {
-                event.stopPropagation();
-                detail.onToggle();
-              }}
             >
-              <span className="flex h-4 w-4 items-center justify-center">
-                {detail.open ? (
-                  <ChevronDown className="h-3 w-3" aria-hidden />
-                ) : (
-                  <ChevronRight className="h-3 w-3" aria-hidden />
-                )}
-              </span>
-            </button>
-          </div>
-        ) : (
-          selectFace
-        )}
+              {detail.open ? (
+                <ChevronDown className="h-3 w-3" aria-hidden />
+              ) : (
+                <ChevronRight className="h-3 w-3" aria-hidden />
+              )}
+            </span>
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -402,7 +446,25 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
       );
     case 'fulfillment':
       return (
-        <div data-col="fulfillment" data-frozen-edge={frozenEdge} className={className} style={style}>
+        <div
+          data-col="fulfillment"
+          data-frozen-edge={frozenEdge}
+          // `relative` only for the child rail's sake — see below.
+          className={cn(className, view.quietIdentity && 'relative')}
+          style={style}
+        >
+          {/*
+            MEMBERSHIP mark: a group child wears a soft rail on the identity
+            track's leading edge (operator 2026-09-15, replacing the black rule
+            under the fold). Here and not in the select gutter because the
+            gutter's first 3px are the TRIAGE rail — see
+            SLOT_TABLE_GROUP_CHILD_RAIL_CLASS for the measurements. Gated on
+            `quietIdentity` (the group-child marker), so every folding peer —
+            To-ship, Unbox, Incoming — gets it from this one mount.
+          */}
+          {view.quietIdentity ? (
+            <span aria-hidden data-group-child-rail="" className={SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} />
+          ) : null}
           <CompoundFulfillment view={view} onOpenLabels={onOpenLabels} />
         </div>
       );

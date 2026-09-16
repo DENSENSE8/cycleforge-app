@@ -2,7 +2,7 @@
  * Line-anchored "delivered, not unboxed yet" boxes for the Incoming facet.
  */
 
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export interface DeliveredNotUnboxedItem {
   receiving_line_id: number;

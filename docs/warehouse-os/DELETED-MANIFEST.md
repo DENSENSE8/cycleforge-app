@@ -321,6 +321,121 @@ The `/m/**` phone surfaces. Route tree deleted by the app lane; these are its co
 | Mobile photos / packer / identify / unit / feed / picker | 21 · 3,420 | `git checkout main -- src/components/mobile` |
 | Phone scan bridge hook | 1 | `git checkout main -- src/hooks/usePhoneScanBridge.ts` |
 
+### 2026-09-15 — `/m/checklist` deleted in `cycleforge-lanes/prod` (operator ruling)
+
+Separate event from the table above, and in a different tree. Operator: *"remove
+the checklist from the mobile display and the checklist components, they are old
+components from the mobile app itself. I'm removing and simplifying the display
+in general so I can build upon a simplified display language."*
+
+This **retires the standing "keep it" ruling** recorded in four places —
+`mobile-first-foundation-PLAN.md` Track H (*"H3 DEVIATION … do NOT 'finish'
+it"*), `nav-lanes-reports-IA-PLAN.md` §1.7 (`/m/checklist` → **KEPT**,
+*"operator will repurpose"*), `daily-tasks-page-HANDOFF.md` §H3 and
+`daily-checklist-kinds-and-mobile-HANDOFF.md` (*"leave it alone"*). Those notes
+were right to refuse an inferred deletion; this is the operator gate they were
+waiting for.
+
+| Item | Files | Restore |
+|---|---|---|
+| Route | 1 | `git checkout HEAD -- 'src/app/m/(shell)/checklist'` |
+| Components (page · order queue · editor · kit-parts CRUD · QC CRUD) | 5 | `git checkout HEAD -- src/components/mobile/checklist` |
+| Dead-with-it hook | 1 | `git checkout HEAD -- src/hooks/useResolveCatalogByItemNumber.ts` |
+
+Rewired, not deleted — restoring the files alone will NOT bring the row back:
+`nav-registry.ts` (the `checklist` leaf + `ClipboardList` import),
+`mobile-context-navigation.ts` + its test (the `'Checklists'` title),
+`mobile-first-surface.ts` (the `/m/checklist` prefix), and
+`MobilePackingSheet.tsx` (the *Edit kit / QC checklist* CTA).
+
+**Kept on purpose:** `/api/sku-catalog/by-item-number` and
+`src/lib/packing/resolve-catalog-by-item-number.ts` — outbound order-intake
+triage still calls them. `OrderPackChecklist` (`variant="mobile"`) stays too:
+that is the packing-checklist EXECUTION surface inside the live pack flow with
+policy enforcement, not the old authoring CRUD. `MobileDailyChecklist`
+(`/m/home` = **Daily**) is untouched — different verb, and a parallel session
+was editing it the same day.
+
+**Capability moved, not lost:** kit-parts and QC-template authoring is now a
+desk-only verb (SKU catalog admin). The phone lost an authoring door it had;
+that is the simplification, not an oversight.
+
+## 2026-09-15 — Products tabs removed · Inventory tabs parked (operator ruling)
+
+Operator: *"focused on parking and removing the tabs and displays from the code
+base … just focusing on simplifying everything. These are all the tabs that are
+not working properly. So for example, removing the products reference, the
+products kit parts, the products listing match. And inside of the parent level
+inventory you will be parking health, quick picks, reason codes, replenish,
+graph, pulse, tracking exceptions."*
+
+**Two different acts, and the difference is the point.** Asked how Support stops
+displaying, the answer is `LANE_MOBILE_FIRST: 'hidden'` in
+`src/lib/nav/lanes.ts` — a ledger, one funnel (`getSidebarNavItems`), one gate
+test. That instrument is LANE-altitude and could only have hidden Inventory
+whole, which is wrong: the desk is in daily use. So the same shape was built one
+altitude down.
+
+#### Parked — Inventory (7 tabs, nothing deleted)
+
+`src/lib/nav/parked-tabs.ts` is the ledger; `filterPageChildren` is the one
+child funnel (spine · desk tab band · header switcher · ⌘K);
+`src/lib/nav/parked-tabs.test.ts` is the gate.
+
+| Tab | Route (still resolves) |
+|---|---|
+| Tracking Exceptions | `/inventory/triage` |
+| Pulse | `/inventory/pulse` |
+| Graph | `/inventory/graph` |
+| Replenish | `/inventory?section=replenish` |
+| Reason Codes | `/inventory/reason-codes` |
+| Quick Picks | `/inventory/favorites` |
+| Health | `/inventory/health` |
+
+No files were deleted. Each child keeps its `to()` and its `resolveChild`
+clause, so a bookmark lands and the band lights nothing. **Unpark by deleting
+one ledger entry.** Ledger + Stock + Locations still display.
+
+#### Removed — Products (3 tabs)
+
+Deleted, not parked: `?view=catalog` and `?view=kit` left `PRODUCTS_VIEWS`, so a
+stale link folds back to Manuals instead of half-opening an unmaintained body.
+
+| Item | Files | Restore |
+|---|---|---|
+| Reference display | 2 | `git checkout HEAD -- src/components/products/catalog/ProductsCatalogWorkspace.tsx src/components/products/catalog/CatalogBulkActionBar.tsx` |
+| Reference view chrome (platform tabs + refine) | 4 | `git checkout HEAD -- src/components/products/catalog/catalog-url-state.ts src/components/products/catalog/catalog-url-state.test.ts src/lib/selection/catalog-scopes.ts` |
+| Kit Parts display | 2 | `git checkout HEAD -- src/components/products/KitPartsWorkspace.tsx src/components/products/KitPartsSection.tsx` |
+| Kit Parts data hook | 1 | `git checkout HEAD -- src/hooks/useSkuKitParts.ts` |
+| Dead duplicates the pass exposed | 3 | `git checkout HEAD -- src/lib/products/products-view.ts src/lib/products/catalog-url-state.ts src/lib/products/catalog-url-state.test.ts` |
+
+Rewired, not deleted — restoring the files alone will NOT bring the tabs back:
+`sidebar-navigation.ts` (the three child rows + the `catalog-link` arm of
+Products' `resolveChild`), `products-view.ts` (`PRODUCTS_VIEWS`),
+`ProductsWorkspace.tsx` (two `case`s + two lazy imports),
+`ProductsSidebarPanel.tsx` (`isKit` / `isCatalog` branches + `KitPartsPicker`),
+`query-mode-routes.ts` (the seven Reference-chrome params: `platform`,
+`linkFilter`, `pending`, `inactive`, `noChannels`, `noManuals`, `noQc`),
+`QcChecklistWorkspace.tsx` (the *N kit* jump), `useProductsSkuIdParam.ts`
+(`'qc' | 'kit'` → `'qc'`), `nav-command-codes.ts` (`CMD-GO-PRODUCTS`).
+
+**Kept on purpose:** the `catalog` **table** — `CATALOG_TABLE_BINDING`,
+`src/lib/products/catalog-grid-layout.ts`, `field-catalog/catalog*.ts`,
+`src/components/products/catalog/{types,catalog-grid}` — is a registered
+`PRODUCT_TABLES` slot-table cohort peer. Operator chose *door + view only*:
+retiring the peer is its own gated increment (`eval:cohort slot-table`
+re-baselines). `CatalogListRow` also still types `format-station-copy-row.ts`.
+
+**Listing match was only a door.** It aliased `/review?mode=catalog-link`; that
+Review surface, its API route and its two cohort peers are untouched.
+`getSidebarNavPageId` still names Products for that URL so the header is right
+while no tab lights.
+
+**Fixed in passing** — two `CMD-GO` stickers already pointed at children a
+parallel pass had removed, so they scanned into nothing: `CMD-GO-FBA`
+(`outbound/fba` → `fba/plan`, after FBA became its own Outbound lane row) and
+`CMD-GO-HOME` (`home/daily` → `home`, after Daily became modeless).
+
 ## Auth & boot — 12+2 files · 1,780 LOC
 
 **`src/app/signin` survives the refactor and imports 7 of these.** Until they are restored

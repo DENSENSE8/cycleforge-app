@@ -3,17 +3,19 @@
 /**
  * Legacy **actions** zone once mounted on {@link GlobalHeader} (far-right).
  *
- * Currently **unmounted** — GlobalHeader remounts only
- * {@link GlobalHeaderKioskButton} far-right. Kept so find · add · goal · inbox ·
- * assistant can return as one cluster without inventing a second rail.
+ * Currently **unmounted**. Kiosk opens from {@link StaffAccountFooter}
+ * account details (sidebar bottom), not this cluster. Kept so find · add ·
+ * goal · inbox · assistant can return as one cluster without inventing a
+ * second rail.
  * Affected API: none. Schemas: none.
+ * User: "drop the kiosk button in the account details at the bottom of the
+ * sidebar not in the top left of the global header."
  *
  * **Desktop only.** Mobile mounts no part of this component.
  */
 
 import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
 import { GlobalHeaderAddMenu } from '@/components/layout/GlobalHeaderAddMenu';
-import { GlobalHeaderKioskButton } from '@/components/layout/GlobalHeaderKioskButton';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,7 +49,6 @@ export function GlobalHeaderActions() {
       >
         <GlobalHeaderSearch />
         <GlobalHeaderAddMenu />
-        <GlobalHeaderKioskButton />
         <HeaderGoalChip />
         <ActivityInboxButton />
         <GlobalHeaderAssistantButton />

@@ -397,6 +397,50 @@ export async function deleteOutboundDocument(
   });
 }
 
+export interface ReplaceOutboundDocumentInput {
+  url: string;
+  filename?: string | null;
+  mimeType?: string | null;
+}
+
+/**
+ * Replace a document's bytes without unlinking its existing order/shipment
+ * associations. The caller only removes the old storage object after this
+ * transaction succeeds, so an upload failure cannot leave a dangling document.
+ */
+export async function replaceOutboundDocument(
+  orgId: OrgId,
+  documentId: number,
+  input: ReplaceOutboundDocumentInput,
+  deps: OutboundDocumentDeps = defaultDeps,
+): Promise<OutboundDocument> {
+  await validateAttachUrl(orgId, input.url, deps);
+  return deps.withTenantTransaction(orgId, async (client) => {
+    const replaced = await client.query<RawDocumentRow>(
+      `UPDATE documents SET document_data = document_data || $3::jsonb,
+              updated_at = NOW()
+        WHERE id = $1
+          AND organization_id = $2
+          AND document_type IN ('shipping_label', 'packing_slip')
+      RETURNING id, entity_type, entity_id, document_type, document_data, created_at, updated_at`,
+      [
+        documentId,
+        orgId,
+        JSON.stringify({
+          url: input.url,
+          filename: input.filename ?? null,
+          mimeType: input.mimeType ?? null,
+        }),
+      ],
+    );
+    if (replaced.rowCount === 0) {
+      throw new OutboundDocumentNotFoundError(`document not found: ${documentId}`);
+    }
+    const [document] = await attachLinksToDocuments(client, orgId, replaced.rows);
+    return document!;
+  });
+}
+
 export interface FetchOutboundDocumentsResult {
   fetched: OutboundDocument[];
   failed: Array<{ type: OutboundDocumentType; error: string }>;

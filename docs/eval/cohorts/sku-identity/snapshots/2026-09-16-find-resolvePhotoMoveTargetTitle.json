@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/lib/receiving/photo-move-targets-shared.ts:resolvePhotoMoveTargetTitle",
+      "kind": "function",
+      "name": "resolvePhotoMoveTargetTitle",
+      "location": "src/lib/receiving/photo-move-targets-shared.ts:88",
+      "exported": true,
+      "signature": "function resolvePhotoMoveTargetTitle(row: { catalog_product_title?: string | null; zoho_item_title?: string | null; item_name?: string | null; sku?: string | null; zoho_item_id?: string | null; }): string"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 import { IncomingTrackingStatusCluster } from '@/components/station/ReceivingDeliveryStateIcon';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { claimCountdownFace } from '@/lib/receiving/claim-window';
 import { getCurrentPSTDateKey } from '@/utils/date';
 

@@ -1,56 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { CartonInspectorLine, CartonInspectorReceiving } from '@/components/receiving/inspector/carton-inspector-model';
 import {
   cartonDossierFindings,
   cartonDossierLines,
   orderDossierFindings,
   orderDossierHandoffs,
-  searchHitLineView,
 } from './search-dossier-model';
-
-function hit(partial: Partial<AiSearchHit> & Pick<AiSearchHit, 'entityType'>): AiSearchHit {
-  return {
-    id: 1,
-    title: 'Bose remote',
-    subtitle: '',
-    href: '/search?sel=order:1',
-    matchField: 'order',
-    score: 1,
-    chips: [],
-    ...partial,
-  };
-}
-
-describe('searchHitLineView', () => {
-  it('keeps an exact-id hit paint-able when facets are absent', () => {
-    const view = searchHitLineView(
-      hit({
-        entityType: 'order',
-        title: '4989',
-        subtitle: '4989 · Bose',
-      }),
-    );
-    assert.equal(view.sparse, true);
-    assert.equal(view.identityKind, 'order');
-    assert.equal(view.identity, '4989');
-    assert.equal(view.entityLabel, 'Order');
-  });
-
-  it('uses serial identity for units', () => {
-    const view = searchHitLineView(
-      hit({
-        entityType: 'unit',
-        title: 'Pixel 8',
-        facets: { serial_number: 'SN-ABCDEFGH' },
-      }),
-    );
-    assert.equal(view.identityKind, 'serial');
-    assert.equal(view.identity, 'SN-ABCDEFGH');
-    assert.equal(view.sparse, false);
-  });
-});
 
 describe('order dossier findings', () => {
   it('surfaces unpaired and missing item number with an exceptions handoff', () => {

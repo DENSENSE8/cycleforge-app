@@ -13,7 +13,6 @@ import { getSidebarTitle } from '@/lib/sidebar-titles';
 // route's panel is still server-rendered into the first HTML; the client only
 // downloads the one chunk its route needs.
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
-const AdminContextPanel = dynamic(() => import('@/components/sidebar/AdminContextPanel').then((m) => m.AdminContextPanel));
 const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/OperationsSidebarPanel').then((m) => m.OperationsSidebarPanel));
 const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
 const SupportSidebarPanel = dynamic(() => import('@/components/sidebar/SupportSidebarPanel').then((m) => m.SupportSidebarPanel));
@@ -23,7 +22,6 @@ const AccessSidebarPanel = dynamic(() => import('@/components/admin/AccessSideba
 const AuditLogSidebarPanel = dynamic(() => import('@/components/sidebar/AuditLogSidebarPanel').then((m) => m.AuditLogSidebarPanel));
 const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
 const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m) => m.FbaSidebarPanel));
-const InventorySidebarPanel = dynamic(() => import('@/components/sidebar/InventorySidebarPanel').then((m) => m.InventorySidebarPanel));
 const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
@@ -46,7 +44,6 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // Band 3 `WorkbenchViewsMenu`; the left column collapsed rather than
   // reserving 360px for a one-section rail. SoT: Incoming / Media Library.
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
-  if (routeKey === 'admin') return <AdminContextPanel />;
 
   if (routeKey === 'operations') return <OperationsSidebarPanel />;
   if (routeKey === 'studio') return <StudioSidebarPanel />;
@@ -66,13 +63,11 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'audit-log') return <AuditLogSidebarPanel />;
   if (routeKey === 'receiving') return <ReceivingSidebarPanel />;
   if (routeKey === 'fba') return <FbaSidebarPanel />;
-  // /inventory's main shell owns its own header search + filter chips; the
-  // panel here carries the section toggle (Inventory ↔ Replenish) plus the
-  // tabbed inventory / replenish sidebars.
-  if (routeKey === 'inventory') return <InventorySidebarPanel />;
+  // Inventory is rail-less (operator 2026-09-15) — ledger, locations, graph,
+  // triage, pulse, replenish. The column key is dropped; do not remount
+  // InventorySidebarPanel / WarehouseSidebarPanel here.
   if (routeKey === 'sourcing') return <SourcingSidebarPanel />;
   if (routeKey === 'products') return <ProductsSidebarPanel />;
-  // Locations desk folded under inventory — WarehouseSidebarPanel mounts via InventorySidebarPanel.
   if (routeKey === 'walk-in') return <WalkInSidebarPanel embedded hideSectionHeader />;
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
   // `receiving` key — see getSidebarRouteKey. The branch that used to sit here

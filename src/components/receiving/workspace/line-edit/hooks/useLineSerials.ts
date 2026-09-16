@@ -21,7 +21,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import {
   patchUnboxRailTitleByCarton,
@@ -41,7 +41,7 @@ import {
   unlinkSerialFromLineUnits,
   type LineSerial,
 } from '@/lib/receiving/optimistic-serials';
-import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
+import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { pulseScanLine } from '@/lib/scan-feedback/visual';
 import type { useSerialLookup } from '../../SerialMatchResult';

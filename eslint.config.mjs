@@ -168,6 +168,44 @@ export default [
           message:
             'crypto.randomUUID() is undefined in insecure contexts (LAN-HTTP phone, older Safari) and throws. Use safeRandomUUID() from @/lib/safe-uuid — the crash-safe SoT.',
         },
+        {
+          // The identity column header is the ENGINE's word (`Id`) on every
+          // peer — operator 2026-09-15. Twenty-two column modules each carried
+          // `label: identity.label`, which is how one concept grew 22 painted
+          // words. Law + gate: src/lib/tables/slot-table-id-header-law.ts,
+          // scripts/id-header-guard.ts, slot-table-id-header-law.test.ts.
+          //
+          // Lives in THIS block rather than a grid-layout-globbed one: a second
+          // `no-restricted-syntax` block for those files would OVERRIDE this
+          // one (see the header comment) and silently drop the z-index,
+          // tenancy and brand selectors there. The selector is specific enough
+          // to be repo-wide.
+          selector:
+            "Property[key.name=/^(label|gridLabel)$/][value.object.name='identity'][value.property.name='label']",
+          message:
+            "The identity header is the engine's. Delete this line — the column reads `Id` on every peer (operator 2026-09-15). Keep fieldId / type / slotDisplayType. See src/lib/tables/slot-table-id-header-law.ts.",
+        },
+        {
+          // The identity purity law (operator 2026-09-15):
+          // The ID column is strictly for machine handles. Never route staff or
+          // person name variables into `orderId` or `identityFace`.
+          // Law + gate: src/lib/tables/slot-table-identity-purity-law.ts,
+          // scripts/identity-purity-guard.ts, slot-table-identity-purity-law.test.ts.
+          selector:
+            "Property[key.name=/^(orderId|identityFace)$/] Identifier[name=/^(testerDisplay|packerDisplay|testerName|packerName|staffName|packed_by_name|tested_by_name)$/]",
+          message:
+            "Identity Purity Law: Do not assign staff or person names to the ID column (orderId/identityFace). Person attributions belong in stage_event or person columns. See src/lib/tables/slot-table-identity-purity-law.ts.",
+        },
+        {
+          // ONE resolver owns the AI endpoint — `resolveOrgAiConfig(orgId,
+          // capability)`. `src/lib/ai/provider.ts` is the only legal env
+          // reader and is exempted by a rule-OFF block further down, never by
+          // a second `no-restricted-syntax` declaration.
+          selector:
+            'MemberExpression[object.object.name="process"][object.property.name="env"][property.name=/^(HERMES_API_URL|HERMES_MODEL|HERMES_API_KEY|AI_MODEL|AI_CHAT_BASE_URL|AI_CHAT_MODEL|AI_CHAT_API_KEY|ANTHROPIC_API_KEY)$/]',
+          message:
+            'Do not read an AI endpoint from env. Resolve it with resolveOrgAiConfig(orgId, capability) — src/lib/ai/provider.ts is the only legal env reader (the platform-default leaf).',
+        },
       ],
     },
   },
@@ -304,18 +342,88 @@ export default [
   // ANTHROPIC_API_KEY was added after Phase 4 found the assistant agent loop
   // reading it directly — a single-tenant brain that the first sweep missed
   // because it named a different var, not because it was a different mistake.
+  //
+  // THE SELECTOR LIVES IN THE MERGED BLOCK ABOVE. It used to sit in its own
+  // `{ files: ['src/**/*.ts','src/**/*.tsx'], rules: { 'no-restricted-syntax': … } }`
+  // block, which — same rule, same glob, later in the array — OVERRODE the
+  // shared one instead of merging with it, silently disabling the tenancy,
+  // brand and crypto.randomUUID selectors repo-wide. Found 2026-09-15 by
+  // mutation-testing the Id-header rule: a violation linted clean while this
+  // one selector was the only guard still firing. That is precisely the trap
+  // the shared block's header comment describes; it is left here as a marker
+  // so nobody re-splits it.
+  //
+  // provider.ts keeps its exemption below, as a rule-OFF entry (the same shape
+  // the tenancy burn-down list uses) rather than a second declaration.
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
-    ignores: ['src/lib/ai/provider.ts'],
-    languageOptions: { parser: tsParser },
+    files: ['src/lib/ai/provider.ts'],
     rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
+
+  // ── Action bar height law (slot-table selection strip) ────────────────────
+  // THE BAND DECLARES ITS OWN HEIGHT; no child sets it and no press changes it
+  // (operator 2026-09-15). Rule module + tokens:
+  // src/lib/tables/slot-table-action-bar-law.ts.
+  //
+  // This block is the law's PRE-WRITE half, and it is the strongest surface
+  // available: the PostToolUse hook in .claude/settings.json already runs
+  // `next lint --file` on every .ts/.tsx write, so a violation is an error on
+  // the edit that introduced it rather than a verify failure minutes later.
+  // It also sees what a regex cannot — a conditionally rendered ELEMENT is an
+  // AST shape (ConditionalExpression/LogicalExpression with a JSXElement
+  // branch), and that was the cause the operator actually reported.
+  //
+  // Scope is the band files only. The three banned shapes each SHIPPED here.
+  {
+    files: [
+      'src/components/inventory/location-stock-grid/Stock*.tsx',
+      'src/components/inventory/location-stock-grid/stock-verb-row-parts.tsx',
+    ],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/design-system/primitives/TextField',
+              importNames: ['TextField'],
+              message:
+                'TextField is h-11 + a required floating label, so it sets the band height. Use StockStripInput from ./stock-verb-row-parts.',
+            },
+          ],
+        },
+      ],
       'no-restricted-syntax': [
         'error',
         {
+          // A control rendered by a ternary branch: `{cond ? <Field/> : null}`.
+          // This is the reported bug — picking a reason mounted the note field
+          // and grew the toolbar under the cursor.
           selector:
-            'MemberExpression[object.object.name="process"][object.property.name="env"][property.name=/^(HERMES_API_URL|HERMES_MODEL|HERMES_API_KEY|AI_MODEL|AI_CHAT_BASE_URL|AI_CHAT_MODEL|AI_CHAT_API_KEY|ANTHROPIC_API_KEY)$/]',
+            'JSXExpressionContainer > ConditionalExpression > JSXElement[openingElement.name.name=/^(StockStripInput|SearchableSelectField|ReasonCodePicker|input|select|textarea)$/]',
           message:
-            'Do not read an AI endpoint from env. Resolve it with resolveOrgAiConfig(orgId, capability) — src/lib/ai/provider.ts is the only legal env reader (the platform-default leaf).',
+            'Do not render a control conditionally in the action bar — it changes the band height on press. Mount it always and pass `disabled`.',
+        },
+        {
+          // The `&&` form of the same shape.
+          selector:
+            'JSXExpressionContainer > LogicalExpression > JSXElement[openingElement.name.name=/^(StockStripInput|SearchableSelectField|ReasonCodePicker|input|select|textarea)$/]',
+          message:
+            'Do not render a control conditionally in the action bar — it changes the band height on press. Mount it always and pass `disabled`.',
+        },
+        {
+          // Content-sized geometry. `flex-wrap` is what turned "one more
+          // control appeared" into "the toolbar is two rows tall".
+          selector:
+            'Literal[value=/(^|\\s)(flex-wrap|h-auto|min-h-|py-[0-9])/]',
+          message:
+            'The action bar sizes by token, not by content: no flex-wrap / h-auto / min-h- / py-*. Use SLOT_TABLE_ACTION_BAR_BAND_CLASS and SLOT_TABLE_ACTION_BAR_CONTROL_CLASS.',
         },
       ],
     },

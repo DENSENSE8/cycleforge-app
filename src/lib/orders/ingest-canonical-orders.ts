@@ -51,10 +51,32 @@ import {
   shouldEnqueueCatalogLinkChore,
 } from '@/lib/inventory/order-catalog-link-chore-gates';
 import type { SyncProgress, TransferOrderDetail } from '@/lib/orders-sync/types';
-import { groupCanonicalOrderLines, type CanonicalOrderLine } from '@/lib/orders/canonical-order';
+import {
+  groupCanonicalOrderLines,
+  resolveSaleAmountWrite,
+  type CanonicalOrderLine,
+} from '@/lib/orders/canonical-order';
+import { normalizeItemNumber } from '@/lib/automations/listing-match';
 
 /** Tracking resolution is fanned out in batches of this size. */
 const TRACKING_RESOLVE_BATCH = 10;
+
+/**
+ * SQL form of {@link normalizeItemNumber} — uppercase, trimmed, non-alphanumerics
+ * stripped. The two must stay identical: the query normalizes the CATALOG side
+ * and TypeScript normalizes the ORDER side, so a divergence would silently stop
+ * matching rather than fail.
+ *
+ * Same expression the 2026-04-07 catalog backfill used to link
+ * `product_manuals.item_number`, so a listing id resolves the same way
+ * whichever surface asks.
+ */
+const normalizedSql = (column: string) =>
+  `regexp_replace(UPPER(BTRIM(COALESCE(${column}, ''))), '[^A-Z0-9]', '', 'g')`;
+
+const NORMALIZED_SKU_SQL = normalizedSql('sku');
+const NORMALIZED_PLATFORM_SKU_SQL = normalizedSql('spi.platform_sku');
+const NORMALIZED_PLATFORM_ITEM_SQL = normalizedSql('spi.platform_item_id');
 
 type OrderProjection = {
   id: number;
@@ -69,7 +91,12 @@ type OrderProjection = {
   shipmentId: number | null;
   accountSource: string | null;
   status: string | null;
-  createdAt?: Date | null;
+  createdAt: Date | string | null;
+  // Price rides the projection ONLY so first-write-wins can see it; the type
+  // and toProjection below must both carry it or the guard reads undefined and
+  // every re-sync rewrites the price (found live 2026-09-15).
+  saleAmount?: string | null;
+  currency?: string | null;
 };
 
 interface IngestCanonicalOrdersResult {
@@ -497,7 +524,17 @@ export async function ingestCanonicalOrders(
     const normalized = normalizeTrackingNumber(tracking);
     if (!normalized) return null;
     if (shipmentIdCache.has(normalized)) return shipmentIdCache.get(normalized) ?? null;
-    const resolved = await resolveShipmentId(tracking);
+    // PASS THE ORG. `resolveShipmentId`'s orgId is optional only as a migration
+    // affordance for un-migrated callers, and this — the single shared order
+    // ingest writer — was the last one still omitting it. Every row it created
+    // through the register path landed with `organization_id NULL` and
+    // `source_system = 'scan'`: 369 such rows by 2026-09-14, of which 287 were
+    // already carrier-active. NULL loses every RLS policy comparison
+    // (`organization_id = current_setting('app.current_org')::uuid` is NULL,
+    // not true), so the app's own tenant role could not see carrier state on
+    // any of them — a tenant-scoped reader concludes "not shipped" and counts
+    // a moving parcel as pick work.
+    const resolved = await resolveShipmentId(tracking, effectiveOrgId);
     shipmentIdCache.set(normalized, resolved.shipmentId ?? null);
     return resolved.shipmentId ?? null;
   };
@@ -541,6 +578,11 @@ export async function ingestCanonicalOrders(
     accountSource: ordersTable.accountSource,
     status: ordersTable.status,
     createdAt: ordersTable.createdAt,
+    // Present ONLY so the update builder can apply first-write-wins to the
+    // price (operator ruling 2026-09-15): without reading the current value
+    // back, a source that carries a price would rewrite it on every sync.
+    saleAmount: ordersTable.saleAmount,
+    currency: ordersTable.currency,
   } as const;
 
   const existingOrders = orgId
@@ -593,6 +635,10 @@ export async function ingestCanonicalOrders(
     accountSource: order.accountSource ?? null,
     status: order.status ?? null,
     createdAt: order.createdAt ?? null,
+    // NUMERIC arrives as a string; normalise so the first-write-wins guard
+    // never sees a Decimal object it would stringify wrongly.
+    saleAmount: order.saleAmount == null ? null : String(order.saleAmount),
+    currency: order.currency ?? null,
   });
 
   // Rows arrive newest-first, so the first sighting of an order id is latest.
@@ -633,8 +679,33 @@ export async function ingestCanonicalOrders(
   );
 
   // ─── Hydrate catalog identity ───────────────────────────────────────
-  // Blank titles fill from the SKU / platform item# crosswalk; title-only rows
-  // match the catalog by product_title (minimal small-business sheet).
+  //
+  // Two jobs that used to be one, and the conflation was an import blocker.
+  //
+  // IDENTITY (`sku_catalog_id`) is what allocation needs: without it a line's
+  // SKU is whatever string the channel sent, `selectDemand` resolves no SKU,
+  // and the order can never enter a pick list. TITLE is cosmetic hydration for
+  // rows whose source sent none.
+  //
+  // Both lookups used to require `sc.product_title <> ''`, so a catalog row
+  // with no title withheld the ID as well as the title — a display gap
+  // silently costing an allocation. The title predicate is gone; a blank title
+  // simply isn't added to `titleBySku`.
+  //
+  // And both matched with `=` on the raw string, while every other consumer of
+  // these columns (product manuals, listing automations, the 2026-04-07
+  // backfill) matches on `normalizeItemNumber`'s form. An Amazon ASIN arriving
+  // as `b09m52b2c4`, or an eBay id with a stray space, therefore missed a
+  // crosswalk row that was sitting right there. Measured on org 1 (2026-09-15):
+  // exact matching reached 13 of 70 unallocated lines, normalized reaches 19.
+  // The tables are small (1.4k catalog rows, 5.8k crosswalk rows) and the
+  // normalized scan measured 3.5ms, so there is no index to trade away.
+  //
+  // Normalization is collision-checked, not assumed: zero `sku_catalog` SKUs
+  // and zero `platform_sku` values collide under it. The one colliding
+  // `platform_item_id` is a duplicate ASIN listed against two catalog rows —
+  // an ambiguity that predates normalization, and first-insert-wins below
+  // resolves it exactly as before.
   const titleBySku = new Map<string, string>();
   const catalogByLookupKey = new Map<string, SkuCatalogTitleMatch>();
   const catalogByTitle = new Map<string, SkuCatalogTitleMatch>();
@@ -643,75 +714,64 @@ export async function ingestCanonicalOrders(
     const lookupItemNumbers = new Set<string>();
     const titlesNeedingCatalog = new Set<string>();
     canonicalOrders.forEach((order) => {
-      if (order.sku) lookupSkus.add(order.sku);
-      if (order.itemNumber) lookupItemNumbers.add(order.itemNumber);
+      if (order.sku) lookupSkus.add(normalizeItemNumber(order.sku));
+      if (order.itemNumber) lookupItemNumbers.add(normalizeItemNumber(order.itemNumber));
       if (order.productTitle && !order.sku && !order.itemNumber) {
         titlesNeedingCatalog.add(order.productTitle);
       }
     });
+    lookupSkus.delete('');
+    lookupItemNumbers.delete('');
 
     if (lookupSkus.size > 0) {
+      const sql = `SELECT id, sku, product_title
+                     FROM sku_catalog
+                    WHERE ${NORMALIZED_SKU_SQL} = ANY($1::text[])`;
       const result = orgId
-        ? await tenantQuery(
+        ? await tenantQuery(orgId, `${sql} AND organization_id = $2`, [
+            Array.from(lookupSkus),
             orgId,
-            `SELECT id, sku, product_title
-               FROM sku_catalog
-              WHERE sku = ANY($1::text[]) AND product_title IS NOT NULL AND product_title <> ''
-                AND organization_id = $2`,
-            [Array.from(lookupSkus), orgId],
-          )
-        : await pool.query(
-            `SELECT id, sku, product_title
-               FROM sku_catalog
-              WHERE sku = ANY($1::text[]) AND product_title IS NOT NULL AND product_title <> ''`,
-            [Array.from(lookupSkus)],
-          );
+          ])
+        : await pool.query(sql, [Array.from(lookupSkus)]);
       for (const row of result.rows) {
         const sku = String(row.sku || '').trim();
         const title = String(row.product_title || '').trim();
         const id = Number(row.id);
-        if (!sku || !title || !Number.isFinite(id)) continue;
-        titleBySku.set(sku, title);
-        catalogByLookupKey.set(sku, { id, sku, productTitle: title });
+        if (!sku || !Number.isFinite(id)) continue;
+        const key = normalizeItemNumber(sku);
+        if (title) titleBySku.set(key, title);
+        if (!catalogByLookupKey.has(key)) {
+          catalogByLookupKey.set(key, { id, sku, productTitle: title });
+        }
       }
     }
 
     if (lookupItemNumbers.size > 0) {
+      const sql = `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
+                     FROM sku_platform_ids spi
+                     JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
+                    WHERE (${NORMALIZED_PLATFORM_SKU_SQL} = ANY($1::text[])
+                        OR ${NORMALIZED_PLATFORM_ITEM_SQL} = ANY($1::text[]))`;
       const result = orgId
         ? await tenantQuery(
             orgId,
-            `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
-               FROM sku_platform_ids spi
-               JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
-                AND sc.organization_id = spi.organization_id
-              WHERE (spi.platform_sku = ANY($1::text[]) OR spi.platform_item_id = ANY($1::text[]))
-                AND sc.product_title IS NOT NULL AND sc.product_title <> ''
-                AND spi.organization_id = $2`,
+            `${sql} AND sc.organization_id = spi.organization_id AND spi.organization_id = $2`,
             [Array.from(lookupItemNumbers), orgId],
           )
-        : await pool.query(
-            `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
-               FROM sku_platform_ids spi
-               JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
-              WHERE (spi.platform_sku = ANY($1::text[]) OR spi.platform_item_id = ANY($1::text[]))
-                AND sc.product_title IS NOT NULL AND sc.product_title <> ''`,
-            [Array.from(lookupItemNumbers)],
-          );
+        : await pool.query(sql, [Array.from(lookupItemNumbers)]);
       for (const row of result.rows) {
         const title = String(row.product_title || '').trim();
         const id = Number(row.id);
         const sku = String(row.sku || '').trim();
-        if (!title || !Number.isFinite(id) || !sku) continue;
+        if (!Number.isFinite(id) || !sku) continue;
         const match: SkuCatalogTitleMatch = { id, sku, productTitle: title };
-        const platformSku = String(row.platform_sku || '').trim();
-        const platformItemId = String(row.platform_item_id || '').trim();
-        if (platformSku) {
-          if (!titleBySku.has(platformSku)) titleBySku.set(platformSku, title);
-          if (!catalogByLookupKey.has(platformSku)) catalogByLookupKey.set(platformSku, match);
-        }
-        if (platformItemId) {
-          if (!titleBySku.has(platformItemId)) titleBySku.set(platformItemId, title);
-          if (!catalogByLookupKey.has(platformItemId)) catalogByLookupKey.set(platformItemId, match);
+        // First insert wins, per key — the pre-existing tie-break for a
+        // platform id that two catalog rows both claim.
+        for (const raw of [row.platform_sku, row.platform_item_id]) {
+          const key = normalizeItemNumber(typeof raw === 'string' ? raw : '');
+          if (!key) continue;
+          if (title && !titleBySku.has(key)) titleBySku.set(key, title);
+          if (!catalogByLookupKey.has(key)) catalogByLookupKey.set(key, match);
         }
       }
     }
@@ -732,15 +792,18 @@ export async function ingestCanonicalOrders(
     orgId,
   );
 
+  // `titleBySku` and `catalogByLookupKey` are keyed on the NORMALIZED form, so
+  // every read normalizes too. A raw-string read here would make the whole
+  // normalized lookup above dead weight.
   const resolveProductTitle = (
     sourceTitle: string,
     sku: string,
     itemNumber: string,
   ): { title: string; source: TransferOrderDetail['titleSource'] } => {
     if (sourceTitle) return { title: sourceTitle, source: 'sheet' };
-    const bySku = sku && titleBySku.get(sku);
+    const bySku = titleBySku.get(normalizeItemNumber(sku));
     if (bySku) return { title: bySku, source: 'sku_catalog' };
-    const byItem = itemNumber && titleBySku.get(itemNumber);
+    const byItem = titleBySku.get(normalizeItemNumber(itemNumber));
     if (byItem) return { title: byItem, source: 'platform_lookup' };
     return { title: '', source: 'none' };
   };
@@ -752,9 +815,10 @@ export async function ingestCanonicalOrders(
     let titleSource: TransferOrderDetail['titleSource'] = 'sheet';
     let productTitle = sourceTitle;
 
-    const fromKey = (key: string) => catalogByLookupKey.get(key) ?? null;
-    const bySku = resolvedSku ? fromKey(resolvedSku) : null;
-    const byItem = !bySku && resolvedItemNumber ? fromKey(resolvedItemNumber) : null;
+    const bySku = catalogByLookupKey.get(normalizeItemNumber(resolvedSku)) ?? null;
+    const byItem = bySku
+      ? null
+      : catalogByLookupKey.get(normalizeItemNumber(resolvedItemNumber)) ?? null;
     const byTitle = !bySku && !byItem && productTitle ? catalogByTitle.get(productTitle) ?? null : null;
     const match = bySku ?? byItem ?? byTitle;
 
@@ -929,6 +993,19 @@ export async function ingestCanonicalOrders(
         updateValues.skuCatalogId = catalogLink.skuCatalogId;
       }
 
+      // PRICE IS FIRST-WRITE-WINS (operator ruling 2026-09-15: "no price
+      // imported = no change"). A sale price is an immutable fact of the sale,
+      // so a source value writes only onto a row that has none, and a re-sync
+      // — even one that carries a price, as the Ecwid leg now does — can never
+      // clobber a manual correction. Currency follows the same rule: it is
+      // part of the same fact.
+      const saleAmountWrite = resolveSaleAmountWrite(
+        order.saleAmount,
+        orderToKeep.saleAmount == null ? null : String(orderToKeep.saleAmount),
+      );
+      if (saleAmountWrite != null) updateValues.saleAmount = saleAmountWrite;
+      if (order.currency && isBlank(orderToKeep.currency)) updateValues.currency = order.currency;
+
       const shipmentIdList = Array.from(shipmentIds.values());
       const primaryShipmentId =
         (orderToKeep.shipmentId != null ? Number(orderToKeep.shipmentId) : null) ?? shipmentIdList[0] ?? null;
@@ -938,10 +1015,6 @@ export async function ingestCanonicalOrders(
       }
       if (orderToKeep.customerId == null && customerId) updateValues.customerId = customerId;
       if (isBlank(orderToKeep.accountSource) && order.accountSource) updateValues.accountSource = order.accountSource;
-      // sale_amount / currency aren't in the projection, so write only when the
-      // source actually carried them (additive, never clobbers with a blank).
-      if (order.saleAmount != null) updateValues.saleAmount = order.saleAmount;
-      if (order.currency) updateValues.currency = order.currency;
 
       const compacted = compactUpdateValues(updateValues);
       if (Object.keys(compacted).length > 0) {

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sidebar for /admin?section=logs — picker for the unified audit + SAL log feed.
+ * Sidebar for /operations?mode=logs — picker for the unified audit + SAL log feed.
  *
  * URL-state contract:
  *   ?search=<q>                  — text search (action/source/entity/notes)

@@ -6,7 +6,7 @@ import { PoLineRow } from '@/components/receiving/workspace/PoLineRow';
 import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import { PoLineCaptureRow } from '@/components/receiving/workspace/line-edit/PoLineCaptureRow';
 import { resolveCaptureEntry } from '@/components/receiving/workspace/line-receive-mode';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   UNFOUND_PO_DISPLAY,
   UNFOUND_PO_SENTINEL,

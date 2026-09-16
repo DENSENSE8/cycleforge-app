@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet';
-import { matchScanToTask, type PickOrder, type PickTask } from './picker-shared';
+import { matchScanToTask, toteRefFromScan, type PickOrder, type PickTask } from './picker-shared';
 import { setScanSubject } from '@/lib/stations/scan-subject-store';
 
 /**
@@ -33,6 +33,10 @@ export function useMobilePicker() {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanMatched, setScanMatched] = useState(false);
+  /** The tote (H-… plate) armed for this session — picks land in it. */
+  const [toteRef, setToteRef] = useState<string | null>(null);
+  /** First tote staged by session complete — shown on the success card. */
+  const [stagedTote, setStagedTote] = useState<string | null>(null);
 
   // ── Bounce to signin
   useEffect(() => {
@@ -123,6 +127,10 @@ export function useMobilePicker() {
       setScanError('Scan this unit first.');
       return;
     }
+    if (!toteRef) {
+      setScanError('Scan the tote for this order first — aim at its H-… plate.');
+      return;
+    }
     setConfirming(true);
     // Optimistic — mark done, advance, reconcile on rejection.
     const allocationId = currentTask.allocationId;
@@ -138,31 +146,37 @@ export function useMobilePicker() {
         body: JSON.stringify({
           allocation_id: allocationId,
           client_event_id: `pick:${sessionId}:${allocationId}`,
+          tote_scan: toteRef,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
         throw new Error(data.error || `confirm-pick ${res.status}`);
       }
-      // If this was the last open task, complete the session.
+      // If this was the last open task, complete the session — the tote(s)
+      // paired to this order flip to STAGED for the pack station.
       const wasLast = currentIndex >= totalTasks - 1;
       if (wasLast) {
-        await fetch(`/api/picking/session/${sessionId}/complete`, { method: 'POST' });
+        const completeRes = await fetch(`/api/picking/session/${sessionId}/complete`, { method: 'POST' });
+        const completeData = await completeRes.json().catch(() => ({}));
+        const staged = Array.isArray(completeData?.stagedTotes) ? completeData.stagedTotes : [];
+        if (staged.length > 0) setStagedTote(String(staged[0]));
       } else {
         advance();
       }
     } catch (err) {
-      // Roll back the optimistic mark.
+      // Roll back the optimistic mark and surface the server's operator-
+      // readable reason (tote conflicts read "already carries another order…").
       setPickedAllocations((prev) => {
         const next = new Set(prev);
         next.delete(allocationId);
         return next;
       });
-      console.error('[m/pick] confirm-pick failed:', err);
+      setScanError(err instanceof Error ? err.message : 'Pick failed — try again.');
     } finally {
       setConfirming(false);
     }
-  }, [currentTask, sessionId, currentIndex, totalTasks, advance, scanMatched]);
+  }, [currentTask, sessionId, currentIndex, totalTasks, advance, scanMatched, toteRef]);
 
   // ── Record short pick (POST /api/picking/session/:id/short-pick)
   const handleShortPick = useCallback(
@@ -210,6 +224,14 @@ export function useMobilePicker() {
       if (!currentTask || confirming) return;
       const matched = matchScanToTask(value, currentTask);
       if (!matched) {
+        // Not this pick — a tote plate arms the session container instead of
+        // erroring, so the picker's tote scan is a first-class verb.
+        const tote = toteRefFromScan(value);
+        if (tote) {
+          setToteRef(tote);
+          setScanError(null);
+          return;
+        }
         const expectedBits = [
           currentTask.bin ? `bin ${currentTask.bin}` : null,
           currentTask.serialNumber ? `serial ${currentTask.serialNumber}` : null,
@@ -247,6 +269,8 @@ export function useMobilePicker() {
     scanner,
     currentTask, totalTasks, doneCount, allDone,
     handleConfirmPick, handleShortPick, handleScanDecode,
+    toteRef,
+    stagedTote,
   };
 }
 

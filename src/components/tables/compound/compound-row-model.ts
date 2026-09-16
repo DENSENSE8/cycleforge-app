@@ -101,6 +101,19 @@ export interface CompoundRowView {
    */
   titleHref?: string | null;
   /**
+   * TITLE reads as COMPLETED — muted text under an animated strike
+   * ({@link StruckLabel}).
+   *
+   * Opt-in, and deliberately not derived from {@link stateTone} `'done'`: a
+   * shipped order and a packed carton are done too, and striking their titles
+   * would say the LINE is retired rather than the step finished. Only a family
+   * whose row IS a check — the daily checklist — sets this.
+   *
+   * `undefined` ⇒ no strike host at all, so every other family's title paints
+   * byte-for-byte as before.
+   */
+  titleStruck?: boolean;
+  /**
    * TITLE column, bottom — the operator note on this row.
    *
    * Was the SKU/code list until the column contract was ruled (see the hard
@@ -156,16 +169,29 @@ export interface CompoundRowView {
     }[];
   } | null;
   /**
-   * LEADING EDGE RAIL — a full-height bar at the row's left edge, inside the
-   * select gutter. ORDER-LEVEL only (urgent). Product facts (exception, OOS)
-   * paint on {@link itemStatus}.
+   * LEADING EDGE RAIL — a full-height bar at the row's left edge, painted by
+   * the select-gutter CELL (never by the check inside it, or a detail row would
+   * clip the bar at the chevron).
+   *
+   * TRIAGE HEAT, order-level and product-level (operator 2026-09-15): urgent is
+   * the yellow bob; a shortage / exception is the same bob in red. Before that
+   * ruling the rail was urgent-only and a short line had nothing but a triangle
+   * beside its title — which is exactly the row an operator most needs to spot
+   * from across the desk.
    *
    * Colour is an ACCELERATOR, never the fact — `label` is the accessible name
-   * and the hover word.
+   * and the hover word, and `kind` is what the resting gutter glyph reads
+   * ({@link compoundSelectStatusMark}).
    */
   edgeMark?: {
-    /** Operator word — "Urgent". The fact, not the paint. */
+    /** Operator word — "Urgent", "Out of stock". The fact, not the paint. */
     label: string;
+    /**
+     * Which triage mark this is: `'urgent'` (expedite) or `'attention'`
+     * (shortage / exception). Chooses the resting glyph — bolt vs triangle —
+     * so the gutter and the rail can never disagree about what the row is.
+     */
+    kind: 'urgent' | 'attention';
     /** Solid background class for the 3px bar, from the family's SoT. */
     barClass: string;
     /** Slow 1px traveler on `y`. Any slot-table family may set this. */
@@ -174,8 +200,61 @@ export interface CompoundRowView {
     tickClass?: string;
   } | null;
 
+  /**
+   * A just-imported order earns a blue, timed rail without displacing a hotter
+   * urgent or cannot-ship rail. Its label carries the elapsed import time.
+   */
+  importMark?: {
+    label: string;
+    barClass: string;
+    tickClass?: string;
+  } | null;
+
   /** Column 3 top — the fulfillment handle (order #, PO). */
   orderId: string | null;
+  /**
+   * NON-MARKETPLACE identity for the fulfillment track's top line.
+   *
+   * Opt-in. `orderId` is an ORDER: {@link CompoundFulfillment} resolves it to a
+   * marketplace brand dot and an `OrderNumberMenuChip` whose verbs are "copy
+   * order number" and "open on the platform". A family whose identity is a
+   * local handle — the daily checklist's `daily_check_items.id`, painted `#7`
+   * — would inherit a dot for a platform it has none of and a menu that offers
+   * to open it on eBay.
+   *
+   * Present ⇒ the track paints THIS value plainly and copyably, no dot and no
+   * marketplace menu, and the family relabels the header (`gridLabel: 'ID'`)
+   * so the word matches the fact. `orderId` stays the order for every family
+   * that has one.
+   */
+  identityFace?: {
+    /** The handle as painted AND copied — `7`, `BOSE-X`, `A-12-3`. */
+    value: string;
+    /** Hover/aria word for what the handle is ("Checklist item id"). */
+    label: string;
+  } | null;
+  /**
+   * Column 3 BOTTOM, for a family whose identity is a local handle — the
+   * second-line twin of {@link identityFace}.
+   *
+   * The Id track has always stacked two identifiers: "which order?" over
+   * "which box?". `identityFace` gave line 1 an escape hatch from the
+   * marketplace chip (operator 2026-09-14) and line 2 kept none, so a family
+   * with a local handle had exactly one line and its second identifier had
+   * nowhere to go. Inventory › Stock is where that bit: a shelf row's two
+   * identifiers are the BIN CODE and the SKU, and the operator asked for the
+   * SKU under the location id (2026-09-15).
+   *
+   * Present ⇒ the bottom line paints THIS value plainly and copyably, no
+   * carrier ring and no tracking menu. `tracking` stays the carrier number for
+   * every family that ships one; a family must not set both.
+   */
+  identitySubFace?: {
+    /** The handle as painted AND copied — `BOSE-X`, `00045-P-2-BK`. */
+    value: string;
+    /** Hover/aria word for what the handle is ("SKU"). */
+    label: string;
+  } | null;
   /** Column 3 bottom — carrier tracking (this line's primary). */
   tracking: string | null;
   /**
@@ -330,6 +409,23 @@ export interface CompoundRowView {
    * Strings only — never JSX.
    */
   detail?: CompoundRowDetail | null;
+}
+
+/**
+ * Build a {@link CompoundRowView.identityFace} from a maybe-blank handle.
+ *
+ * One helper rather than nineteen ternaries: every family that paints a LOCAL
+ * handle in the Id track (sku, bin, hold id, session, staff id, device id,
+ * checklist item, personal task) has the same two rules — trim it, and a blank
+ * handle is `null`, an honest dash, never an empty chip. Keeping them here is
+ * what stops one adapter deciding that `''` is a handle worth painting.
+ */
+export function compoundIdentityFace(
+  value: string | number | null | undefined,
+  label: string,
+): CompoundRowView['identityFace'] {
+  const handle = String(value ?? '').trim();
+  return handle ? { value: handle, label } : null;
 }
 
 /**
@@ -718,9 +814,16 @@ export const COMPOUND_DATES_DUE_HOVER = 'Due date';
 /**
  * Tips that already name the Hash (start) line — return as-is, never prefix
  * `Start date · …` (same escape hatch as Dwell on the Calendar line).
+ *
+ * `Counted` / `Never counted` joined the list on 2026-09-15. Two inventory
+ * families put a CYCLE-COUNT stamp on this line (`sku-bins`, `location-stock`),
+ * and both were declaring `startedHover: 'Counted Sep 10 · 3:04 PM'` — an
+ * explicit name the prefix then buried under a shipping word, so hovering a
+ * shelf read "Start date · Counted …", and an uncounted pair read "Start date"
+ * flat about a bin with no date at all.
  */
 const DATES_START_TIP_OWNS_NAME =
-  /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised)\b/i;
+  /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised|Counted|Never counted)\b/i;
 
 /**
  * Hover copy for one DATES line. Portable defaults (`Start date` / `Due date`)

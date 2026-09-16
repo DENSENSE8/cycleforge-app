@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { LocationLabelFacePreview } from '@/components/labels/LocationLabelFacePreview';
 import { LabelPrintRunNumField } from '@/components/labels/LabelPrintRunNumField';
-import { Button, Checkbox } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import {
   bayHand,
   formatLocationBayFace,
@@ -77,8 +77,6 @@ export type LabelPrintRunPanelProps = {
   printing?: boolean;
   /** Lift selected faces to StickyActionBar Print N. */
   onSelectionChange?: (rows: ExpandedPrintRunRow[]) => void;
-  /** Standing-in-aisle ack (D1). Default false; freeze change must clear it. */
-  onAckChange?: (acked: boolean) => void;
 };
 
 const VARY_LABEL: Record<PrintRunVaryAxis, string> = {
@@ -122,7 +120,6 @@ export function LabelPrintRunPanel({
   showPartsPreset = false,
   printing = false,
   onSelectionChange,
-  onAckChange,
 }: LabelPrintRunPanelProps) {
   const [mode, setMode] = useState<RunMode>(() => seedMode(seedVary, freeze.rack));
   const [vary, setVary] = useState<PrintRunVaryAxis>(seedVary);
@@ -134,7 +131,6 @@ export function LabelPrintRunPanel({
   const [evenLevels, setEvenLevels] = useState(clamp1to99(seedEvenLevels ?? seedThrough));
   const [selectedBays, setSelectedBays] = useState<number[]>([]);
   const [bayLevels, setBayLevels] = useState<Record<number, number>>({});
-  const [acked, setAcked] = useState(false);
   const [excluded, setExcluded] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
@@ -149,7 +145,6 @@ export function LabelPrintRunPanel({
     setEvenLevels(clamp1to99(seedEvenLevels ?? seedThrough));
     setSelectedBays([]);
     setBayLevels({});
-    setAcked(false);
     setExcluded(new Set());
   }, [
     freeze.roomName,
@@ -165,10 +160,6 @@ export function LabelPrintRunPanel({
     seedOddLevels,
     seedEvenLevels,
   ]);
-
-  useEffect(() => {
-    onAckChange?.(acked);
-  }, [acked, onAckChange]);
 
   const raggedBaysSorted = useMemo(
     () => [...selectedBays].sort((a, b) => a - b),
@@ -338,17 +329,6 @@ export function LabelPrintRunPanel({
           Print run · live faces
         </p>
         <p className="text-role-micro tabular-nums text-text-soft">{freezeTitle(freeze)}</p>
-
-        {freeze.rack ? (
-          <label className="flex items-center gap-1.5 text-role-micro text-text-default">
-            <Checkbox
-              checked={acked}
-              disabled={printing}
-              onCheckedChange={(value) => setAcked(value === true)}
-            />
-            I am standing in this room and aisle
-          </label>
-        ) : null}
 
         <div className="flex flex-wrap gap-1">
           {modeChips

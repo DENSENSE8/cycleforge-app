@@ -30,7 +30,7 @@ import { MobileReceivingFeedGallery } from '@/components/mobile/receiving/Mobile
 import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import { mobileArrivalPhotosThenClassifyHref } from '@/lib/receiving/arrival-mobile-flow';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   mobileFeedParams,
   mobileFeedQueryKey,

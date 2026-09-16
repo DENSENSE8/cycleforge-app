@@ -11,7 +11,11 @@
  * Legacy keys (`alerts` → queue, `lookup` → scout) are aliased so old links work.
  */
 
-export type SourcingMode = 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics';
+export type SourcingMode =
+  | 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics'
+  // Sourcing master data (admin dissolution): the model catalog + its
+  // compatibility edges live on the desk that consumes them.
+  | 'models' | 'compatibility';
 
 /** Live + legacy wire tokens `?mode=` may carry on `/sourcing`. */
 export const SOURCING_MODE_WIRE = [
@@ -21,6 +25,8 @@ export const SOURCING_MODE_WIRE = [
   'searches',
   'suppliers',
   'analytics',
+  'models',
+  'compatibility',
   /** Legacy → scout */
   'lookup',
   /** Legacy → queue */
@@ -33,6 +39,8 @@ export function resolveSourcingMode(raw: string | null): SourcingMode {
   if (raw === 'searches') return 'searches';
   if (raw === 'suppliers') return 'suppliers';
   if (raw === 'analytics') return 'analytics';
+  if (raw === 'models') return 'models';
+  if (raw === 'compatibility') return 'compatibility';
   return 'queue'; // default; legacy 'alerts' lands here too
 }
 

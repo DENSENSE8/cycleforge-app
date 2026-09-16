@@ -92,11 +92,11 @@ describe('SearchDossierFrame', () => {
         title: 'Bose remote',
         findings: [],
         facts: [{ id: 'status', label: 'Status', value: 'open' }],
-        outline: [{ kind: 'hop', count: 1 }],
+        outline: [{ kind: 'custody', count: 1 }],
         events: [
           {
             id: 'h1',
-            kind: 'hop',
+            kind: 'custody',
             at: '2026-09-01T00:00:00.000Z',
             title: 'Received',
             stationCaption: 'Unbox',
@@ -108,9 +108,12 @@ describe('SearchDossierFrame', () => {
       }),
     );
     assert.match(html, /data-testid="search-find-stream"/);
-    assert.match(html, /data-kind="hop"/);
+    // The custody row still SCROLLS even though it gets no rail chip.
+    assert.match(html, /data-kind="custody"/);
     assert.match(html, /Received/);
     assert.doesNotMatch(html, /data-kind="note"/);
+    // Chipless: a custody-only outline paints no kind rail at all.
+    assert.doesNotMatch(html, /data-testid="search-dossier-outline-kinds"/);
   });
 
   it('keeps one chronology tree (density classes only)', () => {
@@ -123,7 +126,7 @@ describe('SearchDossierFrame', () => {
     assert.doesNotMatch(src, /FilterRefinementBar/);
   });
 
-  it('omits empty outline kinds', () => {
+  it('omits empty outline kinds, and never chips qty even when it has a count', () => {
     const html = renderToStaticMarkup(
       React.createElement(SearchDossierFrame, {
         entity: 'Order',
@@ -136,8 +139,31 @@ describe('SearchDossierFrame', () => {
         handoffs: [{ href: '/shipping/orders', label: 'Open on To-ship', primary: true }],
       }),
     );
-    assert.match(html, /Qty/);
+    // Qty is a FACT in the centre band now, never a rail tab — so a qty-only
+    // outline paints no rail whatsoever.
+    assert.doesNotMatch(html, /data-testid="search-dossier-outline-kinds"/);
+    assert.doesNotMatch(html, />Qty</);
     assert.doesNotMatch(html, />Hops</);
     assert.doesNotMatch(html, />Notes</);
+  });
+
+  it('chips Hops only when a round trip produced a hop count', () => {
+    const render = (outline: Array<{ kind: 'hop' | 'note'; count: number }>) =>
+      renderToStaticMarkup(
+        React.createElement(SearchDossierFrame, {
+          entity: 'Order',
+          title: 'Bose remote',
+          outline,
+          findings: [],
+          facts: [{ id: 'status', label: 'Status', value: 'pending' }],
+          events: [],
+          emptyLines: 'No chronology',
+          handoffs: [{ href: '/shipping/orders', label: 'Open on To-ship', primary: true }],
+        }),
+      );
+    // No round trip → the outline carries no hop entry → no Hops chip.
+    assert.doesNotMatch(render([{ kind: 'note', count: 1 }]), />Hops</);
+    // A unit came back → the chip earns its place.
+    assert.match(render([{ kind: 'hop', count: 1 }]), />Hops</);
   });
 });

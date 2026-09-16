@@ -6,7 +6,7 @@
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
-  RECEIVING_GRID_COLUMNS,
+  RECEIVING_SORT_FACT_TYPES,
   receivingSortFactFor,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
@@ -14,7 +14,7 @@ import {
   isCustomFieldColumnKey,
   parseCustomFieldDefKey,
 } from '@/lib/tables/custom-field-keys';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
@@ -22,19 +22,15 @@ import {
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { compareGridValues, type GridSortValue } from '@/design-system/components/grid';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),
 );
 
 function productTitle(row: ReceivingLineRow): string {
-  return (
-    row.catalog_product_title ||
-    row.zoho_item_title ||
-    row.item_name ||
-    row.zoho_item_id ||
-    ''
-  ).trim();
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  return resolveSkuIdentityTitle(row);
 }
 
 function qtyValue(row: ReceivingLineRow): number {
@@ -198,9 +194,10 @@ export function compareReceivingGridRows(
     }
   };
 
-  // Type off the column MODEL, never a second hand-written map — the same
-  // declaration that resolves this column's alignment and header glyph.
-  const type = RECEIVING_GRID_COLUMNS.find((c) => c.key === fact)?.type;
+  // Type off the FACT map, never a `.find()` over a column array — the flat
+  // model that lookup read is deleted, and it returned `undefined` for every
+  // compound track while it lived.
+  const type = RECEIVING_SORT_FACT_TYPES[fact];
   const primary = compareGridValues(value(a), value(b), { type, dir });
 
   // `compareGridValues` already applied `dir` — re-signing here would

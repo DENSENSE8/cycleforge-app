@@ -225,6 +225,16 @@ export interface ReadVisitDeps {
   findSession(tx: ReadVisitTx, orgId: OrgId, counterTransactionId: number): Promise<VisitSessionRow | null>;
   /** ALL lines for a session, in one query, voided included. */
   findLines(tx: ReadVisitTx, orgId: OrgId, sessionId: number): Promise<CounterVisitLine[]>;
+  /**
+   * Itemized lines for a SESSION-LESS visit (the direct kiosk-intake path),
+   * from counter_transaction_lines. Session visits keep
+   * {@link findLines} — reading both would double-print retail.
+   */
+  findTransactionLines(
+    tx: ReadVisitTx,
+    orgId: OrgId,
+    counterTransactionId: number,
+  ): Promise<CounterVisitLine[]>;
   findSquareTransaction(
     tx: ReadVisitTx,
     orgId: OrgId,
@@ -401,6 +411,36 @@ const defaultDeps: ReadVisitDeps = {
     }));
   },
 
+  async findTransactionLines(tx, orgId, counterTransactionId) {
+    // Mirror of findLines over counter_transaction_lines. No void columns —
+    // these lines are written once, atomically with the header, and a direct
+    // kiosk submit has no staff session to void from; a refund is a new visit.
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT line_uuid, line_type, title, sku, variation_id, quantity,
+              unit_amount_cents, sort_index
+         FROM counter_transaction_lines
+        WHERE organization_id = $1 AND counter_transaction_id = $2
+        ORDER BY sort_index ASC, id ASC`,
+      [orgId, counterTransactionId],
+    );
+    return res.rows.map((row) => ({
+      id: String(row.line_uuid),
+      type: String(row.line_type) as KioskCartLine['type'],
+      title: (row.title as string | null) ?? '',
+      quantity: Number(row.quantity ?? 0),
+      unitAmountCents: Number(row.unit_amount_cents ?? 0),
+      payload: {
+        variationId: (row.variation_id as string | null) ?? null,
+        sku: (row.sku as string | null) ?? '',
+      } as KioskLinePayload,
+      sortIndex: Number(row.sort_index ?? 0),
+      voidedAt: null,
+      voidReason: null,
+      voidedByStaffId: null,
+      voidedByStaffName: null,
+    }));
+  },
+
   async findSquareTransaction(tx, orgId, counterTransactionId) {
     const res = await asClient(tx).query<Record<string, unknown>>(
       `SELECT id, square_order_id, square_payment_id, status, payment_method, receipt_url,
@@ -483,9 +523,15 @@ export async function loadCounterVisit(
     const devices = await deps.findDevices(tx, orgId, header.id);
     const session = await deps.findSession(tx, orgId, header.id);
     const squareTransaction = await deps.findSquareTransaction(tx, orgId, header.id);
-    // A visit with no session (the direct kiosk-intake path) has no lines and
-    // nothing to audit here — both are empty rather than an extra round trip.
-    const lines = session ? await deps.findLines(tx, orgId, session.sessionId) : [];
+    // A visit with no session (the direct kiosk-intake path) reads its
+    // itemized lines from counter_transaction_lines — written in the SAME
+    // transaction as the header by submitCounterTransaction. Before that
+    // table existed this branch returned [] and every kiosk walk-in receipt
+    // printed "No items on this visit." under the money.
+    const lines = session
+      ? await deps.findLines(tx, orgId, session.sessionId)
+      : await deps.findTransactionLines(tx, orgId, header.id);
+
     const auditTrail = await deps.findAuditTrail(tx, orgId, session ? [session.sessionId] : []);
 
     return {

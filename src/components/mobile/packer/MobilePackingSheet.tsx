@@ -113,25 +113,6 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
           variant="mobile"
         />
 
-        {(() => {
-          const itemNumber = (row.item_number || '').trim();
-          if (orderRowId == null && !itemNumber && !skuValue) return null;
-          const checklistParams = new URLSearchParams();
-          if (orderRowId != null) checklistParams.set('orderRowId', String(orderRowId));
-          else if (itemNumber) checklistParams.set('itemNumber', itemNumber);
-          else checklistParams.set('itemNumber', skuValue);
-          return (
-            <Link
-              href={`/m/checklist?${checklistParams.toString()}`}
-              prefetch={false}
-              onClick={onClose}
-              className="rounded-none border border-border-soft bg-surface-canvas px-4 py-3 text-center text-role-caption font-semibold text-text-muted active:bg-surface-sunken"
-            >
-              Edit kit / QC checklist
-            </Link>
-          );
-        })()}
-
         {photos.length > 0 ? (
           <div className="rounded-none border border-border-hairline bg-surface-canvas/60 p-3">
             <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`Photos ${photos.length}`} />

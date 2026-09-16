@@ -26,6 +26,7 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
+import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 
 interface ConnectorIngestCounts {
   /** Orders that did not exist before this sync. */
@@ -48,6 +49,12 @@ export async function ingestConnectorOrders(
     manageDeadlines: false,
     fallbackProductTitle: opts?.fallbackProductTitle,
   });
+
+  // Reserve units for what just arrived. Marketplace connectors are the path
+  // most orders enter by, and a reservation made here is what gives the picker
+  // a line-grained, location-directed queue before any label exists. Non-fatal
+  // by construction — the orders are already written.
+  await autoAllocateAfterIngest(result.insertedOrderIds, { orgId, source });
 
   return {
     imported: result.insertedOrders,

@@ -21,7 +21,7 @@
  *
  * It still server-renders — this is a code-split, NOT `ssr: false`. Turning SSR
  * off here would blank the app's first paint, which is the exact regression the
- * pre-hydration gate in `ResponsiveLayout` was deleted for.
+ * pre-hydration gate in `DesktopRouteShell` was deleted for.
  */
 
 import type { ReactNode } from 'react';
@@ -40,8 +40,8 @@ import Providers from '@/components/Providers';
  * Note this split did not measurably shrink the phone's payload — see the
  * ruling in `MobileRouteShell`.
  */
-const ResponsiveLayout = dynamic(() =>
-  import('@/components/layout/ResponsiveLayout').then((m) => m.ResponsiveLayout),
+const DesktopRouteShell = dynamic(() =>
+  import('@/components/layout/DesktopRouteShell').then((m) => m.DesktopRouteShell),
 );
 const MobileRouteShell = dynamic(() =>
   import('@/components/layout/MobileRouteShell').then((m) => m.MobileRouteShell),
@@ -54,6 +54,7 @@ import { ActivityInboxProvider } from '@/contexts/ActivityInboxContext';
 import { StaffColorsProvider } from '@/contexts/StaffColorsProvider';
 import { StaffSwitcherProvider } from '@/contexts/StaffSwitcherContext';
 import { SwitchStaffSheet } from '@/components/auth/SwitchStaffSheet';
+import { CursorLabelLayer } from '@/design-system/motion/CursorLabelLayer';
 import { ScanHotkeySync } from '@/components/scan/ScanHotkeySync';
 import { ThemeSync } from '@/components/theme/ThemeSync';
 import { TimeFormatSync } from '@/components/time-format/TimeFormatSync';
@@ -123,9 +124,9 @@ export function WarehouseShell({
                                 {mobileTree ? (
                                   <MobileRouteShell>{children}</MobileRouteShell>
                                 ) : (
-                                  <ResponsiveLayout kioskHost={kioskHost}>
+                                  <DesktopRouteShell kioskHost={kioskHost}>
                                     {children}
-                                  </ResponsiveLayout>
+                                  </DesktopRouteShell>
                                 )}
                               </ShellQuerySeed>
                             </AssistantProvider>
@@ -135,6 +136,7 @@ export function WarehouseShell({
                       <ReceivingZohoSyncToaster />
                       <UserIssueResolvedToaster />
                       <SwitchStaffSheet />
+                      <CursorLabelLayer />
                       <ScanHotkeySync />
                       <ThemeSync />
                       <TimeFormatSync />

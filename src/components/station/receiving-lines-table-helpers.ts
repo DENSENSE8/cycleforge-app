@@ -7,7 +7,7 @@
  * No JSX — render surfaces live next to their consumers.
  */
 
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * Passed to `/api/receiving-lines` as `view`. Re-exported from the shared

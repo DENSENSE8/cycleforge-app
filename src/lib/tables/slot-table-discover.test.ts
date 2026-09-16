@@ -80,43 +80,61 @@ describe('slot-table discover (delete vs keep)', () => {
     assert.ok(SLOT_TABLE_KNOWN_DEBT.length >= 1);
   });
 
-  it('Testing History is on the engine — the receiving dual-SoT is closed', () => {
-    const flat = [...report.delete, ...report.judgment].find(
-      (f) => f.id === 'flat-mount:receiving:TestingHistoryList',
+  it('every family mounts the engine — no flat GRID array survives', () => {
+    // Wave B deleted the last hand `*_GRID_COLUMNS` arrays (receiving,
+    // incoming, tasks, import-exception) and the row/descriptor defaults that
+    // re-SoT'd them by silence. Both scanners are now regression guards: a hit
+    // means a NEW second column model was minted on one engine.
+    const flatMounts = [...report.delete, ...report.judgment].filter(
+      (f) => f.scanner === 'flat-mount',
     );
-    assert.ok(
-      !flat,
-      'Testing History regressed to the flat RECEIVING_GRID_COLUMNS mount — remount RECEIVING_COMPOUND_COLUMNS (tableId `testing`)',
-    );
-    const hand = report.delete.find(
-      (f) => f.id === 'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS',
-    );
-    assert.ok(hand, 'the flat array still exists — Wave B owes its delete');
     assert.deepEqual(
-      hand.blockedBy,
+      flatMounts.map((f) => f.id),
       [],
-      'flat-mount blocker is gone; RECEIVING_GRID_COLUMNS is unblocked for Wave B',
+      `a desk mounts a hand flat GRID array again — mount the family materialization instead:\n${flatMounts
+        .map((f) => `${f.path} → ${f.symbol}`)
+        .join('\n')}`,
+    );
+
+    const handArrays = report.delete.filter((f) => f.scanner === 'hand-grid-export');
+    assert.deepEqual(
+      handArrays.map((f) => f.symbol),
+      [],
+      'a new hand *_GRID_COLUMNS array exists beside a family materialization',
     );
   });
 
-  it('next unblocked delete is mechanical (not judgment)', () => {
-    const next = nextDeleteGap(report);
-    assert.ok(next, 'expected at least one unblocked delete');
-    assert.equal(next.verdict, 'delete');
-    assert.ok(next.priority <= 2);
-    assert.equal(next.blockedBy.length, 0);
+  it('no mechanical delete remains — what is left needs an operator ruling', () => {
     assert.equal(
-      next.scanner,
-      'hand-grid-export',
-      'prefer unused hand GRID arrays over live-mount work',
+      nextDeleteGap(report),
+      null,
+      'a mechanical DELETE reappeared; the Wave B ratchet only moves down',
     );
+    for (const f of report.judgment) {
+      assert.ok(
+        SLOT_TABLE_KNOWN_DEBT.includes(f.id),
+        `judgment row ${f.id} is not in the ratchet — get an operator ruling`,
+      );
+    }
   });
 
-  it('FBA catalog and station-history are judgment — not auto-delete', () => {
+  it('FBA catalog and the table-columns zombie are judgment — not auto-delete', () => {
     const j = new Set(report.judgment.map((f) => f.id));
     assert.ok(j.has('catalog-orphan:fba:FBA_FIELD_CATALOG'));
-    assert.ok(j.has('out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS'));
+    assert.ok(j.has('table-columns-zombie:support-tickets'));
     assert.ok(!report.delete.some((f) => f.symbol === 'FBA_FIELD_CATALOG'));
-    assert.ok(!report.delete.some((f) => f.symbol === 'STATION_HISTORY_COLUMNS'));
+  });
+
+  it('the station benches are registered families — no third engine survives', () => {
+    // Wave C: `tech` and `packer` joined PRODUCT_TABLES / REGISTERED_BINDINGS,
+    // so the hand STATION_HISTORY_COLUMNS array and StationQueueRow are gone.
+    // The out-of-waist scanner is now generic; a hit means a NEW hand column
+    // model was minted outside the waist.
+    const outOfWaist = report.judgment.filter((f) => f.scanner === 'out-of-waist-hand-model');
+    assert.deepEqual(
+      outOfWaist.map((f) => `${f.path} → ${f.symbol}`),
+      [],
+      'a hand column array reappeared outside PRODUCT_TABLES / REGISTERED_BINDINGS',
+    );
   });
 });

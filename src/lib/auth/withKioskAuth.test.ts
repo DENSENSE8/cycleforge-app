@@ -5,23 +5,29 @@
  * gate is exercised with a fake device resolver — no Postgres, no cookies
  * plumbing beyond a minimal fake request.
  *
- *   npx tsx --test src/lib/auth/withKioskAuth.test.ts
+ *   NODE_OPTIONS='--conditions react-server' npx tsx --test src/lib/auth/withKioskAuth.test.ts
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withKioskAuth, type KioskAuthDeps } from './withKioskAuth';
-import type { KioskAuthContext } from './kiosk-context';
-import type { ResolvedKioskDevice } from './kiosk-device';
+import { dogfoodKioskDeviceLabel } from './kiosk-device';
 
 const ORG = '00000000-0000-0000-0000-0000000000aa';
 
-function fakeReq(token?: string): NextRequest {
+function fakeReq(token?: string, clientId?: string): NextRequest {
+  const jar: Record<string, string | undefined> = {
+    cf_kiosk: token,
+    cf_kiosk_client: clientId,
+  };
   return {
     method: 'POST',
     nextUrl: { pathname: '/api/kiosk/intake' },
-    cookies: { get: (_name: string) => (token ? { value: token } : undefined) },
+    cookies: {
+      get: (name: string) => (jar[name] ? { value: jar[name] as string } : undefined),
+    },
   } as unknown as NextRequest;
 }
 
@@ -56,7 +62,7 @@ test('resolves a valid device token to a kiosk principal (org read from the row,
   assert.equal((ctx as Record<string, unknown>).staffId, undefined);
 });
 
-test('refuses a request with no device token (401 KIOSK_UNPAIRED, handler never runs)', async () => {
+test('refuses a tokenless request when no dev autobind is available (issuance failed / not provided)', async () => {
   let ran = false;
   const calls: string[] = [];
   const handler = withKioskAuth(
@@ -79,6 +85,132 @@ test('refuses a revoked / unknown token (resolver returns null → 401, scope de
   );
 
   const res = await handler(fakeReq('revoked-or-unknown'), { params: Promise.resolve({}) });
+  assert.equal(res.status, 401);
+  assert.equal(ran, false);
+});
+
+test('dev: a tokenless request auto-binds THIS CLIENT\'s dogfood device and pins cf_kiosk', async () => {
+  let seen: KioskAuthContext | null = null;
+  const calls: string[] = [];
+  const boundClientIds: string[] = [];
+  const handler = withKioskAuth(
+    (_req, ctx) => {
+      seen = ctx;
+      return NextResponse.json({ ok: true });
+    },
+    {
+      ...depsResolving(null, calls),
+      devAutobind: async (clientId) => {
+        boundClientIds.push(clientId);
+        return {
+          device: {
+            deviceId: 1,
+            organizationId: '00000000-0000-0000-0000-000000000001',
+            label: dogfoodKioskDeviceLabel(clientId),
+          },
+          token: 'issued-dogfood-token',
+        };
+      },
+    },
+  );
+
+  const res = await handler(fakeReq(undefined, 'client-aaaaaa'), { params: Promise.resolve({}) });
+  assert.equal(res.status, 200);
+  assert.ok(seen, 'handler ran on the auto-bound device');
+  assert.equal((seen as unknown as KioskAuthContext).deviceId, 1);
+  // The bind is keyed by THIS browser's durable id, so it rotates only this
+  // surface's row — production and localhost stop evicting each other.
+  assert.deepEqual(boundClientIds, ['client-aaaaaa']);
+  assert.equal(
+    (seen as unknown as KioskAuthContext).deviceLabel,
+    'Dogfood auto-bind · client-aaaaaa',
+  );
+  // The binding is pinned so the NEXT request arrives already paired.
+  // (kiosk-device is server-only; the cookie name is a stable literal here.)
+  assert.equal(res.cookies.get('cf_kiosk')?.value, 'issued-dogfood-token');
+  assert.equal(res.cookies.get('cf_kiosk_client')?.value, 'client-aaaaaa');
+  assert.deepEqual(calls, ['<none>']);
+});
+
+test('dev: a client with no id gets one minted and pinned, so it owns its own row next time', async () => {
+  const boundClientIds: string[] = [];
+  const handler = withKioskAuth(
+    () => NextResponse.json({ ok: true }),
+    {
+      ...depsResolving(null),
+      devAutobind: async (clientId) => {
+        boundClientIds.push(clientId);
+        return {
+          device: { deviceId: 2, organizationId: '00000000-0000-0000-0000-000000000001', label: dogfoodKioskDeviceLabel(clientId) },
+          token: 'issued-dogfood-token',
+        };
+      },
+    },
+  );
+
+  const res = await handler(fakeReq(undefined), { params: Promise.resolve({}) });
+  assert.equal(res.status, 200);
+  const minted = res.cookies.get('cf_kiosk_client')?.value;
+  assert.ok(minted && minted.length >= 8, 'a client id was minted and pinned');
+  assert.deepEqual(boundClientIds, [minted]);
+});
+
+test('dev: a junk client cookie is not trusted into a device label', async () => {
+  const boundClientIds: string[] = [];
+  const handler = withKioskAuth(
+    () => NextResponse.json({ ok: true }),
+    {
+      ...depsResolving(null),
+      devAutobind: async (clientId) => {
+        boundClientIds.push(clientId);
+        return {
+          device: { deviceId: 3, organizationId: '00000000-0000-0000-0000-000000000001', label: dogfoodKioskDeviceLabel(clientId) },
+          token: 'issued-dogfood-token',
+        };
+      },
+    },
+  );
+
+  // 200 chars of label-breaking punctuation: rejected, replaced by a fresh id.
+  const junk = `${'x'.repeat(200)} · DROP`;
+  const res = await handler(fakeReq(undefined, junk), { params: Promise.resolve({}) });
+  assert.equal(res.status, 200);
+  assert.equal(boundClientIds.length, 1);
+  assert.notEqual(boundClientIds[0], junk);
+  assert.ok(
+    dogfoodKioskDeviceLabel(boundClientIds[0]!).length <= 120,
+    'the label stays inside the kiosk_devices CHECK',
+  );
+});
+
+test('production: a tokenless request is still refused 401 even with autobind wired', async () => {
+  let ran = false;
+  const handler = withKioskAuth(
+    () => { ran = true; return new Response('ok'); },
+    {
+      ...depsResolving(null),
+      devAutobind: async () => ({
+        device: { deviceId: 1, organizationId: '00000000-0000-0000-0000-000000000001', label: 'Dogfood auto-bind' },
+        token: 'issued-dogfood-token',
+      }),
+      isProduction: () => true,
+    },
+  );
+
+  const res = await handler(fakeReq(undefined), { params: Promise.resolve({}) });
+  assert.equal(res.status, 401);
+  assert.deepEqual(await res.json(), { error: 'KIOSK_UNPAIRED' });
+  assert.equal(ran, false);
+});
+
+test('dev: a failed autobind (issuance error) still refuses 401 instead of masking the outage', async () => {
+  let ran = false;
+  const handler = withKioskAuth(
+    () => { ran = true; return new Response('ok'); },
+    { ...depsResolving(null), devAutobind: async () => null },
+  );
+
+  const res = await handler(fakeReq(undefined), { params: Promise.resolve({}) });
   assert.equal(res.status, 401);
   assert.equal(ran, false);
 });

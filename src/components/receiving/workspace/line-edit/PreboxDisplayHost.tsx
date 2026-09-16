@@ -11,7 +11,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { PreboxWizard, type PreboxWizardSerial } from '@/components/receiving/PreboxWizard';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function usePreboxSerials(receivingId: number | null) {
   const enabled = typeof receivingId === 'number' && receivingId > 0;

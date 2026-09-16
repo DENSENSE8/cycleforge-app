@@ -9,7 +9,7 @@
 
 import type { RefObject } from 'react';
 import { UnitsExplosionDisplay } from '../UnitsExplosionDisplay';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   useSerialLookup,
   type SerialMatchedOrder,

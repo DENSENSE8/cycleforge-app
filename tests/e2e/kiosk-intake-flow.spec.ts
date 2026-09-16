@@ -93,6 +93,30 @@ async function newTabletApiContext(baseURL: string): Promise<APIRequestContext> 
   return pwRequest.newContext({ baseURL, storageState: EMPTY_STORAGE });
 }
 
+/**
+ * Read the device-authed session projection: HTTP status plus the channel that
+ * NAMES the bound device (`org:<org>:kiosk:<deviceId>`). Read-only, so both the
+ * bind and the revoke contracts can assert device IDENTITY without writing an
+ * intake.
+ */
+async function readKioskSession(
+  ctx: APIRequestContext,
+): Promise<{ status: number; channel: string; error: string }> {
+  const res = await ctx.get('/api/kiosk/session', { maxRedirects: 0 });
+  const body: unknown = await res.json().catch(() => ({}));
+  const wire: Record<string, unknown> = isWireRecord(body) ? body : {};
+  return {
+    status: res.status(),
+    channel: typeof wire.channel === 'string' ? wire.channel : '',
+    error: typeof wire.error === 'string' ? wire.error : '',
+  };
+}
+
+/** Type guard, not a rename: it is what lets the JSON body be read without a cast. */
+function isWireRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /** A fresh browser tablet page: empty cookie jar + a form-factor descriptor. */
 async function newTabletPage(
   browser: Browser,
@@ -143,7 +167,13 @@ async function selectKioskCommand(
   page: Page,
   command: 'repair' | 'sales' | 'buyback' | 'pickup',
 ): Promise<void> {
-  await page.getByTestId('kiosk-command-menu').click();
+  // A utility slot open mounts a second chrome band beside the hidden catalog
+  // trail — always drive the VISIBLE trail's command menu.
+  await page
+    .getByTestId('kiosk-catalog-trail')
+    .filter({ visible: true })
+    .getByTestId('kiosk-command-menu')
+    .click();
   await page.getByTestId(`kiosk-command-${command}`).click();
 }
 
@@ -205,22 +235,41 @@ test.describe('Kiosk API — device-principal auth contract', () => {
     }
   });
 
-  test('unpaired gate: an intake with no device token is refused 401 KIOSK_UNPAIRED', async ({ baseURL }) => {
-    const tablet = await newTabletApiContext(baseURL!);
+  test('dogfood bind: a tokenless tablet binds its OWN device, and a second tablet does not evict it', async ({
+    baseURL,
+  }) => {
+    // Outside production `withKioskAuth` re-binds instead of answering
+    // KIOSK_UNPAIRED (operator 2026-09-14), and the bind is keyed by the
+    // durable `cf_kiosk_client` cookie. Two tablets must therefore end up on
+    // TWO device rows: one shared row is what made production and localhost
+    // knock each other offline mid-test.
+    const first = await newTabletApiContext(baseURL!);
+    const second = await newTabletApiContext(baseURL!);
     try {
-      const res = await tablet.post('/api/kiosk/intake', {
-        data: { service: 'sales' },
-        headers: { 'content-type': 'application/json' },
-        maxRedirects: 0,
-      });
-      expect(res.status()).toBe(401);
-      expect((await res.json()).error).toBe('KIOSK_UNPAIRED');
+      const channelOf = async (ctx: APIRequestContext): Promise<string> => {
+        const session = await readKioskSession(ctx);
+        expect(session.status, 'a tokenless kiosk read binds instead of 401ing').toBe(200);
+        expect(session.channel, 'the projection names the bound device').toBeTruthy();
+        return session.channel;
+      };
+
+      const firstChannel = await channelOf(first);
+      const secondChannel = await channelOf(second);
+      expect(secondChannel, 'each tablet owns its own device row').not.toBe(firstChannel);
+
+      // The first tablet is still itself after the second one bound.
+      expect(await channelOf(first)).toBe(firstChannel);
     } finally {
-      await tablet.dispose();
+      await first.dispose();
+      await second.dispose();
     }
   });
 
-  test('revoke kills the device instantly: intake 200 → revoke → intake 401', async ({ request, baseURL }) => {
+  test('revoke kills THAT device instantly: the revoked token never answers as it again', async ({ request, baseURL }) => {
+    // Revocation is still absolute — the row's token dies server-side. What a
+    // DEV server adds is a re-bind onto the dogfood device (production answers
+    // 401 KIOSK_UNPAIRED instead), so the assertion is about IDENTITY: the
+    // revoked device id must never come back, whichever posture is running.
     const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Revoke'));
     const tablet = await newTabletApiContext(baseURL!);
     try {
@@ -228,21 +277,21 @@ test.describe('Kiosk API — device-principal auth contract', () => {
         data: { code },
         headers: { 'content-type': 'application/json' },
       });
-      const before = await tablet.post('/api/kiosk/intake', {
-        data: { service: 'pickup' },
-        headers: { 'content-type': 'application/json' },
-      });
-      expect(before.status(), 'intake works while active').toBe(200);
+      const before = await readKioskSession(tablet);
+      expect(before.status, 'the paired device reads while active').toBe(200);
+      expect(before.channel, 'the projection names the paired device').toContain(`:kiosk:${deviceId}`);
 
       await revokeDevice(request, deviceId);
 
-      const after = await tablet.post('/api/kiosk/intake', {
-        data: { service: 'pickup' },
-        headers: { 'content-type': 'application/json' },
-        maxRedirects: 0,
-      });
-      expect(after.status(), 'revoked device is dead').toBe(401);
-      expect((await after.json()).error).toBe('KIOSK_UNPAIRED');
+      const after = await readKioskSession(tablet);
+      if (after.status === 401) {
+        // Production posture: the tablet must (re-)enroll.
+        expect(after.error).toBe('KIOSK_UNPAIRED');
+      } else {
+        // Dev posture: bound to a DIFFERENT (dogfood) device, never the dead one.
+        expect(after.status).toBe(200);
+        expect(after.channel, 'the revoked device is gone').not.toContain(`:kiosk:${deviceId}`);
+      }
     } finally {
       await tablet.dispose();
       await revokeDevice(request, deviceId);
@@ -634,38 +683,75 @@ for (const factor of TABLET_FACTORS) {
         await expect(page.getByTestId('kiosk-spine-toggle')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-utility-spine')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
-        await expect(page.getByTestId('kiosk-catalog-search')).toBeVisible();
+        // Search is a collapsed glyph by default — the command dropdown
+        // leads the trail and the glyph rides second.
+        await expect(page.getByTestId('kiosk-search-toggle')).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-search')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-catalog-trail')).toBeVisible();
         await expect(page.getByTestId('kiosk-catalog-category')).toBeVisible();
         await expect(page.getByTestId('kiosk-catalog-nav')).toHaveCount(0);
         await expect(page.getByRole('button', { name: /^go back$/i })).toHaveCount(0);
-        await expect(page.getByTestId('kiosk-catalog-search').getByPlaceholder(/search all products/i)).toBeVisible();
+        /*
+         * ONE search glyph, and it is the toggle. Operator 2026-09-15: *"there
+         * should not be two search icons. The search icon to close and to open
+         * should be the only search icon displayed."* Two magnifiers shipped
+         * before — this toggle plus SearchField's own leading icon — and a
+         * third control (a standalone X) appeared once the field was open.
+         */
+        await page.getByTestId('kiosk-search-toggle').click();
+        const field = page.getByTestId('kiosk-catalog-search');
+        await expect(field.getByPlaceholder(/search all products/i)).toBeVisible();
+        await expect(page.getByTestId('kiosk-search-close')).toHaveCount(0);
+        await expect(page.getByTestId('search-field-leading-action')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-search-toggle')).toHaveCount(1);
+        // The same glyph closes it.
+        await page.getByTestId('kiosk-search-toggle').click();
+        await expect(field).toHaveCount(0);
         await expect(page.getByRole('heading', { name: /catalog/i })).toHaveCount(0);
         await expect(page.getByRole('heading', { name: /all (repairs|items)/i })).toHaveCount(0);
         await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
 
         await expect(page.getByRole('tablist', { name: /kiosk commands/i })).toHaveCount(0);
 
-        await expect(page.getByTestId('kiosk-catalog-trail').getByTestId('kiosk-utility-cart')).toBeVisible();
+        // While a paperwork/triage slot is open the shell mounts a second
+        // chrome band next to the (hidden) catalog trail — both carry the same
+        // testids. Scope every interaction to the VISIBLE trail.
+        const trail = page.getByTestId('kiosk-catalog-trail').filter({ visible: true });
+        await expect(trail.getByTestId('kiosk-utility-cart')).toBeVisible();
         await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
-        await page.getByTestId('kiosk-utility-cart').click();
-        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
-        await page.getByTestId('kiosk-utility-paperwork').click();
+        await trail.getByTestId('kiosk-utility-cart').click();
+        const cartSheet = page.getByTestId('kiosk-cart-ledger');
+        await expect(cartSheet).toBeVisible();
+        /*
+         * The CART owns the one band (2026-09-15): StepProgressHeader, X
+         * top-left, segments, n/N. The shell does not paint its trail above it
+         * — that would stack the two chromes the pane-frame law forbids — so
+         * the X is the way out and slot-hopping goes through it. Operator
+         * 2026-09-14: "displaying without the header and then the X button top
+         * left to close the cart and displaying a stepper on the top".
+         */
+        await expect(page.getByTestId('kiosk-catalog-trail').filter({ visible: true })).toHaveCount(0);
+        await expect(cartSheet.getByTestId('step-progress-count')).toHaveText('0/3');
+        await expect(cartSheet.getByTestId('kiosk-cart-close')).toHaveCount(0);
+        await cartSheet.getByTestId('step-progress-close').click();
+        await expect(cartSheet).toHaveCount(0);
+
+        // Paperwork still wears a titled band, so the trail stays above it and
+        // its toggle still closes it from there (port pending).
+        await trail.getByTestId('kiosk-utility-paperwork').click();
         await expect(page.getByTestId('kiosk-paperwork-panel')).toBeVisible();
-        await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
-        await page.getByTestId('kiosk-utility-paperwork').click();
+        await trail.getByTestId('kiosk-utility-paperwork').click();
         await expect(page.getByTestId('kiosk-paperwork-panel')).toHaveCount(0);
 
         await expect(page.getByTestId('kiosk-consult-stance-rail')).toBeVisible();
-        await expect(page.getByTestId('kiosk-consult-stance-menu')).toBeVisible();
-        await page.getByTestId('kiosk-consult-stance-menu').click();
+        await expect(trail.getByTestId('kiosk-consult-stance-menu')).toBeVisible();
+        await trail.getByTestId('kiosk-consult-stance-menu').click();
         await expect(page.getByTestId('kiosk-consult-stance-work')).toBeVisible();
         await expect(page.getByTestId('kiosk-consult-stance-show')).toBeVisible();
         await expect(page.getByTestId('kiosk-consult-stance-verify')).toBeVisible();
         await page.keyboard.press('Escape');
 
         // Trail order: stance left of paperwork left of cart (cart far-right).
-        const trail = page.getByTestId('kiosk-catalog-trail').filter({ visible: true });
         const stanceBox = (await trail.getByTestId('kiosk-consult-stance-menu').boundingBox())!;
         const paperworkBox = (await trail.getByTestId('kiosk-utility-paperwork').boundingBox())!;
         const cartBox = (await trail.getByTestId('kiosk-utility-cart').boundingBox())!;
@@ -680,14 +766,14 @@ for (const factor of TABLET_FACTORS) {
         await expect(page.getByTestId('kiosk-spine-exit')).toBeVisible();
         await page.keyboard.press('Escape');
 
-        await page.getByTestId('kiosk-utility-cart').click();
-        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
+        // A command switch puts the work surface back; the cart/session is
+        // proven by `data-cart-empty` on the shell, not by the column.
         await selectKioskCommand(page, 'repair');
         await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-work-surface')).toBeVisible();
 
         await selectKioskCommand(page, 'sales');
-        await expect(page.getByTestId('kiosk-catalog-search')).toBeVisible();
+        await expect(page.getByTestId('kiosk-search-toggle')).toBeVisible();
         await expect(page.getByTestId('kiosk-catalog-trail').getByTestId('kiosk-utility-cart')).toBeVisible();
 
         await selectKioskCommand(page, 'pickup');
@@ -805,7 +891,19 @@ async function signOn(page: Page): Promise<void> {
 
 /**
  * Repair intake up to (not including) the cart commit: pick a priced service,
- * state the issue, fill the customer block, sign, and put the line in the cart.
+ * state the issue, give the device facts and the contact, sign, choose how the
+ * support ticket is filed, and put the line in the cart.
+ *
+ * PAGES the pane's stepper. Only the step on screen is mounted, so the flat
+ * "fill every label, then sign" shape this helper used to have could not reach
+ * the serial or the signature at all.
+ *
+ * FOUR units since 2026-09-15: reason → device → contact → review & sign.
+ * Device split out of contact that day, and the create-or-link ticket question
+ * mounts UNDER the signature on the review step (operator: *"a slider … below
+ * the signature so it would be mounted under one step"*) — so it is revealed
+ * by the ink and answered without paging, and the commit key stays refused
+ * until it is.
  */
 async function buildRepairLine(page: Page, customer: { name: string; phone: string }): Promise<void> {
   await selectKioskCommand(page, 'repair');
@@ -816,29 +914,65 @@ async function buildRepairLine(page: Page, customer: { name: string; phone: stri
   await expect(tile).toBeVisible({ timeout: 20_000 });
   await tile.click();
 
-  const continueBtn = page.getByRole('button', { name: /^continue$/i });
-  if (await continueBtn.count()) await continueBtn.first().click();
+  // `data-kiosk-continue` is the catalog's own primary key. A role-name lookup
+  // also matches the cart's Continue, which is not what opens the stage.
+  await page.locator('[data-kiosk-continue]').click({ timeout: 20_000 });
 
   const pane = page.getByTestId('kiosk-repair-pane');
   await expect(pane).toBeVisible();
 
   // 1. Issue — notes alone satisfy the gate when the SKU carries no issue pills.
-  await fillWhenHydrated(pane.getByLabel(/repair notes/i), 'E2E: no power on boot');
+  await fillWhenHydrated(pane.getByTestId('kiosk-repair-reason-notes'), 'E2E: no power on boot');
+  await pane.getByTestId('kiosk-repair-continue').click();
 
-  // 2. Customer — the block that the extras-pin bug made unreachable.
-  // Shared KioskCustomerIntake labels the field "Name" on every channel.
-  await fillWhenHydrated(pane.getByLabel(/^name$/i), customer.name);
-  await fillWhenHydrated(pane.getByLabel(/phone number/i), customer.phone);
-  await fillWhenHydrated(pane.getByLabel(/serial number/i), `E2E-SN-${Date.now()}`);
-  const price = pane.getByLabel(/price/i);
+  // 2. Device & quote — the staffer's half: serial off the chassis, the price.
+  await fillWhenHydrated(pane.getByTestId('kiosk-repair-serial'), `E2E-SN-${Date.now()}`);
+  const price = pane.getByTestId('kiosk-repair-price');
   if (!(await price.inputValue())) await fillWhenHydrated(price, '99');
+  await pane.getByTestId('kiosk-repair-continue').click();
 
-  // 3. Authorization.
+  // 3. Contact — the customer's half. Phone is the match key and the gate.
+  await fillWhenHydrated(pane.getByTestId('kiosk-customer-name'), customer.name);
+  await fillWhenHydrated(pane.getByTestId('kiosk-customer-phone'), customer.phone);
+  await pane.getByTestId('kiosk-repair-continue').click();
+
+  // 4. Review & sign — the paperwork, signed. The ticket slider the ink
+  // reveals already sits on Create (operator: *"automatically select create
+  // new ticket"*), so nothing is tapped here; the link path is exercised
+  // against the candidates route in its own spec.
   await signOn(page);
 
-  const save = page.getByRole('button', { name: /save to cart/i });
-  await expect(save).toBeEnabled();
-  await save.click();
+  const submit = page.getByTestId('kiosk-repair-submit');
+  await expect(submit).toBeEnabled();
+  await submit.click();
+
+  // The details stage paints ONE band — its own step band — so no trail and no
+  // cart glyph exist while it is up. Its X is the way back to the catalog.
+  await pane.getByTestId('step-progress-close').click();
+}
+
+/**
+ * Page the cart stepper to its terminal Review step.
+ *
+ * The cart is a three-unit step flow since 2026-09-15 (Items → Contact →
+ * Review), so the submit keys only exist on the last step — operator
+ * 2026-09-14: "displaying a stepper on the top for the exact steps within the
+ * cart for the user to take". Continue is gated by the same triage blockers the
+ * submit is, so an enabled Continue is itself the assertion that the step is
+ * satisfied.
+ *
+ * Asserts the terminal SUBMIT key, not a Pay key: a service-only drop-off takes
+ * no money at all (operator 2026-09-15 — it "just prints out a receipt"), so
+ * Pay is absent on exactly those visits.
+ */
+async function advanceCartToReview(page: Page): Promise<void> {
+  const cart = page.getByTestId('kiosk-cart-ledger');
+  for (const step of ['items', 'contact'] as const) {
+    const next = cart.getByTestId('kiosk-cart-continue');
+    await expect(next, `${step} step should be satisfied`).toBeEnabled({ timeout: 10_000 });
+    await next.click();
+  }
+  await expect(cart.getByTestId('kiosk-cart-save')).toBeVisible();
 }
 
 test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
@@ -854,11 +988,23 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       await pairViaUiV2(page, code);
       await buildRepairLine(page, { name: 'E2E Customer', phone: '5035550142' });
 
+      // The details stage exited to the catalog, so open the ticket by its
+      // glyph — nothing auto-opens the cart.
+      await page.getByTestId('kiosk-utility-cart').first().click();
       const cart = page.getByTestId('kiosk-cart-ledger');
-      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+      // The dead title band carried "Cart · 1 line"; the step flow carries the
+      // same fact as quiet meta under the step header, plus the running total.
+      await expect(cart.getByTestId('kiosk-cart-summary')).toContainText('1 line');
+      // ONE band, and it is the step band: X top-left, segments, n/N right.
+      await expect(cart.getByTestId('step-progress-close')).toBeVisible();
+      await expect(cart.getByTestId('kiosk-cart-close')).toHaveCount(0);
+      // PG6 — a complete visit fills every segment before anything is paged.
+      await expect(cart.getByTestId('step-progress-count')).toHaveText('3/3');
 
-      // Commit WITHOUT payment — Save is the no-card path, so it needs no PIN.
-      await cart.getByRole('button', { name: /^save$/i }).click();
+      // Commit WITHOUT payment — a drop-off takes no money; the receipt is the
+      // record. The terminal key checks the visit in.
+      await advanceCartToReview(page);
+      await cart.getByTestId('kiosk-cart-save').click();
 
       // The receipt face is the proof the counter-transaction waist ran: it can
       // only render from a `CounterTransactionResult` the API returned.
@@ -883,8 +1029,9 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       await pairViaUiV2(page, code);
       await buildRepairLine(page, { name: 'E2E Root', phone: '5035550143' });
 
+      await page.getByTestId('kiosk-utility-cart').first().click();
       const cart = page.getByTestId('kiosk-cart-ledger');
-      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+      await expect(cart.getByTestId('kiosk-cart-summary')).toContainText('1 line');
 
       // Commands SWAP the centre; they are not a new session. This is the one
       // hard constraint the whole v2 shell rests on (kiosk-shell.md).
@@ -902,7 +1049,7 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
 
       // …and reopening the ticket still shows the same one line.
       await page.getByTestId('kiosk-utility-cart').click();
-      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+      await expect(cart.getByTestId('kiosk-cart-summary')).toContainText('1 line');
 
       // UPDATE — the row opens an editor and the edit sticks on the line.
       await cart.getByTestId('kiosk-cart-line').first().click();
@@ -940,15 +1087,58 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
     const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
     try {
       await pairViaUiV2(page, code);
-      await buildRepairLine(page, { name: 'E2E Pay', phone: '5035550144' });
+      /*
+       * A GOODS visit, because Pay only exists when money is due at this
+       * counter: operator 2026-09-15, *"a repair service on drop off never
+       * takes money off, it just prints out a receipt."* A sales tile is a cart
+       * line on tap, so this is the shortest payable visit there is.
+       */
+      await selectKioskCommand(page, 'sales');
+      const tile = page.getByTestId('product-tile').first();
+      await expect(tile).toBeVisible({ timeout: 20_000 });
+      await tile.click();
 
+      await page.getByTestId('kiosk-utility-cart').first().click();
       const cart = page.getByTestId('kiosk-cart-ledger');
-      await cart.getByRole('button', { name: /^pay$/i }).click();
+      await expect(cart).toBeVisible();
+
+      // Items is satisfied by the tap; Contact needs the match key.
+      await cart.getByTestId('kiosk-cart-continue').click();
+      await fillWhenHydrated(cart.getByTestId('kiosk-customer-phone'), '5035550144');
+      await cart.getByTestId('kiosk-cart-continue').click();
+
+      await expect(cart.getByTestId('kiosk-cart-due-now')).toBeVisible();
+      await cart.getByTestId('kiosk-cart-pay').click();
 
       // Step-up first, always: the tablet asks for a staff PIN before it will
       // take money, and it never asks for a card number.
       await expect(page.getByText(/pin/i).first()).toBeVisible({ timeout: 15_000 });
       await expect(page.getByPlaceholder(/card|number|cvv/i)).toHaveCount(0);
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
+  test('a service-only drop-off offers no payment at all', async ({ request, browser, baseURL }) => {
+    test.slow();
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Dropoff Money'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+      await buildRepairLine(page, { name: 'E2E Dropoff', phone: '5035550145' });
+      await page.getByTestId('kiosk-utility-cart').first().click();
+
+      const cart = page.getByTestId('kiosk-cart-ledger');
+      await advanceCartToReview(page);
+
+      // The quote is stated as DUE AT PICKUP, there is no due-now row, and no
+      // Pay key exists to press. Operator 2026-09-15: a drop-off "never takes
+      // money off, it just prints out a receipt".
+      await expect(cart.getByTestId('kiosk-cart-due-at-pickup')).toBeVisible();
+      await expect(cart.getByTestId('kiosk-cart-due-now')).toHaveCount(0);
+      await expect(cart.getByTestId('kiosk-cart-pay')).toHaveCount(0);
+      await expect(cart.getByTestId('kiosk-cart-save')).toContainText(/check in & print/i);
     } finally {
       await context.close();
       await revokeDevice(request, deviceId);

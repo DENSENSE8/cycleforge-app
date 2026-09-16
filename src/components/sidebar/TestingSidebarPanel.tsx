@@ -29,7 +29,7 @@ import {
   publishTestingScanSession,
   useTestingScanPickResolved,
 } from '@/lib/testing/testing-scan-session-bridge';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { seedReceivingSiblingsCache } from '@/lib/queries/receiving-queries';
 import {

@@ -29,9 +29,6 @@ function printBoxLabel(box: AssignedBox) {
   printHandlingUnitLabel({
     handlingUnitId: box.id,
     code: box.code,
-    unitCount: box.total,
-    locationName: box.locationName,
-    date: new Date().toLocaleDateString(),
   });
 }
 

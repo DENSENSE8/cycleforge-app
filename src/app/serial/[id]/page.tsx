@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';

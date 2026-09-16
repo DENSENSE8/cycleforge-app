@@ -20,12 +20,17 @@
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
+  clearIntegrationError,
   getIntegrationCredentials,
   markIntegrationError,
+  noteIntegrationWarning,
   type IntegrationProvider,
 } from './credentials';
 import { isOperationAllowed, type CredentialOperation } from './credential-allowlist';
-import { isCredentialAuthFailure } from './credential-auth-failure';
+import {
+  isCredentialAuthFailure,
+  isTransientCredentialFailure,
+} from './credential-auth-failure';
 
 /** Operation not permitted for this credential type. Map to HTTP 403. */
 export class CredentialPermissionError extends Error {
@@ -111,11 +116,19 @@ export async function withCredentialScope<T>(
 
   // 4. Run; flag the vault only on auth failures (resource misses stay active).
   try {
-    return await fn(credential);
+    const out = await fn(credential);
+    // Proof of life: lift a stale `error`/`last_error` left by an earlier
+    // transient blip so a recovered connection needs no human reconnect.
+    void healCredentialOnSuccess(orgId, provider, scope);
+    return out;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     void recordCredentialUsage({ orgId, provider, scope, operation, outcome: 'error', detail: message });
-    if (isCredentialAuthFailure(err)) {
+    if (isTransientCredentialFailure(err)) {
+      // Provider throttle / timeout / 5xx — the credential is fine. Record it
+      // for the Integrations card, keep the connection live.
+      void noteIntegrationWarning(orgId, provider, message, scope).catch(() => {});
+    } else if (isCredentialAuthFailure(err)) {
       void markIntegrationError(orgId, provider, message, scope).catch(() => {});
     }
     throw err;
@@ -185,6 +198,33 @@ async function touchIntegrationLastUsed(orgId: OrgId, provider: IntegrationProvi
         WHERE organization_id = $1 AND provider = $2 AND COALESCE(scope, '') = COALESCE($3, '')`,
       [orgId, provider, scope],
     );
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * Throttled heal after a successful credential use. The UPDATE is a guarded
+ * no-op when the row is already clean, and throttling keeps hot sync loops
+ * from issuing one write per call. A recovery lands within HEAL_THROTTLE_MS.
+ */
+const HEAL_THROTTLE_MS = 60_000;
+
+async function healCredentialOnSuccess(
+  orgId: OrgId,
+  provider: IntegrationProvider,
+  scope: string | null,
+): Promise<void> {
+  const key = throttleKey([orgId, provider, scope, 'heal']);
+  const now = Date.now();
+  const prev = lastWriteAt.get(key);
+  if (prev && now - prev < HEAL_THROTTLE_MS) return;
+  lastWriteAt.set(key, now);
+  try {
+    const healed = await clearIntegrationError(orgId, provider, scope);
+    if (healed) {
+      console.warn(`[credential-scope] healed ${provider} for org=${orgId} after a successful call`);
+    }
   } catch {
     /* best-effort */
   }

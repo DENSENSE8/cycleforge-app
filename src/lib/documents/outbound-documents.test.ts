@@ -4,6 +4,7 @@ import {
   attachOutboundDocument,
   deleteOutboundDocument,
   fetchOutboundDocuments,
+  replaceOutboundDocument,
   OutboundDocumentConflictError,
   OutboundDocumentNotFoundError,
   OutboundDocumentValidationError,
@@ -52,6 +53,9 @@ function fakeClientQuery(cap: Captured, script: Script) {
     }
     if (text.includes('INSERT INTO documents (entity_type')) {
       if (script.insertError) throw script.insertError;
+      return { rows: [script.insertedRow], rowCount: 1 };
+    }
+    if (text.includes('UPDATE documents SET document_data')) {
       return { rows: [script.insertedRow], rowCount: 1 };
     }
     if (text.includes('UPDATE orders SET label_printed_at')) {
@@ -285,4 +289,38 @@ test('fetchOutboundDocuments: disabled flag returns manual-upload message', asyn
     if (prev === undefined) delete process.env.OUTBOUND_MARKETPLACE_FETCH;
     else process.env.OUTBOUND_MARKETPLACE_FETCH = prev;
   }
+});
+
+test('replaceOutboundDocument: atomically changes bytes while preserving existing links', async () => {
+  const replacedRow = {
+    ...insertedLabelRow,
+    document_data: {
+      url: 'https://nas.example/replacement.pdf',
+      filename: 'replacement.pdf',
+      mimeType: 'application/pdf',
+    },
+  };
+  const { deps, cap } = fakes({ insertedRow: replacedRow });
+
+  const document = await replaceOutboundDocument(
+    ORG,
+    7,
+    {
+      url: 'https://nas.example/replacement.pdf',
+      filename: 'replacement.pdf',
+      mimeType: 'application/pdf',
+    },
+    deps,
+  );
+
+  assert.equal(document.id, 1);
+  assert.equal(document.data.url, 'https://nas.example/replacement.pdf');
+  assert.ok(
+    cap.queries.some((query) => query.text.includes('UPDATE documents SET document_data')),
+    'replacement must update the existing document instead of unlinking its existing order/shipment links',
+  );
+  assert.ok(
+    !cap.queries.some((query) => query.text.includes('DELETE FROM documents')),
+    'replacement must not delete the existing document row',
+  );
 });

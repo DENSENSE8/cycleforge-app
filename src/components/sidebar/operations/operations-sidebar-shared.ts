@@ -16,7 +16,13 @@ import type { JourneyDimension } from '@/lib/timeline/journey';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans' | 'reconciliation' | 'checks';
+export type OperationsMode =
+  | 'live' | 'insights' | 'history' | 'signals' | 'plans'
+  | 'reconciliation' | 'checks'
+  // Absorbed from /admin on dissolution: the monitor desk owns performance +
+  // system observability. Nav children in SIDEBAR_PAGE_NAV carry each mode's
+  // original permission gate.
+  | 'goals' | 'quality' | 'staff' | 'sync' | 'logs';
 
 /**
  * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
@@ -24,14 +30,23 @@ export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'si
  * dashboard. The other modes flip `?mode=`.
  *
  * - live            → real-time operations (the existing OperationsDashboard)
- * - analytics       → deep analytics dashboard (trends, breakdowns, inventory health)
+ * - (analytics)     → RETIRED 2026-09-16. The deep-analytics pane's KPI strip
+ *   compared a partial PST day with a whole one and carried three
+ *   hardcoded-zero deltas, so the operator could not trust any number on it.
+ *   The reconcilable half is `/reports?tab=packer`, a registered family whose
+ *   every row is one pack scan. `parseOperationsMode` no longer answers the
+ *   token, so an old bookmark degrades to Live.
  * - insights        → AI assistant, pre-scoped to live ops/inventory context
  * - history         → forensic "what happened" (Monitor)
  * - signals         → entity_signals timeline + browse
  * - plans           → legacy redirect to Home
  * - reconciliation  → CF-03 smear candidates + open tracking exceptions (Monitor)
  * - checks          → daily-check roster report (who still owes today's list)
- *
+ * - goals           → daily output targets and progress (ex-Admin › Goals)
+ * - quality         → condition grades, failures, repair throughput (ex-Admin › Quality)
+ * - staff           → weekly shifts, availability, shop calendar (ex-Admin › Staff schedule)
+ * - sync            → cron job health + run history (ex-Admin › Sync Activity)
+ * - logs            → bin / SKU / receiving operations log (ex-Admin › Operations log)
  * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
 
@@ -40,23 +55,32 @@ export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 /** Live Operations modes — includes default `live` (usually omitted). */
 export const OPERATIONS_MODES = [
   'live',
-  'analytics',
+  // 'analytics' intentionally absent — see the mode list above.
   'insights',
   'history',
   'signals',
   'plans',
   'reconciliation',
   'checks',
+  'goals',
+  'quality',
+  'staff',
+  'sync',
+  'logs',
 ] as const satisfies readonly OperationsMode[];
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
-  return raw === 'analytics' ||
-    raw === 'insights' ||
+  return raw === 'insights' ||
     raw === 'history' ||
     raw === 'signals' ||
     raw === 'plans' ||
     raw === 'reconciliation' ||
-    raw === 'checks'
+    raw === 'checks' ||
+    raw === 'goals' ||
+    raw === 'quality' ||
+    raw === 'staff' ||
+    raw === 'sync' ||
+    raw === 'logs'
     ? raw
     : 'live';
 }
@@ -122,15 +146,9 @@ export const JOURNEY_DIMENSION_PARAM: Record<
   unit: 'unit',
 };
 
-// Analytics time-range options (drive the kpi-table window + granularity).
-export type AnalyticsRange = '24h' | '7d' | '30d';
-
-export const ANALYTICS_RANGE_LABELS: Record<AnalyticsRange, string> = {
-  '24h': 'Last 24 hours',
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
-};
-
-export function parseAnalyticsRange(raw: string | null | undefined): AnalyticsRange {
-  return raw === '24h' || raw === '30d' ? raw : '7d';
-}
+// Analytics time-range options DELETED 2026-09-16 with `?mode=analytics`.
+// `AnalyticsRange` / `ANALYTICS_RANGE_LABELS` / `parseAnalyticsRange` had one
+// consumer — the retired rail — and the range itself was a defect: a
+// `24h/7d/30d` window over a page whose KPI strip was pinned to "today" and
+// whose packing block walked a PST day. A report gets ONE day, stated.
+// Sourcing's own range lives in `sourcing-shared.ts` and is untouched.

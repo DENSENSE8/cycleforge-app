@@ -10,7 +10,9 @@
  * redundant "Lv 1", enlarge the primary identifier, no HRI under the matrix.
  *
  * The encoded identity is still `encodePrintMatrix({ kind: 'location' })` —
- * 2×1 is the paper, not a new barcode format.
+ * 2×1 is the paper, not a new barcode format. Batching (USB sequential vs one
+ * multi-page iframe) is not this module's job: that is {@link printLabelFacesJob},
+ * shared with the handling-unit tote run.
  */
 
 import {
@@ -18,7 +20,8 @@ import {
   rackCode,
   type LocationSegments,
 } from '@/lib/barcode-routing';
-import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import { encodePrintMatrix } from '@/lib/qr/platform-link';
 
 export function locationLabelToFace(input: {
@@ -55,16 +58,6 @@ export function locationLabelToFace(input: {
   };
 }
 
-function faceToPrintOpts(face: LabelFaceModel) {
-  return {
-    name: `Location ${face.center}`.trim(),
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
-    face,
-  };
-}
-
 /** Print one or many unique location faces on 2×1 stock. */
 export async function printLocationLabelsJob(input: {
   segments: readonly LocationSegments[];
@@ -74,7 +67,6 @@ export async function printLocationLabelsJob(input: {
   /** USB sequential only — StickyActionBar `Printing 12/47`. Iframe batch does not tick. */
   onProgress?: (done: number, total: number) => void;
 }): Promise<'usb' | 'iframe' | 'skipped'> {
-  if (typeof window === 'undefined') return 'skipped';
   const faces = input.segments.map((segments) =>
     locationLabelToFace({
       segments,
@@ -83,40 +75,10 @@ export async function printLocationLabelsJob(input: {
       orgSlug: input.orgSlug,
     }),
   );
-  if (faces.length === 0 || !faces.every((f) => f.matrix.value.trim())) return 'skipped';
-
-  const { printLabelJob, buildMultiPageLabelHtml } = await import('@/lib/print/printLabel');
-  const { reserveLegacyPrintPopup, printHtmlInIframe } = await import('@/lib/print/iframePrint');
-  const { isSilentPrintEnabled } = await import('@/lib/print/printMode');
-
-  if (faces.length === 1) {
-    return printLabelJob({
-      ...faceToPrintOpts(faces[0]!),
-      legacyPopup: reserveLegacyPrintPopup(),
-    });
-  }
-
-  if (isSilentPrintEnabled()) {
-    const { getProfileForRole } = await import('@/lib/print/browserPrint');
-    const labelProfile = getProfileForRole('label');
-    if (labelProfile && labelProfile.kind !== 'os' && labelProfile.language !== 'none') {
-      const total = faces.length;
-      input.onProgress?.(0, total);
-      let usb = 0;
-      for (const face of faces) {
-        const result = await printLabelJob(faceToPrintOpts(face));
-        if (result !== 'usb') break;
-        usb += 1;
-        input.onProgress?.(usb, total);
-      }
-      if (usb === faces.length) return 'usb';
-    }
-  }
-
-  const html = buildMultiPageLabelHtml(faces.map((face) => faceToPrintOpts(face)));
-  printHtmlInIframe(html, {
+  return printLabelFacesJob({
+    faces,
     name: 'Location labels',
-    legacyPopup: reserveLegacyPrintPopup(),
+    faceName: (face) => `Location ${face.center}`.trim(),
+    onProgress: input.onProgress,
   });
-  return 'iframe';
 }

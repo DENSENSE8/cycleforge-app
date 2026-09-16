@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
-import { markDailyCheck, unmarkDailyCheck } from '@/lib/daily-checks/queries';
+import {
+  clearDailyCheckMarks,
+  markDailyCheck,
+  unmarkDailyCheck,
+} from '@/lib/daily-checks/queries';
 import { getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
 
 export const runtime = 'nodejs';
@@ -65,6 +69,41 @@ export const POST = withAuth(
       const message = error instanceof Error ? error.message : String(error);
       console.error('[daily-checks] mark failed:', message);
       return NextResponse.json({ error: 'Failed to save the check' }, { status: 500 });
+    }
+  },
+  { permission: 'dashboard.view' },
+);
+
+/**
+ * DELETE /api/daily-checks/mark?date=YYYY-MM-DD — "reset all" for the CALLER.
+ *
+ * Same session-scoped contract as POST: the day comes from the query string and
+ * the staffer from the verified session, so the endpoint cannot be pointed at a
+ * colleague's ticks. Omit `date` and it resets today in the warehouse zone —
+ * `getCurrentPSTDateKey()`, never the server clock, which is UTC and would roll
+ * the day over mid-afternoon and erase nothing the operator could see.
+ *
+ * Idempotent: a reset with nothing to clear answers 200 with `cleared: 0`.
+ */
+export const DELETE = withAuth(
+  async (request, ctx) => {
+    const date = new URL(request.url).searchParams.get('date');
+    if (date && !parseDateKey(date)) {
+      return NextResponse.json({ error: 'date must be YYYY-MM-DD' }, { status: 400 });
+    }
+    const dateKey = date ?? getCurrentPSTDateKey();
+
+    try {
+      const cleared = await clearDailyCheckMarks({
+        orgId: ctx.organizationId,
+        staffId: ctx.staffId,
+        dateKey,
+      });
+      return NextResponse.json({ ok: true, cleared, dateKey });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[daily-checks] reset failed:', message);
+      return NextResponse.json({ error: 'Failed to reset the checks' }, { status: 500 });
     }
   },
   { permission: 'dashboard.view' },

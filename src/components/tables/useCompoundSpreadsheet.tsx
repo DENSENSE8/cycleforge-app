@@ -42,6 +42,7 @@
 
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { CompoundPlaneRow } from '@/components/tables/compound/CompoundPlaneRow';
+import { compoundRowActivationProps } from '@/components/tables/compound/compound-row-activation';
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import type { SlotTableFieldsMenu } from '@/components/tables/useSlotTableLayout';
@@ -56,7 +57,8 @@ import { compareGridValues } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { singleBand, type RowGroup } from '@/lib/group-rows';
 import type { SlotTrackFields } from '@/lib/tables/materialize-tracks';
-import { slotSubtitlePartsFor } from '@/lib/tables/slot-table-line-qty';
+import { slotSubtitlePartsFor, type LineQtyMeaning } from '@/lib/tables/slot-table-line-qty';
+import { slotTableSearchFactIds } from '@/lib/tables/slot-table-search-vocabulary';
 
 /**
  * Structural shape of a mounted compound column. Every family's column
@@ -93,6 +95,18 @@ export interface UseCompoundSpreadsheetOptions<
    * already supplies `subtitleParts`, those win (family face: qty/money).
    */
   subtitleFieldIds?: readonly string[];
+  /**
+   * What the line qty MEANS here, which decides its tone. Defaults to
+   * `order-line` (2+ warns — the pick-and-pack risk every outbound peer
+   * paints); an on-hand count passes `on-hand` and stays quiet at every value.
+   */
+  lineQtyMeaning?: LineQtyMeaning;
+  /**
+   * Facts the family's ADAPTER paints that no track names — see
+   * {@link slotTableSearchFactIds}. The Id track's second line
+   * (`identitySubFace`) is the case this exists for.
+   */
+  adapterPaintedFieldIds?: readonly string[];
   /**
    * `(row, fieldId) → resolved fact`. The family's pure resolver, and the ONE
    * source for both the search index and the sort comparator — a search that
@@ -135,6 +149,30 @@ export interface UseCompoundSpreadsheetOptions<
    */
   rowActions?: (row: Row) => readonly CompoundRowAction[];
   selectionScope?: string;
+  /**
+   * The row SELECTION, when the family's capabilities declare `multiSelect`.
+   *
+   * Until this existed, a compound family could declare `multiSelect: true`,
+   * pass a `selectionScope` (which reaches the column HEADER's select-all) and
+   * still paint an inert gutter: the engine owns the row, so a family had
+   * nowhere to hand it a checked state. That is the last reason a family
+   * would have written its own row.
+   *
+   * It stays DATA + callbacks, never JSX
+   * (`TABLE_ENGINE_LAW.descriptorCarriesDataNotBehavior`), and the gutter's
+   * contextual face — triage marks at rest, the checklist square on hover, the
+   * leading edge rail — remains the CELL's
+   * (`SLOT_TABLE_PAINT_LAW.selectGutterStatus`). The family says which rows
+   * are ticked; it never says how a tick looks.
+   *
+   * Omitted, or omitted while `multiSelect` is false, every row paints exactly
+   * as it did.
+   */
+  selection?: {
+    isSelected: (row: Row) => boolean;
+    /** Receives the click's modifier state, so a family can offer a range walk. */
+    onToggle: (row: Row, event: { shiftKey: boolean }) => void;
+  };
 }
 
 /**
@@ -175,6 +213,8 @@ export function useCompoundSpreadsheet<
   getRowId,
   adapter,
   subtitleFieldIds,
+  lineQtyMeaning,
+  adapterPaintedFieldIds,
   resolve,
   sortFactFor,
   capabilities,
@@ -189,14 +229,19 @@ export function useCompoundSpreadsheet<
   onOpenRow,
   rowActions,
   selectionScope,
+  selection,
 }: UseCompoundSpreadsheetOptions<Row, K, C>): CompoundSpreadsheetFeed<Row, K, C> {
   const shellRef = useRef<HTMLDivElement>(null);
 
-  /** Every fact the MOUNTED layout resolves — the search and sort vocabulary. */
-  const boundFactIds = useMemo(
-    () => columns.map((c) => c.fieldId).filter((id): id is string => Boolean(id)),
-    [columns],
-  );
+  /**
+   * The gutter control, or `null`. Gated on the CAPABILITY as well as the
+   * callbacks: a family that passes a selection while its binding says
+   * `multiSelect: false` would paint a checkbox the header's select-all cannot
+   * reach, which is the "control with no verb behind it" the capability flag
+   * exists to refuse.
+   */
+  const rowSelect =
+    capabilities.multiSelect === true && selection ? selection : null;
 
   const sortFactByKey = useMemo(
     () => new Map<string, string | null>(columns.map((c) => [c.key, sortFactFor(c)])),
@@ -204,19 +249,34 @@ export function useCompoundSpreadsheet<
   );
 
   /**
-   * The one search box, over the MOUNTED tracks: a row matches when any bound
-   * fact's resolved text contains the query. Keyed to the bindings rather than
-   * a hardcoded field list, so an org that binds notes can search notes and one
-   * that unbinds a fact stops matching on it — the search always covers exactly
-   * what the operator can see.
+   * Every fact the operator can READ off a row — bound tracks ∪ the structural
+   * facts the chrome tracks paint ∪ the under-title band. The law and its
+   * reasoning live in {@link slotTableSearchFactIds}, which is a pure function
+   * precisely so a test can pin it for all 47 peers at once.
+   */
+  const searchFactIds = useMemo(
+    () =>
+      slotTableSearchFactIds({
+        columns,
+        sortFactFor,
+        subtitleFieldIds,
+        adapterPaintedFieldIds,
+      }),
+    [columns, sortFactFor, subtitleFieldIds, adapterPaintedFieldIds],
+  );
+
+  /**
+   * The one search box: a row matches when any readable fact's resolved text
+   * contains the query. One resolver feeds this and the comparator, so the
+   * search can never read different text than the sort orders by.
    */
   const filtered = useMemo(() => {
     const q = search.value.trim().toLowerCase();
     if (!q) return [...rows];
     return rows.filter((row) =>
-      boundFactIds.some((fact) => factText(resolve, row, fact).toLowerCase().includes(q)),
+      searchFactIds.some((fact) => factText(resolve, row, fact).toLowerCase().includes(q)),
     );
-  }, [rows, search.value, boundFactIds, resolve]);
+  }, [rows, search.value, searchFactIds, resolve]);
 
   /**
    * Order by the SORTED FACT, never by the column key: track keys are slot
@@ -246,14 +306,26 @@ export function useCompoundSpreadsheet<
    * One row, on the shared {@link CompoundRow}. There is no family row
    * component and no `renderRow` option: the adapter's view IS the family's
    * contribution, and everything else about the row is the same on every table.
+   *
+   * `onOpenRow` reaches the row TWICE, on purpose: as the hover menu's "Open"
+   * item (`onOpen`) and as the row's own activation gesture
+   * ({@link compoundRowActivationProps} — click on a single-select surface,
+   * double-click where selection owns the click). The menu item alone left a
+   * binding whose declared record plane was `navigate` unreachable by clicking
+   * the row, which is the one gesture every operator tries first.
    */
   const paintRow = useCallback(
     (row: Row, visible: readonly C[]): ReactNode => {
+      const activate = onOpenRow ? () => onOpenRow(row) : undefined;
       const adapted = adapter(row);
       const subtitleParts =
         adapted.subtitleParts ??
         (subtitleFieldIds && subtitleFieldIds.length > 0
-          ? slotSubtitlePartsFor(subtitleFieldIds, (fieldId) => resolve(row, fieldId))
+          ? slotSubtitlePartsFor(
+              subtitleFieldIds,
+              (fieldId) => resolve(row, fieldId),
+              lineQtyMeaning,
+            )
           : undefined);
       const view: CompoundRowView = {
         ...adapted,
@@ -274,14 +346,38 @@ export function useCompoundSpreadsheet<
           rowPlane={binding.rowPlane}
           columns={visible}
           capabilities={capabilities}
-          selected={false}
+          selected={rowSelect ? rowSelect.isSelected(row) : false}
           view={view}
-          onOpen={onOpenRow ? () => onOpenRow(row) : undefined}
+          onOpen={activate}
+          {...compoundRowActivationProps({
+            onActivate: activate,
+            multiSelect: capabilities.multiSelect === true,
+          })}
+          select={
+            rowSelect
+              ? {
+                  checked: rowSelect.isSelected(row),
+                  onToggle: (event) => rowSelect.onToggle(row, event),
+                  label: rowSelect.isSelected(row) ? 'Deselect row' : 'Select row',
+                }
+              : undefined
+          }
           actions={rowActions?.(row)}
         />
       );
     },
-    [adapter, subtitleFieldIds, resolve, getRowId, capabilities, onOpenRow, rowActions, binding.rowPlane],
+    [
+      adapter,
+      subtitleFieldIds,
+      lineQtyMeaning,
+      resolve,
+      getRowId,
+      capabilities,
+      rowSelect,
+      onOpenRow,
+      rowActions,
+      binding.rowPlane,
+    ],
   );
 
   return {

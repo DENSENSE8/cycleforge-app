@@ -9,21 +9,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
-import { cn } from '@/utils/_cn';
 import {
   computeKioskCartTotals,
   cartHasRepairLine,
   isRepairPayload,
 } from '@/lib/kiosk/cart-line';
+import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
+import { KioskCartLineCard } from '@/components/kiosk/KioskCartLineCard';
 import {
-  useKioskSession,
-  useKioskSessionActions,
-  lineTypeLabel,
-} from '@/lib/kiosk/kiosk-session-store';
-import {
-  KIOSK_CART_LINE_ROW,
   KIOSK_CUSTOMER_FACE,
-  KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
   KIOSK_SECTION_LABEL_ROW,
@@ -96,23 +90,21 @@ export function KioskCustomerFace() {
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Your order</h2>
       </div>
 
-      <ul className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto">
+      {/* The customer sees the SAME line card the staff face shows (Phase 2):
+          one card family, so the two screens cannot describe a line
+          differently. Read-only here — the customer taps nothing. */}
+      <ul
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-4"
+        aria-label="Your order"
+      >
         {session.lines.length === 0 ? (
           <li className="px-6 py-12 text-center text-base font-semibold text-text-soft">
             No items yet.
           </li>
         ) : (
           session.lines.map((line) => (
-            <li key={line.id} className={cn(KIOSK_CART_LINE_ROW, 'px-6 py-4')}>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-semibold">{line.title}</p>
-                <p className={cn('uppercase tracking-widest', KIOSK_META)}>
-                  {lineTypeLabel(line.type)}
-                </p>
-              </div>
-              <span className="shrink-0 text-base font-semibold tabular-nums">
-                {formatCents(line.unitAmountCents * line.quantity)}
-              </span>
+            <li key={line.id}>
+              <KioskCartLineCard line={line} readOnly />
             </li>
           ))
         )}

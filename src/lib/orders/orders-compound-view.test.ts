@@ -64,13 +64,14 @@ describe('ordersIdentityLine', () => {
   });
 });
 
-describe('the tested step (absorbed into the slot resolver)', () => {
-  // `ordersTestedStep` became `resolveOrdersSlotValue(row, 'orders.picked')` —
-  // same facts, resolved by binding rather than by a hard-coded step. The
-  // resolver's own suite lives beside the catalog; these two pin the seam this
-  // file always pinned: the step line the compound cell paints.
-  it('is empty when nobody has tested', () => {
-    const step = resolveOrdersSlotValue(baseOrder(), 'orders.picked', { testerDisplay: '---' });
+describe('the pick step (absorbed into the slot resolver)', () => {
+  // `ordersTestedStep` became `resolveOrdersSlotValue(row, 'orders.picked')`,
+  // and on 2026-09-14 the facts behind it moved off the tester/test_date family
+  // onto the feed's pick projection. The resolver's own suite lives beside the
+  // catalog; these two pin the seam this file always pinned: the step line the
+  // compound cell paints.
+  it('is empty when nobody has picked', () => {
+    const step = resolveOrdersSlotValue(baseOrder(), 'orders.picked');
     assert.equal(step?.kind, 'stage_event');
     if (step?.kind !== 'stage_event') return;
     assert.equal(step.who, null);
@@ -79,11 +80,10 @@ describe('the tested step (absorbed into the slot resolver)', () => {
     assert.equal(formatCompoundStageStepLine(step), null);
   });
 
-  it('fills who and time when a tech scan exists; station stays null until stamped', () => {
+  it('fills who and time when a pick scan exists; station stays null', () => {
     const step = resolveOrdersSlotValue(
-      baseOrder({ test_date_time: '2026-08-20T18:00:00.000Z' }),
+      baseOrder({ picked_by_name: 'Alex', picked_at: '2026-08-20 18:00:00' }),
       'orders.picked',
-      { testerDisplay: 'Alex' },
     );
     if (step?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(step.who, 'Alex');
@@ -117,21 +117,20 @@ describe('ordersCompoundView', () => {
   });
 
   it('carries resolved SLOT values through to the view by track key', () => {
-    const record = baseOrder({ test_date_time: '2026-08-20T18:00:00.000Z' });
-    const tested = resolveOrdersSlotValue(record, 'orders.picked', { testerDisplay: 'Alex' })!;
+    const record = baseOrder({ picked_by_name: 'Alex', picked_at: '2026-08-20 18:00:00' });
+    const picked = resolveOrdersSlotValue(record, 'orders.picked')!;
     const view = ordersCompoundView(record, {
       stateLabel: 'Tested',
       delayDays: 0,
       testerDisplay: 'Alex',
       packerDisplay: '---',
-      slots: { 'status:1': tested },
+      slots: { 'status:1': picked },
     });
     const slot = view.slots?.['status:1'];
     assert.equal(slot?.kind, 'stage_event');
     if (slot?.kind !== 'stage_event') return;
     assert.equal(slot.who, 'Alex');
     assert.ok(slot.at);
-    assert.equal(slot.station, null);
   });
 
   it('bound subtitle parts REPLACE the implicit identity line — an org choice is final', () => {
@@ -243,17 +242,35 @@ describe('ordersCompoundView', () => {
 });
 
 describe('ordersEdgeMark', () => {
-  it('urgent is the order-level yellow rail', () => {
+  it('urgent is the order-level yellow rail, over any product flag', () => {
     assert.deepEqual(ordersEdgeMark({ is_urgent: true, is_out_of_stock: true, has_exception: true }), {
       label: 'Urgent',
+      kind: 'urgent',
       barClass: 'bg-yellow-400',
       pulse: true,
       tickClass: 'bg-yellow-100',
     });
   });
 
-  it('does not steal the rail for exception or out of stock', () => {
-    assert.equal(ordersEdgeMark({ is_urgent: false, is_out_of_stock: true, has_exception: true }), null);
+  it('an exception pulses the same rail in red', () => {
+    assert.deepEqual(
+      ordersEdgeMark({ is_urgent: false, is_out_of_stock: true, has_exception: true }),
+      { label: 'Exception', kind: 'attention', barClass: 'bg-rose-500', pulse: true, tickClass: 'bg-rose-100' },
+    );
+  });
+
+  it('a shortage pulses the red rail too — operator 2026-09-15', () => {
+    assert.deepEqual(
+      ordersEdgeMark({ is_urgent: false, is_out_of_stock: true, has_exception: false }),
+      { label: 'Out of stock', kind: 'attention', barClass: 'bg-rose-500', pulse: true, tickClass: 'bg-rose-100' },
+    );
+  });
+
+  it('an ordinary row has no rail at all', () => {
+    assert.equal(
+      ordersEdgeMark({ is_urgent: false, is_out_of_stock: false, has_exception: false }),
+      null,
+    );
   });
 });
 

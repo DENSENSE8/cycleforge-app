@@ -2213,6 +2213,8 @@ export const repairService = pgTable('repair_service', {
   intakeConfirmedAt: timestamp('intake_confirmed_at', { withTimezone: true }),
   receivedByStaffId: integer('received_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   customerId: integer('customer_id').references(() => customers.id, { onDelete: 'set null' }),
+  /** When the counter printed the 2x1 REP-{id} internal-insurance label (printRepairLabel). NULL = needs label. 2026-09-15c. */
+  labelPrintedAt: timestamp('label_printed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -5671,7 +5673,12 @@ export const counterSessions = pgTable('counter_sessions', {
    *  version + 1 (plan D3); a mismatch refetches the snapshot. */
   version: integer('version').notNull().default(0),
   /** CHECK counter_sessions_active_command_chk: retail | repair | buyback |
-   *  pickup — the KioskCommandId vocabulary (which pane is on screen). */
+   *  pickup — which pane is on screen. Vocabulary SoT is `KIOSK_COMMAND_IDS`
+   *  in `@/lib/kiosk/commands`; the CHECK and that list must stay identical
+   *  (`commands.test.ts` pins it). The column DEFAULT is legacy: opening a
+   *  session passes `active_command` explicitly from the org's choice
+   *  (`OrgSettings.kiosk.defaultCommand` → `getKioskDefaultCommand`), because
+   *  a column default cannot express a per-tenant preference. */
   activeCommand: text('active_command').notNull().default('retail'),
   /** CHECK counter_sessions_face_chk: staff | customer. */
   face: text('face').notNull().default('staff'),
@@ -6226,3 +6233,30 @@ export type AutomationRule = typeof automationRules.$inferSelect;
 export type NewAutomationRule = typeof automationRules.$inferInsert;
 export type AutomationRun = typeof automationRuns.$inferSelect;
 export type NewAutomationRun = typeof automationRuns.$inferInsert;
+
+// ─── SKU → picker ownership (2026-09-14b_sku_staff_pairings.sql) ────────────
+
+/**
+ * One owning picker per item number, so pick work routes to the person who
+ * knows that rack. The UNIQUE (organization_id, sku) is the whole point: a
+ * second owner would make "whose list is this row on?" ambiguous.
+ *
+ * An unpaired sku is legal — its allocations land in the UNPAIRED bucket that
+ * any picker may claim, which is why there is no backfill requirement here.
+ */
+export const skuStaffPairings = pgTable('sku_staff_pairings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: orgIdCol(),
+  sku: text('sku').notNull(),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'restrict' }),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgSkuUx: uniqueIndex('ux_sku_staff_pairings_sku').on(table.organizationId, table.sku),
+  orgStaffIdx: index('idx_sku_staff_pairings_staff').on(table.organizationId, table.staffId, table.sku),
+}));
+
+export type SkuStaffPairing = typeof skuStaffPairings.$inferSelect;
+export type NewSkuStaffPairing = typeof skuStaffPairings.$inferInsert;

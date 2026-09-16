@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import {
   SlotTableGroupFold,
+  SlotTableGroupFoldBody,
   SlotTableGroupParentRow,
 } from '@/components/tables/compound/SlotTableGroupParentRow';
 import type { RowGroup } from '@/lib/group-rows';
@@ -14,6 +15,9 @@ import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { ordersCompoundView, ordersEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
 import { ordersSlotValues } from '@/lib/tables/field-catalog/orders-resolve';
 import { lineQtySubtitlePart } from '@/lib/tables/slot-table-line-qty';
+import { statusWordRollup, ordersBandStateTone } from '@/lib/receiving/receiving-group-rollup';
+import { resolveRowStatus } from './helpers';
+import type { OrdersQueueMode, QueueRowRecord } from '@/lib/dashboard/orders-queue-helpers';
 import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
 import { formatCurrency } from '@/utils/_number';
 
@@ -37,6 +41,12 @@ export interface QueueGroupRowProps {
     rowIndex?: number,
     quietIdentity?: boolean,
   ) => ReactNode;
+  /**
+   * Which lane this band sits in. The parent's status pill rolls up
+   * `resolveRowStatus(row, queueMode)` — the same resolver its leaves use — so
+   * the band and its children can never disagree about the stage.
+   */
+  queueMode: OrdersQueueMode;
 }
 
 /** Commercial totals for the parent band — units and money, not boxes. */
@@ -94,6 +104,7 @@ export function QueueGroupRow({
   selectedIds,
   onToggleGroup,
   renderRow,
+  queueMode,
 }: QueueGroupRowProps) {
   const multi = group.rows.length > 1;
   const [folded, setFolded] = useState(false);
@@ -107,11 +118,12 @@ export function QueueGroupRow({
           onToggleGroup={onToggleGroup}
           folded={folded}
           onToggleFold={() => setFolded((open) => !open)}
+          queueMode={queueMode}
         />
       ) : null}
-      {folded
-        ? null
-        : group.rows.map((row, i) =>
+      {folded ? null : (
+        <SlotTableGroupFoldBody multi={multi}>
+          {group.rows.map((row, i) =>
             renderRow(
               row,
               baseStripeIndex + i,
@@ -119,6 +131,8 @@ export function QueueGroupRow({
               multi,
             ),
           )}
+        </SlotTableGroupFoldBody>
+      )}
     </SlotTableGroupFold>
   );
 }
@@ -130,6 +144,7 @@ function QueueOrderParentRow({
   onToggleGroup,
   folded,
   onToggleFold,
+  queueMode,
 }: {
   group: RowGroup<ShippedOrder>;
   columns: readonly { key: string; width: string; frozen?: boolean }[];
@@ -137,6 +152,7 @@ function QueueOrderParentRow({
   onToggleGroup: (ids: readonly number[], checked: boolean) => void;
   folded: boolean;
   onToggleFold: () => void;
+  queueMode: OrdersQueueMode;
 }) {
   const ids = group.rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
@@ -145,9 +161,23 @@ function QueueOrderParentRow({
   const orderId = String(lead.order_id || group.key || '').trim();
   const { carriers, boxCount, trackings } = orderCarrierBoxes(group.rows);
   const { qty, amount } = parentOrderLineTotals(group.rows);
+  // Status rollup (operator 2026-09-14, item 1): the band pill summarizes its
+  // children instead of blanking the column.
+  //
+  // It rolls up the SAME label the leaves paint — `resolveRowStatus(row,
+  // queueMode)`, the resolved lane stage — not the raw `shipment_status`
+  // column. That was the bug the operator reported on 2026-09-15: five
+  // children each reading OUT OF STOCK under a band reading nothing, because a
+  // shortage is a LIFECYCLE stage (`resolveOrderLifecycleStage`) and never a
+  // carrier status word, so every row folded to the empty string. A parent that
+  // is quieter than its own children is worse than no parent.
+  const stateRollup = statusWordRollup(
+    group.rows.map((row) => resolveRowStatus(row as QueueRowRecord, queueMode)?.label ?? null),
+    ordersBandStateTone,
+  );
   const view = {
     ...ordersCompoundView(lead, {
-      stateLabel: null,
+      stateLabel: stateRollup.label || null,
       delayDays: null,
       slots: ordersSlotValues(lead, columns),
       subtitleParts: [

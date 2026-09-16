@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { timeAgo } from '@/utils/_date';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
-import { conditionBadgeTone } from '@/components/station/receiving-constants';
+import { conditionBadgeTone } from '@/lib/receiving/receiving-constants';
 import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
 import {

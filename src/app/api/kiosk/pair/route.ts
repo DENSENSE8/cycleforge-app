@@ -23,7 +23,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   pairKioskDevice,
-  KIOSK_COOKIE_NAME,
+  setKioskCookies,
 } from '@/lib/auth/kiosk-device';
 import {
   LEGACY_SESSION_COOKIE_NAME,
@@ -37,8 +37,8 @@ import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-f
 export const runtime = 'nodejs';
 
 // Device tokens are long-lived; revocation is server-side (kiosk_devices.status),
-// so the cookie can sit near the browser 400-day ceiling.
-const KIOSK_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+// so the cookie sits near the browser 400-day ceiling — `setKioskCookies` owns
+// that lifetime for pairing, dogfood bind and in-place re-bind alike.
 
 const BodySchema = z.object({ code: z.string().trim().min(8) });
 
@@ -95,14 +95,7 @@ async function handlePair(req: NextRequest) {
       deviceId: pairing.deviceId,
       label: pairing.label,
     });
-    res.cookies.set(KIOSK_COOKIE_NAME, pairing.token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: KIOSK_COOKIE_MAX_AGE_SECONDS,
-      // intentionally no `domain` — host-only on `{slug}.kiosk.app…`
-    });
+    setKioskCookies(res, { token: pairing.token });
     // Clear any stray staff session on the kiosk host so a tablet profile
     // never coexists staff + device principals.
     if (onKioskHost) {

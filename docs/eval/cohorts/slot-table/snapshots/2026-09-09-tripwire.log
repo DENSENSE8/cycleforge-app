@@ -1,0 +1,136 @@
+▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (1.230787ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (0.571922ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.161176ms)
+  ✔ CompoundItem title hover actions satisfy paint contract (1.156277ms)
+  ✔ no new *GridRow.tsx — To-ship sheet sync must not add a second table (50.85159ms)
+  ✔ To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow (0.320711ms)
+  ✔ engine seam files export the shared hooks (imported, not grepped) (106.368622ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.359606ms)
+  ✔ ship-by writes through useOptimisticMutation (0.188668ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (1.230464ms)
+  ✔ graph + critique surfaces include compact ship-by (0.117385ms)
+  ✔ DataTable always mounts the filter funnel (0.249544ms)
+  ✔ shared skeleton has no ⋮ and no Amount track (copy on chips, money under the title) (0.302081ms)
+  ✔ every graphSymbol maps to an existing KEEP engine file (0.533869ms)
+  ✔ header click-to-sort is engine law (chrome only; every data track sorts) (7.618015ms)
+✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (172.635949ms)
+▶ slot-table header-sort law on compound PRODUCT_TABLES peers
+  ✔ orders / receiving / incoming / tasks / daily / review default mounts (0.517841ms)
+✔ slot-table header-sort law on compound PRODUCT_TABLES peers (0.602792ms)
+▶ slot-table discover (delete vs keep)
+  ✔ KEEP engine paths exist on disk (1.171103ms)
+  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.153421ms)
+  ✔ does not list KEEP symbols as DELETE (0.179086ms)
+  ✔ known-debt ratchet: no new drifts, no stale ids (0.632164ms)
+  ✔ names the live receiving dual-SoT (Testing History + hand GRID) (0.239781ms)
+  ✔ next unblocked delete is mechanical (not judgment) (0.211115ms)
+  ✔ FBA catalog and station-history are judgment — not auto-delete (0.157048ms)
+✔ slot-table discover (delete vs keep) (3.945227ms)
+▶ isLineMoneyFieldId
+  ✔ matches `{family}.amount` / `{family}.price` and skips cost / occupancy (0.634154ms)
+  ✔ requires money + subtitle on the catalog field (0.179888ms)
+✔ isLineMoneyFieldId (1.660962ms)
+▶ ensureLineMoneySubtitle
+  ✔ pins price after qty (0.87176ms)
+  ✔ clears amountFieldId when that field is the line money (0.158166ms)
+  ✔ is a no-op when the catalog has no line money (0.135ms)
+✔ ensureLineMoneySubtitle (1.386858ms)
+▶ pinLineMoneyAfterQty
+  ✔ sits money immediately after qty (0.178265ms)
+✔ pinLineMoneyAfterQty (0.293002ms)
+▶ lineMoneySubtitlePart
+  ✔ keeps the currency mark when empty (0.181699ms)
+✔ lineMoneySubtitlePart (0.31495ms)
+▶ LINE_MONEY_LOCKED_REASON
+  ✔ names the under-title lock (0.185374ms)
+✔ LINE_MONEY_LOCKED_REASON (0.258077ms)
+▶ blanket: every SLOT_LAYOUT_TABLES catalog with line money
+  ✔ gets amount/price under the title from an empty product default (0.678172ms)
+✔ blanket: every SLOT_LAYOUT_TABLES catalog with line money (0.777702ms)
+▶ isLineQtyFieldId
+  ✔ matches `{family}.qty` and skips occupancy (0.585681ms)
+  ✔ requires number + subtitle on the catalog field (0.158907ms)
+✔ isLineQtyFieldId (1.61847ms)
+▶ ensureLineQtySubtitle
+  ✔ pins qty first on an empty subtitle band (0.746535ms)
+  ✔ moves qty out of status into subtitle:1 (0.184859ms)
+  ✔ is a no-op when the catalog has no line qty (0.116184ms)
+✔ ensureLineQtySubtitle (1.274932ms)
+▶ pinLineQtyFirst / pinLineQtySubtitleBindings
+  ✔ puts qty left of later facts (0.184081ms)
+  ✔ rewrites a subtitle band so qty is first (0.213717ms)
+✔ pinLineQtyFirst / pinLineQtySubtitleBindings (0.647619ms)
+▶ lineQtySubtitlePart
+  ✔ uses the To-ship face: 1 quiet, 2+ warning, widthCh 2 (0.276359ms)
+✔ lineQtySubtitlePart (0.383545ms)
+▶ slotSubtitlePartsFor
+  ✔ applies the qty face and pins first even when ids are reversed (0.292117ms)
+✔ slotSubtitlePartsFor (0.379823ms)
+▶ blanket: every SLOT_LAYOUT_TABLES catalog with `{family}.qty`
+  ✔ gets qty as subtitle:1 from an empty product default — a new table inherits the place (0.71334ms)
+  ✔ moves a status-parked qty onto the first subtitle track (0.13775ms)
+  ✔ does not treat bins.total_qty as line qty (0.105691ms)
+✔ blanket: every SLOT_LAYOUT_TABLES catalog with `{family}.qty` (1.07607ms)
+▶ LINE_QTY_LOCKED_REASON
+  ✔ is the Fields-picker copy (0.101993ms)
+✔ LINE_QTY_LOCKED_REASON (0.150923ms)
+▶ slot-table session laws (operator rulings as greps)
+  ✔ every law has a unique id and an eval hook (0.855527ms)
+  ✔ dates.header-is-dates (0.243318ms)
+  ✔ dates.due-hover-due-date (0.153461ms)
+  ✔ dates.order-hover-order-date (0.140811ms)
+  ✔ dates.hover-helper (0.137823ms)
+  ✔ line-money.no-amount-track (0.36478ms)
+  ✔ line-money.suffix-amount-or-price (0.16431ms)
+  ✔ line-money.inbound-incoming-price (0.152807ms)
+  ✔ line-money.inbound-receiving-price (0.166395ms)
+  ✔ engine.no-orders-only-amount-drop (0.21557ms)
+  ✔ header.no-frozen-sort-prop (0.174276ms)
+  ✔ morphing.not-queueMode-gated (0.125153ms)
+  ✔ overlay.no-display-cohort (0.10733ms)
+  ✔ overlay.idle-helper-owns-stack (0.097721ms)
+  ✔ engine.skeleton-filter-ratchet (0.122039ms)
+  ✔ e2e.parity-includes-dates (0.115339ms)
+  ✔ engine.inbound-shares-skeleton — Incoming and Receiving keys match COMPOUND_COLUMN_KEYS (0.679304ms)
+  ✔ occupancy and last-cost are not line money (0.107723ms)
+✔ slot-table session laws (operator rulings as greps) (5.520784ms)
+▶ one table engine — verbs bind to fields, not to pages
+  ✔ only family CATALOGS declare verbs; the fork set never grows (108.59321ms)
+  ✔ the debt list is real — every named fork still exists, and is still a fork (0.348631ms)
+  ✔ every debt entry says WHY, so the next agent can finish it (0.159221ms)
+  ✔ a catalog module is a real file — the allowlist cannot rot (0.221277ms)
+✔ one table engine — verbs bind to fields, not to pages (110.431577ms)
+▶ one table engine — verbs bind to fields, not to lanes
+  ✔ no per-lane action key list survives anywhere under src/ (335.721229ms)
+  ✔ the engine can express a field-bound, reversible verb at all (0.259475ms)
+  ✔ the reversible verb is declared ONCE, with its field and its direction (98.823974ms)
+  ✔ direction is never read from the route (0.782428ms)
+✔ one table engine — verbs bind to fields, not to lanes (436.092607ms)
+▶ one table engine — the descriptor carries data, not behavior
+  ✔ the shared geometry has no per-family override hook (0.328735ms)
+  ✔ no NEW mount strips Dates/select/thumb off the shared skeleton (64.882126ms)
+  ✔ field catalogs do not revive the Amount COLUMN slot kind (0.927179ms)
+  ✔ settings/admin compound key unions do not keep a dead amount track (116.043072ms)
+  ✔ every compound spreadsheet passes subtitleFieldIds so under-title facts paint (65.4366ms)
+  ✔ AdminTable does not return — DataTable is the only engine (75.901877ms)
+  ✔ raw HTML product tables never grow — remaining sites are named debt (101.777043ms)
+  ✔ the read plane is a MOUNT — the artifact renderer is debt, never exempt (0.173192ms)
+  ✔ a capability may be named by KEY, never carried as a closure (0.105302ms)
+  ✔ GridColumnKey sortable lists do not revive the Amount track (92.096534ms)
+  ✔ no mount filters amount off the skeleton — COMPOUND_TRACKS has none (106.1596ms)
+  ✔ the compound cell does not paint an Amount track (0.306418ms)
+  ✔ the compound view model stays strings and enums — no JSX crosses the seam (0.156185ms)
+✔ one table engine — the descriptor carries data, not behavior (624.942583ms)
+▶ one table engine — the law is quotable and complete
+  ✔ every invariant carries text an agent can act on (0.115721ms)
+  ✔ names the seams a new table must not re-implement (0.077316ms)
+✔ one table engine — the law is quotable and complete (0.28138ms)
+ℹ tests 86
+ℹ suites 21
+ℹ pass 86
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3089.858322

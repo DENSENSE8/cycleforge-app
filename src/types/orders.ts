@@ -2,6 +2,12 @@
 // (utils/*, hooks/*) import these row shapes WITHOUT pulling in the heavy
 // query module (lib/neon/orders-queries → db). lib/neon/orders-queries
 // re-exports ShippedOrder from here so its existing callers are unaffected.
+//
+// The one import is `import type` on a PURE module (no I/O, no db), so it
+// erases at compile time and the leaf stays dependency-free at runtime. It is
+// here rather than a re-typed string union because a row field that disagrees
+// with the resolver's own vocabulary is a lie the compiler cannot see.
+import type { PriceSource } from '@/lib/orders/price-resolve';
 
 export interface ShippedOrder {
   id: number;
@@ -30,6 +36,10 @@ export interface ShippedOrder {
   test_date_time: string | null;   // aliased from tsn.created_at
   test_activity_at?: string | null;
   next_test_activity_at?: string | null;
+  /** Pick actor — inventory_events.actor_staff_id (PICKED / FORCE_PICK scan), else picking_sessions.picker_staff_id */
+  picked_by?: number | null;
+  picked_by_name?: string | null;
+  picked_at?: string | null;       // inventory_events.occurred_at (pick scan), else picking_sessions.ended_at
   /** Staff ID assigned to pack — sourced from work_assignments.assigned_packer_id */
   packer_id: number | null;
   packed_by: number | null;
@@ -81,6 +91,23 @@ export interface ShippedOrder {
   note_count?: number | null;
   sale_amount?: string | number | null;
   currency?: string | null;
+  /*
+   * Resolved display price — one number per line, plus its provenance.
+   * `sale_amount` / `currency` above stay the raw sold columns; these five are
+   * what a desk paints, produced by `resolveLinePrice`
+   * (lib/orders/price-resolve.ts) on every `/api/orders` row, including the
+   * thin `listShape=queue` projection the mobile queues fetch.
+   */
+  /** Integer cents. Null = nothing priced this line; render a dash, not $0. */
+  price_cents?: number | null;
+  /** ISO-4217; 'USD' when the row stored no currency. */
+  price_currency?: string;
+  /** Which fact won: realised sale, allocated unit, channel listing, or none. */
+  price_source?: PriceSource;
+  /** The channel that priced it — null for a sold price and for a unit price. */
+  price_platform?: string | null;
+  /** True when this is an ASK, not revenue. Surfaces must mark it (≈). */
+  price_is_estimate?: boolean;
   status_history: any;
   /** Derived from shipping_tracking_numbers carrier status — not stored on orders */
   is_shipped?: boolean;

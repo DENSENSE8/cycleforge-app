@@ -17,7 +17,7 @@
  */
 
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import type { TestingController } from './testing-panel-types';

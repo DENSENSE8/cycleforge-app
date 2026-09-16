@@ -37,12 +37,12 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { UnitPrintHistory } from '@/components/receiving/UnitPrintHistory';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -179,8 +179,6 @@ export function BoxWorkbenchPanel({
                 printHandlingUnitLabel({
                   handlingUnitId: box.id,
                   code: box.code,
-                  unitCount: rollup.total,
-                  locationName: box.location_name,
                 })
               }
             />

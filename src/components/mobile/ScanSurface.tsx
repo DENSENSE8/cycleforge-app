@@ -192,7 +192,7 @@ export function ScanSurface({
                 placeholder={manualPlaceholder}
                 autoComplete="off"
                 inputMode="text"
-                className={cn("h-11 flex-1 rounded-none border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
+                className={cn("h-11 flex-1 rounded-none border border-glass/10 bg-glass/5 px-3 text-role-field text-white placeholder:text-white/40", focusRing('field', 'accent'))}
               />
               <Button
                 type="submit"

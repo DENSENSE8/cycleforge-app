@@ -14,7 +14,7 @@ import {
   workflowStatusTableLabel,
   conditionGradeTableLabel,
   conditionBadgeTone,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 
 interface PhotoRow {

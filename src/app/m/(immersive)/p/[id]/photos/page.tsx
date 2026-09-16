@@ -34,7 +34,7 @@ function PhotoPageInner() {
       packerLogId={packerLogId}
       orderId={orderId}
       headerLabel={headerLabel}
-      returnHref="/m/pack"
+      returnHref="/m/work"
       maxPhotos={10}
       guided={guided}
       initialStep={initialStep}

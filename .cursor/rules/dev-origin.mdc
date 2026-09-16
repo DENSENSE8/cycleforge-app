@@ -1,0 +1,52 @@
+---
+description: >-
+  The app has ONE address for agents: http://localhost:3050 (the switchboard).
+  Never probe a lane port, never hand-start next dev, never bind a second app
+  origin. Applies to every session in this worktree.
+alwaysApply: true
+---
+
+# Dev origin — `:3050`, and nothing else
+
+<!--
+  Callers: every Cursor/Claude agent session (alwaysApply).
+  SoT: AGENTS.md § "Dev origin"; Garisek-OS/scripts/switchboard/server.ts
+  User (2026-09-15): "only work from 3050."
+-->
+
+**Every request an agent makes to this app goes to `http://localhost:3050`.**
+`:3050` is the switchboard: it routes to the pinned lane and stamps
+`x-switch-target` / `x-switch-lane` / `x-switch-cookie-scope`. Cookie scoping
+(`cf_kiosk` → `cf_kiosk__l7`) happens ONLY through it, so a probe aimed at a
+lane port exercises a different cookie namespace than the operator's browser
+and can "pass" on state the operator never sees.
+
+## Do
+
+- Curl, Playwright, browser probes, screenshots, smoke tests: `:3050`.
+- Lane lifecycle through its unit:
+  `systemctl --user {start,restart,status} cycleforge-lane@prod` ·
+  `journalctl --user -u cycleforge-lane@prod -f`.
+- `:3050` dead or `503` with `x-switch-error`? The LANE is down — start its
+  unit. Read switch truth at `GET /__switch/state`.
+- Attach, never spawn: `.claude/launch.json` is attach-only by design.
+
+## Refuse
+
+- Probing `:307x`, `:3051`, or any "free port" app server to get around a busy
+  `:3050`. `npm run dev` returning `EADDRINUSE` on `:3050` is the switchboard
+  working.
+- Hand-starting `next dev` on a lane port. That process is unowned, nothing
+  restarts it, and it inherits the caller's env — which is how a split-branch
+  `DATABASE_URL` once 500'd every DB route.
+- Setting `PW_BASE_URL` away from `:3050`, or adding a second dev-server entry
+  to `.claude/launch.json`.
+- Writing a Neon DSN into a lane env file. DSNs live in the worktree `.env`
+  only; the systemd `EnvironmentFile` layer overrides `.env` silently.
+
+## One exception, and it is not an app origin
+
+`request-shape` measures a **production build** on an isolated `NEXT_DIST_DIR`
+and a throwaway port, because a dev server reports a different request shape.
+Measure there, verify the result at `:3050`, stop it when done, and never build
+into the `.next` that `:3050` owns.

@@ -1,33 +1,57 @@
 'use client';
 
 /**
- * SearchResultsSurface — shared results body for the `/search` find stage
- * browse list (and any host that wants the same retrieve + refine + flat
- * list).
+ * SearchResultsSurface — the `/search` find stage's results body.
  *
  * Controlled: the host owns the query (URL state); the surface owns retrieval
- * + result rendering. Client refine (`etype`/`hstat`) + display sort over the
- * top-50. When `onSelectHit` is provided, hosts should `preventDefault` to keep
- * selection in-page (`?sel=`).
+ * and hands the settled rows to the ONE table engine. Client refine
+ * (`etype`/`hstat`/`chan`) + display ranking over the top-50.
+ *
+ * ## Two MOUNTS of one family, chosen by measure
+ *
+ * This was a hand-rolled `<ul>` of result links. `table-engine-law.ts` §5
+ * (`READ_PLANE_IS_A_MOUNT`) withdrew the licence that made that legal: a
+ * display surface is a mount of the one engine at a read-only TIER, and
+ * "read-only" buys no exemption from sort, selection or the family's verbs.
+ *
+ * At `comfortable` the mount is the `search-hits` DataTable
+ * (`@/components/search/hits-grid`): a field catalog, a resolver, a
+ * `row → CompoundRowView` adapter and a registry line. Zero components. Six
+ * entity types collapse at the ADAPTER, which is invariant 1. Everything the
+ * old list could not do — a column edge, click-to-sort headers, a Fields
+ * picker, an org binding, a filter funnel, a row count — the mount gets
+ * because every other desk in the product already has it.
+ *
+ * At `compact` the mount is a list of {@link SearchResultRow} — THE one search
+ * row, the same renderer ⌘K and every rail already paint. Not a fork of the
+ * engine and not a second table: a different MOUNT of the same family, chosen
+ * by the route, exactly as `/m/work` paints `MobileToShipRow` cards while the
+ * To-ship desk mounts the `orders` DataTable.
+ *
+ * ### Why not a phone LAYOUT TIER of `search-hits`
+ *
+ * A tier can unbind `status:N` / `subtitle:N` slots, and that is all it can
+ * do. The seven CHROME tracks (`select` · `fulfillment` · `thumb` · `item` ·
+ * `dates` · `state` · `_fill`) belong to `compoundColumnsFor`, whose refusal
+ * of a per-mount width override is invariant 3 verbatim — "the door through
+ * which a layout difference walks back in" — and stripping them at the mount
+ * is `COMPOUND_SKELETON_FILTER_DEBT`. So the `minmax()` floor, the 1040px
+ * track sum and the horizontal scroll all survive the tier, and the chrome row
+ * (filter · sort · rows · fields · zoom) plus the column-header row still
+ * spend ~90px above the first result on a 390px screen. `SURFACE_LAW` §5 names
+ * the outcome directly: a full `DataTable` is not a phone list SoT.
  *
  * Loading paints nothing here — hosts publish pending via
  * `setGlobalSearchPending` so the header paints `SearchPendingBar`. Never
  * invent body “Opening…” holds or height-fill with skeleton rows.
  */
 
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from '@/components/Icons';
-import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
-import { SearchHitLine } from '@/components/search/SearchHitLine';
+import { DataTable } from '@/components/tables/DataTable';
+import { useSearchHitsSpreadsheet } from '@/components/search/hits-grid/useSearchHitsSpreadsheet';
 import { EmptyState } from '@/design-system/primitives';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
-import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import {
   refineSearchHits,
   sortSearchHits,
@@ -36,10 +60,8 @@ import {
   type SearchDisplaySort,
 } from '@/lib/search/search-refine';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
-import {
-  isSearchSelActive,
-  type SearchSelection,
-} from '@/lib/search/search-selection';
+import { SearchResultRow } from '@/components/search/SearchResultRow';
+import { useFindDensity } from '@/components/search/find-density-context';
 
 export interface SearchResultsSurfaceProps {
   query: string;
@@ -51,24 +73,17 @@ export interface SearchResultsSurfaceProps {
   chan?: string | null;
   /** Client status refine (`?hstat=` → `facets.status`). */
   hstat?: string | null;
-  /** Display sort (`?colsort=` — relevance default | date). */
+  /** Display ranking (`?colsort=` — relevance default | date). */
   sort?: SearchDisplaySort;
-  /** Row density. Compact for rails; comfortable for the `/search` Monitor feed. */
-  density?: SearchRowDensity;
-  /**
-   * Show the secondary "Open journey" affordance on rows. Default true;
-   * `/search` rail passes false (selection opens detail in-pane).
-   */
-  showJourneyAction?: boolean;
   /**
    * When false, skip the empty-query teach EmptyState (rail shows recents instead).
    */
   showEmptyTeach?: boolean;
   /**
-   * Row click. Receives the event so a host can intercept the `<Link>`
-   * (`event.preventDefault()` + write `?sel=`). When absent, rows navigate.
+   * Row activation — the `?sel=` handoff. The row is not a link, so there is
+   * no default to prevent: the host just records the selection.
    */
-  onSelectHit?: (hit: AiSearchHit, event: ReactMouseEvent) => void;
+  onSelectHit?: (hit: AiSearchHit) => void;
   /** Fires when the in-flight state changes. */
   onLoadingChange?: (loading: boolean) => void;
   /**
@@ -84,17 +99,6 @@ export interface SearchResultsSurfaceProps {
   /** Distinct `facets.status` values for a host-owned refine chrome. */
   onStatusOptions?: (options: string[]) => void;
   onChannelOptions?: (options: string[]) => void;
-  /**
-   * Durable selection from `?sel=` — highlights any matching entity row.
-   * Prefer this over `activeHitId` on the search workbench.
-   */
-  activeSel?: SearchSelection | null;
-  /**
-   * @deprecated Prefer `activeSel`. Order-only highlight for legacy rail hosts.
-   */
-  activeHitId?: number | null;
-  /** Per-order packout proof for the rail rows (rep workbench only). */
-  packoutById?: Record<number, NearMatchPackout>;
   className?: string;
 }
 
@@ -104,14 +108,89 @@ interface FetchState {
   forKey: string;
 }
 
+/**
+ * The `comfortable` mount — the `search-hits` DataTable.
+ *
+ * Its own component so `useSearchHitsSpreadsheet` (which resolves the org's
+ * slot layout, materializes tracks and builds a row view per hit) does not run
+ * on a phone that is not going to paint a grid. A hook cannot be called
+ * conditionally; a mount can.
+ */
+function SearchHitsTableMount({
+  hits,
+  loading,
+  emptyMessage,
+  totalCount,
+  onOpenHit,
+}: {
+  hits: AiSearchHit[];
+  loading: boolean;
+  emptyMessage: string;
+  /** UNREFINED settled count — the foot strip reads "N of M". */
+  totalCount: number;
+  onOpenHit?: (hit: AiSearchHit) => void;
+}) {
+  const sheet = useSearchHitsSpreadsheet({ hits, loading, emptyMessage, onOpenHit });
+  return <DataTable {...sheet} totalCount={totalCount} />;
+}
+
+/**
+ * The `compact` mount — a flush list of THE one search row.
+ *
+ * `role="listbox"` with the rows as DIRECT children, because
+ * `SearchResultRow` puts `role="option"` on its own anchor: an `li` wrapper
+ * between them breaks the listbox contract, which is why there is no `ul`
+ * here even though this is a list.
+ *
+ * The separator is the row edge (`divide-y`), which is what the flush stage
+ * trades its gutters and its shadow FOR. `showJourneyAction={false}` matches
+ * the other list host (`CommandBar`): a per-row secondary icon is exactly the
+ * chrome `SURFACE_LAW` R8 collapses on a phone.
+ */
+function SearchHitsPhoneList({
+  hits,
+  loading,
+  emptyMessage,
+  onSelectHit,
+}: {
+  hits: AiSearchHit[];
+  loading: boolean;
+  emptyMessage: string;
+  onSelectHit?: (hit: AiSearchHit) => void;
+}) {
+  // A settled miss says which kind of miss it was; an in-flight query paints
+  // nothing, because the header SearchPendingBar owns that hold.
+  if (hits.length === 0) {
+    return loading ? null : (
+      <EmptyState title="No results" description={emptyMessage} />
+    );
+  }
+  return (
+    <div
+      role="listbox"
+      aria-label="Search results"
+      data-testid="search-results-list"
+      className="divide-y divide-border-hairline"
+    >
+      {hits.map((hit) => (
+        <SearchResultRow
+          key={`${hit.entityType}:${hit.id}`}
+          hit={hit}
+          density="compact"
+          showJourneyAction={false}
+          onNavigate={onSelectHit ? (next) => onSelectHit(next) : undefined}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function SearchResultsSurface({
   query,
   etype = null,
   chan = null,
   hstat = null,
   sort = 'relevance',
-  density = 'comfortable',
-  showJourneyAction,
   showEmptyTeach = true,
   onSelectHit,
   onLoadingChange,
@@ -119,20 +198,16 @@ export function SearchResultsSurface({
   onResults,
   onStatusOptions,
   onChannelOptions,
-  activeSel = null,
-  activeHitId,
-  packoutById,
   className,
 }: SearchResultsSurfaceProps) {
   const q = query.trim();
+  const density = useFindDensity();
   const [state, setState] = useState<FetchState>({
     status: 'idle',
     hits: [],
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
-  const presence = useMotionPresence(framerPresence.workbenchPaneSettle);
-  const transition = useMotionTransition(framerTransition.workbenchPaneSettle);
 
   const statusOptions = useMemo(
     () => (state.status === 'done' ? statusOptionsFromHits(state.hits) : []),
@@ -177,7 +252,7 @@ export function SearchResultsSurface({
         });
       })
       .catch((err) => {
-        if ((err as { name?: string }).name === 'AbortError') return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         setState({ status: 'error', hits: [], forKey: key });
       });
   }, [q]);
@@ -207,31 +282,21 @@ export function SearchResultsSurface({
     onChannelOptions?.(channelOptions);
   }, [channelOptions, onChannelOptions]);
 
-  const hasRefine = Boolean(etype || hstat);
-  const showResults = state.status === 'done' && displayHits.length > 0;
-  const isCompact = density === 'compact' || density === 'dropdown';
+  const hasRefine = Boolean(etype || hstat || chan);
 
+  /**
+   * The engine's settled-empty sentence. The URL refine narrows the rows
+   * BEFORE they reach the mount, so the table cannot tell a filtered miss from
+   * an absolute one — this surface can, and it says which.
+   */
+  const emptyMessage = hasRefine
+    ? 'No results match these filters. Clear a refine chip or pick a broader type or status.'
+    : 'Nothing in orders, units, cartons, SKUs, repairs or FBA matched this query.';
 
-  function isActive(hit: AiSearchHit): boolean {
-    if (activeSel) return isSearchSelActive(activeSel, hit);
-    return hit.entityType === 'order' && activeHitId != null && hit.id === activeHitId;
-  }
+  const showResults = state.status === 'done' || state.status === 'loading';
 
   return (
     <div className={className}>
-      {state.status === 'done' && state.hits.length > 0 && (
-        <p className="px-4 pt-3 pb-1.5 text-role-caption text-text-soft">
-          {hasRefine
-            ? `${displayHits.length} of ${state.hits.length === 50 ? '50+' : state.hits.length}`
-            : state.hits.length === 50
-              ? '50+'
-              : state.hits.length}{' '}
-          result
-          {(hasRefine ? displayHits.length : state.hits.length) === 1 ? '' : 's'}
-          {sort === 'date' ? ' by date' : ''}
-        </p>
-      )}
-
       {showEmptyTeach && !q && (
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}
@@ -247,50 +312,25 @@ export function SearchResultsSurface({
           description="Try again in a moment."
         />
       )}
-      {state.status === 'done' && state.hits.length === 0 && q && (
-        <EmptyState
-          icon={<Search className="h-6 w-6 text-text-faint" />}
-          title="No matches"
-          description="Nothing in orders, units, cartons, SKUs, repairs or FBA matched this query."
-        />
-      )}
-      {state.status === 'done' && state.hits.length > 0 && displayHits.length === 0 && q && (
-        <EmptyState
-          icon={<Search className="h-6 w-6 text-text-faint" />}
-          title="No results match these filters"
-          description="Clear a refine chip or pick a broader type or status."
-        />
-      )}
 
-      <AnimatePresence mode="wait" initial={false}>
-        {showResults ? (
-          <motion.div
-            key={`results:${state.forKey}`}
-            {...presence}
-            transition={transition}
-            className="pb-4"
-          >
-            <ul className="divide-y divide-border-hairline" data-testid="search-index">
-              {displayHits.map((hit) => (
-                <li key={`${hit.entityType}:${hit.id}`}>
-                  {isCompact ? (
-                    <SearchResultRow
-                      hit={hit}
-                      density={density}
-                      onNavigate={onSelectHit}
-                      active={isActive(hit)}
-                      showJourneyAction={showJourneyAction}
-                      packout={hit.entityType === 'order' ? packoutById?.[hit.id] : undefined}
-                    />
-                  ) : (
-                    <SearchHitLine hit={hit} active={isActive(hit)} onNavigate={onSelectHit} />
-                  )}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {showResults && q ? (
+        density === 'compact' ? (
+          <SearchHitsPhoneList
+            hits={displayHits}
+            loading={state.status === 'loading'}
+            emptyMessage={emptyMessage}
+            onSelectHit={onSelectHit}
+          />
+        ) : (
+          <SearchHitsTableMount
+            hits={displayHits}
+            loading={state.status === 'loading'}
+            emptyMessage={emptyMessage}
+            totalCount={state.hits.length}
+            onOpenHit={onSelectHit}
+          />
+        )
+      ) : null}
     </div>
   );
 }

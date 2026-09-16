@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { ExternalLink, Loader2, Plus, X } from '@/components/Icons';
-import { TicketChip } from '@/components/ui/CopyChip';
+import { TicketChip, TrackingChip } from '@/components/ui/CopyChip';
 import { Button, Panel } from '@/design-system/primitives';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -106,12 +106,22 @@ function ConnectionRow({
   busy: boolean;
 }) {
   const isTicket = link.entityType === TICKET_TYPE;
-  const href = isTicket ? zendeskTicketUrl(link.entityId) : `/repair?wo=${link.entityId}`;
-  const kind = isTicket ? 'Ticket' : 'Work order';
+  const isTracking = link.entityType === 'TRACKING';
+  // Tracking links have no parent page — the number IS the fact, and the
+  // house TrackingChip (last-8) is its face.
+  const href = isTracking
+    ? null
+    : isTicket
+      ? zendeskTicketUrl(link.entityId ?? 0)
+      : `/repair?wo=${link.entityId ?? 0}`;
+  const kind = isTicket ? 'Ticket' : isTracking ? 'Tracking' : 'Work order';
+  const handle = isTracking ? (link.label ?? '') : String(link.entityId ?? '—');
   return (
     <div className="flex items-center gap-2 py-1.5">
       {isTicket ? (
         <TicketChip value={String(link.entityId)} display={`#${link.entityId}`} dense />
+      ) : isTracking ? (
+        <TrackingChip value={link.label ?? ''} dense />
       ) : (
         <span className="font-mono text-role-caption tabular-nums text-text-default">
           WO-{link.entityId}
@@ -126,7 +136,7 @@ function ConnectionRow({
           target="_blank"
           rel="noreferrer"
           className={cn('shrink-0 text-text-muted hover:text-text-default', focusRing('control'))}
-          aria-label={`Open ${kind} ${link.entityId}`}
+          aria-label={`Open ${kind} ${handle}`}
         >
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
@@ -137,7 +147,7 @@ function ConnectionRow({
         disabled={busy}
         onClick={onDetach}
         icon={<X className="h-3.5 w-3.5" />}
-        aria-label={`Remove ${kind} ${link.entityId}`}
+        aria-label={`Remove ${kind} ${handle}`}
       />
     </div>
   );
@@ -223,7 +233,7 @@ export function TicketLeaf({
     setDraft('');
   };
 
-  if (ticketLink) {
+  if (ticketLink && ticketLink.entityId != null) {
     // Byte-twin of Unbox TicketDisplayHost linked branch — flush chat, no
     // extra title / unlink strip. Unlink lives on Connections.
     return (

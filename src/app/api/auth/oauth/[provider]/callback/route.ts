@@ -34,6 +34,8 @@ import {
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { oauthOrigin } from '@/lib/auth/oauth-origin';
+import { loadSharedStaffChoices } from '@/lib/identity/shared-staff-choice';
+import { resolveOAuthPostLoginPath } from '@/lib/identity/oauth-post-login-path';
 
 export const runtime = 'nodejs';
 
@@ -41,19 +43,6 @@ function clearStateCookie(res: NextResponse): void {
   res.cookies.set(OAUTH_STATE_COOKIE, '', {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0,
   });
-}
-
-/**
- * True when `url` is a path that stays on THIS origin once `new URL()` resolves
- * it. Mirrors documents/[id]/content/route.ts, hardened for the two escapes the
- * bare `startsWith('/')` check misses: `//evil.com` and `/\evil.com` both parse
- * to an external host, and tab/CR/LF are stripped by the URL parser first, so
- * `/<TAB>/evil.com` collapses into `//evil.com`.
- */
-function isSameOriginPath(url: string): boolean {
-  if (!url.startsWith('/')) return false;
-  const stripped = url.replace(/[\t\r\n]/g, '');
-  return stripped.startsWith('/') && !stripped.startsWith('//') && !stripped.startsWith('/\\');
 }
 
 function fail(req: NextRequest, code: string): NextResponse {
@@ -255,7 +244,15 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
   });
   await logAuthEvent({ accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
-  const dest = payload.next && isSameOriginPath(payload.next) ? payload.next : '/';
+  // Shared-account orgs: keep the umbrella session and land on the same
+  // staff-name picker as email+password. Do not treat the Google/Apple email
+  // as a person identity.
+  const shared = await loadSharedStaffChoices(target.organization_id, target.staff_id);
+  const dest = resolveOAuthPostLoginPath({
+    sharedStaffOrg: shared != null,
+    next: payload.next,
+    signinPath: payload.signinPath,
+  });
   const res = NextResponse.redirect(new URL(dest, oauthOrigin(req)));
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',

@@ -1,8 +1,13 @@
 'use client';
 
 /**
- * Products Kit/QC `?skuId=` paint-pending — sidebar pickers + workspaces share
- * one pending (`shareKey`) so selection paints in the click commit.
+ * Products QC `?skuId=` paint-pending — the sidebar picker and the workspace
+ * share one pending (`shareKey`) so selection paints in the click commit.
+ *
+ * The Kit Parts view was removed 2026-09-15, so `view` is now a single value
+ * rather than a `qc | kit` union. Kept as a parameter, not inlined: the picker
+ * needs the view stamp and the selection written in ONE replace, or the pane
+ * renders the previous view against the new SKU for a frame.
  */
 
 import { startTransition, useCallback, useMemo } from 'react';
@@ -18,8 +23,8 @@ function parseSkuId(raw: string | null): number | null {
 
 export function useProductsSkuIdParam(): {
   skuId: number | null;
-  /** Open/clear SKU; optional `view` stamps qc|kit on the same replace. */
-  setSkuId: (next: number | null, view?: 'qc' | 'kit') => void;
+  /** Open/clear SKU; optional `view` stamps `qc` on the same replace. */
+  setSkuId: (next: number | null, view?: 'qc') => void;
 } {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +57,7 @@ export function useProductsSkuIdParam(): {
   });
 
   const setSkuId = useCallback(
-    (next: number | null, view?: 'qc' | 'kit') => {
+    (next: number | null, view?: 'qc') => {
       if (!view) {
         setValue(next);
         return;

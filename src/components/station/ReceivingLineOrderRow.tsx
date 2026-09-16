@@ -14,7 +14,7 @@ import {
   getStatusDotBg,
   getWorkflowIconMeta,
   shouldShowWorkflowStatusIcon,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
@@ -51,7 +51,7 @@ import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
 } from '@/lib/receiving/rail/status';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from './receiving-line-serials';
 
 function receivingStageTooltip(

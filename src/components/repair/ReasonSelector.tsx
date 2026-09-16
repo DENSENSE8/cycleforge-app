@@ -6,12 +6,8 @@ import { TextField } from '@/design-system/primitives';
 import { FormField } from '@/design-system/components';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { REPAIR_FAILURE_LABELS } from '@/lib/repair/repair-failure-reasons';
-import {
-  KIOSK_META,
-  KIOSK_PILL,
-  KIOSK_PILL_ACTIVE_ISSUE,
-  KIOSK_PILL_IDLE,
-} from '@/app/kiosk/kiosk-chrome';
+import { KioskChip } from '@/components/kiosk/KioskChip';
+import { KioskEntryField } from '@/components/kiosk/KioskCustomerIntake';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -64,39 +60,45 @@ export function ReasonSelector({
           {reasons.map((reason) => {
             const isSelected = selectedReasons.includes(reason);
             return (
-              <button
+              // The chip family's ROW face — this used to hand-compose
+              // KIOSK_PILL + a tone token + a positioned Check, which is the
+              // fork KioskChip exists to end (Phase 2).
+              <KioskChip
                 key={reason}
-                type="button"
+                face="row"
+                tone={isSelected ? 'issue' : 'idle'}
+                selected={isSelected}
                 onClick={() => toggleReason(reason)}
-                className={cn(
-                  KIOSK_PILL,
-                  'relative',
-                  isSelected ? KIOSK_PILL_ACTIVE_ISSUE : KIOSK_PILL_IDLE,
-                )}
-                aria-pressed={isSelected}
+                trailing={
+                  isSelected ? (
+                    <Check className="h-4 w-4 shrink-0 text-amber-800" aria-hidden />
+                  ) : null
+                }
               >
-                <span className={cn('min-w-0 flex-1 truncate pr-6 font-semibold', KIOSK_META, 'text-inherit')}>
-                  {reason}
-                </span>
-                {isSelected ? (
-                  <Check
-                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-800"
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
+                {reason}
+              </KioskChip>
             );
           })}
         </div>
-        <TextField
-          label="Repair notes (optional)"
-          value={notes}
-          onChange={onNotesChange}
-          multiline
-          rows={3}
-          appearance="flush"
-          className="border-b border-border-hairline"
-        />
+        {/*
+          The SAME notes control the contact step uses — `KioskEntryField`
+          multiline on `KIOSK_POS_ENTRY_AREA`: rounded-xl, placeholder-in-box,
+          no floating label, no flush hairline. This was a `TextField
+          appearance="flush"`, i.e. a square-cornered field with a bottom
+          divider, on a surface where every other control is rounded. Operator
+          2026-09-15: *"reuse the exact same notes component in the contact
+          information … it doesn't have to be a squared corner radius."*
+          Padding matches the contact block's own field rhythm (px-4 / py-4).
+        */}
+        <div className="px-4 pb-4">
+          <KioskEntryField
+            name="Repair notes (optional)"
+            value={notes}
+            onChange={onNotesChange}
+            multiline
+            testId="kiosk-repair-reason-notes"
+          />
+        </div>
       </div>
     );
   }

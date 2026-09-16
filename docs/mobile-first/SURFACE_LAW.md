@@ -114,9 +114,20 @@ Pass/fail: fail any of R1–R4 on the mobile SoT → not done.
 | `MobileRecentStrip` | Top-left compact recents / back MRU |
 | `MobileStepShell` | Title + optional path status + body + sticky CTA slot |
 | `MobileQueueShell` | Search + banded list + row → sheet (Pick / Work pattern) |
+| `MobileActionSlot` | The page's **one** top-bar verb, painted left of the permanent SCAN seat. Registrar + provider, mirroring the desk's `DeskActionSlot` |
 | Existing | `RedesignedMobileShell`, `BottomSheet`, item-record mobile faces, Pick `_picker/*` |
 
 New jobs **compose** these; they do not invent a parallel mobile design system.
+
+**The phone top bar reads title-left / action-right** (`MobileTopBar`): menu ·
+page title … page action · **SCAN**. Scan owns the corner permanently (ruling
+2026-08-21) and the page action sits immediately to its LEFT, registered from
+the page body through `MobileActionSlotRegistrar` — never passed as a prop,
+because the host mounts the bar and the page is `children`.
+
+Unlike the desk's three-role slot, the phone slot holds **exactly one** action:
+390px has no room for a cluster, and R1/R2 already say one job, one CTA. A
+page with a second verb puts it in a `BottomSheet`, not a second corner.
 
 ---
 
@@ -126,12 +137,22 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 
 | Verb area | Mobile SoT |
 |---|---|
-| Pick queue | `/m/pick` |
-| Pick session | `/m/pick/[orderId]` |
+| Pick queue (line-grained, location-directed) | `/m/pick` |
+| Pick session | `/m/pick/[orderId]` · claim `/m/id/pick/[orderId]` |
 | Orders / to-ship | `/m/work` |
-| Home | `/m/home` |
-| Unbox / receive / scan / pack | `/m/unbox`, `/m/receive`, `/m/scan`, `/m/pack`, … |
+| Unbox / receive / location scan | `/m/unbox`, `/m/receive`, `/m/receiving`, `/m/scan` |
+| Identification kernel (QC-done, claim, scan-out) | `/m/id/*` — `/m/id/methods`, `/m/id/[job]/[entityId]`, `/m/id/scan-out/[orderId]` |
+| Packing | **`/m/p/[id]/photos`** — the photo feed reached from the desk `scan_ready` bridge. There is **no `/m/pack` queue**: deleted 2026-09-14 by operator ruling. Do not recreate it. |
+| Claim / on-hold | `/m/claim`, `/m/on-hold` |
 | Locations / labels (port target) | `/m/…` TBD — must exist before desk Labels is “done” |
+
+**Outbound / inbound verb order** (operator, 2026-09-14) is the ledger in
+`src/lib/mobile/mobile-first-surface.ts` → `MOBILE_FIRST_VERB_GAPS`:
+import → pick list auto-created → pick by location → label → box → stage
+(location scan) → carrier scan-out; inbound delivery → unbox + photos → QC
+inspect → QC test → ID kernel marks QC done → place at location → **pre-box**
+(labelled, graded, location-paired, ready to pick). Pre-box is the hinge that
+makes outbound a lookup instead of a computation.
 
 Machine checklist: `src/lib/mobile/mobile-first-surface.ts`.
 

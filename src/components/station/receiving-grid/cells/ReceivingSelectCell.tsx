@@ -6,10 +6,10 @@ import {
   GridRowCheckbox,
   isEmptyGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
+import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
   RECEIVING_GRID_FROZEN_CELL,
   receivingGridCell,
-  receivingGridFrozenLeft,
 } from '@/lib/receiving/receiving-grid-layout';
 import { cn } from '@/utils/_cn';
 import type { ReceivingGridCellProps } from './receiving-grid-cell-types';
@@ -53,7 +53,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
           // the select gutter scrolls away with the facts.
           'overflow-hidden p-0',
         )}
-        style={{ left: receivingGridFrozenLeft('select') }}
+        style={{ left: gridFrozenLeft(ctx.columns, 'select') }}
         aria-hidden
         {...frozenEdge}
       >
@@ -72,7 +72,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         RECEIVING_GRID_FROZEN_CELL,
         emptyGutter ? 'items-stretch p-0' : 'justify-center',
       )}
-      style={{ left: receivingGridFrozenLeft('select') }}
+      style={{ left: gridFrozenLeft(ctx.columns, 'select') }}
       {...frozenEdge}
     >
       {selectMode && onToggle ? (

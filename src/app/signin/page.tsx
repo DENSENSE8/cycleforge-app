@@ -58,7 +58,7 @@ import { flushSync } from 'react-dom';
 // graph (measured 2026-08-28: LCP 4975ms simulated vs ~2.0s observed, TBT
 // 320-426ms, Perf 73). Section/step swaps render conditionally and cut —
 // house law: show it or do not.
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
 import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
 const QRCode = dynamic(() => import('react-qr-code'), {
@@ -99,8 +99,9 @@ import { armBootSplash } from '@/lib/boot-flag';
 // `optimizePackageImports`, so the whole engine rode into the one public
 // route's critical graph behind three unrelated primitives. Deep imports are
 // the established house shape here (108 existing call sites).
-import { Fingerprint } from 'lucide-react';
+import { CheckCircle2, Fingerprint } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
+import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Panel } from '@/design-system/primitives/Panel';
 import { RadiantLines } from '@/components/ui/radiant-lines';
 import {
@@ -165,6 +166,7 @@ function humanError(code: string | undefined): string {
     case 'PIN_ALREADY_SET':    return 'This account already has a PIN. Tap "Not you?" and pick again.';
     case 'INVALID_CREDENTIALS':return 'Email or password is incorrect.';
     case 'NO_WORKSPACE':       return 'This account isn’t a member of any workspace yet.';
+    case 'NO_SESSION':         return 'Sign in again to pick a staff member.';
     case 'RATE_LIMITED':       return 'Too many attempts. Wait a minute and try again.';
     case 'TENANT_REQUIRED':    return 'Open your workspace URL to sign in.';
     default:                   return 'Sign-in failed. Try again.';
@@ -203,10 +205,41 @@ interface WorkspaceMeta {
   emailFirstSignin?: boolean;
 }
 
+type MobileSessionIdentity = {
+  staffId: number;
+  name: string;
+  role: string;
+};
+
 export default function SignInPage() {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
   const next = params.get('next') || '';
+  const isMobileSigninPath = pathname?.startsWith('/m/signin') ?? false;
+
+  // A phone can reach this route after a successful sign-in via a stale link
+  // or an app retry. Confirm the standing session instead of presenting login
+  // methods again. `/m/qr-auth` intentionally owns desktop authorization and
+  // does not pass through this page.
+  const [mobileSession, setMobileSession] = useState<MobileSessionIdentity | null | undefined>(
+    isMobileSigninPath ? undefined : null,
+  );
+  useEffect(() => {
+    if (!isMobileSigninPath) {
+      setMobileSession(null);
+      return;
+    }
+
+    let alive = true;
+    void fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : { user: null }))
+      .then((data: { user?: MobileSessionIdentity | null }) => {
+        if (alive) setMobileSession(data.user ?? null);
+      })
+      .catch(() => { if (alive) setMobileSession(null); });
+    return () => { alive = false; };
+  }, [isMobileSigninPath]);
 
   // ── Workspace (name only) ─────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceMeta | null>(null);
@@ -338,6 +371,41 @@ export default function SignInPage() {
     if (typeof window !== 'undefined') window.location.assign(target);
     else router.replace(target);
   }, [router, next]);
+
+  // Google/Apple on a shared-account org mint the umbrella session then
+  // bounce here with ?choose_staff=1 — same name picker as email+password.
+  useEffect(() => {
+    if (params.get('choose_staff') !== '1') return;
+    let cancelled = false;
+    void (async () => {
+      setBusy(true);
+      try {
+        const r = await fetch('/api/auth/staff-choice', { credentials: 'include', cache: 'no-store' });
+        const data = (await r.json().catch(() => ({}))) as {
+          needsStaffChoice?: boolean;
+          organizationName?: string;
+          staff?: StaffChoiceRow[];
+          error?: string;
+        };
+        if (cancelled) return;
+        if (!r.ok) {
+          setError(humanError(data.error));
+          return;
+        }
+        if (data.needsStaffChoice && data.staff) {
+          setStaffChoices(data.staff);
+          setStaffChoiceOrg(data.organizationName ?? null);
+          return;
+        }
+        finish(null, null, null, null);
+      } catch {
+        if (!cancelled) setError('Sign-in failed. Try again.');
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [params, finish]);
 
   // ── Account submit ────────────────────────────────────────────────────────
   const submitAccount = useCallback(async (orgId?: string) => {
@@ -529,9 +597,10 @@ export default function SignInPage() {
     const qs = new URLSearchParams();
     if (next) qs.set('next', next);
     qs.set('persist', '1');
+    qs.set('signin', pathname?.startsWith('/m') ? '/m/signin' : '/signin');
     const query = qs.toString();
     window.location.href = `/api/auth/oauth/${p}/start${query ? `?${query}` : ''}`;
-  }, [next]);
+  }, [next, pathname]);
 
   const startSso = useCallback((slug: string) => {
     writeLastSigninMethod('sso');
@@ -730,6 +799,14 @@ export default function SignInPage() {
 
   if (signingIn) return <BootSplash />;
 
+  if (isMobileSigninPath && mobileSession === undefined) {
+    return <MobileSigninSessionCheck />;
+  }
+
+  if (isMobileSigninPath && mobileSession) {
+    return <MobileSigninWelcome name={mobileSession.name} />;
+  }
+
   // ── Station mode (picked → PIN pad) ───────────────────────────────────────
   if (stationOpen && picked) {
     return (
@@ -846,37 +923,39 @@ export default function SignInPage() {
       <Shell>
         <AuthCard>
           <AuthHeader title="Choose a workspace" subtitle="You’re a member of more than one." />
-          <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft">
-            {orgChoices.map((m) => (
-              <label
-                key={m.organizationId}
-                className={cn(
-                  'flex cursor-pointer items-center gap-3 px-3 py-2.5 text-role-body',
-                  chosenOrg === m.organizationId
-                    ? 'bg-surface-info ring-1 ring-inset ring-blue-400'
-                    : 'hover:bg-surface-canvas',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="org"
-                  className="sr-only"
-                  checked={chosenOrg === m.organizationId}
-                  onChange={() => setChosenOrg(m.organizationId)}
-                />
-                <span className="font-medium text-text-default">{m.organizationName}</span>
-              </label>
-            ))}
-          </div>
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full"
-            disabled={busy || !chosenOrg}
-            onClick={() => chosenOrg && void submitAccount(chosenOrg)}
+          <form
+            className="space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!chosenOrg || busy) return;
+              void submitAccount(chosenOrg);
+            }}
           >
-            {busy ? 'Signing in…' : 'Continue'}
-          </Button>
+            <SearchableSelectField
+              value={chosenOrg}
+              onChange={(value) => setChosenOrg(value == null ? null : String(value))}
+              options={orgChoices.map((m) => ({
+                value: m.organizationId,
+                label: m.organizationName,
+              }))}
+              placeholder="Search or choose a workspace"
+              searchPlaceholder="Search workspaces…"
+              emptyMessage="No matching workspaces"
+              ariaLabel="Choose a workspace"
+              autoFocus
+              testId="workspace-combobox"
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              loading={busy}
+              disabled={!chosenOrg}
+            >
+              {busy ? 'Signing in…' : 'Continue'}
+            </Button>
+          </form>
           {error && <StatusBox tone="danger">{error}</StatusBox>}
         </AuthCard>
       </Shell>
@@ -1328,5 +1407,31 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex w-full justify-center">{children}</div>
       </div>
     </div>
+  );
+}
+
+function MobileSigninSessionCheck() {
+  return (
+    <Shell>
+      <Panel padding="lg" radius="2xl" className="w-full max-w-sm text-center">
+        <p className="text-role-body text-text-soft">Checking your sign-in…</p>
+      </Panel>
+    </Shell>
+  );
+}
+
+function MobileSigninWelcome({ name }: { name: string }) {
+  return (
+    <Shell>
+      <Panel padding="lg" radius="2xl" className="w-full max-w-sm space-y-4 text-center">
+        <CheckCircle2 className="mx-auto size-12 text-text-success" aria-hidden />
+        <div className="space-y-1">
+          <h1 className="text-role-title text-text-default">Welcome back</h1>
+          <p className="text-role-body text-text-soft">
+            Signed in as <span className="font-semibold text-text-default">{name}</span>
+          </p>
+        </div>
+      </Panel>
+    </Shell>
   );
 }

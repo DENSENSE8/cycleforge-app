@@ -1,3 +1,10 @@
+> **SUPERSEDED 2026-09-14 — DO NOT EXECUTE.** This plan targets a spine of
+> `Main · Stations · More` with `stationGroup: 'floor' | 'desk'`. That spine is gone: the live SoT
+> is `STATION_GROUPS` (Scan Stations) + `DESK_GROUPS` (Workspaces) + `DOMAIN_GROUPS` (7 domains)
+> composed into `SPINE_SECTIONS` (`src/lib/sidebar-navigation.ts`). Current nav work lives in
+> [`nav-lanes-reports-IA-PLAN.md`](./nav-lanes-reports-IA-PLAN.md). Kept for the research record
+> (§1 verdicts, §7 briefing map) only.
+
 # Station nav — Floor / Desk sub-headers under Stations
 
 **Status:** Research absorbed 2026-07-30 — ready to implement. Gemini KEEP on all §1

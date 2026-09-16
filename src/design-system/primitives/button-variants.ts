@@ -40,6 +40,24 @@ export const BUTTON_VARIANTS = {
     'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
   execute:
     'bg-surface-hover text-text-default hover:bg-surface-sunken active:bg-surface-sunken',
+  /**
+   * `glass` is chrome ON LIVE MEDIA — a control riding a blurred bar over a
+   * camera feed or a photo. Every other face here assumes a known surface
+   * token underneath, so on a viewfinder they are either invisible (`ghost`
+   * resolves `text-text-muted` over whatever the lens is pointed at) or they
+   * punch an opaque hole in the picture (`secondary`).
+   *
+   * INK ONLY — the scrim belongs to the bar, exactly once. Each control
+   * carrying its own `bg-scrim` (which is how this shipped for an afternoon)
+   * paints a visibly darker block inside an already-dark bar: a box in a box,
+   * three different alphas on one 36px row. So the bar blurs and dims the
+   * picture, and the controls are white marks on it with a faint `glass` wash
+   * for press feedback.
+   *
+   * It was hand-rolled as `bg-scrim/55 text-white backdrop-blur` at two call
+   * sites before it was an intent — the drift this map exists to stop.
+   */
+  glass: 'text-white hover:bg-glass/20 active:bg-glass/30',
 } as const;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;

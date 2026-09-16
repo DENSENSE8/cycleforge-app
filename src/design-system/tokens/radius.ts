@@ -277,12 +277,30 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
  */
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
 
+/**
+ * ── The mobile family (operator 2026-09-15) ──────────────────────────────────
+ *
+ * *"ensure that it has a proper corner radius to it not reusing the boxy corner
+ * radius."* The `cornerClass` LADDER is zero-radius on purpose — ops desk
+ * chrome is flush-square — so a phone surface that wants a real corner must
+ * take it from here, never from a raw `rounded-*` literal.
+ *
+ * These were named `MOBILE_SCAN_*` when the scan tape was the only phone
+ * surface. The values are unchanged; only the names generalized, and the scan
+ * constants below now alias them so no caller moved.
+ */
+export const MOBILE_CARD_CORNER = 'rounded-2xl';
+/** A row inside a {@link MOBILE_CARD_CORNER} card — concentric one rung in. */
+export const MOBILE_ROW_CORNER = 'rounded-xl';
+/** Controls on a phone surface — fields, chips, segmented faces. */
+export const MOBILE_CONTROL_CORNER = 'rounded-lg';
+
 /** Handheld scan capture lip — square so overlay chrome shares a full-width rail. */
 export const MOBILE_SCAN_WINDOW_CORNER = 'rounded-none';
 /** Focus card on the mobile scan tape. */
-export const MOBILE_SCAN_CARD_CORNER = 'rounded-2xl';
+export const MOBILE_SCAN_CARD_CORNER = MOBILE_CARD_CORNER;
 /** History row on the mobile scan tape. */
-export const MOBILE_SCAN_ROW_CORNER = 'rounded-xl';
+export const MOBILE_SCAN_ROW_CORNER = MOBILE_ROW_CORNER;
 
 /**
  * Concentric inner corner: **inner = outer − padding**.

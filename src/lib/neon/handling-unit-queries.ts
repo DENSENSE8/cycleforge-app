@@ -366,6 +366,65 @@ export async function createHandlingUnit(
   return r.rows[0];
 }
 
+export interface CreateHandlingUnitsBulkInput {
+  /** Owning org (ctx.organizationId) — handling_units is org-scoped (Phase B). */
+  organizationId: string;
+  createdBy: number | null;
+  /** How many boxes to mint. The route caps this (1..200). */
+  count: number;
+  locationId?: number | null;
+  notes?: string | null;
+}
+
+/**
+ * Mint N boxes in ONE statement inside ONE transaction (bulk tote mint → one
+ * label run). `generate_series` fans the row out server-side, so N boxes cost
+ * one round trip instead of N inserts, and either all of them land or none do.
+ *
+ * `code` is passed as NULL on every row so the BEFORE INSERT trigger
+ * (`set_handling_unit_code`) mints `H-{id}` per row — codes are never generated
+ * in TypeScript. Rows come back ascending by id so the label run prints in
+ * mint order regardless of the INSERT's return order.
+ */
+export async function createHandlingUnitsBulk(
+  input: CreateHandlingUnitsBulkInput,
+  executor: Queryable = pool,
+  orgId?: OrgId,
+): Promise<HandlingUnitRow[]> {
+  const count = Math.floor(Number(input.count));
+  if (!Number.isFinite(count) || count < 1) return [];
+
+  // Same org semantics as createHandlingUnit: the INSERT stamps
+  // input.organizationId, while the trailing orgId governs how the statement is
+  // RUN (GUC-wrapped txn, or GUC set on a caller-owned executor) so RLS sees
+  // the right tenant — and when present it also wins as the stamped org.
+  const stampedOrg = orgId ?? input.organizationId;
+  // Every SELECT-list value is cast explicitly: in `INSERT ... SELECT`, unknown
+  // parameter types resolve inside the SELECT (as text) BEFORE the insert
+  // target is consulted, so an uncast $4 would fail to coerce into uuid.
+  const sql = `INSERT INTO handling_units (code, location_id, created_by, notes, organization_id)
+     SELECT NULL::text, $1::bigint, $2::int, $3::text, $4::uuid
+       FROM generate_series(1, $5::int)
+     RETURNING ${HU_COLS}`;
+  const vals = [input.locationId ?? null, input.createdBy ?? null, input.notes ?? null, stampedOrg, count];
+
+  let rows: HandlingUnitRow[];
+  if (orgId) {
+    if (executor !== pool) {
+      await executor.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
+      rows = (await executor.query<HandlingUnitRow>(sql, vals)).rows;
+    } else {
+      const r = await withTenantTransaction(orgId, (client) =>
+        client.query<HandlingUnitRow>(sql, vals),
+      );
+      rows = r.rows;
+    }
+  } else {
+    rows = (await executor.query<HandlingUnitRow>(sql, vals)).rows;
+  }
+  return [...rows].sort((a, b) => Number(a.id) - Number(b.id));
+}
+
 /**
  * Resolve operator-supplied unit references — numeric serial_units.id, a `U-{id}`
  * handle, a minted unit_uid, or a bare serial number — to serial_units ids.

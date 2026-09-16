@@ -30,7 +30,14 @@ export function RepairStatusSection({ repair, c }: { repair: RSRecord; c: Repair
         ))}
       </select>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <HoverTooltip label="Print 2x1 product label" asChild>
+        <HoverTooltip
+          label={
+            repair.label_printed_at
+              ? 'Reprint 2x1 product label (first print recorded)'
+              : 'Print 2x1 product label'
+          }
+          asChild
+        >
           <Button
             variant="secondary"
             size="lg"
@@ -56,10 +63,12 @@ export function RepairStatusSection({ repair, c }: { repair: RSRecord; c: Repair
                 date: fmtDate(new Date()),
                 dueDate: fmtDate(due),
               });
+              // Record the first print so the repair leaves the Needs-label queue.
+              void c.markLabelPrinted();
             }}
             ariaLabel="Print product label"
           >
-            Label
+            {repair.label_printed_at ? 'Label ✓' : 'Label'}
           </Button>
         </HoverTooltip>
         <HoverTooltip label="Print repair service document" asChild>

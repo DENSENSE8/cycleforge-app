@@ -24,7 +24,7 @@ interface WashPreset {
 }
 
 export const WASH_PRESETS: Record<WashName, WashPreset> = {
-  // previewTo is light-theme CANVAS (#eef2f7), not surface white: a wash host
+  // previewTo is light-theme CANVAS (#fafafa), not surface white: a wash host
   // is a ground plane for cards, so no stop may land on card white — see the
   // GROUND-PLANE RULE beside the `--ds-wash-*` blocks in styles/globals.css.
   mint: {
@@ -32,14 +32,14 @@ export const WASH_PRESETS: Record<WashName, WashPreset> = {
     label: 'Mint',
     hint: 'Unbox / receiving wash',
     previewFrom: '#f5fbfa',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   cool: {
     id: 'cool',
     label: 'Cool',
     hint: 'Soft teal fade',
     previewFrom: '#f8fbfb',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   slate: {
     id: 'slate',
@@ -53,7 +53,7 @@ export const WASH_PRESETS: Record<WashName, WashPreset> = {
     label: 'Dawn',
     hint: 'Cool gray schedule wash',
     previewFrom: '#f8fafc',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   flat: {
     id: 'flat',

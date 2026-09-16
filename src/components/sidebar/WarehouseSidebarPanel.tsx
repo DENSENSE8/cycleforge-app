@@ -22,7 +22,7 @@ import { SidebarShell } from '@/components/layout/SidebarShell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { Panel } from '@/design-system/primitives';
-import { parseLocationsTab } from '@/lib/inventory/locations-path';
+import { isLocationsRaillessTab, parseLocationsTab } from '@/lib/inventory/locations-path';
 
 export function WarehouseSidebarPanel() {
   // The room-finder query lives in RoomFinderContext; the inner panel reads it
@@ -41,10 +41,10 @@ function WarehouseSidebarInner() {
   const { query: roomQuery, setQuery: setRoomQuery } = useRoomFinder();
   const skuSearch = useWarehouseSkuSearch();
 
-  // Rooms tab filters the room list. Labels/Bays have no left rail chrome —
-  // room pick lives in the main builder. Other tabs use SKU/bin lookup.
+  // Rooms tab filters the room list. Labels / Bays / Totes have no left rail
+  // chrome — those facets are print/builder bodies. Other tabs use SKU/bin lookup.
   const isRoomFinderTab = tab === 'rooms';
-  const hideLeftChrome = tab === 'labels' || tab === 'bays';
+  const hideLeftChrome = isLocationsRaillessTab(tab);
 
   const showSkuResults =
     !isRoomFinderTab &&

@@ -12,7 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { TESTING_SELECTION_SCOPE } from '@/components/tech/TestingHistoryList';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import type { ReceivingLineBulkSelection } from '@/hooks/useReceivingLineBulkSelection';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 import { User, Check } from '@/components/Icons';
 import { toast } from '@/lib/toast';

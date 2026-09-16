@@ -3,8 +3,9 @@
 Introspective eval — machine gates, design critique, and graph impact written
 back into committed docs so the next agent session compounds.
 
-Two **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
+Three **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
 **Display SoT is slot-table only.** Overlay is not a display cohort.
+`sku-identity` is an IDENTITY cohort, not a display one.
 
 Repo-wide **mobile-first** product law (not a display cohort yet):
 [`docs/mobile-first/SURFACE_LAW.md`](../mobile-first/SURFACE_LAW.md) — every
@@ -16,6 +17,7 @@ User: "span repo-wide" / "do everything on the mobile app first."
 |--------|-----|--------|
 | `slot-table` | Slot engine + every `PRODUCT_TABLES` peer (`slot-table-cohort.ts`) — **the only display eval** | [`cohorts/slot-table/LEDGER.md`](cohorts/slot-table/LEDGER.md) |
 | `shortcuts` | Staff `?` reveals letters **inline on the buttons** (`shortcut-display-cohort.ts`) | [`cohorts/shortcuts/LEDGER.md`](cohorts/shortcuts/LEDGER.md) |
+| `sku-identity` | The **Zoho item** governs one title / one SKU / one photo across every reader AND writer (`sku-identity-cohort.ts`); law `sku-identity-law.ts` | [`cohorts/sku-identity/LEDGER.md`](cohorts/sku-identity/LEDGER.md) |
 
 ## Quick start
 
@@ -24,6 +26,8 @@ pnpm run eval:cohort slot-table                 # engine + PRODUCT_TABLES (displ
 pnpm run eval:cohort slot-table -- --skip-verify
 pnpm run eval:cohort shortcuts                 # `?` paints letters on the CTAs
 pnpm run eval:cohort shortcuts -- --skip-verify
+pnpm run eval:cohort sku-identity              # Zoho item governs title/SKU/photo
+pnpm run eval:cohort sku-identity -- --skip-verify
 pnpm run eval:discover                          # slot-table DELETE vs KEEP inventory
 pnpm run eval:station scan-out                  # single-station mouth/domain / overlay shell
 pnpm run eval:station unbox -- --skip-verify
@@ -44,6 +48,9 @@ docs/eval/
 ├── cohorts/shortcuts/
 │   ├── LEDGER.md              ← `?` paints letters on the CTAs (not a sheet)
 │   └── snapshots/
+├── cohorts/sku-identity/
+│   ├── LEDGER.md              ← Zoho-governed title/SKU/photo × every peer
+│   └── snapshots/
 └── stations/<id>/
     ├── LEDGER.md              ← per-station mouth/domain + auto sections
     └── snapshots/
@@ -52,7 +59,7 @@ tools/eval-ledger/
 ├── registry.json              ← pointer only; authority is the TS cohorts
 ├── eval-core.mjs
 ├── run-station-eval.mjs       ← node --import tsx …
-├── run-cohort-eval.mjs        ← slot-table | shortcuts
+├── run-cohort-eval.mjs        ← slot-table | shortcuts | sku-identity
 ├── machine-gate.mjs           ← Host checker (Cursor stop + Hermes LOOP_VERIFY)
 ├── perf-target.mjs            ← Lighthouse / Speed Insights north star 95
 ├── perf-gate.mjs              ← baseline gap debt (+ optional live check)

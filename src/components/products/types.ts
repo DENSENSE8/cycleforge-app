@@ -1,3 +1,11 @@
+/** The pack standard a SKU's packs are weighted at, as the record API sends it. */
+export interface ProductPackProfile {
+    minutes: number;
+    tier: 'SMALL' | 'MEDIUM' | 'LARGE';
+    /** 'profile' = a human set this. 'rules' = derived from the product title. */
+    source: 'profile' | 'rules';
+}
+
 export interface ProductDetailPayload {
     success: true;
     product: {
@@ -26,4 +34,6 @@ export interface ProductDetailPayload {
         warehouse_qty: number;
         units_by_status: Array<{ status: string; count: number }>;
     };
+    /** The pack standard this SKU's packs are weighted at (never null). */
+    packProfile: ProductPackProfile;
 }

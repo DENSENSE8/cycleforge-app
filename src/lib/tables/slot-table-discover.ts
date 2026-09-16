@@ -95,24 +95,20 @@ const TABLE_COLUMNS_PLACEHOLDER_KEYS = new Set([
 const SKIP_DIR = new Set(['node_modules', '.git', 'dist', '.next']);
 
 /**
- * Known live debt as of 2026-09-01. Shrink-only: remove an id in the same
- * change that deletes the smell. Never append without an operator ruling
- * (new dual-SoT is a fail, not a baseline bump).
+ * Known live debt. Shrink-only: remove an id in the same change that deletes
+ * the smell. Never append without an operator ruling (new dual-SoT is a fail,
+ * not a baseline bump).
  *
  * Callers: slot-table-discover.test + eval:discover. Affected API:
  * SLOT_TABLE_KNOWN_DEBT. Schema: none. User: "Make that contract green…
- * Allowed: … KEEP rows." Ratchet: drop hand-grid-export:daily:DAILY_GRID_COLUMNS.
+ * Allowed: … KEEP rows." Ratchet 2026-09-11: every mechanical hand-GRID array
+ * and row/descriptor GRID default is DELETED — receiving, incoming, tasks and
+ * import-exception went with the Wave B port, and Wave C registered `tech` +
+ * `packer` so `STATION_HISTORY_COLUMNS` (the last third engine) went too. What
+ * remains needs an operator ruling, not a codemod.
  */
 export const SLOT_TABLE_KNOWN_DEBT: readonly string[] = [
   'catalog-orphan:fba:FBA_FIELD_CATALOG',
-  'grid-default:incoming:IncomingGridRow',
-  'grid-default:incoming:incoming-grid-descriptor',
-  'grid-default:receiving:ReceivingGridRow',
-  'hand-grid-export:import-exception:IMPORT_EXCEPTION_GRID_COLUMNS',
-  'hand-grid-export:incoming:INCOMING_GRID_COLUMNS',
-  'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS',
-  'hand-grid-export:tasks:TASKS_GRID_COLUMNS',
-  'out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS',
   'table-columns-zombie:support-tickets',
 ];
 
@@ -206,27 +202,36 @@ function scanHandGridExports(
   return findings;
 }
 
+/**
+ * A desk that passes a hand `*_GRID_COLUMNS` array as its `columns` prop.
+ *
+ * Every family's flat spreadsheet array is deleted, so today this can only fire
+ * on a NEW one — which is the regression it exists to catch. It used to name
+ * `TestingHistoryList` and `RECEIVING_GRID_COLUMNS` literally; that pinned one
+ * desk and one symbol, and went inert the moment both were gone.
+ */
 function scanFlatMounts(files: { rel: string; src: string }[]): SlotTableFinding[] {
   const findings: SlotTableFinding[] = [];
   for (const f of files) {
     if (f.rel.includes('.test.')) continue;
     const stripped = stripComments(f.src);
-    if (
-      f.rel.endsWith('TestingHistoryList.tsx') &&
-      /columns=\{RECEIVING_GRID_COLUMNS\}/.test(stripped)
-    ) {
+    const mountRe = /columns=\{([A-Z][A-Z0-9_]*_GRID_COLUMNS)\}/g;
+    let m: RegExpExecArray | null;
+    while ((m = mountRe.exec(stripped))) {
+      const symbol = m[1];
+      const tableId = GRID_SYMBOL_TABLE_ID[symbol] ?? '—';
       findings.push({
-        id: 'flat-mount:receiving:TestingHistoryList',
+        id: `flat-mount:${tableId}:${f.rel.split('/').pop()?.replace(/\.tsx?$/, '')}`,
         scanner: 'flat-mount',
         verdict: 'judgment',
         priority: 9,
-        tableId: 'receiving',
-        symbol: 'RECEIVING_GRID_COLUMNS',
+        tableId,
+        symbol,
         path: f.rel,
-        refs: ['src/lib/receiving/receiving-grid-layout.ts'],
-        why: '/test Testing History is on the engine (tableId `testing` + RECEIVING_COMPOUND_COLUMNS via ReceivingSpreadsheet). A flat RECEIVING_GRID_COLUMNS mount here is a regression to the closed dual-SoT.',
-        keep: 'RECEIVING_TABLE_BINDING, RECEIVING_COMPOUND_COLUMNS, useReceivingTableLayout',
-        next: 'Drop the flat columns prop and mount RECEIVING_COMPOUND_COLUMNS like Unbox/History do.',
+        refs: ['src/lib/tables/table-engine-law.ts'],
+        why: `This desk mounts the hand flat ${symbol} instead of the family's compound/sheet materialization. Every family's flat array was deleted in the Wave B port — a new one is a second column model on one engine.`,
+        keep: 'The family materialization (*_COMPOUND_COLUMNS / *_SHEET_COLUMNS) and its field catalog.',
+        next: `Mount the family materialization and delete ${symbol}. A desk that needs different tracks owes a tableId + SlotLayout, not a second array.`,
         blockedBy: [],
       });
     }
@@ -367,26 +372,41 @@ function scanCatalogOrphans(root: string): SlotTableFinding[] {
   return findings;
 }
 
+/**
+ * A hand column array that is NOT a registered family materialization.
+ *
+ * The named case was the Tech / Packer benches' hand array — their third
+ * engine — deleted in Wave C when `tech` and `packer` became registered
+ * families. It escaped {@link scanHandGridExports} because its name carried no
+ * `GRID`, so this scanner matches the SHAPE instead: a `readonly`-typed
+ * `*_COLUMNS` array under a component/lib path that is neither a slot
+ * materialization (`*_COMPOUND_COLUMNS` / `*_SHEET_COLUMNS`) nor the registry's
+ * own `TABLE_COLUMNS`.
+ */
 function scanOutOfWaistHandModels(files: { rel: string; src: string }[]): SlotTableFinding[] {
   const findings: SlotTableFinding[] = [];
+  const arrayRe = /export const ([A-Z][A-Z0-9_]*_COLUMNS)\s*:\s*readonly/g;
   for (const f of files) {
-    if (f.rel.endsWith('station-history-columns.ts') && /export const STATION_HISTORY_COLUMNS/.test(f.src)) {
+    if (f.rel.includes('.test.')) continue;
+    const stripped = stripComments(f.src);
+    let m: RegExpExecArray | null;
+    while ((m = arrayRe.exec(stripped))) {
+      const symbol = m[1];
+      if (/_(COMPOUND|SHEET)_COLUMNS$/.test(symbol)) continue;
+      if (symbol === 'TABLE_COLUMNS') continue;
+      if (/_GRID_COLUMNS$/.test(symbol)) continue; // scanHandGridExports owns these
       findings.push({
-        id: 'out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS',
+        id: `out-of-waist-hand-model:${f.rel.split('/').pop()?.replace(/\.tsx?$/, '')}:${symbol}`,
         scanner: 'out-of-waist-hand-model',
         verdict: 'judgment',
         priority: 9,
         tableId: null,
-        symbol: 'STATION_HISTORY_COLUMNS',
+        symbol,
         path: f.rel,
-        refs: [
-          'src/components/station/StationHistoryTable.tsx',
-          'src/components/station/StationListTable.tsx',
-          'src/components/station/StationQueueRow.tsx',
-        ],
-        why: 'Bench history is a third engine (LedgerGrid + field-key tracks) outside PRODUCT_TABLES / REGISTERED_BINDINGS. Kill-list 07 §5.',
-        keep: 'OrdersQueueTableRow, ORDERS_COMPOUND_COLUMNS, DataTable waist. Do not copy this array onto a product desk.',
-        next: 'Human: register a real binding+catalog for station-history, or delete the host fork. Not a mechanical GRID delete.',
+        refs: ['src/lib/tables/table-engine-law.ts'],
+        why: `${symbol} is a hand column array outside PRODUCT_TABLES / REGISTERED_BINDINGS — a third engine's column model. Kill-list 07 §5; the last one died when the tech and packer benches were registered.`,
+        keep: 'The registered family materializations and the DataTable waist. Do not copy a hand array onto a product desk.',
+        next: 'Human: register a real binding + catalog for this surface, or delete the host fork. Not a mechanical GRID delete.',
         blockedBy: [],
       });
     }

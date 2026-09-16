@@ -22,6 +22,7 @@ import type {
   OutboundDocumentsResponse,
   OutboundDocumentType,
 } from '@/lib/documents/types';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 function displayName(doc: OutboundDocument): string {
   if (doc.data.filename) return doc.data.filename;
@@ -60,9 +61,11 @@ function DocumentTypeGroup({
   flush = false,
 }: DocumentTypeGroupProps) {
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const replaceFileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<OutboundDocument | null>(null);
 
   const kindPrefix = documentType === 'shipping_label' ? 'LABEL' : 'SLIP';
 
@@ -96,13 +99,52 @@ function DocumentTypeGroup({
     onError: (e: Error) => setError(e.message),
   });
 
+
+  const replaceMutation = useMutation({
+    mutationFn: async ({ document, file }: { document: OutboundDocument; file: File }) => {
+      if (!nasBaseUrl) throw new Error('NAS is not configured for this org.');
+      const url = buildNasLabelUrl({
+        baseUrl: nasBaseUrl,
+        folder: nasFolder,
+        orderRef: orderRef || `order-${orderId}`,
+        filename: `${safeRandomUUID()}-${file.name}`,
+        kindPrefix,
+      });
+      const put = await putNasPhoto(url, file);
+      if (!put.ok) throw new Error(put.error || 'NAS upload failed');
+      const res = await fetch(`/api/documents/${document.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: put.url,
+          filename: file.name,
+          mimeType: file.type || null,
+        }),
+      });
+      if (!res.ok) {
+        await deleteNasPhoto(put.url).catch(() => undefined);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || 'Failed to replace document');
+      }
+      return { oldUrl: document.data.url };
+    },
+    onSuccess: async ({ oldUrl }) => {
+      const cleanup = await deleteNasPhoto(oldUrl);
+      setError(cleanup.ok ? null : 'Document replaced, but the old NAS file could not be removed.');
+      onChange();
+    },
+    onError: (e: Error) => setError(e.message),
+  });
   const deleteMutation = useMutation({
     mutationFn: async (doc: OutboundDocument) => {
-      await deleteNasPhoto(doc.data.url).catch(() => undefined);
       const res = await fetch(`/api/documents/${doc.id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete document');
+      return deleteNasPhoto(doc.data.url);
     },
-    onSuccess: () => onChange(),
+    onSuccess: (cleanup) => {
+      setError(cleanup.ok ? null : 'Document unlinked, but the NAS file could not be removed.');
+      onChange();
+    },
     onError: (e: Error) => setError(e.message),
   });
 
@@ -127,6 +169,14 @@ function DocumentTypeGroup({
   const onFiles = (files: FileList | null) => {
     const file = files?.[0];
     if (file) uploadMutation.mutate(file);
+  };
+
+  const onReplaceFile = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file && replaceTarget) {
+      replaceMutation.mutate({ document: replaceTarget, file });
+    }
+    setReplaceTarget(null);
   };
 
   return (
@@ -182,6 +232,14 @@ function DocumentTypeGroup({
             className="hidden"
             onChange={(e) => { onFiles(e.target.files); e.target.value = ''; }}
           />
+          <input
+            ref={replaceFileRef}
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf"
+            className="hidden"
+            onClick={(event) => event.stopPropagation()}
+            onChange={(e) => { onReplaceFile(e.target.files); e.target.value = ''; }}
+          />
         </div>
       ) : null}
 
@@ -231,16 +289,31 @@ function DocumentTypeGroup({
                     </span>
                   ) : null}
                   {!readOnly ? (
-                    <HoverTooltip label={`Delete ${title.toLowerCase()}`} asChild>
-                      <IconButton
-                        type="button"
-                        onClick={() => deleteMutation.mutate(doc)}
-                        disabled={deleteMutation.isPending}
-                        className="rounded p-1 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
-                        ariaLabel={`Delete ${title.toLowerCase()}`}
-                        icon={<Trash2 className="h-3.5 w-3.5" />}
-                      />
-                    </HoverTooltip>
+                    <>
+                      <HoverTooltip label={`Replace ${title.toLowerCase()}`} asChild>
+                        <IconButton
+                          type="button"
+                          onClick={() => {
+                            setReplaceTarget(doc);
+                            replaceFileRef.current?.click();
+                          }}
+                          disabled={replaceMutation.isPending}
+                          className="rounded p-1 hover:bg-surface-hover disabled:opacity-40"
+                          ariaLabel={`Replace ${title.toLowerCase()}`}
+                          icon={<RefreshCw className="h-3.5 w-3.5" />}
+                        />
+                      </HoverTooltip>
+                      <HoverTooltip label={`Delete ${title.toLowerCase()}`} asChild>
+                        <IconButton
+                          type="button"
+                          onClick={() => deleteMutation.mutate(doc)}
+                          disabled={deleteMutation.isPending}
+                          className="rounded p-1 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                          ariaLabel={`Delete ${title.toLowerCase()}`}
+                          icon={<Trash2 className="h-3.5 w-3.5" />}
+                        />
+                      </HoverTooltip>
+                    </>
                   ) : null}
                 </div>
               </div>

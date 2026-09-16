@@ -7,15 +7,22 @@
 
 const INVENTORY_LOCATIONS_PATH = '/inventory/locations' as const;
 
-export type LocationsTab = 'labels' | 'bays' | 'rooms' | 'bins' | 'map';
+export type LocationsTab = 'labels' | 'bays' | 'totes' | 'rooms' | 'bins' | 'map' | 'manage';
 
 /** Live Locations tabs — includes default `labels` (usually omitted). */
 export const LOCATIONS_TABS = [
   'labels',
   'bays',
+  // Tote plates. A tote is a CONTAINER, not a place — it sits here because
+  // this page is where the warehouse prints its 2×1 stock, not because a box
+  // is a location. It owns no row in `locations` and never will.
+  'totes',
   'rooms',
   'bins',
   'map',
+  // Ex-admin bin editor (admin dissolution): rename / barcode / type /
+  // capacity / delete. The Bins tab browses; Manage edits.
+  'manage',
 ] as const satisfies readonly LocationsTab[];
 
 /** Redirects that focus a bay (position=0) sticker. Accepts legacy `tab=racks`. */
@@ -24,8 +31,17 @@ export const LOCATIONS_BAY_CODE_RE =
 
 export function parseLocationsTab(raw: string | null | undefined): LocationsTab {
   if (raw === 'racks' || raw === 'bays') return 'bays';
-  if (raw === 'rooms' || raw === 'bins' || raw === 'map') return raw;
+  if (raw === 'rooms' || raw === 'bins' || raw === 'map' || raw === 'manage') return raw;
+  if (raw === 'totes') return 'totes';
   return 'labels';
+}
+
+/**
+ * Locations facets whose body is a print/builder — no left context rail.
+ * Labels · Bays · Totes. Rooms / Bins / Map / Manage keep the warehouse rail.
+ */
+export function isLocationsRaillessTab(tab: LocationsTab): boolean {
+  return tab === 'labels' || tab === 'bays' || tab === 'totes';
 }
 
 /**

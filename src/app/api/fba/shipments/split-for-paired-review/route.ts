@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { publishFbaShipmentChanged } from '@/lib/realtime/publish';
-import { detectCarrier } from '@/lib/tracking-format';
+import { resolveStoredCarrier } from '@/lib/shipping/carrier-resolution';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
@@ -37,7 +37,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const sourceShipmentId = Number(body?.source_shipment_id);
     const newAmazonRaw = String(body?.new_amazon_shipment_id || '').trim().toUpperCase();
     const raw = String(body?.tracking_number || '').trim().toUpperCase();
-    const carrier = String(body?.carrier || detectCarrier(raw)).toUpperCase();
+    const carrier = resolveStoredCarrier({ tracking: raw, reported: body?.carrier }).carrier;
     const label = body?.label != null ? String(body.label || '').trim() || null : 'UPS';
     const staffId = ctx.staffId;
     const station = body?.station ? String(body.station).trim() : null;

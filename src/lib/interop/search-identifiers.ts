@@ -27,7 +27,7 @@ import {
 /**
  * Which internal entity kind each search entity maps to.
  *
- * Total over the union, so a seventh searchable entity is a compile error here
+ * Total over the union, so a tenth searchable entity is a compile error here
  * until someone decides how a partner should name it.
  */
 const KIND_BY_ENTITY: Record<SearchHitEntityType, InternalEntityKind> = {
@@ -39,6 +39,16 @@ const KIND_BY_ENTITY: Record<SearchHitEntityType, InternalEntityKind> = {
   // trade items. Neither has a GS1 key of its own, so both stay internal.
   repair: 'order',
   fba: 'shipment',
+  // Customer-service records get their own internal kinds rather than
+  // borrowing `order`: the id in the URN is a claim id / a ticket id, and a
+  // partner resolving it as an order number would be resolving a lie.
+  warranty: 'claim',
+  ticket: 'ticket',
+  // A bin is a PLACE, not a trade item or a logistic unit. `location` already
+  // existed in the internal kind vocabulary (gs1-keys.ts:500) for exactly this
+  // — GS1 would name it a GLN, which is licensed per physical party and is not
+  // something this app can mint, so the internal URN is the honest key.
+  location: 'location',
 };
 
 /**

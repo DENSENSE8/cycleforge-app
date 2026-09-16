@@ -13,10 +13,6 @@
  */
 
 import { parseLabelsView } from '@/components/labels/labels-view';
-import {
-  parseCatalogPlatform,
-  parseLinkFilter,
-} from '@/components/products/catalog/catalog-url-state';
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
 import { parseProductsView } from '@/components/products/products-view';
 import {
@@ -176,39 +172,34 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 
 
 /**
- * `/` (Home) — Daily · Today.
+ * `/` (Daily) — the per-staff daily checklist, single surface.
  *
- * Replaces `HOME_MODE_SCOPED_PARAMS`.
- *
- * Shrank on 2026-08-19 with the mode list: `plan`, `view` and `ticket` belonged
- * to the deleted Tasks mode and to forge, which moved to `/forge` and took its
- * two params with it (see {@link FORGE_ROUTE_PARAMS}).
+ * Shrank again on 2026-09-14 with the mode list: Today and Tasks are
+ * unmounted from Home, so their params (`task`, `open`, `scope`, `staff`,
+ * `watch`) left with them. `mode` stays declared so a stale
+ * `?mode=today|tasks|forge` round-trip DROPS the token instead of
+ * round-tripping a mode that no longer exists.
  */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
     mode: paramRoundTrip(parseHomeModeWire),
     /**
-     * Daily's civil day (`YYYY-MM-DD`) — the day stepper's durable state, which
-     * is what makes a past report linkable to a colleague. Undeclared until
-     * 2026-08-19, so a mode switch through `buildRouteUrl` silently dropped it
-     * (unknown keys are dropped at the boundary — that is the whole contract).
+     * Daily's civil day (`YYYY-MM-DD`) — the durable state that makes a past
+     * checklist linkable to a colleague. Undeclared until 2026-08-19, so a
+     * mode switch through `buildRouteUrl` silently dropped it (unknown keys
+     * are dropped at the boundary — that is the whole contract).
      */
     date: paramDateKey,
     /**
-     * Daily checklist inspector (`HomeDailyMode`). The selected check id, so
-     * a refresh reopens the same right-rail occupant.
+     * Daily checklist inspector selection (`HomeDailyMode`'s right-rail
+     * occupant, unmounted with the scope-1 rewrite but returning). Declared
+     * so the param survives navigation in the meantime.
      */
     item: paramPositiveInt,
-    task: paramText,
+    /** Daily's own filter vocabulary (status / text), unmounted with scope 1. */
     q: paramText,
-    open: paramPositiveInt,
-    scope: paramText,
     filter: paramText,
-    /** Today's per-staffer lens (`useMyDayView`). Undeclared until 2026-08-19. */
-    staff: paramPositiveInt,
-    /** Today Watch rail — ticket or tracking intake (`?watch=1`). */
-    watch: paramFlag,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -277,7 +268,14 @@ const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/products` — Catalog · Manuals · Labels · Pairing · QC · Kit Parts.
+ * `/products` — Manuals · SKU Barcodes · Pairing · QC Checklist.
+ *
+ * Reference and Kit Parts were removed 2026-09-15 (operator ruling). With
+ * `?view=catalog` out of `PRODUCTS_VIEWS`, the seven keys that only the
+ * Reference chrome ever wrote — `platform`, `linkFilter`, `pending`,
+ * `inactive`, `noChannels`, `noManuals`, `noQc` — went with it: an undeclared
+ * key is stripped at the boundary, so leaving them would have kept a dead
+ * vocabulary alive in every shared link.
  *
  * Never had a denylist, and that is exactly why it leaked: `handleViewChange`
  * copied the whole query string and flipped one key, so a QC selection
@@ -296,18 +294,10 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** Pairing backlog ordering. */
     sort: paramEnum(PAIRING_SORTS),
-    /** Selected catalog row — QC and Kit Parts address the same id space. */
+    /** Selected catalog row on QC Checklist. */
     skuId: paramPositiveInt,
     /** Selected SKU on Pairing (the SKU string, not the catalog id). */
     sku: paramText,
-    /** Catalog chrome: platform tab + the refine popover's segment and flags. */
-    platform: paramRoundTrip(parseCatalogPlatform),
-    linkFilter: paramRoundTrip(parseLinkFilter),
-    pending: paramFlag,
-    inactive: paramFlag,
-    noChannels: paramFlag,
-    noManuals: paramFlag,
-    noQc: paramFlag,
     /** Labels sub-tab (Products · Recent · History) and its focused unit. */
     labelsView: paramRoundTrip(parseLabelsView),
     historyId: paramText,
@@ -354,6 +344,19 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
     type: paramText,
     /** Analytics window — composes the existing parser rather than re-listing it. */
     range: paramRoundTrip(parseSourcingAnalyticsRange),
+    /**
+     * Suppliers CRUD editor door (`<id>` or `new`) — swaps the rollup for the
+     * ex-admin supplier card inside the Suppliers mode (admin dissolution).
+     * Text, not int: `new` is a valid value.
+     */
+    supplier: paramText,
+    /**
+     * Models CRUD editor door (`<id>` or `new`) — the Models mode's twin of
+     * `supplier`, read by `BoseModelsManagementTab` (admin dissolution). It
+     * arrived with the mode and the spec did not, so the boundary parse swept
+     * it and every model click opened an empty editor. Text, not int: `new`.
+     */
+    model: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -526,12 +529,119 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
+/**
+ * `/inventory/stock` — the warehouse-wide (location, sku) stock list.
+ *
+ * Longer prefix than `/inventory`, so its two facets cannot collide with the
+ * Ledger's ownership of `q` (the sidebar search, a different feed and a
+ * different field vocabulary) or leak a room selection into the bucket
+ * multi-select the Ledger reads out of `filter`.
+ *
+ * Both keys are already declared in `SHARED_OWNED_KEYS`: `q` is "narrow this
+ * list", asked by every route that shows one, and `room` is the warehouse room
+ * facet this desk asks with the same vocabulary Locations does — the same room
+ * names, out of the same `locations.room` column. A third name for the same
+ * question is what that list exists to prevent.
+ *
+ * Column sort rides the ambient `?colsort=` / `?coldir=` carries, which is why
+ * neither is named here.
+ */
+export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/stock',
+  owns: {
+    /** The one search box, over every fact a row paints. */
+    q: paramText,
+    /** Room funnel — a comma-separated multi-select, like Inventory's `state`. */
+    room: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
 const SPECIAL_BIN_PRINT_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/locations/print/special-bin',
   owns: {
     barcode: paramText,
     /** Bulk copies — silent USB sends TSPL PRINT N in one job. Default 1 omitted. */
     count: paramRoundTrip(parseLabelCopiesWire),
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * The ex-`/admin/inventory` operations desks, re-homed under the desk that owns
+ * their data (admin dissolution). Each is a LONGER prefix than `/inventory`, so
+ * its own vocabulary (`error` / `status` / `page` / `range` / the events
+ * filters) cannot collide with the Ledger's ownership of `sku` / `unit` / `view`
+ * on the parent spec — and, more importantly, `SurfaceParamHygiene` no longer
+ * strips those keys as unknown the moment the desk moved under `/inventory`.
+ */
+const INVENTORY_HEALTH_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/health',
+  owns: {},
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/cycle-counts',
+  owns: {
+    /** Server-action outcome flash (`missing_name` · `failed` · `invalid_qty`). */
+    error: paramText,
+    /** Line-status filter pills on the campaign detail page. */
+    status: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_HOLDS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/holds',
+  owns: {
+    /** Hold / release action flash (`missing_input` · `not_found`). */
+    error: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_RETURNS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/returns',
+  owns: {
+    /** Intake outcome flash + the serials the intake could not match. */
+    ok: paramFlag,
+    error: paramText,
+    missing: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_BULK_ALLOCATE_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/bulk-allocate',
+  owns: {
+    /** Zero-indexed offset page of allocation candidates. */
+    page: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_THROUGHPUT_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/throughput',
+  owns: {
+    /** Rolling window (`24h` · `7d` · `30d`). */
+    range: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/events',
+  owns: {
+    event_type: paramText,
+    station: paramText,
+    sku: paramText,
+    unit: paramText,
+    actor: paramText,
+    since: paramDateKey,
+    until: paramDateKey,
+    /** Zero-indexed offset page. */
+    page: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -660,12 +770,6 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
   carries: ['staff', 'colsort', 'coldir'],
 });
 
-const MOBILE_SEARCH_ROUTE_PARAMS = defineRouteParams({
-  route: '/m/search',
-  owns: SEARCH_ROUTE_PARAMS.owns,
-  carries: SEARCH_ROUTE_PARAMS.carries,
-});
-
 /** Every still-query-mode surface with a declared spec. */
 export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   SUPPORT_ROUTE_PARAMS,
@@ -678,11 +782,19 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_ROUTE_PARAMS,
   SPECIAL_BIN_PRINT_ROUTE_PARAMS,
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
+  INVENTORY_STOCK_ROUTE_PARAMS,
+  // Ex-/admin/inventory desks, re-homed under the Inventory desk.
+  INVENTORY_HEALTH_ROUTE_PARAMS,
+  INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS,
+  INVENTORY_HOLDS_ROUTE_PARAMS,
+  INVENTORY_RETURNS_ROUTE_PARAMS,
+  INVENTORY_BULK_ALLOCATE_ROUTE_PARAMS,
+  INVENTORY_THROUGHPUT_ROUTE_PARAMS,
+  INVENTORY_EVENTS_ROUTE_PARAMS,
   REVIEW_ROUTE_PARAMS,
   PACK_ROUTE_PARAMS,
   WAREHOUSE_ROUTE_PARAMS,
   SEARCH_ROUTE_PARAMS,
-  MOBILE_SEARCH_ROUTE_PARAMS,
   FORGE_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another
   // route — the registry sorts longest-first, which keeps it last in practice.

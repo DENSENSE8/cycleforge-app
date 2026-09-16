@@ -78,6 +78,7 @@ import { IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 import { isHistoryUnfoundRow } from '@/lib/receiving/history-triage-row';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import {
   historyInspectorMoreItems,
   historyInspectorPrimaryAction,
@@ -95,7 +96,7 @@ import { printProductLabel } from '@/lib/print/printProductLabel';
 import { dispatchReceivingOpenPairingPo } from '@/utils/events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { toast } from '@/lib/toast';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
@@ -211,11 +212,14 @@ export function HistoryCartonTriagePanel({
     (carton?.zoho_purchaseorder_number || target?.poNumber || '').trim() || null;
   const tracking =
     (carton?.tracking_number || target?.tracking || '').trim() || null;
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
   const title =
     (
-      line?.zoho_item_title ||
-      line?.catalog_product_title ||
-      line?.item_name ||
+      resolveSkuIdentityTitle({
+        zoho_item_title: line?.zoho_item_title,
+        catalog_product_title: line?.catalog_product_title,
+        item_name: line?.item_name,
+      }) ||
       target?.title ||
       ''
     ).trim() || null;

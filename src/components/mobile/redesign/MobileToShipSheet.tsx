@@ -39,7 +39,7 @@ import type { OutboundDocument } from '@/lib/documents/types';
 import { formatDatePST, getDaysLateNullable, getDaysLateTone } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
-import { ToShipQtyFace } from '@/components/mobile/redesign/MobileToShipRow';
+import { ToShipQtyFace } from '@/components/mobile/redesign/to-ship-faces';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
 import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 

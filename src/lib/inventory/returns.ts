@@ -2,7 +2,7 @@
  * returns.ts
  * ────────────────────────────────────────────────────────────────────
  * Phase 7 returns intake transaction. Shared by /api/returns/intake
- * and the /admin/inventory/returns admin page so the bookkeeping
+ * and the /inventory/returns admin page so the bookkeeping
  * lives in one place.
  *
  * Per resolved unit, in one transaction:
@@ -240,7 +240,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
   // timing rule as linkReturnedSerial's Tap 1 (an engine failure must never
   // roll back a domain write, and the tap must never advance a position for a
   // write that could still roll back). This is Path B (the bulk admin dock-
-  // intake tool, /admin/inventory/returns) — audited and found to be a
+  // intake tool, /inventory/returns) — audited and found to be a
   // genuinely distinct capability from Path A's per-carton scan flow (a
   // multi-serial paste/batch tool, not a receiving-line-scoped scan), so it
   // gets the same tap rather than being retired.

@@ -23,7 +23,7 @@ import { processReturnsIntake } from '@/lib/inventory/returns';
  *   }
  *
  * Shared transaction in src/lib/inventory/returns.ts (used by the
- * /admin/inventory/returns admin page too).
+ * /inventory/returns admin page too).
  *
  * Permission: receiving.mark_received.
  */

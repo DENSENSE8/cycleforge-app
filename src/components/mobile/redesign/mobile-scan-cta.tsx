@@ -33,7 +33,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Barcode, Plus } from '@/components/Icons';
+import { Plus, ScanBarcode } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 
 /**
@@ -116,7 +116,11 @@ export function MobileScanCta() {
       variant="secondary"
       size="sm"
       onClick={onClick}
-      icon={onScanSurface ? <Plus className="h-3.5 w-3.5" /> : <Barcode className="h-3.5 w-3.5" />}
+      // `ScanBarcode`, not `Barcode` (operator 2026-09-15). A bare barcode is
+      // the SYMBOL — it says "this thing is a code". The framed version with
+      // the reticle corners is the VERB: point a reader at something. This
+      // button starts a scan, so it wears the verb.
+      icon={onScanSurface ? <Plus className="h-3.5 w-3.5" /> : <ScanBarcode className="h-3.5 w-3.5" />}
       aria-label={onScanSurface ? 'Start a new scan' : 'Go to scan'}
       radius="surface"
       // ds-allow-control-size — 32px PAINTED with a 44px hit region carried by

@@ -7,7 +7,7 @@ import {
   foldSyncVerdict,
   mapCompleteCartonResponse,
 } from '@/components/mobile/receiving/complete-carton';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   return {

@@ -35,7 +35,7 @@ import {
 } from './UnfoundMatchStrip';
 import { LinePoNoteCard } from './LinePoNoteCard';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { PoNoteTabState } from './terminal/usePoNoteTabState';
 import type { UnboxLinkageAction } from './unbox-side-tabs';
 

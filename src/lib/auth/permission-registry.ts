@@ -104,6 +104,16 @@ export const PERMISSIONS = [
   { id: 'shipping.void_label',      category: 'shipping', label: 'Void shipping label', destructive: true, stepUp: true },
   { id: 'orders.view',              category: 'shipping', label: 'View orders' },
   { id: 'orders.create',            category: 'shipping', label: 'Create orders' },
+  // Reserving a specific serialized unit against an order line is a WRITE: it
+  // consumes stock another order could have had. The pre-existing allocate
+  // door (`POST /api/orders/[id]/allocate`) gates on `orders.view`, a read
+  // string — do not copy that; new allocation surfaces use this.
+  { id: 'orders.allocate',          category: 'shipping', label: 'Allocate serialized stock to order lines' },
+  // Sale amount IS the revenue number reports read, so an operator correcting
+  // it is editing finance data, not a display field. Separate from
+  // `orders.create` so a floor role can be given order entry without the
+  // ability to restate what an order sold for.
+  { id: 'orders.set_price',         category: 'shipping', label: 'Set or correct an order line sale price' },
   { id: 'orders.import',            category: 'shipping', label: 'Import orders (Google Sheets + Ecwid)' },
   { id: 'inventory.list_unit',      category: 'shipping', label: 'List a unit on a sales channel' },
   { id: 'orders.void',              category: 'shipping', label: 'Void order', destructive: true, stepUp: true },

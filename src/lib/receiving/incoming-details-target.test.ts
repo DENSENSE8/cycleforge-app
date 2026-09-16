@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { incomingDetailsTargetFromRow } from './incoming-details-target';
 
 function row(partial: Partial<ReceivingLineRow> & { id: number }): ReceivingLineRow {

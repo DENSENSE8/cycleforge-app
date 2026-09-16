@@ -192,9 +192,14 @@ test('unknown entity_type claims dead-letter via markFailed, never silently re-c
   const { deps, cap } = fakes({
     claims: [
       claim(1, ORG_A, 'SKU', 11),
-      // Simulates a 7th discriminator value whose migration landed before
-      // this worker build (migration-first house deploy order).
-      claim(2, ORG_A, 'WARRANTY_CLAIM' as SearchEntityType, 5),
+      // Simulates a discriminator whose migration landed before this worker
+      // build (migration-first house deploy order). Must be a value the union
+      // genuinely does NOT carry — WARRANTY_CLAIM stood here until 2026-09-12a
+      // and LOCATION until 2026-09-12b. ITEM is the durable choice: items.id
+      // is a uuid and entity_search_docs.entity_id is BIGINT by law
+      // (2026-07-03d:12-13), so ITEM can never become a real entity type —
+      // the Zoho identifiers fold into the SKU doc instead.
+      claim(2, ORG_A, 'ITEM' as SearchEntityType, 5),
     ],
     rows: { SKU: [{ id: 11, sku: 'A', product_title: 'Alpha' }] },
   });
@@ -206,7 +211,7 @@ test('unknown entity_type claims dead-letter via markFailed, never silently re-c
   assert.equal(cap.failed.length, 1);
   assert.deepEqual(cap.failed[0].ids, [2]);
   assert.match(cap.failed[0].error, /unsupported entity_type/);
-  assert.match(cap.failed[0].error, /WARRANTY_CLAIM/);
+  assert.match(cap.failed[0].error, /ITEM/);
   // The valid claim still processed normally.
   assert.deepEqual(cap.processed, [[1]]);
 });

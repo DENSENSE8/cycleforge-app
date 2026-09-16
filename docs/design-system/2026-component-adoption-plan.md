@@ -156,12 +156,14 @@ hand-rolled; the app currently has no Radix dependency.
 
 **Migration targets (every hand-rolled modal):**
 `src/components/fba/FbaCreatePlanModal.tsx`, `src/components/auth/StepUpModal.tsx`,
-`src/components/sidebar/OrderSyncDialog.tsx`, manual CRUD modals, and anything
-matching `fixed inset-0 z-[8`.
+manual CRUD modals, and anything matching `fixed inset-0 z-[8`.
+(`src/components/sidebar/OrderSyncDialog.tsx` was on this list and was the
+suggested reference migration — it is DELETED as of 2026-09-15, see
+`docs/todo/order-sync-run-surface-HANDOFF.md` §7.)
 
 - [ ] Decide: Radix primitive vs. hand-rolled (recommend Radix for a11y)
 - [ ] Land `Dialog` + `Dialog.Footer`/`Dialog.Header` slots
-- [ ] Migrate one modal end-to-end as the reference (suggest `OrderSyncDialog`)
+- [ ] Migrate one modal end-to-end as the reference (suggest `StepUpModal`)
 - [ ] Migrate remaining modals in batches; delete per-file backdrop markup
 - [ ] Lint guard: no new `fixed inset-0 z-[` overlays
 

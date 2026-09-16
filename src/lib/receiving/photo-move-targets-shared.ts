@@ -5,6 +5,7 @@
 
 import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 /** Parsed search intent — pure so unit tests stay DB-free. */
 interface PhotoMoveSearchIntent {
@@ -69,21 +70,15 @@ export function parsePhotoMoveSearch(raw: string): PhotoMoveSearchIntent {
 }
 
 /**
- * Product-field face for the picker ladder. Empty / whitespace / the
- * `'Unfound PO'` stub sentinel are treated as missing so a later real field
- * (or the final fallback) can win — same idea as {@link isReceivingPoGroupTitleRow}.
- */
-function productField(value?: string | null): string {
-  const t = String(value || '').trim();
-  if (!t || t === 'Unfound PO') return '';
-  return t;
-}
-
-/**
- * Carton picker title — same product ladder as Unboxed rail
- * {@link receivingProductTitle}: catalog → Zoho item → listing item_name → sku.
- * PO identity stays on `PoChip`; never invent a platform · PO title here.
- * Generated return-serial titles paint last-8.
+ * Carton picker title — {@link resolveSkuIdentityTitle}, the one ladder
+ * (`src/lib/sku/sku-identity-law.ts`): Zoho item name → marketplace catalog
+ * title → listing item_name → sku. PO identity stays on `PoChip`; never
+ * invent a platform · PO title here. Generated return-serial titles paint
+ * last-8.
+ *
+ * Until 2026-09-15 this read `catalog_product_title` first and so painted the
+ * Ecwid listing for any Zoho-twinned SKU whose catalog title had been
+ * overwritten — 132 rows, including PO 10-15153-01528's soundbar.
  */
 export function resolvePhotoMoveTargetTitle(row: {
   catalog_product_title?: string | null;
@@ -92,13 +87,7 @@ export function resolvePhotoMoveTargetTitle(row: {
   sku?: string | null;
   zoho_item_id?: string | null;
 }): string {
-  const raw =
-    productField(row.catalog_product_title) ||
-    productField(row.zoho_item_title) ||
-    productField(row.item_name) ||
-    productField(row.sku) ||
-    productField(row.zoho_item_id) ||
-    'Unfound PO';
+  const raw = resolveSkuIdentityTitle(row) || 'Unfound PO';
   return formatReturnSerialProductTitle(raw);
 }
 

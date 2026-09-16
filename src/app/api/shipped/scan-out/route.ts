@@ -21,6 +21,7 @@ import {
   parseScanOutStaffId,
   scanOutMaxBackdateMs,
 } from '@/lib/outbound/scan-out-desk-stamp';
+import { productImageUrl } from '@/lib/photos/product-image-url';
 
 /**
  * Order states that must never leave the building.
@@ -56,24 +57,13 @@ function queueScanOutIdentificationCompleted(
   }
 }
 
-/**
- * The unit's photo, Zoho first.
- *
- * Zoho Inventory is the SoT for what a unit looks like (operator 2026-09-05).
- * `items` is the local mirror keyed by SKU; when it carries an
- * `image_document_id` the bytes are already cached in `zoho_item_images` and
- * `/api/zoho/items/[id]/image` serves them tenant-scoped. `sku_catalog` stays
- * as the fallback for SKUs Zoho has never seen — it is a catalog stock photo,
- * not the unit.
- */
+/** The unit's photo — {@link productImageUrl}, over this query's column names. */
 function scanOutImageUrl(row: Record<string, unknown> | null | undefined): string | null {
-  const zohoItemId = String(row?.zoho_item_id ?? '').trim();
-  const documentId = String(row?.zoho_image_document_id ?? '').trim();
-  if (zohoItemId && documentId) {
-    return `/api/zoho/items/${encodeURIComponent(zohoItemId)}/image`;
-  }
-  const catalog = String(row?.catalog_image_url ?? '').trim();
-  return catalog || null;
+  return productImageUrl({
+    zohoItemId: row?.zoho_item_id as string | null | undefined,
+    zohoImageDocumentId: row?.zoho_image_document_id as string | null | undefined,
+    catalogImageUrl: row?.catalog_image_url as string | null | undefined,
+  });
 }
 
 interface TrackingRow {

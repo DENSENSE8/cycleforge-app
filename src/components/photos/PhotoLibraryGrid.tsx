@@ -34,6 +34,12 @@ interface PhotoLibraryGridProps {
   onPhotoContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;
   /** Called after a photo is deleted from the viewer so the list refreshes. */
   onPhotoDeleted?: (photoId: number) => void;
+  /**
+   * The session-local find value, for the no-matches empty state only. The page
+   * has already narrowed `photos` with it (`filterPhotosByQuery`) — the grid
+   * never filters, so display and count can never disagree.
+   */
+  searchQuery?: string;
   isLoading: boolean;
   error: string | null;
 }
@@ -51,6 +57,7 @@ export function PhotoLibraryGrid({
   onPhotoDeleted,
   isLoading,
   error,
+  searchQuery = '',
 }: PhotoLibraryGridProps) {
   const { openAt, lightbox } = usePhotoGridLightbox({ photos, sourceScope, onPhotoDeleted });
   // Roving arrow-key navigation across tiles (←/→/↑/↓/Home/End + Space to select).
@@ -76,7 +83,7 @@ export function PhotoLibraryGrid({
     );
   }
   if (photos.length === 0) {
-    return <PhotoEmptyState />;
+    return <PhotoEmptyState searchQuery={searchQuery} />;
   }
 
   if (view === 'list') {

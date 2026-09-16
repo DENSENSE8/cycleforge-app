@@ -24,7 +24,16 @@ import {
 } from '@/lib/serial/serial-journey';
 import { orderNumberEqualsQuery } from '@/lib/search/order-number-match';
 
-export type SearchHitEntityType = 'order' | 'unit' | 'receiving' | 'sku' | 'repair' | 'fba';
+export type SearchHitEntityType =
+  | 'order'
+  | 'unit'
+  | 'receiving'
+  | 'sku'
+  | 'repair'
+  | 'fba'
+  | 'warranty'
+  | 'ticket'
+  | 'location';
 
 export interface SearchHitChip {
   label: string;
@@ -87,6 +96,9 @@ const DB_TO_UI: Record<SearchEntityType, SearchHitEntityType> = {
   SKU: 'sku',
   REPAIR: 'repair',
   FBA_SHIPMENT: 'fba',
+  WARRANTY_CLAIM: 'warranty',
+  SUPPORT_TICKET: 'ticket',
+  LOCATION: 'location',
 };
 
 const UI_TO_DB: Record<SearchHitEntityType, SearchEntityType> = {
@@ -96,6 +108,9 @@ const UI_TO_DB: Record<SearchHitEntityType, SearchEntityType> = {
   sku: 'SKU',
   repair: 'REPAIR',
   fba: 'FBA_SHIPMENT',
+  warranty: 'WARRANTY_CLAIM',
+  ticket: 'SUPPORT_TICKET',
+  location: 'LOCATION',
 };
 
 export function toUiEntityType(dbType: SearchEntityType): SearchHitEntityType {
@@ -163,6 +178,29 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
       return `/repair?tab=active&openRepair=${entityId}`;
     case 'FBA_SHIPMENT':
       return `/fba?openShipmentId=${entityId}`;
+    case 'WARRANTY_CLAIM':
+      // Support ▸ Warranty reads the claim id off `?open=`
+      // (query-mode-routes.ts:151, useWarrantyClaims.ts:36).
+      return `/support?mode=warranty&open=${entityId}`;
+    case 'SUPPORT_TICKET':
+      // Tickets is Support's DEFAULT mode, so `?ticket=` alone lands there
+      // (useSupportTicketParam.ts:29,37). The value is support_tickets.id —
+      // resolveSupportContext probes the PK first, provider id second
+      // (src/lib/support/context.ts:117-133).
+      return `/support?ticket=${entityId}`;
+    case 'LOCATION':
+      // Inventory ▸ Locations ▸ Bins — the live list surface
+      // (locations-path.ts:10-19, INVENTORY_LOCATIONS_ROUTE_PARAMS
+      // query-mode-routes.ts:510-527).
+      //
+      // NAMED GAP, not a fabricated param: every bin RECORD surface in the app
+      // is keyed by BARCODE, never by locations.id — `?bin=` feeds
+      // LocationDetailView's barcode fetch (`/api/locations/[barcode]`,
+      // ByBinView.tsx:19-25) and `/l/[ref]` resolves barcode-or-name only. This
+      // signature carries an id, so the honest destination is the Bins tab that
+      // lists the record rather than `?loc=<id>`, which no parser reads and
+      // which route-param hygiene would reject.
+      return '/inventory/locations?tab=bins';
   }
 }
 
@@ -369,8 +407,22 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
       return `/inventory/units?q=${q}`;
     case 'SKU':
       return `/inventory/skus?q=${q}`;
+    case 'SUPPORT_TICKET':
+      // Tickets is Support's default mode; the board reads its OWN search key
+      // off the URL (SupportTicketsBoard.tsx:98 `searchParams.get('tq')`).
+      return `/support?tq=${q}`;
+    case 'LOCATION':
+      // `/inventory/locations` owns `q` on its own longer-prefix route spec
+      // (query-mode-routes.ts:512-525), and the Bins tab filters on it — so
+      // unlike the hit href, the SCOPE href is a real applied filter.
+      return `/inventory/locations?tab=bins&q=${q}`;
     default:
-      return null; // RECEIVING / REPAIR / FBA_SHIPMENT: no URL-searchable list yet
+      // RECEIVING / REPAIR / FBA_SHIPMENT: no URL-searchable list yet.
+      // WARRANTY_CLAIM deliberately joins them: `/support?mode=warranty&search=`
+      // feeds only the coverage-lookup CARD (WarrantyWorkspace.tsx:23); the
+      // claims table's own search box is local state
+      // (useWorkbenchSearchParam.ts:18), so that href would not filter the list.
+      return null;
   }
 }
 
@@ -401,6 +453,10 @@ export function searchScopeLabel(dbType: SearchEntityType): string | null {
       return 'Inventory units';
     case 'SKU':
       return 'SKU catalog';
+    case 'SUPPORT_TICKET':
+      return 'Support tickets';
+    case 'LOCATION':
+      return 'Bins';
     default:
       return null;
   }

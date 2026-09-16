@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation';
 import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalScanDock } from './GlobalScanDock';
-import { GlobalHeaderKioskButton } from './GlobalHeaderKioskButton';
 import { GlobalHeaderSearch } from './GlobalHeaderSearch';
 import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
@@ -28,18 +27,17 @@ import { cn } from '@/utils/_cn';
  *     pair lives on the spine top band ({@link SpineNavChrome}) at the same
  *     screen corner. Staff pins ({@link HeaderPinsSwitcher}) stay on this
  *     beam in both states so "Pin this page" and ⌘/Ctrl+1–9 do not vanish
- *     when the spine opens. Legacy GlobalHeaderActions stays unmounted (files
- *     kept); only the kiosk opener remounts far-right.
+ *     when the spine opens. Recents / actions / kiosk unmounted here — kiosk
+ *     opens from {@link StaffAccountFooter} account details (sidebar bottom).
  *   - **Scan** — {@link GlobalScanDock}
  *   - **Floor page chip** — {@link HeaderPageSwitcher} (Scan Stations triage
  *     with the spine closed; desks stay on DeskPageChrome)
  *   - **Context** — page `panelContent`
- *   - **Kiosk** — {@link GlobalHeaderKioskButton} far-right (`/kiosk/v2`)
  *
  * No `surfaceRoute` for `/`. No session switcher.
  * Callers: ResponsiveLayout. API: none. Schemas: none.
- * User: "there must be a way to access the kisok from the bottom left side or
- * the top right of the global header which ever would be best"
+ * User: "drop the kiosk button in the account details at the bottom of the
+ * sidebar not in the top left of the global header."
  */
 export function GlobalHeader({
   navOpen,
@@ -89,12 +87,6 @@ export function GlobalHeader({
       <GlobalScanDock />
       <HeaderPageSwitcher />
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
-      <div
-        className={cn(HEADER_ICON_CLUSTER, 'ml-auto')}
-        data-header-zone="kiosk"
-      >
-        <GlobalHeaderKioskButton />
-      </div>
     </header>
   );
 }

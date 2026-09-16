@@ -38,12 +38,87 @@ describe('mapEcwidOrdersToCanonicalLines', () => {
     assert.equal(lines[0].orderDate?.toISOString(), '2026-07-20T18:30:00.000Z');
   });
 
-  it('leaves saleAmount and currency unset so a sync never rewrites them', () => {
+  it("prefers the item's own line total over unit price × quantity", () => {
+    // Ecwid applies per-line coupon and volume discounts, so where a payload
+    // carries a line total it already reflects them and 4 × 50 does not.
     const lines = mapEcwidOrdersToCanonicalLines([
-      { orderNumber: '1', items: [{ sku: 'S', price: 42 }] },
+      { orderNumber: '1', items: [{ sku: 'S', price: 50, quantity: 4, total: 180 }] },
     ]);
-    assert.equal(lines[0].saleAmount, null);
-    assert.equal(lines[0].currency, null);
+    assert.equal(lines[0].saleAmount, '180.00');
+  });
+
+  it('multiplies the per-unit price by the quantity', () => {
+    // `item.price` is PER UNIT. Emitting it raw booked a fraction of the real
+    // revenue on every multi-unit line.
+    const lines = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '1', items: [{ sku: 'S', price: 18.88, quantity: 2 }] },
+    ]);
+    // Exact cents: 18.88 * 2 in floating point is 37.759999999999998.
+    assert.equal(lines[0].saleAmount, '37.76');
+  });
+
+  it("rounds away the float dust Ecwid itself serializes", () => {
+    // A live $36.88 line arrives from the API as 36.879999999999995. Writing
+    // that through leans on numeric(12,2) to round it silently and makes every
+    // report of the number unreadable.
+    const lines = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '1', items: [{ sku: 'S', price: 36.879999999999995 }] },
+    ]);
+    assert.equal(lines[0].saleAmount, '36.88');
+  });
+
+  it('treats an absent or unparseable price as unknown, never as zero', () => {
+    // A zero is a claim the order was free, and the writer treats a non-null
+    // saleAmount as authoritative — it would overwrite an operator's corrected
+    // number on the next sync with no source value left to restore it from.
+    const missing = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '1', items: [{ sku: 'S', quantity: 3 }] },
+    ]);
+    assert.equal(missing[0].saleAmount, null);
+
+    const junk = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '2', items: [{ sku: 'S', price: 'n/a', quantity: 2 }] },
+    ]);
+    assert.equal(junk[0].saleAmount, null);
+  });
+
+  it('never books the order total as line revenue', () => {
+    // Order-level `total` carries tax and shipping; a line's sale amount is
+    // merchandise only.
+    const lines = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '1', total: 74.15, items: [{ sku: 'S', price: 28, quantity: 2 }] },
+    ]);
+    assert.equal(lines[0].saleAmount, '56.00');
+  });
+
+  it('still skips a priced repair-service line', () => {
+    const lines = mapEcwidOrdersToCanonicalLines([
+      {
+        orderNumber: '1',
+        items: [
+          { sku: 'UPS-25', price: 25 },
+          { sku: '00004-RS', price: 125 },
+        ],
+      },
+    ]);
+    assert.deepEqual(
+      lines.map((line) => line.sku),
+      ['UPS-25'],
+    );
+  });
+
+  it('carries an order currency through, and stays null when absent', () => {
+    const [withCurrency] = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '1', currency: 'cad', items: [{ sku: 'S', price: 10 }] },
+    ]);
+    assert.equal(withCurrency.currency, 'CAD');
+
+    // Null, not 'USD': the writer defaults on insert but must not rewrite an
+    // existing order's currency from a source that never knew it.
+    const [withoutCurrency] = mapEcwidOrdersToCanonicalLines([
+      { orderNumber: '2', items: [{ sku: 'S', price: 10 }] },
+    ]);
+    assert.equal(withoutCurrency.currency, null);
   });
 
   it('falls back through the order-id and tracking shapes Ecwid has used', () => {

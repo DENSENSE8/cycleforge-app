@@ -1,7 +1,7 @@
 'use client';
 
 import { CartonContextCard } from '@/components/station/entity-context';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';

@@ -22,10 +22,12 @@
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { isRepairPayload } from '@/lib/kiosk/cart-line';
+import { X } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
 import { lineIdentification } from '@/lib/kiosk/line-identification';
 import { useKioskSession } from '@/lib/kiosk/kiosk-session-store';
 import {
-  KIOSK_UTILITY_PANEL_FACE,
+  KIOSK_UTILITY_SHEET,
   KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
@@ -40,7 +42,7 @@ function formatCents(cents: number): string {
 
 export { lineIdentification } from '@/lib/kiosk/line-identification';
 
-export function KioskPaperworkPanel() {
+export function KioskPaperworkPanel({ onClose }: { onClose?: () => void }) {
   const session = useKioskSession();
   const repairLine = session.lines.find((l) => isRepairPayload(l.payload));
   const repairPayload =
@@ -50,9 +52,25 @@ export function KioskPaperworkPanel() {
     [session.customerPhone, session.customerEmail].filter(Boolean).join(', ') || '—';
 
   return (
-    <aside className={KIOSK_UTILITY_PANEL_FACE} data-testid="kiosk-paperwork-panel">
+    <aside className={KIOSK_UTILITY_SHEET} data-testid="kiosk-paperwork-panel">
       <div className={KIOSK_PANE_HEADER_BAND}>
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Paperwork</h2>
+        {/*
+          The panel owns its own close. The catalog's glass trail — which holds
+          the paperwork toggle — stays mounted but hidden while a utility slot
+          is open, so without this the panel had no way back to the catalog
+          (the header never realigns by design; it also never traps).
+        */}
+        {onClose ? (
+          <IconButton
+            icon={<X className="h-5 w-5" />}
+            ariaLabel="Close paperwork"
+            size="touch"
+            onClick={onClose}
+            className="ml-auto shrink-0 hover:bg-surface-hover"
+            data-testid="kiosk-paperwork-close"
+          />
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

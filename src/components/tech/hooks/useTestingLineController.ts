@@ -11,7 +11,7 @@ import {
   type TestingVerdict,
 } from '@/components/receiving/workspace/TestingStatusPills';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { takeSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
 import {

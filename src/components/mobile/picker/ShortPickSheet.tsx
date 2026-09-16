@@ -158,7 +158,7 @@ export function ShortPickSheet({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder={noteRequired ? 'Describe what happened…' : 'Add context if useful'}
-          className={cn("w-full resize-none rounded-none border border-border-default bg-surface-canvas px-4 py-3 text-sm text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
+          className={cn("w-full resize-none rounded-none border border-border-default bg-surface-canvas px-4 py-3 text-role-field text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
         />
       </label>
 

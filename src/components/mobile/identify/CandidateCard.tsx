@@ -94,7 +94,7 @@ export function CandidateCard({
                 inputMode="text"
                 autoFocus
                 placeholder="New SKU (e.g. AWRCC1)"
-                className={cn("w-full rounded-none bg-glass/[0.06] px-3 py-2.5 text-sm text-white placeholder:text-white/30", focusRing('field', 'success'))}
+                className={cn("w-full rounded-none bg-glass/[0.06] px-3 py-2.5 text-role-field text-white placeholder:text-white/30", focusRing('field', 'success'))}
               />
               <div className="flex gap-2">
                 {/* ds-raw-button: solid-emerald CTA (emerald-500/text-black) — no green Button variant */}

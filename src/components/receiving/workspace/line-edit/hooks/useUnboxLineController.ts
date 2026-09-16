@@ -21,7 +21,7 @@ import { takeSerialEditHandoff } from '../../serialEditHandoff';
 import { printProductLabel } from '@/lib/print/printProductLabel';
 import { printAsListedLabel } from '@/lib/print/printAsListedLabel';
 import { printTicketLabel } from '@/lib/print/printTicketLabel';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useLineSerials } from './useLineSerials';
 import { useReceiveAction } from './useReceiveAction';
 import { useZohoLinePrefill } from './useZohoLinePrefill';

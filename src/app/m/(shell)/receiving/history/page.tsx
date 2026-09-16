@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Barcode,
+  ScanBarcode,
   Search,
   X,
   Box,
@@ -19,7 +19,7 @@ import { MobileReceivingRow } from '@/components/mobile/receiving/MobileReceivin
 import { MobileCartonSheet } from '@/components/mobile/receiving/MobileCartonSheet';
 import { MobileReceivingFeedGallery } from '@/components/mobile/receiving/MobileReceivingFeedGallery';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { IconButton } from '@/design-system/primitives';
@@ -142,7 +142,7 @@ export default function MobileReceivingPipelinePage() {
                 placeholder="Search purchase order #, SKU, or item"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card pl-9 pr-9 text-sm font-semibold text-text-default placeholder:text-text-faint shadow-md shadow-black/10", focusRing('field', 'accent'))}
+                className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card pl-9 pr-9 text-role-field font-semibold text-text-default placeholder:text-text-faint shadow-md shadow-black/10", focusRing('field', 'accent'))}
               />
               {search && (
                 <IconButton
@@ -156,7 +156,7 @@ export default function MobileReceivingPipelinePage() {
             <IconButton
               onClick={() => setScanOpen(true)}
               ariaLabel="Scan PO barcode"
-              icon={<Barcode className="h-5 w-5 text-white" />}
+              icon={<ScanBarcode className="h-5 w-5 text-white" />}
               className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-full bg-blue-600 shadow-lg shadow-blue-600/30 active:bg-blue-700"
             />
           </div>

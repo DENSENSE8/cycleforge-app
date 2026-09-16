@@ -814,6 +814,10 @@ describe('setConsultStance', () => {
   it('does not mutate lines when the desk flips Work → Show → Verify → Work', async () => {
     const f = fakeDeps();
     await addLine(ORG, DESK, SESSION_ID, { expectedVersion: 0, line: retailLine() }, f.deps);
+    // The command a session OPENED on is the org's choice now
+    // (`getKioskDefaultCommand`), so pin the invariant — a stance flip leaves
+    // it alone — rather than whichever value the empty snapshot happens to seed.
+    const openedOn = f.state.activeCommand;
 
     const show = await setConsultStance(
       ORG,
@@ -827,7 +831,7 @@ describe('setConsultStance', () => {
     assert.equal(f.state.face, 'customer');
     assert.equal(f.state.lines.length, 1);
     assert.equal(f.state.lines[0].title, 'Case');
-    assert.equal(f.state.activeCommand, 'retail');
+    assert.equal(f.state.activeCommand, openedOn);
 
     const verify = await setConsultStance(
       ORG,

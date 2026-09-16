@@ -8,7 +8,7 @@ import { fetchShippedHydration } from '@/lib/dashboard-table-data';
 import { useShippedWeekBuckets } from './useShippedWeekBuckets';
 import { getRecentWeekBuckets } from '@/lib/dashboard-week-range';
 import { toPSTDateKey } from '@/utils/date';
-import { isStalled } from '@/components/shipping/ShipmentStatusBadge';
+import { isStalled } from '@/lib/shipping/shipment-status';
 import {
   dedupeShippedRecords,
   deriveShippedRecord,

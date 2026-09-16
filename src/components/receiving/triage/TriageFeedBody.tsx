@@ -5,7 +5,7 @@
  * Triage) and the right-pane TriageWorkspaceView (all four ?triview= tabs).
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isPendingTriageScanRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TriageCombinedList } from '@/components/sidebar/receiving/TriageCombinedList';
 import { TriageRecentRail } from '@/components/sidebar/receiving/TriageRecentRail';

@@ -18,6 +18,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { ELEVATION_CLASS, TACTILE_PRESS_TRAVEL_CLASS } from '@/design-system/tokens/shadows';
 import {
@@ -30,6 +31,7 @@ import {
   KIOSK_POS_CARD_SELECTED_FRAME,
   KIOSK_POS_CTA,
   KIOSK_POS_GRID,
+  KIOSK_POS_TRAIL_BAND,
   KIOSK_POS_TRAIL_CONTROL,
   KIOSK_POS_TRAIL_ICON,
 } from './kiosk-pos-surface';
@@ -128,4 +130,42 @@ test('word chips and glyph chips share ONE container treatment and ONE size', ()
     assert.ok(KIOSK_POS_TRAIL_ICON.split(' ').includes(part), `icon missing ${part}`);
   }
   assert.ok(KIOSK_POS_TRAIL_ICON.split(' ').includes('w-9'));
+});
+
+/**
+ * The SSR skeleton must be the SAME row, in the same tokens.
+ *
+ * `KioskCatalogFirstPaint` mounted `KIOSK_PANE_HEADER_BAND` — the band bolted
+ * to a pane, opaque card-white with `border-b border-border-soft` — where the
+ * live trail is `KIOSK_POS_TRAIL_BAND`, transparent and seamless. Every reload
+ * therefore flashed a bottom hairline under the header and the All-products row
+ * that the hydrated surface does not have (operator 2026-09-15). The ghosts were
+ * hand-written literals for the same reason.
+ *
+ * Source-shape assertions: this repo has no React test renderer, and the
+ * invariant is "which token the skeleton reaches for".
+ */
+test('the first-paint skeleton wears the trail tokens, never the pane band', () => {
+  const src = readFileSync('src/app/kiosk/KioskCatalogFirstPaint.tsx', 'utf8');
+  const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+  assert.doesNotMatch(
+    code,
+    /KIOSK_PANE_HEADER_BAND/,
+    'the pane band is opaque and seamed — that seam IS the reload hairline',
+  );
+  assert.match(code, /KIOSK_POS_TRAIL_BAND/);
+  assert.match(code, /KIOSK_POS_TRAIL_CONTROL/, 'word ghosts are pills, not bare text');
+  assert.match(code, /KIOSK_POS_TRAIL_ICON/, 'glyph slots are round chips, not squares');
+
+  // No literal paint at all: ground comes from the canvas token, and the
+  // chevron comes from the icon SoT rather than an inline <svg>.
+  assert.doesNotMatch(code, /bg-surface-\w/, 'the skeleton paints no literal ground');
+  assert.doesNotMatch(code, /border-b|border-border-/, 'no hand-written seam');
+  assert.doesNotMatch(code, /<svg/, 'chevrons come from @/components/Icons');
+  assert.match(code, /KIOSK_POS_CANVAS/);
+
+  // And the band it copies really is the seamless one.
+  assert.ok(KIOSK_POS_TRAIL_BAND.includes('bg-transparent'));
+  assert.ok(!/border/.test(KIOSK_POS_TRAIL_BAND));
 });

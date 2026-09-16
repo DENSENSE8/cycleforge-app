@@ -18,6 +18,7 @@ import type {
 } from '@/components/tables/compound/compound-row-model';
 import { workStatusLabel } from '@/lib/work-orders/work-status-display';
 import type { DailyTaskRow } from './daily-task-row';
+import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
 /**
  * Lifecycle → the three-tone vocabulary.
@@ -47,6 +48,20 @@ function teamNote(row: DailyTaskRow): string | null {
   return `${row.teamDone}/${row.teamTotal} done`;
 }
 
+/**
+ * The note line, composed — never replaced. A `once` item leads with its
+ * marker ("Today only · 1/1 done"); a recurring item paints exactly what it
+ * painted before. Only the exception is marked, and the cadence word lives in
+ * the NOTE, not on the state pill: the pill answers "did I do it", and a
+ * second meaning on one control is the error banned on the select gutter and
+ * the station mode row.
+ */
+function composedNote(row: DailyTaskRow): string | null {
+  const team = teamNote(row);
+  if (row.kind !== 'once') return team;
+  return team ? `Today only · ${team}` : 'Today only';
+}
+
 export interface DailyCompoundParts {
   /** Resolved "you checked this off …" line, when the viewer has. */
   markedTip?: string;
@@ -62,10 +77,19 @@ export function dailyTaskCompoundView(
     // holds the track so Daily lines up scanline for scanline with Unbox.
     thumbUrl: null,
     title: row.title,
-    note: teamNote(row),
-    // A checklist item has no order and no carrier. Honest nulls — the ids
-    // track reads as two dashes, which is a DATA difference and the only kind
-    // of difference between two of these tables there is meant to be.
+    // The one family whose row IS a check: my tick strikes the title
+    // (animated, ease-in-out both ways — operator ruling 2026-09-14). Read
+    // off MY mark, never the roster's: `row.done` is the viewer's own.
+    titleStruck: row.done,
+    note: composedNote(row),
+    // The IDENTITY track carries the checklist handle — the
+    // `daily_check_items.id` a lead quotes to another staffer (operator
+    // 2026-09-14: "the slot data table displays as id and not order"). It is
+    // NOT an order: `identityFace` paints it plainly and copyably, without the
+    // marketplace dot and open-on-platform menu `orderId` would bring.
+    identityFace: compoundIdentityFace(row.id, 'Checklist item id'),
+    // No order and no carrier — honest nulls. The tracking line reads as one
+    // dash, which is a DATA difference and the only kind there is meant to be.
     orderId: null,
     tracking: null,
     platformValue: null,

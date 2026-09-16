@@ -3,6 +3,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
+import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -1438,7 +1439,11 @@ export async function pairEcwidToZoho(
 
   if (!updateResult.rows[0]) return { paired: false, imageBackfilled: false };
 
-  // Backfill image_url on sku_catalog from Ecwid thumbnail
+  // Backfill image_url on sku_catalog from the Ecwid thumbnail — ONLY when Zoho
+  // does not own this row (SKU IDENTITY LAW, src/lib/sku/sku-identity-law.ts).
+  // A Zoho-twinned row's photo is the Zoho item photo; letting a pairing put an
+  // Ecwid thumbnail there is how 132 of 139 catalog images came to shadow the
+  // real product.
   const ecwidImageUrl = updateResult.rows[0].image_url;
   let imageBackfilled = false;
   if (ecwidImageUrl) {
@@ -1446,7 +1451,8 @@ export async function pairEcwidToZoho(
       orgId,
       `UPDATE sku_catalog
        SET image_url = $1, updated_at = NOW()
-       WHERE id = $2 AND image_url IS NULL AND organization_id = $3`,
+       WHERE id = $2 AND image_url IS NULL AND organization_id = $3
+         AND ${skuCatalogNoZohoTwinPredicateSql()}`,
       [ecwidImageUrl, skuCatalogId, orgId],
     );
     imageBackfilled = (imgResult.rowCount || 0) > 0;

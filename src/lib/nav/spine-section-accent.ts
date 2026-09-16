@@ -57,7 +57,7 @@
  * | parent idle     | ~~`text-text-muted` `#475569`~~ → `text-text-default` | none                         |
  * | hover           | ~~one ink step up~~ (ink is constant now) | `bg-surface-hover`  `#f8fafc`|
  * | **owns child**  | `text-text-default`                  | `bg-surface-hover`  `#f8fafc`|
- * | **current page**| `text-text-default` `#0f172a`| `bg-surface-canvas`  `#eef2f7`|
+ * | **current page**| `text-text-default` `#0f172a`| `bg-surface-canvas`  `#fafafa`|
  *
  * **The fill is a plane step against chrome, not against the work canvas.**
  * MasterNav's host is {@link appChromeClass} (`bg-surface-card` white) —
@@ -155,10 +155,19 @@ const OWNS_ACTIVE = 'bg-surface-hover text-text-default';
  * Width stays constant across both states — `w-0.5`, bumped from the
  * original `w-px` hairline so the darkened state reads as a genuine bar,
  * not a barely-visible pixel.
+ *
+ * **`shrink-0` is load-bearing (2026-09-15).** Without it this line was
+ * invisible on BOTH surfaces for its whole life. The row shell is
+ * `flex w-full` and `SPINE_ROW_FACE_CLASS` puts `shrink-0` on the BUTTON, so
+ * the button cannot give up its 100% width — which made this 2px span the
+ * only shrinkable item in the flex row. Flexbox then took exactly the 2px of
+ * overflow out of the only thing that could yield, and the rail computed to
+ * `width: 0` (measured: `left 15, right 15, width 0, height 40`). The mark
+ * was mounted, positioned and coloured correctly, and painted nothing.
  */
 export function spineRailLineClass(active: boolean): string {
   return cn(
-    'w-0.5 self-stretch transition-colors duration-150',
+    'w-0.5 shrink-0 self-stretch transition-colors duration-150',
     active ? 'bg-text-default' : 'bg-border-soft',
   );
 }
@@ -207,6 +216,35 @@ export const SPINE_ACCENT: SpineAccentClasses = {
   cmdkSelected: 'data-[selected=true]:bg-surface-canvas data-[selected=true]:text-text-default',
   cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-text-default',
 };
+
+/**
+ * The same current-page treatment as {@link SpineAccentClasses.activePage},
+ * expressed as `data-[active=true]:` variants.
+ *
+ * The shadcn `SidebarMenuButton` states "am I the current page?" as a DATA
+ * ATTRIBUTE rather than a conditional class, so its variant recipe needs the
+ * fill and the ink in that form. Written out as full utility tokens because
+ * Tailwind scans source text: string-prefixing `activePage` at the call site
+ * would produce classes that never get generated.
+ *
+ * Kept beside {@link SPINE_ACCENT} so the two cannot drift — if the current-page
+ * fill changes there, it changes here in the same edit.
+ *
+ * The current-SECTION leading bar is deliberately NOT here. That mark belongs
+ * to a group LABEL that owns the current row (it says "the page you are on is
+ * inside me, and I am collapsed"), not to the row itself, which already carries
+ * the fill and `aria-current`.
+ */
+export const SPINE_ACCENT_DATA_ACTIVE = [
+  'data-[active=true]:bg-surface-canvas',
+  'data-[active=true]:text-text-default',
+  // The row you are ON does not lift under the pointer — it is already the
+  // strongest fill, and a hover wash on it reads as "this is a different row".
+  // `idlePage` carries `hover:bg-surface-hover` for every row, so the current
+  // one needs this to win: attribute + `:hover` + class outranks class +
+  // `:hover`, which makes the outcome specificity, not stylesheet order.
+  'data-[active=true]:hover:bg-surface-canvas',
+].join(' ');
 
 /*
  * `SPINE_NEUTRAL_ACCENT` is deleted, not aliased. It named the treatment for

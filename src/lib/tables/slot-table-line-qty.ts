@@ -94,12 +94,37 @@ export function pinLineQtyFirst(
 }
 
 /**
- * To-ship qty FACE — bare number, two-character reservation, 1 quiet / 2+ warn.
- * Every family uses this; nobody invents a second count tone.
+ * What a line qty MEANS on this surface, which is what decides its tone.
+ *
+ * - `order-line` (default) — a line of an ORDER. `2+` warns, because two units
+ *   on one line is a pick-and-pack risk: the packer has to notice. This is the
+ *   To-ship face and every outbound peer's.
+ * - `on-hand` — a COUNT of what is sitting somewhere. Four on a shelf is not
+ *   an exception, it is a shelf with four on it, so the number stays quiet at
+ *   every value (operator 2026-09-15, Inventory › Stock: the qty must not paint
+ *   warning-yellow above one).
+ *
+ * Still ONE count face — same bare number, same two-character reservation,
+ * same weight. A family picks the QUESTION, never a palette, so nobody invents
+ * a second count tone.
  */
-export function lineQtySubtitlePart(fieldId: string, text: string): CompoundSubtitlePart {
+export type LineQtyMeaning = 'order-line' | 'on-hand';
+
+/**
+ * Line qty FACE — bare number, two-character reservation. Tone follows
+ * {@link LineQtyMeaning}: an order line warns above one, an on-hand count
+ * never does.
+ */
+export function lineQtySubtitlePart(
+  fieldId: string,
+  text: string,
+  meaning: LineQtyMeaning = 'order-line',
+): CompoundSubtitlePart {
   const qty = Number(text);
-  const countTone = orderRowQtyTone(Number.isFinite(qty) ? qty : 1);
+  const countTone =
+    meaning === 'on-hand'
+      ? 'text-text-muted'
+      : orderRowQtyTone(Number.isFinite(qty) ? qty : 1);
   return {
     text,
     toneClass:
@@ -113,10 +138,16 @@ export function lineQtySubtitlePart(fieldId: string, text: string): CompoundSubt
 
 type SlotValueResolver = (fieldId: string) => CompoundSlotValue | null;
 
-/** Bound subtitle facts → Item-cell parts, qty then money pinned. */
+/**
+ * Bound subtitle facts → Item-cell parts, qty then money pinned.
+ *
+ * `lineQtyMeaning` defaults to `order-line`, so every outbound peer keeps the
+ * face it has; an inventory surface passes `on-hand`.
+ */
 export function slotSubtitlePartsFor(
   fieldIds: readonly string[],
   resolve: SlotValueResolver,
+  lineQtyMeaning: LineQtyMeaning = 'order-line',
 ): CompoundSubtitlePart[] {
   const parts: CompoundSubtitlePart[] = [];
   for (const fieldId of fieldIds) {
@@ -129,7 +160,7 @@ export function slotSubtitlePartsFor(
     const value = resolve(fieldId);
     if (!value || value.kind !== 'value' || !value.text) continue;
     if (isLineQtyFieldId(fieldId)) {
-      parts.push(lineQtySubtitlePart(fieldId, value.text));
+      parts.push(lineQtySubtitlePart(fieldId, value.text, lineQtyMeaning));
       continue;
     }
     parts.push({ text: value.text, key: fieldId });

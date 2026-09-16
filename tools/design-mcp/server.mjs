@@ -29,13 +29,15 @@
  * FilterMenu, …). The server labels those separately. Two Buttons is two jobs,
  * not a choice: ops CTA → design-system Button; shadcn-lane chrome → ui/button.
  *
- * ## Why no ds_adjudicate
+ * ## The shared adjudicator, plugged in (2026-09-14)
  *
- * Garisek's version shares a rule module with a PreToolUse hook, so its verdict
- * is the same verdict that blocks a write. CycleForge has no such module, and a
- * tool that returned "allowed" while nothing enforced anything would be worse
- * than absent: it would manufacture confidence. ESLint is this repo's gate; run
- * it. When a shared adjudicator exists here, this is where it plugs in.
+ * Garisek's version shares a rule module with a PreToolUse hook; CycleForge
+ * had none, so ds_adjudicate was deliberately absent — a tool that answered
+ * "allowed" while nothing enforced anything would manufacture confidence.
+ * The boundary law now HAS a shared module: `scripts/boundary-guard.ts` over
+ * `.dependency-cruiser.cjs`, enforced by the verify Boundary gate. ds_boundary
+ * is its MCP face (scoped to one file). Full visual adjudication still has no
+ * hook module; ESLint and the Boundary gate are this repo's machines.
  *
  * stdout carries JSON-RPC only; every diagnostic goes to stderr.
  */
@@ -51,6 +53,7 @@ import {
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 /**
@@ -115,6 +118,30 @@ const PRIMITIVE_HOMES = [
     alias: '@/lib/tables',
     match: /^(materialize-tracks|slot-layout|table-definition)\.ts$/,
   },
+  // The slot table's ROW faces. `src/components/tables` is a home, the walk
+  // does not recurse, and every compound face lives one folder down — so the
+  // `CompoundItem` pin in `pinned.json` merged onto nothing and was law no
+  // agent could find (the same failure documented for `src/components/desk`
+  // and `src/components/search` below). Measured 2026-09-15:
+  // `ds_contract("CompoundItem")` returned NO MATCH while the pin sat in the
+  // file, and `ds_contract("row status icon")` could not name the gutter face
+  // an agent was about to rebuild.
+  //
+  // Faces are NAMED, not globbed: the row model, the column arrays and the
+  // subtitle plumbing are not things to mount, and a catalog that answers a
+  // paint question with a view-model file is the same failure one altitude
+  // down.
+  {
+    dir: 'src/components/tables/compound',
+    label: 'slot-table row face (house)',
+    alias: '@/components/tables/compound',
+    // The geometry SoT (`compound-row-chrome.ts`) is catalogued alongside the
+    // faces: row height, select-track width, rail width and the gutter inset
+    // are the numbers an agent is most tempted to retype, and a pin nobody can
+    // find is how 48 / 1.5rem / 3px get re-invented one file over.
+    match:
+      /^((CompoundCells|CompoundCell|CompoundRow|CompoundGridCell|CompoundSelectStatusFace|CompoundEdgeRail|CompoundRowDetailBand|SlotTableGroupParentRow|StageStaffAssignPopover)\.tsx|compound-row-chrome\.ts)$/,
+  },
   // The desk FRAME's app-side adapter. `DeskPageChrome` itself is catalogued
   // from `src/design-system/components`, but the thing a page actually mounts is
   // `DeskPageLayout` — it reads SIDEBAR_PAGE_NAV and AuthContext, which is
@@ -163,6 +190,87 @@ const PRIMITIVE_HOMES = [
     alias: '@/design-system/components/item-record',
     match: /^(ItemRecordQtyBadge|ItemRecordThumb|ItemRecordMobileMeta|ItemRecordMobileStage)\.tsx$/,
   },
+  // The ONE search/find result row plus the browse refine band. Added
+  // 2026-09-12 with the identifier-truncation + row-anatomy law: blind last-8
+  // orphaned separators (`113-1397006-0292212` → `-0292212`) and the premier
+  // left column held a status WORD instead of the verifiable id. Without a
+  // home here those pins merge onto nothing and are law no agent can find —
+  // the same failure that put `src/components/desk` on this list.
+  {
+    dir: 'src/components/search',
+    label: 'find surface (app)',
+    alias: '@/components/search',
+    match: /^(SearchResultRow|SearchRefineControls|SearchRefinePills)\.tsx$/,
+  },
+  // ── The phone kit (M0.2, 2026-09-14) ──────────────────────────────────────
+  // `src/components/mobile/**` was absent from this list, and the measured
+  // consequence was not a gap but a WRONG answer: ds_contract("phone shell for
+  // an /m page") returned `DeskPageChrome` first — the desk frame, the one
+  // component SURFACE_LAW §4/§7 forbids on `/m`. An agent asking the design
+  // system for the phone frame was being told to mount the desk's.
+  //
+  // Two homes, specific before general: the shell faces get their own label so
+  // a frame question lands on the frame, and the rest of the kit is catalogued
+  // so its pins (ProgressDots · MobilePhotoCountBadge, which live in
+  // subfolders) merge onto something. Without these the mobile entries in
+  // `pinned.json` are law no agent can find — the same failure that put
+  // `src/components/desk` and `src/components/search` on this list.
+  {
+    dir: 'src/components/mobile/redesign',
+    label: 'mobile shell (house)',
+    alias: '@/components/mobile/redesign',
+    match: /^(MobileShell|MobileTopBar|MobileSidebarDrawer|MobileAccountFooter|MobileDetailTopBar|mobile-scan-cta)\.tsx$/,
+  },
+  {
+    dir: 'src/components/mobile',
+    label: 'mobile kit (house)',
+    alias: '@/components/mobile',
+    match: /\.tsx$/,
+  },
+  // The walk does NOT recurse (verified 2026-09-14: with only the two homes
+  // above, `ds_contract("MobilePhotoCountBadge")` returned NO MATCH). Nested
+  // phone faces must be named the same way the item-record block names its
+  // own — one home per folder, faces listed.
+  {
+    dir: 'src/components/mobile/receiving',
+    label: 'mobile kit (house)',
+    alias: '@/components/mobile/receiving',
+    match: /^(MobilePhotoCountBadge)\.tsx$/,
+  },
+  // ── The kiosk kit (2026-09-15) ────────────────────────────────────────────
+  // `src/components/kiosk/**` was absent from this list and the measured
+  // consequence was a WRONG answer, not a gap: ds_contract("kiosk cart panel")
+  // returned desk faces, and the cart was duly built as a desk compound table
+  // over a shadowed popover — both rejected by the operator 2026-09-14 ("this
+  // is done terribly", "it should not display a depth drop shadow").
+  //
+  // `StepProgressHeader` — the repair-intake band the operator named as the
+  // gold — was findable only because it happens to sit in
+  // design-system/primitives; its sibling law (`KioskPaneForm`) was not. So
+  // the faces are NAMED: the realtime provider and the session store are
+  // plumbing, and a catalog that answers a frame question with a context
+  // provider is the same failure one altitude down.
+  {
+    dir: 'src/components/kiosk',
+    label: 'kiosk kit (house)',
+    alias: '@/components/kiosk',
+    match:
+      /^(KioskPaneForm|KioskChip|KioskCartLineCard|KioskCartSwipeRow|KioskCartLineEditor|KioskCustomerIntake|KioskPaymentStepUpSheet|KioskTicketStep|ConsultStanceControls)\.tsx$/,
+  },
+  // ── The auth faces (2026-09-15) ───────────────────────────────────────────
+  // `src/components/auth` was absent and the measured consequence was the
+  // switch-staff sheet being rebuilt twice with no law to consult: first a
+  // PIN-pad step, then a duplicate parent outline + "Tap to set up" chip —
+  // both undone by the operator on 2026-09-15 ("remove the parent outline.
+  // It is duplicate and redundant" · "remove the tap to set up pin"). The
+  // picker row, the roster list and the switch sheet are the three faces an
+  // agent must be answered with, by name.
+  {
+    dir: 'src/components/auth',
+    label: 'auth face (house)',
+    alias: '@/components/auth',
+    match: /^(StaffPickerList|StaffChoiceRowButton|SwitchStaffSheet|StaffPinPad|StaffSigningIn)\.tsx$/,
+  },
 ]
 
 /**
@@ -174,7 +282,7 @@ const PRIMITIVE_HOMES = [
  * `find_symbol` + `impact_analysis` on the role function (`cornerClass`,
  * `elevationClass`, `focusRing`) so the next session sees real call sites.
  */
-const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record']
+const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record', 'kiosk', 'sku-identity']
 
 /**
  * The axes whose law is TypeScript (or Node-native `.mjs` twins), not CSS.
@@ -203,6 +311,17 @@ const TOKEN_TS = {
   typeSizes: 'src/design-system/tokens/typography/sizes.ts',
   itemRecordFace: 'src/design-system/components/item-record/item-record-face.ts',
   itemRecordMobile: 'src/design-system/tokens/item-record-mobile.ts',
+  // The counter-tablet surface. Outside every axis until 2026-09-15, which is
+  // why the cart sheet was given elevationClass('overlay') from memory: an
+  // agent asking "what is the kiosk sheet's plane?" got no answer at all.
+  kioskChrome: 'src/app/kiosk/kiosk-chrome.ts',
+  kioskPos: 'src/app/kiosk/kiosk-pos-surface.ts',
+  kioskCounter: 'src/app/kiosk/kiosk-counter-surface.ts',
+  // The IDENTITY axis (2026-09-15). Not visual, but the same failure mode:
+  // absent from every axis, so ten surfaces each hand-rolled a product-title
+  // ladder and the PO desk disagreed with Move photos on the same line.
+  skuIdentityLaw: 'src/lib/sku/sku-identity-law.ts',
+  skuIdentityCohort: 'src/lib/sku/sku-identity-cohort.ts',
   tailwind: 'tailwind.config.mjs',
 }
 const OVERRIDES = 'src/design-system/pinned.json'
@@ -858,6 +977,146 @@ function loadItemRecordTokens() {
   return out
 }
 
+/**
+ * Kiosk surface tokens — the counter-tablet chrome as ONE axis.
+ *
+ * `src/app/kiosk/*.ts` sat outside every home and every axis, so a kiosk
+ * question had no answer and the last cart port was designed from memory:
+ * it composed `elevationClass('overlay')` onto the utility sheet, which the
+ * operator rejected as a popover ("it should not display a depth drop
+ * shadow", 2026-09-14). A token an agent cannot look up is a token an agent
+ * re-invents.
+ *
+ * Prose is lifted from the docblock ABOVE each export, never re-typed here:
+ * the law stays next to the value it governs, so this reader cannot drift
+ * from the file the way a hand-copied pin would.
+ */
+const KIOSK_TOKEN_FILES = [
+  { key: 'kioskChrome', alias: '@/app/kiosk/kiosk-chrome' },
+  { key: 'kioskPos', alias: '@/app/kiosk/kiosk-pos-surface' },
+  { key: 'kioskCounter', alias: '@/app/kiosk/kiosk-counter-surface' },
+]
+
+/** `export const NAME = <expr>;` bodies, brace/paren/quote aware. */
+function exportedConstExpressions(src) {
+  const out = new Map()
+  const re = /export const ([A-Z][A-Z0-9_]*)\s*(?::[^=]*)?=/g
+  for (const m of src.matchAll(re)) {
+    let i = m.index + m[0].length
+    let depth = 0
+    let quote = null
+    for (; i < src.length; i++) {
+      const ch = src[i]
+      if (quote) {
+        if (ch === quote && src[i - 1] !== '\\') quote = null
+        continue
+      }
+      if (ch === "'" || ch === '"' || ch === '`') { quote = ch; continue }
+      if (ch === '(' || ch === '[' || ch === '{') { depth++; continue }
+      if (ch === ')' || ch === ']' || ch === '}') { depth--; continue }
+      if (ch === ';' && depth === 0) break
+    }
+    out.set(m[1], src.slice(m.index + m[0].length, i).trim())
+  }
+  return out
+}
+
+/** First sentence of the `/** … *\/` docblock immediately above `name`. */
+function docblockAbove(src, name) {
+  const at = src.search(new RegExp(`export const ${name}\\b`))
+  if (at < 0) return null
+  const before = src.slice(0, at)
+  const close = before.lastIndexOf('*/')
+  if (close < 0) return null
+  // Only an ADJACENT docblock counts — anything with code between it and the
+  // export belongs to a different token.
+  if (/[^\s]/.test(before.slice(close + 2))) return null
+  const open = before.lastIndexOf('/**', close)
+  if (open < 0) return null
+  const prose = before
+    .slice(open + 3, close)
+    .split('\n')
+    .map((l) => l.replace(/^\s*\*/, '').trim())
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\{@link ([^}]+)\}/g, '$1')
+    .trim()
+  return prose || null
+}
+
+function loadKioskTokens() {
+  const out = []
+  for (const spec of KIOSK_TOKEN_FILES) {
+    const rel = TOKEN_TS[spec.key]
+    const raw = readTs(rel)
+    if (!raw) {
+      throw new Error(`${rel} missing — kiosk reader fault, not a licence to invent counter chrome.`)
+    }
+    const values = exportedConstExpressions(stripComments(raw))
+    if (values.size === 0) {
+      throw new Error(`${rel} parsed zero kiosk tokens — reader fault.`)
+    }
+    for (const [name, expr] of values) {
+      const value = expr.replace(/\s+/g, ' ')
+      const doc = docblockAbove(raw, name)
+      out.push(row(
+        'kiosk',
+        rel,
+        name,
+        value,
+        `import { ${name} } from '${spec.alias}'.${doc ? ` ${doc}` : ''}`,
+      ))
+    }
+  }
+  return out
+}
+
+const SKU_IDENTITY_TOKEN_FILES = [
+  { key: 'skuIdentityLaw', alias: '@/lib/sku/sku-identity-law' },
+  { key: 'skuIdentityCohort', alias: '@/lib/sku/sku-identity-cohort' },
+]
+
+/**
+ * SKU identity is not a visual axis — it is the IDENTITY axis, and it sits here
+ * for the same reason `station-skin` does: an agent about to paint a product
+ * title, SKU or photo must be able to look up the one sanctioned way instead of
+ * hand-rolling an eleventh ladder. Ten of them is how the PO desk and Move
+ * photos came to render different products for the same line.
+ *
+ * Read as text from the law + cohort modules, so this server cannot state a
+ * precedence the code does not.
+ */
+function loadSkuIdentityTokens() {
+  const out = []
+  for (const spec of SKU_IDENTITY_TOKEN_FILES) {
+    const rel = TOKEN_TS[spec.key]
+    const raw = readTs(rel)
+    if (!raw) {
+      throw new Error(
+        `${rel} missing — sku-identity reader fault, not a licence to invent a title ladder.`,
+      )
+    }
+    const values = exportedConstExpressions(stripComments(raw))
+    if (values.size === 0) {
+      throw new Error(`${rel} parsed zero identity constants — reader fault.`)
+    }
+    for (const [name, expr] of values) {
+      const value = expr.replace(/\s+/g, ' ')
+      const doc = docblockAbove(raw, name)
+      out.push(
+        row(
+          'sku-identity',
+          rel,
+          name,
+          value,
+          `import { ${name} } from '${spec.alias}'.${doc ? ` ${doc}` : ''}`,
+        ),
+      )
+    }
+  }
+  return out
+}
+
 const AXIS_LOADERS = {
   color: loadThemeTokens,
   radius: loadRadiusTokens,
@@ -870,6 +1129,8 @@ const AXIS_LOADERS = {
   'station-skin': loadStationSkinTokens,
   'station-depth': loadStationDepthTokens,
   'item-record': loadItemRecordTokens,
+  'sku-identity': loadSkuIdentityTokens,
+  kiosk: loadKioskTokens,
 }
 
 const AXIS_NOTE = {
@@ -907,6 +1168,31 @@ const AXIS_NOTE = {
     "TITLE = two-line reserved title + foot so the cluster does not jump. " +
     "STAGE = PackageSearch / Package + Assigned or picked/packed stamp (desk CompoundStageStep; names on the sheet). " +
     "Do not mount ItemRecordMetaGrid (desk five-track) on the phone card.",
+  kiosk:
+    "Counter-tablet chrome. KIOSK_POS_CANVAS is the ONE stage background; " +
+    "KIOSK_UTILITY_SHEET is the cart / paperwork / triage face on it — bounded, " +
+    "cornered, FLAT (operator 2026-09-14: 'it should not display a depth drop shadow'; " +
+    "separation comes from two different planes, never a blur). A kiosk pane wears " +
+    "KioskPaneForm, and its header is StepProgressHeader or nothing — " +
+    "KIOSK_PANE_HEADER_BAND / _TITLE belong to the SHELL trail, never to a pane. " +
+    "Touch chips are KioskChip (KIOSK_PILL family), never a desk badge. " +
+    "COUNTER_* are the touch-target / legibility floors: 44px hit, 16px field text.",
+  'sku-identity':
+    "The IDENTITY axis — one SKU, one title, one photo, and the ZOHO item governs " +
+    "(operator 2026-09-15: 'it all needs to be ported under one source of truth which " +
+    "would be the ZOHOSKU'). Read a product title through resolveSkuIdentityTitle " +
+    "(zoho_item_title → catalog_product_title → item_name → sku → zoho_item_id); it " +
+    "returns '' when nothing is present and the CALLER keeps its own last resort. " +
+    "Reach sku_catalog with SKU_CATALOG_JOIN_ON_SQL — exact and org-scoped, never " +
+    "leading-zero-stripped, never similarity-gated. Photos run " +
+    "RECEIVING_LINE_IMAGE_URL_SQL: Zoho item photo when the item exists, catalog only " +
+    "when it does not — never bare sc.image_url beside a line. A platform sync may " +
+    "fill sku_catalog.product_title / image_url only behind " +
+    "skuCatalogNoZohoTwinPredicateSql(); marketplace copy belongs in " +
+    "sku_platform_ids.display_name / listing_title. The marketplace title is NOT the " +
+    "enemy — 755 of 2862 receiving lines have no zoho_item_id and 315 catalog rows have " +
+    "no Zoho twin, and for those it IS the identity. Verdict: ds_sku_identity. " +
+    "Eval: pnpm run eval:cohort sku-identity.",
 }
 
 /**
@@ -1245,6 +1531,49 @@ function importsTriageScrollLayout(source) {
 }
 
 /**
+ * Heuristic (not a TS AST): the item-record identity band is image LEFT,
+ * title to its RIGHT, pinned to the top of the band. Operator 2026-09-13.
+ *
+ * The check is source order — the thumb's JSX must appear before the title
+ * token's first use in any file that renders ItemRecordThumb. A title that
+ * precedes the thumb is either stacked above it or laid out left of it, both
+ * of which break the one law every item-record band shares: the eye meets the
+ * product's picture first and reads its name beside it, never under or before
+ * it.
+ *
+ * Comments are ignored — docblocks legitimately NAME the token while
+ * explaining it, and a rule that flags its own documentation is noise nobody
+ * trusts. Only lines that are nothing BUT commentary are dropped; a URL
+ * mid-line survives. (Cross-file order is invisible to this check; it judges
+ * each band by its own source, which is where every layout so far has gone
+ * wrong.)
+ */
+function stripCommentLines(source) {
+  return source
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim()
+      return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*')
+    })
+    .join('\n')
+}
+
+function critiqueItemRecordBand(source) {
+  const code = stripCommentLines(source)
+  const thumbAt = code.indexOf('<ItemRecordThumb')
+  if (thumbAt === -1) return []
+  const titleAt = code.indexOf('ITEM_RECORD_MOBILE_TITLE.face')
+  if (titleAt === -1 || titleAt > thumbAt) return []
+  return [{
+    severity: 'forks-the-system',
+    line: lineOf(code, 'ITEM_RECORD_MOBILE_TITLE.face'),
+    what: 'item-record title appears before ItemRecordThumb — the title must sit to the RIGHT of the image, at the top of the band',
+    fix: 'Put the ItemRecordThumb first in the band and the title column beside it: <ItemRecordThumb … /> then a column starting with ITEM_RECORD_MOBILE_TITLE.face. Stack with items-start so the title pins to the top.',
+    confidence: 'heuristic',
+  }]
+}
+
+/**
  * Heuristic (not a TS AST): files that import TriageScrollLayout must not
  * invent a raw flush or px radius on the right pane. The law is
  * `cornerClass('surface')`.
@@ -1359,6 +1688,129 @@ const TOOLS = [
       required: ['file_path'],
     },
   },
+  {
+    name: 'ds_boundary',
+    description:
+      'Adjudicate ONE file against the mobile↔desktop component boundary (ARCHITECTURE.md ' +
+      '"Component split (binding)"): does it import across the surface line, or is it a desktop ' +
+      'file importing mobile internals? Returns each crossing marked baseline (frozen debt, ' +
+      'scripts/boundary-exemptions.ts — shrink-only) or NEW — a NEW crossing is exactly what ' +
+      'fails the verify Boundary gate. Same rule module as the gate; call before writing an ' +
+      'import that crosses surfaces.',
+    inputSchema: {
+      type: 'object',
+      properties: { file_path: { type: 'string', description: 'Repo-relative path to adjudicate.' } },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'ds_nav_names',
+    description:
+      'Adjudicate the NAV NAME law: a parent and a child must never wear the same name ' +
+      '(operator 2026-09-14 — the Inbound lane once printed "Inbound" as lane, row AND tab). ' +
+      'Checks every PAINTED parent/child pairing across both surfaces — lane→row, lane→expanded ' +
+      'child, page→desk tab, and /m drawer group→row — and names each clash with the altitude ' +
+      'that produced it. Takes no arguments: the law is over the REGISTRIES ' +
+      '(sidebar-navigation.ts + mobile/nav-registry.ts), not over one file, which is why no ' +
+      'refuse-pattern could ever see it. Same rule module as the verify Unit-tests gate ' +
+      '(src/lib/nav/nav-name-collisions.ts). Call before renaming or adding a lane, row or tab. ' +
+      'Fix by renaming the CHILD: the lane names the direction, the row the object, the tab the state.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_mobile_first',
+    description:
+      'Adjudicate the MOBILE-FIRST GATE: a lane the phone cannot run gets no door anywhere in the ' +
+      'front end (operator 2026-09-14 — "if it is not mobile friendly, then it should not even ' +
+      'display anywhere within the front end … no links to it"). Takes no arguments. Returns the ' +
+      'porting LEDGER (src/lib/nav/lanes.ts → LANE_MOBILE_FIRST: ported | desk-only | hidden), the ' +
+      'lane headers the spine actually paints, and any leak — a nav row or spine header still ' +
+      'reaching a hidden lane. "hidden" removes the DOOR, not the route; "desk-only" means in daily ' +
+      'desktop use and QUEUED for its port, so it still displays. Port a lane by flipping ONE ' +
+      'entry. Same rule module as the verify Unit-tests gate. Call before adding a nav row, a ' +
+      'desk, or a link to a surface that has no /m counterpart.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_sku_identity',
+    description:
+      'Adjudicate the SKU IDENTITY law before reading or writing a product title, SKU or photo: ' +
+      'one SKU, one title, one photo, and the ZOHO item governs (operator 2026-09-15 — "it all ' +
+      'needs to be ported under one source of truth which would be the ZOHOSKU"). Takes no ' +
+      'arguments: the law is over a SET of readers and writers, not one file. Returns every live ' +
+      'violation in four kinds — a sku_catalog join that is not exact + org-scoped, a ' +
+      'similarity(product_title) gate in a read path, a title ladder that reads ' +
+      'catalog_product_title before zoho_item_title, and an UPDATE sku_catalog touching ' +
+      'product_title/image_url with no Zoho-twin predicate. The fix is always the same three ' +
+      'exports from src/lib/sku/sku-identity-law.ts: SKU_CATALOG_JOIN_ON_SQL, ' +
+      'resolveSkuIdentityTitle, skuCatalogNoZohoTwinPredicateSql. Marketplace copy belongs in ' +
+      'sku_platform_ids.display_name, never in the catalog title of a Zoho-owned row. Same rule ' +
+      'module as the verify `Sku identity` gate and the Unit-tests gate.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_action_bar',
+    description:
+      'Adjudicate the ACTION BAR HEIGHT law before adding a control to a slot-table selection ' +
+      'strip: the band declares its own height, no child sets it, and no press inside it may ' +
+      'change it (operator 2026-09-15 — "the action buttons bar should not expand or collapse in ' +
+      'height from clicking on an action"). Takes no arguments: the law is over a SET of band ' +
+      'files, not one file. Returns the height token, the band + control classes to mount, the ' +
+      'banned imports (TextField is h-11 with a required floating label — use StockStripInput), ' +
+      'the banned class fragments (flex-wrap / h-auto / min-h- / py-*), the ' +
+      'no-conditional-control rule (a sometimes-relevant field is mounted and `disabled`, never ' +
+      'unmounted), and any live violation. Same rule module as the verify `Action bar` gate and ' +
+      'the Unit-tests gate (src/lib/tables/slot-table-action-bar-law.ts); the ESLint block on the ' +
+      'band files refuses the same three shapes at write time and the useFixedBandHeight ' +
+      'ResizeObserver catches the rest at runtime.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_id_header',
+    description:
+      'Adjudicate the ID HEADER law before naming the first column of any slot table: the identity ' +
+      'column reads `Id` on every peer, and no family may re-declare it (operator 2026-09-15 — ' +
+      '"the ID as the first column so it\'ll always display the ID as the first column in the ' +
+      'header instead of differences"). Takes no arguments: the law is over every column module, ' +
+      'not one file. Returns the word, the identity track keys (`fulfillment` on the compound ' +
+      'skeleton, `identity` on the tech-all sheet), the refusal sentence, the shrink-only list of ' +
+      'column modules that must not set `label` / `gridLabel` from `identity.label`, the sheet ' +
+      'peers that have NO identity track (their column one is a product title and stays its own ' +
+      'word), and any live violation. The catalog `label` is NOT dead — it is still the ' +
+      "Fields-picker row and the cell's hover word; only the column header is centralised. Same " +
+      'rule module as the verify `Id header` gate and the Unit-tests gate ' +
+      '(src/lib/tables/slot-table-id-header-law.ts); ESLint refuses `label: identity.label` at ' +
+      'write time.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_identity_purity',
+    description:
+      'Adjudicate the IDENTITY PURITY law for any slot table: the identity column holds strictly ' +
+      'machine handles (order numbers, barcodes, tracking, serials, SKUs), and staff/person names ' +
+      'must NEVER be imported into or displayed in the ID column (operator 2026-09-15). ' +
+      'Takes no arguments. Returns the law, refusal sentence, and any catalog or view-model violations. ' +
+      'Same rule module as the verify `Identity purity` gate and unit tripwire ' +
+      '(src/lib/tables/slot-table-identity-purity-law.ts); ESLint catches name-to-ID assignments at write time.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'ds_mobile_ground',
+    description:
+      'Adjudicate the PHONE GROUND law before painting any page background on /m or the kiosk: a ' +
+      'phone screen is ONE white sheet — `bg-surface-card` via `TOKENS.colors.background`, the ' +
+      'same token the kiosk product stage uses (`KIOSK_POS_CANVAS`), resolving to ' +
+      '`--ds-color-background-surface` = #ffffff in light (operator 2026-09-15 — the pair screens ' +
+      'were grey inside a white shell). Takes no arguments: the law is over a TREE plus the token ' +
+      'chain, not one file. Returns the ground (class → token → CSS var → light hex), the four ' +
+      'WHITE PINS that must hold at each altitude, the grey-ground count against its shrink-only ' +
+      'baseline, and any violation. `bg-surface-canvas` is the DESK plane and stays there — it is ' +
+      'what a raised card casts onto (GROUND-PLANE RULE, styles/globals.css); do NOT answer a grey ' +
+      'phone by flipping `background-canvas` to white, which flattens every desk card and misses ' +
+      'the other seven themes. Same rule module as the verify `Ground` gate and the Unit-tests ' +
+      'gate (src/lib/mobile/mobile-ground.ts).',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
 ]
 
 const TOKEN_RESOURCE_PREFIX = 'design://tokens/'
@@ -1448,6 +1900,150 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       return json(presentAxis(requireAxis(args.axis), args.filter))
     }
 
+    if (name === 'ds_boundary') {
+      const { rel } = resolveInRepo(args.file_path)
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/boundary-guard.ts', '--file', rel, '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`boundary-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        law: 'ARCHITECTURE.md "Component split (binding)" — verify Boundary gate enforces it; baseline crossings are frozen debt, NEW ones fail.',
+      })
+    }
+
+    if (name === 'ds_nav_names') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/nav-name-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`nav-name-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'src/lib/nav/nav-name-collisions.test.ts — verify Unit tests. Same module; this tool cannot disagree with the gate.',
+      })
+    }
+
+    if (name === 'ds_mobile_first') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/mobile-first-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`mobile-first-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'src/lib/nav/nav-mobile-first.test.ts — verify Unit tests. Same module; this tool cannot disagree with the gate.',
+      })
+    }
+    if (name === 'ds_sku_identity') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/sku-identity-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`sku-identity-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'verify `Sku identity` + src/lib/sku/sku-identity-law.test.ts. Same module; this tool cannot disagree with the gate.',
+      })
+    }
+
+
+    if (name === 'ds_action_bar') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/action-bar-height-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`action-bar-height-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'verify `Action bar` + src/lib/tables/slot-table-action-bar-law.test.ts. Same module; this tool cannot disagree with the gate.',
+        writeTime: 'eslint.config.mjs refuses the banned import, the banned classes and a conditionally rendered control on the band files — and the PostToolUse hook lints every write.',
+        runtime: 'useFixedBandHeight logs [fixed-band-height] the first time the measured band height leaves 40px (dev/test only).',
+      })
+    }
+
+    if (name === 'ds_id_header') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/id-header-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`id-header-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'verify `Id header` + src/lib/tables/slot-table-id-header-law.test.ts. Same module; this tool cannot disagree with the gate.',
+        writeTime:
+          'eslint.config.mjs refuses `label: identity.label` / `gridLabel: identity.label` repo-wide — and the PostToolUse hook lints every write.',
+        catalogLabel:
+          'Still live: the Fields-picker row, the ds_contract answer and the identity cell\u2019s hover word. Only the COLUMN HEADER is the engine\u2019s.',
+      })
+    }
+    if (name === 'ds_identity_purity') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/identity-purity-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`identity-purity-guard failed: ${run.error ?? run.stderr}`)
+      }
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'verify `Identity purity` + src/lib/tables/slot-table-identity-purity-law.test.ts.',
+        writeTime:
+          'eslint.config.mjs refuses staff name variables in orderId / identityFace — and the PostToolUse hook lints every write.',
+      })
+    }
+
+
+    if (name === 'ds_mobile_ground') {
+      const run = spawnSync(
+        path.join(REPO, 'node_modules/.bin/tsx'),
+        ['scripts/mobile-ground-guard.ts', '--json'],
+        { cwd: REPO, encoding: 'utf8' },
+      )
+      if (run.error || run.status === null || run.status === 2) {
+        throw new Error(`mobile-ground-guard failed: ${run.error ?? run.stderr}`)
+      }
+      // exit 1 = verdict fail, with valid JSON on stdout — the verdict IS the payload.
+      const payload = JSON.parse(run.stdout)
+      return json({
+        ...payload,
+        gate: 'verify `Ground` + src/lib/mobile/mobile-ground.test.ts. Same module; this tool cannot disagree with the gate.',
+      })
+    }
+
     if (name === 'ds_critique') {
       const { abs, rel } = resolveInRepo(args.file_path)
       let source
@@ -1463,6 +2059,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       const isPrimitiveHome = PRIMITIVE_HOMES.some((h) => rel.startsWith(h.dir))
 
       const problems = []
+      problems.push(...critiqueItemRecordBand(source))
       problems.push(...critiqueTriageLayout(source, rel))
       if (!isPrimitiveHome) {
         for (const s of FORK_SIGNALS) {

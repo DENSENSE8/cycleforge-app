@@ -40,6 +40,11 @@ test('searchHitHref: every entity type deep-links to its record surface', () => 
   assert.equal(searchHitHref('SKU', 11), '/products?view=qc&skuId=11');
   assert.equal(searchHitHref('REPAIR', 5), '/repair?tab=active&openRepair=5');
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
+  assert.equal(searchHitHref('WARRANTY_CLAIM', 88), '/support?mode=warranty&open=88');
+  assert.equal(searchHitHref('SUPPORT_TICKET', 1234), '/support?ticket=1234');
+  // No bin RECORD surface is keyed by locations.id (every one takes a
+  // barcode), so the id-carrying signature lands on the Bins list.
+  assert.equal(searchHitHref('LOCATION', 5), '/inventory/locations?tab=bins');
 });
 
 test('searchHitHref: an ORDER hit opens search feedback', () => {
@@ -272,6 +277,10 @@ test('searchScopeHref: URL-searchable surfaces get the query applied; others nul
   assert.equal(searchScopeHref('ORDER', 'bose revolve'), '/shipping/orders?search=bose%20revolve');
   assert.equal(searchScopeHref('SERIAL_UNIT', 'samsung'), '/inventory/units?q=samsung');
   assert.equal(searchScopeHref('SKU', 'wave radio'), '/inventory/skus?q=wave%20radio');
+  assert.equal(
+    searchScopeHref('LOCATION', 'a-12'),
+    '/inventory/locations?tab=bins&q=a-12',
+  );
   assert.equal(searchScopeHref('RECEIVING', 'x'), null);
   assert.equal(searchScopeHref('REPAIR', 'x'), null);
   assert.equal(searchScopeHref('FBA_SHIPMENT', 'x'), null);
@@ -324,11 +333,13 @@ test('narrowSearchTitleDisplay: human order ids under the min length stay full',
   assert.equal(out.display, '27-14721-28');
 });
 
-test('narrowSearchTitleDisplay: long human order ids abbreviate to last-8', () => {
+test('narrowSearchTitleDisplay: long human order ids abbreviate on the delimiter', () => {
   const id = '27-14721-28101';
   const out = narrowSearchTitleDisplay(id);
   assert.equal(out.abbreviated, true);
-  assert.equal(out.display, '21-28101');
+  // Was `21-28101` — a blind `slice(-8)` through the middle of a segment,
+  // which is not an id anybody can read back (operator 2026-09-12).
+  assert.equal(out.display, '28101');
   assert.equal(out.full, id);
 });
 

@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { getOrganization, updateOrgSettings } from '@/lib/tenancy/organizations';
 import type { OrgSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { isKioskCommandId } from '@/lib/kiosk/commands';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -41,6 +42,17 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
 
   const patch: Partial<OrgSettings> = {};
   const b = body as Record<string, unknown>;
+  /*
+   * `updateOrgSettings` merges with jsonb `||`, which is SHALLOW: writing
+   * `kiosk` replaces the whole object. Every nested branch below therefore
+   * needs the block it is amending, or saving a select would silently drop the
+   * tenant's other keys in that block (the reason `brand` and `letterhead`
+   * rebuild theirs wholesale).
+   */
+  const current = (await getOrganization(ctx.organizationId as OrgId))?.settings;
+  if (!current) {
+    return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  }
 
   if (typeof b.timezone === 'string' && b.timezone.trim()) {
     patch.timezone = b.timezone.trim();
@@ -118,6 +130,18 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       nextLetterhead.email = lh.email.trim();
     }
     patch.letterhead = nextLetterhead;
+  }
+  /*
+   * KIOSK behaviour. `idleTimeoutSeconds` is deliberately NOT accepted as an
+   * input — idle and attract are off in `resolveKioskIdleTiming`, and
+   * re-opening a write for a number nothing reads is how that leftover got
+   * there — but it is CARRIED so a `defaultCommand` save does not drop it.
+   */
+  if (b.kiosk != null && typeof b.kiosk === 'object' && !Array.isArray(b.kiosk)) {
+    const kiosk = b.kiosk as Record<string, unknown>;
+    if (isKioskCommandId(kiosk.defaultCommand)) {
+      patch.kiosk = { ...(current.kiosk ?? {}), defaultCommand: kiosk.defaultCommand };
+    }
   }
 
   if (Object.keys(patch).length === 0) {

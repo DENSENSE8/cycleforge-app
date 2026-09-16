@@ -13,7 +13,16 @@
  * both build the detail href, so this module must be safe at any altitude.
  */
 
-export const PRODUCTS_VIEWS = ['manuals', 'catalog', 'labels', 'pairing', 'qc', 'kit'] as const;
+/**
+ * Reference (`catalog`) and Kit Parts (`kit`) left this list 2026-09-15 on the
+ * operator's ruling — *"removing the products reference, the products kit
+ * parts … these are all the tabs that are not working properly."* Dropping the
+ * values here, and not just the tab rows in `SIDEBAR_PAGE_NAV`, is what makes
+ * the removal real: `parseProductsView` now folds a stale `?view=catalog`
+ * bookmark back to Manuals instead of mounting an unmaintained body. Contrast
+ * `@/lib/nav/parked-tabs`, where a withdrawn door KEEPS its route.
+ */
+export const PRODUCTS_VIEWS = ['manuals', 'labels', 'pairing', 'qc'] as const;
 
 export type ProductsView = (typeof PRODUCTS_VIEWS)[number];
 

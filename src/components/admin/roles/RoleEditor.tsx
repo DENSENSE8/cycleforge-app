@@ -84,7 +84,7 @@ export function RoleEditor({ roleId }: RoleEditorProps) {
           if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             params.set('roleId', String(newId));
-            window.history.replaceState(null, '', `/admin?${params.toString()}`);
+            window.history.replaceState(null, '', `/settings/roles?${params.toString()}`);
             window.location.reload();
           }
         }}

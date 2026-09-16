@@ -26,7 +26,7 @@
  * share the QC endpoint via the same view.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
 import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
 import {

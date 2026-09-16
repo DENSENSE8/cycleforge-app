@@ -28,6 +28,12 @@ function usage(code = 1) {
   node tools/design-mcp/ds.mjs contract <intent> [--limit N]
   node tools/design-mcp/ds.mjs tokens <axis> [--filter substring]
   node tools/design-mcp/ds.mjs critique <repo-relative-file>
+  node tools/design-mcp/ds.mjs boundary <repo-relative-file>
+  node tools/design-mcp/ds.mjs nav-names
+  node tools/design-mcp/ds.mjs mobile-first
+  node tools/design-mcp/ds.mjs sku-identity
+  node tools/design-mcp/ds.mjs mobile-ground
+  node tools/design-mcp/ds.mjs identity-purity
   node tools/design-mcp/ds.mjs stamp`)
   process.exit(code)
 }
@@ -196,5 +202,111 @@ if (cmd === 'critique') {
   console.log(text)
   process.exit(0)
 }
+
+if (cmd === 'boundary') {
+  const file_path = argv[1]
+  if (!file_path) usage()
+  const res = await rpcCall('ds_boundary', { file_path })
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_boundary', lastFile: file_path })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  process.exit(0)
+}
+
+if (cmd === 'nav-names') {
+  const res = await rpcCall('ds_nav_names', {})
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_nav_names' })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  // A collision is a VERDICT, not a tool error — exit non-zero so a shell gate
+  // or a hook can act on it without parsing.
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
+if (cmd === 'mobile-first') {
+  const res = await rpcCall('ds_mobile_first', {})
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_mobile_first' })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
+if (cmd === 'sku-identity') {
+  const res = await rpcCall('ds_sku_identity', {})
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_sku_identity' })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
+if (cmd === 'mobile-ground') {
+  const res = await rpcCall('ds_mobile_ground', {})
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_mobile_ground' })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+if (cmd === 'identity-purity') {
+  const res = await rpcCall('ds_identity_purity', {})
+  const text = extractText(res)
+  writeStamp({ source: 'cli', lastTool: 'ds_identity_purity' })
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
 
 usage()

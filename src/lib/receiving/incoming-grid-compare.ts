@@ -12,7 +12,8 @@ import {
   incomingSortFactFor,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { getDaysLateNullable } from '@/utils/date';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -50,13 +51,8 @@ const CONFIDENCE_RANK: Record<string, number> = {
 };
 
 function productTitle(row: ReceivingLineRow): string {
-  return (
-    row.catalog_product_title ||
-    row.zoho_item_title ||
-    row.item_name ||
-    row.zoho_item_id ||
-    ''
-  ).trim();
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  return resolveSkuIdentityTitle(row);
 }
 
 function dateTime(row: ReceivingLineRow): number {

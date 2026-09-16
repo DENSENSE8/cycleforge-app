@@ -7,7 +7,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export async function fetchCartonSerials(receivingId: number): Promise<string[]> {
   const res = await fetch(`/api/receiving-lines?receiving_id=${receivingId}&include=serials`, {

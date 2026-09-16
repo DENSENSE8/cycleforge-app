@@ -1,39 +1,48 @@
 'use client';
 
 /**
- * Home → Daily — shift checklist as a flush workbench sheet.
+ * Daily (`/`) — the per-staff shift checklist, on the one slot data table.
  *
- * There is no page chrome: {@link DataTable} draws the find field and the
- * status strip from data. The body is a Reminders-shaped list on a
- * permanent white sheet (`bg-surface-card`) — Unbox History gets that white
- * from the table surface class; Daily has no grid, so the host itself paints
- * it. The roster report stays on Operations (`?mode=checks`).
+ * Increment 1 of the port (2026-09-14). Scope 1 painted the checklist as a
+ * hand-rolled inset column to prove the check → optimistic mark → strike loop;
+ * this mounts that same loop on the house engine instead, so Daily gets the
+ * toolbar every desk has — search, the filter menu beside it, header sort and
+ * the fullscreen stage — without a second table existing anywhere.
+ *
+ * **The strike moved into the engine.** `titleStruck` is a `CompoundRowView`
+ * field painted by {@link StruckLabel} in the shared item cell, so the
+ * animation is the same one on every face that ever mounts this family — not a
+ * copy in this file. Daily is the only family that sets it.
+ *
+ * PER STAFF by construction: the mark grain is (item, staff, day), and the rows
+ * are built from `report.mine`, so ticking is an attestation by the signed-in
+ * staffer. The note line carries the roster fraction (`3/5 done`) — what the
+ * SHIFT did is a different question from what I did.
+ *
+ * Still deferred, deliberately, and all still on disk: the add / retire
+ * composer (`DailyComposerRow`), the right-rail inspector
+ * (`DailyCheckItemInspector`), the day stepper, glyphs and `#id` chips. Today
+ * and Tasks stay unmounted with their backends intact.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import {
+  formatDateTimePST,
   getCurrentPSTDateKey,
   parseDateKey,
 } from '@/utils/date';
-import { DailyCheckItemInspector } from '@/features/daily-checks/DailyCheckItemInspector';
 import { DataTable } from '@/components/tables/DataTable';
-import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
-import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
-import { compareGridValues } from '@/design-system/components/grid';
-import { DAILY_TABLE_BINDING } from './grid/daily-table-definition';
-import { formatDateTimePST } from '@/utils/date';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { Plus } from '@/components/Icons';
+import { useAuth } from '@/contexts/AuthContext';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
-import { dailyTaskCompoundView } from './grid/daily-task-compound-view';
-import { useDailyTableLayout } from './grid/useDailyTableLayout';
+import { singleBand, type RowGroup } from '@/lib/group-rows';
+import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { dailySlotValuesFor } from '@/lib/tables/field-catalog/daily-resolve';
-import { DAILY_GRID_CAPABILITIES } from './grid/daily-grid-descriptor';
-import { buildDailyTaskRows, type DailyTaskRow } from './grid/daily-task-row';
 import {
   dailyColumnKeyForSort,
   dailyCompoundColumnsFor,
-  DAILY_SORT_FACT_TYPES,
   dailySortFactFor,
   defaultDirForDailyGridSort,
   isDailySortFact,
@@ -41,30 +50,49 @@ import {
   type DailyGridColumnKey,
   type DailySortFact,
 } from '@/lib/daily-checks/daily-grid-layout';
+import { DAILY_TABLE_BINDING } from './grid/daily-table-definition';
+import { DAILY_GRID_CAPABILITIES } from './grid/daily-grid-descriptor';
+import { dailyTaskCompoundView } from './grid/daily-task-compound-view';
+import { useDailyTableLayout } from './grid/useDailyTableLayout';
+import { buildDailyTaskRows, type DailyTaskRow } from './grid/daily-task-row';
+import { sortDailyTaskRows } from './grid/sort-daily-task-rows';
 import { DailyComposerRow } from './DailyComposerRow';
-import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
-import { Plus } from '@/components/Icons';
 import {
   filterDailyCheckItems,
   parseDailyStatusFilter,
+  type DailyStatusFilter,
 } from './daily-check-filter';
-import { useDailyChecks, useItemActions, useToggleCheck } from './useDailyChecks';
-
+import { useDailyChecks, useItemActions, useToggleCheck } from '@/lib/daily-checks/use-daily-checks';
+import {
+  dailyComposerCreateBody,
+  dailyComposerError,
+  dailyComposerLinkInputs,
+  newDailyComposerDraft,
+  rememberGlyph,
+  type DailyComposerDraft,
+} from '@/lib/daily-checks/composer';
+import { attachDailyCheckLinks } from '@/lib/daily-checks/use-daily-check-links';
 /**
- * The one status refinement — lives in the filter control (operator ruling
- * 2026-08-30: selection tabs are filters). `checks` (open) is the default, so
- * it IS the unfiltered list and no option is active for it.
- */
-const DAILY_STATUS_OPTIONS = [{ id: 'completed', label: 'Completed' }] as const;
-
-/**
- * One checklist row → the shared {@link CompoundRowView}, plus its materialized
- * slot values.
+ * The status refinements, in the filter control beside search (operator ruling
+ * 2026-08-30: selection tabs are filters).
  *
- * Both render paths (group and leaf) are the same row on this surface — the
- * group IS the task — so the view is built in one place rather than twice, and
- * `slots` is keyed off the MOUNTED column model so a rebind re-points the cell
- * with no change here.
+ * **`all` is the default and no option is active for it** (operator ruling
+ * 2026-09-14: "when I check off something, it should not disappear from the
+ * data table"). The workbench this replaced defaulted to `open`, so a tick
+ * removed the row it had just struck — the strike animation played on a row
+ * that was already being unmounted. A checklist has to show the work it has
+ * finished; that IS the day's record. Both refinements are explicit choices
+ * from here, and they are mutually exclusive.
+ */
+const DAILY_STATUS_OPTIONS = [
+  { id: 'open', label: 'Open', status: 'open' },
+  { id: 'completed', label: 'Completed', status: 'done' },
+] as const satisfies readonly { id: string; label: string; status: DailyStatusFilter }[];
+
+/**
+ * One checklist row → the shared `CompoundRowView`, plus its materialized slot
+ * values. `slots` is keyed off the MOUNTED column model, so a rebind re-points
+ * the cell with no change here.
  */
 function dailyRowView(row: DailyTaskRow, columns: readonly DailyGridColumn[]) {
   return {
@@ -83,16 +111,25 @@ export function HomeDailyMode() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has } = useAuth();
+  /**
+   * The LIST is org-managed — adding to it changes what every future report
+   * measures, so the route gates on `admin.manage_staff` and the CTA asks the
+   * same question. Absent permission ⇒ no control, never a disabled one.
+   */
   const canManage = has('admin.manage_staff');
   const composerRef = useRef<HTMLInputElement>(null);
+  const [draft, setDraft] = useState<DailyComposerDraft>(newDailyComposerDraft);
+  /**
+   * The composer is SUMMONED by the CTA rather than permanently docked: Daily
+   * is the first screen of a shift, and a row that sits there for everyone
+   * costs vertical space on the one page every operator opens.
+   */
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const todayKey = getCurrentPSTDateKey();
   const rawDate = searchParams.get('date');
   const dateKey = rawDate && parseDateKey(rawDate) ? rawDate : todayKey;
   const isToday = dateKey === todayKey;
-
-  const rawItem = searchParams.get('item');
-  const selectedId = rawItem && /^\d+$/.test(rawItem) ? Number(rawItem) : null;
 
   const writeParams = useCallback(
     (mutate: (next: URLSearchParams) => void) => {
@@ -104,96 +141,69 @@ export function HomeDailyMode() {
     [router, searchParams],
   );
 
-  const selectItem = useCallback(
-    (id: number | null) => {
-      writeParams((p) => {
-        if (id == null) p.delete('item');
-        else p.set('item', String(id));
-      });
-    },
-    [writeParams],
-  );
-
   const { data, isLoading, isError } = useDailyChecks(dateKey);
+  const toggle = useToggleCheck(dateKey);
+  const { addItem } = useItemActions(dateKey);
+
+  /**
+   * Two-phase commit: create the item, then attach whatever links the draft
+   * named. A link failure after creation leaves the ITEM standing — the honest
+   * outcome, since the task exists — and the DRAFT keeps its links with the
+   * title cleared, so a re-entry is one paste away, not a retyping.
+   */
+  const submitDraft = useCallback(() => {
+    if (dailyComposerError(draft)) return;
+    const parsed = dailyComposerLinkInputs(draft);
+    if (!parsed.ok) return;
+    const body = dailyComposerCreateBody(draft);
+    addItem.mutate(body, {
+      onSuccess: async (item) => {
+        let attached = true;
+        if (parsed.links.length > 0) {
+          try {
+            await attachDailyCheckLinks(item.id, parsed.links);
+          } catch (error: unknown) {
+            attached = false;
+            const message = error instanceof Error ? error.message : String(error);
+            console.error('[daily-checks] link attach failed after create:', message);
+          }
+        }
+        if (attached && draft.glyph) rememberGlyph(draft.glyph);
+        setDraft(attached ? newDailyComposerDraft() : { ...draft, title: '' });
+      },
+    });
+  }, [addItem, draft]);
 
   // The effective slot layout (staff ?? org ?? product) materialized into the
   // compound tracks — "what we check on the shift board" is layout an
   // organization owns, not a column file.
   const { effectiveLayout: dailyLayout, fields: dailyFields } = useDailyTableLayout();
-  const dailyColumns = useMemo(
-    () => dailyCompoundColumnsFor(dailyLayout),
-    [dailyLayout],
-  );
-  const toggle = useToggleCheck(dateKey);
-  const { addItem, retireItem } = useItemActions(dateKey);
-  const [draft, setDraft] = useState('');
-  /**
-   * The composer is summoned by the page CTA rather than permanently docked.
-   * Home is the first screen of a shift and this file's own frame docblock
-   * cares about the vertical cost of anything that sits there for everyone.
-   */
-  const [composerOpen, setComposerOpen] = useState(false);
+  const dailyColumns = useMemo(() => dailyCompoundColumnsFor(dailyLayout), [dailyLayout]);
 
   const mine = data?.mine;
   const doneSet = useMemo(() => new Set(mine?.doneItemIds ?? []), [mine]);
   const query = searchParams.get('q') ?? '';
-  const status = parseDailyStatusFilter(searchParams.get('filter')) === 'done' ? 'done' : 'open';
+  // `all` when the param is absent — a ticked row keeps its seat.
+  const status = parseDailyStatusFilter(searchParams.get('filter'));
   const visibleItems = useMemo(
     () => filterDailyCheckItems(data?.items ?? [], doneSet, query, status),
     [data?.items, doneSet, query, status],
   );
-  // ── Table state ─────────────────────────────────────────────────────────
+
   // URL-backed sort, so a sorted checklist is a shareable link like every other
-  // collection (`?sort=` + `?dir=` when it differs from the column's default).
+  // collection (`?colsort=` + `?dir=` when it differs from the column default).
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
-    toggleColumnSort,
   } = useUrlColumnSort<DailySortFact>({
     isColumn: isDailySortFact,
     defaultDir: defaultDirForDailyGridSort,
   });
 
-  const taskRows = useMemo(() => {
-    const rows = buildDailyTaskRows(visibleItems, data, doneSet);
-    if (!columnSort || !sortDir) {
-      // The checklist's authored order is a real fact (`sortOrder`), so an
-      // unsorted grid shows the list as the org wrote it — not insertion order.
-      return [...rows].sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-    }
-    const type = DAILY_SORT_FACT_TYPES[columnSort];
-    const value = (r: DailyTaskRow) => {
-      switch (columnSort) {
-        case 'task':
-          return r.title;
-        // Sort by the STATE, not the word: `done` as 0/1 keeps Open above Done
-        // under asc without depending on how the label happens to be spelled.
-        case 'status':
-          return r.done ? 1 : 0;
-        case 'team':
-          return r.teamTotal > 0 ? r.teamDone / r.teamTotal : null;
-        case 'marked':
-          return r.markedAt ? Date.parse(r.markedAt) : null;
-        default:
-          return null;
-      }
-    };
-    return [...rows].sort((a, b) => {
-      const primary = compareGridValues(value(a), value(b), { type, dir: sortDir });
-      // `compareGridValues` already applied `dir`; re-signing here would
-      // re-invert blanks and undo the blanks-last ruling.
-      return primary !== 0 ? primary : a.sortOrder - b.sortOrder || a.id - b.id;
-    });
-  }, [visibleItems, data, doneSet, columnSort, sortDir]);
-
-  /**
-   * The day's rollup, from the engine rather than counted in the view — the
-   * same `rowGroupTotals` a pick list uses for "12 lines · 340 units · 3 short".
-   */
-  const dayTotals = useMemo(
-    () => rowGroupTotals({ key: dateKey, rows: taskRows }, { done: (r) => (r.done ? 1 : 0) }),
-    [dateKey, taskRows],
+  const taskRows = useMemo(
+    () => sortDailyTaskRows(buildDailyTaskRows(visibleItems, data, doneSet), columnSort, sortDir),
+    [visibleItems, data, doneSet, columnSort, sortDir],
   );
 
   /** One band, no day headers — a checklist is one civil day by construction. */
@@ -201,8 +211,6 @@ export function HomeDailyMode() {
     () => singleBand(taskRows, (r) => String(r.id)) as [string, RowGroup<DailyTaskRow>[]][],
     [taskRows],
   );
-
-  const selected = data?.items.find((item) => item.id === selectedId) ?? null;
 
   const setQuery = useCallback(
     (next: string) => {
@@ -216,41 +224,66 @@ export function HomeDailyMode() {
   );
 
   const setStatus = useCallback(
-    (next: ReturnType<typeof parseDailyStatusFilter>) => {
+    (next: DailyStatusFilter) => {
       writeParams((p) => {
-        if (next === 'done') p.set('filter', 'done');
-        else p.delete('filter');
+        // `all` is the absent param, never `?filter=all` — one spelling for
+        // the unfiltered list, so a bookmark and a cleared menu agree.
+        if (next === 'all') p.delete('filter');
+        else p.set('filter', next === 'done' ? 'done' : 'open');
       });
     },
     [writeParams],
   );
-  const submitDraft = useCallback(() => {
-    const title = draft.trim();
-    if (!title) return;
-    addItem.mutate(title, {
-      onSuccess: () => setDraft(''),
-    });
-  }, [addItem, draft]);
-
 
   /**
-   * The page CTA's handler — open the composer and put the caret in it.
+   * The row, once. Group and leaf are the same row on this surface — the group
+   * IS the task — so building it twice is how the two paths drift.
    *
-   * Adding to the shift checklist is what this page CREATES, so the control is
-   * page-level and top-right (operator ruling; `DeskActionSlot`'s own law),
-   * registered into the desk chrome's slot rather than docked under the grid.
-   * The composer itself stays where a composer belongs — under the table, out
-   * of the virtualized rows — but it is now summoned rather than permanently
-   * occupying the first screen of a shift.
+   * The tick means "I did this today", not "this row is selected". Disabled on
+   * a day the viewer may not mark; the mark itself is optimistic and idempotent.
+   */
+  const renderTaskRow = useCallback(
+    (row: DailyTaskRow, visible: readonly DailyGridColumn[]) => (
+      <CompoundRow
+        key={row.id}
+        data-daily-task-id={row.id}
+        aria-label={`Task ${row.title}`}
+        columns={visible}
+        capabilities={DAILY_GRID_CAPABILITIES}
+        // Nothing is "selected" here: the checkbox is the TICK, and a
+        // selection highlight would claim a second meaning for one control.
+        selected={false}
+        // The family's only contribution: its DATA.
+        view={dailyRowView(row, visible)}
+        select={{
+          checked: row.done,
+          onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
+          disabled: !isToday,
+          label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
+        }}
+      />
+    ),
+    [isToday, toggle],
+  );
+
+  /**
+   * The page CTA — top-right, the same `DeskHeaderAction` slot every desk's
+   * primary verb rides (operator 2026-09-14: "there must be an add task CTA
+   * on the top right, just like all the other CTAs"). Registered into the
+   * desk chrome rather than docked over the table, so Daily's create verb
+   * sits exactly where To-ship's and Receiving's do.
    *
-   * Pressing it with text already typed COMMITS instead of re-focusing: the
+   * Memoized: a fresh element identity every render re-registers every
+   * render, which loops through the slot provider.
+   *
+   * Pressing it with text already typed COMMITS instead of re-focusing — the
    * operator has said what they want twice, and asking for a third gesture is
-   * the interaction-budget regression the house rule names.
+   * an interaction-budget regression.
    */
   const openComposer = useCallback(() => {
-    if (status === 'done') setStatus('open');
+    if (status === 'done') setStatus('all');
     setComposerOpen(true);
-    if (draft.trim()) {
+    if (draft.title.trim() && !dailyComposerError(draft)) {
       submitDraft();
       return;
     }
@@ -263,10 +296,6 @@ export function HomeDailyMode() {
     if (composerOpen) composerRef.current?.focus();
   }, [composerOpen]);
 
-  /**
-   * Memoized: a fresh element identity every render re-registers every render,
-   * which loops through the slot provider (its docblock says so).
-   */
   const addAction = useMemo(
     () =>
       canManage && isToday ? (
@@ -284,19 +313,37 @@ export function HomeDailyMode() {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
+      {/*
+       * The composer mounts ABOVE the table (operator ruling 2026-09-15):
+       * the Add-task CTA lives top-right in the desk header, so the form it
+       * summons belongs in the same region — eyes land where the click
+       * happened, the exceptions desk's Resolve→editor stage is the
+       * precedent. The table shrinks while open; the list stays visible so
+       * "did I already add this?" stays answerable mid-entry.
+       */}
+      {canManage && isToday && composerOpen ? (
+        <DailyComposerRow
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={submitDraft}
+          pending={addItem.isPending}
+          error={addItem.error?.message ?? null}
+          inputRef={composerRef}
+        />
+      ) : null}
       <DataTable<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
         binding={DAILY_TABLE_BINDING}
-        // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
-        // History, Testing, Incoming, To-Ship and Tasks mount. A shift
-        // checklist item has no photo, no order and no carrier, so those
-        // tracks read empty: a data difference, and the only kind of
-        // difference between two of these tables there is meant to be.
+        // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
+        // Testing, Incoming, To-Ship and Tasks mount. A shift-checklist item
+        // has no photo, no order and no carrier, so those tracks read empty: a
+        // data difference, and the only kind of difference between two of these
+        // tables there is meant to be.
         columns={dailyColumns}
         fields={dailyFields}
         orderGroupsByDate={taskGroups}
         rows={taskRows}
         getRowId={(r) => String(r.id)}
-        // A header click speaks in TRACK keys; `?colsort=` speaks in Daily's
+        // A header click speaks in TRACK keys; Daily's `?colsort=` speaks in its
         // own words. Map both ways through the MOUNTED model so a bookmarked
         // sort keeps its meaning after a rebind moves the fact to a new slot.
         sort={dailyColumnKeyForSort(dailyColumns, columnSort)}
@@ -310,9 +357,19 @@ export function HomeDailyMode() {
         loading={isLoading}
         search={{ value: query, onChange: setQuery, placeholder: 'Filter checks…' }}
         filter={{
-          options: DAILY_STATUS_OPTIONS.map((o) => ({ ...o, active: status === 'done' })),
-          onToggle: (id) => setStatus(id === 'completed' && status !== 'done' ? 'done' : 'open'),
-          onClearAll: () => setStatus('open'),
+          options: DAILY_STATUS_OPTIONS.map((o) => ({
+            id: o.id,
+            label: o.label,
+            active: status === o.status,
+          })),
+          // Re-picking the live refinement clears it back to the whole list —
+          // the same toggle-off every facet menu in the product has.
+          onToggle: (id) => {
+            const picked = DAILY_STATUS_OPTIONS.find((o) => o.id === id);
+            if (!picked) return;
+            setStatus(status === picked.status ? 'all' : picked.status);
+          },
+          onClearAll: () => setStatus('all'),
         }}
         emptyMessage={
           isError
@@ -321,100 +378,16 @@ export function HomeDailyMode() {
               ? 'No task matches that search.'
               : status === 'done'
                 ? 'Nothing checked off yet today.'
-                : 'No tasks for this day.'
+                : status === 'open'
+                  ? 'Everything on the list is checked off.'
+                  : 'No tasks for this day.'
         }
-        // One band, one row per group — the group IS the task, so the
-        // group renderer and the leaf renderer are the same row.
         renderGroup={(group, _stripe, { columns: visible }) => (
-          <>
-            {group.rows.map((row) => (
-            <CompoundRow
-              key={row.id}
-              data-daily-task-id={row.id}
-              role="button"
-              tabIndex={0}
-              aria-pressed={selectedId === row.id}
-              aria-label={`Task ${row.title}`}
-              className="group/row cursor-pointer"
-              onClick={() => selectItem(row.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  selectItem(row.id);
-                }
-              }}
-              columns={visible}
-              capabilities={DAILY_GRID_CAPABILITIES}
-              selected={selectedId === row.id}
-              // The family's only contribution: its DATA.
-              view={dailyRowView(row, visible)}
-              onOpen={() => selectItem(row.id)}
-              // The tick means "I did this today", not "this row is
-              // selected". Disabled on a day the viewer may not mark.
-              select={{
-                checked: row.done,
-                onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
-                disabled: !isToday || toggle.isPending,
-                label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
-              }}
-            />
-            ))}
-          </>
+          <>{group.rows.map((row) => renderTaskRow(row, visible))}</>
         )}
-        renderRow={(row, _stripe, { columns: visible }) => (
-          <CompoundRow
-            key={row.id}
-            data-daily-task-id={row.id}
-            role="button"
-            tabIndex={0}
-            aria-pressed={selectedId === row.id}
-            aria-label={`Task ${row.title}`}
-            className="group/row cursor-pointer"
-            onClick={() => selectItem(row.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                selectItem(row.id);
-              }
-            }}
-            columns={visible}
-            capabilities={DAILY_GRID_CAPABILITIES}
-            selected={selectedId === row.id}
-            // The family's only contribution: its DATA.
-            view={dailyRowView(row, visible)}
-            onOpen={() => selectItem(row.id)}
-            // The tick means "I did this today", not "this row is
-            // selected". Disabled on a day the viewer may not mark.
-            select={{
-              checked: row.done,
-              onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
-              disabled: !isToday || toggle.isPending,
-              label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
-            }}
-          />
-        )}
+        renderRow={(row, _stripe, { columns: visible }) => renderTaskRow(row, visible)}
       />
       <DeskActionSlotRegistrar>{addAction}</DeskActionSlotRegistrar>
-
-      {canManage && isToday && composerOpen ? (
-        <DailyComposerRow
-          draft={draft}
-          onDraftChange={setDraft}
-          onSubmit={submitDraft}
-          pending={addItem.isPending}
-          inputRef={composerRef}
-        />
-      ) : null}
-
-      <DailyCheckItemInspector
-        item={selected}
-        report={data}
-        onClose={() => selectItem(null)}
-        onRetire={
-          canManage && isToday ? (itemId) => retireItem.mutate(itemId) : undefined
-        }
-        retirePending={retireItem.isPending}
-      />
     </div>
   );
 }

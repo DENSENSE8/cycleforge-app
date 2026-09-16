@@ -59,3 +59,42 @@ test('receiving slot-table search stays out of browser URL state', () => {
   assert.match(spreadsheet, /receivingLineMatchesQuery/);
   assert.doesNotMatch(spreadsheet, /from ['"]next\/navigation['"]/);
 });
+
+test('photo library find-bar stays out of browser URL state', () => {
+  const findRow = source('components/photos/PhotoLibraryFindRow.tsx');
+  const page = source('components/photos/PhotoLibraryPage.tsx');
+
+  // The find row draws the box and owns nothing: it neither reads nor writes the
+  // finder params, and it never navigates. (The header comment still names the
+  // removed `patch({ poFinder })` pattern, so match code shapes, not prose.)
+  assert.doesNotMatch(findRow, /filters\.poFinder/);
+  assert.doesNotMatch(findRow, /poFinder:/);
+  assert.doesNotMatch(findRow, /\bq: /);
+  assert.doesNotMatch(findRow, /from ['"]next\/navigation['"]/);
+  assert.match(findRow, /value=\{search\.value\}/);
+  assert.match(findRow, /onChange=\{search\.onChange\}/);
+
+  // The page holds the query in session state and narrows the painted rows.
+  assert.match(page, /const \[searchQuery, setSearchQuery\] = useState\(''\)/);
+  assert.match(page, /filterPhotosByQuery\(photos, searchQuery/);
+  assert.doesNotMatch(page, /patch\(\{\s*poFinder:/);
+});
+
+test('kiosk catalog find stays out of browser URL state', () => {
+  const shell = source('app/kiosk/KioskShell.tsx');
+  const selector = source('components/repair/ProductSelector.tsx');
+  const devices = source('components/settings/kiosk-devices/useKioskDevicesSpreadsheet.ts');
+
+  // The tablet's one catalog find lives in the shell and is handed down as data.
+  assert.match(shell, /const \[catalogSearch, setCatalogSearch\] = useState\(''\)/);
+  assert.match(shell, /searchQuery=\{catalogSearch\}/);
+  // The shell may navigate exactly once — the Exit verb lives in KioskTopChrome —
+  // but the search value must never reach the URL from either file.
+  assert.doesNotMatch(shell, /params\.set\('(q|search)'/);
+  assert.doesNotMatch(selector, /from ['"]next\/navigation['"]/);
+  assert.doesNotMatch(selector, /params\.set\('(q|search)'/);
+
+  // Settings' kiosk-devices slot table follows the same law as every desk.
+  assert.match(devices, /const \[query, setQuery\] = useState\(''\)/);
+  assert.doesNotMatch(devices, /from ['"]next\/navigation['"]/);
+});

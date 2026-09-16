@@ -12,6 +12,7 @@ import 'server-only';
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 import type { Pool as PgPool } from 'pg';
+import { describeBranchSplit } from '@/lib/db-single-branch';
 
 // Load .env when running outside the Next.js runtime (e.g. standalone scripts).
 // Next.js automatically loads .env/.env.local during dev/build, so this is a no-op there.
@@ -38,6 +39,21 @@ const idleTimeoutMillis = readPositiveInt(process.env.PG_IDLE_TIMEOUT_MS, 10000)
 
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/postgres';
 const adminConnectionString = process.env.ADMIN_DATABASE_URL || connectionString;
+
+/*
+ * ONE BRANCH PER ENVIRONMENT — asserted at import, because a silent split cost
+ * a full day on 2026-09-14. The check itself is pure and lives in
+ * `db-single-branch.ts` (this module is `server-only`, so nothing can import it
+ * to test it); see that file for the failure it exists to catch.
+ *
+ * Fatal in development, a loud error log in production: a prod boot must not be
+ * bricked by an env typo, and prod has a deploy gate that a lane does not.
+ */
+const branchSplit = describeBranchSplit(process.env);
+if (branchSplit) {
+  if (process.env.NODE_ENV === 'production') console.error(`[db] ${branchSplit}`);
+  else throw new Error(`[db] ${branchSplit}`);
+}
 
 // Local dev against a plain Postgres (e.g. the Docker jarvis-db) needs a Neon
 // WebSocket proxy, because @neondatabase/serverless speaks WSS, not raw TCP.

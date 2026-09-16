@@ -1,4 +1,5 @@
 import type { FavoriteSkuRecord, FavoriteWorkspaceKey } from '@/lib/favorites/sku-favorites';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import type { EcwidSearchProduct } from './favorites-search';
 
 /** Pure network layer for the favorites workspace. Throws with server messages. */
@@ -10,7 +11,9 @@ export async function fetchFavorites(
   const url =
     options?.listUrl?.trim() ||
     `/api/favorites?workspace=${encodeURIComponent(workspaceKey)}`;
-  const res = await fetch(url);
+  // `listUrl` may be the device-authed kiosk twin (`/api/kiosk/repair/favorites`),
+  // which self-heals a lost binding; the staff URL passes straight through.
+  const res = await kioskFetchHealed(url);
   const data = await res.json();
   if (!res.ok) throw new Error(data?.details || data?.error || 'Failed to load favorites');
   return Array.isArray(data?.favorites) ? data.favorites : [];

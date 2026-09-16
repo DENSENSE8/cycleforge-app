@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { detectCarrier } from '@/lib/tracking-format';
+import { resolveStoredCarrier } from '@/lib/shipping/carrier-resolution';
 import { publishFbaShipmentChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
@@ -52,7 +52,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    const carrier = String(body.carrier || (rawTracking ? detectCarrier(rawTracking) : '') || '').toUpperCase();
+    const carrier = resolveStoredCarrier({ tracking: rawTracking, reported: body.carrier }).carrier;
 
     type MarkResult =
       | { kind: 'scan_no_shipment' }

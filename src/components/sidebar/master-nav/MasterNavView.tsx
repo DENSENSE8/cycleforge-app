@@ -1,6 +1,7 @@
 'use client';
 
 import type { SidebarPageNav } from '@/lib/sidebar-navigation';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { cn } from '@/utils/_cn';
 import { SidebarNavList } from './SidebarNavList';
 import { SpineNavChrome } from './SpineNavChrome';
@@ -8,8 +9,15 @@ import { SpineNavChrome } from './SpineNavChrome';
 /**
  * The **sidebar spine** — page map in a resident push column.
  *
- * Home · Media Library stay structural; Stations and Workspaces collapse in
- * place; remaining L1 is staff-ordered. Settings lives in the account ⋯ menu.
+ * Daily · Media Library stay structural; the LANES (Inbound · Outbound · …)
+ * and Scan Stations are `SidebarGroup`s that collapse in place; remaining L1 is
+ * staff-ordered. Settings lives in the account ⋯ menu.
+ *
+ * `SidebarProvider` is the shell the operator asked for (2026-09-14), mounted
+ * HERE rather than inside the list so one provider serves the chrome row and
+ * the nav tree. It owns no geometry: the host column (`SidebarNavColumn` /
+ * `SidebarShell`) owns width, drag-resize and collapse, so the provider
+ * contributes state only — see the deviation notes in `@/components/ui/sidebar`.
  */
 export function MasterNavView({
   activePage,
@@ -31,7 +39,7 @@ export function MasterNavView({
   className?: string;
 }) {
   return (
-    <div className={cn('isolate flex h-full min-h-0 flex-col font-spine', className)}>
+    <SidebarProvider className={cn('isolate font-spine', className)}>
       <SpineNavChrome />
       <SidebarNavList
         activePage={activePage}
@@ -42,6 +50,6 @@ export function MasterNavView({
         spineOrder={spineOrder}
         onSpineOrderChange={onSpineOrderChange}
       />
-    </div>
+    </SidebarProvider>
   );
 }

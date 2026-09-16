@@ -12,7 +12,7 @@
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RECEIVING_RAIL_FEEDS } from '@/lib/receiving/rail/feeds';
 import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
 import {

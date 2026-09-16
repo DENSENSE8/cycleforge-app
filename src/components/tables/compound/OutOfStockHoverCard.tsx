@@ -9,6 +9,7 @@
  */
 
 import { cornerClass } from '@/design-system/tokens/radius';
+import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
 export type OutOfStockHoverCardProps = {
@@ -40,8 +41,9 @@ export function OutOfStockHoverCard({
   return (
     <div
       className={cn(
-        'flex max-w-[16rem] items-start gap-2 bg-surface-card p-2 text-left text-text-default shadow-sm',
+        'flex max-w-[16rem] items-start gap-2 border border-border-soft bg-surface-card p-2 text-left text-text-default',
         cornerClass('surface'),
+        elevationClass('overlay'),
       )}
       data-testid="oos-hover-card"
     >

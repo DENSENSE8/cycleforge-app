@@ -28,7 +28,13 @@ import type { ReactNode } from 'react';
 import { TextField } from '@/design-system/primitives';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
-import { KIOSK_POS_ENTRY, KIOSK_POS_ENTRY_AREA } from '@/app/kiosk/kiosk-pos-surface';
+import {
+  KIOSK_POS_ENTRY,
+  KIOSK_POS_ENTRY_AREA,
+  KIOSK_POS_ENTRY_ICON,
+  KIOSK_POS_ENTRY_ICON_HOST,
+  KIOSK_POS_ENTRY_ICON_INSET,
+} from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import {
   useKioskSession,
@@ -80,6 +86,7 @@ export function KioskEntryField({
   autoComplete,
   maxLength,
   multiline = false,
+  icon,
   testId,
 }: {
   name: string;
@@ -90,11 +97,20 @@ export function KioskEntryField({
   autoComplete?: string;
   maxLength?: number;
   multiline?: boolean;
+  /**
+   * Leading glyph inside the field — states the field's KIND before anyone
+   * reads the placeholder. Mount the house glyph (money is `Receipt`); the
+   * slot supplies position and inset via `KIOSK_POS_ENTRY_ICON*`, so a caller
+   * never hand-positions one. Single-line only: a textarea's first line is not
+   * where a mark belongs.
+   */
+  icon?: ReactNode;
   testId?: string;
 }) {
   const id = `kiosk-entry-${name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}`;
+  const withIcon = Boolean(icon) && !multiline;
   return (
-    <div>
+    <div className={withIcon ? KIOSK_POS_ENTRY_ICON_HOST : undefined}>
       <label htmlFor={id} className="sr-only">
         {name}
       </label>
@@ -112,18 +128,25 @@ export function KioskEntryField({
           className={KIOSK_POS_ENTRY_AREA}
         />
       ) : (
-        <input
-          id={id}
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={name}
-          autoComplete={autoComplete}
-          maxLength={maxLength}
-          inputMode={inputMode}
-          data-testid={testId}
-          className={KIOSK_POS_ENTRY}
-        />
+        <>
+          {withIcon ? (
+            <span className={KIOSK_POS_ENTRY_ICON} aria-hidden>
+              {icon}
+            </span>
+          ) : null}
+          <input
+            id={id}
+            type={type}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={name}
+            autoComplete={autoComplete}
+            maxLength={maxLength}
+            inputMode={inputMode}
+            data-testid={testId}
+            className={cn(KIOSK_POS_ENTRY, withIcon && KIOSK_POS_ENTRY_ICON_INSET)}
+          />
+        </>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { emitOpenAddFba, emitOpenUploadFba, sidebarSubBandClass } from '@/components/fba/sidebar/fba-sidebar-shared';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
+import { FBA_MODE_PARAM, FBA_OUTBOUND_PATH } from '@/lib/fba/fba-modes';
 
 /** Suspense fallback for the admin FNSKU catalog sidebar. */
 export function FbaCatalogSidebarFallback() {
@@ -30,34 +31,36 @@ export function FbaCatalogSidebarFallback() {
 }
 
 /**
- * Admin FNSKU catalog tools (/admin?section=fba): catalog search plus the
- * add-row / upload-CSV / clear-search actions and a link to the FBA station.
+ * FNSKU catalog tools (`/shipping/fba?fbaMode=catalog`, ex-Admin › Amazon Prep
+ * before the admin dissolution): catalog search plus the add-row /
+ * upload-CSV / clear-search actions and a link to the FBA station.
  */
 export function FbaCatalogSidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchValue = searchParams.get('search') || '';
 
-  const pushAdminParams = useCallback(
+  const pushCatalogParams = useCallback(
     (mutate: (p: URLSearchParams) => void) => {
       const next = new URLSearchParams(searchParams.toString());
-      next.set('section', 'fba');
+      next.delete('section');
+      next.set(FBA_MODE_PARAM, 'catalog');
       mutate(next);
       const q = next.toString();
-      router.replace(q ? `/admin?${q}` : '/admin');
+      router.replace(q ? `${FBA_OUTBOUND_PATH}?${q}` : FBA_OUTBOUND_PATH);
     },
     [router, searchParams],
   );
 
   const updateSearch = (value: string) => {
-    pushAdminParams((p) => {
+    pushCatalogParams((p) => {
       if (value.trim()) p.set('search', value.trim());
       else p.delete('search');
     });
   };
 
   const clearFilters = () => {
-    pushAdminParams((p) => {
+    pushCatalogParams((p) => {
       p.delete('search');
     });
   };

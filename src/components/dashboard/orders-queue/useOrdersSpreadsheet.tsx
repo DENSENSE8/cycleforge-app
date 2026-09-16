@@ -59,6 +59,7 @@ import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopo
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
+import { useRecentImportedOrders } from '@/lib/orders/recent-imports';
 
 /**
  * `getDaysLateNullable`, memoized on `(today, deadline)`.
@@ -236,6 +237,7 @@ export function useOrdersSpreadsheet({
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
   const { sort, dir, setSort } = useQueueDisplaySort();
+  const recentImportedOrders = useRecentImportedOrders();
 
   // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
   // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
@@ -466,6 +468,7 @@ export function useOrdersSpreadsheet({
       quietIdentity = false,
     ) => {
       const r = record as QueueRowRecord;
+      const recentImportLabel = recentImportedOrders.get(Number(record.id));
       const testerName =
         String(r.tested_by_name ?? '').trim() ||
         String(r.tester_name ?? '').trim() ||
@@ -490,7 +493,7 @@ export function useOrdersSpreadsheet({
           rowFillHex={rowFillHex}
           rowIndex={rowIndex}
           onToggleSelect={handleToggleSelect}
-          record={r}
+          record={recentImportLabel ? { ...r, recent_import_label: recentImportLabel } : r}
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
           selectMode={selectMode}
           isChecked={selectedIds.has(Number(record.id))}
@@ -561,6 +564,7 @@ export function useOrdersSpreadsheet({
       fillsById,
       subtitleFieldIds,
       compositionMap,
+      recentImportedOrders,
     ],
   );
   const findScrollToKey = selectedRecord
@@ -649,6 +653,7 @@ export function useOrdersSpreadsheet({
         rowIndex={rowIndex}
         columns={visible}
         selectedIds={selectedIds}
+        queueMode={queueMode}
         onToggleGroup={handleToggleGroup}
         renderRow={(record, stripeIndex, leafRowIndex, quietIdentity) =>
           renderLeaf(record, stripeIndex, visible, leafRowIndex, quietIdentity)

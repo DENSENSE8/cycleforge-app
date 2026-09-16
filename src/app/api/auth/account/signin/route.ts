@@ -28,8 +28,9 @@ import { audit } from '@/lib/auth/audit';
 import { getAccountByEmail } from '@/lib/identity/accounts';
 import { verifyPassword } from '@/lib/identity/password';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
+import { resolveAccountSigninTarget } from '@/lib/identity/signin-target';
 import { checkRateLimitAsync } from '@/lib/api-guard';
-import { parseOrgSettings, isSharedStaffAccountOrg } from '@/lib/tenancy/settings';
+import { loadSharedStaffChoices } from '@/lib/identity/shared-staff-choice';
 
 export const runtime = 'nodejs';
 
@@ -102,22 +103,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'NO_WORKSPACE' }, { status: 403 });
   }
 
-  // Resolve which workspace to enter.
-  let target = memberships[0]!;
-  if (parsed.organizationId) {
-    const match = memberships.find((m) => m.organization_id === parsed.organizationId);
-    if (!match) return NextResponse.json({ error: 'NOT_A_MEMBER' }, { status: 403 });
-    target = match;
-  } else if (memberships.length > 1) {
+  // Resolve which workspace to enter (policy in signin-target.ts — the
+  // organizationId is honored only against the memberships just fetched).
+  const decision = resolveAccountSigninTarget(memberships, parsed.organizationId);
+  if (decision.kind === 'no_workspace') {
+    return NextResponse.json({ error: 'NO_WORKSPACE' }, { status: 403 });
+  }
+  if (decision.kind === 'not_member') {
+    return NextResponse.json({ error: 'NOT_A_MEMBER' }, { status: 403 });
+  }
+  if (decision.kind === 'needs_choice') {
     // Let the client present a workspace picker, then POST again with org id.
     return NextResponse.json({
       needsOrgChoice: true,
-      memberships: memberships.map((m) => ({
+      memberships: decision.memberships.map((m) => ({
         organizationId: m.organization_id,
         organizationName: m.organization_name,
       })),
     });
   }
+  const target = decision.target;
 
   const session = await createSession({
     staffId: target.staff_id,
@@ -145,36 +150,13 @@ export async function POST(req: NextRequest) {
   // (POST /api/auth/act-as-staff). The shared login's OWN profile is excluded —
   // it's the front door, not a selectable staff member. A per-email
   // ('individual') org skips this block entirely and signs straight in.
-  let staffChoice:
-    | { id: number; name: string; role: string | null; color_hex: string | null; has_pin: boolean }[]
-    | null = null;
-  try {
-    const orgRes = await pool.query<{ settings: unknown }>(
-      `SELECT settings FROM organizations WHERE id = $1 LIMIT 1`,
-      [target.organization_id],
-    );
-    if (isSharedStaffAccountOrg(parseOrgSettings(orgRes.rows[0]?.settings))) {
-      const staffRes = await pool.query<{ id: number; name: string; role: string | null; color_hex: string | null; has_pin: boolean }>(
-        `SELECT id, name, role, color_hex, (pin_hash IS NOT NULL) AS has_pin
-           FROM staff
-          WHERE organization_id = $1
-            AND id <> $2
-            AND COALESCE(status, 'active') IN ('active', 'invited')
-            AND COALESCE(active, true) = true
-          ORDER BY name ASC`,
-        [target.organization_id, target.staff_id],
-      );
-      staffChoice = staffRes.rows;
-    }
-  } catch {
-    staffChoice = null; // degrade to a normal sign-in rather than blocking login
-  }
+  const staffChoice = await loadSharedStaffChoices(target.organization_id, target.staff_id);
 
   const res = NextResponse.json({
     ok: true,
     organizationId: target.organization_id,
     ...(staffChoice
-      ? { needsStaffChoice: true, organizationName: target.organization_name, staff: staffChoice }
+      ? { needsStaffChoice: true, organizationName: target.organization_name, staff: staffChoice.staff }
       : {}),
   });
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {

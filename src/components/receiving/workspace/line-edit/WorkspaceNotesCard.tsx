@@ -36,7 +36,7 @@
 
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 
 /**

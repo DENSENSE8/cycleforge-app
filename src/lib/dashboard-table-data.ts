@@ -158,6 +158,29 @@ export async function fetchUnshippedOrdersData({
   const data = await res.json();
   return normalizeUnshippedOrdersPayload(data.orders || []);
 }
+/** One in-warehouse queue row by DB id for URL deep links. */
+export async function fetchUnshippedOrderRowById({
+  orderId,
+  staffId,
+}: {
+  orderId: number;
+  staffId?: number;
+}): Promise<ShippedOrder | null> {
+  if (!Number.isFinite(orderId) || orderId <= 0) return null;
+
+  const params = new URLSearchParams({
+    orderId: String(orderId),
+    inWarehouse: 'true',
+  });
+  if (staffId !== undefined) params.set('staff', String(staffId));
+  const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  const records = normalizeUnshippedOrdersPayload(data.orders || []);
+  return records.find((record) => Number(record.id) === orderId) ?? null;
+}
+
 
 // Shape + normalization live in the shared waist so the RSC seed and this
 // browser fetch cannot produce different cache entries for the same key.

@@ -7,13 +7,12 @@ import * as PopoverPrimitive from '@radix-ui/react-popover';
 import {
   Clipboard,
   MessageSquare,
-  MoreHorizontal,
+  Monitor,
   Power,
   RefreshCw,
   Settings,
   Smartphone,
 } from '@/components/Icons';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
   SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
@@ -29,14 +28,17 @@ import {
   motion,
   useReducedMotion,
 } from '@/design-system/motion';
-import { IconButton } from '@/design-system/primitives';
 import {
   Popover,
   PopoverAnchor,
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { StaffAvatarEditor } from '@/components/identity';
+import { Button } from '@/components/ui/button';
+import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { elevationClass } from '@/design-system/tokens/shadows';
+import { orgInitials } from '@/lib/identity/switch-org';
+import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 import {
   CLIPBOARD_HISTORY_HOTKEY_LABEL,
   openClipboardHistory,
@@ -45,6 +47,7 @@ import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { PhoneHandoffQrDialog } from '@/components/quick-access/PhoneHandoffQrDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
+import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { cn } from '@/utils/_cn';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
@@ -53,45 +56,44 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 const ACCOUNT_MENU_MS = 0.15;
 
 /**
- * Spine footer — staff identity, ⋯ overflow, and sign-out. The map's pin band
- * is gone: Studio and Admin are ordinary L1 rows. This menu is report →
- * sign-in-on-phone handoff (desk only) → clipboard → change staff → Settings.
+ * Spine footer — the phone's account bar, imported to the desk (2026-09-15).
+ * The row is {@link MobileAccountFooter}'s display, verbatim: staff colour +
+ * initials bubble flush left, name + signed-in email beside it, edge-to-edge
+ * soft drop shadow — no hairline. ONE button, ONE door: the whole bar opens
+ * the account panel. The trailing power square is retired — sign-out is the
+ * panel's bottom row.
  *
- * The ⋯ panel is Radix Popover + Motion enter/exit (fade · zoom 95% · slide
+ * The panel is Radix Popover + Motion enter/exit (fade · zoom 95% · slide
  * from bottom for `side="top"`), matching shadcn new-york popover. Soft shell
  * comes from {@link SIDEBAR_SPINE_MENU_PANEL_CLASS}. `modal={false}` so the
  * HUD is not focus-trapped. Report-an-issue still opens as a sibling layer
  * because it is a panel, not a menu row.
  *
- * Daily account actions: report an issue, desk→phone session handoff
- * ({@link PhoneHandoffQrDialog} — 4-char code + /m/claim), clipboard history
- * (⌘⇧V), change staff, Settings last. Deep-link-only "Open on your phone"
+ * Panel order: org/staff header → other workspaces (org switcher — rows for
+ * every membership besides the current one; switch confirm → hard reload, via
+ * the shared {@link useSwitchOrg}) → report an issue → desk→phone session
+ * handoff ({@link PhoneHandoffQrDialog} — 4-char code + /m/claim) → clipboard
+ * history (⌘⇧V) → open kiosk (`/kiosk/v2`) → change staff → Settings → Log
+ * out (hairline above, danger wash). Deep-link-only "Open on your phone"
  * stays on Settings → Workstation ({@link PhoneSignInQrDialog}). Change staff
  * opens {@link SwitchStaffSheet}. Throw lives on {@link HeaderGoalChip}.
+ * Kiosk is not on GlobalHeader.
  *
- * **Mobile now follows** (2026-08-21). The phone mounts THIS component at the
- * bottom of its navigation drawer ({@link MobileSidebarDrawer}). The phone QR
- * row is omitted there — you are already on the phone.
- *
- * The ⋯ menu is a **child of the footer row**: `side="top"` against the row
- * anchor so width tracks the spine. Org name in the menu header is
- * load-bearing. The avatar is a separate click target
- * ({@link StaffAvatarEditor}) for colour + photo.
- *
- * Floor band = {@link PRIMARY_CHROME_ROW_FACE} (`h-7` · full spine width). No
- * top hairline — the map already has zero horizontal rules. Identity is one
- * truncated name line inside the flex-1 ⋯ hit target; role stays in the ⋯
- * menu. Sign-out is a flush trailing square — idle muted like the ⋯ peer; the
- * full hit square (wash + glyph + glow) turns danger-red on hover, never idle.
+ * Callers: SidebarNavList. API: none. Schemas: none.
+ * User (2026-09-15): "importing the same mobile display to desktop — the
+ * staff icon and the name … on click the same popover just with logout on
+ * the bottom … removing the power icon from the bottom right — one button
+ * component at the bottom of the left sidebar."
  */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const { openSwitcher } = useStaffSwitcher();
+  const { switching, switchErr, switchTo } = useSwitchOrg();
   const prefersReducedMotion = useReducedMotion();
   const [menu, setMenu] = useState<OpenMenu>('none');
   const [phoneHandoffOpen, setPhoneHandoffOpen] = useState(false);
-  const rowRef = useRef<HTMLDivElement>(null);
+  const rowRef = useRef<HTMLElement>(null);
   // Phone shell already is the phone — no desk→phone handoff row there.
   const showPhoneHandoff = !pathname.startsWith('/m');
 
@@ -104,6 +106,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   const staffName = user.name ?? '';
   const moreOpen = menu === 'more';
   const displayName = staffName || `Staff #${user.staffId}`;
+  const otherOrgs = (user.memberships ?? []).filter((m) => !m.isCurrent);
 
   const menuTransition = prefersReducedMotion
     ? { duration: 0 }
@@ -120,54 +123,41 @@ export function StaffAccountFooter({ className }: { className?: string }) {
         }}
       >
         <PopoverAnchor asChild>
-          <div
+          <footer
             ref={rowRef}
-            className={cn(
-              'flex w-full items-center',
-              PRIMARY_CHROME_ROW_FACE,
-              'gap-0 pl-2 pr-0',
-            )}
+            className={cn('w-full shrink-0 bg-surface-card', elevationClass('raised', 'soft'))}
           >
-            {/* Click the mark to change colour / photo — not Settings. */}
-            <StaffAvatarEditor markSize="xs" />
-            {/* Flex-1 ⋯ fills everything left of sign-out — name + dots, no dead gap. */}
+            {/* shadcn ghost chrome (not an ops CTA — the DS Button law is
+                untouched), the phone's full-bleed-row pattern: the BUTTON is
+                edge-to-edge (px-0), the CONTENT carries the inset (px-3). */}
             <HoverTooltip label="Account details" asChild>
               <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Account details"
-                  aria-expanded={moreOpen}
-                  className={cn(
-                    'ds-raw-button flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-none px-1.5',
-                    'text-text-faint hover:bg-surface-hover hover:text-text-default',
-                    moreOpen && 'bg-surface-hover text-text-default',
-                  )}
+                <Button
+                  variant="ghost"
+                  aria-label={`Account details, signed in as ${displayName}`}
+                  className="h-auto min-h-11 w-full justify-start px-0 py-2.5 text-left text-text-default"
                 >
-                  <span className="min-w-0 flex-1 truncate text-left text-role-nav font-normal leading-none text-text-default">
-                    {displayName}
+                  <span className="flex w-full items-center gap-2.5 px-3">
+                    <StaffAvatar
+                      staffId={user.staffId}
+                      name={displayName}
+                      avatarPhotoId={user.avatarPhotoId ?? null}
+                      size="md"
+                      alt=""
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium leading-tight">{displayName}</span>
+                      {user.email ? (
+                        <span className="block truncate text-role-micro font-normal leading-tight text-text-soft">
+                          {user.email}
+                        </span>
+                      ) : null}
+                    </span>
                   </span>
-                  <MoreHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                </button>
+                </Button>
               </PopoverTrigger>
             </HoverTooltip>
-            <HoverTooltip label="Sign out" asChild>
-              <IconButton
-                type="button"
-                size="md"
-                onClick={() => {
-                  void signOut();
-                }}
-                ariaLabel="Sign out"
-                className="group shrink-0 rounded-none text-text-faint hover:bg-surface-danger hover:text-text-danger"
-                icon={
-                  <Power
-                    className="h-3.5 w-3.5 group-hover:drop-shadow-[0_0_6px_currentColor]"
-                    aria-hidden
-                  />
-                }
-              />
-            </HoverTooltip>
-          </div>
+          </footer>
         </PopoverAnchor>
 
         <AnimatePresence>
@@ -220,6 +210,40 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       {user.role.replace(/_/g, ' ')}
                     </div>
                   </div>
+                  {otherOrgs.length > 0 ? (
+                    <div className="space-y-0.5 border-b border-border-hairline p-1">
+                      {otherOrgs.map((m) => (
+                        <button
+                          key={m.organizationId}
+                          type="button"
+                          role="menuitem"
+                          disabled={!!switching}
+                          onClick={() => {
+                            void switchTo(m.organizationId, m.organizationName);
+                          }}
+                          className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+                        >
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-surface-strong text-role-micro font-semibold text-text-muted">
+                            {orgInitials(m.organizationName)}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-role-caption font-medium leading-tight text-text-default">
+                              {switching === m.organizationId ? 'Switching…' : m.organizationName}
+                            </span>
+                            <span className="block truncate text-role-micro leading-tight text-text-soft">
+                              {m.organizationSlug ?? '—'}
+                              {m.role ? ` · ${m.role.replace(/_/g, ' ')}` : ''}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                      {switchErr ? (
+                        <div className="px-2.5 pb-1 text-role-micro text-text-danger">
+                          {switchErr}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="space-y-0.5 p-1">
                     <button
                       type="button"
@@ -277,6 +301,21 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                     <button
                       type="button"
                       role="menuitem"
+                      data-testid="staff-account-kiosk"
+                      onClick={() => {
+                        setMenu('none');
+                        openKioskShellPreview(user.organizationSlug);
+                      }}
+                      className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+                    >
+                      <Monitor className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+                      <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                        Open kiosk
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
                       onClick={() => {
                         setMenu('none');
                         openSwitcher();
@@ -297,6 +336,32 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                       <Settings className="h-3.5 w-3.5 shrink-0 text-text-muted" />
                       <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>Settings</span>
                     </Link>
+                  </div>
+                  {/* Sign-out — the panel's bottom row, hairline-separated.
+                      The trailing power square is gone; this is the only
+                      sign-out door on the spine. */}
+                  <div className="border-t border-border-hairline p-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenu('none');
+                        void signOut();
+                      }}
+                      className={cn(
+                        'ds-raw-button group',
+                        SIDEBAR_SPINE_MENU_ACTION_CLASS,
+                        'hover:bg-surface-danger hover:text-text-danger',
+                      )}
+                    >
+                      <Power
+                        className="h-3.5 w-3.5 shrink-0 text-text-muted group-hover:text-text-danger group-hover:drop-shadow-[0_0_6px_currentColor]"
+                        aria-hidden
+                      />
+                      <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                        Log out
+                      </span>
+                    </button>
                   </div>
                 </motion.div>
               </PopoverPrimitive.Content>

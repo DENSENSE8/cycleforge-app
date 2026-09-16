@@ -13,7 +13,7 @@
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { useTicketThreadActivation } from './useTicketThreadActivation';
 import { ReceivingClaimPanel } from '@/components/receiving/workspace/ReceivingClaimPanel';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import { cn } from '@/utils/_cn';
 

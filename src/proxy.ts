@@ -191,13 +191,8 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   ['/pickup/', '/m/receiving'],
   ['/receiving/history', '/m/receiving'],
   ['/receiving/history/', '/m/receiving'],
-  // Pack surface (operator-surfaces refactor Phase 7) → the redesigned mobile
-  // packing shell. Both the canonical `/pack` and the legacy `/packer` land here
-  // on phones (the bottom nav already labels it "Packing").
-  ['/pack', '/m/pack'],
-  ['/pack/', '/m/pack'],
-  ['/packer', '/m/pack'],
-  ['/packer/', '/m/pack'],
+  // Packing is desktop-only (2026-09-14 mobile ruling): no /m/pack exists, so
+  // phones deliberately get the desktop /pack page.
   ['/signin', '/m/signin'],
   ['/signin/', '/m/signin'],
 ]);
@@ -437,13 +432,14 @@ function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextReque
  * graduated from `/packer` to the first-class `/pack` route, so the address bar
  * names the operator's job. Bare `/packer` (and `/packer/`) normalize to `/pack`,
  * preserving the `?packMode=` sub-view param. Exact path only — no `/packer`
- * sub-routes exist, but guard against a future one leaking. Desktop only; phones
- * fall through to the `/m/pack` UA rewrite computed above.
+ * sub-routes exist, but guard against a future one leaking. Every device lands here:
+ * packing is desktop-only (2026-09-14 mobile ruling) and the phone rewrite is gone.
  */
 function resolvePackSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/packer' && url.pathname !== '/packer/') return null;
   const next = url.clone();
   next.pathname = '/pack';
+  // Packing is desktop-only (2026-09-14): phones get the desktop /pack page too.
   return next;
 }
 

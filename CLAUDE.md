@@ -22,6 +22,27 @@ doable on `/m/*` first. Law: [`docs/mobile-first/SURFACE_LAW.md`](docs/mobile-fi
 Cursor: `.cursor/rules/mobile-first-surface.mdc`.
 User: "span repo-wide" / "do everything on the mobile app first."
 
+## Dev origin — `http://localhost:3050` only
+
+User 2026-09-15: *"only work from 3050."* `:3050` is the switchboard and the
+ONLY address an agent may hit — curl, Playwright, browser probes, screenshots.
+Cookie scoping (`cf_kiosk` → `cf_kiosk__l7`) happens only through it, so a lane
+port tests a namespace the operator's browser never sees.
+
+- Never probe `:307x` / `:3051` / a "free port" app server. `npm run dev`
+  answering `EADDRINUSE` on `:3050` is the switchboard working.
+- Never hand-start `next dev` on a lane port. The lane behind `:3050` is a unit:
+  `systemctl --user {start,restart,status} cycleforge-lane@prod`;
+  `journalctl --user -u cycleforge-lane@prod -f`. Switch truth:
+  `GET /__switch/state`.
+- `503` + `x-switch-error` = the lane is down. Start its unit; do not bind a
+  port around it. DSNs live in the worktree `.env` only.
+- Full law: [`AGENTS.md`](AGENTS.md) § Dev origin ·
+  `.cursor/rules/dev-origin.mdc` (`alwaysApply`).
+- Sole exception (a measurement rig, not an origin): `request-shape` builds
+  production to an isolated `NEXT_DIST_DIR` + throwaway port, then verifies at
+  `:3050`.
+
 ## Garisek graph + eval (non-UI edits / task completion)
 
 - **Code graph:** `find_symbol` → `impact_analysis` before shared component edits.

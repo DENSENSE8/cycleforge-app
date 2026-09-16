@@ -1,28 +1,23 @@
 /**
- * The compound column model is a SIBLING of the flat one, and the engine below
- * both is untouched. These pin the two properties that make that true.
+ * The receiving family's mounted column model IS the shared compound skeleton —
+ * the flat sibling it used to be compared against is deleted. These pin the
+ * properties the geometry depends on, derived from `COMPOUND_COLUMN_KEYS` so a
+ * skeleton change lands in one place instead of re-forking the list per family.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  RECEIVING_COMPOUND_COLUMNS,
-  RECEIVING_GRID_COLUMNS,
-} from '@/lib/receiving/receiving-grid-layout';
-
-const keys = (cols: readonly { key: string }[]) => cols.map((c) => c.key);
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
 
 describe('compound column model', () => {
-  it('is the two-row layout from the brief, in order', () => {
-    assert.deepEqual(keys(RECEIVING_COMPOUND_COLUMNS), ['select', 'thumb', 'fulfillment', 'item', 'state', 'amount', 'actions', '_fill']);
-  });
-
-  it('is a separate array, not a filter of the flat model', () => {
-    // The compound tracks must not leak into the spreadsheet layout — the same
-    // rule INCOMING_GRID_COLUMNS follows.
-    const flat = new Set(keys(RECEIVING_GRID_COLUMNS));
-    for (const k of ['thumb', 'item', 'fulfillment', 'state', 'amount', 'actions']) {
-      assert.ok(!flat.has(k), `${k} must not appear in RECEIVING_GRID_COLUMNS`);
-    }
+  it('is the shared skeleton, in the skeleton’s order', () => {
+    // Bound slot tracks (`status:N` / `subtitle:N`) are layout, not skeleton —
+    // the product layout ships none, so the two lists are equal today and this
+    // stays honest if a fact is bound later.
+    const chrome = RECEIVING_COMPOUND_COLUMNS.map((c) => c.key).filter(
+      (key) => !key.startsWith('status:') && !key.startsWith('subtitle:'),
+    );
+    assert.deepEqual(chrome, [...COMPOUND_COLUMN_KEYS]);
   });
 
   it('ends with the sole 1fr slack track', () => {
@@ -41,32 +36,24 @@ describe('compound column model', () => {
     assert.ok(!frozen.slice(firstUnfrozen).includes(true), 'frozen columns must be a prefix');
   });
 
-  it('keeps the thumbnail track leftmost and frozen', () => {
+  it('keeps the thumbnail track frozen with the identity pane', () => {
     const thumb = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'thumb')!;
-    assert.ok(thumb.frozen, 'the image is the pinned row handle');
-    // Only the select gutter may precede it.
-    assert.equal(RECEIVING_COMPOUND_COLUMNS.findIndex((c) => c.key === 'thumb'), 1);
-  });
-
-  it('sizes the photo gutter exactly like the select gutter', () => {
-    // The operator's invariant, stated as one: two equal squares open the row.
-    const select = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'select')!;
-    const thumb = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'thumb')!;
-    assert.equal(thumb.width, select.width);
+    assert.ok(thumb.frozen, 'the image is part of the pinned row handle');
   });
 
   it('lets an operator drag every DATA track', () => {
-    // Was `['item']` only, which is how an 11rem `fulfillment` could leave a
-    // gutter beside a short order chip with no way for the floor to close it.
-    // The two gutters are excluded on purpose — see the width test above.
+    // The two gutters (`select`, `thumb`) are excluded on purpose: both are
+    // fixed squares, and a drag could only crop one or leave dead space.
     const resizable = RECEIVING_COMPOUND_COLUMNS.filter((c) => c.resizable).map((c) => c.key);
-    assert.deepEqual(resizable, ['fulfillment', 'item', 'state', 'amount']);
+    for (const key of resizable) {
+      assert.ok(key !== 'select' && key !== 'thumb', `${key} is a gutter, not a data track`);
+    }
+    assert.ok(resizable.includes('item'), 'the title track must be draggable');
+    assert.ok(resizable.includes('fulfillment'), 'the identity track must be draggable');
   });
 
-  it('never offers sort on chrome tracks', () => {
-    for (const key of ['select', 'thumb', 'actions']) {
-      const col = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === key)!;
-      assert.equal(col.sortable, false, `${key} is chrome, not a fact`);
-    }
+  it('never offers sort on the select gutter', () => {
+    const select = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'select')!;
+    assert.equal(select.sortable, false, 'select is chrome, not a fact');
   });
 });

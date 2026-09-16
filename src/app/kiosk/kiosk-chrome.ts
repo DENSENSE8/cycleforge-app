@@ -15,24 +15,15 @@
  * Live law: `AGENTS.md` + docs/todo/kiosk-pos-modernization-HANDOFF.md.
  */
 
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, MOBILE_SCAN_CARD_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-// (kioskSpineShortLabel deleted 2026-09-14, Phase 0 — expanded-rail grammar,
-// zero consumers since the spines came down. See the Phase 0 ledger below.)
-
-/** Shared command-cell chrome — touch-tall, flush. Sole consumer today:
- * ProductSelector's trail back button; folds into KioskPaneForm in Phase 1. */
-export const KIOSK_MODE_SPINE_ROW = cn(
-  'ds-raw-button flex w-full shrink-0 transition-colors duration-150',
-  'min-h-14',
-);
-
-export const KIOSK_MODE_SPINE_ROW_IDLE =
-  'text-text-soft hover:bg-surface-hover hover:text-text-default';
-
-/** Spine glyph — smaller than the old 24px MasterNav-scale icon. */
-export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
+// (KIOSK_MODE_SPINE_ROW / _ROW_IDLE / _ICON deleted 2026-09-14, Phase 1 —
+// the last three survivors of the retired command spine. Their only consumer
+// was ProductSelector's hand-rolled trail back control, which is now an
+// IconButton in the trail icon family (HEADER_ICON_BTN_CLASS +
+// KIOSK_POS_TRAIL_ICON) like the search toggle beside it. kioskSpineShortLabel
+// and the rest of the spine chrome went in Phase 0; see the ledger below.)
 
 /**
  * Touch-friendly pane title row (~56px). Taller than desk
@@ -134,12 +125,15 @@ export const KIOSK_PILL_ACTIVE_ISSUE =
 // the command/utility spines came down 2026-09-13 and these were their
 // orphaned chrome: COLLAPSED_W/_PX, EXPANDED_W/_PX, FACE, ROW_COLLAPSED,
 // ROW_EXPANDED, LABEL, SEARCH_ROW, UTILITY_SPINE_FACE, and
-// kioskSpineShortLabel all had ZERO consumers. Kept ROW + ROW_IDLE + ICON:
-// ProductSelector's trail back button still wears them; they fold into
-// KioskPaneForm's back affordance in Phase 1.)
+// kioskSpineShortLabel all had ZERO consumers. ROW + ROW_IDLE + ICON followed
+// them 2026-09-14 in Phase 1 — see the note above the pane bands.)
 
 // (KIOSK_CART_COL / _PX deleted 2026-09-14, Phase 0 — the fixed cart column
-// died with the right utility spine; the ledger is a center-stage panel now.)
+// died with the right utility spine, which made the cart a CENTER-STAGE PANEL.
+// SUPERSEDED 2026-09-14, Phase 2: it is a bounded rounded SHEET on that stage
+// (KIOSK_UTILITY_SHEET). The stage-swap half of the Phase 0 ruling still holds
+// — a utility slot hides the work surface rather than floating over it, so the
+// sheet needs no backdrop and traps nothing. Only the panel's WIDTH changed.)
 
 
 /**
@@ -161,24 +155,80 @@ export const KIOSK_CART_COUNT_BADGE = cn(
 
 
 /**
- * Utility panel face — cart / paperwork mounted in the CENTER stage.
+ * THE kiosk centre surface — one white, full-bleed plane per pane.
  *
- * These are NOT a drawer and NOT a slide-out column: selecting a rail glyph
- * swaps the center work surface, exactly like the left command spine swaps it.
- * Full width of the center, no `border-l` (the rail already owns that seam) and
- * no fixed `w-80` — a floating panel over the work is the shape this replaces.
+ * This is the skeleton the repair service intake form established and the
+ * operator asked every kiosk form to inherit (2026-09-15): *"it should be very
+ * similar to the repair service intake form with the stepper on top and its
+ * full width and then a fixed width in the middle. Why are you fixing width
+ * for the entire display? … There should be no reason why you're wrapping the
+ * cart form and then having another background for it. There should just be a
+ * white background."*
+ *
+ * The measure belongs to the BODY, not to the plane: `KioskPaneForm` puts
+ * `KIOSK_POS_FORM_MEASURE` on the scroll body while the step band and the
+ * action floor run edge to edge. A bounded, cornered card here fixes the width
+ * of the CHROME as well, which is what made the cart read as a popover.
+ *
+ * Mount: the outer element of a centre pane (cart, repair, buyback, pickup),
+ * with `KioskPaneForm` inside it.
  */
-export const KIOSK_UTILITY_PANEL_FACE = cn(
-  'flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card',
+export const KIOSK_CENTRE_SURFACE =
+  'flex min-h-0 min-w-0 flex-1 flex-col bg-surface-card';
+
+/**
+ * Utility SHEET face — the bounded card the paperwork and triage panels still
+ * wear on the centre stage.
+ *
+ * Was `KIOSK_UTILITY_PANEL_FACE` (`h-full w-full` edge-to-edge), which painted
+ * a full-width slab across the glass. Operator 2026-09-14: *"the cart icon
+ * brings up a full width popover component. This is a wrong display."*
+ *
+ * ## The CART left this face (2026-09-15)
+ *
+ * Bounding the whole panel was the wrong reading of that ruling: the cart is a
+ * FORM, and a form's measure belongs to its body, so the cart now mounts
+ * {@link KIOSK_CENTRE_SURFACE} — white, full-bleed, the repair intake
+ * skeleton. This token survives for the two read-mostly panels that are still
+ * a card on a stage; porting them is the next increment.
+ *
+ * FLAT either way: it composed `elevationClass('overlay')` for one session and
+ * the operator rejected the blur — *"it should not display a depth drop
+ * shadow."* Separation is the plane behind it ({@link KIOSK_UTILITY_STAGE})
+ * plus the `border-border-soft` hairline, never a shadow. Nothing inside may
+ * re-introduce one either — see `KioskCartLineCard`, which carried
+ * `elevationClass('raised','soft')` per line and is now hairline-only.
+ *
+ * `MOBILE_SCAN_CARD_CORNER` is the same corner the mobile scan cards wear:
+ * consume the `/m` SoT, never invent a kiosk radius.
+ */
+export const KIOSK_UTILITY_SHEET = cn(
+  'mx-auto my-3 flex min-h-0 w-full max-w-2xl min-w-0 flex-1 flex-col overflow-hidden',
+  'border border-border-soft bg-surface-card',
+  MOBILE_SCAN_CARD_CORNER,
 );
 
-// (KIOSK_CART_FACE deleted 2026-09-14, Phase 0 — the fixed w-80 cart column
-// face; the cart renders as a center-stage panel via KIOSK_UTILITY_PANEL_FACE.)
+/**
+ * The stage plane behind an open utility SHEET — the other half of the
+ * flat-sheet ruling above.
+ *
+ * Scoped to the sheet-wearing slots, never a permanent repaint and never
+ * behind the cart: `KIOSK_POS_CANVAS` is the ONE stage background (pinned by
+ * `kiosk-pos-surface.test.ts`), the product cards and the glass dock are all
+ * `bg-surface-card` over it, and sinking the stage for good would recolour the
+ * whole browse surface. The cart is a full-bleed white surface now, so there is
+ * nothing to contrast it against and it takes no second plane at all.
+ *
+ * `surface-sunken` is the neutral recessed rung. NOT `surface-bench` /
+ * `-trough` / `-plate` / `-slot`: those are the scan-station packing-bench
+ * family (birch on light, warm coal on dark) and borrowing one here would put
+ * an Unbox well behind a counter tablet.
+ */
+export const KIOSK_UTILITY_STAGE = 'bg-surface-sunken';
 
-
-/** Cart line row — horizontal hairline only, no inner card padding balloon. */
-export const KIOSK_CART_LINE_ROW =
-  'flex items-baseline justify-between gap-3 px-4 py-2.5';
+// (KIOSK_CART_LINE_ROW deleted 2026-09-14, Phase 2 — the cart's flat hairline
+// row. Lines are KioskCartLineCard now: a rounded touch card with KioskChip
+// facts, per SURFACE_LAW §5, "lists on a phone-shaped surface are cards".)
 
 /** Customer-face shell — same card plane, no operational chrome. */
 export const KIOSK_CUSTOMER_FACE = cn(

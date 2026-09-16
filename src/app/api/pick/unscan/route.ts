@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
+import { publishOrderChanged } from '@/lib/realtime/publish';
 import { transition } from '@/lib/inventory/state-machine';
 
 /**
@@ -113,6 +114,20 @@ export const POST = withAuth(async (request, ctx) => {
     });
 
     if (!result.ok) return NextResponse.json(result, { status: result.status });
+    // Un-picking rolls the Pick column back, so it is as much a desk repaint as
+    // the forward scan — publish the same event with its own source (ruling
+    // 2026-09-14). Off the response path, errors swallowed: realtime must never
+    // fail a committed un-pick.
+    const changedOrderId = result.orderId;
+    if (changedOrderId != null) {
+      after(() =>
+        publishOrderChanged({
+          organizationId: orgId,
+          orderIds: [changedOrderId],
+          source: 'pick.unscan',
+        }).catch(() => {}),
+      );
+    }
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'pick unscan failed';

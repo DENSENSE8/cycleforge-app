@@ -24,19 +24,56 @@ import {
   isSpineDeskItem,
   isDeskSpineSection,
   DESK_GROUPS,
+  filterPageChildren,
+  DESK_SPINE_SECTIONS,
+  spineSectionIdForPage,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-test('getSidebarNavItems returns the full sidebar list by default', () => {
-  // Dogfood parking is retired, so no rows are filtered out any more: the
-  // default call returns APP_SIDEBAR_NAV verbatim.
-  assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
+test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by default', () => {
+  // Dogfood parking is retired, so no rows are filtered for that reason any
+  // more. What IS filtered (operator 2026-09-14) is every row in a lane the
+  // phone cannot run — `LANE_MOBILE_FIRST` → 'hidden'. The gate lives on this
+  // function because it is the funnel the spine, ⌘K, nav-destinations, the
+  // 2026-09-16: `operations` (Monitor) and `studio` (Automations) were PARKED
+  // on an operator ruling — *"remove the monitor from displaying in the
+  // sidebar, park it — park automations as well"* — so both rejoin the hidden
+  // set. Monitor had briefly shipped (Track R1/R2, /m/reports being its phone
+  // face); what changed is trust, not portability. Sales and Support remain
+  // gated until their ports. One PAGE per parked lane, verified against
+  // `spineSectionIdForPage`.
+  const hidden = new Set(['operations', 'sales', 'studio', 'support']);
+  assert.deepEqual(
+    getSidebarNavItems(),
+    APP_SIDEBAR_NAV.filter((item) => !hidden.has(item.id)),
+  );
+  // Hidden, NOT deleted — the routes still resolve for a bookmark, and flipping
+  // one `LANE_MOBILE_FIRST` entry restores the row.
+  for (const id of hidden) {
+    assert.ok(
+      APP_SIDEBAR_NAV.some((item) => item.id === id),
+      `${id} must stay in the registry — hiding a door is not deleting a surface`,
+    );
+  }
 });
 
-test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
+test('Home is top-pinned; Reports joined the tops; Operations in Monitor; Plans between Media and Chat', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
-  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings']);
+  // `reports` joined on 2026-09-15 (operator: *"remount the reports parent
+  // level sidebar"*) — promoted out of the Monitor lane, where it cost a
+  // chevron, to a parent-level row. It reads LAST here because the registry
+  // declares it beside its former Operations sibling; the MAP order is the
+  // assertion that matters and it is pinned separately below.
+  assert.deepEqual(topIds, [
+    'home',
+    'search',
+    'ops-photos',
+    'plans-live',
+    'ai-chat',
+    'settings',
+    'reports',
+  ]);
 
   const home = items.find((item) => item.id === 'home');
   assert.ok(home, 'home should ship on prod nav');
@@ -54,32 +91,61 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.equal(aiChat.kind, 'top', 'ai-chat stays a top registry pin after Plans');
   assert.equal(aiChat.label, 'Chat');
 
-  const operations = items.find((item) => item.id === 'operations');
-  assert.ok(operations, 'operations should ship on prod nav');
+  // Operations and Studio are PARKED (2026-09-16 operator ruling): the door is
+  // withdrawn on every surface while the registry row and the route stay.
+  // Monitor briefly shipped again on 2026-09-15 when `/m/reports` gave the lane
+  // a phone face; parking it is a TRUST decision, not a portability one — see
+  // `LANE_MOBILE_FIRST`. The registry membership assertions below are the
+  // half that must NOT change, because "parked" means the surface survives.
+  const operations = APP_SIDEBAR_NAV.find((item) => item.id === 'operations');
+  assert.ok(operations, 'operations must stay in the registry');
   assert.equal(
     operations.kind === 'main' ? operations.mainGroup : null,
     'monitor',
     'operations belongs to the Monitor drill',
   );
+  assert.equal(
+    items.some((item) => item.id === 'operations'),
+    false,
+    'the Monitor lane is parked — no door on any surface',
+  );
+  // Reports was promoted OUT of the Monitor lane to a parent-level row
+  // (2026-09-15), so parking Monitor does not touch it. That promotion is why
+  // parking the lane costs the operator nothing they still use.
+  assert.equal(
+    items.some((item) => item.id === 'reports'),
+    true,
+    'Reports is a parent-level row and survives Monitor being parked',
+  );
 
-  const studio = items.find((item) => item.id === 'studio');
-  assert.ok(studio, 'studio should ship on prod nav');
-  assert.equal(studio.kind, 'main', 'studio is a map L1, not a footer pin');
-  assert.equal(studio.kind === 'main' ? studio.mainGroup : null, 'studio');
+  const studioRow = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
+  assert.ok(studioRow, 'studio must stay in the registry');
+  assert.equal(studioRow.kind === 'main' ? studioRow.mainGroup : null, 'studio');
+  assert.equal(
+    items.some((item) => item.id === 'studio'),
+    false,
+    'Automations is parked — no door on any surface',
+  );
 
-  const admin = items.find((item) => item.id === 'admin');
-  assert.ok(admin, 'admin should ship on prod nav');
-  assert.equal(admin.kind, 'main', 'admin is a map L1, not a footer pin');
-  assert.equal(admin.kind === 'main' ? admin.mainGroup : null, 'admin');
+  // Admin is DISSOLVED: no map row — /admin is a redirect table and permission
+  // is `requires` on rows, not a destination.
+  assert.equal(items.some((item) => item.id === 'admin'), false, 'admin ships no nav row');
 
-  // Sourcing is its own spine domain section (not nested under Inventory).
+  // Sourcing rides the INBOUND lane (N4, operator 2026-09-14). It is still not
+  // nested under Inventory — that 2026-08-03 ruling stands; only the lane it
+  // shares changed, and the row itself is untouched.
   const sourcing = items.find((item) => item.id === 'sourcing');
   assert.ok(sourcing, 'sourcing should ship on prod nav');
   assert.equal(sourcing.kind, 'domain');
   assert.equal(
     sourcing.kind === 'domain' ? sourcing.domainGroup : null,
-    'sourcing',
-    'sourcing belongs to the Sourcing domain section',
+    'inbound',
+    'sourcing belongs to the Inbound lane',
+  );
+  assert.notEqual(
+    sourcing.kind === 'domain' ? sourcing.domainGroup : null,
+    'inventory',
+    'sourcing must not nest under Inventory (2026-08-03)',
   );
 });
 
@@ -104,7 +170,11 @@ test('plans-live pin requires operations.plans.view', () => {
 test('Search, Plans, Chat, and Settings stay in the registry but stay off the spine map', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
-  assert.deepEqual(mapTopIds, ['home', 'ops-photos']);
+  // The structural rows above the reorderable lane band: Daily · Media
+  // Library · Reports. Reports is band-visible by design — a `top` row is
+  // never slottable (`isSpineSlottable`), so a saved spine order cannot bury
+  // the record the way the Monitor lane did.
+  assert.deepEqual(mapTopIds, ['home', 'ops-photos', 'reports']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -135,29 +205,39 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   // `dashboard` owns no L1 row — its boards are domain modes (D5).
   assert.equal(navIds.includes('dashboard'), false);
   assert.equal(navIds.includes('incoming'), true);
-  // /fba is a permanent redirect into Shipping — it owns no spine row.
-  assert.equal(navIds.includes('fba'), false);
+  // FBA rides the Outbound lane on BOTH surfaces (operator 2026-09-14: "it must
+  // be the same for the mobile and the desktop"), so it survives mobile mode —
+  // `fba` is not in MOBILE_RESTRICTED_SIDEBAR_IDS.
+  assert.equal(navIds.includes('fba'), true);
   // Sales history folded into Dashboard L2 — no separate L1 nav row.
   assert.equal(navIds.includes('walk-in'), false);
 });
 
-test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
+test('prod nav ships every unparked page; parked lanes and redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
   // Dogfood parking is retired: Sourcing ships; Search / Plans / Chat stay in
   // the registry (`kind: 'top'`) with spineBand false.
-  // `fba` stays off the spine because /fba is a permanent redirect into Shipping,
-  // which already owns that surface (no second front door).
+  // `fba` became a spine row 2026-09-14: the Outbound LANE is a parent of
+  // Shipping + FBA. The retired ruling ("`/fba` is a permanent redirect into
+  // Shipping — no second front door") was about the REDIRECT, and the row points
+  // at the real desk route `/shipping/fba`; the second door it guarded against
+  // is gone because the Amazon Prep TAB was deleted from the Shipping desk.
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
   assert.equal(navIds.has('plans-live'), true, 'plans-live stays in the nav registry');
   assert.equal(navIds.has('ai-chat'), true, 'ai-chat stays in the nav registry');
-  assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
-  // Studio and Admin are map L1 rows (2026-08-29); Settings is parked in the
-  // account ⋯ menu. Studio must still be present on prod nav.
-  assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
-  assert.equal(navIds.has('admin'), true, 'admin ships as a live nav page');
+  assert.equal(navIds.has('fba'), true, 'fba is the Outbound lane’s second row');
+  // Studio (Automations) is PARKED 2026-09-16 on an operator ruling — the map
+  // row is withdrawn while `/studio` keeps resolving. Settings is parked in the
+  // account ⋯ menu. Admin is dissolved.
+  assert.equal(navIds.has('studio'), false, 'Automations is parked — no nav page');
+  assert.equal(navIds.has('admin'), false, 'admin is dissolved — no nav page');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
-  assert.equal(navIds.has('operations'), true, 'operations ships as a live Overview page');
+  // Sales / Support stay hidden by the mobile-first gate until they are ported;
+  // Monitor rejoined them 2026-09-16 (parked by ruling). `APP_SIDEBAR_NAV`
+  // still carries every hidden one — route + bookmark live.
+  assert.equal(navIds.has('operations'), false, 'the Monitor lane is parked');
+  assert.equal(navIds.has('reports'), true, 'reports is a parent-level row and ships');
   // Its Catalog sub-route rides along as an L2 MODE, not a second flat row.
   assert.equal(navIds.has('studio-catalog'), false, 'studio-catalog owns no spine row');
   assert.equal(
@@ -191,7 +271,14 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   for (const id of ['dashboard', 'print-labels', 'print-documents']) {
     assert.equal(navIds.has(id), false, `${id} must not own a spine row`);
   }
-  assert.equal(navIds.has('sales'), true, 'Sales is its own root section (D4)');
+  // Sales is still its own root section (D4) in the REGISTRY — the mobile-first
+  // gate hides its door until the lane is ported, it does not re-home the row.
+  assert.equal(
+    APP_SIDEBAR_NAV.some((item) => item.id === 'sales'),
+    true,
+    'Sales is its own root section (D4)',
+  );
+  assert.equal(navIds.has('sales'), false, 'Sales is gated out until its /m port');
   assert.equal(navIds.has('counter'), false, 'Counter is a Sales child, not an L1 spine row');
   assert.equal(
     getSidebarPageNav('sales')?.children?.some((m) => m.id === 'counter'),
@@ -203,7 +290,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
   assert.equal(isSidebarRouteMobileRestricted('operations'), true);
   assert.equal(isSidebarRouteMobileRestricted('support'), true);
-  assert.equal(isSidebarRouteMobileRestricted('admin'), true);
+  assert.equal(isSidebarRouteMobileRestricted('settings'), false);
   assert.equal(isSidebarRouteMobileRestricted('dashboard'), false);
   assert.equal(isSidebarRouteMobileRestricted('fba'), false);
   assert.equal(isSidebarRouteMobileRestricted('unknown'), false);
@@ -344,11 +431,12 @@ test('mode ids are unique within each page', () => {
 });
 
 // Every page id must be a real nav route OR one of the URL-only surfaces that
-// deliberately own no spine row: `fba` (a permanent redirect into Shipping,
-// which keeps its mode registry so legacy `?mode=` deep links still resolve),
-// the legacy `receiving` family entry (modes only), and the legacy `tech`
-// family (QC / Ready to Pack stickers). Modeful pages carry a resolver.
-const URL_ONLY_PAGE_IDS = new Set(['fba', 'receiving', 'tech']);
+// deliberately own no spine row: the legacy `receiving` family entry (modes
+// only) and the legacy `tech` family (QC / Ready to Pack stickers). Modeful
+// pages carry a resolver.
+//
+// `fba` left this set on 2026-09-14 — it is an Outbound lane row now.
+const URL_ONLY_PAGE_IDS = new Set(['receiving', 'tech']);
 
 test('SIDEBAR_PAGE_NAV pages are prod-nav or URL-only, with resolvers when modeful', () => {
   const navIds = new Set(APP_SIDEBAR_NAV.map((item) => item.id));
@@ -373,7 +461,7 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
   }
   // Pages resolve to their canonical href (modeful or modeless).
   assert.equal(getSidebarHref('operations'), '/operations');
-  assert.equal(getSidebarHref('admin'), '/admin');
+  assert.equal(getSidebarHref('admin'), null, 'admin is dissolved — resolves like any unknown id');
   assert.equal(getSidebarHref('settings'), '/settings');
   assert.equal(getSidebarHref('search'), '/search');
   // Unknown ids resolve to null (caller falls back to current path).
@@ -396,7 +484,11 @@ test('resolveSidebarChild returns null for pages without modes', () => {
 test('resolveSidebarChild reads the operations mode', () => {
   const at = (search = '') => ({ pathname: '/operations', params: new URLSearchParams(search) });
   assert.equal(resolveSidebarChild('operations', at()), 'live');
-  assert.equal(resolveSidebarChild('operations', at('mode=analytics')), 'analytics');
+  // `analytics` was RETIRED 2026-09-16 — the mode reported numbers nobody could
+  // trust and its one reconcilable read moved to `/reports?tab=packer`. A stale
+  // `?mode=analytics` link resolves to the Live default, which is exactly what
+  // OperationsWorkspace renders for it.
+  assert.equal(resolveSidebarChild('operations', at('mode=analytics')), 'live');
   assert.equal(resolveSidebarChild('operations', at('mode=insights')), 'insights');
   assert.equal(resolveSidebarChild('operations', at('mode=history')), 'history');
   assert.equal(resolveSidebarChild('operations', at('mode=signals')), 'signals');
@@ -483,32 +575,36 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarPageNav('print-labels'), undefined);
   assert.equal(getSidebarPageNav('print-documents'), undefined);
   assert.equal(resolveSidebarChild('receive', at('/unbox')), null);
-  // FBA sub-modes live under Shipping as fbaMode (legacy mode=plan still works).
-  assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba')), 'combine');
-  assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
+  // FBA sub-modes are `fbaMode` on the FBA desk (legacy `mode=plan` still works
+  // for the `/fba` redirect window).
+  assert.equal(resolveSidebarChild('fba', at('/shipping/fba')), 'combine');
+  assert.equal(resolveSidebarChild('fba', at('/shipping/fba', 'fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarChild('fba', at('/fba', 'mode=plan')), 'plan');
-  // Desk Shipping children: To ship / Amazon Prep. Ready is an FBA stage tab.
-  // Scan out is its own floor L1. Labels stopped being a tab on 2026-08-30 —
-  // needing a label became a STATE in the To-ship queue.
+  // Desk Shipping children: Pending · To ship · Shipped · Exceptions. Amazon
+  // Prep stopped being a tab on 2026-09-14 — FBA is an Outbound LANE row — so
+  // every FBA path and its legacy `?mode=` residue lights NOTHING on this band
+  // rather than falling through to the `orders` catch-all.
   assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'orders');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'fba');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), 'fba');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), null);
+  assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), null);
   // `/shipping/labels` is GONE (route deleted 2026-08-30). A stale bookmark
   // 404s at the route layer; if anything still asks this resolver about the
   // path it answers `orders`, the desk's default, rather than a child that no
   // longer exists.
   assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'orders');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'fba');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), 'fba');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), null);
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), null);
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), null);
   // Redirect-window: legacy path still resolves nav key until the edge 308 lands.
-  assert.equal(resolveSidebarChild('outbound', at('/outbound', 'mode=ready')), 'fba');
+  assert.equal(resolveSidebarChild('outbound', at('/outbound', 'mode=ready')), null);
   assert.equal(getSidebarRouteKey('/shipping'), 'outbound');
   assert.equal(getSidebarRouteKey('/outbound'), 'outbound');
   assert.equal(getSidebarRouteKey('/shipping/scan-out'), 'outbound');
+  // The route KEY stays `outbound` for panel chrome even where the PAGE is FBA.
+  assert.equal(getSidebarRouteKey('/shipping/fba'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/labels'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/ready'), 'outbound');
-  assert.equal(getSidebarNavPageId('/shipping/fba'), 'outbound');
+  assert.equal(getSidebarNavPageId('/shipping/fba'), 'fba');
   assert.equal(getSidebarNavPageId('/shipping/scan-out'), 'scan-out');
   assert.equal(resolveSidebarChild('scan-out', at('/shipping/scan-out')), null);
   // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
@@ -537,7 +633,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   );
   assert.equal(getSidebarPageNav('dashboard'), undefined, 'no dashboard L1 page nav');
   // Review split (D10): packing QA is Operations › Packing Review; pairing /
-  // catalog-link are Catalog. Every `/review` URL still resolves — the page never moved.
+  // catalog-link are Products' work. Every `/review` URL still resolves — the
+  // page never moved.
   const reviewPage = (search = '') =>
     getSidebarNavPageId('/review', new URLSearchParams(search));
   assert.equal(reviewPage(), 'operations');
@@ -548,7 +645,17 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('outbound', at('/review')), null);
   assert.equal(resolveSidebarChild('operations', at('/review')), 'packing-review');
   assert.equal(resolveSidebarChild('products', at('/review', 'mode=pairing')), 'pairing');
-  assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), 'catalog-link');
+  // *Listing match* lost its Products tab 2026-09-15 (operator: the tabs that
+  // do not work). The URL is unchanged and `getSidebarNavPageId` still names
+  // Products above, so the desk header is right while NO tab lights — a door
+  // was withdrawn, not a surface deleted. Contrast the parked Inventory tabs,
+  // which keep both their child row and their resolution.
+  assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), null);
+  // The band, in order — Reference · Listing match · Kit Parts are gone.
+  assert.deepEqual(
+    getSidebarPageNav('products')?.children?.map((c) => c.id),
+    ['manuals', 'labels', 'pairing', 'qc'],
+  );
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
   // The desk's tab band, in order. Labels left on 2026-08-30 and Shipped
@@ -557,15 +664,18 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // (Amazon DTC, eBay, Shopify) belong in the FACETS of To ship and Shipped,
   // never here.
   //
-  // **Exceptions joined 2026-08-31**, and it passes the same test FBA passes:
-  // a process fork whose queue semantics To ship cannot express. Caged and
-  // unpaired orders are excluded from that queue by an explicit predicate
-  // (`/api/orders` fulfillmentScope), and the work on them — pair a SKU, fix
-  // an item number — is not the work To ship does. It is NOT a facet, because
-  // a facet narrows a queue and these rows are not in the queue at all.
+  // **Exceptions joined 2026-08-31** because it is a process fork whose queue
+  // semantics To ship cannot express. Caged and unpaired orders are excluded
+  // from that queue by an explicit predicate (`/api/orders` fulfillmentScope),
+  // and the work on them — pair a SKU, fix an item number — is not the work To
+  // ship does. It is NOT a facet, because a facet narrows a queue and these
+  // rows are not in the queue at all.
+  //
+  // **Amazon Prep left 2026-09-14.** FBA became a row in the Outbound LANE, so
+  // keeping the tab would be a second door to `/shipping/fba`.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['shortage', 'orders', 'fba', 'shipped', 'exceptions'],
+    ['shortage', 'orders', 'shipped', 'exceptions'],
   );
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
@@ -574,8 +684,12 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // Every non-scan desk that wears the page chrome (2026-08-31 port). The
   // predicate needs >1 child, so a desk that loses its second tab silently
   // stops drawing the band — this asserts the opt-in, not the flag.
+  //
+  // `home` left this list on 2026-09-14: Today and Tasks are unmounted and
+  // Daily is single-surface — title and card, no tab row, the same shape as
+  // Inbound's lane-less peers. The entry keeps `deskChrome: true` so a second
+  // surface can re-light the band without re-plumbing the opt-in.
   for (const pageId of [
-    'home',
     'outbound',
     'products',
     'inventory',
@@ -583,6 +697,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     'operations',
     'sales',
     'support',
+    // Inbound's tab row IS its two lanes (operator 2026-09-14): bare
+    // `/incoming` (Pipeline) and `?lane=docked` (History). Before it opted in,
+    // Docked was reachable only by hand-typing the param.
+    'incoming',
   ]) {
     assert.equal(
       hasDeskPageChrome(getSidebarPageNav(pageId)),
@@ -608,7 +726,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // 'orders'` would light To ship on the history desk — a tab claiming to be
   // somewhere the operator is not.
   assert.equal(resolveSidebarChild('outbound', at('/shipping/shipped')), 'shipped');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
+  // FBA is a sibling desk in the Outbound lane now — no tab of this band lights
+  // on its path, and the FBA page's own resolver owns the highlight instead.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), null);
+  assert.equal(resolveSidebarChild('fba', at('/shipping/fba')), 'combine');
   // Exceptions needs its own clause for the same reason Shipped does: it is a
   // path, and without it the catch-all would light To ship on the workbench.
   assert.equal(resolveSidebarChild('outbound', at('/shipping/exceptions')), 'exceptions');
@@ -618,10 +739,14 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     resolveSidebarChild('outbound', at('/shipping/orders', 'context=support')),
     null,
   );
-  // Inbound is a leaf desk — no L2 children; dashboard inbound bookmarks still
-  // resolve the page id to `incoming` until the proxy redirects them.
+  // Inbound draws its two lanes as tabs. `/dashboard?mode=inbound` resolves the
+  // PAGE id to `incoming` but sits on neither lane — the proxy redirects it, and
+  // lighting a tab there would claim the operator is somewhere they are not.
   assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), null);
-  assert.equal(resolveSidebarChild('incoming', at('/incoming')), null);
+  assert.equal(resolveSidebarChild('incoming', at('/incoming')), 'pipeline');
+  assert.equal(resolveSidebarChild('incoming', at('/incoming', 'lane=docked')), 'docked');
+  // An unparseable lane is Pipeline, exactly as `parseInboundLane` says.
+  assert.equal(resolveSidebarChild('incoming', at('/incoming', 'lane=bogus')), 'pipeline');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
@@ -815,7 +940,7 @@ test('Picker navigation enters its visible Urgent tab', () => {
   );
 });
 
-test('Wave 1 catalog forks: Home paints, studio stays /studio, admin stays, no automations href', () => {
+test('Wave 1 catalog forks: Home paints, studio stays /studio, admin is gone, no automations href', () => {
   const home = APP_SIDEBAR_NAV.find((item) => item.id === 'home');
   assert.equal(home?.kind, 'top');
   assert.equal(home?.spineBand, undefined);
@@ -828,7 +953,7 @@ test('Wave 1 catalog forks: Home paints, studio stays /studio, admin stays, no a
   const plans = APP_SIDEBAR_NAV.find((item) => item.id === 'plans-live');
   assert.equal(plans?.href, '/?mode=forge&view=live');
 
-  assert.ok(APP_SIDEBAR_NAV.some((item) => item.id === 'admin'));
+  assert.equal(APP_SIDEBAR_NAV.some((item) => item.id === 'admin'), false);
   assert.equal(
     APP_SIDEBAR_NAV.some((item) => item.href === '/automations'),
     false,
@@ -839,20 +964,23 @@ test('Wave 1 catalog forks: Home paints, studio stays /studio, admin stays, no a
   );
 });
 
-test('desk family helpers: domains + Operations are desks; Studio, Admin, benches, Home are not', () => {
+test('desk family helpers: domains + Operations are desks; Studio, benches, Home are not', () => {
   const items = getSidebarNavItems();
   const incoming = items.find((item) => item.id === 'incoming');
-  const operations = items.find((item) => item.id === 'operations');
-  const studio = items.find((item) => item.id === 'studio');
-  const admin = items.find((item) => item.id === 'admin');
+  // Read from the REGISTRY, not the gated funnel: `isSpineDeskItem` is a shape
+  // question about the row, and Studio is parked out of nav but unchanged
+  // (2026-09-16) — same reason Operations is read that way below.
+  const studio = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
   const receive = items.find((item) => item.id === 'receive');
   const home = items.find((item) => item.id === 'home');
   const media = items.find((item) => item.id === 'ops-photos');
 
   assert.equal(incoming ? isSpineDeskItem(incoming) : false, true);
-  assert.equal(operations ? isSpineDeskItem(operations) : false, true);
+  // Read from the registry, not the gated funnel: `isSpineDeskItem` is a shape
+  // question about the row, and Operations is hidden from nav but unchanged.
+  const operationsRow = APP_SIDEBAR_NAV.find((item) => item.id === 'operations');
+  assert.equal(operationsRow ? isSpineDeskItem(operationsRow) : false, true);
   assert.equal(studio ? isSpineDeskItem(studio) : true, false);
-  assert.equal(admin ? isSpineDeskItem(admin) : true, false);
   assert.equal(receive ? isSpineDeskItem(receive) : true, false);
   assert.equal(home ? isSpineDeskItem(home) : true, false);
   assert.equal(media?.kind, 'top');
@@ -862,7 +990,6 @@ test('desk family helpers: domains + Operations are desks; Studio, Admin, benche
   assert.equal(isDeskSpineSection('monitor'), true);
   assert.equal(isDeskSpineSection('floor'), false);
   assert.equal(isDeskSpineSection('studio'), false);
-  assert.equal(isDeskSpineSection('admin'), false);
   assert.equal(DESK_GROUPS[0]?.id, 'desks');
   assert.equal(DESK_GROUPS[0]?.label, 'Workspaces');
 });
@@ -877,10 +1004,110 @@ test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs', () => {
   );
   assert.equal(masterNavLabelForPath('/test'), 'Picker');
   assert.equal(masterNavLabelForPath('/unbox'), 'Unbox');
-  assert.equal(masterNavLabelForPath('/incoming'), 'Inbound');
   assert.equal(masterNavLabelForPath('/studio'), 'Automations');
-  assert.equal(masterNavLabelForPath('/admin'), 'Admin');
   assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');
   assert.equal(getMasterNavItem('scan-out')?.label, 'Scan out');
+  // Faced Deliveries since 2026-09-14 — a child never wears its parent's name,
+  // and this row lives inside the *Inbound* lane.
+  assert.equal(masterNavLabelForPath('/incoming'), 'Deliveries');
   assert.equal(masterNavItemForHref('/pack')?.id, 'packer');
+});
+
+/**
+ * Operator ruling 2026-09-14: *"ensure that all the sidebar names and icons are
+ * under one parent … create different parents and expand them into different
+ * childs."* The spine can only expand a single-page lane if that page DECLARES
+ * children — otherwise `renderLane` falls back to the flat one-row face and the
+ * lane silently stops being a parent. This is the registry half of that ruling.
+ */
+test('every desk lane is expandable: 2+ pages, or one page that declares children', () => {
+  const lanes = DESK_SPINE_SECTIONS.map((lane) => {
+    const pages = SIDEBAR_PAGE_NAV.filter((page) => spineSectionIdForPage(page) === lane.id);
+    return { id: lane.id, label: lane.label, pages };
+  });
+
+  assert.ok(lanes.length > 0, 'DESK_SPINE_SECTIONS must not be empty or this pins nothing');
+
+  for (const lane of lanes) {
+    if (lane.pages.length === 0) continue; // permission-empty lanes never render
+    if (lane.pages.length > 1) continue; // header + page rows
+
+    const page = lane.pages[0]!;
+    if (page.spineFlat) continue; // declared opt-out (Automations)
+
+    assert.ok(
+      (page.children?.length ?? 0) > 0,
+      `lane "${lane.label}" holds only "${page.label}", which declares no children — ` +
+        'the spine would paint it as a flat row, not a parent that expands',
+    );
+  }
+});
+
+test('the single-page lanes the operator named expand into their desk children', () => {
+  // Named verbatim: "for inventory, for products, sales, support, operations".
+  const expected: Record<string, string[]> = {
+    sales: ['Counter', 'Sales Board', 'Local Pickup', 'Repair Service'],
+  };
+
+  for (const pageId of ['inventory', 'products', 'sales', 'support', 'operations']) {
+    const page = getSidebarPageNav(pageId);
+    assert.ok(page, `${pageId} must exist in SIDEBAR_PAGE_NAV`);
+    assert.ok(
+      (page.children?.length ?? 0) > 0,
+      `${pageId} must carry children for its lane to expand`,
+    );
+    const labels = expected[pageId];
+    if (labels) {
+      assert.deepEqual(
+        page.children?.map((child) => child.label),
+        labels,
+        'Sales is the example the operator gave — its child order is the contract',
+      );
+    }
+  }
+});
+
+/**
+ * The lane expansion (N4a) made `page.children` PAINT in the spine for the
+ * first time — the collapsed-row world never displayed them, so nothing
+ * exercised this gate from the sidebar. `MasterNav.tsx:57` runs every page
+ * through `filterPageChildren(page, permissions)` before it reaches
+ * `SidebarNavList`, and this pins what that call guarantees: a role without
+ * `walk_in.view` must not get a Counter row that 403s ("absent, not a disabled
+ * pill").
+ */
+test('lane children are permission-gated: a viewer without walk_in.view gets no Counter row', () => {
+  const sales = getSidebarPageNav('sales');
+  assert.ok(sales, 'sales must exist');
+  const counter = sales.children?.find((child) => child.id === 'counter');
+  assert.ok(counter, 'Counter is the gated child this pins');
+  assert.equal(counter.requires, 'walk_in.view', 'the gate itself is the contract');
+
+  const withoutWalkIn = filterPageChildren(sales, new Set(['dashboard.view']));
+  const ids = withoutWalkIn.children?.map((child) => child.id) ?? [];
+  assert.ok(!ids.includes('counter'), 'Counter must be ABSENT, never a row that 403s');
+
+  const withWalkIn = filterPageChildren(sales, new Set(['walk_in.view']));
+  assert.ok(
+    withWalkIn.children?.some((child) => child.id === 'counter'),
+    'granting the permission paints the row',
+  );
+});
+
+test('filterPageChildren fails CLOSED when no permission set is supplied', () => {
+  // `permissions?.has(...) ?? false` — an absent set drops every gated child
+  // rather than painting them. A spine rendered before permissions load must
+  // under-paint, never over-paint.
+  const support = getSidebarPageNav('support');
+  assert.ok(support, 'support must exist');
+  const gated = support.children?.filter((child) => child.requires) ?? [];
+  assert.ok(gated.length > 0, 'support must have gated children or this pins nothing');
+
+  const filtered = filterPageChildren(support, undefined);
+  for (const child of gated) {
+    assert.ok(
+      !filtered.children?.some((kept) => kept.id === child.id),
+      `${child.id} is gated on ${child.requires} and must not paint without permissions`,
+    );
+  }
 });

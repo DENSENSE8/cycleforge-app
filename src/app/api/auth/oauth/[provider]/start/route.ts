@@ -54,6 +54,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const slug = req.headers.get('x-tenant-slug') || req.nextUrl.searchParams.get('slug');
   const next = req.nextUrl.searchParams.get('next');
   const persistent = req.nextUrl.searchParams.get('persist') === '1';
+  const signinRaw = req.nextUrl.searchParams.get('signin');
+  const signinPath = signinRaw === '/m/signin' ? '/m/signin' : signinRaw === '/signin' ? '/signin' : null;
 
   // IDENTITY LINKING: `link=1` turns this round trip from "sign in with the
   // provider" into "attach the provider to MY account". The account id comes
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     if (!linkAccountId) return fail(req, 'link_no_account');
   }
 
-  const payload = newOAuthState(provider as PlatformProvider, { slug, next, verifier, persistent, linkAccountId });
+  const payload = newOAuthState(provider as PlatformProvider, { slug, next, verifier, persistent, linkAccountId, signinPath });
 
   const authUrl = new URL(cfg.authorizeUrl);
   authUrl.searchParams.set('response_type', 'code');

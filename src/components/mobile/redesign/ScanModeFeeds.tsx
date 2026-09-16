@@ -9,9 +9,9 @@ import { ViewDropdown, type ViewDropdownOption } from '@/components/ui/ViewDropd
 import { SectionHeader } from '@/components/mobile/redesign/DesignSystem';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ScanResultRow, type ScanFeedItem } from '@/components/mobile/feed/rows/ScanResultRow';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { unitStatusToVerdict, type TestingVerdict } from '@/components/receiving/workspace/TestingStatusPills';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
 import { getTestedQty } from '@/lib/receiving/rail/quantity';
 import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';

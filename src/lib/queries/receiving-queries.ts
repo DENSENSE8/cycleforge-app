@@ -9,7 +9,7 @@ import type {
   ReceivingModeContext,
   ReceivingModeDescriptor,
 } from '@/lib/receiving/receiving-modes';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   isReceivingRailShipmentKey,
   receivingRailCartonKey,
@@ -472,9 +472,15 @@ function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
     zoho_purchaseorder_id?: string | null;
     quantity_received?: number | null;
   };
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  // Deliberately NOT `resolveSkuIdentityTitle(r)`: this is membership, not a
+  // title. The law reads the `'Unfound PO'` stub as ABSENT, and a title patch
+  // carrying that sentinel (useReceivingLineCore → patchUnboxRailTitleByCarton,
+  // qty undefined) must still count as a titled row or the unfound carton is
+  // dropped from the Unboxed dock instead of painted.
   return (
     r.quantity_received == null
-    && !(r.item_name || r.sku || r.catalog_product_title || r.zoho_item_title)
+    && !(r.zoho_item_title || r.catalog_product_title || r.item_name || r.sku)
     && !(r.zoho_purchaseorder_number || r.zoho_purchaseorder_id)
   );
 }

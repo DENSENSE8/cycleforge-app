@@ -61,7 +61,7 @@ import {
   ARMED_CURSOR_TRACK_CLASS,
 } from '@/components/station/displays/armed-cursor-face';
 import { useArmedCursorList } from '@/components/station/displays/useArmedCursorList';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ChevronRight } from '@/components/Icons';
 import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import { PHOTO_VERB_NAV_KEY } from './photo-verb-nav-keys';

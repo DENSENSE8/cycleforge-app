@@ -11,7 +11,7 @@ import {
   conditionBadgeTone,
   unitStatusBadgeTone,
   getStatusDotBg,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';

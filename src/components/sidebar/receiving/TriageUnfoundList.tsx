@@ -29,7 +29,7 @@ import { toast } from '@/lib/toast';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { exceptionDotClass, exceptionTooltipLabel } from '@/lib/receiving/triage-exception-context';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';
 import { useTriageUnfoundExceptions } from './useTriageUnfoundExceptions';
 import { useReceivingClaimModal } from './useReceivingClaimModal';

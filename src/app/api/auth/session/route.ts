@@ -118,6 +118,7 @@ export async function GET() {
         organizationPlan: org?.plan ?? null,
         memberships,
         name: user.name,
+        email: user.email,
         role: user.role,
         permissions: Array.from(user.permissions),
         mobileDisplayConfig: user.mobileDisplayConfig,

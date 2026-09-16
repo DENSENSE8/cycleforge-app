@@ -51,6 +51,24 @@ describe('Button semantic intents (2a)', () => {
     assert.doesNotMatch(BUTTON_VARIANTS.yellow, /ring-1/, 'filled pill, not outline');
   });
 
+  it('glass is white ink on a bar that owns the scrim, never a fill of its own', () => {
+    // The mobile camera panel's chrome sits ON the viewfinder. Without this
+    // intent the only faces available were invisible over a moving image
+    // (`ghost` resolves text-text-muted) or an opaque hole in it
+    // (`secondary`), so two call sites hand-rolled a scrim themselves.
+    //
+    // The scrim then has to live in ONE place — the bar. A control with its
+    // own `bg-scrim` paints a darker block inside an already-dark bar.
+    assert.ok('glass' in BUTTON_VARIANTS, 'glass (chrome on live media) must be a Button variant');
+    assert.match(BUTTON_VARIANTS.glass, /text-white/);
+    assert.match(BUTTON_VARIANTS.glass, /hover:bg-glass\//, 'press feedback is a faint white wash');
+    assert.doesNotMatch(
+      BUTTON_VARIANTS.glass,
+      /(^|\s)bg-(scrim|surface)/,
+      'the bar owns the scrim — a second one is a box inside a box',
+    );
+  });
+
   it('every variant is a non-empty class string', () => {
     for (const [name, classes] of Object.entries(BUTTON_VARIANTS)) {
       assert.ok(typeof classes === 'string' && classes.length > 8, `${name} fill is empty`);

@@ -22,7 +22,7 @@ import { useCallback, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useClaimTemplate } from '../../claim/hooks/useClaimTemplate';
 
 /** Server error text, falling back to a caller-supplied line. */

@@ -158,7 +158,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     .note-bold { font-weight: 700; }
     .sig-section { margin-top: 24px; font-size: 14px; }
     .sig-line { border-bottom: 1px solid #000; display: inline-block; width: 260px; vertical-align: middle; margin-left: 8px; min-height: 20px; }
-    .sig-img { height: 48px; vertical-align: middle; margin-left: 8px; }
+    /* Bounded by the SAME 260px band as the .sig-line it replaces, so the
+       trailing "Date:" cannot be pushed off the row. Height became a max
+       (aspect preserved by the box, not forced) when signature capture started
+       cropping to the ink on 2026-09-15: a tight crop of a mostly-horizontal
+       signature is far wider per unit height than the old whole-canvas export,
+       and a bare height had no width bound at all. */
+    .sig-img { max-width: 260px; max-height: 48px; height: auto; vertical-align: middle; margin-left: 8px; }
     .footer-co { margin-top: 32px; font-size: 14px; font-weight: 700; line-height: 1.5; }
     .barcode-wrap { text-align: center; margin-top: 16px; }
     .barcode-wrap svg { max-width: 200px; }

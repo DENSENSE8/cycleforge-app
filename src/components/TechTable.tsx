@@ -6,6 +6,7 @@ import { type TechRecord } from '@/hooks/useTechLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
+import { useTechTableLayout } from '@/components/station/bench-grid/useTechTableLayout';
 import { techRecordToDetail, getTechDetailId } from '@/components/station/tech-record-mappers';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { Calendar, Clock, Package } from '@/components/Icons';
@@ -79,9 +80,10 @@ export function TechTable({
 
   const {
     weekOffset, setWeekOffset, weekRange,
-    groupedRecords, loading, isRefreshing,
-    getRowKey, setRemovedRowKeys,
+    groupedRecords, loading,
+    setRemovedRowKeys,
   } = useTechTableController({ staffId });
+  const techLayout = useTechTableLayout();
 
   // Week-scoped day bands (newest day first, each day newest-first).
   const daySections = useMemo<[string, TechRecord[]][]>(
@@ -138,15 +140,14 @@ export function TechTable({
   return (
     <StationHistoryTable<TechRecord>
       loading={loading}
-      isRefreshing={isRefreshing}
       weekRange={weekRange}
       weekOffset={weekOffset}
       onPrevWeek={() => setWeekOffset(weekOffset + 1)}
       onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
       onResetWeek={() => setWeekOffset(0)}
       daySections={daySections}
-      getRowKey={(record) => getRowKey(record)}
-      tableId="tech"
+      family="tech"
+      layout={techLayout}
       savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.tech_history}
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"

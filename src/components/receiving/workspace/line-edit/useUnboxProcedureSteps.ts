@@ -70,7 +70,7 @@ import {
   toPSTDateKey,
 } from '@/utils/date';
 import type { ProcedureStepRow } from '@/design-system/components/procedure';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveStepRailLeaf } from './steps/rail';
 import type { UnboxSideTab } from './unbox-side-tabs';
 

@@ -287,6 +287,24 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     }
   };
 
+  /**
+   * Stamp the first print of the 2x1 REP-{id} label (idempotent server-side).
+   * Fire-and-forget beside the client print job: a failed stamp must not
+   * block the paper, but it IS surfaced — a silent failure would strand the
+   * repair on the "Needs label" queue forever.
+   */
+  const markLabelPrinted = async () => {
+    try {
+      const res = await fetch(`/api/repair-service/${repair.id}/label-printed`, { method: 'POST' });
+      if (!res.ok) throw new Error(`Label stamp failed (${res.status})`);
+      onUpdate();
+    } catch (error) {
+      console.error('Error marking label printed:', error);
+      toast.error('Label printed, but recording it failed — the repair stays on Needs label');
+    }
+  };
+
+
   return {
     notes, setNotes,
     isEditingNotes, setIsEditingNotes,
@@ -309,6 +327,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     canCreateSquarePayment,
     hasSourceSku: Boolean(sourceSku),
     printRepairDocument,
+    markLabelPrinted,
     openSquarePayment,
     zendeskTicketUrl,
     handleDelete, handleSaveLinks, handleClearLinks,

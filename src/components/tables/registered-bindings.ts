@@ -62,6 +62,32 @@ import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-defini
 import { KIOSKDEVICES_TABLE_BINDING } from '@/components/settings/kiosk-devices/kiosk-devices-table-definition';
 import { KIOSKSLOTEVENTS_TABLE_BINDING } from '@/components/settings/kiosk-slot-events/kiosk-slot-events-table-definition';
 import { WALKINSALES_TABLE_BINDING } from '@/components/walk-in/grid/walk-in-sales-table-definition';
+import {
+  PACKER_TABLE_BINDING,
+  TECH_TABLE_BINDING,
+} from '@/components/station/bench-grid/bench-table-definition';
+import { AUTHSESSIONS_TABLE_BINDING } from '@/components/settings/sessions/auth-sessions-table-definition';
+import { CYCLECOUNTS_TABLE_BINDING } from '@/components/inventory/cycle-counts/cycle-counts-table-definition';
+import { ADMIN_RETURNS_TABLE_BINDING } from '@/components/inventory/returns-grid/admin-returns-table-definition';
+import { PART_COMPATIBILITY_TABLE_BINDING } from '@/components/admin/sourcing/part-compatibility-table-definition';
+import { UNIT_ALLOCATIONS_TABLE_BINDING } from '@/components/inventory/allocations-grid/unit-allocations-table-definition';
+import { UNIT_TSN_LINKS_TABLE_BINDING } from '@/components/inventory/tsn-links-grid/unit-tsn-links-table-definition';
+import { AUDITLOG_TABLE_BINDING } from '@/components/settings/audit-log/audit-log-table-definition';
+import { ADMINHOLDS_TABLE_BINDING } from '@/components/inventory/holds-grid/admin-holds-table-definition';
+import { ADMIN_BULK_ALLOCATE_TABLE_BINDING } from '@/components/inventory/bulk-allocate-grid/admin-bulk-allocate-table-definition';
+import { CYCLECOUNTLINES_TABLE_BINDING } from '@/components/inventory/cycle-count-lines/cycle-count-lines-table-definition';
+import { ADMIN_DRIFT_ALERTS_TABLE_BINDING } from '@/components/inventory/drift-grid/admin-drift-alerts-table-definition';
+import { ADMIN_SKU_DRIFT_TABLE_BINDING } from '@/components/inventory/drift-grid/admin-sku-drift-table-definition';
+import { STAFF_DIRECTORY_TABLE_BINDING } from '@/components/settings/staff-directory/staff-directory-table-definition';
+import { REPORT_BIN_UTILIZATION_TABLE_BINDING } from '@/components/reports/report-bin-utilization-grid/report-bin-utilization-table-definition';
+import { REPORT_VELOCITY_TABLE_BINDING } from '@/components/reports/report-velocity-grid/report-velocity-table-definition';
+import { REPORT_DEAD_STOCK_TABLE_BINDING } from '@/components/reports/report-dead-stock-grid/report-dead-stock-table-definition';
+import { REPORT_STAFF_DAY_TABLE_BINDING } from '@/components/reports/report-staff-day-grid/report-staff-day-table-definition';
+import { SKU_BINS_TABLE_BINDING } from '@/components/inventory/sku-bins-grid/sku-bins-table-definition';
+import { LOCATION_STOCK_TABLE_BINDING } from '@/components/inventory/location-stock-grid/location-stock-table-definition';
+import { SKU_LEDGER_TABLE_BINDING } from '@/components/inventory/sku-ledger-grid/sku-ledger-table-definition';
+import { SKU_ALLOCATIONS_TABLE_BINDING } from '@/components/inventory/sku-allocations-grid/sku-allocations-table-definition';
+import { SEARCH_HITS_TABLE_BINDING } from '@/components/search/hits-grid/search-hits-table-definition';
 
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
@@ -130,4 +156,87 @@ export const REGISTERED_BINDINGS = [
   KIOSKSLOTEVENTS_TABLE_BINDING,
   // Dashboard › Sales walk-in history — completed visits as a slot peer.
   WALKINSALES_TABLE_BINDING,
+  // Station › Tech bench history — the last third engine (StationHistoryTable →
+  // StationListTable → raw LedgerGrid over the hand STATION_HISTORY_COLUMNS)
+  // joining the waist. Its own prefs bucket, never the packer's.
+  TECH_TABLE_BINDING,
+  // Station › Packer bench history. Sibling of the tech bench, never a merge —
+  // two stores answering two questions ("what did I test" / "what did I pack").
+  PACKER_TABLE_BINDING,
+  // Settings › Active sessions — revoke a signed-in device; Revoke is a row verb.
+  AUTHSESSIONS_TABLE_BINDING,
+  // Admin › Inventory cycle-count campaigns — off AdminTable (wave D). Zero
+  // verbs in cells; the row navigates to the campaign's own count route.
+  CYCLECOUNTS_TABLE_BINDING,
+  // Admin › Returns dock — RETURNED events (off AdminTable).
+  ADMIN_RETURNS_TABLE_BINDING,
+  // Admin › Sourcing compatibility edges — model ↔ part (off AdminTable).
+  PART_COMPATIBILITY_TABLE_BINDING,
+  // Unit detail › Order allocations — off hand HTML (wave D). Shared with the
+  // per-SKU allocations mount; no verbs.
+  UNIT_ALLOCATIONS_TABLE_BINDING,
+  // Unit detail › v1 TSN cross-refs — off hand HTML (wave D). Read-only.
+  UNIT_TSN_LINKS_TABLE_BINDING,
+  // Settings › Audit log — off AdminTable (wave D). Read-only: no row verbs,
+  // and recordPlane 'none' because the before/after diff was never built.
+  AUDITLOG_TABLE_BINDING,
+  // Admin › Inventory holds — the quarantine queue (off AdminTable, wave D).
+  // Release is a row verb behind a stage-overlay plane; the row navigates to
+  // the unit's own timeline.
+  ADMINHOLDS_TABLE_BINDING,
+  // Admin › Bulk allocate — allocation candidates (off AdminTable, wave D).
+  // One row verb (Allocate), invoked through the page's own server action.
+  ADMIN_BULK_ALLOCATE_TABLE_BINDING,
+  // Admin › Cycle count LINES — off AdminTable (wave D). Count / Approve /
+  // Reject are row verbs; the count opens a DeskStageOverlay because its
+  // payload needs a parameter and `inCellEdit` stays false.
+  CYCLECOUNTLINES_TABLE_BINDING,
+  // Admin › Inventory open DRIFT alerts — off AdminTable (wave D). Read-only:
+  // the drift-check cron opens and resolves them, so no row verbs. The state
+  // pill is the magnitude, because every row on the feed is unresolved.
+  ADMIN_DRIFT_ALERTS_TABLE_BINDING,
+  // Admin › Inventory sku_stock ↔ ledger drift — off AdminTable (wave D). A
+  // read-time comparison with no id and no stamp; the retired clean-drift
+  // paragraph is now the table's empty STATE, not an empty branch.
+  ADMIN_SKU_DRIFT_TABLE_BINDING,
+  // Settings › Team directory — off AdminTable (wave D). Sign-in policy and
+  // Deactivate are row verbs behind stage-overlay planes; picking a row
+  // NAVIGATES to Settings → Access, the destination the retired Role cell
+  // linked to per row.
+  STAFF_DIRECTORY_TABLE_BINDING,
+  // Reports › Bin utilization / Velocity / Dead stock — off AdminTable (wave
+  // D). THREE families, not one `reports` table: three row shapes cannot share
+  // a layout document, and the Fields menu keys off tableId, so the tab switch
+  // switches the picker with it. All read-only; recordPlane 'none' because the
+  // rows are projections and the SKU / bin already have their own desks.
+  REPORT_BIN_UTILIZATION_TABLE_BINDING,
+  REPORT_VELOCITY_TABLE_BINDING,
+   REPORT_DEAD_STOCK_TABLE_BINDING,
+  // Reports › Staff day — the per-staff-per-day shift report (Track R4). Same
+  // law as its three siblings: own tableId, read-only, recordPlane 'none' —
+  // the row is a projection of the daily-check report, and the interactive
+  // per-person view is /m/reports over the same buildStaffDay projection.
+  REPORT_STAFF_DAY_TABLE_BINDING,
+  // Admin › per-SKU bin distribution and stock ledger — the last two
+  // AdminTable sections of /inventory/health/sku/[sku] (wave D). Read-only.
+  SKU_BINS_TABLE_BINDING,
+  SKU_LEDGER_TABLE_BINDING,
+  // Admin › per-SKU open allocations — the SIBLING document over the
+  // `unit-allocations` entity: same family, same catalog by reference, its own
+  // stored layout and its own record plane (the unit desk declares 'none', a
+  // per-SKU row opens `/inventory?unit=<id>`). The guard that forbids
+  // two bindings sharing a tableId is why an honest per-desk plane needs it.
+  SKU_ALLOCATIONS_TABLE_BINDING,
+  // `/search` find plane — off a hand-rolled <ul> of result links
+  // (`READ_PLANE_IS_A_MOUNT`). ONE family over six entity types: the row shape
+  // is the search wire, and the adapter is where the six collapse. Read-only,
+  // no verbs, and the record plane is the `?sel=` handoff a FIND surface
+  // exists for.
+  SEARCH_HITS_TABLE_BINDING,
+  // Inventory › Stock — the warehouse-wide (location, sku) pair list. Read-only
+  // and recordPlane 'none': `bin_contents` is written by counts and moves at
+  // the stations that scan them, and no route opens a PAIR. Its own tableId
+  // rather than a third mount of `bins`/`sku-bins`, which row a location and
+  // one SKU respectively.
+  LOCATION_STOCK_TABLE_BINDING,
 ] as const;

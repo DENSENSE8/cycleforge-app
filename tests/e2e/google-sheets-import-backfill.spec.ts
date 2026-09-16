@@ -22,8 +22,9 @@ import { test, expect } from '@playwright/test';
  */
 
 // The chrome popover (OrdersSyncPopover → useOrdersSync) drives the connector
-// seam, NOT the legacy NDJSON route at /api/google-sheets/transfer-orders that
-// the sidebar's useOrdersImport still uses. Watch the one the UI actually calls.
+// seam. The legacy NDJSON routes (/api/google-sheets/transfer-orders and its
+// Ecwid twin) have had no frontend caller since the sidebar's useOrdersImport
+// was deleted (2026-09-15). Watch the one the UI actually calls.
 const IMPORT_ROUTE = '/api/integrations/google_sheets/sync';
 
 test.describe('google sheets order import', () => {
@@ -46,10 +47,10 @@ test.describe('google sheets order import', () => {
 
     await page.goto('/dashboard');
 
-    // /dashboard defaults to the OUTBOUND domain, which mounts UnshippedSidebar
-    // rather than DashboardManagementPanel — so the import entry point is the
-    // chrome's "Import orders" trigger, which opens OrdersSyncPopover. The
-    // "Import Latest Orders" action lives on that popover's Sync tab.
+    // /dashboard mounts UnshippedSidebar — the sidebar import card is gone
+    // (2026-09-15), so the import entry point is the chrome's "Import orders"
+    // trigger, which opens OrdersSyncPopover. The "Import Latest Orders"
+    // action lives on that popover's Sync tab.
     await page.getByRole('button', { name: /Import orders/i }).click();
 
     const importButton = page.getByRole('button', { name: /Import Latest Orders/i });
@@ -80,9 +81,9 @@ test.describe('google sheets order import', () => {
     if (httpStatus !== null) expect(httpStatus).toBeLessThan(500);
 
     // The connector seam must carry per-row detail and the skip breakdown, not
-    // just two counters. OrderSyncDialog renders `details`, so when this is
-    // absent the panel goes blank no matter what the import did — and a fully
-    // skipped sheet becomes indistinguishable from an up-to-date one.
+    // just two counters. The run's detail sheet renders `details`, so when this
+    // is absent it has nothing to draw no matter what the import did — and a
+    // fully skipped sheet becomes indistinguishable from an up-to-date one.
     const payload = JSON.parse(body) as {
       details?: {
         inserted?: unknown[];

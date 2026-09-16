@@ -130,10 +130,15 @@ import {
   type SlotTablePageSize,
 } from '@/lib/tables/slot-table-page';
 import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
-import { clearSlotTableVisibleIds, publishSlotTableVisibleIds } from '@/lib/tables/slot-table-visible';
+import {
+  clearSlotTableVisibleIds,
+  publishSlotTableVisibleIds,
+  type SlotTableRowId,
+} from '@/lib/tables/slot-table-visible';
 import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
+import { sheetSavedViewConfigForTable } from '@/lib/saved-views/surfaces';
 import {
   ToolbarListboxOption,
   toolbarListboxOptionKeyDown,
@@ -1450,14 +1455,31 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   useEffect(() => {
     if (pageIndex > paged.pageCount - 1) setPageIndex(Math.max(0, paged.pageCount - 1));
   }, [pageIndex, paged.pageCount]);
+  /**
+   * The page's row ids, in render order — what Select-all may tick and what
+   * the foot's "N selected" counts against.
+   *
+   * A numeric-looking key stays a NUMBER, because every selection hook that
+   * predates junction families keys on one (`useTableSelectMode`,
+   * `useReceivingRowSelection`). A key that is not a number (Stock's
+   * `(location, sku, source)` triple) rides through as its string: coercing it
+   * produced `NaN`, the filter dropped it, and the scope published an empty
+   * page while rows were on screen — a select-all that ticked nothing and a
+   * header checkbox that read "all" at one tick.
+   */
   const visibleIds = useMemo(() => {
     return flattenRenderOrder(paged.order)
-      .map((row) => {
-        if (getRowId) return Number(getRowId(row));
-        if (row && typeof row === 'object' && 'id' in row) return Number(row.id);
-        return NaN;
+      .map((row): SlotTableRowId | null => {
+        const key = getRowId
+          ? getRowId(row)
+          : row && typeof row === 'object' && 'id' in row
+            ? String(row.id)
+            : '';
+        if (!key) return null;
+        const numeric = Number(key);
+        return Number.isFinite(numeric) && numeric > 0 ? numeric : key;
       })
-      .filter((id) => Number.isFinite(id) && id > 0);
+      .filter((id): id is SlotTableRowId => id !== null);
   }, [paged.order, getRowId]);
   useEffect(() => {
     if (!selectionScope) return;
@@ -1667,6 +1689,13 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       setChosenFieldIds,
     ],
   );
+  const defaultViews = sheetSavedViewConfigForTable(binding.definition.tableId);
+  const resolvedViews = views ?? (
+    defaultViews
+      ? { ...defaultViews, emptyHint: undefined, layout: undefined }
+      : null
+  );
+
 
   return (
     <SlotLayoutReorderProvider onReorderByDrop={fields?.onReorderByDrop ?? null}>
@@ -1705,14 +1734,14 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         <DataTableFilterMenu {...filterChrome} />
         {actions && actions.length > 0 ? <DataTableToolbarActions actions={actions} /> : null}
         {resolvedSortMenu ? <DataTableSortMenu {...resolvedSortMenu} /> : null}
-        {views ? (
+        {resolvedViews ? (
           <div data-testid="data-table-views" className="inline-flex shrink-0 items-center">
             <WorkbenchViewsMenu
-              storageKey={views.storageKey}
-              paramKeys={views.paramKeys}
-              emptyHint={views.emptyHint}
-              tableId={views.layout ? binding.definition.tableId : undefined}
-              layout={views.layout}
+              storageKey={resolvedViews.storageKey}
+              paramKeys={resolvedViews.paramKeys}
+              emptyHint={resolvedViews.emptyHint}
+              tableId={resolvedViews.layout ? binding.definition.tableId : undefined}
+              layout={resolvedViews.layout}
             />
           </div>
         ) : null}

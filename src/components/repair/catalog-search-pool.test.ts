@@ -196,11 +196,12 @@ describe('ProductSelector wires the shipped pool helpers', () => {
   });
 
   it('does not list loadingRootSearch as a hydrate-effect dep or start-guard', () => {
-    assert.doesNotMatch(
-      src,
-      /\[isAtRootLevel, search, rootSearchPool, loadingRootSearch, apiBasePath\]/,
-    );
-    assert.match(src, /\[isAtRootLevel, search, rootSearchPool, apiBasePath\]/);
+    // The bug this pins: `loadingRootSearch` as a dep retriggered the effect,
+    // cancel discarded the fetch, and the next run bailed with loading stuck
+    // true. The invariant is that the flag is absent from the deps and the
+    // guard — NOT that the dep list has one exact shape (it legitimately grew a
+    // `serverSearch` entry when the kiosk moved to SQL-side search).
+    assert.doesNotMatch(src, /\[isAtRootLevel, search, rootSearchPool, loadingRootSearch/);
     assert.doesNotMatch(src, /loading: loadingRootSearch/);
     assert.match(src, /hasPool: Boolean\(rootSearchPool\)/);
   });

@@ -14,11 +14,16 @@
  */
 
 import {
+  DESK_SPINE_SECTIONS,
   isSpineDeskItem,
   isSpineMapTopRow,
+  spineSectionIdForPage,
+  type MainGroupId,
   type SidebarNavItem,
+  type StationGroupId,
   type SpineSectionId,
 } from '@/lib/sidebar-navigation';
+import type { DomainGroupId } from '@/lib/nav/lanes';
 
 /** Cap matches the Zod max on `staff_preferences.spineSlots`. */
 export const SPINE_SLOTS_MAX = 40;
@@ -26,17 +31,60 @@ export const SPINE_SLOTS_MAX = 40;
 /** Synthetic spine slot for the Scan Stations enter row / drill. */
 export const SPINE_STATIONS_SLOT_ID = 'floor';
 
-/** Synthetic spine slot for the Workspaces group (Wave 2 collapsible). */
-export const SPINE_DESKS_SLOT_ID = 'desks';
+/**
+ * The v1/v2 wire value for the single Workspaces parent, as it still sits in
+ * `staff_preferences.prefs.spineSlots` rows written before v3.
+ *
+ * This is a **persisted data token, not an API alias**: no caller navigates by
+ * it and nothing emits it. {@link hydrateSpineSlots} recognises it in a saved
+ * order and expands it into {@link SPINE_LANE_SLOT_IDS}. It can be deleted once
+ * no row carries a `spineSlotsVersion` below 3.
+ */
+export const LEGACY_DESKS_SLOT_ID = 'desks';
+
+/**
+ * One synthetic slot per LANE — Inbound · Outbound · Inventory · Products ·
+ * Sales · Support · Operations, in `DESK_SPINE_SECTIONS` order.
+ *
+ * v3 (operator 2026-09-14) deleted the single "Workspaces" parent. The lanes
+ * ARE the parents: one flat band of named groups beside Scan Stations, not a
+ * generic wrapper an operator has to open before they can read the domain they
+ * came for. "Workspaces" named the software's idea of itself; "Inbound" names
+ * the work.
+ *
+ * Consequence for staff reorder: a lane is now individually draggable, where v2
+ * could only move the whole desk block. That is the point — the operator orders
+ * their own domains.
+ *
+ * **Namespace hazard — read before adding a `kind: 'domain'` page.** Several lane
+ * ids are string-identical to a desk PAGE id (`inventory`, `sales`, `support`,
+ * `sourcing`-era ids). That is safe only because desk pages are never slottable
+ * ({@link isSpineSlottable} returns false for them), so a lane id and a page id
+ * can never both occupy this list — `laneByDeskId` deliberately folds a saved
+ * page id onto the same string its lane already uses, which is what makes the
+ * legacy migration a no-op rather than a rename.
+ *
+ * The day a lane id equals a **slottable** (non-desk) page id, `hydrateSpineSlots`
+ * merges the two silently: one slot, two meanings. So naming a new page
+ * `inventory`/`sales`/`support` with any kind OTHER than `'domain'` is a bug,
+ * and `spine-slots.test.ts` asserts the disjointness ("lane slot ids never
+ * collide with a slottable page id").
+ */
+export const SPINE_LANE_SLOT_IDS: ReadonlyArray<SpineSectionId> = DESK_SPINE_SECTIONS.map(
+  (section) => section.id,
+);
 
 /**
  * Default-order generation. Prod does not hoist Automations above Home —
- * that marketplace-first order is the main worktree's session IA, not this
- * map. v1 stamps grouping of Stations + Workspaces.
+ * that marketplace-first order is the main worktree's session IA, not this map.
+ *
+ * • v1 stamped the grouping of Stations + Workspaces.
+ * • v2 put Workspaces above Scan Stations.
+ * • **v3 dissolves Workspaces into the lane band.** A saved `'desks'` slot
+ *   expands, in place, into the lane ids — so a staffer who had moved the desk
+ *   block keeps its position, and the lanes arrive in registry order inside it.
  */
-export const SPINE_SLOTS_VERSION = 1;
-
-export const SPINE_HOISTED_TOP_ROW_ID = 'studio';
+export const SPINE_SLOTS_VERSION = 3;
 
 /** True when this catalog row participates in staff reorder as its own L1. */
 export function isSpineSlottable(item: SidebarNavItem): boolean {
@@ -45,7 +93,8 @@ export function isSpineSlottable(item: SidebarNavItem): boolean {
   if (item.kind === 'top') return false;
   // Floor benches collapse into {@link SPINE_STATIONS_SLOT_ID}.
   if (item.kind === 'station') return false;
-  // Pointer desks collapse into {@link SPINE_DESKS_SLOT_ID}.
+  // Desk pages collapse into their LANE slot (v3) — Inbound, Outbound, … —
+  // not into a single Workspaces parent.
   if (isSpineDeskItem(item)) return false;
   return true;
 }
@@ -56,34 +105,55 @@ function stationIdSet(allowed: readonly SidebarNavItem[]): Set<string> {
   );
 }
 
-function deskIdSet(allowed: readonly SidebarNavItem[]): Set<string> {
-  return new Set(
-    allowed.filter((item) => isSpineDeskItem(item)).map((item) => item.id),
-  );
+/**
+ * Desk page id → its lane slot id. Used to fold a saved order that stored
+ * individual desk pages (pre-v1 prefs) onto the lane that now owns them.
+ */
+function laneByDeskId(allowed: readonly SidebarNavItem[]): Map<string, SpineSectionId> {
+  const out = new Map<string, SpineSectionId>();
+  for (const item of allowed) {
+    if (!isSpineDeskItem(item)) continue;
+    const lane = spineSectionIdForPage(item);
+    if (lane) out.set(item.id, lane);
+  }
+  return out;
 }
 
-/** Default order: Stations, Workspaces, then remaining L1 (Studio, Admin). */
+/** Lane slots the current catalog can actually paint, in registry order. */
+function lanesPresent(allowed: readonly SidebarNavItem[]): SpineSectionId[] {
+  const live = new Set(laneByDeskId(allowed).values());
+  return SPINE_LANE_SLOT_IDS.filter((lane) => live.has(lane));
+}
+
+/**
+ * Default order: **the lane band, then Scan Stations**, then remaining L1
+ * (Automations). A lane with no visible page is absent — never a header over
+ * nothing (C10: absent, not a disabled pill).
+ */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
-  const out: string[] = [];
+  // Lanes lead (v2 ruling, kept): the domains are the work; the benches are the
+  // input model that feeds them.
+  const out: string[] = [...lanesPresent(allowed)];
   if (allowed.some((item) => item.kind === 'station')) {
     out.push(SPINE_STATIONS_SLOT_ID);
-  }
-  if (allowed.some((item) => isSpineDeskItem(item))) {
-    out.push(SPINE_DESKS_SLOT_ID);
   }
   for (const item of allowed) {
     if (!isSpineSlottable(item)) continue;
     out.push(item.id);
     if (out.length >= SPINE_SLOTS_MAX) break;
   }
-  return out;
+  return out.slice(0, SPINE_SLOTS_MAX);
 }
 
 /**
  * Apply a prefs id list onto the allowed catalog. Empty prefs → full default
  * order. Known ids keep staff order; new catalog ids append; unknown / gated
- * ids drop. Legacy prefs that stored individual station or desk page ids
- * collapse to {@link SPINE_STATIONS_SLOT_ID} / {@link SPINE_DESKS_SLOT_ID}.
+ * ids drop.
+ *
+ * Three legacy shapes fold in, all in place so a staffer's position survives:
+ * a station page id → {@link SPINE_STATIONS_SLOT_ID}; a desk page id → the lane
+ * that owns it; and {@link LEGACY_DESKS_SLOT_ID} → the whole lane band, in
+ * registry order.
  */
 export function hydrateSpineSlots(
   raw: readonly string[] | null | undefined,
@@ -92,24 +162,31 @@ export function hydrateSpineSlots(
   const defaults = defaultSpineOrder(allowed);
   const allow = new Set(defaults);
   const stations = stationIdSet(allowed);
-  const desks = deskIdSet(allowed);
+  const laneOf = laneByDeskId(allowed);
+  const lanes = lanesPresent(allowed);
   if (!raw || raw.length === 0) {
     return defaults.slice(0, SPINE_SLOTS_MAX);
   }
 
   const out: string[] = [];
   const seen = new Set<string>();
+  const push = (id: string) => {
+    if (seen.has(id) || !allow.has(id)) return;
+    seen.add(id);
+    out.push(id);
+  };
+
   for (const id of raw) {
     if (typeof id !== 'string' || !id) continue;
-    const resolved = stations.has(id)
-      ? SPINE_STATIONS_SLOT_ID
-      : desks.has(id)
-        ? SPINE_DESKS_SLOT_ID
-        : id;
-    if (seen.has(resolved) || !allow.has(resolved)) continue;
-    seen.add(resolved);
-    out.push(resolved);
-    if (out.length >= SPINE_SLOTS_MAX) return out;
+    // The v1/v2 Workspaces parent expands HERE, at its saved position, so a
+    // staffer who had moved the desk block keeps where they put it.
+    if (id === LEGACY_DESKS_SLOT_ID) {
+      for (const lane of lanes) push(lane);
+      if (out.length >= SPINE_SLOTS_MAX) return out.slice(0, SPINE_SLOTS_MAX);
+      continue;
+    }
+    push(stations.has(id) ? SPINE_STATIONS_SLOT_ID : (laneOf.get(id) ?? id));
+    if (out.length >= SPINE_SLOTS_MAX) return out.slice(0, SPINE_SLOTS_MAX);
   }
   for (const id of defaults) {
     if (seen.has(id)) continue;
@@ -131,19 +208,49 @@ export interface SpineSlotsMigration {
 }
 
 /**
+ * Move the LANE BAND to sit immediately above Scan Stations, preserving every
+ * other id and its relative order. Idempotent: an order whose first lane
+ * already precedes the benches is returned untouched.
+ *
+ * This is the v1/v2 → v3 transform, and it is a LIFT, not a re-sort: a staffer
+ * who dragged Automations to the top keeps it there. The only fact v3 asserts
+ * is that the domains sit above the benches. Lanes keep their own relative
+ * order, so a staffer who had already reordered them is not reshuffled.
+ */
+function liftLanesAboveStations(slots: readonly string[]): string[] {
+  const laneIds = new Set<string>(SPINE_LANE_SLOT_IDS);
+  const floorAt = slots.indexOf(SPINE_STATIONS_SLOT_ID);
+  const firstLaneAt = slots.findIndex((id) => laneIds.has(id));
+  // Absent either family, or already in v3 order: nothing to do.
+  if (firstLaneAt < 0 || floorAt < 0 || firstLaneAt < floorAt) return [...slots];
+  const band = slots.filter((id) => laneIds.has(id));
+  const rest = slots.filter((id) => !laneIds.has(id));
+  const target = rest.indexOf(SPINE_STATIONS_SLOT_ID);
+  return [...rest.slice(0, target), ...band, ...rest.slice(target)];
+}
+
+/**
  * Roll a saved order onto the current default generation without overwriting
  * the operator's arrangement. Prod does not float Automations to the front.
+ *
+ * A `stamp` is the caller's instruction to persist: write both keys, once. The
+ * version guard is what makes it once — after the stamp lands, `savedVersion`
+ * equals {@link SPINE_SLOTS_VERSION} and this returns `null` forever, so a
+ * staffer who drags Scan Stations back on top keeps that choice.
  */
 export function migrateSpineSlots(
   raw: readonly string[] | null | undefined,
   allowed: readonly SidebarNavItem[],
   savedVersion: number | null | undefined,
 ): SpineSlotsMigration {
-  const slots = hydrateSpineSlots(raw, allowed);
-  if (!raw || raw.length === 0) return { slots, stamp: null };
-  if (allowed.length === 0 || slots.length === 0) return { slots, stamp: null };
-  if ((savedVersion ?? 0) >= SPINE_SLOTS_VERSION) return { slots, stamp: null };
+  const hydrated = hydrateSpineSlots(raw, allowed);
+  // No saved order → the operator never arranged anything, so `defaultSpineOrder`
+  // already answers in v3 order and there is nothing to migrate or stamp.
+  if (!raw || raw.length === 0) return { slots: hydrated, stamp: null };
+  if (allowed.length === 0 || hydrated.length === 0) return { slots: hydrated, stamp: null };
+  if ((savedVersion ?? 0) >= SPINE_SLOTS_VERSION) return { slots: hydrated, stamp: null };
 
+  const slots = liftLanesAboveStations(hydrated);
   return {
     slots,
     stamp: { spineSlots: slots, spineSlotsVersion: SPINE_SLOTS_VERSION },
@@ -151,18 +258,19 @@ export function migrateSpineSlots(
 }
 
 /**
- * Resolve ordered ids to page rows. Skips Stations / Workspaces slots and any
- * id missing from the allowed list — callers that need the group entries use
- * {@link resolveSpineMapEntries}.
+ * Resolve ordered ids to page rows. Skips the Stations slot, every lane slot,
+ * and any id missing from the allowed list — callers that need the group
+ * entries use {@link resolveSpineMapEntries}.
  */
 export function resolveSpineSlotPages<T extends { id: string }>(
   slotIds: readonly string[],
   allowed: readonly T[],
 ): T[] {
+  const laneIds = new Set<string>(SPINE_LANE_SLOT_IDS);
   const byId = new Map(allowed.map((page) => [page.id, page]));
   const out: T[] = [];
   for (const id of slotIds) {
-    if (id === SPINE_STATIONS_SLOT_ID || id === SPINE_DESKS_SLOT_ID) continue;
+    if (id === SPINE_STATIONS_SLOT_ID || laneIds.has(id)) continue;
     const page = byId.get(id);
     if (page) out.push(page);
   }
@@ -171,7 +279,7 @@ export function resolveSpineSlotPages<T extends { id: string }>(
 
 export type SpineMapEntry<T extends { id: string; kind?: string }> =
   | { kind: 'stations'; id: typeof SPINE_STATIONS_SLOT_ID }
-  | { kind: 'desks'; id: typeof SPINE_DESKS_SLOT_ID }
+  | { kind: 'lane'; id: SpineSectionId }
   | { kind: 'page'; id: string; page: T };
 
 function isDeskLike(page: { kind?: string; mainGroup?: string }): boolean {
@@ -179,28 +287,47 @@ function isDeskLike(page: { kind?: string; mainGroup?: string }): boolean {
 }
 
 /**
- * Ordered root-map entries for MasterNav — remaining L1 pages plus Stations
- * and Workspaces slots when the catalog has those families.
+ * Ordered root-map entries for MasterNav — the lane band, the Stations slot,
+ * and the remaining L1 pages, each emitted only when the catalog can paint it.
+ *
+ * v3: a `lane` entry replaces the single `desks` entry. `SidebarNavList` pairs
+ * each lane id with its pages, so an empty lane never reaches the render path.
  */
 export function resolveSpineMapEntries<
-  T extends { id: string; kind?: string; mainGroup?: string },
+  T extends {
+    id: string;
+    kind?: 'top' | 'bottom' | 'main' | 'station' | 'domain';
+    mainGroup?: MainGroupId;
+    stationGroup?: StationGroupId;
+    domainGroup?: DomainGroupId;
+  },
 >(
   slotIds: readonly string[],
   allowed: readonly T[],
 ): SpineMapEntry<T>[] {
   const byId = new Map(allowed.map((page) => [page.id, page]));
   const hasStations = allowed.some((page) => page.kind === 'station');
-  const hasDesks = allowed.some((page) => isDeskLike(page));
+  // `spineSectionIdForPage` reads a structural shape, so the widened generic
+  // above removes the `as SidebarNavItem` cast tsc rejected: T is no longer
+  // missing `domainGroup`, which is the field that decides a desk row's lane.
+  const liveLanes = new Set<string>(
+    allowed
+      .filter((page) => isDeskLike(page))
+      .map((page) => spineSectionIdForPage(page))
+      .filter((lane): lane is SpineSectionId => lane !== null),
+  );
   const out: SpineMapEntry<T>[] = [];
   for (const id of slotIds) {
     if (id === SPINE_STATIONS_SLOT_ID) {
       if (hasStations) out.push({ kind: 'stations', id: SPINE_STATIONS_SLOT_ID });
       continue;
     }
-    if (id === SPINE_DESKS_SLOT_ID) {
-      if (hasDesks) out.push({ kind: 'desks', id: SPINE_DESKS_SLOT_ID });
+    if (liveLanes.has(id)) {
+      out.push({ kind: 'lane', id: id as SpineSectionId });
       continue;
     }
+    // A lane slot the current role cannot paint drops out entirely.
+    if ((SPINE_LANE_SLOT_IDS as readonly string[]).includes(id)) continue;
     const page = byId.get(id);
     if (!page || page.kind === 'station' || isDeskLike(page)) continue;
     out.push({ kind: 'page', id: page.id, page });

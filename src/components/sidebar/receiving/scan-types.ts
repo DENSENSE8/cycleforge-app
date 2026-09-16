@@ -6,7 +6,7 @@
 
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { PhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';
 import type { PoContext } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_TOTE_PRINT_RUN } from '@/lib/print/labelCopies';
 
 // ─── Reusable building blocks ───────────────────────────────────────────────
 
@@ -31,6 +32,29 @@ export const HandlingUnitCreateBody = z
   .strict();
 
 export type HandlingUnitCreateInput = z.infer<typeof HandlingUnitCreateBody>;
+
+// ─── POST /api/handling-units/bulk ──────────────────────────────────────────
+
+/**
+ * Mint N boxes in one call (bulk tote mint → one label run). Codes are always
+ * auto-minted `H-{id}` server-side — there is no `code` field, since a batch
+ * cannot share one external tote barcode. `idempotencyKey` lets a retried
+ * bulk mint replay the original response instead of minting a second batch.
+ *
+ * The ceiling is {@link MAX_TOTE_PRINT_RUN}, imported rather than retyped: the
+ * phone's count step and this validator MUST agree, or `/m/print` offers a run
+ * the server refuses.
+ */
+export const HandlingUnitBulkCreateBody = z
+  .object({
+    count: z.number().int().min(1).max(MAX_TOTE_PRINT_RUN),
+    locationId: positiveInt.nullable().optional(),
+    notes: optNullableNotes,
+    idempotencyKey: z.string().trim().min(1).optional(),
+  })
+  .strict();
+
+export type HandlingUnitBulkCreateInput = z.infer<typeof HandlingUnitBulkCreateBody>;
 
 // ─── POST /api/handling-units/[id]/assign ───────────────────────────────────
 

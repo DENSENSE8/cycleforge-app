@@ -18,6 +18,7 @@ import {
   type CounterDraft,
 } from '@/components/counter/counter-intake-steps';
 import { buildKioskSalesIntakeBody } from '@/lib/counter/kiosk-intake-payload';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import {
   KioskPaymentStepUpSheet,
   type KioskPaymentStepUpResult,
@@ -135,7 +136,7 @@ export function KioskCounterPane({
   const postIntake = useCallback(
     async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
       if (!idemKey.current) idemKey.current = safeRandomUUID();
-      const res = await fetch('/api/kiosk/intake', {
+      const res = await kioskFetchHealed('/api/kiosk/intake', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',

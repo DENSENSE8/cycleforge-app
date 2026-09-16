@@ -25,9 +25,15 @@ interface ProgressDotsProps {
   className?: string;
 }
 
-type DotState = 'done' | 'current' | 'pending' | 'ellipsis';
+export type DotState = 'done' | 'current' | 'pending' | 'ellipsis';
 
-function buildDotRail(done: number, total: number, maxVisible: number): DotState[] {
+/**
+ * The rail algorithm, exported as the contract seam: clamping, the
+ * no-compression window, and head-2 + ellipsis + tail-2 compression where the
+ * current step stays visible only while it sits inside a shown window.
+ * Unit-tested in ProgressDots.test.tsx.
+ */
+export function buildDotRail(done: number, total: number, maxVisible: number): DotState[] {
   const clampedDone = Math.max(0, Math.min(done, total));
   if (total <= maxVisible) {
     return Array.from({ length: total }, (_, i) =>
@@ -76,15 +82,18 @@ export function ProgressDots({
           );
         }
         const base = 'inline-block rounded-full transition-colors';
+        // Solid fill family (config: "progress bars, saturated indicators") —
+        // never raw palette steps, never the status-pill surface washes, which
+        // vanish at 8px.
         if (state === 'done') {
-          return <span key={i} aria-hidden="true" className={`${base} h-2 w-2 bg-emerald-500`} />;
+          return <span key={i} aria-hidden="true" className={`${base} h-2 w-2 bg-fill-success`} />;
         }
         if (state === 'current') {
           return (
             <span
               key={i}
               aria-hidden="true"
-              className={`${base} h-2.5 w-2.5 bg-blue-500 ring-2 ring-border-soft`}
+              className={`${base} h-2.5 w-2.5 bg-fill-info ring-2 ring-border-soft`}
             />
           );
         }

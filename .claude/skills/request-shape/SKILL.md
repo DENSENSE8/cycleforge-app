@@ -74,12 +74,15 @@ twice and the redundancy column is fiction. The script detects a dev server
 (`<nextjs-portal>` / `TURBOPACK_CHUNK_UPDATE_LISTENERS`, both verified against
 this app's dev server and its live production build) and refuses.
 
-Two standing rules, both from `AGENTS.md`:
+Three standing rules, all from `AGENTS.md` § **Dev origin**:
 
-- **Never start, restart or kill the dev server on `:3050`.** It is the
-  operator's. Build to an isolated `NEXT_DIST_DIR` on a free port — `next dev`
-  owns `.next` and a plain `pnpm build` will clobber it.
-- Stop your perf server when you are done. Leave `:3050` untouched.
+- **`:3050` is the only app origin.** Verify behaviour there and nowhere else;
+  never start, restart or kill it, and never hand-start `next dev` on a lane
+  port to get around it.
+- **The perf server is a measurement rig, not an origin** — the one documented
+  exception. Build to an isolated `NEXT_DIST_DIR` on a throwaway port, because
+  `next dev` owns `.next` and a plain `pnpm build` clobbers what `:3050` serves.
+- Stop the rig when you are done. Leave `:3050` untouched.
 
 ## Step 1 — capture, then classify against four axes
 

@@ -211,6 +211,318 @@ test('search text dedupes repeats, drops blanks, and caps length', () => {
   assert.ok(doc.searchText.length <= 2000);
 });
 
+test('ORDER: the order_notes trail (not just orders.notes) reaches search text', () => {
+  const doc = buildSearchText('ORDER', {
+    id: 7,
+    order_id: '12-34567-89012',
+    product_title: 'Bose SoundLink Revolve',
+    sku: 'BOSE-SLR-BLK',
+    notes: 'gift wrap',
+    note_trail: 'buyer called about RMA 88213 customer wants the blue one',
+    created_at: '2026-06-01T12:00:00Z',
+  });
+  assert.ok(
+    doc.searchText.includes('RMA 88213'),
+    'note_trail (order_notes.note_text) must be searchable',
+  );
+  assert.ok(doc.searchText.includes('gift wrap'), 'orders.notes column still indexed');
+  // The trail is prose and goes last; identifiers must precede it so the cap
+  // never eats them.
+  assert.ok(doc.searchText.indexOf('12-34567-89012') < doc.searchText.indexOf('RMA 88213'));
+});
+
+test('ORDER: a serial bound by allocation (not the legacy TSN ledger) is findable', () => {
+  const doc = buildSearchText('ORDER', {
+    id: 9,
+    order_id: 'ORD-4410',
+    product_title: 'Bose QC45',
+    // The legacy scan ledger contributed nothing for this order — the unit was
+    // bound through order_unit_allocations, which no doc field used to read.
+    serials: '',
+    allocated_serials: 'SN-ALLOC-77 SN-ALLOC-78',
+    notes: 'leave at door',
+    created_at: '2026-06-01T12:00:00Z',
+  });
+  assert.ok(doc.searchText.includes('SN-ALLOC-77'), 'allocated serial must be searchable');
+  assert.ok(doc.searchText.includes('SN-ALLOC-78'), 'every allocated serial, not just the first');
+  // Identifier, not prose: it must sit ahead of the free-text tail the cap eats.
+  assert.ok(doc.searchText.indexOf('SN-ALLOC-77') < doc.searchText.indexOf('leave at door'));
+});
+
+test('ORDER: a 5000-char note trail cannot push the buyer identity past the cap', () => {
+  const doc = buildSearchText('ORDER', {
+    id: 8,
+    order_id: 'ORD-999',
+    tracking_number: '1Z999AA10123456784',
+    customer_email: 'hana@example.com',
+    customer_phone: '555-0142',
+    notes: 'n'.repeat(2500),
+    note_trail: 'z'.repeat(2500),
+    created_at: '2026-06-01T12:00:00Z',
+  });
+  assert.ok(doc.searchText.length <= 2000);
+  for (const needle of ['ORD-999', '1Z999AA10123456784', 'hana@example.com', '555-0142']) {
+    assert.ok(doc.searchText.includes(needle), `cap dropped high-selectivity ${needle}`);
+  }
+});
+
+test('SERIAL_UNIT: the handling-unit (tote) code is searchable', () => {
+  const doc = buildSearchText('SERIAL_UNIT', {
+    id: 9,
+    serial_number: 'ABC-123',
+    sku: 'BOSE-SLR',
+    current_location: 'BIN-A4',
+    handling_unit_code: 'H-4417',
+    created_at: '2026-06-19T00:00:00Z',
+  });
+  assert.ok(doc.searchText.includes('H-4417'), 'handling_units.code must reach search text');
+  assert.equal(doc.subtitle, 'ABC-123 · BOSE-SLR', 'tote code must not enter the subtitle');
+});
+
+test('SKU: platform crosswalk and kit parts reach search text', () => {
+  const doc = buildSearchText('SKU', {
+    id: 11,
+    sku: 'BOSE-901-IV',
+    product_title: 'Bose 901 Series IV Speakers',
+    category: 'Speakers',
+    upc: '017817000000',
+    platform_skus: 'BOSE901IV-EBAY BOSE901-FBA',
+    platform_item_ids: 'B01N1RJ2C4 285512345678',
+    platform_accounts: 'usav-main',
+    kit_part_names: 'Power cable Equalizer module',
+    kit_document_titles: '2026 warranty terms',
+    notes: 'ships freight',
+    lifecycle_status: 'eol',
+    updated_at: '2026-06-01T00:00:00Z',
+  });
+  for (const needle of [
+    'B01N1RJ2C4',          // ASIN
+    '285512345678',        // eBay item id
+    'BOSE901IV-EBAY',      // platform sku
+    'usav-main',           // channel account
+    'Equalizer module',    // BOM part
+    '2026 warranty terms', // kit insert title
+  ]) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  assert.equal(doc.title, 'Bose 901 Series IV Speakers');
+  assert.equal(doc.subtitle, 'BOSE-901-IV · Speakers');
+});
+
+test('SKU: long catalog notes cannot truncate the platform identifiers', () => {
+  const doc = buildSearchText('SKU', {
+    id: 12,
+    sku: 'BOSE-901-IV',
+    platform_item_ids: 'B01N1RJ2C4',
+    kit_part_names: 'Power cable',
+    notes: 'x'.repeat(5000),
+  });
+  assert.ok(doc.searchText.length <= 2000);
+  assert.ok(doc.searchText.includes('B01N1RJ2C4'), 'ASIN must survive the cap');
+  assert.ok(doc.searchText.includes('Power cable'), 'BOM part must survive the cap');
+});
+
+test('SKU: the Zoho item number and provider identifiers reach search text', () => {
+  const doc = buildSearchText('SKU', {
+    id: 13,
+    sku: 'BOSE-901-IV',
+    product_title: 'Bose 901 Series IV Speakers',
+    category: 'Speakers',
+    upc: '017817000000',
+    // sku_catalog.provider_item_id = items.zoho_item_id — the ONE legal join.
+    provider_item_id: '4728690000000212345',
+    // items.* fields. item_sku is a DIFFERENT numbering scheme from sku and
+    // must be indexed as its own token, not assumed equal.
+    item_name: 'Bose 901 Series IV (Zoho)',
+    item_sku: 'ZH-0091',
+    item_upc: '017817999999',
+    item_ean: '4006381333931',
+    notes: 'x'.repeat(5000),
+  });
+  for (const needle of [
+    '4728690000000212345', // Zoho item number
+    'ZH-0091',             // provider SKU (independent scheme)
+    '017817999999',        // provider UPC
+    '4006381333931',       // provider EAN
+    'Bose 901 Series IV (Zoho)',
+  ]) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  // The identifier ordering is a truncation contract: prose cannot push the
+  // provider item number past the 2000-char cap.
+  assert.ok(doc.searchText.length <= 2000);
+});
+
+test('LOCATION: the bin barcode leads search text; contents and state follow', () => {
+  const doc = buildSearchText('LOCATION', {
+    id: 5,
+    barcode: 'BIN-A-12-03',
+    name: 'A-12-03',
+    display_name: 'Overflow A12',
+    room: 'Warehouse A',
+    row_label: '12',
+    col_label: '03',
+    zone_letter: 'A',
+    bin_type: 'SHELF',
+    bin_role: 'RESERVE',
+    location_kind: 'BIN',
+    is_active: true,
+    locked_for_count: false,
+    description: 'top shelf, needs a step ladder',
+    content_skus: 'BOSE-901-IV SAM-S22',
+    updated_at: '2026-09-10T00:00:00Z',
+    created_at: '2026-04-09T00:00:00Z',
+  });
+  assert.ok(
+    doc.searchText.startsWith('BIN-A-12-03'),
+    'the printed/scanned barcode must lead the canonical text',
+  );
+  for (const needle of [
+    'BIN-A-12-03',
+    'A-12-03',
+    'Overflow A12',
+    'Warehouse A',
+    'RESERVE',
+    'BOSE-901-IV',
+  ]) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  assert.equal(doc.title, 'Overflow A12', 'display_name wins the title');
+  assert.equal(doc.subtitle, 'BIN-A-12-03 · Warehouse A · RESERVE');
+  assert.equal(doc.facets.status, 'BIN');
+  assert.equal(doc.facets.happenedAt?.toISOString(), '2026-09-10T00:00:00.000Z');
+  assert.ok(!doc.searchText.includes('INACTIVE'));
+  assert.ok(!doc.searchText.includes('LOCKED'));
+});
+
+test('LOCATION: a retired or count-locked bin stays findable and says so', () => {
+  const doc = buildSearchText('LOCATION', {
+    id: 6,
+    barcode: 'BIN-B-01-01',
+    name: 'B-01-01',
+    location_kind: 'BIN',
+    bin_role: 'PICK',
+    is_active: false,
+    locked_for_count: true,
+  });
+  assert.ok(doc.searchText.includes('BIN-B-01-01'));
+  assert.ok(doc.searchText.includes('INACTIVE'), 'retired bin must read back as INACTIVE');
+  assert.ok(doc.searchText.includes('LOCKED FOR COUNT'));
+  assert.equal(doc.title, 'B-01-01', 'name carries the title when no nickname is set');
+});
+
+test('LOCATION: a barcode-only row still titles and indexes', () => {
+  const doc = buildSearchText('LOCATION', { id: 7, barcode: 'BIN-Z-99' });
+  assert.equal(doc.title, 'BIN-Z-99');
+  assert.ok(doc.searchText.includes('BIN-Z-99'));
+  assert.equal(buildSearchText('LOCATION', { id: 8 }).title, 'Bin #8');
+});
+
+test('WARRANTY_CLAIM: the claim number reaches search_text and leads it', () => {
+  const doc = buildSearchText('WARRANTY_CLAIM', {
+    id: 88,
+    claim_number: 'WC-2026-00042',
+    serial_number: 'SN-778899',
+    sku: 'BOSE-SLR-BLK',
+    product_title: 'Bose SoundLink Revolve',
+    source_system: 'ebay',
+    source_order_id: '12-34567-89012',
+    source_tracking_number: '1Z999AA10123456784',
+    zendesk_ticket_id: 4417,
+    status: 'IN_REPAIR',
+    denial_reason_code: null,
+    denial_notes: null,
+    notes: 'customer reports no power after 3 weeks',
+    created_at: '2026-09-01T12:00:00Z',
+    customer_name: 'Hana Ito',
+    customer_email: 'hana@example.com',
+    customer_phone: '555-0142',
+  });
+  // The claim number is what a caller quotes: it must be the FIRST token, so
+  // no amount of prose can push it past MAX_SEARCH_TEXT.
+  assert.ok(
+    doc.searchText.startsWith('WC-2026-00042'),
+    `claim number must lead search_text, got: ${doc.searchText.slice(0, 60)}`,
+  );
+  for (const needle of [
+    'WC-2026-00042',
+    'SN-778899',
+    '12-34567-89012',
+    '1Z999AA10123456784',
+    '#4417',
+    'Hana Ito',
+    'hana@example.com',
+    '555-0142',
+    'no power after 3 weeks',
+  ]) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  // Product leads the TITLE (repair precedent) so narrow rails do not crush an
+  // identifier-shaped title to its last 8 characters.
+  assert.equal(doc.title, 'Bose SoundLink Revolve');
+  assert.equal(doc.subtitle, 'WC-2026-00042 · Hana Ito · IN_REPAIR');
+  assert.equal(doc.facets.status, 'IN_REPAIR');
+  assert.equal(doc.facets.sourcePlatform, 'ebay');
+  assert.equal(doc.facets.serialNumber, 'SN-778899');
+  assert.equal(doc.facets.trackingNumber, '1Z999AA10123456784');
+  assert.equal(doc.facets.happenedAt?.toISOString(), '2026-09-01T12:00:00.000Z');
+});
+
+test('WARRANTY_CLAIM: a novel of denial notes cannot truncate the identifiers', () => {
+  const doc = buildSearchText('WARRANTY_CLAIM', {
+    id: 89,
+    claim_number: 'WC-2026-00043',
+    serial_number: 'SN-778900',
+    source_order_id: '12-34567-89013',
+    notes: 'n'.repeat(3000),
+    denial_notes: 'd'.repeat(3000),
+  });
+  assert.ok(doc.searchText.length <= 2000);
+  for (const needle of ['WC-2026-00043', 'SN-778900', '12-34567-89013']) {
+    assert.ok(doc.searchText.includes(needle), `cap dropped high-selectivity ${needle}`);
+  }
+});
+
+test('WARRANTY_CLAIM: falls back to the claim number, then "Claim #id"', () => {
+  const numbered = buildSearchText('WARRANTY_CLAIM', { id: 90, claim_number: 'WC-2026-00044' });
+  assert.equal(numbered.title, 'WC-2026-00044');
+  const bare = buildSearchText('WARRANTY_CLAIM', { id: 91 });
+  assert.equal(bare.title, 'Claim #91');
+  assert.equal(bare.subtitle, null);
+  assert.equal(bare.searchText, '');
+});
+
+test('SUPPORT_TICKET: the ticket number is searchable with and without the #', () => {
+  const doc = buildSearchText('SUPPORT_TICKET', {
+    id: 1234,
+    provider: 'zendesk',
+    external_ticket_id: '99871',
+    subject_cache: 'Damaged on arrival — Bose 901',
+    status_cache: 'open',
+    created_at: '2026-08-30T09:00:00Z',
+    updated_at: '2026-09-02T09:00:00Z',
+  });
+  // Operators read support_tickets.id as "the ticket number" and type it both
+  // ways; the provider-native id is the one printed in Zendesk itself.
+  for (const needle of ['#1234', '1234', '#99871', '99871', 'Damaged on arrival', 'zendesk']) {
+    assert.ok(doc.searchText.includes(needle), `searchText missing ${needle}`);
+  }
+  assert.equal(doc.title, 'Damaged on arrival — Bose 901');
+  assert.equal(doc.subtitle, '#1234 · open');
+  assert.equal(doc.facets.status, 'open');
+  assert.equal(doc.facets.sourcePlatform, 'zendesk');
+  assert.equal(doc.facets.happenedAt?.toISOString(), '2026-09-02T09:00:00.000Z');
+});
+
+test('SUPPORT_TICKET: an unsubjected ticket still titles and indexes by number', () => {
+  const doc = buildSearchText('SUPPORT_TICKET', { id: 7, provider: 'internal' });
+  assert.equal(doc.title, 'Ticket #7');
+  assert.equal(doc.subtitle, '#7');
+  assert.ok(doc.searchText.includes('#7'));
+  assert.equal(doc.facets.status, null);
+  assert.equal(doc.facets.sourcePlatform, 'internal');
+});
+
 test('isSearchEntityType guards the discriminator set', () => {
   for (const t of SEARCH_ENTITY_TYPES) assert.equal(isSearchEntityType(t), true);
   assert.equal(isSearchEntityType('WALK_IN_ORDER'), false);

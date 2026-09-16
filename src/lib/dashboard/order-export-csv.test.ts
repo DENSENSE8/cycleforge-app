@@ -38,8 +38,8 @@ test('a row maps onto the lane the operator can see', () => {
     // step, when, what the order was worth, and the stage those add up to.
     sale_amount: '129.5',
     has_tech_scan: true,
-    tester_name: 'Tuan',
-    test_date_time: '2026-08-01T17:04:00.000Z',
+    picked_by_name: 'Tuan',
+    picked_at: '2026-08-01T17:04:00.000Z',
     packed_by_name: 'Sam',
     packed_at: '2026-08-02T18:30:00.000Z',
     shipped_out_by_name: 'Rae',

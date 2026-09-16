@@ -7,7 +7,7 @@
  * User: single/bulk toggle; remove configure; reset away from slider.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Printer } from '@/components/Icons';
 import { StickyActionBar } from '@/design-system/components';
 import { LABEL_BUILDER } from './label-builder-layout';
@@ -35,17 +35,12 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
   const c = useRackLabelPrinter();
   const [printMode, setPrintMode] = useState<LabelPrintWorkMode>('single');
   const [runSelected, setRunSelected] = useState<ExpandedPrintRunRow[]>([]);
-  const [runAcked, setRunAcked] = useState(false);
 
   const canOpenRun =
     !!c.selectedRoom &&
     !!c.zoneLetter &&
     c.aisle != null &&
     !c.missingLetter;
-
-  useEffect(() => {
-    setRunAcked(false);
-  }, [c.selectedRoom, c.zoneLetter, c.aisle]);
 
   const freeze: LabelPrintRunFreeze | null = useMemo(() => {
     if (!c.selectedRoom || !c.zoneLetter || c.aisle == null) return null;
@@ -63,12 +58,8 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
     setRunSelected(rows);
   }, []);
 
-  const handleAckChange = useCallback((acked: boolean) => {
-    setRunAcked(acked);
-  }, []);
-
   const handlePrintRun = useCallback(async () => {
-    if (!runAcked || runSelected.length === 0) return;
+    if (runSelected.length === 0) return;
     const racks: RackSegments[] = runSelected.map((r) => ({
       zone: r.segments.zone,
       aisle: r.segments.aisle,
@@ -76,11 +67,11 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
       level: r.segments.level,
     }));
     await c.printRun(racks);
-  }, [c, runAcked, runSelected]);
+  }, [c, runSelected]);
 
   const runCount = runSelected.length;
   const bulkActive = printMode === 'bulk';
-  const printFromRun = bulkActive && canOpenRun && runCount > 0 && runAcked;
+  const printFromRun = bulkActive && canOpenRun && runCount > 0;
   const seedVary = c.bay != null ? ('level' as const) : ('bay' as const);
 
   if (variant === 'sidebar') {
@@ -142,7 +133,6 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
             gln={c.gln}
             printing={c.isPrinting}
             onSelectionChange={handleSelectionChange}
-            onAckChange={handleAckChange}
           />
         </div>
       ) : null}
@@ -168,7 +158,7 @@ export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
                     : 'Print bay label',
           onClick: printFromRun ? () => void handlePrintRun() : c.handlePrintOne,
           disabled: printFromRun
-            ? c.isPrinting || runCount === 0 || !runAcked
+            ? c.isPrinting || runCount === 0
             : bulkActive
               ? true
               : !c.allSelected || c.isPrinting || c.missingLetter,

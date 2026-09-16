@@ -18,10 +18,9 @@ export function InventoryShell() {
     const { mode } = sidebar;
     const searchParams = useSearchParams();
 
-    // `?section=replenish` swaps the whole right pane over to the replenish
-    // workspace (Need to Order / FIFO). The replenish controls live in the
-    // sidebar (ReplenishSidebarPanel), mounted by InventorySidebarPanel for
-    // the same section. Default/absent section = the inventory views below.
+    // `?section=replenish` swaps the whole pane over to Need to Order / FIFO.
+    // Replenish used to keep controls in the left rail; that column is gone
+    // with the rest of the inventory context panel (operator 2026-09-15).
     if (searchParams.get('section') === 'replenish') {
         return (
             <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
@@ -81,7 +80,7 @@ export function InventoryShell() {
          * page-level action, and the header's right slot is the desk's primary
          * CTA.
          */
-        <div className="flex h-full min-h-0 flex-col">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {hasAnyTarget ? (
                 <div className="flex shrink-0 items-center justify-end px-2 py-1">
                     <Button
@@ -95,7 +94,13 @@ export function InventoryShell() {
                 </div>
             ) : null}
 
-            <div className="w-full flex-1 overflow-y-auto">
+            <div
+                className={
+                    hasAnyTarget
+                        ? 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-y-auto'
+                        : 'flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden'
+                }
+            >
                 {state.view === 'by-sku' && state.sku ? (
                     <BySkuView sku={state.sku} />
                 ) : state.view === 'by-bin' && state.bin ? (

@@ -1,0 +1,24 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/components/tech/TestingLineWorkspace.tsx:TestingLineWorkspace",
+  "files_affected": 2,
+  "total_symbols": 2,
+  "files": [
+    {
+      "file": "src/components/tech/TechRightPane.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "TechRightPane"
+      ]
+    },
+    {
+      "file": "src/components/TechDashboard.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "TechDashboard"
+      ]
+    }
+  ]
+}

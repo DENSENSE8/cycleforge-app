@@ -1265,6 +1265,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.packerDisplay !== next.packerDisplay) return false;
   if (prev.record.test_date_time !== next.record.test_date_time) return false;
   if (prev.record.test_activity_at !== next.record.test_activity_at) return false;
+  // PICK-lane cells. The Pick slot stopped borrowing the tester family on
+  // 2026-09-14 (`pickedStep` reads a real projection now), so the facts above
+  // no longer stand in for it: without these three a picker's scan publishes,
+  // the cache patches, and the row still paints the pre-pick face.
+  if (prev.record.picked_at !== next.record.picked_at) return false;
+  if (prev.record.picked_by !== next.record.picked_by) return false;
+  if (prev.record.picked_by_name !== next.record.picked_by_name) return false;
   if (prev.record.packed_at !== next.record.packed_at) return false;
   if (prev.record.pack_activity_at !== next.record.pack_activity_at) return false;
   if (prev.record.pack_location_name !== next.record.pack_location_name) return false;

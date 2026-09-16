@@ -180,14 +180,16 @@ export async function getDueShipments(
     const where: string[] = [
       `is_terminal = false`,
       `(next_check_at IS NULL OR next_check_at <= now())`,
-      `carrier = ANY(${enabledCarrierParam})`,
+      // `upper(carrier)`, not `carrier`: see isCarrierSyncEnabled. A lowercase
+      // row must not fall out of the sweep silently.
+      `upper(carrier) = ANY(${enabledCarrierParam})`,
       // Stop retrying after 5 consecutive failures (dead tracking numbers)
       `consecutive_error_count < 5`,
     ];
 
     if (carriers && carriers.length > 0) {
       params.push(carriers);
-      where.push(`carrier = ANY($${params.length}::text[])`);
+      where.push(`upper(carrier) = ANY($${params.length}::text[])`);
     }
 
     // Prioritize shipments that are actually in-flight over label-only
@@ -349,6 +351,14 @@ export async function updateShipmentSummary(
     const deliveredAtValue = firstDeliveredAt ?? result.deliveredAt ?? null;
     // Terminal is sticky: delivered (now or previously) or a fresh RETURNED.
     const isTerminal = deliveredNow || status === 'RETURNED';
+    // A5 coherence: `latest_status_category` is what every desk FILTERS and
+    // PAINTS on, so it has to agree with the delivered truth A1 just derived.
+    // Writing the snapshot verbatim left 29 delivered packages categorized
+    // OUT_FOR_DELIVERY forever — terminal (so the stall rule skipped them),
+    // absent from the Delivered lane, and painting "Out for delivery" a month
+    // after the doorstep scan. RETURNED is its own terminal outcome and keeps
+    // its own word.
+    const storedStatus = deliveredNow && status !== 'RETURNED' ? 'DELIVERED' : status;
     const nextCheck = isTerminal ? null : computeNextCheckAt(status, 0);
 
     await client.query(
@@ -399,7 +409,7 @@ export async function updateShipmentSummary(
         result.latestStatusCode ?? null,               // $1
         result.latestStatusLabel ?? null,              // $2
         result.latestStatusDescription ?? null,        // $3
-        status,                                        // $4
+        storedStatus,                                  // $4  latest_status_category (A5 coherent)
 
         status === 'LABEL_CREATED',                    // $5  is_label_created
         status === 'ACCEPTED',                         // $6  is_carrier_accepted
@@ -531,7 +541,7 @@ export async function getShipmentsPendingSubscription(
   // NEEDS-COL: GUC-wrap only when orgId present; no org predicate possible.
   const sql = `SELECT id, tracking_number_normalized
          FROM shipping_tracking_numbers
-        WHERE carrier = $1
+        WHERE upper(carrier) = $1
           AND is_terminal = false
           AND (webhook_subscription_status IS NULL
                OR webhook_subscription_status IN ('PENDING','FAILED'))
@@ -607,7 +617,7 @@ export async function getShipmentsForSubscriptionRenewal(
   // NEEDS-COL: GUC-wrap only when orgId present; no org predicate possible.
   const sql = `SELECT id, tracking_number_normalized
          FROM shipping_tracking_numbers
-        WHERE carrier = $1
+        WHERE upper(carrier) = $1
           AND is_terminal = false
           AND webhook_subscription_status = 'COMPLETED'
           AND webhook_subscribed_at IS NOT NULL

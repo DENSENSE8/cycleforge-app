@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit } from '@/lib/audit-logs';
 import { getEbayAppCreds, upsertEbayUserCreds } from '@/lib/ebay/credentials';
@@ -11,24 +10,11 @@ import {
   normalizeEbayRole,
   EBAY_OAUTH_STATE_COOKIE,
 } from '@/lib/ebay/oauth-config';
+import { connectActorStillMember, verifyEbayCallbackState } from '@/lib/ebay/callback-verify';
 import { syncEbayAccountsToPlatformAccounts } from '@/lib/neon/catalog-queries';
 import { enableOrgFeatureFlag, INCOMING_UNIVERSAL_FLAG } from '@/lib/feature-flags';
 import { ensureEbayInboundSourceEnabled } from '@/lib/inbound/org-settings';
 import type { OrgId } from '@/lib/tenancy/constants';
-
-/** State freshness window — aligned with the connect cookie's maxAge (10 min). */
-const STATE_TTL_MS = 10 * 60 * 1000;
-
-interface EbayOauthState {
-  organizationId: string;
-  accountName: string;
-  environment?: string;
-  /** 'seller' | 'buyer' — the purchasing-account discriminator (default seller). */
-  role?: string;
-  createdBy?: number | null;
-  nonce?: string;
-  issuedAt?: number;
-}
 
 /**
  * GET /api/ebay/callback
@@ -60,37 +46,27 @@ export async function GET(req: NextRequest) {
       return finish('error=ebay_missing_oauth_params');
     }
 
-    let parsed: EbayOauthState;
-    try {
-      parsed = decryptIntegrationPayload<EbayOauthState>(state);
-    } catch {
-      return finish('error=ebay_invalid_oauth_state');
-    }
-
-    const { organizationId, accountName, createdBy, nonce, issuedAt } = parsed;
-    if (!organizationId || !accountName || !nonce) {
-      return finish('error=ebay_incomplete_oauth_state');
+    const verdict = verifyEbayCallbackState({ stateParam: state, cookieNonce: req.cookies.get(EBAY_OAUTH_STATE_COOKIE)?.value });
+    if (!verdict.ok) {
+      return finish(`error=${verdict.code}`);
     }
     // Purchasing-account difference: buyer connections are stamped account_role='buyer'.
-    const accountRole = normalizeEbayRole(parsed.role);
+    const { organizationId, accountName, createdBy } = verdict.state;
+    const accountRole = normalizeEbayRole(verdict.state.role);
 
-    // Freshness — reject stale/replayed authorize requests.
-    if (!issuedAt || Date.now() - issuedAt > STATE_TTL_MS) {
-      return finish('error=ebay_oauth_state_expired');
-    }
-
-    // CSRF: the nonce in `state` must match the httpOnly cookie set at connect —
-    // proves the callback returned to the same browser that initiated the flow.
-    const cookieNonce = req.cookies.get(EBAY_OAUTH_STATE_COOKIE)?.value;
-    if (!cookieNonce || cookieNonce !== nonce) {
-      return finish('error=ebay_invalid_oauth_state');
+    // Membership re-check (the encrypted state cannot vouch for the present):
+    // the staff who started this connect must STILL be an active member of the
+    // workspace the tokens are about to be vaulted into. The 10-minute consent
+    // window is long enough for a demotion or deactivation to land.
+    if (!(await connectActorStillMember(organizationId, createdBy))) {
+      return finish('error=ebay_membership_revoked');
     }
 
     const creds = await getEbayAppCreds(organizationId);
     if (!creds) {
       return finish('error=ebay_server_configuration');
     }
-    const environment = normalizeEbayEnvironment(parsed.environment ?? creds.environment);
+    const environment = normalizeEbayEnvironment(verdict.state.environment ?? creds.environment);
 
     // Exchange the authorization code for tokens (server-side, Basic auth).
     const base64Auth = Buffer.from(`${creds.appId}:${creds.certId}`).toString('base64');
@@ -244,7 +220,7 @@ export async function GET(req: NextRequest) {
         entityType: 'ebay_account',
         entityId: accountName,
         organizationIdOverride: organizationId,
-        actorStaffIdOverride: createdBy ?? null,
+        actorStaffIdOverride: createdBy,
         after: { ebayUserId: ebayUserId || null, environment, accountRole },
       });
     } catch (auditErr: any) {

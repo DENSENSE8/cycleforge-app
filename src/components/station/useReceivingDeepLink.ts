@@ -14,7 +14,7 @@
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingDeepLinkArgs {
   isLoading: boolean;

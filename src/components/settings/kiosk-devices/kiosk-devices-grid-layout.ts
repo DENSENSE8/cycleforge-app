@@ -41,16 +41,14 @@ export function kioskDevicesCompoundColumnsFor(layout: SlotLayout): readonly Kio
     catalog: KIOSKDEVICES_FIELD_CATALOG,
     base,
   });
-  // Identity chrome track still keys as `fulfillment` (shared skeleton), but its
-  // header + type come from the catalog identity field — never the Orders "Order"
-  // default. displayType `id` is what makes the cell an ID face.
+  // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
+  // the engine's `Id` on every peer (`slot-table-id-header-law.ts`); this
+  // family supplies only the FACT the chip paints and its header sorts by.
   const identity = KIOSKDEVICES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
   return tracks.map((t) => {
     if (t.key === 'fulfillment' && identity) {
       return {
         ...t,
-        label: identity.label,
-        gridLabel: identity.label,
         type: 'id' as const,
         fieldId: identity.id,
         slotDisplayType: identity.displayType,

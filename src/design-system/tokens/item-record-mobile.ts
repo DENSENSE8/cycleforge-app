@@ -7,6 +7,14 @@ export const ITEM_RECORD_MOBILE_THUMB = {
   grid: 'grid-cols-[auto_1fr]',
   column: 'self-stretch',
   face: 'relative flex h-full w-16 shrink-0 items-center justify-center self-stretch overflow-hidden bg-surface-card',
+  /**
+   * The phone cube — 64px, where the desk face (`ITEM_RECORD_FACE`) is 80px.
+   * A phone row is 390px wide and the photo is the cheapest 16px to give back:
+   * the title and the SKU under it are what an operator reads to decide, and at
+   * 80px a two-word product name truncated mid-word. `.face` states the same
+   * width for the card-row variant that also owns the background.
+   */
+  size: 'w-16 min-h-16',
   corner: 'rounded-none',
   packageIcon: 'size-6',
 } as const;
@@ -18,14 +26,18 @@ export const ITEM_RECORD_MOBILE_TITLE = {
 } as const;
 
 export const ITEM_RECORD_MOBILE_META = {
-  cluster: 'row-tight min-w-0 items-center text-role-caption leading-4',
+  // `row-gap` (8px), not `row-tight` (6px): the middot separators are gone
+  // (operator 2026-09-15), so whitespace is the only thing keeping the three
+  // facts apart. Tighten this and `2 $40 Grade A` reads as one string.
+  cluster: 'row-gap min-w-0 items-center text-role-caption leading-4',
   corner: 'rounded-lg',
+  /** Identity, not a fact — mono and quiet so the eye skips it when scanning. */
+  itemNumber: 'min-w-0 truncate font-mono text-role-caption text-text-muted',
   qty: 'shrink-0 text-role-caption font-semibold tabular-nums',
   price: 'shrink-0 text-role-caption font-semibold tabular-nums text-text-success',
   condition: 'shrink-0 text-role-caption font-semibold',
   notes: 'min-w-0 truncate text-role-caption text-text-muted',
   notesIdle: 'h-3 w-3 shrink-0 text-text-faint',
-  sep: 'shrink-0 text-text-faint',
 } as const;
 
 export const ITEM_RECORD_MOBILE_STAGE = {

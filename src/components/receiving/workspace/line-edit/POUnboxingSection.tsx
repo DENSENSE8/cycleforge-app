@@ -15,7 +15,7 @@
  */
 
 import { LinePoItemsSection } from './LinePoItemsSection';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { UnboxLineController } from './unbox-line-controller';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import type { LineCollapseController } from '@/components/station/collapse';

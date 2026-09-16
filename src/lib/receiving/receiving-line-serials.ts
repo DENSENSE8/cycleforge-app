@@ -1,5 +1,5 @@
 import { getLast8 } from '@/lib/copy-chip-format';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** Optimistic / unmatched return lines stamp identity into `item_name`. */
 const RETURN_SERIAL_TITLE_RE = /^Return serial\s+(\S+)\s*$/i;

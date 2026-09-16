@@ -32,8 +32,8 @@ export function ScanAgainBar({ className = '' }: { className?: string }) {
       <IconButton
         type="button"
         icon={<X className="h-4 w-4" />}
-        ariaLabel="Exit to home"
-        onClick={() => router.push('/m/home')}
+        ariaLabel="Exit to orders"
+        onClick={() => router.push('/m/work')}
         className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-surface-sunken text-text-soft active:bg-surface-strong"
       />
       <MobileScanCta />

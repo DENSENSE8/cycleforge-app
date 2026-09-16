@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEventBridge } from '@/hooks';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   detectPlatformFromUrl,
   parseReceivingPackage,

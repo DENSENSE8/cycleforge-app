@@ -25,5 +25,15 @@ Before marking a coding task complete:
    edits, run `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters
    inline on the buttons. Standing keycaps: refuse. Cheat sheet from the
    table-foot `?`: refuse. No `title`/popover on the question-mark.
+7. **SKU-identity cohort (identity, not display):** after any edit to a
+   product title, SKU or photo read/write, run
+   `pnpm run eval:cohort sku-identity`. SoT is the **Zoho item**, and the
+   cohort is the whole peer set (`SKU_IDENTITY_PEERS`) — a fix proven on one
+   desk and not its peers is the drift this cohort reports. Gate `Sku identity`
+   (`always`) in `verify:fast`; CLI `npx tsx scripts/sku-identity-guard.ts`.
+   Re-adding the deleted `similarity(product_title, …) >= 0.25` join gate to
+   silence a bad title: refuse — fix the write side
+   (`skuCatalogNoZohoTwinPredicateSql`). Spelling a new `||` title ladder
+   instead of `resolveSkuIdentityTitle`: refuse. Known debt is shrink-only.
 
 Verify commands come from this repo's `package.json` — not model-invented commands.

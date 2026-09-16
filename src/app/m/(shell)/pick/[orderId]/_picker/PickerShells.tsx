@@ -41,7 +41,7 @@ export function EmptyShell({ onBack }: { onBack: () => void }) {
   );
 }
 
-export function CompleteCard({ onBack }: { onBack: () => void }) {
+export function CompleteCard({ onBack, tote }: { onBack: () => void; tote?: string | null }) {
   return (
     <div className="grid place-items-center rounded-none border border-emerald-200 bg-emerald-50 px-6 py-12 text-center">
       <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-600 text-white">
@@ -50,7 +50,16 @@ export function CompleteCard({ onBack }: { onBack: () => void }) {
         </svg>
       </div>
       <p className="mt-3 text-base font-semibold text-emerald-900">Pick complete</p>
-      <p className="mt-1 text-sm text-emerald-800/80">Cart is ready to hand off to the pack station.</p>
+      <p className="mt-1 text-sm text-emerald-800/80">
+        {tote ? (
+          <>
+            Tote <span className="font-mono tabular-nums">{tote}</span> is staged for the pack
+            station — scan it there to open this order.
+          </>
+        ) : (
+          'Cart is ready to hand off to the pack station.'
+        )}
+      </p>
       {/* ds-raw-button: solid-emerald success CTA inside the emerald complete card — keep the bespoke emerald tone */}
       <button
         type="button"

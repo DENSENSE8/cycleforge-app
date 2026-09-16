@@ -182,7 +182,7 @@ export function useRoleEditor(roleId: number) {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
         params.delete('roleId');
-        window.history.replaceState(null, '', `/admin?${params.toString()}`);
+        window.history.replaceState(null, '', `/settings/roles?${params.toString()}`);
       }
     } finally {
       setBusy(null);

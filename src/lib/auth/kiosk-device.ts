@@ -22,7 +22,7 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto';
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
@@ -34,6 +34,21 @@ import type { KioskHardwareStatus } from '@/lib/kiosk/kiosk-device-row';
 
 /** Device-token cookie. Distinct from the staff `cf_sid` so a kiosk can never present a staff session. */
 export const KIOSK_COOKIE_NAME = 'cf_kiosk';
+
+/**
+ * Durable per-CLIENT id cookie (dogfood auto-bind only).
+ *
+ * A kiosk device token is single-valued: `kiosk_devices` holds ONE
+ * `device_token_hash` per row, and re-issuing rotates it. While every dogfood
+ * surface shared one row, binding any second surface silently killed the
+ * first — open the kiosk on production and the localhost tab answered
+ * `KIOSK_UNPAIRED`, bind localhost and production died in turn. A browser IS a
+ * device, so each client keeps its own id and therefore its own row.
+ */
+export const KIOSK_CLIENT_COOKIE_NAME = 'cf_kiosk_client';
+
+/** `cf_kiosk` / `cf_kiosk_client` lifetime — a counter tablet is paired once and left alone. */
+export const KIOSK_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 /** Default pairing-code lifetime — long enough to stage an MDM tablet without racing. */
 export const DEFAULT_ENROLL_TTL_MINUTES = 7 * 24 * 60;
@@ -91,6 +106,52 @@ export async function loadKioskDeviceByToken(
 /** Read the raw device token off the request cookie (the token IS the capability; we hash to verify). */
 export function readKioskToken(req: NextRequest): string | null {
   return req.cookies.get(KIOSK_COOKIE_NAME)?.value ?? null;
+}
+
+/** Charset + length a dogfood client id must satisfy before it may key a device row. */
+const KIOSK_CLIENT_ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+/** Fresh per-client id — 12 url-safe chars, short enough to read in Settings → Devices. */
+export function newKioskClientId(): string {
+  return randomBytes(9).toString('base64url');
+}
+
+/**
+ * This browser/tablet's dogfood client id, or null when absent or implausible.
+ *
+ * The strict shape is load-bearing, not decoration: the id becomes part of a
+ * device LABEL (management-facing text under a 120-char CHECK), so a
+ * client-supplied cookie must never decide that string.
+ */
+export function readKioskClientId(req: NextRequest): string | null {
+  const raw = req.cookies.get(KIOSK_CLIENT_COOKIE_NAME)?.value ?? null;
+  return raw && KIOSK_CLIENT_ID_RE.test(raw) ? raw : null;
+}
+
+/** What a response is pinning — either half may be omitted. */
+export interface KioskBindingCookies {
+  /** Raw device token, when this response issued one. */
+  token?: string;
+  /** Durable client id, when this response minted or refreshed it. */
+  clientId?: string;
+}
+
+/**
+ * Pin the kiosk binding on a response. One place decides the cookie options
+ * for BOTH cookies — pair, dogfood bind and in-place re-bind must agree on
+ * httpOnly / host-only / year-long or a tablet silently loses its device.
+ */
+export function setKioskCookies(res: NextResponse, cookies: KioskBindingCookies): void {
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    path: '/',
+    maxAge: KIOSK_COOKIE_MAX_AGE_SECONDS,
+    // intentionally no `domain` — host-only on `{slug}.kiosk.app…`
+  };
+  if (cookies.token) res.cookies.set(KIOSK_COOKIE_NAME, cookies.token, options);
+  if (cookies.clientId) res.cookies.set(KIOSK_CLIENT_COOKIE_NAME, cookies.clientId, options);
 }
 
 // ── Enrollment (manager, authed, org known) ─────────────────────────────────
@@ -177,8 +238,54 @@ export async function pairKioskDevice(
   return { deviceId: row.id, organizationId: row.organization_id, label: row.label, token };
 }
 
-/** Stable label for the one dogfood tablet row (token is reissued, not a new row). */
-export const DOGFOOD_KIOSK_DEVICE_LABEL = 'Dogfood auto-bind';
+/** Prefix every dogfood auto-bind row carries, so Settings → Devices groups them. */
+const DOGFOOD_KIOSK_LABEL_PREFIX = 'Dogfood auto-bind';
+
+/**
+ * Label of the dogfood row owned by ONE client.
+ *
+ * The label is the lookup key (`issueActiveKioskDeviceToken` matches on
+ * org + label), and a row holds exactly one token hash. Keying it by client id
+ * is what stops a bind on one surface from rotating another surface's token —
+ * production and localhost each keep their own row instead of fighting over
+ * a single "Dogfood auto-bind".
+ */
+export function dogfoodKioskDeviceLabel(clientId: string): string {
+  return `${DOGFOOD_KIOSK_LABEL_PREFIX} · ${clientId}`;
+}
+
+/** Idle window after which an auto-bound dogfood credential is retired. */
+const DOGFOOD_KIOSK_IDLE_DAYS = 14;
+
+/**
+ * Retire dogfood credentials nobody has used in {@link DOGFOOD_KIOSK_IDLE_DAYS}.
+ *
+ * One row per client is the right shape — a browser IS a device — but E2E
+ * contexts and incognito windows are clients too, so without a sweep the LIVE
+ * credential set grows without bound and Settings → Devices stops being
+ * readable. Revoked, never deleted: `kiosk_slot_events.kiosk_device_id` is a
+ * NOT NULL foreign key, and 'revoked' is already this table's terminal state.
+ * A dogfood surface that comes back simply re-binds.
+ */
+export async function revokeStaleDogfoodKioskDevices(
+  orgId: OrgId,
+  keepLabel: string,
+): Promise<number> {
+  const r = await pool.query(
+    `UPDATE kiosk_devices
+        SET status = 'revoked',
+            device_token_hash = NULL,
+            revoked_at = now(),
+            updated_at = now()
+      WHERE organization_id = $1
+        AND status = 'active'
+        AND label LIKE $2
+        AND label <> $3
+        AND COALESCE(last_seen_at, created_at) < now() - ($4 || ' days')::interval`,
+    [orgId, `${DOGFOOD_KIOSK_LABEL_PREFIX} · %`, keepLabel, String(DOGFOOD_KIOSK_IDLE_DAYS)],
+  );
+  return r.rowCount ?? 0;
+}
 
 /**
  * Mint or rotate an active device token for a named kiosk row.

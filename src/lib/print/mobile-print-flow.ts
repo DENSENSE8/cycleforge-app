@@ -1,13 +1,16 @@
 /**
  * Mobile bulk-print procedure — one step per full page, Continue.
  *
- * SoT for `/m/print`. Location labels only (bay / bin). Printer then display
- * ladder, Print last.
+ * SoT for `/m/print`. Two families: location labels (bay / bin), which walk the
+ * room → aisle → bays → levels ladder to derive their codes, and totes, which
+ * have no ladder at all — a tote's code is a database serial, so the only
+ * question is HOW MANY. Printer then display ladder, Print last.
  */
 
 export const MOBILE_PRINT_STEPS = [
   'job',
   'options',
+  'count',
   'room',
   'aisle',
   'bays',
@@ -19,10 +22,22 @@ export const MOBILE_PRINT_STEPS = [
 
 export type MobilePrintStep = (typeof MOBILE_PRINT_STEPS)[number];
 
-export type MobilePrintJobKind = 'rack' | 'bin';
+export type MobilePrintJobKind = 'rack' | 'bin' | 'tote';
 
 /** Printer/service first, then the display ladder, Print last. */
-const LOCATION_STEPS: readonly MobilePrintStep[] = MOBILE_PRINT_STEPS;
+const LOCATION_STEPS: readonly MobilePrintStep[] = MOBILE_PRINT_STEPS.filter(
+  (s) => s !== 'count',
+);
+
+/** A tote run has no coordinates to build — just how many plates to peel. */
+const TOTE_STEPS: readonly MobilePrintStep[] = [
+  'job',
+  'options',
+  'count',
+  'preview',
+  'ack',
+  'print',
+];
 
 export function mobilePrintHref(step: MobilePrintStep): string {
   return `/m/print?step=${step}`;
@@ -35,8 +50,10 @@ export function parseMobilePrintStep(raw: string | null | undefined): MobilePrin
     : 'job';
 }
 
-export function mobilePrintVisibleSteps(_kind: MobilePrintJobKind | null): readonly MobilePrintStep[] {
-  return LOCATION_STEPS;
+export function mobilePrintVisibleSteps(
+  kind: MobilePrintJobKind | null,
+): readonly MobilePrintStep[] {
+  return kind === 'tote' ? TOTE_STEPS : LOCATION_STEPS;
 }
 
 export function mobilePrintStepIndex(

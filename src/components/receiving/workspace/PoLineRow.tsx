@@ -9,7 +9,7 @@ import {
   type PoLineSerialSplitContext,
 } from '@/components/receiving/workspace/PoLineTitleMenu';
 import type { SerialAbsentState } from '@/components/receiving/workspace/line-edit/NoSerialControl';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';

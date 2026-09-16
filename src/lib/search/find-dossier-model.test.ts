@@ -11,6 +11,8 @@ import { isUiEntityType } from '@/lib/search/search-hit';
 import { parseSearchSel } from '@/lib/search/search-selection';
 import {
   FIND_EVENT_KINDS,
+  FIND_OUTLINE_CHIPLESS_KINDS,
+  FIND_OUTLINE_LABEL,
   adapterOutline,
   eventsNewestFirst,
   filterEventsByKind,
@@ -27,10 +29,10 @@ function ev(
 }
 
 describe('FIND event kinds', () => {
-  it('is the locked catalog — no station names, no tracking entity', () => {
+  it('is the locked catalog — custody is the scan, hop is the round trip', () => {
     assert.deepEqual([...FIND_EVENT_KINDS], [
-      'status',
       'qty',
+      'custody',
       'hop',
       'evidence',
       'exception',
@@ -38,10 +40,22 @@ describe('FIND event kinds', () => {
       'carrier',
       'note',
     ]);
+    // `status` is the hero pin and a custody row's status trail — never a face.
+    assert.equal(isFindEventKind('status'), false);
     for (const banned of ['tracking', 'unbox', 'pack', 'support', 'displays']) {
       assert.equal(isFindEventKind(banned), false);
     }
     assert.equal(isFindEventKind('carrier'), true);
+  });
+
+  it('keeps qty and custody off the rail, and never chips hop by default', () => {
+    // The rail is a filter, not a table of contents. `hop` is absent from the
+    // chipless set because it must APPEAR — but only via a non-zero count,
+    // which only a real ship→return produces.
+    assert.deepEqual([...FIND_OUTLINE_CHIPLESS_KINDS], ['qty', 'custody']);
+    assert.equal(FIND_OUTLINE_CHIPLESS_KINDS.includes('hop'), false);
+    assert.equal(FIND_OUTLINE_LABEL.hop, 'Hops');
+    assert.equal(FIND_OUTLINE_LABEL.custody, 'Custody');
   });
 });
 
@@ -65,18 +79,18 @@ describe('tracking paste is not a FIND entity type', () => {
 describe('outlineFromEvents', () => {
   it('omits kinds with count 0 and keeps catalog order', () => {
     const events = [
-      ev({ id: 'h', kind: 'hop', at: '2026-09-01T00:00:00.000Z' }),
+      ev({ id: 'h', kind: 'custody', at: '2026-09-01T00:00:00.000Z' }),
       ev({
         id: 'c',
         kind: 'carrier',
         at: '2026-09-02T00:00:00.000Z',
-        children: [ev({ id: 'c1', kind: 'hop', at: '2026-09-02T01:00:00.000Z' })],
+        children: [ev({ id: 'c1', kind: 'custody', at: '2026-09-02T01:00:00.000Z' })],
       }),
       ev({ id: 'q', kind: 'qty', at: '2026-08-01T00:00:00.000Z' }),
     ];
     assert.deepEqual(outlineFromEvents(events), [
       { kind: 'qty', count: 1 },
-      { kind: 'hop', count: 2 },
+      { kind: 'custody', count: 2 },
       { kind: 'carrier', count: 1 },
     ]);
   });
@@ -88,9 +102,9 @@ describe('outlineFromEvents', () => {
 
 describe('adapterOutline', () => {
   it('omits zero counts and does not invent hops', () => {
-    assert.deepEqual(adapterOutline({ status: 1, hop: 0, qty: 2 }), [
-      { kind: 'status', count: 1 },
+    assert.deepEqual(adapterOutline({ note: 1, hop: 0, qty: 2 }), [
       { kind: 'qty', count: 2 },
+      { kind: 'note', count: 1 },
     ]);
   });
 });
@@ -99,7 +113,7 @@ describe('eventsNewestFirst', () => {
   it('sorts newest-first without dropping children', () => {
     const events = [
       ev({ id: 'old', kind: 'note', at: '2026-01-01T00:00:00.000Z' }),
-      ev({ id: 'new', kind: 'hop', at: '2026-09-10T00:00:00.000Z' }),
+      ev({ id: 'new', kind: 'custody', at: '2026-09-10T00:00:00.000Z' }),
       ev({ id: 'mid', kind: 'bind', at: '2026-06-01T00:00:00.000Z' }),
     ];
     assert.deepEqual(
@@ -144,12 +158,12 @@ describe('filterEventsByKind', () => {
         id: 'c',
         kind: 'carrier',
         at: '2026-09-02T00:00:00.000Z',
-        children: [ev({ id: 'c1', kind: 'hop', at: '2026-09-02T01:00:00.000Z' })],
+        children: [ev({ id: 'c1', kind: 'custody', at: '2026-09-02T01:00:00.000Z' })],
       }),
-      ev({ id: 'h', kind: 'hop', at: '2026-09-01T00:00:00.000Z' }),
+      ev({ id: 'h', kind: 'custody', at: '2026-09-01T00:00:00.000Z' }),
     ];
     assert.deepEqual(
-      filterEventsByKind(events, 'hop').map((e) => e.id),
+      filterEventsByKind(events, 'custody').map((e) => e.id),
       ['c1', 'h'],
     );
     assert.deepEqual(

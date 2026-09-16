@@ -38,6 +38,15 @@ export async function GET(request: NextRequest) {
   const oauthError = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
 
+  // Org pinning: authorize forwards `?org=` through OAuth `state` (`org:<id>`)
+  // because Zoho appends only its own params to the fixed redirect_uri. A
+  // direct `?org=` on the callback still wins (manual reconnects).
+  const stateOrg = (() => {
+    const s = (searchParams.get('state') || '').trim();
+    return s.startsWith('org:') ? s.slice(4).trim() : '';
+  })();
+  const requestedOrg = (searchParams.get('org') || '').trim() || stateOrg;
+
   // Zoho may return an accounts-server that differs from the default domain.
   const accountsServer =
     searchParams.get('accounts-server') ||
@@ -194,7 +203,7 @@ export async function GET(request: NextRequest) {
         .filter((o) => o.organization_id)
         .map((o) => ({ organization_id: String(o.organization_id), name: String(o.name ?? '') }));
       // Prefer an explicitly requested org (?org=) when present, else the first.
-      const requested = searchParams.get('org');
+      const requested = requestedOrg;
       const chosen =
         organizationsSeen.find((o) => o.organization_id === requested) ?? organizationsSeen[0];
       if (chosen) {
@@ -220,7 +229,7 @@ export async function GET(request: NextRequest) {
   // Fallbacks when GET /organizations is denied or empty (e.g. missing
   // ZohoInventory.settings.READ on a prior consent, or single-org bootstrap).
   if (!zohoOrgId) {
-    const requested = searchParams.get('org')?.trim();
+    const requested = requestedOrg;
     const envOrg = envZohoOrgId();
     zohoOrgId = requested || existing?.orgId || envOrg || '';
     if (zohoOrgId && !zohoOrgName) {
@@ -237,6 +246,29 @@ export async function GET(request: NextRequest) {
           orgListError ??
           'The token was issued but listing organizations returned no rows. Ensure ZohoInventory.settings.READ was granted, set ZOHO_ORG_ID in env, or pass ?org=<zoho_org_id> on the callback URL.',
         org_list_error: orgListError,
+      },
+      { status: 502 },
+    );
+  }
+
+  // A pinned org the token cannot see must hard-fail BEFORE the vault write —
+  // falling back to organizations[0] is the exact multi-org trap this flow
+  // exists to close (it is how a wrong-org connection got stored silently).
+  if (
+    requestedOrg &&
+    organizationsSeen.length > 0 &&
+    !organizationsSeen.some((o) => o.organization_id === requestedOrg)
+  ) {
+    console.warn(
+      `[zoho-oauth] pinned org ${requestedOrg} not visible to this token — refusing to save`,
+    );
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'ORG_PIN_NOT_FOUND',
+        description: `Pinned Zoho org ${requestedOrg} is not visible to this account's token. Nothing was saved. Visible orgs: ${organizationsSeen.map((o) => o.organization_id).join(', ')}`,
+        org_pinned: requestedOrg,
+        organizations: organizationsSeen,
       },
       { status: 502 },
     );
@@ -280,7 +312,7 @@ export async function GET(request: NextRequest) {
     organization_id: orgId,
     zoho_organization_id: zohoOrgId,
     zoho_organization_name: zohoOrgName,
-    refresh_token_rotated: Boolean(refreshToken),
+    org_pinned: requestedOrg || null,
     organizations: organizationsSeen,
     accounts_server: accountsServer,
     token_type: tokenData.token_type ?? 'Bearer',

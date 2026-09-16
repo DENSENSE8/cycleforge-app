@@ -23,8 +23,11 @@
     "design-mcp": {
       "command": "/home/michaelgarisek/.local/share/mise/shims/node",
       "args": [
-        "/home/michaelgarisek/Projects/cycleforge-app/tools/design-mcp/server.mjs"
-      ]
+        "/home/michaelgarisek/Projects/cycleforge-lanes/prod/tools/design-mcp/server.mjs"
+      ],
+      "env": {
+        "DESIGN_MCP_REPO": "/home/michaelgarisek/Projects/cycleforge-lanes/prod"
+      }
     }
   }
 }

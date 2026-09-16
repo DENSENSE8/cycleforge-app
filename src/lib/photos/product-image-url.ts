@@ -1,0 +1,44 @@
+/**
+ * What a product LOOKS LIKE — one rule, Zoho first.
+ *
+ * Zoho Inventory is the SoT for a unit's photo (operator 2026-09-05). `items`
+ * is the local Zoho mirror keyed by SKU; when its row carries an
+ * `image_document_id` the bytes are already cached in `zoho_item_images` and
+ * `/api/zoho/items/[id]/image` serves them tenant-scoped. `sku_catalog.image_url`
+ * is the FALLBACK for SKUs Zoho has never seen — a catalog stock photo, not the
+ * unit.
+ *
+ * This lived twice as a private function inside `/api/shipped/scan-out`, and
+ * the Inventory › Stock feed needed the same answer. Two readers of one stated
+ * rule is what an exported name is for: a third copy is how a desk ends up
+ * showing the catalog stock photo where the station beside it shows the unit.
+ *
+ * NOT the same rule as `/api/get-title-by-sku`, which resolves across THREE
+ * providers (Zoho ∪ Ecwid ∪ catalog) with a deliberate Zoho-wins-exclusively
+ * precedence — that is a provider arbitration, and collapsing it into this
+ * would change which image an Ecwid-only SKU shows.
+ */
+
+export interface ProductImageSources {
+  /** `items.zoho_item_id` — the mirror's handle, and the URL's path segment. */
+  zohoItemId?: string | null;
+  /** `items.image_document_id` — present only when the item HAS a photo. */
+  zohoImageDocumentId?: string | null;
+  /** `sku_catalog.image_url` — the catalog stock photo. */
+  catalogImageUrl?: string | null;
+}
+
+/**
+ * The product's image URL, or `null` when nothing knows one.
+ *
+ * `null` is load-bearing: every caller hands it to a cell that paints a typed
+ * placeholder, and a fabricated URL would paint a broken `<img>` instead.
+ */
+export function productImageUrl(sources: ProductImageSources): string | null {
+  const zohoItemId = String(sources.zohoItemId ?? '').trim();
+  const documentId = String(sources.zohoImageDocumentId ?? '').trim();
+  if (zohoItemId && documentId) {
+    return `/api/zoho/items/${encodeURIComponent(zohoItemId)}/image`;
+  }
+  return String(sources.catalogImageUrl ?? '').trim() || null;
+}

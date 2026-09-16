@@ -15,10 +15,28 @@ import type {
   SearchDossierHandoff,
 } from '@/lib/search/search-dossier-model';
 
-/** Stream faces. Station names are hop captions, not kinds. */
+/**
+ * Stream faces. Station names are custody captions, not kinds.
+ *
+ * `status` was declared here through Phase 3 and never had a producer. It
+ * could not earn one either: the status PIN is already the hero band, and a
+ * status transition is carried on the stream by the custody row that caused
+ * it (`findEventsFromInventory` renders `prev_status → next_status` in the
+ * body). A second status face would have duplicated the pin above it and the
+ * row beside it. A kind that can never render is a lie in the outline catalog
+ * and in the contract test, so it is gone rather than stubbed.
+ *
+ * `hop` MEANS ROUND TRIP (operator, 2026-09-12). It used to mean "every
+ * custody scan" — picked, packed, shipped, scanned-out — which is the
+ * backbone of the document and is now `custody`. The operator's definition is
+ * narrower and is the only one staff use the word for: the unit SHIPPED and
+ * came back under the SAME order id. Two names for one word was the real
+ * defect; `countRoundTrips` (src/lib/timeline/journey.ts:144) had already
+ * encoded the operator's meaning while this catalog encoded the other.
+ */
 export const FIND_EVENT_KINDS = [
-  'status',
   'qty',
+  'custody',
   'hop',
   'evidence',
   'exception',
@@ -87,8 +105,8 @@ export function isFindEventKind(value: string): value is FindEventKind {
 
 /** Outline chip labels — investigation kinds, not station names. */
 export const FIND_OUTLINE_LABEL: Record<FindEventKind, string> = {
-  status: 'Status',
   qty: 'Qty',
+  custody: 'Custody',
   hop: 'Hops',
   evidence: 'Evidence',
   exception: 'Exceptions',
@@ -96,6 +114,27 @@ export const FIND_OUTLINE_LABEL: Record<FindEventKind, string> = {
   carrier: 'Carrier',
   note: 'Notes',
 };
+
+/**
+ * Kinds that never get a left-nav chip (operator, 2026-09-12).
+ *
+ * The outline is a filter, not a table of contents, and every kind still
+ * SCROLLS in Overview — dropping a chip hides a control, never a fact.
+ *
+ *   `qty`     — the ledger is an order-level FACT and now paints in the centre
+ *               facts band beside Order id and Tracking. A standalone "Qty"
+ *               tab for a single row was the noisiest chip on the rail.
+ *   `custody` — picked / packed / shipped / scanned-out is most of the stream
+ *               on a healthy order, so a chip that selects "nearly everything"
+ *               is indistinguishable from Overview. `hop` is the chip that
+ *               earns its place, because it appears only when a unit actually
+ *               came back.
+ *
+ * Zero-count kinds are already absent from `outline`, so `hop` self-gates on
+ * top of this: no round trip, no Hops chip.
+ */
+export const FIND_OUTLINE_CHIPLESS_KINDS: readonly FindEventKind[] = ['qty', 'custody'];
+
 
 /**
  * Phase-1 outline from adapter counts (no fake hops). Zero counts omitted.

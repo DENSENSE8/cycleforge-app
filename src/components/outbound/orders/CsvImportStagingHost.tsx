@@ -24,6 +24,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { FileText, Loader2, Upload, X } from '@/components/Icons';
@@ -73,6 +74,8 @@ import {
 } from '@/components/outbound/orders/import-staging/csv-import-staging-grid-layout';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { bustFulfillmentCaches } from '@/lib/outbound/outbound-cache-keys';
+import { markRecentlyImportedOrders } from '@/lib/orders/recent-imports';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 
@@ -122,6 +125,7 @@ function compareStagingRows(
 
 export function CsvImportStagingHost() {
   const draft = useTableImportDraft(SURFACE);
+  const queryClient = useQueryClient();
   const { setActive: setStagingActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -225,9 +229,11 @@ export function CsvImportStagingHost() {
       setSubmitError(outcome.error);
       return;
     }
+    bustFulfillmentCaches(queryClient);
+    markRecentlyImportedOrders(outcome.insertedEntityIds ?? []);
     refreshDomain('orders.outbound');
     exitStaging();
-  }, [confirmTargets, draft, exitStaging]);
+  }, [confirmTargets, draft, exitStaging, queryClient]);
 
   // Arming lives on the rail's flush Delete; the last row leaving takes the
   // (now empty) draft with it rather than stranding an empty sheet.

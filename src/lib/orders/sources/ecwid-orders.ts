@@ -10,7 +10,11 @@
  * The fetch (IO) and the map (pure) are separate exports so the mapping is unit
  * testable without network or credentials.
  */
-import { cleanText, type CanonicalOrderLine } from '@/lib/orders/canonical-order';
+import {
+  cleanText,
+  parseSaleAmount,
+  type CanonicalOrderLine,
+} from '@/lib/orders/canonical-order';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const PAGE_LIMIT = 100;
@@ -48,6 +52,63 @@ function parseEcwidInstant(value: unknown): Date | null {
 }
 
 /**
+ * Units on this line, for the money math only.
+ *
+ * Ecwid's `price` is PER UNIT, so this multiplier decides whether the line's
+ * money is right. A blank, unparseable or non-positive quantity is one unit —
+ * the same reading the `quantity` field itself gets — and never zero, which
+ * would turn a real price into a claim that the line was free.
+ */
+function parseEcwidLineUnits(value: unknown): number {
+  const parsed = Number(cleanText(value));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+/**
+ * This line's money as a decimal string.
+ *
+ * `orders.sale_amount` is line-grained (one row per item), so the order total
+ * is the wrong fact: it would over-report every line of a multi-item order.
+ * Ecwid's v3 order items carry no line-total key in the payloads this store
+ * returns, so the number is unit price × quantity; an explicit `item.total` is
+ * still preferred where a payload does carry one, because Ecwid applies
+ * per-line coupon and volume discounts that the source's own total already
+ * reflects and unit × quantity cannot.
+ *
+ * Order-level `total` is deliberately NOT a fallback: it includes tax and
+ * shipping (a live order shows two units at $28.00 on a $74.15 total), so
+ * adopting it would book freight and tax as merchandise revenue.
+ *
+ * Always two decimals, on every path. Ecwid serializes its own float dust —
+ * a $36.88 line arrives as `36.879999999999995` — and binary multiplication
+ * adds more (18.88 × 2 is 37.759999999999998). `orders.sale_amount` is
+ * numeric(12,2) and would round it away silently, which leaves the rounding
+ * undocumented and makes every log line and backfill dry-run report carry 15
+ * digits of noise for a two-decimal fact.
+ *
+ * Null — never `'0'` — when the payload carries no price. `parseSaleAmount`
+ * owns that distinction, and it matters permanently here: the writer treats a
+ * non-null saleAmount as authoritative and rewrites it on every sync, so a
+ * zero would erase an operator's corrected number for good, with no source
+ * value left to restore it from.
+ */
+function resolveEcwidLineSaleAmount(item: Record<string, unknown>, units: number): string | null {
+  const lineTotal = parseSaleAmount(item.total);
+  if (lineTotal !== null) return Number(lineTotal).toFixed(2);
+
+  // `price` is the transacted per-unit figure and includes item options and
+  // surcharges that `productPrice` does not (a live line: price 36.88 against
+  // productPrice 26.88), so the base price only stands in when the order item
+  // omits `price` entirely.
+  const unitPrice = parseSaleAmount(item.price ?? item.productPrice);
+  if (unitPrice === null) return null;
+
+  // Round to cents BEFORE multiplying, so the quantity multiplies a real price
+  // rather than amplifying the source's float dust.
+  return ((Math.round(Number(unitPrice) * 100) * units) / 100).toFixed(2);
+}
+
+/**
  * Map raw Ecwid order payloads to canonical lines — one line per item.
  *
  * Behavior preserved from the positional-array adapter it replaces:
@@ -76,6 +137,11 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
     );
     const orderDate = parseEcwidInstant(order.createDate ?? order.created ?? order.date);
     const notes = cleanText(order.customerComments || order.orderComments);
+    // Ecwid carries an order currency only on some stores — the v3 orders this
+    // store returns have no `currency` key at all. Null when absent, so the
+    // writer defaults it on insert and never rewrites an existing order's
+    // currency from a source that never knew it.
+    const currency = cleanText(order.currency).toUpperCase() || null;
 
     const items: unknown[] =
       Array.isArray(order.items) && order.items.length > 0 ? order.items : [{}];
@@ -104,16 +170,8 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
         trackings: tracking ? [tracking] : [],
         shipByDate: null,
         orderDate,
-        // Deliberately null: the positional adapter this replaces never carried
-        // an Ecwid price, and the writer treats a non-null saleAmount as
-        // authoritative (it overwrites on every sync). Ecwid's `item.price` is
-        // per-unit, not the order total, so wiring it here would both change
-        // behavior and probably write the wrong number. Populating Ecwid
-        // revenue is a separate, deliberate change.
-        saleAmount: null,
-        // Ecwid carries no currency in this payload — null so the writer
-        // defaults it on insert and never rewrites an existing order's.
-        currency: null,
+        saleAmount: resolveEcwidLineSaleAmount(item, parseEcwidLineUnits(item.quantity)),
+        currency,
       });
     }
   }

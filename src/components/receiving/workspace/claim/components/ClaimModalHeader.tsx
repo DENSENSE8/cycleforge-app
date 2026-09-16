@@ -1,6 +1,6 @@
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface Props {
   row: ReceivingLineRow;

@@ -13,7 +13,7 @@ import {
   PlacementSummary,
   type PlacementLocationFace,
 } from '@/components/receiving/PlacementSummary';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function UnboxPlacementSection({ row }: { row: ReceivingLineRow }) {
   const printed = Boolean(row.label_printed_at);

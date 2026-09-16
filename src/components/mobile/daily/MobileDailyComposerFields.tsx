@@ -1,0 +1,158 @@
+'use client';
+
+/**
+ * The composer's FIELD leaves — the presentational parts of the phone's
+ * add-a-task form, extracted so the sheet file stays a shell (ds_critique
+ * flags size; these are the leaves it means).
+ *
+ * Every field builds from `lib/daily-checks/composer` — the shared vocabulary
+ * — so this file paints, never decides.
+ *
+ * NO GLYPH PICKER here (operator ruling 2026-09-15 — "it wouldn't even have
+ * icons"). The desk keeps its own palette in `features/home/DailyComposerRow`;
+ * the phone writes a plain title, and every corner comes from the mobile
+ * radius family, never `cornerClass` (which is `rounded-none` by ops law).
+ */
+
+import { useEffect, useMemo, useState } from 'react';
+import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
+import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { MOBILE_CONTROL_CORNER } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
+import { type DailyComposerDraft } from '@/lib/daily-checks/composer';
+
+/**
+ * Both input faces wear `text-role-field` — 16px, density-proof.
+ *
+ * NOT `role-data`/`role-caption` (13px/12px): iOS Safari zooms the viewport
+ * whenever a focused input computes under 16px, so a sub-16px field makes the
+ * page lurch on every tap at a bench. The meta-tag escapes are ignored on iOS
+ * and would fail this repo's axe `meta-viewport` gate, so the SIZE is the fix.
+ * Pinned by `touch-field.test.ts`.
+ */
+const LINK_INPUT_CLASS = cn(
+  'min-h-12 w-full border border-border-hairline bg-surface-card px-3',
+  'text-role-field text-text-default placeholder:text-text-faint',
+  MOBILE_CONTROL_CORNER,
+  focusRing('field', 'accent'),
+);
+
+export const TITLE_INPUT_CLASS = cn(
+  'min-h-12 w-full border border-border-hairline bg-surface-card px-3',
+  'text-role-field text-text-default placeholder:text-text-faint',
+  MOBILE_CONTROL_CORNER,
+  focusRing('field', 'accent'),
+);
+
+/** The embedded owner step — the panel SoT, rows painted with StaffAvatar. */
+export function OwnerStep({
+  selectedStaffId,
+  onPick,
+}: {
+  selectedStaffId: number | null;
+  onPick: (member: StaffMember | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [options, setOptions] = useState<StaffMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getActiveStaff()
+      .then((rows) => {
+        if (!active) return;
+        setOptions([...rows].sort((a, b) => a.name.localeCompare(b.name)));
+      })
+      .catch(() => {
+        if (active) setOptions([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return options
+      .filter((m) => !needle || m.name.toLowerCase().includes(needle))
+      .map((m) => ({
+        id: m.id,
+        name: m.name,
+        selected: selectedStaffId === m.id,
+        leading: <StaffAvatar staffId={m.id} name={m.name} size="sm" colorRing alt="" />,
+      }));
+  }, [options, query, selectedStaffId]);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <AssigneeComboboxPanel
+        query={query}
+        onQueryChange={setQuery}
+        rows={rows}
+        loading={loading}
+        emptyMessage={loading ? 'Loading staff…' : 'No staff'}
+        roster={false}
+        onSelect={(row) => {
+          const member = options.find((m) => m.id === row.id) ?? null;
+          onPick(member);
+        }}
+      />
+      <button
+        type="button"
+        onClick={() => onPick(null)}
+        className="self-start px-1 text-role-micro text-text-muted hover:text-text-default"
+      >
+        Whole shift instead
+      </button>
+    </div>
+  );
+}
+
+/**
+ * The FALLBACK link row: ticket, work order, tracking.
+ *
+ * The ticket field stays even though `MobileDailyTicketSlider` is the fast
+ * path, because a chip can only offer a ticket the helpdesk returned — a
+ * number read off paper for a ticket the search misses still has to be
+ * typeable.
+ */
+export function LinkFields({
+  draft,
+  onChange,
+}: {
+  draft: DailyComposerDraft;
+  onChange: (patch: Partial<DailyComposerDraft>) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        value={draft.ticketId}
+        onChange={(e) => onChange({ ticketId: e.target.value })}
+        placeholder="Ticket #"
+        inputMode="numeric"
+        aria-label="Link a Zendesk ticket"
+        className={LINK_INPUT_CLASS}
+      />
+      <input
+        value={draft.workOrderId}
+        onChange={(e) => onChange({ workOrderId: e.target.value })}
+        placeholder="Work order #"
+        inputMode="numeric"
+        aria-label="Link a work order"
+        className={LINK_INPUT_CLASS}
+      />
+      <input
+        value={draft.tracking}
+        onChange={(e) => onChange({ tracking: e.target.value })}
+        placeholder="Tracking"
+        aria-label="Link a tracking number"
+        className={LINK_INPUT_CLASS}
+      />
+    </div>
+  );
+}

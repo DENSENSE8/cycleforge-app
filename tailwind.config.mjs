@@ -231,6 +231,25 @@ const config = {
                 'role-caption': ['calc(0.75rem * var(--cf-density, 1))', { lineHeight: '1.35', letterSpacing: '0.01em', fontWeight: '500' }],
                 'role-eyebrow': ['calc(0.6875rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.08em', fontWeight: '600' }],
                 'role-micro': ['calc(0.625rem * var(--cf-density, 1))', { lineHeight: '1.2', letterSpacing: '0.04em', fontWeight: '600' }],
+                // ── role-field: the TOUCH TEXT-ENTRY role ────────────────────
+                //
+                // 1rem = 16px, and it is the ONE role that deliberately does
+                // NOT multiply by --cf-density.
+                //
+                // iOS Safari auto-zooms the viewport when a focused input's
+                // computed font-size is under 16px. Every other role here is
+                // 13px/14px and shrinks further at [data-density='compact']
+                // (×0.92), so any input wearing one zooms the page on every
+                // tap. The `user-scalable=no` / `maximum-scale=1` escape is
+                // ignored by iOS Safari since iOS 10 AND would fail this repo's
+                // own axe `meta-viewport` gate (WCAG 1.4.4, see layout.tsx) —
+                // so the size IS the fix, and density must not be able to undo
+                // it. A field that shrank back to 15px would silently bring the
+                // zoom back.
+                //
+                // Register in CUSTOM_FONT_SIZES (src/utils/_cn.ts) or twMerge
+                // drops it. Pinned by src/design-system/tokens/touch-field.test.ts.
+                'role-field': ['1rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '450' }],
             },
             // Density-aware spacing (spacing-token-leakage plan Phase 1) —
             // the same calc(× --cf-density) treatment as the role-* type

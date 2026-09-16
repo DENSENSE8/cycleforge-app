@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveTestingTicketContextOpen } from './testing-ticket-context';
 
 function row(partial: Partial<ReceivingLineRow> & { id: number }): ReceivingLineRow {

@@ -70,6 +70,13 @@ export interface DailyGridColumn extends SlotTrackFields {
  * marks the item done for the viewer — not a selection. The compound model
  * governs that track's geometry and its face; it has never governed what
  * clicking it does.
+ * The identity track reads **ID** for every family (operator 2026-09-14:
+ * "the slot data table displays as id and not order"). That word lives on the
+ * SHARED track in `compound-columns.ts`, not here: a family-local copy of the
+ * skeleton would fail `compound-row-model.test.ts`'s same-OBJECT assertion,
+ * which is the law that keeps forty-five tables reading as one product. What
+ * Daily contributes is the FACT in the cell — `CompoundRowView.identityFace`
+ * paints `#7` plainly instead of a marketplace order chip.
  */
 export function dailyCompoundColumnsFor(layout: SlotLayout): readonly DailyGridColumn[] {
   return materializeTracks<DailyGridColumn>({
@@ -105,7 +112,7 @@ export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
  * `repair-display-sort` rule: a bookmarked `?colsort=marked` must keep meaning
  * `marked` after a rebind moves that fact to a different slot index.
  */
-export type DailySortFact = 'task' | 'status' | 'team' | 'marked' | 'dates' | 'order';
+export type DailySortFact = 'task' | 'status' | 'team' | 'marked' | 'dates' | 'order' | 'owner';
 
 /**
  * Compound track → the fact it carries.
@@ -133,6 +140,10 @@ const DAILY_SLOT_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
   'daily.status': 'status',
   'daily.team': 'team',
   'daily.marked': 'marked',
+  // The engine's header-sort law: EVERY data track click-sorts. The owner
+  // track sorts by the name the person face paints; unowned rows are blank,
+  // and blanks land last under `compareGridValues`.
+  'daily.owner': 'owner',
 };
 
 /** The `?colsort=` word a mounted track drives, or null when it does not sort. */
@@ -144,9 +155,8 @@ export function dailySortFactFor(
   if (slot) return slot;
   return DAILY_TRACK_SORT_FACTS[col.key] ?? null;
 }
-
 export function isDailySortFact(raw: string): raw is DailySortFact {
-  return raw === 'task' || raw === 'status' || raw === 'team' || raw === 'marked' || raw === 'dates' || raw === 'order';
+  return ['task', 'status', 'team', 'marked', 'dates', 'order', 'owner'].includes(raw);
 }
 
 /**
@@ -165,6 +175,7 @@ export const DAILY_SORT_FACT_TYPES: Readonly<Record<DailySortFact, ColumnType>> 
   team: 'number',
   marked: 'date',
   order: 'text',
+  owner: 'text',
 };
 
 /** Header keys that sort — the descriptor's `isSortable` for this family. */

@@ -8,7 +8,7 @@ import {
   conditionBadgeTone,
   unitStatusBadgeTone,
   getStatusDotBg,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';

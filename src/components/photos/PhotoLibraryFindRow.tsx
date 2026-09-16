@@ -2,11 +2,15 @@
 
 /**
  * Media Library card find row — SearchField + filter + views + display controls
- * + fullscreen. Restores `poFinder` (sidebar search died 2026-08-09).
+ * + fullscreen.
  *
  * Not named `PhotoLibraryToolbar`: that was the selection-swap band the batch
- * rail replaced. Same shape as {@link DataTable}'s toolbar; one writer of URL
- * state via the page's `patch` / `applyView`.
+ * rail replaced. Same shape as {@link DataTable}'s toolbar — and the same search
+ * law: the box is SESSION-LOCAL {@link DataTableSearch} data owned by the page,
+ * never URL state. Typing used to `patch({ poFinder })`, which soft-navigated
+ * and refetched the library on every keystroke; the find-bar now narrows the
+ * painted rows through `filterPhotosByQuery`. Filters / views / tabs still write
+ * the URL through `patch` / `applyView` — a filter is a filter, a find is not.
  */
 
 import { useState } from 'react';
@@ -24,13 +28,10 @@ import {
   PHOTO_SEARCH_FIELD_LABELS,
   countActivePhotoLibraryFilters,
   DEFAULT_PHOTO_LIBRARY_VIEW,
-  fieldForFinderKind,
-  finderKindForField,
   type PhotoLibraryFilterState,
   type PhotoLibraryViewMode,
   type PhotoSearchField,
 } from '@/lib/photos/library-filter-state';
-import { photoLibrarySearchFace } from '@/lib/photos/ticket-search';
 import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -41,6 +42,9 @@ import { PhotoLibraryFilterDropdown } from './PhotoLibraryFilterDropdown';
 export function PhotoLibraryFindRow({
   filters,
   view,
+  search,
+  searchField,
+  onSearchFieldChange,
   onPatch,
   onApplyView,
   onViewChange,
@@ -51,11 +55,15 @@ export function PhotoLibraryFindRow({
   onToggleSelect,
   onRefresh,
   isRefreshing,
-  isSearching,
   canManageViews,
 }: {
   filters: PhotoLibraryFilterState;
   view: PhotoLibraryViewMode;
+  /** The one find box, as data — the page holds the value in `useState`. */
+  search: { value: string; onChange: (value: string) => void };
+  /** Field scope the matcher applies (see {@link filterPhotosByQuery}). */
+  searchField: PhotoSearchField;
+  onSearchFieldChange: (field: PhotoSearchField) => void;
   onPatch: (partial: Partial<PhotoLibraryFilterState>) => void;
   onApplyView: (payload: MediaViewPayload) => void;
   onViewChange: (view: PhotoLibraryViewMode) => void;
@@ -66,7 +74,6 @@ export function PhotoLibraryFindRow({
   onToggleSelect: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
-  isSearching?: boolean;
   canManageViews: boolean;
 }) {
   const [kindOpen, setKindOpen] = useState(false);
@@ -84,13 +91,6 @@ export function PhotoLibraryFindRow({
   });
   const staffOptions = staffQuery.data ?? [];
 
-  const searchFace = photoLibrarySearchFace({
-    poFinder: filters.poFinder,
-    q: filters.q,
-    ticketId: filters.ticketId,
-    sourceScope: filters.sourceScope,
-  });
-  const searchField = fieldForFinderKind(filters.poFinderKind);
   const activeFilterCount = countActivePhotoLibraryFilters(filters);
   const filterHot =
     activeFilterCount > 0
@@ -105,8 +105,8 @@ export function PhotoLibraryFindRow({
     || Boolean(filters.imageType)
     || view !== DEFAULT_PHOTO_LIBRARY_VIEW;
 
-  const setSearchField = (field: PhotoSearchField) => {
-    onPatch({ poFinderKind: finderKindForField(field) });
+  const pickSearchField = (field: PhotoSearchField) => {
+    onSearchFieldChange(field);
     setKindOpen(false);
   };
 
@@ -122,39 +122,14 @@ export function PhotoLibraryFindRow({
         <Popover.Anchor asChild>
           <div className="relative min-w-0 max-w-[22rem] flex-1">
             <SearchField
-              value={searchFace}
-              onChange={(value) => {
-                const trimmed = value.trim();
-                if (!trimmed) {
-                  // Face can be poFinder OR the claims ticket leaf (see
-                  // photoLibrarySearchFace). Clearing must drop whichever
-                  // fact is painting the field, or the X is a no-op.
-                  onPatch({
-                    poFinder: undefined,
-                    q: undefined,
-                    ...(filters.sourceScope === 'claims' && filters.ticketId
-                      ? { ticketId: undefined }
-                      : {}),
-                  });
-                  return;
-                }
-                onPatch({ poFinder: trimmed, poFinderKind: filters.poFinderKind ?? 'any' });
-              }}
-              onClear={() =>
-                onPatch({
-                  poFinder: undefined,
-                  q: undefined,
-                  ...(filters.sourceScope === 'claims' && filters.ticketId
-                    ? { ticketId: undefined }
-                    : {}),
-                })
-              }
-              placeholder="Find by order # / tracking / serial…"
+              value={search.value}
+              onChange={search.onChange}
+              onClear={() => search.onChange('')}
+              placeholder="Find in loaded photos — order # / tracking / serial…"
               className={cn('min-w-0 flex-1 overflow-hidden', DATA_TABLE_TOOLBAR_CORNER)}
               tone="neutral"
               hideUnderline
               fillHost
-              isSearching={isSearching && Boolean(searchFace)}
               onLeadingAction={() => setKindOpen((o) => !o)}
               leadingActionLabel={`Search by ${PHOTO_SEARCH_FIELD_LABELS[searchField]}`}
               leadingActionExpanded={kindOpen}
@@ -179,7 +154,7 @@ export function PhotoLibraryFindRow({
                   type="button"
                   role="option"
                   aria-selected={active}
-                  onClick={() => setSearchField(field)}
+                  onClick={() => pickSearchField(field)}
                   className={cn(
                     'ds-raw-button flex w-full items-center px-2 py-1.5 text-left text-role-caption',
                     DROPDOWN_ITEM_CORNER,

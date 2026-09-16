@@ -49,6 +49,7 @@ function PickerInner() {
     currentTask, totalTasks, doneCount, allDone,
     handleConfirmPick, handleShortPick, handleScanDecode,
     scanRequired, scanMatched,
+    toteRef, stagedTote,
   } = c;
 
   // ── Render gates
@@ -93,8 +94,28 @@ function PickerInner() {
 
       {/* ─── Task content ──────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
+        {/* ─── Tote strip ────────────────────────────────────────────────
+            The session's container. Confirming a pick requires an armed
+            tote — every picked unit lands in it and the tote carries the
+            order to the pack station. */}
+        <div
+          className={`mb-3 rounded-none border px-3 py-2 text-xs font-semibold ${
+            toteRef
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : 'border-amber-300 bg-amber-50 text-amber-900'
+          }`}
+        >
+          {toteRef ? (
+            <p>
+              Tote <span className="font-mono tabular-nums">{toteRef}</span> — confirmed picks
+              land here.
+            </p>
+          ) : (
+            <p>No tote yet — scan the tote&apos;s H-… plate before confirming.</p>
+          )}
+        </div>
         {allDone || !currentTask ? (
-          <CompleteCard onBack={() => router.push('/m/pick')} />
+          <CompleteCard onBack={() => router.push('/m/pick')} tote={stagedTote} />
         ) : (
           <PickerTaskCard
             currentTask={currentTask}
@@ -116,7 +137,7 @@ function PickerInner() {
               : 'Confirm pick'
           }
           onConfirm={() => void handleConfirmPick()}
-          disabled={scanRequired && !scanMatched}
+          disabled={(scanRequired && !scanMatched) || !toteRef}
           loading={confirming}
           tone={currentIndex >= totalTasks - 1 ? 'success' : 'primary'}
           secondary={{

@@ -1,0 +1,10 @@
+{
+  "name": "@cycleforge/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop Next.js boundary for the CycleForge web application",
+  "scripts": {
+    "dev": "pnpm --dir ../.. dev",
+    "typecheck": "pnpm --dir ../.. exec tsc -p tsconfig.json --noEmit"
+  }
+}

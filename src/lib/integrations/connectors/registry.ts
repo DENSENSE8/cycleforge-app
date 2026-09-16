@@ -45,7 +45,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     capabilities: ['inventory'],
     authorizeStartPath: '/api/zoho/oauth/authorize',
     healthPath: '/api/zoho/health',
-    validate: (orgId) => import('./zoho').then((m) => m.zohoValidate(orgId)),
+    validate: (orgId, _scope, opts) => import('./zoho').then((m) => m.zohoValidate(orgId, opts)),
   },
   google_sheets: {
     provider: 'google_sheets',
@@ -80,7 +80,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     authKind: 'vault',
     capabilities: ['orders', 'catalog'],
     // Lazy import so the connection reader never pulls in the Ecwid job.
-    sync: (orgId) => import('./orders-transfer').then((m) => m.ecwidSync(orgId)),
+    sync: (orgId, opts) => import('./orders-transfer').then((m) => m.ecwidSync(orgId, opts)),
   },
   // Nango-connected storefront (mirrors Square). Orders in via the GraphQL Admin
   // API through Nango's proxy; catalog/stock push-out is a later phase. Lazy

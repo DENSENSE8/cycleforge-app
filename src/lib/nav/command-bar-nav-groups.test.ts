@@ -10,6 +10,7 @@ import {
   buildCommandBarNavGroups,
   filterCommandBarNavGroups,
 } from '@/lib/nav/command-bar-nav-groups';
+import { isLaneVisible } from '@/lib/nav/lanes';
 import { SPINE_SECTIONS } from '@/lib/sidebar-navigation';
 
 test('buildCommandBarNavGroups order is Pin → SPINE_SECTIONS', () => {
@@ -40,36 +41,55 @@ test('every spine section with pages emits a band whose label + icon come from t
     assert.equal(group.label, section.label);
     assert.equal(group.sectionIcon, section.icon);
   }
-  // Every spine section with pages ships a band by default.
+  // Every VISIBLE spine section with pages ships a band by default. A lane the
+  // mobile-first gate hides (`LANE_MOBILE_FIRST`, operator 2026-09-14) reaches
+  // the palette with no rows at all, so it must emit NO band — the palette is
+  // one of the four doors *"there should not even be any front end routing or
+  // links to"*. Pinned end-to-end in `nav-mobile-first.test.ts`.
   for (const section of SPINE_SECTIONS) {
-    assert.ok(emitted.has(String(section.id)), `${section.id} band missing by default`);
+    const id = String(section.id);
+    if (!isLaneVisible(id)) {
+      assert.ok(!emitted.has(id), `hidden lane ${id} must not emit a ⌘K band`);
+      continue;
+    }
+    assert.ok(emitted.has(id), `${section.id} band missing by default`);
   }
 });
 
-test('pin contains Home Search Media Plans Chat Settings; Studio and Admin are map bands', () => {
+test('pin contains Home Search Media Plans Chat Settings Reports; Studio and Monitor are parked, Admin is dissolved', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
   assert.ok(pin);
   assert.equal(footer, undefined);
 
+  // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to
+  // a parent-level spine row; the palette pin follows the registry's `top`
+  // set, so it lands here too rather than under a Monitor band.
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings'],
+    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings', 'reports'],
   );
-  assert.deepEqual(
-    groups
-      .find((g) => g.id === 'studio')
-      ?.rows.filter((r) => r.type === 'page')
-      .map((r) => r.id),
-    ['studio'],
-  );
-  assert.deepEqual(
-    groups
-      .find((g) => g.id === 'admin')
-      ?.rows.filter((r) => r.type === 'page')
-      .map((r) => r.id),
-    ['admin'],
+  // Studio (Automations) and Monitor (Operations) were PARKED 2026-09-16 on an
+  // operator ruling — the door is withdrawn on every surface, so the palette
+  // emits no band for either. Same mechanism as Sales / Support: an empty group
+  // is omitted, so the palette cannot offer a withdrawn door.
+  for (const parked of ['studio', 'monitor'] as const) {
+    assert.equal(
+      groups.some((g) => g.id === parked),
+      false,
+      `parked lane "${parked}" must not emit a ⌘K band`,
+    );
+  }
+  // Admin is DISSOLVED — `/admin` is a redirect table and permission is
+  // `requires` on rows, not a destination. Same fact as
+  // `sidebar-navigation.test.ts` ("admin ships no nav row"): with no admin page
+  // in the catalog, `buildCommandBarNavGroups` emits no admin band at all
+  // (empty groups are omitted), so the palette cannot offer a dead door.
+  assert.equal(
+    groups.some((g) => g.id === 'admin'),
+    false,
+    'a dissolved Admin must not emit a ⌘K band',
   );
 });
 
@@ -131,15 +151,20 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
     false,
     'Locations is Inventory L2, not a spine page',
   );
-  assert.ok(idsIn('sourcing').includes('sourcing'), 'Sourcing missing its page');
-  assert.ok(idsIn('fulfillment').includes('outbound'), 'Fulfillment missing Shipping');
-  assert.ok(idsIn('support').includes('support'), 'Support missing its page');
+  // Sourcing folded into the Inbound lane (N4, operator 2026-09-14): the row
+  // survives, its band changed. There is no `sourcing` band to look in.
+  assert.ok(idsIn('inbound').includes('sourcing'), 'Inbound missing the Sourcing page');
+  assert.equal(idsIn('sourcing').length, 0, 'the sourcing band must stay retired');
+  assert.ok(idsIn('fulfillment').includes('outbound'), 'Outbound missing Shipping');
+  // Support is HIDDEN by the mobile-first gate, so it owns no band. The ROUTE
+  // and the registry row survive (`nav-mobile-first.test.ts`); the door does
+  // not. Same for `sales` and `monitor`.
+  assert.equal(idsIn('support').length, 0, 'a hidden lane must own no palette rows');
   // Scan benches never appear under a domain band.
   for (const band of [
     'inbound',
     'catalog',
     'inventory',
-    'sourcing',
     'fulfillment',
     'sales',
     'support',

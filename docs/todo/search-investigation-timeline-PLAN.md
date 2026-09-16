@@ -1,6 +1,6 @@
 # PLAN — FIND as a diagnostic case-file investigator
 
-**Status:** OPEN — checklist only. No implementation in this file.
+**Status:** DONE (2026-09-11, Session E) — §9 acceptance met on the prod lane; `pnpm lane verify prod` is the operator's ship gate. Checklist only. No implementation in this file.
 **Authored:** 2026-09-11
 **Research:** [search-investigation-timeline-GEMINI-RESEARCH-BRIEFING.md](search-investigation-timeline-GEMINI-RESEARCH-BRIEFING.md)
 **Industry conclusion (locked):** Timeline as the Document (Palantir Object Explorer + Sentry issue stream). Commerce status-pin (Shopify/Stripe) is the **hero**, not the IA. WMS tab-routing is the contrast class to refuse.
@@ -169,33 +169,59 @@ Job: `ds_contract` **FIND confirmation column status pin outline chronology stic
 
 ### Phase 5 — Scan preview embed
 
-- [ ] Scan-station **preview** of a resolved identifier mounts the FIND column (read-only + handoff), not `EntityStationPane` preview.
-- [ ] No Displays index dependency in the embed.
-- [ ] Gun stations keep `StationComposerHost` + `showModeFaces={false}` for **execution**; preview is FIND, not a second mouth.
+- [x] Scan-station **preview** of a resolved identifier mounts the FIND column (read-only + handoff), not `EntityStationPane` preview.
+- [x] No Displays index dependency in the embed.
+- [x] Gun stations keep `StationComposerHost` + `showModeFaces={false}` for **execution**; preview is FIND, not a second mouth.
 
 **Done when:** Preview of an org-1 serial/order matches `/m/search?sel=` structurally (status → outline → stream → handoff).  
-**Org-1:** Floor station preview of `078338982650888AE` and `113-1397006-0292212`.
+**Org-1:** Floor station preview of `078338982650888AE` and `113-1397006-0292212`.  
+**Shipped:** 2026-09-11 Session E. Walked on the prod lane (`:3077`, org 1, staff 1) — `/test` Scan-out bar in Preview stance:
+`078338982650888AE` → Unit dossier, `113-1397006-0292212` → Order dossier; band order identical to `/m/search?sel=`
+(`status-row › findings › investigation › outline › chronology › contents › handoff`), 0 Displays testids, 0 composer hosts,
+0 form controls, `ActiveOrderWorkspace` absent, DB probe unchanged before/after (max `station_activity_logs` id, max
+`tech_serial_numbers` id). Law: `SEARCH_FIND_PREVIEW_EMBED_FILE` + `SEARCH_FIND_DISPLAYS_INDEX_MARKERS` (`search-find-law.ts`).
+**Walk hazard (recorded in memory):** Close on the preview resets the global `scan:station-stance` to `scan` — a second paste
+without re-arming Preview is a real tech scan / unbox open. Set the stance before every paste.
+**Unbox:** its Preview stance (`useUnboxPreviewOpen`) mounts the inert station workspace under a READ ONLY lease — not
+`EntityStationPane`, not the FIND embed. The plan's org-1 row is serial/order (Scan-out); porting Unbox preview to the FIND
+column is a separate decision (see Session E notes in §9).
 
 ### Phase 6 — Quarantine workplace leftovers
 
-- [ ] Impact `src/components/search/station/*`. FIND surface files must not import them.
-- [ ] If Support / Orders desks still need `SearchOrderStationPane`, leave those call sites; **rename or move** out of `components/search/` if the folder implies FIND.
-- [ ] `search-order-display-index.ts` / unit sibling: workplace only. FIND tests must fail if imported.
-- [ ] Delete dead FIND-only ports (`SearchOrderCentre` pipeline wrappers, etc.) after knip/graph says unreferenced from SEARCH_FIND_SURFACE_FILES.
-- [ ] Do not delete overlay `visibility` / `zIndex.panel` to silence unrelated critique.
+- [x] Impact `src/components/search/station/*`. FIND surface files must not import them.
+- [x] If Support / Orders desks still need `SearchOrderStationPane`, leave those call sites; **rename or move** out of `components/search/` if the folder implies FIND.
+- [x] `search-order-display-index.ts` / unit sibling: workplace only. FIND tests must fail if imported.
+- [x] Delete dead FIND-only ports (`SearchOrderCentre` pipeline wrappers, etc.) after knip/graph says unreferenced from SEARCH_FIND_SURFACE_FILES.
+- [x] Do not delete overlay `visibility` / `zIndex.panel` to silence unrelated critique.
 
 **Done when:** `SEARCH_FIND_SURFACE_FILES` grep clean of refuse list. Workplace Displays still work on Unbox/Pack.  
-**Org-1:** FIND URLs unchanged; Unbox still has Photos/Units leaves.
+**Org-1:** FIND URLs unchanged; Unbox still has Photos/Units leaves.  
+**Shipped:** 2026-09-11 Session E. Nothing outside the folder imported `components/search/station/*` (grep of `src`, `e2e`,
+`scripts`, `tests`; the 2026-09-06 graph index still listed `SearchDetailWorkspace` as a caller — stale, Phase 1 removed it).
+Support / Orders desks mount `EntityStationPane` directly, never the search panes — no call sites to keep, so the folder
+was **deleted** (16 sources + 3 tests) along with `tests/e2e/search-station-layout.spec.ts` (asserted the 3-column
+station testids that no longer exist) and the root `search-display-sot.md` (2026-08-30 "STATUS then ITEMS. Nothing else"
+law, superseded by this plan). `STATION_CARTON_IDENTITY_ADAPTERS` (both identical config copies) dropped the dead
+`SearchReceivingIdentity` path. Overlay `visibility` / `zIndex.panel` untouched. Unbox Displays leaves observed live
+(`receiving-displays-push`, `unbox-displays-leaf`, `station-displays-leaf-nav`, …).
 
 ### Phase 7 — Eval + session stamp
 
-- [ ] `search-find-law.test.ts` covers new markers and “no Displays index import.”
-- [ ] Dossier contract tests: status first; handoff present; kinds omitted when count 0.
-- [ ] `node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast`
-- [ ] Stamp `.cursor/eval-session.json` if the eval skill requires it for this change set.
-- [ ] No slot-table cohort unless this work accidentally touched CompoundItem / `useSlotTableLayout` (it must not).
+- [x] `search-find-law.test.ts` covers new markers and “no Displays index import.”
+- [x] Dossier contract tests: status first; handoff present; kinds omitted when count 0.
+- [x] `node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast`
+- [x] Stamp `.cursor/eval-session.json` if the eval skill requires it for this change set.
+- [x] No slot-table cohort unless this work accidentally touched CompoundItem / `useSlotTableLayout` (it must not).
 
-**Done when:** Fast eval green; FIND tripwire green.
+**Done when:** Fast eval green; FIND tripwire green.  
+**Shipped:** 2026-09-11 Session E. Law test: Displays-index markers ⊂ forbidden markers; `components/search/station`
+gone from disk; embed is a FIND surface file, imports `SearchDossier`, none of the Displays/station/composer markers;
+embed and `/m/search` share the dossier router. Contract test
+(`src/components/search/dossier/search-dossier-contract.test.ts`): four org-1 shapes through `presentFindDossier` + frame —
+status is the first band, band order identical across order/unit/carton/SKU, handoff painted with no form controls, every
+kind painted iff in the outline, SKU with an empty stream paints no chips and no stream. FIND suite 60/60. Source-only
+`tsc --noEmit` 0 errors. Fast eval `verify PASSED (fast)` — Lint ✓ (0 errors), Typecheck ✓ — stamp
+`.garisek/eval-session.json` + `.cursor/eval-session.json`. CompoundItem / `useSlotTableLayout` untouched.
 
 ---
 
@@ -288,11 +314,28 @@ Also after Phase 4: the same `?sel=` on `/m/search`.
 
 ## 9. Acceptance (plan complete)
 
-- [ ] Phases 0–7 checked.
-- [ ] §8 scores 1–6 yes on org 1 for order, unit, carton, SKU.
-- [ ] `/m/search` exists and is the SoT column.
-- [ ] FIND files grep-clean of §1.2 refuse list.
-- [ ] Workplace Displays still function off FIND.
-- [ ] Fast eval green.
+- [x] Phases 0–7 checked.
+- [x] §8 scores 1–6 yes on org 1 for order, unit, carton, SKU. (Session E walk, `:3077`, phone 390px + desktop 1440px +
+  floor preview. Q3 photos: the four §8 records carry no photos in org 1 — every entity-linked photo there is on a carton —
+  so Evidence is proven on carton `52171` (10 photos, 1 Evidence event, tap → existing viewer dialog) and honestly
+  omitted on `R-52695`. Q6: chip click filters without navigation; phone stacks the outline above the stream.)
+- [x] `/m/search` exists and is the SoT column. (Session E fixed the phone paint: the page root now claims `h-full` — under
+  the shell's block `motion.div.h-full`, `flex-1` was inert and the dossier rendered at 0 px height, a blank body.)
+- [x] FIND files grep-clean of §1.2 refuse list (raw grep, comments included).
+- [x] Workplace Displays still function off FIND.
+- [x] Fast eval green.
+
+**Session E notes (2026-09-11):**
+- Carton Evidence was never wired (Phase 2 mapped unit/order photos only). `findEventsFromReceivingPhotos` now groups
+  `GET /api/receiving-photos` rows (the house carton read, `useReceivingPhotos(..., { readOnly: true })`) by stage into
+  Evidence events; `SearchReceivingDossier` passes them to `presentCartonFindEvents`.
+- Decided (operator, 2026-09-11): Unbox Preview stance stays as-is — the inert station workspace under its READ ONLY
+  lease, not the FIND embed. Phase 5's acceptance is Scan-out. If it is ever ported, `SearchFindPreviewEmbed`
+  (`sel=receiving:`) replaces `useUnboxPreviewOpen` → `dispatchSelectLine(preview)`, `UnboxPreviewLock`, and the
+  `data-unbox-preview-plane` e2e.
+- Walk footprint removed (operator-approved): the first walk's Close-then-paste wrote `tech_serial_numbers` 5615/5616 on
+  order 13863, `station_activity_logs` 39148–39151, and a `receiving_unbox` row for carton 52695 in the lane DB; all
+  deleted in one transaction, remaining 0/0/0.
+- The lane has no `scripts/ci-status.mjs` (main is ahead); no CI receipt read. `pnpm lane verify prod` is the operator's gate.
 
 When those are true, mark this file **DONE** and leave the briefing as historical research.

@@ -86,7 +86,7 @@ import { useReceivingTableLayout } from '@/components/station/receiving-grid/use
 import { useIncomingTableLayout } from '@/components/station/incoming-grid/useIncomingTableLayout';
 import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
@@ -152,7 +152,7 @@ const RECEIVING_HISTORY_LANES: SwimlaneLaneDef<ReceivingHistoryLane>[] = RECEIVI
 
 // ── Legacy re-exports (prefer leaf modules; do not grow this list) ───────────
 export type { ReceivingView } from '@/lib/receiving/receiving-views';
-export type { ReceivingLineRow } from './receiving-line-row';
+export type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 export {
   dispatchSelectLine,
   dispatchLineUpdated,
@@ -207,6 +207,7 @@ export default function ReceivingLinesTable({
   const [receivingSearchValue, setReceivingSearchValue] = useState('');
   const weekOffsetFromUrl = Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)));
   const weekOffset = isHistoryMode ? weekOffsetFromUrl : localWeekOffset;
+  const weekExplicit = isHistoryMode ? searchParams.has(WEEK_OFFSET_PARAM) : true;
   const setWeekOffset = useCallback(
     (next: number | ((prev: number) => number)) => {
       const resolved = typeof next === 'function' ? next(weekOffset) : next;
@@ -288,11 +289,18 @@ export default function ReceivingLinesTable({
   // `useReceivingWorkspacePane` says operators "open a line via click or scan".
   // Flipped as a SET so no tab diverges from its siblings.
   const isUnboxWorkbench = embedded;
-  // Unbox History (2026-08-04): left-click opens History triage rail
-  // (`detail:history`); gutter checkbox owns bulk; double-click / Enter opens
-  // LineEditPanel. Never `mode.id === 'history'` alone (Docked / standalone
-  // History share that id).
-  const isUnboxHistoryTriage = embedded && isHistoryMode;
+  // History triage plane (2026-08-04, extended to the Inbound desk 2026-09-14):
+  // left-click opens the History triage rail (`detail:history`); the gutter
+  // checkbox owns bulk; double-click / Enter opens LineEditPanel.
+  //
+  // Operator 2026-09-14: the Inbound desk's History tab must behave like Unbox
+  // History, so the Docked lane joins this plane. Both hosts mount
+  // `ReceivingRightPane`, which is what `detail:history` needs — that is why
+  // this is a flag widening and not a second open path.
+  //
+  // Never `mode.id === 'history'` alone: standalone `/receiving/history` has no
+  // overlay host, and still takes the `/carton/[id]` READ record below.
+  const isHistoryTriage = isHistoryMode && (embedded || isInboundDocked);
   // Incoming Pipeline: click toggles bulk; double-click / Enter opens the
   // inspector (not carton).
   const incomingClickSelect = isIncomingMode;
@@ -318,7 +326,7 @@ export default function ReceivingLinesTable({
     [router],
   );
 
-  /** Embedded Unbox History — left-click opens the triage slide-over. */
+  /** Unbox History + Inbound Docked — left-click opens the triage slide-over. */
   const openHistoryTriage = useCallback((row: ReceivingLineRow) => {
     const target = historyTriageTargetFromRow(row);
     if (!target) {
@@ -389,7 +397,7 @@ export default function ReceivingLinesTable({
   const exportRowsRef = useRef<typeof orderedVisibleRows>(orderedVisibleRows);
   exportRowsRef.current = orderedVisibleRows;
   useEffect(() => {
-    if (!isUnboxHistoryTriage) return;
+    if (!isHistoryTriage) return;
     const onExport = () => {
       const rows = exportRowsRef.current;
       const csv = buildReceivingHistoryExportCsv(rows);
@@ -406,7 +414,7 @@ export default function ReceivingLinesTable({
     };
     window.addEventListener('receiving-export-history', onExport);
     return () => window.removeEventListener('receiving-export-history', onExport);
-  }, [isUnboxHistoryTriage]);
+  }, [isHistoryTriage]);
 
   const {
     selectedId,
@@ -447,7 +455,7 @@ export default function ReceivingLinesTable({
     // sidebar or overlay host. It has been a dead click since it shipped (its
     // own release note says so); giving it the same carton destination is the
     // fix that note asked for, and costs nothing here.
-    openRow: isUnboxHistoryTriage
+    openRow: isHistoryTriage
       ? openHistoryTriage
       : isHistorySurface
         ? openHistoryCarton
@@ -480,7 +488,7 @@ export default function ReceivingLinesTable({
   // (record-cursor SoT). Left-click path stays triage; Enter on a focused row
   // still opens LineEdit via the row's own key handler.
   const historyCursorOrder = useMemo((): GroupedRenderOrder<ReceivingLineRow> => {
-    if (!isUnboxHistoryTriage) return [];
+    if (!isHistoryTriage) return [];
     return Object.entries(filteredGroupedRecords)
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([date, dayGroups]) => {
@@ -492,7 +500,7 @@ export default function ReceivingLinesTable({
           sorted.map((group) => ({ key: group.key, rows: group.rows })),
         ] as const;
       });
-  }, [isUnboxHistoryTriage, filteredGroupedRecords, mode.serverSorted]);
+  }, [isHistoryTriage, filteredGroupedRecords, mode.serverSorted]);
 
   const handleHistoryCursorOpen = useCallback(
     (row: ReceivingLineRow, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
@@ -513,17 +521,17 @@ export default function ReceivingLinesTable({
   usePublishRecordCursor<ReceivingLineRow>({
     surfaceId: 'unbox-history-grid',
     scope: 'record',
-    enabled: isUnboxHistoryTriage,
+    enabled: isHistoryTriage,
     priority: RECORD_CURSOR_PRIORITY.grid,
     order: historyCursorOrder,
-    openId: isUnboxHistoryTriage ? selectedId : null,
+    openId: isHistoryTriage ? selectedId : null,
     getId: (row) => row.id,
     onOpen: handleHistoryCursorOpen,
     onClose: handleHistoryCursorClose,
   });
 
   useRecordCursorKeyboard({
-    enabled: isUnboxHistoryTriage,
+    enabled: isHistoryTriage,
     scope: 'record',
   });
 
@@ -785,8 +793,8 @@ export default function ReceivingLinesTable({
         statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
         selectGutterChrome={selectGutterChrome}
         clickSelect={false}
-        onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
-        historyTriageMenu={isUnboxHistoryTriage}
+        onOpenWorkspace={isHistoryTriage ? openHistoryWorkspace : undefined}
+        historyTriageMenu={isHistoryTriage}
         scrollRef={scrollRef}
         className="h-full min-h-0 flex-1"
       />
@@ -805,7 +813,11 @@ export default function ReceivingLinesTable({
       : isHistoryMode || !skipWeekFilter
         ? (
           <DateRangePickerPill
-            label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
+            label={
+              weekExplicit
+                ? formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)
+                : 'All time'
+            }
             count={weekCount}
             // Triage-band peer of filter / column icons — ghost ToolbarButton, not
             // a pill island (WORKBENCH_CHROME_PILL_CLASS is for Band 1 CTA neighbors).

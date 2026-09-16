@@ -30,7 +30,7 @@ import {
   receivingSiblingsSerialsQueryKey,
 } from '@/lib/queries/receiving-queries';
 import { readOptimisticFlag } from '@/lib/receiving/optimistic-serials';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 type LineSerials = NonNullable<ReceivingLineRow['serials']>;
 

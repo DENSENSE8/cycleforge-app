@@ -107,7 +107,20 @@ const RETIRED: RetiredSymbol[] = [
     symbol: 'ORDERS_QUEUE_COLUMNS',
     since: '2026-08-30',
     retiredBy:
-      'kill-list 07 §1 — the Orders flat fact-track array; mount ordersCompoundColumnsFor(SlotLayout). The benches keep their own STATION_HISTORY_COLUMNS until the station-history kill.',
+      'kill-list 07 §1 — the Orders flat fact-track array; mount ordersCompoundColumnsFor(SlotLayout). The bench copy (STATION_HISTORY_COLUMNS) died with it on 2026-09-11.',
+  },
+  // ── Slot-table Wave-C station kill: tech + packer are registered families ──
+  {
+    symbol: 'STATION_HISTORY_COLUMNS',
+    since: '2026-09-11',
+    retiredBy:
+      'Wave C — the bench flat array, whose track keys WERE field names (tester / testedAt / packStation). Mount techCompoundColumnsFor / packerCompoundColumnsFor from the registered tech · packer families instead.',
+  },
+  {
+    symbol: 'StationQueueRow',
+    since: '2026-09-11',
+    retiredBy:
+      'Wave C — a per-family ROW component (ENGINE_IS_MONOMORPHIC forbids one). The benches contribute benchRowCompoundView (row → CompoundRowView) and mount the shared compound row through useCompoundSpreadsheet.',
   },
   {
     symbol: 'ORDERS_QUEUE_TESTED_COLUMNS',

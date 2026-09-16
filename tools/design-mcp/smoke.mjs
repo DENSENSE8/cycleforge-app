@@ -107,6 +107,14 @@ send({ jsonrpc: '2.0', id: 44, method: 'resources/read', params: { uri: 'design:
 send({ jsonrpc: '2.0', id: 45, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'item-record' } } })
 send({ jsonrpc: '2.0', id: 46, method: 'resources/read', params: { uri: 'design://tokens/item-record' } })
 send({ jsonrpc: '2.0', id: 47, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mobile to-ship qty condition notes pick packed', limit: 5 } } })
+// The kiosk's home + axis (2026-09-15). Both were absent, and the measured
+// consequence was a WRONG answer: "kiosk cart panel" returned desk faces, so
+// the cart shipped as a compound table under a shadowed popover. These pin
+// that the kit is findable and that the counter chrome is a lookup, not memory.
+send({ jsonrpc: '2.0', id: 60, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'kiosk' } } })
+send({ jsonrpc: '2.0', id: 61, method: 'resources/read', params: { uri: 'design://tokens/kiosk' } })
+send({ jsonrpc: '2.0', id: 62, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'kiosk cart panel, step flow on a tablet', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 63, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/kiosk/KioskChip.tsx' } } })
 
 await new Promise((r) => setTimeout(r, 35000))
 child.kill()
@@ -120,7 +128,20 @@ const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index'
 
 check('every stdout line is valid JSON-RPC', !msgs.some((m) => m.RAW), msgs.find((m) => m.RAW)?.RAW)
 check('initialize', !!byId(1)?.result?.serverInfo, byId(1)?.result?.serverInfo?.name)
-check('tools/list returns 3 tools', byId(2)?.result?.tools?.length === 3, (byId(2)?.result?.tools ?? []).map((t) => t.name).join(', '))
+// Assert the exact SET, not a count. A bare `=== 3` went stale the moment
+// ds_boundary landed and would have gone stale silently again; the set names
+// what this server actually serves. `ds_boundary` and `ds_nav_names` are MCP
+// FACES of shared machines — `scripts/boundary-guard.ts` over
+// `.dependency-cruiser.cjs` (verify Boundary gate) and
+// `src/lib/nav/nav-name-collisions.ts` (verify Unit-tests gate). This server
+// never serves a verdict it does not share a module with.
+const TOOLS_EXPECT = ['ds_action_bar', 'ds_boundary', 'ds_contract', 'ds_critique', 'ds_id_header', 'ds_identity_purity', 'ds_mobile_first', 'ds_mobile_ground', 'ds_nav_names', 'ds_sku_identity', 'ds_tokens']
+const toolNames = (byId(2)?.result?.tools ?? []).map((t) => t.name)
+check(
+  `tools/list serves exactly ${TOOLS_EXPECT.join(', ')}`,
+  JSON.stringify([...toolNames].sort()) === JSON.stringify(TOOLS_EXPECT),
+  toolNames.join(', '),
+)
 
 const contract = body(3)
 check('ds_contract finds primitives', (contract.matches ?? []).length > 0, `${contract.catalog_size} in catalog`)
@@ -538,6 +559,49 @@ const mobileMetaContract = body(47)
 check('ds_contract ranks ItemRecordMobileMeta for phone qty-condition-notes',
   (mobileMetaContract.matches ?? []).some((m) => m.id === 'ItemRecordMobileMeta'),
   (mobileMetaContract.matches ?? []).map((m) => m.id).join(', '))
+
+// ── the kiosk's home + axis ──────────────────────────────────────────────────
+const kiosk = body(60)
+const kioskNames = (kiosk.tokens ?? []).map((t) => t.token)
+check('kiosk axis reads all three counter token files',
+  ['kiosk-chrome.ts', 'kiosk-pos-surface.ts', 'kiosk-counter-surface.ts']
+    .every((f) => (kiosk.sources ?? []).some((s) => String(s).endsWith(f))),
+  (kiosk.sources ?? []).join(', '))
+check('kiosk axis lists the utility sheet and the one stage canvas',
+  kioskNames.includes('KIOSK_UTILITY_SHEET') && kioskNames.includes('KIOSK_POS_CANVAS'),
+  kioskNames.filter((n) => /SHEET|CANVAS/.test(n)).join(', '))
+// The sheet's law IS its docblock — a token cannot be pinned in pinned.json
+// (overrides merge by component id), so the reader must carry the prose.
+check('kiosk axis carries the token docblock as prose',
+  /import \{ KIOSK_UTILITY_SHEET \}/.test(
+    (kiosk.tokens ?? []).find((t) => t.token === 'KIOSK_UTILITY_SHEET')?.use ?? '',
+  ),
+  ((kiosk.tokens ?? []).find((t) => t.token === 'KIOSK_UTILITY_SHEET')?.use ?? 'missing').slice(0, 90))
+check('the utility sheet is FLAT — no elevation in its value',
+  !/elevationClass/.test((kiosk.tokens ?? []).find((t) => t.token === 'KIOSK_UTILITY_SHEET')?.value ?? 'elevationClass'),
+  (kiosk.tokens ?? []).find((t) => t.token === 'KIOSK_UTILITY_SHEET')?.value)
+
+let kioskResource = {}
+try {
+  kioskResource = JSON.parse(byId(61)?.result?.contents?.[0]?.text ?? '{}')
+} catch { /* keep empty */ }
+check('resources/read kiosk matches ds_tokens kiosk',
+  (kioskResource.tokens ?? []).some((t) => t.token === 'KIOSK_UTILITY_SHEET'),
+  (kioskResource.tokens ?? []).slice(0, 3).map((t) => t.token).join(', '))
+
+const kioskContract = body(62)
+const kioskIds = (kioskContract.matches ?? []).map((m) => m.id)
+check('ds_contract answers a kiosk cart question with the kiosk kit',
+  kioskIds.includes('KioskPaneForm'),
+  kioskIds.join(', '))
+check('the kiosk pins are merged, not orphaned',
+  Boolean((kioskContract.matches ?? []).find((m) => m.id === 'KioskPaneForm')?.doNot),
+  (kioskContract.matches ?? []).find((m) => m.id === 'KioskPaneForm')?.law ?? 'no law merged')
+// The ds-raw-button false positive on KioskChip was a SYMPTOM of the missing
+// home: fork detection runs everywhere except where primitives are defined.
+check('KioskChip is not flagged as a fork now that the kit has a home',
+  !forksOf(63).some((w) => /raw <button>/.test(w)),
+  forksOf(63).join(' | ') || 'clean')
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)

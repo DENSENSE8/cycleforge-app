@@ -33,6 +33,9 @@ export const SEARCH_ENTITY_TYPES = [
   'sku',
   'repair',
   'fba',
+  'warranty',
+  'ticket',
+  'location',
 ] as const satisfies readonly SearchHitEntityType[];
 
 export const SEARCH_ENTITY_TYPE_LABELS: Record<SearchHitEntityType, string> = {
@@ -42,6 +45,9 @@ export const SEARCH_ENTITY_TYPE_LABELS: Record<SearchHitEntityType, string> = {
   sku: 'SKUs',
   repair: 'Repairs',
   fba: 'FBA',
+  warranty: 'Warranty',
+  ticket: 'Tickets',
+  location: 'Bins',
 };
 
 export type SearchDisplaySort = 'relevance' | 'date';
@@ -131,6 +137,41 @@ export function refineSearchHits(
 }
 
 /**
+ * Per-entity hit tallies for the browse toolbar's scope cluster.
+ *
+ * Counted over the set the OTHER facets already narrowed (`hstat` / `chan`)
+ * but deliberately NOT `etype`: a scope pill has to keep answering "how many
+ * would I get if I picked this?" while a status or channel pill is on. Tally
+ * it through `refineSearchHits` rather than a second hand-rolled predicate —
+ * one filter law, so a facet added there is counted here for free.
+ */
+export interface SearchEntityCounts {
+  /** Hits matching the non-entity facets — the "All" pill's count. */
+  total: number;
+  byType: Record<SearchHitEntityType, number>;
+}
+
+export function searchEntityCounts(
+  hits: ReadonlyArray<AiSearchHit>,
+  opts: { hstat?: string | null; chan?: string | null } = {},
+): SearchEntityCounts {
+  const byType = Object.fromEntries(
+    SEARCH_ENTITY_TYPES.map((type) => [type, 0]),
+  ) as Record<SearchHitEntityType, number>;
+  const scoped = refineSearchHits(hits, {
+    etype: null,
+    hstat: opts.hstat ?? null,
+    chan: opts.chan ?? null,
+  });
+  for (const hit of scoped) {
+    // Retrieval can carry a wire type the UI has no scope pill for
+    // (`import_exception`) — it counts toward `total`, never a typed bucket.
+    if (isUiEntityType(hit.entityType)) byType[hit.entityType] += 1;
+  }
+  return { total: scoped.length, byType };
+}
+
+/**
  * Relevance keeps RRF/exact order. Date sorts by `facets.happened_at` desc,
  * nulls last — then stable by original index so equal timestamps don't shuffle.
  */
@@ -185,4 +226,25 @@ export function clearSearchRefine(params: URLSearchParams): void {
   params.delete(SEARCH_ETYPE_PARAM);
   params.delete(SEARCH_HSTAT_PARAM);
   params.delete(SEARCH_CHAN_PARAM);
+}
+
+/**
+ * How many refines are LIVE — the number a collapsed phone trigger prints.
+ *
+ * The desk band shows its own state by painting eleven scope faces and a
+ * bubble per facet, so it never needed a tally. A phone collapses that band
+ * behind one control, and a collapsed control that does not say how much it
+ * is hiding is how an operator ends up staring at three results and blaming
+ * the index.
+ *
+ * Reads the SAME three keys `clearSearchRefine` drops, and deliberately not
+ * `?colsort=` — sort re-orders the set, it does not narrow it, so counting it
+ * would put a `1` on the trigger for a list nothing is filtering.
+ */
+export function activeSearchRefineCount(params: URLSearchParams): number {
+  let count = 0;
+  if (parseSearchEtype(params.get(SEARCH_ETYPE_PARAM))) count += 1;
+  if (parseSearchHstat(params.get(SEARCH_HSTAT_PARAM))) count += 1;
+  if (parseSearchChan(params.get(SEARCH_CHAN_PARAM))) count += 1;
+  return count;
 }

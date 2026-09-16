@@ -15,7 +15,7 @@ import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from '@/d
 import { framerDuration } from '@/design-system/foundations/motion-framer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
-import { COMPOUND_ROW_PX } from './compound-row-chrome';
+import { COMPOUND_EDGE_RAIL_CLASS, COMPOUND_ROW_PX } from './compound-row-chrome';
 import type { CompoundRowView } from './compound-row-model';
 import { edgeMarkTravelY } from './edge-mark-pulse';
 
@@ -37,14 +37,14 @@ function SyncedTraveler({ tickClass }: { tickClass?: string }) {
 export function CompoundEdgeRail({
   mark,
 }: {
-  mark: NonNullable<CompoundRowView['edgeMark']>;
+  mark: NonNullable<CompoundRowView['edgeMark'] | CompoundRowView['importMark']>;
 }) {
   const reduce = useReducedMotion();
-  const pulse = Boolean(mark.pulse) && !reduce;
+  const pulse = 'pulse' in mark && Boolean(mark.pulse) && !reduce;
   return (
     <HoverTooltip label={mark.label} asChild focusable={false}>
       <span
-        className={cn('absolute inset-y-0 left-0 w-[3px] overflow-hidden', mark.barClass)}
+        className={cn('absolute inset-y-0 left-0 overflow-hidden', COMPOUND_EDGE_RAIL_CLASS, mark.barClass)}
         data-edge-mark={mark.label}
         aria-hidden
       >

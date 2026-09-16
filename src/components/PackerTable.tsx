@@ -6,6 +6,7 @@ import { useStaffFilter } from '@/hooks/useStaffFilter';
 import { usePackerTableController } from '@/hooks/station/usePackerTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
+import { usePackerTableLayout } from '@/components/station/bench-grid/usePackerTableLayout';
 import { packerRecordToDetail, getPackerDetailId } from '@/components/station/packer-record-mappers';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { AlertTriangle, Calendar, Clock, Package } from '@/components/Icons';
@@ -59,8 +60,8 @@ export function PackerTable({ packedBy }: PackerTableProps) {
     filteredGroupedRecords,
     orderedRecords,
     loading,
-    isRefreshing,
   } = usePackerTableController({ staffId: staffFilterId ?? packedBy });
+  const packerLayout = usePackerTableLayout();
 
   // Day bands (newest day first, each day newest-first) for rendering. The
   // controller's `orderedRecords` drives keyboard navigation.
@@ -100,15 +101,14 @@ export function PackerTable({ packedBy }: PackerTableProps) {
   return (
     <StationHistoryTable<PackerRecord>
       loading={loading}
-      isRefreshing={isRefreshing}
       weekRange={weekRange}
       weekOffset={weekOffset}
       onPrevWeek={() => setWeekOffset(weekOffset + 1)}
       onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
       onResetWeek={() => setWeekOffset(0)}
       daySections={daySections}
-      getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
-      tableId="packer"
+      family="packer"
+      layout={packerLayout}
       savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
       // History is WEEK-scoped, so an empty view is a no-results state, not a

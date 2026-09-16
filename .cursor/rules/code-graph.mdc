@@ -21,5 +21,13 @@ Before non-trivial edits to shared components, hooks, or table infrastructure:
    `KeyboardShortcutsCheatSheet` / `TableStatusBar`, or run
    `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters inline on
    Buttons. Never paint standing keycaps; never open a cheat sheet from `?`.
+7. **SKU identity:** blast radius is `sku-identity-cohort.ts` — every reader
+   AND writer of a product title, SKU or photo (`SKU_IDENTITY_PEERS`), not one
+   desk. Impact `resolveSkuIdentityTitle` /
+   `skuCatalogNoZohoTwinPredicateSql`, or run
+   `pnpm run eval:cohort sku-identity`. The ZOHO item governs: ladder
+   `zoho_item_title → catalog_product_title → item_name → sku`. Never
+   hand-write a `sku_catalog` join (use `SKU_CATALOG_JOIN_ON_SQL` — exact +
+   org-scoped); never re-add a `similarity(product_title, …)` read gate.
 
 Do not guess blast radius — consult the graph first.

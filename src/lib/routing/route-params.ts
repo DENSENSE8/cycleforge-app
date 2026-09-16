@@ -226,7 +226,7 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   filter: 'The surface\'s own named filter set — Home Today\'s feed filter and Inventory\'s bucket multi-select. One question, per-route vocabularies.',
   openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
   tab: 'Sub-tab within the surface, shared by `/repair`, `/walk-in` (redirect shell), `/dashboard` (sales), and Inventory Locations / `/warehouse` orphans BY DESIGN. Vocabularies stay per-route.',
-  room: 'Selected warehouse room. Same facet on `/inventory/locations` and legacy `/warehouse` orphan routes.',
+  room: 'Selected warehouse room. The same facet, over the same `locations.room` values, on `/inventory/locations`, `/inventory/stock` (the stock funnel) and legacy `/warehouse` orphan routes.',
   code: 'Focused bay / bin code. Same id space on Locations and `/warehouse` orphans.',
   showEmpty: 'Map empty-bin toggle. Same question on Locations and `/warehouse` orphans.',
   edit: 'Edit-form toggle for a location record. Same question on Locations and `/warehouse` orphans.',

@@ -14,6 +14,11 @@
  * even when src/ is clean. `next typegen` also re-adds `.next/dev/types` to
  * tsconfig.json — verify uses tsconfig.verify.json which never includes
  * `/dev/types`, so concurrent Next patches cannot poison the gate.
+ *
+ * Incremental `tsconfig.verify.tsbuildinfo` is also a poison path: a half
+ * updated program reports phantom TS2304 (e.g. UnshippedTable calling a hook
+ * whose import the cache still thought was absent). The verify tsconfig
+ * sets incremental: false so this gate never reads that file.
  */
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';

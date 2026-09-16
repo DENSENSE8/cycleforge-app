@@ -443,12 +443,66 @@ export async function GET(
       }
     }
 
+    // Notes spine — the `order_notes` TABLE. `orders.notes` is a single free-text
+    // COLUMN and was the only note this route ever returned, so every note staff
+    // wrote through the notes trail was invisible to FIND. Same guard posture as
+    // the thread spine: a missing relation degrades to [], never a 500.
+    let orderNotes: any[] = [];
+    try {
+      const notes = await withTenantTransaction(orgId, (client) =>
+        client.query(
+          `SELECT n.id, n.note_text AS "noteText", n.created_at AS "createdAt",
+                  s.name AS "authorName"
+             FROM order_notes n
+             LEFT JOIN staff s ON s.id = n.author_staff_id
+            WHERE n.organization_id = $1
+              AND n.order_id = $2
+            ORDER BY n.created_at DESC
+            LIMIT 100`,
+          [orgId, id],
+        ),
+      );
+      orderNotes = notes.rows;
+    } catch (noteErr: any) {
+      if (noteErr?.code !== '42P01') {
+        console.warn('[GET /api/orders/[id]/timeline] notes spine degraded:', noteErr?.message);
+      }
+    }
+
+    // Signal spine — `entity_signals` is the "why" record (signal_kind,
+    // reason_code, severity, notes). It is what answers "why is this held" on the
+    // floor, and no FIND face read it: the stream could show an exception row
+    // without the reason that caused it.
+    let signals: any[] = [];
+    try {
+      const sig = await withTenantTransaction(orgId, (client) =>
+        client.query(
+          `SELECT es.id, es.signal_kind AS "signalKind", es.reason_code AS "reasonCode",
+                  es.severity, es.notes, es.occurred_at AS "occurredAt"
+             FROM entity_signals es
+            WHERE es.organization_id = $1
+              AND es.entity_type = 'ORDER'
+              AND es.entity_id = $2
+            ORDER BY es.occurred_at DESC
+            LIMIT 100`,
+          [orgId, id],
+        ),
+      );
+      signals = sig.rows;
+    } catch (signalErr: any) {
+      if (signalErr?.code !== '42P01') {
+        console.warn('[GET /api/orders/[id]/timeline] signal spine degraded:', signalErr?.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       events: result.rows,
       lifecycle,
       stationEvents: stationEvents.rows,
       threadMessages,
+      orderNotes,
+      signals,
       carrierEvents,
       rmaEvents,
       unitPhotos,

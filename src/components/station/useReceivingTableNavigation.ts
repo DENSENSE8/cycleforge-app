@@ -12,7 +12,7 @@
  */
 
 import { useEffect } from 'react';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingTableNavigationArgs {
   orderedVisibleRows: ReceivingLineRow[];

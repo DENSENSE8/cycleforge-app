@@ -11,6 +11,9 @@ const COLUMNS = [
   { key: 'fulfillment', width: 'minmax(6.5rem, 6.5rem)', frozen: true },
   { key: 'thumb', width: 'minmax(3rem, 3rem)', frozen: true },
   { key: 'item', width: 'minmax(18rem, 18rem)' },
+  // The band's own status pill lives here — without the track the rollup has
+  // nowhere to paint and a regression in it would be invisible.
+  { key: 'state', width: 'minmax(10rem, 10rem)' },
   { key: '_fill', width: 'minmax(0rem, 1fr)' },
 ] as const;
 
@@ -39,6 +42,7 @@ function paint(rows: ShippedOrder[]) {
       columns: COLUMNS,
       selectedIds: new Set<number>(),
       onToggleGroup: () => {},
+      queueMode: 'fulfillment',
       renderRow: (record, _stripe, _rowIndex, quietIdentity) => {
         quiet.push(quietIdentity === true);
         return React.createElement('div', {
@@ -51,7 +55,7 @@ function paint(rows: ShippedOrder[]) {
   return { html, quiet };
 }
 
-describe('QueueGroupRow — always-open parent chrome', () => {
+describe('QueueGroupRow — the fold parent band', () => {
   it('paints a fold envelope and quiets leaf order identity', () => {
     const { html, quiet } = paint([
       line({ id: 1, tracking_numbers: ['1ZAAA'], quantity: 1, sale_amount: 19 }),
@@ -73,20 +77,45 @@ describe('QueueGroupRow — always-open parent chrome', () => {
     assert.deepEqual(quiet, [true, true]);
   });
 
-  it('aligns the parent check with the order id on the two-line tracks', () => {
+  it('pins the parent check to the top, chevron in the band below', () => {
     const { html } = paint([
       line({ id: 1, tracking_numbers: ['1ZAAA'] }),
       line({ id: 2, tracking_numbers: ['1ZBBB'] }),
     ]);
     const select = html.match(/data-col="select"[\s\S]*?data-col="/)?.[0] ?? '';
-    assert.match(select, /grid-rows-2/, 'parent select uses the compound two-line tracks');
+    // Operator 2026-09-15: the mark plane is the whole cell with the mark
+    // PINNED TO THE TOP, and the fold chevron takes its own bottom band — the
+    // COMPOUND_TWO_LINE_CLASS stack that used to box the control in a 23.5px
+    // half is gone from the gutter (it stays the answer for TEXT cells).
+    assert.doesNotMatch(select, /grid-rows-2/, 'the gutter no longer boxes the check in a stack');
     assert.doesNotMatch(
       select,
       /flex-col items-center justify-center/,
       'parent check must not sit in a centered stack',
     );
-    assert.match(select, /items-start justify-center/);
+    assert.match(select, /items-start/);
     assert.match(select, /\bpt-1\b/);
+    assert.match(select, /pl-\[3px\]/, 'the 3px triage rail stays reserved');
+    assert.match(select, /absolute inset-x-0 bottom-0 h-6/, 'fold chevron band');
+  });
+
+  it('rolls up the SAME status its leaves paint — a shortage is not a blank band', () => {
+    // Operator 2026-09-15: five OUT OF STOCK children under a band reading
+    // nothing. A shortage is a LIFECYCLE stage (resolveRowStatus), never a
+    // `shipment_status` word — rolling up the raw column folded every row to
+    // the empty string and silenced the parent.
+    const { html } = paint([
+      line({ id: 1, is_out_of_stock: true }),
+      line({ id: 2, is_out_of_stock: true }),
+    ]);
+    assert.match(html, /2 OUT OF STOCK/);
+  });
+
+  it('says what the leaves say when they are merely waiting', () => {
+    const { html } = paint([line({ id: 1 }), line({ id: 2 })]);
+    assert.doesNotMatch(html, /OUT OF STOCK/);
+    // The lane's own word for "not started", counted — never an empty pill.
+    assert.match(html, /2 NEEDS LABEL/);
   });
 
   it('rolls commercial qty and money across the fold', () => {

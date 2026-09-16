@@ -4,7 +4,7 @@
  * FIND chronology faces — one document, kind-shaped rows, newest-first.
  *
  * Callers: SearchDossierFrame. Schema: FindEvent from find-dossier-model.
- * Enlarge uses usePhotoGallery + PhotoViewerPortal (not PhotoPeekFan).
+ * Enlarge uses usePhotoGallery + PhotoViewerPortal (never a page-level photo peek fan).
  * User: Continue with the next phase now (Phase 2 stream faces).
  */
 
@@ -137,7 +137,7 @@ function FindEventRow({
     <li
       className={cn(
         'px-4 py-3',
-        nested && 'border-l border-border-hairline pl-4',
+        nested && 'pl-4',
         event.kind === 'exception' && 'bg-surface-warning',
       )}
       data-testid="search-find-event"
@@ -168,7 +168,7 @@ export function SearchFindStream({
     return <p className="px-4 py-6 text-role-caption text-text-soft">{empty}</p>;
   }
   return (
-    <ol className="divide-y divide-border-hairline" data-testid="search-find-stream">
+    <ol className="stack-tight" data-testid="search-find-stream">
       {events.map((event) => (
         <FindEventRow key={event.id} event={event} exceptionHref={exceptionHref} />
       ))}

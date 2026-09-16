@@ -24,6 +24,7 @@ import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/re
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
+import { writeClipboardText } from '@/lib/clipboard';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
 
 export function IdentityLinkChip({
@@ -154,7 +155,10 @@ export function IdentityLinkChip({
   };
   const copyValue = () => {
     if (!canCopy) return;
-    void navigator.clipboard.writeText(normalizedValue);
+    // Same rule as `useCopyChip`: `navigator.clipboard` is undefined on an
+    // insecure origin, so the bare call threw and took the panel down on the
+    // LAN mounts. The history write only happens on a copy that landed.
+    if (!writeClipboardText(normalizedValue)) return;
     recordCopy(normalizedValue, { kind: tone, display });
   };
   const multiLinks = (linkOptions?.length ?? 0) > 1 ? linkOptions! : null;

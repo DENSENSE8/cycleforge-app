@@ -8,6 +8,7 @@ import {
   RECEIVING_MODES,
   INCOMING_PAGE_SIZE,
   RECEIVING_TABLE_LIMIT,
+  RECEIVING_HISTORY_LIMIT,
   HISTORY_SORT_OPTIONS,
   HISTORY_SORT_WIRE_IDS,
   historySortGroupAxis,
@@ -160,7 +161,9 @@ test('history buildParams sets view=activity + search facets', () => {
   assert.equal(p.get('search'), 'acme');
   assert.equal(p.get('search_field'), 'po');
   assert.equal(p.get('search_scope'), 'unmatched');
-  assert.equal(p.get('limit'), String(RECEIVING_TABLE_LIMIT));
+  // Operator 2026-09-14: History fetches the ENTIRE timeline — its ceiling is
+  // RECEIVING_HISTORY_LIMIT, not the funnel-page RECEIVING_TABLE_LIMIT.
+  assert.equal(p.get('limit'), String(RECEIVING_HISTORY_LIMIT));
   assert.equal(p.get('offset'), '0');
 });
 
@@ -256,9 +259,15 @@ test('skipWeekFilter: receive keeps weeks; incoming always skips', () => {
   assert.equal(RECEIVING_MODES.receive.skipWeekFilter(ctx()), false);
   assert.equal(RECEIVING_MODES.incoming.skipWeekFilter(ctx()), true);
 });
-
-test('skipWeekFilter: history skips only when a search or non-default scope is active', () => {
-  assert.equal(RECEIVING_MODES.history.skipWeekFilter(ctx()), false);
+test('skipWeekFilter: history is ALL TIME by default; a week narrows only when explicit', () => {
+  // Operator 2026-09-14: the inbound history displays the ENTIRE history by
+  // default — no week slicing unless ?weekOffset is explicitly in the URL.
+  assert.equal(RECEIVING_MODES.history.skipWeekFilter(ctx()), true);
+  assert.equal(
+    RECEIVING_MODES.history.skipWeekFilter(ctx({ historyWeekExplicit: true })),
+    false,
+  );
+  // Search / non-default scope still narrows globally regardless of week.
   assert.equal(RECEIVING_MODES.history.skipWeekFilter(ctx({ historySearch: 'x' })), true);
   assert.equal(
     RECEIVING_MODES.history.skipWeekFilter(ctx({ historySearchScope: 'zoho_po' })),

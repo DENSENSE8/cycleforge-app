@@ -148,75 +148,69 @@ export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [
 ];
 
 /**
- * `AdminTable` is gone. Settings desks and the admin SKU ops dump left it;
- * `/admin/inventory/sku/[sku]` redirects to `/inventory?sku=`. The tripwire
- * greps for the import — there is no allowlist. DataTable is the engine.
+ * `AdminTable` is DEAD DEBT. Wave D finished the port on 2026-09-12: every
+ * settings and admin-SKU-ops desk that painted the second engine now mounts
+ * the one slot `DataTable` as a registered family, and {@link
+ * ADMIN_TABLE_DEBT} is EMPTY.
+ *
+ * `/inventory/health/sku/[sku]` is a LIVE page, not a redirect — there is no
+ * `/inventory?sku=` rewrite in `next.config.ts` and no `src/middleware.ts` to
+ * carry one. Its five row sections are now five engine mounts, and they are
+ * worth reading as the three shapes a port can take:
+ *
+ * - recent serial units → the registered `inventory-units` family, and
+ *   recent inventory events → `inventory-events`. Pure REUSE: no catalog, no
+ *   tableId, no definition. An org's bind/hide/reorder on the Units browse or
+ *   the Ledger lands here too.
+ * - bin distribution → `sku-bins`, stock ledger → `sku-ledger`. New
+ *   entities, so new families; the retired `refs` cell that packed three
+ *   reference ids into one string is three facts now.
+ * - open allocations → `sku-allocations`, a SIBLING layout DOCUMENT over the
+ *   `unit-allocations` ENTITY. Same family, same catalog by reference, its
+ *   own stored layout — because this feed binds `allocated_by` and never the
+ *   release facts while the unit desk does the reverse, and one document
+ *   would leave a permanently dashed track on one of the two mounts.
+ *
+ * The tripwire greps for the import. There is ONE allowlist, and it exists for
+ * a single reason — see {@link ADMIN_TABLE_ALLOW}: a desk whose ROW is a
+ * `GROUP BY` aggregate cannot become a family without breaking "a row is one
+ * entity", so it keeps the old wrapper instead of being forced into a layout
+ * document over a bucket. Everything else: DataTable is the engine.
  */
 
 /**
- * Settings / admin SKU ops still import AdminTable. DataTable is the engine;
- * this list is shrink-only. An id leaves when that surface mounts DataTable.
+ * EMPTY — no surface imports `AdminTable` as debt any more (Wave D, 2026-09-12).
+ *
+ * This list is shrink-only and it has reached zero. It stays as a declaration
+ * rather than being deleted, because the tripwire compares the live set of
+ * `AdminTable` importers against `ADMIN_TABLE_DEBT + ADMIN_TABLE_ALLOW`: with
+ * this array empty, the allowlist is the ONLY thing keeping that assertion
+ * green, so a new debt mount fails the build the moment it appears instead of
+ * being quietly appended here.
  */
-export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [
-  {
-    file: 'src/app/admin/inventory/_inventory-admin/StatusSections.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/_inventory-admin/TableSections.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/bulk-allocate/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/cycle-counts/[id]/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/cycle-counts/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/holds/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/returns/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/sku/[sku]/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/admin/inventory/throughput/page.tsx',
-    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/reports/page.tsx',
-    why: 'Reports still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
+export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [];
+
+/**
+ * AdminTable mounts that are NOT debt — operator ruling 2026-09-12.
+ *
+ * `/settings/ai` groups AI usage by `(context, provider, model)` over 30 days.
+ * A row is a bucket with a composite key, not an entity, so registering it
+ * would hand an org column-rebinding over an aggregate and would put a layout
+ * document behind a summary. The other two aggregate desks (throughput
+ * by-actor, allocation-state counts) became KPI tiles because they carry three
+ * facts each; this one carries six and reads as a table, so it keeps one.
+ *
+ * **The consequence, stated plainly:** while this list is non-empty,
+ * `AdminTable.tsx` cannot be deleted — the second engine survives for exactly
+ * one surface. Closing that out means either giving AI usage a real per-call
+ * entity to list, or accepting the wrapper permanently. This list may never
+ * grow without a fresh ruling; "my rows are aggregates too" is an argument for
+ * tiles, not for an exemption.
+ */
+export const ADMIN_TABLE_ALLOW: readonly { file: string; why: string }[] = [
   {
     file: 'src/app/settings/ai/page.tsx',
-    why: 'Settings AI usage still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/settings/audit/page.tsx',
-    why: 'Settings audit still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/app/settings/staff/StaffTable.tsx',
-    why: 'Staff directory still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/components/admin/sourcing/CompatibilityManagementTab.tsx',
-    why: 'Compatibility still mounts AdminTable. Port to DataTable; this list is shrink-only.',
-  },
-  {
-    file: 'src/components/settings/sections/SessionsSection.tsx',
-    why: 'Auth sessions still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+    why: 'AI usage rows are GROUP BY (context, provider, model) buckets with a composite key — an aggregate, not an entity. Operator ruled aggregates are not families; six facts is too many for a tile band, so this desk keeps AdminTable.',
   },
 ];
 
@@ -224,17 +218,12 @@ export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [
  * Raw `<table>` product row lists — the same second-engine class AdminTable
  * was, without the wrapper.
  *
- * Staff inventory units (`ByUnitView`) paints allocations as hand HTML.
  * Incoming returns staging reprints `CsvImportStagingHost` as a hand HTML
  * grid. The tripwire's contract: this set may never GROW. An id leaves when
  * the surface mounts a PRODUCT_TABLES family (or the orders-import staging
  * host) instead.
  */
 export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
-  {
-    file: 'src/components/inventory/ByUnitView.tsx',
-    why: 'Staff unit detail paints allocations and TSN links as hand HTML tables. Needs an allocations family, not a second grid.',
-  },
   {
     file: 'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
     why: 'Incoming returns CSV staging is a hand HTML grid. To-ship already mounts CsvImportStagingHost → DataTable / orders-import. Reuse that host (or register an incoming-import family); do not grow a third staging engine.',
@@ -243,25 +232,31 @@ export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
     file: 'src/design-system/components/AdminTable/AdminTable.tsx',
     why: 'AdminTable is the second table engine settings/admin still paint. Leaves this list when every ADMIN_TABLE_DEBT mount is DataTable and this file is deleted.',
   },
-  {
-    file: 'src/app/admin/inventory/throughput/page.tsx',
-    why: 'Throughput heatmap is a hand HTML table beside an AdminTable mount. Port the desk to DataTable; do not grow a third grid for the heatmap.',
-  },
 ];
 
 /**
  * `<table>` that is not a product-family desk: print HTML, markdown, maps,
- * KPI, mail, QA.
+ * KPI, mail, QA — and matrix VISUALIZATIONS.
+ *
+ * The throughput heatmap joined this list on 2026-09-12 by operator ruling,
+ * not by porting: it is a station × hour intensity matrix whose columns are
+ * data-derived hour buckets, whose cells carry no text (a 24px tile whose
+ * `rgba()` alpha is `count / maxHourly`), and whose row is a GROUPING KEY, not
+ * an entity. The engine's adapter contract is `row → CompoundRowView` with
+ * strings and enums only, so expressing it would mean weakening that contract
+ * or minting a per-family visual cell — the two things `ENGINE_IS_MONOMORPHIC`
+ * exists to prevent. Its own debt entry already forbade "a third grid for the
+ * heatmap"; this is that rule followed to its conclusion.
  */
 export const HAND_HTML_TABLE_ALLOW: readonly string[] = [
   'src/components/ai/MarkdownRenderer.tsx',
   'src/components/warehouse/WarehouseMap.tsx',
   'src/components/po-gmail/mailbox/ScannedMode.tsx',
-  'src/features/operations/workspace/PackingKpiSection.tsx',
   'src/app/api/walk-in/receipt/[id]/route.tsx',
   'src/lib/counter/visit-receipt-html.ts',
   'src/lib/serial/serial-journey.ts',
   'src/lib/sheet/sheet-print.ts',
+  'src/app/inventory/throughput/page.tsx',
 ];
 
 

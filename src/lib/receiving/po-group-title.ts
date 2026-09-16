@@ -7,7 +7,7 @@
  * — never `Amazon · Order {full id}`.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   formatReturnSerialProductTitle,
   parseReturnSerialTitle,
@@ -15,6 +15,7 @@ import {
 } from '@/components/station/receiving-line-serials';
 import { formatMarketplaceReturnIdentityTitle } from '@/lib/receiving/marketplace-return-identity';
 import { storedOrInferredSourcePlatform } from '@/lib/marketplace-order-id';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 /** DB / wire sentinel for an unmatched carton line — never paint this raw. */
 export const UNFOUND_PO_SENTINEL = 'Unfound PO';
@@ -203,15 +204,22 @@ export function stampCartonRailTitleContext(
   });
 }
 
-/** Operator-recognition product title — aligned with mobile `unitTitle`. */
+/**
+ * Operator-recognition product title — aligned with mobile `unitTitle`.
+ *
+ * The ladder is {@link resolveSkuIdentityTitle} (`src/lib/sku/sku-identity-law.ts`):
+ * the Zoho item name governs, the marketplace catalog title is the fallback for
+ * lines with no `zoho_item_id`. Until 2026-09-15 this read
+ * `catalog_product_title` first, contradicting the SoT its own callers' SQL
+ * declared, and painted the Ecwid product for 132 contaminated catalog rows.
+ */
 export function receivingProductTitle(row: ReceivingLineRow): string {
-  const raw =
-    row.catalog_product_title ||
-    row.zoho_item_title ||
-    row.item_name ||
-    row.sku ||
-    row.zoho_item_id ||
-    `Line #${row.id}`;
+  // The law treats the `'Unfound PO'` stub as absent so a real later field
+  // wins; when nothing real exists the stub is still the operator's face, so
+  // it is restored here rather than falling through to `Line #N`.
+  const identity = resolveSkuIdentityTitle(row);
+  if (!identity && row.item_name === UNFOUND_PO_SENTINEL) return UNFOUND_PO_DISPLAY;
+  const raw = identity || `Line #${row.id}`;
   if (raw === UNFOUND_PO_SENTINEL) return UNFOUND_PO_DISPLAY;
   const rawStr = String(raw);
   // Generated return-intake titles: paint from live serial units when present
@@ -235,13 +243,10 @@ export function receivingWorkspaceLineTitle(
   row: ReceivingLineRow,
   resolvePlatformLabel: (raw: string) => string = (raw) => raw,
 ): string {
-  const hasProductField = Boolean(
-    row.catalog_product_title ||
-      row.zoho_item_title ||
-      row.item_name ||
-      row.sku ||
-      row.zoho_item_id,
-  );
+  // Same fields the ladder reads, in the ladder's order — see
+  // {@link SKU_IDENTITY_TITLE_ORDER}. Order is irrelevant to a presence check,
+  // but a second spelling of the ladder is how ladders drift apart.
+  const hasProductField = Boolean(resolveSkuIdentityTitle(row));
   if (hasProductField) return receivingProductTitle(row);
   if (isReceivingPoGroupTitleRow(row)) {
     return getReceivingPoGroupTitle(row, resolvePlatformLabel);

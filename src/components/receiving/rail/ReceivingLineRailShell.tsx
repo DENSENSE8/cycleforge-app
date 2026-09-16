@@ -42,7 +42,7 @@ import {
   resolveReceivingRailOccupancy,
   type ReceivingRailSurface,
 } from '@/lib/right-rail/receiving-selection-occupancy';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function rosterTitle(row: ReceivingLineRow): string {
   return receivingProductTitle(row);

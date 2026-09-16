@@ -20,16 +20,31 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
       async () => {
     // $1 carries the tenant org id into every subquery below. The `created_at`
-    // column referenced in todayFilter/yesterdayFilter belongs to
-    // station_activity_logs in every subquery that uses them, so adding the
-    // org predicate alongside them scopes those reads to this tenant.
+    // column referenced in todayFilter belongs to station_activity_logs in
+    // every subquery that uses it, so adding the org predicate alongside it
+    // scopes those reads to this tenant. `yesterdayFilter` is gone with the
+    // deltas it fed (2026-09-16).
     const todayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date`;
-    const yesterdayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date - 1`;
 
-    // ── Summary KPIs (today + yesterday for deltas) ──────────────────────
+    // ── Summary KPIs (today, PST — no comparison window) ─────────────────
     // shipping_tracking_numbers has no organization_id column (NEEDS-COL); it
     // is scoped via its parent `orders` row (joined on the integer surrogate
     // PK stn.id = o.shipment_id) plus the GUC-wrapped tenantQuery connection.
+    /*
+     * NO `*_yesterday` columns and no `computeDelta` — both deleted 2026-09-16.
+     *
+     * The old delta divided TODAY-SO-FAR by ALL OF YESTERDAY, so at 9 AM every
+     * tile read structurally down ~70% and by evening it drifted back up: the
+     * chips measured the clock, not the floor. Operator: *"I cannot trust any
+     * of the information within the display."* Three of the six deltas were
+     * hardcoded `0` on top of that — a placeholder that rendered as a
+     * measurement.
+     *
+     * A comparable window (today-so-far vs same-time-yesterday) is a real
+     * feature and a bigger job than a chip. Until someone builds it, the tiles
+     * state their window in words (`PRIMARY_KPI_CARDS[].meta`) and claim no
+     * trend.
+     */
     const summaryQuery = `
       WITH pending_orders AS (
         SELECT o.id, o.is_out_of_stock
@@ -61,30 +76,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            AND organization_id = $1
            AND ${todayFilter}) AS all_today,
         (SELECT count(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int FROM station_activity_logs
-         WHERE activity_type IN (${sqlInList(VELOCITY_ACTIVITY_TYPES)})
-           AND organization_id = $1
-           AND ${yesterdayFilter}) AS all_yesterday,
-        (SELECT count(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int FROM station_activity_logs
          WHERE station = 'TECH'
            AND activity_type IN (${sqlInList(TECH_TEST_ACTIVITY_TYPES)})
            AND organization_id = $1
            AND ${todayFilter}) AS tested_today,
-        (SELECT count(DISTINCT COALESCE(shipment_id::text, scan_ref, id::text))::int FROM station_activity_logs
-         WHERE station = 'TECH'
-           AND activity_type IN (${sqlInList(TECH_TEST_ACTIVITY_TYPES)})
-           AND organization_id = $1
-           AND ${yesterdayFilter}) AS tested_yesterday,
         (SELECT count(*)::int FROM repair_service WHERE status NOT IN ('Done', 'Shipped', 'Picked Up') AND organization_id = $1) AS repair_count,
         (SELECT count(*)::int FROM pending_orders WHERE is_out_of_stock) AS oos_count,
         (SELECT count(*)::int FROM late_orders) AS late_count,
-        (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${todayFilter}) AS fba_today,
-        (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${yesterdayFilter}) AS fba_yesterday
+        (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${todayFilter}) AS fba_today
     `;
     const summaryResult = await tenantQuery(orgId, summaryQuery, [orgId]);
     const s = summaryResult.rows[0];
 
-    const computeDelta = (today: number, yesterday: number) =>
-      yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : 0;
+
 
     // ── Staff Progress ───────────────────────────────────────────────────
     const staffStats = await getAllStaffGoalsWithStats(orgId);
@@ -129,13 +133,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const feedResult = await tenantQuery(orgId, feedQuery, [orgId]);
 
     return {
+      /*
+       * VALUE ONLY — no `delta`. See the note in the query above: the old
+       * comparison divided a partial day by a whole one. The tiles now state
+       * their window ("today, PST") in words instead of claiming a trend.
+       */
       summary: {
-        all: { value: s.all_today, delta: computeDelta(s.all_today, s.all_yesterday) },
-        tested: { value: s.tested_today, delta: computeDelta(s.tested_today, s.tested_yesterday) },
-        repair: { value: s.repair_count, delta: 0 },
-        outOfStock: { value: s.oos_count, delta: 0 },
-        pendingLate: { value: s.late_count, delta: 0 },
-        fba: { value: s.fba_today, delta: computeDelta(s.fba_today, s.fba_yesterday) },
+        all: { value: s.all_today },
+        tested: { value: s.tested_today },
+        repair: { value: s.repair_count },
+        outOfStock: { value: s.oos_count },
+        pendingLate: { value: s.late_count },
+        fba: { value: s.fba_today },
       },
       staffProgress,
       activityFeed: feedResult.rows,

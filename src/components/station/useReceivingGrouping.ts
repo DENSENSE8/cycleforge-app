@@ -20,7 +20,7 @@ import {
   type ReceivingActivityAxis,
   type ReceivingPoGroup,
 } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingGroupingArgs {
   localRows: ReceivingLineRow[];

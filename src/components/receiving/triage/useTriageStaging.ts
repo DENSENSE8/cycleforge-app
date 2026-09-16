@@ -15,7 +15,7 @@ import { resolveTriageLane } from '@/lib/receiving/triage-lane-policy';
 import { qk } from '@/queries/keys';
 import { locationsListQueryOptions, selectScannableBins } from '@/hooks/useLocations';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function useTriageStaging(row: ReceivingLineRow) {
   const queryClient = useQueryClient();

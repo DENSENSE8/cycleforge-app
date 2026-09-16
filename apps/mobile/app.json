@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "CycleForge Mobile",
+    "slug": "cycleforge-mobile",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "cycleforge"
+  }
+}

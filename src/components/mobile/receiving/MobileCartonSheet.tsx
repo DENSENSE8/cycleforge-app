@@ -15,12 +15,12 @@ import {
   conditionGradeTableLabel,
   getStatusDotBg,
   workflowStatusTableLabel,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { cn } from '@/utils/_cn';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 
 interface MobileCartonSheetProps {

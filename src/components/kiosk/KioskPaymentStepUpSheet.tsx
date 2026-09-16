@@ -13,6 +13,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { StaffPinPad } from '@/components/auth/StaffPinPad';
 import { Button } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import { Loader2 } from '@/components/Icons';
 
 type KioskStepUpStaff = {
@@ -64,7 +65,7 @@ export function KioskPaymentStepUpSheet({
     setPicked(null);
     void (async () => {
       try {
-        const r = await fetch('/api/kiosk/staff-for-stepup', { cache: 'no-store' });
+        const r = await kioskFetchHealed('/api/kiosk/staff-for-stepup', { cache: 'no-store' });
         const body = (await r.json().catch(() => ({}))) as {
           staff?: KioskStepUpStaff[];
           error?: string;

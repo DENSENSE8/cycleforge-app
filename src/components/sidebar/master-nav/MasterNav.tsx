@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
@@ -14,7 +14,7 @@ import { applyOrgNavToPage } from '@/lib/nav/org-nav';
 import { useOrgNavDefinition, useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { hydrateSpineSlots } from '@/lib/nav/spine-slots';
+import { migrateSpineSlots } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
 import { MasterNavView } from './MasterNavView';
@@ -59,10 +59,24 @@ export function MasterNav({
     [navItems, permissions, orgNav],
   );
 
-  const spineOrder = useMemo(
-    () => hydrateSpineSlots(prefs?.spineSlots, navItems),
-    [prefs?.spineSlots, navItems],
+  // Roll a saved order onto the current generation. `stamp` is non-null only
+  // while this staffer is behind SPINE_SLOTS_VERSION; persisting it is what
+  // carries a default-order change (v2: Workspaces above Scan Stations) to
+  // someone who already has a saved arrangement, without overwriting it.
+  const { slots: spineOrder, stamp } = useMemo(
+    () => migrateSpineSlots(prefs?.spineSlots, navItems, prefs?.spineSlotsVersion),
+    [prefs?.spineSlots, prefs?.spineSlotsVersion, navItems],
   );
+
+  // One write per staffer, ever. The ref guards the window between the PUT and
+  // the refetched prefs — without it a slow round-trip re-renders with the old
+  // `spineSlotsVersion` still in cache and fires the same write again.
+  const stampedRef = useRef(false);
+  useEffect(() => {
+    if (!stamp || stampedRef.current) return;
+    stampedRef.current = true;
+    updatePrefs(stamp);
+  }, [stamp, updatePrefs]);
 
   const handleSpineOrderChange = useCallback(
     (next: string[]) => {

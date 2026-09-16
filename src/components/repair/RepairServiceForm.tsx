@@ -5,31 +5,78 @@ import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket'
 import { RepairPaperTicketHeading } from './RepairPaperTicketHeading'
 import type { RepairReceiptProps } from '@/lib/repair/repair-intake-receipt'
 import { REPAIR_PICKUP_DATE_PLACEHOLDER } from '@/lib/repair/repair-paper-html'
+import { REPAIR_PRINT_SIGNATURE_BAND } from '@/lib/repair/signature-geometry'
 import { useOrgLetterhead } from '@/hooks/useOrgLetterhead'
 
 export type RepairServiceFormProps = RepairReceiptProps & {
-  /** `compact` — review-step preview: drop-off only, full column width. */
+  /** `compact` — review-step SCALE: column width, smaller type. */
   density?: 'full' | 'compact';
+  /**
+   * Which parts of the document render.
+   *
+   * `dropoff` is drop-off only; `full` adds the internal-use table and the
+   * PICK UP signature line. Split from {@link density} on operator ruling
+   * 2026-09-15 (*"right now it's just displaying the drop-off, it should
+   * display the pickup signature as well at the bottom of the paperwork"*):
+   * `density` was carrying both meanings, so the only way to get the whole
+   * document was to also accept A4 geometry — which does not fit a counter
+   * tablet's form column. Scale and completeness are now separate knobs.
+   *
+   * Defaults to `full` for a `full` density and `dropoff` for `compact`, so
+   * every existing caller renders exactly what it rendered before.
+   */
+  sections?: 'dropoff' | 'full';
   /** `screen` — A4 on-screen sheet; `print` — A4 min-height for print layout. */
   surface?: 'screen' | 'print';
+  /**
+   * Captured ink, drawn INTO the signature band instead of leaving it ruled
+   * and empty. The kiosk passes the live pad output so the customer watches
+   * their signature land on the document they are signing.
+   */
+  dropoffSignatureUrl?: string | null;
+  pickupSignatureUrl?: string | null;
 };
 
 /** ISO 216 A4 — on-screen / print sheet size (210mm × 297mm). */
 const A4_SHEET_CLASS =
   'mx-auto w-[210mm] max-w-full min-h-[297mm] bg-surface-card font-sans text-text-default';
 
+/**
+ * One ruled signature row, with the ink on it when there is ink.
+ *
+ * The band GROWS to the printed ink height once signed
+ * (`REPAIR_PRINT_SIGNATURE_BAND.inkHeightPx`) and the image is anchored to the
+ * rule with `object-fit: contain` — the same three properties the print route
+ * uses (`repairSignatureInkHtml`), so what the customer watches land on screen
+ * is what the paper shows. An unsigned row keeps its original 24px rule so
+ * every existing surface renders unchanged.
+ */
 function RepairSignatureLine({
   label,
   dateText,
+  signatureUrl,
 }: {
   label: string;
   dateText: string;
+  signatureUrl?: string | null;
 }) {
+  const signed = Boolean(signatureUrl);
   return (
     <div className="mb-2 grid grid-cols-[5.75rem_minmax(0,1fr)_11rem] items-end gap-x-4">
       <span className="whitespace-nowrap font-semibold">{label}</span>
       {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
-      <div className="border-b border-black" style={{ height: '24px' }} />
+      <div
+        className="relative overflow-hidden border-b border-black"
+        style={{ height: signed ? REPAIR_PRINT_SIGNATURE_BAND.inkHeightPx : 24 }}
+      >
+        {signatureUrl ? (
+          <img
+            src={signatureUrl}
+            alt={`${label} signature`}
+            className="pointer-events-none absolute bottom-0.5 left-0 h-full w-auto max-w-full object-contain"
+          />
+        ) : null}
+      </div>
       <span className="whitespace-nowrap text-right font-semibold tabular-nums">{dateText}</span>
     </div>
   );
@@ -45,10 +92,15 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
   price,
   startDateTime,
   density = 'full',
+  sections,
   surface = 'screen',
+  dropoffSignatureUrl = null,
+  pickupSignatureUrl = null,
 }) => {
   const displayTicket = formatRepairPaperTicketNumber(ticketNumber)
   const isCompact = density === 'compact'
+  // Completeness defaults to the old `density`-coupled behaviour (see the prop).
+  const showFullDocument = (sections ?? (density === 'compact' ? 'dropoff' : 'full')) === 'full'
   const isScreen = surface === 'screen'
   // On-screen preview — matches printed form letterhead from org settings.
   const letterhead = useOrgLetterhead()
@@ -146,17 +198,21 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
 
       {/* Drop Off Section */}
       <div className={dropOffGap}>
-        <RepairSignatureLine label="Drop Off X" dateText={`Date: ${startDateTime}`} />
+        <RepairSignatureLine
+          label="Drop Off X"
+          dateText={`Date: ${startDateTime}`}
+          signatureUrl={dropoffSignatureUrl}
+        />
         <p className="text-xs italic">
           By signing above you agree to the listed price and any unexpected delays in the repair process.
         </p>
       </div>
 
-      {!isCompact && (
+      {showFullDocument && (
         <>
           {/* Internal Use Table */}
           {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
-          <div className={`flex border-l border-t border-black ${isScreen ? 'mb-2' : 'mb-4 print:mb-3'}`}>
+          <div className={`flex border-l border-t border-black ${isCompact ? 'text-xs' : ''} ${isScreen ? 'mb-2' : 'mb-4 print:mb-3'}`}>
             {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
             <div className="flex-1 border-b border-r border-black p-2 font-semibold">Part Repaired:</div>
             {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
@@ -169,8 +225,16 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
 
           {/* Pick Up Section */}
           <div className={pickupGap}>
-            <RepairSignatureLine label="Pick Up X" dateText={REPAIR_PICKUP_DATE_PLACEHOLDER} />
-            <p className={`text-center text-xl font-semibold ${pickupClosingGap}`}>Enjoy your repaired unit!</p>
+            <RepairSignatureLine
+              label="Pick Up X"
+              dateText={REPAIR_PICKUP_DATE_PLACEHOLDER}
+              signatureUrl={pickupSignatureUrl}
+            />
+            <p
+              className={`text-center font-semibold ${isCompact ? 'text-base' : 'text-xl'} ${pickupClosingGap}`}
+            >
+              Enjoy your repaired unit!
+            </p>
           </div>
         </>
       )}

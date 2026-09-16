@@ -2,8 +2,8 @@
 
 import { memo } from 'react';
 import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttachTrackingButton';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { INCOMING_GRID_CAPABILITIES } from '@/components/station/incoming-grid/incoming-grid-descriptor';
 import { LedgerGridLeafRow } from '@/design-system/components/grid';
@@ -22,11 +22,10 @@ import {
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
 import {
-  INCOMING_GRID_COLUMNS,
-  incomingGridTemplate,
   incomingRowDateSource,
   type IncomingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import {
   formatLaneAgeCompact,
@@ -50,12 +49,14 @@ interface IncomingGridRowProps {
   /** Unbox Sheets click-select: click toggles; dblclick opens inspector. */
   clickSelect?: boolean;
   selectGutterChrome?: GridSelectGutterChrome;
-  columns?: readonly IncomingGridColumn[];
-  /** Present ⇒ the compound note line edits in place. Absent ⇒ read-only. */
+  /** The MOUNTED column model — no module-constant fallback. */
+  columns: readonly IncomingGridColumn[];
+  /** Fold parent is speaking the PO — dash it on this leaf. */
+  quietIdentity?: boolean;
 }
 
 /**
- * Incoming POS leaf row — CSS-grid columns matching {@link INCOMING_GRID_COLUMNS}.
+ * Incoming POS leaf row — CSS-grid columns matching the MOUNTED column model.
  * Desktop cells paint through `renderReceivingGridCell` with `linePhase: 'expected'`.
  * Mobile falls back to the legacy {@link ReceivingLineOrderRow} stack.
  */
@@ -70,7 +71,8 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   onToggle,
   clickSelect = false,
   selectGutterChrome = 'always',
-  columns = INCOMING_GRID_COLUMNS,
+  columns,
+  quietIdentity = false,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */
@@ -172,8 +174,8 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     laneAgeLabel: showLaneAge ? laneAgeLabelRaw : null,
     laneAgeHours,
     ageTooltip,
-    markLabel,
     trackingAction,
+    quietIdentity,
     // Compound-track capabilities. `onSelect` IS "open the record" on this
     // surface, so the chevron and the row body agree about what a click means.
     onOpenRecord: onSelect,
@@ -183,6 +185,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     <LedgerGridLeafRow
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
+      data-group-child={quietIdentity ? '' : undefined}
       role={clickSelect ? 'checkbox' : splitPlanes ? 'button' : selectMode ? 'checkbox' : 'button'}
       tabIndex={0}
       aria-checked={
@@ -232,7 +235,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         }
       }}
       columns={columns}
-      template={incomingGridTemplate(columns)}
+      template={gridTemplate(columns)}
       selected={isOpen || isChecked}
       capabilities={INCOMING_GRID_CAPABILITIES}
       renderCell={(col, { last }) => renderReceivingGridCell(col, last, ctx)}

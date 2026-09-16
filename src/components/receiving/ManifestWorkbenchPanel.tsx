@@ -14,11 +14,11 @@ import { X, Package, Printer, Loader2, Check, Trash2 } from '@/components/Icons'
 import { IconButton, Button } from '@/design-system/primitives';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 import { useManifestDetail } from '@/hooks/useManifestDetail';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 

@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import {
   applySessionEvent,
   emptySessionSnapshot,
@@ -122,7 +123,7 @@ function mirror(
  */
 function makeWriter(getVersion: () => number, onWrote: () => void) {
   const send = async (path: string, method: string, body: Record<string, unknown>) => {
-    await fetch(path, {
+    await kioskFetchHealed(path, {
       method,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ expectedVersion: getVersion(), ...body }),
@@ -178,7 +179,7 @@ export function useKioskSharedSession(): KioskSharedSessionState {
   liveRef.current = live;
 
   const refresh = useCallback(async () => {
-    const res = await fetch('/api/kiosk/session', { cache: 'no-store' });
+    const res = await kioskFetchHealed('/api/kiosk/session', { cache: 'no-store' });
     if (!res.ok) return;
     const json = (await res.json().catch(() => ({}))) as {
       session?: DeviceSessionProjection | null;

@@ -19,8 +19,8 @@
  *
  * The verbs are the operator's, taken from the orders field catalog rather than
  * from the stage ids: `PENDING → Pick`, because the desk calls that step Pick
- * (`orders.picked`, stage labels Pick / Picked) even though the feed still
- * stamps it on the legacy tester columns.
+ * (`orders.picked`, stage labels Pick / Picked) — and since 2026-09-14 the feed
+ * stamps that step from its own pick projection, not the tester columns.
  *
  * ## Terminal is stated, never left blank
  *
@@ -40,6 +40,7 @@ import {
   resolveOutboundStage,
   type OrderLifecycleStage,
 } from '@/lib/order-lifecycle';
+import { outboundSignals } from '@/lib/orders/outbound-signals';
 import type { ShippedOrder } from '@/types/orders';
 
 /**
@@ -55,6 +56,7 @@ export type OrdersNextStepRecord = Pick<
   | 'ship_confirmed_at'
   | 'is_out_of_stock'
   | 'latest_status_category'
+  | 'latest_event_at'
   | 'is_terminal'
   | 'has_exception'
 > & {
@@ -104,17 +106,25 @@ const NEXT_BY_STAGE: Readonly<
  * history, and re-reading it would print "→ Scan out" under a row the dock
  * already scanned.
  */
-export function ordersNextStep(record: OrdersNextStepRecord): CompoundNextStep {
-  const outboundSignals = {
+export function ordersNextStep(
+  record: OrdersNextStepRecord,
+  /** Injectable clock for the stall rule — tests pin it; surfaces omit it. */
+  opts: { now?: number } = {},
+): CompoundNextStep {
+  // One builder, so this line cannot resolve a different stage than the STATUS
+  // chip above it. Hand-building the bag here dropped `stalled`, and a stalled
+  // IN_TRANSIT row printed "→ Out for delivery" under a red EXCEPTION pill.
+  const outboundSignalBag = outboundSignals({
     packedAt: record.packed_at ?? record.pack_activity_at ?? null,
     shipConfirmedAt: record.ship_confirmed_at ?? null,
     latestStatusCategory: record.latest_status_category ?? null,
+    latestEventAt: record.latest_event_at ?? null,
     isTerminal: record.is_terminal ?? null,
     hasException: record.has_exception ?? null,
-  };
-
-  if (hasLeftWarehouse(outboundSignals)) {
-    const stage = resolveOutboundStage(outboundSignals);
+    now: opts.now,
+  });
+  if (hasLeftWarehouse(outboundSignalBag)) {
+    const stage = resolveOutboundStage(outboundSignalBag);
     if (stage === 'DELIVERED') {
       return { label: 'Delivered', done: true, tip: 'Delivered — the carrier reported it' };
     }

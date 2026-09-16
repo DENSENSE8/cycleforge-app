@@ -16,6 +16,7 @@ import type {
 } from '@/components/tables/compound/compound-row-model';
 import { formatDwellFace } from '@/lib/kiosk/kiosk-device-derived';
 import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
+import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
 const STATUS_LABEL: Record<KioskDeviceTableRow['status'], string> = {
   active: 'Paired',
@@ -77,7 +78,12 @@ export function kioskDeviceCompoundView(row: KioskDeviceTableRow): CompoundRowVi
     thumbUrl: null,
     title: String(row.label ?? '').trim() || `Device #${row.id}`,
     note: terminal ? 'Card reader paired' : 'Cash / payment link only',
-    orderId: String(row.id),
+    // The Id track carries THIS family's handle, not an order: `identityFace`
+    // paints it plainly and copyably, without the marketplace brand dot and
+    // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
+    // column is Id product-wide).
+    identityFace: compoundIdentityFace(String(row.id), 'Device id'),
+    orderId: null,
     tracking: null,
     platformValue: null,
     carrier: null,

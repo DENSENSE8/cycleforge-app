@@ -31,7 +31,7 @@ import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShel
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { UnboxDeskActions } from '@/components/receiving/unbox/UnboxDeskActions';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';

@@ -10,7 +10,7 @@
  *    `type` is what stops that; a future edit that re-adds a local ternary
  *    breaks these.
  * 2. **The module is server-safe.** Most intended call sites
- *    (`/admin/inventory/**`, `/settings/audit`, …) are React Server Components
+ *    (`/inventory/health/**`, `/settings/audit`, …) are React Server Components
  *    shipping zero client JS for their tables. A `'use client'` directive — or a
  *    transitively client-only import like `SkeletonList` (framer-motion) — puts
  *    every one of them behind a client boundary to render static rows.

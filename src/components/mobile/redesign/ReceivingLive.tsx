@@ -1,65 +1,34 @@
 'use client';
 
 /**
- * Mobile receiving feed — `/m/receiving`.
+ * Mobile receiving feed — `/m/receiving`. THE phone inbound surface.
  *
- * Unboxing (default) is the shared MobileReceivingList — the same feed the
- * desktop /receiving "Unboxing" rail uses. `?mode=local-pickup` and
- * `?mode=repair` render starter surfaces for those receiving sub-flows (the
- * drawer's Receiving group routes here). The header lives in the shell; the
- * body runs to the bottom (shell `pb-safe`) now that the bottom nav is gone.
+ * This is the shared {@link MobileReceivingList} — the same feed the desktop
+ * `/receiving` "Unboxing" rail uses — and nothing else.
+ *
+ * It used to branch on `?mode=`: `local-pickup` and `repair` each rendered a
+ * "starter" card whose whole content was an instruction to go and use a
+ * desktop station ("Log a repair from the desktop walk-in station"). That is
+ * the refusal `docs/mobile-first/SURFACE_LAW.md` §10 names outright — a phone
+ * surface that cannot complete its verb is not a surface, it is a sign — and
+ * operator 2026-09-15 removed the rows that reached them: *"remove the inbound
+ * walk-in, consult, repair and unbox — just keep the photo feed only."*
+ *
+ * So there is no `mode` prop. If local pickup or repair earn a phone surface,
+ * they get a real one under `/m` with a completable job, not a branch here.
+ *
+ * The header lives in the shell; the body runs to the bottom (shell `pb-safe`).
  */
 
-import type { ComponentType } from 'react';
-import { MapPin, Wrench } from '@/components/Icons';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 import { MobileReceivingList } from '@/components/mobile/receiving/MobileReceivingList';
 
-function ModeStarter({
-  Icon,
-  title,
-  blurb,
-}: {
-  Icon: ComponentType<{ className?: string }>;
-  title: string;
-  blurb: string;
-}) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 bg-surface-card px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-none bg-surface-sunken text-text-soft ring-1 ring-inset ring-border-soft">
-        <Icon className="h-7 w-7" />
-      </div>
-      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-default">{title}</p>
-      <p className="max-w-[280px] text-role-caption font-semibold text-text-soft">{blurb}</p>
-    </div>
-  );
-}
-
-export default function RedesignedMobileReceivingLive({ mode }: { mode?: string }) {
-  let body;
-  if (mode === 'local-pickup') {
-    body = (
-      <ModeStarter
-        Icon={MapPin}
-        title="Local Pickup"
-        blurb="Customer pickup orders will show here. Start a local pickup from the desktop receiving station."
-      />
-    );
-  } else if (mode === 'repair') {
-    body = (
-      <ModeStarter
-        Icon={Wrench}
-        title="Repair"
-        blurb="Repair intakes will show here. Log a repair from the desktop walk-in station."
-      />
-    );
-  } else {
-    body = <MobileReceivingList limit={25} />;
-  }
-
+export default function RedesignedMobileReceivingLive() {
   return (
     <div className={`flex h-full min-h-0 flex-col overflow-hidden ${TOKENS.colors.background}`}>
-      <div className="min-h-0 flex-1 overflow-hidden">{body}</div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <MobileReceivingList limit={25} />
+      </div>
     </div>
   );
 }

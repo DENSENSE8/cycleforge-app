@@ -21,6 +21,13 @@ type OrderSyncSource = {
   canSync: boolean;
 };
 
+/**
+ * A provider sync is a round trip to a marketplace, not an inline edit, so its
+ * result outlives the house 2.2s `success` default — the operator is watching
+ * the queue, not the corner. Matches `SYNC_TOAST_MS` in `useOrdersSync`.
+ */
+const PROVIDER_SYNC_TOAST_MS = 12_000;
+
 async function fetchOrderSources(): Promise<OrderSyncSource[]> {
   const res = await fetch('/api/integrations/order-sources');
   if (res.status === 401 || res.status === 403) return [];
@@ -52,8 +59,10 @@ export function useToShipPlatformSyncMenu(): ToShipPlatformSyncRow[] {
     async (provider: string, label: string) => {
       if (busy) return;
       setBusy(provider);
+      // Outcome only, no spinner toast (operator 2026-09-14) — the row is
+      // `disabled` while `busy`, which is where this sync's progress already
+      // shows. Stable id so a repeat run replaces its own last result.
       const toastId = `to-ship-sync-${provider}`;
-      toast.loading(`Syncing ${label}…`, { id: toastId });
       try {
         const res = await fetch(`/api/integrations/${provider}/sync`, { method: 'POST' });
         const data = (await res.json().catch(() => ({}))) as {
@@ -63,17 +72,23 @@ export function useToShipPlatformSyncMenu(): ToShipPlatformSyncRow[] {
           updated?: number;
         };
         if (!res.ok || data.ok === false) {
-          toast.error(data.error || `Could not sync ${label}`, { id: toastId });
+          toast.error(data.error || `Could not sync ${label}`, {
+            id: toastId,
+            duration: PROVIDER_SYNC_TOAST_MS,
+          });
           return;
         }
         await invalidateDashboardOrderQueries(queryClient);
         const n = Number(data.imported ?? 0) + Number(data.updated ?? 0);
         toast.success(n > 0 ? `${label}: ${n} orders` : `${label} is up to date`, {
           id: toastId,
+          duration: PROVIDER_SYNC_TOAST_MS,
+          closeButton: true,
         });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : `Could not sync ${label}`, {
           id: toastId,
+          duration: PROVIDER_SYNC_TOAST_MS,
         });
       } finally {
         setBusy(null);

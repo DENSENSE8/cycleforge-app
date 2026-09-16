@@ -10,7 +10,7 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function useUnboxProcedureArrowKeys(row: ReceivingLineRow) {
   const { prevStep, nextNeighbour, settled, focusStep } = useUnboxProcedureSteps(row);

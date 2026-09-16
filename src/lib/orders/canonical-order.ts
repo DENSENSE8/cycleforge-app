@@ -145,7 +145,6 @@ export function parseSaleAmount(value: unknown): string | null {
  * Preserves the pre-refactor pipeline semantics exactly:
  *   • lines with a blank `externalOrderId` are dropped (unjoinable);
  *   • the LAST line for an id wins its scalar fields;
- *   • trackings union across every line of that order, de-duplicated, in first-
  *     seen order (the writer treats `trackings[0]` as the primary shipment).
  *
  * Insertion order of first appearance is preserved so a caller's progress
@@ -207,4 +206,35 @@ export function resolveSpreadsheetShipByDate(rawShipByDate: unknown): Date | nul
   // An unparseable civil key yields no bounds — treat it as unknown, not today.
   const bounds = warehouseDayUtcBounds(dateKey);
   return bounds ? new Date(bounds.endIso) : null;
+}
+
+/**
+ * FIRST-WRITE-WINS for an order line's price — operator ruling 2026-09-15:
+ * *"since the import has no price linked to it, no price should equal no
+ * change."*
+ *
+ * A sale price is an immutable fact of the sale. It is written exactly once —
+ * by whichever arrives first, the source's own number or an operator's
+ * correction — and after that an import may never touch it:
+ *
+ *   - source carries NO price → no change (the sheet path; the overwhelmingly
+ *     common case — 4467 orders held 6 prices before the price work landed)
+ *   - source carries a price, row already priced → no change (a re-sync must
+ *     not clobber a manual correction; the operator's word is final)
+ *   - source carries a price, row never priced → write it
+ *
+ * Returns the value to write, or null meaning "leave the column out of the
+ * UPDATE" — the same convention the caller's additive update builder already
+ * uses for every other optional field.
+ */
+export function resolveSaleAmountWrite(
+  incoming: string | null,
+  existing: string | null | undefined,
+): string | null {
+  if (incoming == null) return null;
+  // `existing` is the NUMERIC column read back as a string; blank/null means
+  // never priced. A present '0.00' IS a price (a genuinely free order) and
+  // must block the write just like any other value.
+  if (existing != null && String(existing).trim() !== '') return null;
+  return incoming;
 }

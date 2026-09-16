@@ -7,7 +7,7 @@ import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { MobileReceivingUnitRow } from '@/components/mobile/receiving/MobileReceivingUnitRow';
 import type { ReceivingFeedEntry } from '@/components/mobile/receiving/receiving-feed-entries';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** Per-row wiring the feed owns (hrefs + handlers + fresh / expanded predicates). */
 export interface ReceivingCardCallbacks {

@@ -2,6 +2,7 @@ import pool from '../db';
 import { tenantQuery, withTenantTransaction } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
 import { writeLedgerDelta } from '../inventory/write-ledger-delta';
+import { publishStockLedgerEvent } from '../realtime/publish';
 import {
   locationCode,
   locationCodeFlat,
@@ -1155,6 +1156,20 @@ export async function upsertBinContentIfVersion(data: {
 /**
  * Adjust bin quantity by delta (positive = put, negative = take).
  * Stock aggregate is updated via sku_stock_ledger → fn_recompute_sku_stock only.
+ *
+ * **Every bin verb lands here** — `/api/locations/[barcode]` put/take (the gun
+ * and `/m`), `/api/transfers` (both legs), `.../swap` (both legs) and the cycle
+ * count lines. So this is the one place the realtime fan-out belongs: one
+ * `STOCK_DELTA_*` per ledger row, published AFTER the transaction commits, so a
+ * subscriber that refetches on the event can never read pre-commit rows.
+ *
+ * Best-effort by design: the write is already committed and answered, and
+ * `publishEvent` swallows its own failures. A dropped publish costs a
+ * subscriber one manual refresh, never a lost write.
+ *
+ * `action: 'set'` (`upsertBinContent`) writes no ledger row, so it emits no
+ * event — see `src/lib/inventory/stock-bin-verb-writes.ts` for why the desk's
+ * delete is a whole-count `take` rather than a `set 0`.
  */
 export async function adjustBinQty(data: {
   locationId: number;
@@ -1166,11 +1181,13 @@ export async function adjustBinQty(data: {
   reasonCodeId?: number | null;
   /** Free-text note (used by reason codes like DAMAGED / FOUND that require explanation). */
   notes?: string | null;
+  /** Feed provenance for the realtime event. The verb rides on `reason`. */
+  source?: string;
 }, orgId: OrgId): Promise<{ binContent: BinContent; newStockQty: number; ledgerId: number | null }> {
   const rawSku = data.sku.trim();
   const baseSku = rawSku.includes(':') ? rawSku.split(':')[0].trim() : rawSku;
 
-  return withTenantTransaction(orgId, async (db) => {
+  const result = await withTenantTransaction(orgId, async (db) => {
     const binResult = await db.query<BinContent>(
       `INSERT INTO bin_contents (location_id, sku, qty, organization_id)
        VALUES ($1, $2, GREATEST(0, $3), $4)
@@ -1203,6 +1220,25 @@ export async function adjustBinQty(data: {
       ledgerId: ledgerRow?.id ?? null,
     };
   });
+
+  if (result.ledgerId != null) {
+    try {
+      await publishStockLedgerEvent({
+        organizationId: orgId,
+        ledgerId: result.ledgerId,
+        sku: baseSku,
+        delta: data.delta,
+        reason: data.reason || 'BIN_ADJUST',
+        dimension: 'WAREHOUSE',
+        staffId: data.staffId ?? null,
+        source: data.source ?? 'bin.adjust',
+      });
+    } catch (err) {
+      console.warn('[adjustBinQty] realtime publish failed', err);
+    }
+  }
+
+  return result;
 }
 
 /** Mark a bin as physically counted (cycle count). */

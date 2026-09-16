@@ -6,7 +6,7 @@
  * tabs (Prioritize / Unfound / Done) live in the right-pane workbench.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
 
 export function TriageSidebarBody({

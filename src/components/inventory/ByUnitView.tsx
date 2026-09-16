@@ -1,20 +1,38 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Loader2 } from '@/components/Icons';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
+import { DataTable } from '@/components/tables/DataTable';
+import { useUnitAllocationsSpreadsheet } from '@/components/inventory/allocations-grid/useUnitAllocationsSpreadsheet';
+import { useUnitTsnLinksSpreadsheet } from '@/components/inventory/tsn-links-grid/useUnitTsnLinksSpreadsheet';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
+import type { UnitAllocationTableRow } from '@/lib/inventory/unit-allocation-row';
+import type { UnitTsnLinkTableRow } from '@/lib/inventory/tsn-link-row';
 import type {
     SerialUnitDetailPayload,
     TimelineEventRow,
     ConditionHistoryRow,
-    AllocationRow,
-    TsnLinkRow,
     UnitPhotoRow,
 } from './types';
 import { Panel } from '@/design-system/primitives';
+
+/** Stable identity for a unit with no rows — a fresh `[]` refetches the feed. */
+const NO_ALLOCATIONS: readonly UnitAllocationTableRow[] = [];
+const NO_TSN_LINKS: readonly UnitTsnLinkTableRow[] = [];
+
+/**
+ * Panel height for the two engine panes.
+ *
+ * A slot `DataTable` is a scroll surface and needs a bounded box; this page is
+ * itself a long scroll of panels, so the panes are short enough that neither
+ * eats the page (the Returns dock's `h-[60vh]` is a full-page desk, not a
+ * detail pane). A unit is allocated a handful of times and has a handful of v1
+ * records, so ~8 rows is the whole history in most cases.
+ */
+const PANE_HEIGHT = 'h-[22rem]';
 
 
 interface ByUnitViewProps {
@@ -66,6 +84,29 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
         };
     }, [ref, reloadKey]);
 
+    /**
+     * The two engine panes, resolved BEFORE the loading / error returns — a
+     * spreadsheet feed is a hook, and hooks below an early return would change
+     * order the moment the fetch settles.
+     *
+     * The allocations feed is WIDENED with the unit this page is about. The
+     * `/api/serial-units` payload omits `serial_unit_id` (the page IS the
+     * unit), but the `unit-allocations` family is shared with the per-SKU
+     * mount, where that fact is the one distinguishing two allocations — so
+     * the desk hands over what it already knows instead of the family
+     * carrying a hole. Same widening precedent as `skuUnitsOverviewRows`.
+     */
+    const unitId = payload?.success ? payload.serial_unit.id : null;
+    const allocations = useMemo<readonly UnitAllocationTableRow[]>(() => {
+        const rows = payload?.allocations;
+        if (!rows?.length || unitId == null) return rows?.length ? rows : NO_ALLOCATIONS;
+        return rows.map((a) => ({ ...a, serial_unit_id: unitId }));
+    }, [payload?.allocations, unitId]);
+    const tsnLinks: readonly UnitTsnLinkTableRow[] = payload?.tsn_links ?? NO_TSN_LINKS;
+
+    const allocationsSheet = useUnitAllocationsSpreadsheet({ rows: allocations, loading });
+    const tsnLinksSheet = useUnitTsnLinksSpreadsheet({ rows: tsnLinks, loading });
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-16 text-text-faint">
@@ -88,8 +129,6 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
     const { serial_unit: unit } = payload;
     const events: TimelineEventRow[] = payload.events_full ?? [];
     const conditions: ConditionHistoryRow[] = payload.conditions ?? [];
-    const allocations: AllocationRow[] = payload.allocations ?? [];
-    const tsnLinks: TsnLinkRow[] = payload.tsn_links ?? [];
     const photos: UnitPhotoRow[] = payload.photos ?? [];
     // Cross-reference photos to their capture event by payload.photo_ids so the
     // shots render inline on that timeline row (a deleted photo drops too).
@@ -272,88 +311,38 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                 </Panel>
             ) : null}
 
-            {/* Allocations */}
-            {allocations.length > 0 ? (
-                <Panel radius="lg" padding="none">
-                    <header className="border-b border-border-hairline px-6 py-4">
-                        <h2 className="text-lg font-medium text-text-default">Order allocations</h2>
-                    </header>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-border-hairline text-sm">
-                            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                                <tr>
-                                    <th className="px-6 py-2 text-left font-medium">Order</th>
-                                    <th className="px-6 py-2 text-left font-medium">Allocated</th>
-                                    <th className="px-6 py-2 text-left font-medium">State</th>
-                                    <th className="px-6 py-2 text-left font-medium">Released</th>
-                                    <th className="px-6 py-2 text-left font-medium">Reason</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border-hairline">
-                                {allocations.map((a) => (
-                                    <tr key={a.id}>
-                                        <td className="px-6 py-2 font-mono text-xs">#{a.order_id}</td>
-                                        <td className="px-6 py-2 text-xs text-text-soft">
-                                            {new Date(a.allocated_at).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-2">
-                                            <StatusBadge status={a.state} />
-                                        </td>
-                                        <td className="px-6 py-2 text-xs text-text-soft">
-                                            {a.released_at
-                                                ? new Date(a.released_at).toLocaleString()
-                                                : '—'}
-                                        </td>
-                                        <td className="px-6 py-2 text-xs text-text-muted">
-                                            {a.released_reason ?? '—'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Panel>
-            ) : null}
+            {/*
+              * Allocations — the `unit-allocations` slot DataTable.
+              *
+              * Was raw hand HTML — five header/cell pairs — wrapped in
+              * `allocations.length > 0 ?`. The conditional is GONE: the engine
+              * has a real empty face, and a section that vanished made "never
+              * allocated" read identically to "this panel does not exist" —
+              * which on a unit history is the answer an operator came for. The
+              * pane also brings header sort, the Fields picker and org binding,
+              * none of which raw HTML could ever grow.
+              */}
+            <Panel radius="lg" padding="none">
+                <header className="border-b border-border-hairline px-6 py-4">
+                    <h2 className="text-lg font-medium text-text-default">Order allocations</h2>
+                </header>
+                <div className={`flex ${PANE_HEIGHT} min-h-0 min-w-0 flex-col`}>
+                    <DataTable {...allocationsSheet} totalCount={allocations.length} />
+                </div>
+            </Panel>
 
-            {/* TSN cross-refs */}
-            {tsnLinks.length > 0 ? (
-                <Panel radius="lg" padding="none">
-                    <header className="border-b border-border-hairline px-6 py-4">
-                        <h2 className="text-lg font-medium text-text-default">tech_serial_numbers links</h2>
-                        <p className="mt-1 text-xs text-text-soft">
-                            Legacy audit table. Helpful when joining v1 tech-station logs to v2 lifecycle.
-                        </p>
-                    </header>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-border-hairline text-sm">
-                            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
-                                <tr>
-                                    <th className="px-6 py-2 text-left font-medium">TSN id</th>
-                                    <th className="px-6 py-2 text-left font-medium">When</th>
-                                    <th className="px-6 py-2 text-left font-medium">Station</th>
-                                    <th className="px-6 py-2 text-left font-medium">Type</th>
-                                    <th className="px-6 py-2 text-left font-medium">Shipment</th>
-                                    <th className="px-6 py-2 text-left font-medium">Tested by</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border-hairline">
-                                {tsnLinks.map((t) => (
-                                    <tr key={t.id}>
-                                        <td className="px-6 py-2 font-mono text-xs">{t.id}</td>
-                                        <td className="px-6 py-2 text-xs text-text-soft">
-                                            {new Date(t.created_at).toLocaleString()}
-                                        </td>
-                                        <td className="px-6 py-2 text-xs">{t.station_source ?? '—'}</td>
-                                        <td className="px-6 py-2 text-xs">{t.serial_type}</td>
-                                        <td className="px-6 py-2 text-xs">{t.shipment_id ?? '—'}</td>
-                                        <td className="px-6 py-2 text-xs">{t.tested_by_name ?? '—'}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Panel>
-            ) : null}
+            {/* TSN cross-refs — the `unit-tsn-links` slot DataTable. Same port. */}
+            <Panel radius="lg" padding="none">
+                <header className="border-b border-border-hairline px-6 py-4">
+                    <h2 className="text-lg font-medium text-text-default">tech_serial_numbers links</h2>
+                    <p className="mt-1 text-xs text-text-soft">
+                        Legacy audit table. Helpful when joining v1 tech-station logs to v2 lifecycle.
+                    </p>
+                </header>
+                <div className={`flex ${PANE_HEIGHT} min-h-0 min-w-0 flex-col`}>
+                    <DataTable {...tsnLinksSheet} totalCount={tsnLinks.length} />
+                </div>
+            </Panel>
         </div>
     );
 }

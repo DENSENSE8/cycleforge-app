@@ -29,22 +29,13 @@ import {
 } from '@/lib/tables/field-catalog/receiving';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import {
-  gridColumnTrackRem,
-  gridContentMinWidthRem,
-  gridFrozenLeft,
-  gridHeaderShowsLabel,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
   isCustomFieldColumnKey,
   type CustomFieldColumnKey,
 } from '@/lib/tables/custom-field-keys';
-import { SHARED_LINE_TRACK_META } from '@/lib/receiving/shared-line-tracks';
 
 export type ReceivingGridColumnKey =
   | 'select'
@@ -89,124 +80,6 @@ export interface ReceivingGridColumn
   sortable?: boolean;
 }
 
-/**
- * Canonical Unbox / History / Testing columns.
- *
- * Deterministic fact tracks stay content-hard `minmax(X,X)` + `resizable: false`
- * (Order · Date · Qty · Price · Loc · Tracking …). **Product and Status are
- * drag-resizable** (2026-08-06): Product is a hard preferred track
- * (`minmax(16rem, 16rem)` + `resizable: true`, clamped 8rem…720px); trailing
- * `_fill` (`minmax(0rem, 1fr)`) absorbs leftover sheet width so Product drag is
- * Sheets-visible. Status keeps its content-hard `minmax(6rem, 6rem)` floor but
- * exposes a grip so operators widen it for long stage names — the
- * `--cf-col-status` drag override rides the same generic `gridTemplate` var as
- * Product. Spreadsheet zoom scales rem floors via `--cf-density`.
- *
- * Frozen identity pane (2026-08-05): `select · order`. The PO is the unique
- * alphanumeric row handle — pinned while Product / Status / Date / facts
- * h-scroll. Contiguous-prefix rule as every other LedgerGrid family.
- * Operator-editable freeze panes (pin any column) remain future work.
- *
- * ## Default (`core`) set
- *
- * A receiving line is scanned by: which PO (`order`), what is it (`title`),
- * what state (`status`), when it reached its stage (`date`), how many (`qty`),
- * what it cost (`price` — Zoho line rate), where triage placed it (`location`),
- * and the other identifier an operator scans (`tracking`). That is the whole
- * default grid.
- *
- * `condition` and `serial` stay `optional` — they are usually empty at the
- * moment the row is being scanned (set during unbox). A column that is blank
- * for most rows costs horizontal budget and scan attention for nothing. Staff
- * who work a lane where they matter turn them on once, and it follows them
- * across devices.
- */
-export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
-  // Frozen identity pane: select gutter + PO. Contiguous prefix —
-  // `gridFrozenLeft` sums widths of frozen columns before each cell.
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true, resizable: false },
-  // PO number — sticky identity (no hideKey / tier). Trailing frozen edge owns
-  // the scroll shadow (`data-frozen-edge`).
-  //
-  // `align: 'start'` — text/ID law (explicit; `type: 'id'` already starts).
-  {
-    key: 'order',
-    width: 'minmax(5.5rem, 5.5rem)',
-    ...SHARED_LINE_TRACK_META.order,
-    frozen: true,
-    // Dense Sheets face: the header already says ORDER, so the body carries the
-    // platform brand DOT and no `#` glyph. This was previously a bare `plain`
-    // hardcoded in `ReceivingOrderCell`; declaring it here is what lets the
-    // Orders/To-Ship grid answer the same question from the same field.
-    omitCellIcon: true,
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  // Fixed preferred track — NOT `1fr`. A fill track made Product drag-resize a
-  // floor-only change while `1fr` kept stretching to the card (narrower = no
-  // visible move). Content-sized so resize is Sheets-exact; leftover sheet
-  // width is absorbed by trailing `_fill`.
-  {
-    key: 'title',
-    width: 'minmax(16rem, 16rem)',
-    ...SHARED_LINE_TRACK_META.title,
-    gridLabel: 'Product',
-    resizable: true,
-    minTrackRem: 8,
-    labelFitRem: 8,
-  },
-  // The row's lifecycle STATE — dot · stage name (`ReceivingStatusCell`).
-  // Drag-resizable (2026-08-06): content-hard 6rem floor, widened via
-  // `--cf-col-status` for long stage names.
-  { key: 'status', width: 'minmax(6rem, 6rem)', ...SHARED_LINE_TRACK_META.status, hideKey: 'status', resizable: true, labelFitRem: 4.5 },
-  // WHEN it reached that stage — civil day floor (`MIN_TRACK_REM_BY_DATE_FACE.day`).
-  // Full day + time stays on the cell tooltip. Scrolls with facts (not identity).
-  // Sits AFTER Product/Status so the day stamp is not jammed against the title.
-  {
-    key: 'date',
-    width: 'minmax(4.5rem, 4.5rem)',
-    label: 'Date',
-    gridLabel: 'Date',
-    type: 'date',
-    dateFace: 'day',
-    align: 'end',
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  // Qty — magnitude → end + tabular-nums.
-  { key: 'qty', width: 'minmax(4.5rem, 4.5rem)', ...SHARED_LINE_TRACK_META.qty, hideKey: 'qty', resizable: false, labelFitRem: 3.5 },
-  // Zoho PO line unit cost — magnitude → end. Header owns the Receipt glyph;
-  // dense Sheets face keeps the cell mark omitted (`omitCellIcon`).
-  { key: 'price', width: 'minmax(5.5rem, 5.5rem)', label: 'Price', type: 'price', align: 'end', omitCellIcon: true, hideKey: 'price', resizable: false, labelFitRem: 4.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.condition, hideKey: 'condition', tier: 'optional', resizable: false, labelFitRem: 4.5 },
-  {
-    key: 'location',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Location',
-    gridLabel: 'Loc',
-    type: 'location',
-    align: 'start',
-    hideKey: 'stagingloc',
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  // Carrier # — ID/label → start. Header owns the TRACK glyph (Incoming quiet).
-  {
-    key: 'tracking',
-    width: 'minmax(8rem, 8rem)',
-    ...SHARED_LINE_TRACK_META.tracking,
-    omitCellIcon: true,
-    hideKey: 'tracking',
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', align: 'start', hideKey: 'serial', tier: 'optional', resizable: false, omitCellIcon: true, labelFitRem: 4.5 },
-  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.zoho, hideKey: 'zoho', tier: 'optional', resizable: false, labelFitRem: 4.5 },
-  // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
-  // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
-  // display; Column discovery stays triage ▦ / header menus.
-  GRID_FILL_COLUMN,
-] as const;
 
 /**
  * COMPOUND (two-row) Unbox / History / Testing columns.
@@ -254,15 +127,57 @@ export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] =
   receivingCompoundColumnsFor(RECEIVING_PRODUCT_LAYOUT);
 
 /**
- * Frozen pane — `select · order`. Derived from the column model's `frozen`
- * flag. Operator-editable freeze (pin any column) is future.
+ * Frozen pane of the MOUNTED model — `select · order · thumb`. Derived from the
+ * compound materialization because that is what every desk paints; the flat
+ * spreadsheet array it used to read is deleted.
  */
-const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(RECEIVING_GRID_COLUMNS);
+const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozenKeys(
+  RECEIVING_COMPOUND_COLUMNS,
+);
 
-/** Data columns that support click-to-sort (excludes select / paint chrome / `_fill`). */
-const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== '_fill',
-).map((c) => c.key);
+/**
+ * The fact words this family sorts by — declared, not derived.
+ *
+ * It used to be a filter over the deleted flat `RECEIVING_GRID_COLUMNS`. A sort
+ * vocabulary is not a column layout: deriving it from a dead model kept the
+ * model alive for nothing, and every compound track resolves to one of these
+ * words through {@link RECEIVING_TRACK_SORT_FACTS} anyway.
+ */
+const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
+  'order',
+  'title',
+  'status',
+  'date',
+  'qty',
+  'price',
+  'condition',
+  'location',
+  'tracking',
+  'serial',
+  'zoho',
+];
+
+/**
+ * The comparator shape each fact sorts under. On the FACT rather than read off
+ * a column: it used to be `RECEIVING_GRID_COLUMNS.find(...)?.type`, which
+ * returns `undefined` for every compound track and died with the flat array.
+ * Values are byte-identical to what that array declared.
+ */
+export const RECEIVING_SORT_FACT_TYPES: Readonly<
+  Partial<Record<ReceivingGridColumnKey, LedgerGridColumnModel['type']>>
+> = {
+  order: 'id',
+  title: 'text',
+  status: 'tag',
+  date: 'date',
+  qty: 'number',
+  price: 'price',
+  condition: 'tag',
+  location: 'location',
+  tracking: 'tracking',
+  serial: 'id',
+  zoho: 'tag',
+};
 
 /**
  * Click-to-sort predicate — the ONE sortability answer for this family.
@@ -330,26 +245,10 @@ export function isReceivingGridSortable(key: string): key is ReceivingGridColumn
   return receivingSortFactFor(key) != null;
 }
 
-export function receivingGridTemplate(
-  columns: readonly ReceivingGridColumn[] = RECEIVING_GRID_COLUMNS,
-): string {
-  return gridTemplate(columns);
-}
-
 export function isReceivingGridFrozen(key: string): boolean {
   return RECEIVING_GRID_LOCKED_KEYS.includes(key as ReceivingGridColumnKey);
 }
 
-/**
- * Sticky-left offset for a frozen cell, bound to THIS surface's pane
- * (`select · order`). Offsets derive from THIS surface's columns, never Orders'.
- */
-export function receivingGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(RECEIVING_GRID_COLUMNS, key);
-}
-
-/** Trailing frozen-edge key — owns `data-frozen-edge` scroll shadow. */
-export const RECEIVING_GRID_FROZEN_EDGE_KEY: ReceivingGridColumnKey = 'order';
 
 
 /** Default direction when first activating a column sort. */
@@ -370,8 +269,8 @@ export {
 } from '@/design-system/components/grid/grid-cell-chrome';
 
 // ---------------------------------------------------------------------------
-// Incoming POS — separate column array. Do not filter/merge into
-// RECEIVING_GRID_COLUMNS. Freeze panes, `_fill`, and tableIds stay distinct.
+// Incoming POS — its own key union and prefs identity. Both families mount the
+// shared compound tracks; neither keeps a flat spreadsheet array any more.
 // ---------------------------------------------------------------------------
 
 export type IncomingGridColumnKey =
@@ -406,100 +305,6 @@ export interface IncomingGridColumn
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
 }
-
-/**
- * Canonical Incoming columns — same keys / types as
- * {@link ORDERS_QUEUE_COLUMNS}, with a receiving-specific Status track.
- * Fact tracks are content-hard `minmax(X,X)`; Product is also a fixed preferred
- * track (Notion overflow pilot — not the fill `1fr` other families still use).
- * `order` hides under legacy `orderid`.
- *
- * ## Default (`core`) set — deliberately lean
- *
- * An inbound line is scanned by: what is it (`title`), when is it due
- * (`date` = Expected), how overdue (`age`), how many (`qty`), where is the
- * delivery (`status`), and the two identifiers an operator types or scans
- * (`order` = PO#, `tracking`). That is the whole default grid.
- *
- * `condition` and `platform` are `optional`. On THIS surface a line has not
- * arrived yet — `condition_grade` is set during unbox/triage, so the Cond cell
- * is the empty dash for nearly every row, and the source channel is secondary
- * to the PO/tracking identity the operator actually acts on. A column that is
- * blank for most rows costs horizontal budget and scan attention for nothing.
- *
- * **Prefs identity:** Incoming mounts under `tableId: "incoming"` — distinct
- * from Unbox/History `tableId: "receiving"`. Tiers may diverge freely between
- * the two descriptors; they no longer share a staff delta bucket.
- */
-export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  // Scrolls with facts — Unbox Sheets golden freezes `select` only (2026-08-04).
-  // Header grammar (label · type · align) resolves from SHARED_LINE_TRACK_META so
-  // Incoming and History never drift. `headerGlyphOnly` overturned 2026-08-10
-  // (Inbound ↔ History one family): Incoming now follows History sentence-case;
-  // `gridHeaderShowsLabel` geometry decides the narrow-track glyph fallback.
-  { key: 'order', width: 'minmax(7rem, 7rem)', ...SHARED_LINE_TRACK_META.order, omitCellIcon: true },
-  // Fixed preferred track — NOT `1fr`. Incoming is the Notion-overflow pilot:
-  // columns are content-sized so the row can exceed the card and scroll
-  // horizontally; when the sum is narrower than the card, slack is empty canvas
-  // right of the last column (not a stretched Product). Other LedgerGrid
-  // families keep the fill track until they opt in the same way. Drag-resize
-  // still owns the live width via `--cf-col-title`.
-  { key: 'title', width: 'minmax(16rem, 16rem)', ...SHARED_LINE_TRACK_META.title },
-  // Expected / PO civil date — Pending's "Ship by" / By track.
-  // `type: 'date'` end-aligns via `ALIGN_BY_TYPE` (comparable civil day).
-  // Day face (default): typed floor 4.5rem — not the stamp floor.
-  { key: 'date', width: 'minmax(4.5rem, 4.5rem)', label: 'Expected', type: 'date', dateFace: 'day' },
-  // Duration face (`12d` / `4h`) — typed `date` for the clock glyph; end-align
-  // comes from the type map (same as By / qty). Floor 3rem via `dateFace`.
-  { key: 'age', width: 'minmax(3rem, 3rem)', label: 'Age', type: 'date', dateFace: 'duration' },
-  // labelFitRem 3.5 so the `Qty` word shows at the 3.5rem floor, matching History.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', ...SHARED_LINE_TRACK_META.qty, hideKey: 'qty', labelFitRem: 3.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.condition, hideKey: 'condition', tier: 'optional' },
-  // Receiving-specific delivery status (hide with meta `rest` in TableColumnConfig).
-  // Icon + short Unv. chip when it adds signal (full phrase in tooltip).
-  // 4.75rem fits icon + 4-char eyebrow; cells clip via ledgerGridCell grid inset.
-  // Header grammar (`Status`, tag, start) is shared; the CELL vocabulary
-  // (delivery_state) stays Incoming's own (`ReceivingDeliveryStatusCell`).
-  { key: 'status', width: 'minmax(4.75rem, 4.75rem)', ...SHARED_LINE_TRACK_META.status, hideKey: 'rest' },
-  // Channel mark — same 4rem external floor as Receiving (mark + inset +
-  // hairline breathing). Glyph-only header by intent.
-  { key: 'platform', width: 'minmax(4rem, 4rem)', label: 'Platform', type: 'external', hideKey: 'platform', tier: 'optional' },
-  // Fits icon + last-8 tracking face (or + TRK# attach face).
-  { key: 'tracking', width: 'minmax(8rem, 8rem)', ...SHARED_LINE_TRACK_META.tracking, omitCellIcon: true, hideKey: 'tracking' },
-  // Vendor receipt state (`zoho_po_mirror.status`).
-  //
-  // `optional` on the DEFAULT lane and that is not a hedge — it is the whole
-  // ruling. Every row on default Incoming is not-vendor-received BY
-  // CONSTRUCTION (`NOT_ZOHO_RECEIVED_PREDICATE` is in the WHERE), so a chip here
-  // would paint one identical value on 100% of rows, which is ink that teaches
-  // operators to stop reading chips. The lane note states that constant once, at
-  // lane altitude, where it belongs.
-  //
-  // It becomes `core` on exactly the lanes where the value VARIES — a
-  // `?tracking_in=` paste (which relaxes the predicate on purpose) and the
-  // recently-removed lane (where "the vendor received it" IS one of the exits).
-  // See `incomingGridColumnsFor`.
-  { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.zoho, hideKey: 'zoho', tier: 'optional' },
-] as const;
-
-/**
- * The `removed` lane's reason column, and the lane-conditional model that
- * appended it, were DELETED when Incoming moved to the compound layout
- * (2026-08-21).
- *
- * `incomingGridColumnsFor()` existed to hand the recently-removed lane a sixth
- * track no other lane could use, and to promote `zoho` when a tracking filter
- * mixed vendor rows in. The compound model has no room for a per-lane track and
- * wants none: the removal reason rides the STATE pill via `incomingStateFace`,
- * which is how Incoming keeps a column array byte-identical to Receiving's,
- * Orders' and Tasks'.
- *
- * Deleted rather than left standing, per `pattern-evolution.md`: "a retirement
- * is not done until the old path is DELETED". Its only two call sites now mount
- * {@link INCOMING_COMPOUND_COLUMNS}. `INCOMING_GRID_COLUMNS` itself stays — it
- * is the registered table definition and the row/header default.
- */
 
 /**
  * COMPOUND (two-row) Incoming columns.
@@ -541,18 +346,30 @@ export const INCOMING_COMPOUND_COLUMNS: readonly IncomingGridColumn[] =
   incomingCompoundColumnsFor(INCOMING_PRODUCT_LAYOUT);
 
 /**
- * Frozen identity pane — `select · order · title`. Derived from the column
- * model's `frozen` flag (one declaration for freeze + immovability + offset
- * math), not from the house key list: the pane is a per-surface answer, and
- * `GRID_IDENTITY_COLUMN_KEYS` remains the two-key house default for surfaces
- * with no order context. See `grid-column-editability.ts`.
+ * Frozen pane of the MOUNTED model — `select · order · thumb`. Derived from the
+ * compound materialization's `frozen` flag (one declaration for freeze +
+ * immovability + offset math). The flat array it used to read is deleted.
  */
-export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridFrozenKeys(INCOMING_GRID_COLUMNS);
+export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridFrozenKeys(
+  INCOMING_COMPOUND_COLUMNS,
+);
 
-/** Data columns that support click-to-sort (excludes select). */
-export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INCOMING_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false,
-).map((c) => c.key);
+/**
+ * The fact words this family sorts by — declared, not derived (see
+ * {@link receivingSortFactFor} for why a vocabulary is not a layout).
+ */
+export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
+  'order',
+  'title',
+  'date',
+  'age',
+  'qty',
+  'condition',
+  'status',
+  'platform',
+  'tracking',
+  'zoho',
+];
 
 /**
  * Compound track → the FLAT fact word it carries — Receiving's twin, same
@@ -583,36 +400,8 @@ export function isIncomingGridSortable(key: string): key is IncomingGridColumnKe
   return incomingSortFactFor(key) != null;
 }
 
-/** @deprecated Alias of the shared waist — kept for an existing test import. */
-export const incomingGridColumnTrackRem = gridColumnTrackRem;
-
-export const incomingGridHeaderShowsLabel = gridHeaderShowsLabel;
-
-export function incomingContentMinWidthRem(
-  columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
-): number {
-  return gridContentMinWidthRem(columns);
-}
-
-export function incomingGridTemplate(
-  columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
-): string {
-  return gridTemplate(columns);
-}
-
 export function isIncomingGridFrozen(key: string): boolean {
   return INCOMING_GRID_LOCKED_KEYS.includes(key as IncomingGridColumnKey);
-}
-
-/**
- * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
- *
- * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Incoming
- * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
- * widths. See {@link gridFrozenLeft}.
- */
-export function incomingGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(INCOMING_GRID_COLUMNS, key);
 }
 
 

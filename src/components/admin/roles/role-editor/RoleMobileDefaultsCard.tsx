@@ -14,7 +14,7 @@ import { Panel, Button, Switch } from '@/design-system/primitives';
 //
 // Sets the role-level mobile UI defaults. Every staff with this role
 // inherits these values unless they have a per-staff override (set from
-// /admin?section=access). "Reset" clears the role's defaults; the
+// /settings/access). "Reset" clears the role's defaults; the
 // resolver then falls back to the system defaults (bottom nav disabled).
 
 const TAB_LABELS: Record<MobileNavTabId, string> = {

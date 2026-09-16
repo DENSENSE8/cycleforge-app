@@ -256,6 +256,36 @@ test('SKU is an explicit sidebar search field mapped to the sku finder kind', ()
   assert.equal(params.get('poFinderKind'), 'sku');
 });
 
+test('Repair and Customer are explicit sidebar fields mapped to their finder kinds', () => {
+  assert.ok(PHOTO_SEARCH_FIELDS.includes('repair'));
+  assert.ok(PHOTO_SEARCH_FIELDS.includes('customer'));
+  assert.equal(PHOTO_SEARCH_FIELD_LABELS.repair, 'Repair');
+  assert.equal(PHOTO_SEARCH_FIELD_LABELS.customer, 'Customer');
+  assert.equal(finderKindForField('repair'), 'repair');
+  assert.equal(finderKindForField('customer'), 'customer');
+  assert.equal(fieldForFinderKind('repair'), 'repair');
+  assert.equal(fieldForFinderKind('customer'), 'customer');
+  assert.equal(isPhotoFinderKind('repair'), true);
+  assert.equal(isPhotoFinderKind('customer'), true);
+
+  const filters = parsePhotoLibraryFilters(
+    new URLSearchParams('poFinder=RS-125&poFinderKind=repair'),
+  );
+  assert.equal(filters.poFinder, 'RS-125');
+  assert.equal(filters.poFinderKind, 'repair');
+
+  const params = photoLibraryFiltersToParams(filters);
+  assert.equal(params.get('poFinder'), 'RS-125');
+  assert.equal(params.get('poFinderKind'), 'repair');
+});
+
+test('the Repair lifecycle scope maps to the REPAIR_SERVICE entity type', () => {
+  // The library query widens this single param to REPAIR_SERVICE + SERIAL_UNIT;
+  // the mapping itself must stay the repair-service handle so the scope tab and
+  // the entityType filter agree on what "Repair" means.
+  assert.equal(entityTypeForSourceScope('repair'), 'REPAIR_SERVICE');
+});
+
 test('the header display toggle lists List only — grid size is on row 3', () => {
   assert.deepEqual(PHOTO_LIBRARY_HEADER_DISPLAY_MODES, ['list']);
 });

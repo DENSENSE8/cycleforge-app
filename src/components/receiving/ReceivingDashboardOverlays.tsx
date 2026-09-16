@@ -11,7 +11,7 @@ import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingC
 import { ReceivingDetailsStack } from '@/components/station/ReceivingDetailsStack';
 import { toast } from '@/lib/toast';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface ReceivingDashboardOverlaysProps {
   overlayLog: ReceivingDetailsLog | null;

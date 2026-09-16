@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   filterLinesByPoGroup,
   getReceivingPoGroupTitle,
@@ -140,11 +140,27 @@ test('isReceivingPoGroupTitleRow — unfound stub is excluded', () => {
 });
 
 test('receivingRailRowTitle — po-group mode keeps unfound product label', () => {
-  const r = row({
-    receiving_source: 'unmatched',
-    item_name: 'Unfound PO',
-  });
-  assert.equal(receivingRailRowTitle(r, 'po-group', identity), 'Unfound order');
+  // SKU IDENTITY LAW: the `'Unfound PO'` stub is a placeholder, so a REAL later
+  // field outranks it — here the SKU. `photo-move-targets` already behaved this
+  // way; this surface used to let the stub win, which is the disagreement the
+  // law removes.
+  assert.equal(
+    receivingRailRowTitle(
+      row({ receiving_source: 'unmatched', item_name: 'Unfound PO' }),
+      'po-group',
+      identity,
+    ),
+    'WDG',
+  );
+  // Nothing real at all → the stub is still the operator's face.
+  assert.equal(
+    receivingRailRowTitle(
+      row({ receiving_source: 'unmatched', item_name: 'Unfound PO', sku: null }),
+      'po-group',
+      identity,
+    ),
+    'Unfound order',
+  );
 });
 
 test('receivingRailRowTitle — marketplace order without Zoho PO', () => {

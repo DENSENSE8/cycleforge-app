@@ -103,6 +103,15 @@ export function LedgerGridLeafRow<C extends LedgerGridColumnModel>({
       ref={ref}
       {...rest}
       className={cn(
+        // The ROW HOVER GROUP every gutter face reaches for.
+        // `GridSelectSquareFace` is scoped to `group-hover/row`, and only
+        // `OrdersQueueTableRow` declared it — so on every family that mounts
+        // this shared shell the hover-revealed select square (and, since
+        // 2026-09-15, the status ⇄ check swap) had no group to hover: the box
+        // only appeared on keyboard focus or a no-hover pointer. One token, and
+        // the engine's own claim ("`group/row` is declared by the row shell",
+        // GridRowCheckbox) is true on every peer instead of one.
+        'group/row',
         ledgerGridRowShellClass(isMobile, { scrollMinContent }),
         ledgerRowFillClass({ selected, flagClass, capabilities }),
         className,

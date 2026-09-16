@@ -15,7 +15,7 @@ import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { collectCartonListingLinks, normalizeListingHref } from '@/lib/receiving/listing-links';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import {
   patchUnboxRailQtyByCarton,

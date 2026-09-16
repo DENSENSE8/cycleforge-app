@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getInvalidFbaPlanIdMessage, parseFbaPlanId } from '@/lib/fba/plan-id';
-import { detectCarrier } from '@/lib/tracking-format';
+import { resolveStoredCarrier } from '@/lib/shipping/carrier-resolution';
 import { publishFbaShipmentChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
@@ -117,7 +117,9 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'tracking_number is required' }, { status: 400 });
     }
 
-    const carrier = String(body.carrier || detectCarrier(raw)).toUpperCase();
+    // One vocabulary for the column: the operator's claim is honoured, the
+    // pattern list fills the gap, and the token is uppercase by construction.
+    const carrier = resolveStoredCarrier({ tracking: raw, reported: body.carrier }).carrier;
     const label = body.label ? String(body.label).trim() : null;
     const staffId = Number.isFinite(Number(body?.staff_id)) ? Number(body.staff_id) : null;
     const station = body?.station ? String(body.station).trim() : null;
@@ -236,7 +238,7 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'tracking_number is required' }, { status: 400 });
     }
 
-    const carrier = String(body?.carrier || detectCarrier(raw)).toUpperCase();
+    const carrier = resolveStoredCarrier({ tracking: raw, reported: body?.carrier }).carrier;
 
     const outcome = await withTenantTransaction(orgId, async (client) => {
       const linkCheck = await client.query(

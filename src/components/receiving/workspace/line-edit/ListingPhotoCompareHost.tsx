@@ -19,7 +19,7 @@ import {
   photoIntentFromStage,
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
 } from '@/lib/receiving/photo-intent';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 
 const ITEM_LIST_INTENT = photoIntentFromStage('unbox_item');

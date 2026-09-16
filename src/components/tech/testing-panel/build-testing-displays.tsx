@@ -36,7 +36,7 @@ import {
   TestingSkuPairingPanel,
 } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { UseSkuTestingData } from '@/components/tech/sku-testing/useSkuTestingData';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';

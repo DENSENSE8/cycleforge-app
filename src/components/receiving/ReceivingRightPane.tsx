@@ -281,10 +281,22 @@ export function ReceivingRightPane({
 
       <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
 
+      {/*
+        History triage (`detail:history`) — the Inbound desk's Docked lane is a
+        history surface, and operator 2026-09-14 requires it to behave like
+        Unbox History: left-click inspects, double-click opens LineEditPanel.
+        Only `UnboxHistoryHost` mounted this, so a docked click dispatched
+        `receiving-open-history-triage` into a page with no listener host — a
+        dead click. Same mount, same occupant id; one of the two branches runs.
+      */}
+      <HistoryTriageMount target={historyTriage} onClose={onCloseHistoryTriage} />
+
       {showSelectionRail ? (
         <ReceivingLineRailShell
           surface={isIncomingMode ? 'incoming' : 'lines'}
-          inspectOpen={Boolean(incomingDetails)}
+          // Either 1-row inspector suppresses the batch shell, so the two
+          // registrars never fight over the slot (ReceivingLineRailShell).
+          inspectOpen={Boolean(incomingDetails) || Boolean(historyTriage)}
         />
       ) : null}
     </RightPaneOverlayHost>

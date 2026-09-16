@@ -5,7 +5,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
 import { cornerClass } from '../tokens/radius';
 
-type IconButtonTone = 'neutral' | 'accent';
+type IconButtonTone = 'neutral' | 'accent' | 'glass';
 
 /**
  * Box-size contract (control-size axis). Opt-in: without `size` the button
@@ -54,9 +54,15 @@ const sizeClassName: Record<IconButtonSize, string> = {
   fill: 'h-full min-h-0 w-full min-w-0 flex-1 self-stretch',
 };
 
+/**
+ * `glass` matches `BUTTON_VARIANTS.glass` — chrome ON LIVE MEDIA, ink only.
+ * The bar it rides owns the scrim (one alpha per row, not three), and
+ * `neutral`'s `text-text-soft` would disappear over a white shipping label.
+ */
 const toneClassName: Record<IconButtonTone, string> = {
   neutral: 'text-text-soft hover:text-text-default',
   accent: 'text-text-soft hover:text-blue-600',
+  glass: 'text-white hover:bg-glass/20',
 };
 
 export interface IconButtonProps

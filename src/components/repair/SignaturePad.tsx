@@ -11,6 +11,12 @@ import {
 } from '@/design-system/components/Dialog';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Maximize2, X } from '@/components/Icons';
+import {
+  COUNTER_SIGNATURE_GUIDE,
+  COUNTER_SIGNATURE_PAD,
+} from '@/app/kiosk/kiosk-counter-surface';
+import { exportSignaturePng, scaleSignatureCanvas } from './signature-canvas';
+import { cn } from '@/utils/_cn';
 
 export interface SignatureData {
   strokes: PointGroup[];
@@ -20,7 +26,19 @@ export interface SignatureData {
 interface SignaturePadProps {
   onSignatureChange: (data: SignatureData | null) => void;
   label?: string;
-  /** When true, the pad fills its parent height instead of using a fixed height */
+  /**
+   * Legacy STAFF fill: the pad's box takes its parent's height instead of its
+   * own aspect ({@link COUNTER_SIGNATURE_PAD}). Kept for the two staff mounts
+   * that size the pad from a fixed-height wrapper (`RepairIntakeForm`,
+   * `RepairPickupFlow`) so the 2026-09-15 kiosk geometry change does not
+   * relayout surfaces it was not about.
+   *
+   * It is NOT an escape from the print law: the export is cropped to the ink
+   * either way (`exportSignaturePng`), which is what actually seats the
+   * signature on the ruled line. This prop only decides the on-screen box.
+   *
+   * Ignored while `expanded` — see the Dialog below.
+   */
   fillHeight?: boolean;
   /** `dropoff` — square corners, matches printed drop-off signature line. */
   variant?: 'default' | 'dropoff';
@@ -29,23 +47,6 @@ interface SignaturePadProps {
    * customer can sign on a tablet (kiosk-shell: intentional signature focus).
    */
   allowFullscreen?: boolean;
-}
-
-const PAD_HEIGHT = 200;
-
-/**
- * Scale canvas for Retina/HiDPI displays so strokes are crisp on iPad.
- * Sets the internal resolution to match devicePixelRatio while keeping
- * the CSS display size at the container's dimensions.
- */
-function scaleCanvas(canvas: HTMLCanvasElement) {
-  const ratio = Math.max(window.devicePixelRatio || 1, 1);
-  const w = canvas.offsetWidth;
-  const h = canvas.offsetHeight;
-  canvas.width = w * ratio;
-  canvas.height = h * ratio;
-  const ctx = canvas.getContext('2d');
-  if (ctx) ctx.scale(ratio, ratio);
 }
 
 export function SignaturePad({
@@ -80,7 +81,7 @@ export function SignaturePad({
         setSigned(true);
         onSignatureChange({
           strokes: data,
-          dataUrl: next.toDataURL('image/png'),
+          dataUrl: exportSignaturePng(canvas, data, () => next.toDataURL('image/png')),
         });
       } else {
         strokesRef.current = [];
@@ -95,7 +96,7 @@ export function SignaturePad({
       const h = canvas.offsetHeight;
       if (w === 0 || h === 0) return;
 
-      scaleCanvas(canvas);
+      scaleSignatureCanvas(canvas);
 
       pad = new SignaturePadLib(canvas, {
         minWidth: 0.5,
@@ -124,9 +125,15 @@ export function SignaturePad({
           return;
         }
         const strokeData = pad.toData();
-        scaleCanvas(canvas);
+        scaleSignatureCanvas(canvas);
         pad.clear();
-        if (strokeData.length > 0) pad.fromData(strokeData);
+        if (strokeData.length > 0) {
+          pad.fromData(strokeData);
+          // Re-export at the new size. Without this the stored data URL stayed
+          // the pre-resize crop, so expanding to fullscreen and collapsing
+          // again saved a PNG that no longer matched the pad on screen.
+          emitFromPad(pad);
+        }
       }, 50);
     });
     ro.observe(container);
@@ -149,7 +156,15 @@ export function SignaturePad({
   }, [onSignatureChange]);
 
   const isDropoff = variant === 'dropoff';
-  const fill = Boolean(fillHeight || expanded);
+  /**
+   * The legacy staff fill, DELIBERATELY not extended to fullscreen.
+   *
+   * `expanded` used to set this too, which is how the Dialog produced a
+   * viewport-tall canvas — the same dead-space defect as the old 200px pad,
+   * one altitude up. Fullscreen now takes the aspect law like every other
+   * kiosk mount; only the two fixed-height staff wrappers still fill.
+   */
+  const fill = Boolean(fillHeight) && !expanded;
 
   const labelRow = (
     <div className="flex items-center justify-between gap-3">
@@ -207,27 +222,26 @@ export function SignaturePad({
     </div>
   );
 
+  /**
+   * The pad box. On the kiosk its geometry is a RATIO on the kiosk axis
+   * ({@link COUNTER_SIGNATURE_PAD}), never a fixed height: it is mounted at
+   * four measures and a height means a different aspect at each one. The
+   * `fill` branch is the staff wrappers' own height (see {@link fill}); the
+   * border follows it because a filled pad is already inside a bordered box.
+   */
   const canvasArea = (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden bg-surface-card ${
-        fill ? 'min-h-0 flex-1' : 'border border-border-default'
-      }`}
-      style={fill ? undefined : { height: PAD_HEIGHT }}
+      className={cn(
+        'relative overflow-hidden bg-surface-card',
+        fill ? 'min-h-0 flex-1' : cn('border border-border-default', COUNTER_SIGNATURE_PAD),
+      )}
     >
-      <canvas
-        ref={canvasRef}
-        className="h-full w-full"
-        style={{
-          touchAction: 'none',
-          userSelect: 'none',
-          WebkitUserSelect: 'none',
-        }}
-      />
-      <div className="pointer-events-none absolute bottom-10 left-6 right-6 border-b-2 border-dashed border-border-soft" />
-      <span className="pointer-events-none absolute bottom-3 left-6 text-role-micro uppercase tracking-[0.2em] text-text-faint">
-        Sign above
-      </span>
+      {/* `touch-none` is load-bearing, not styling: without it a finger drag
+          scrolls the pane instead of drawing. `select-none` emits the
+          -webkit- prefix iOS needs. */}
+      <canvas ref={canvasRef} className="h-full w-full touch-none select-none" />
+      <div className={COUNTER_SIGNATURE_GUIDE} />
       {!signed && (
         <span className="pointer-events-none absolute right-3 top-3 text-role-micro uppercase tracking-wide text-text-faint">
           Touch to sign
@@ -257,7 +271,14 @@ export function SignaturePad({
               Sign with your finger or stylus. Press Done when finished.
             </DialogDescription>
             {labelRow}
-            {canvasArea}
+            {/*
+              The pad keeps its aspect in fullscreen too. This used to be
+              `min-h-0 flex-1`, i.e. a canvas as tall as the viewport — the tall
+              dead space the operator reported, one altitude up.
+            */}
+            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+              {canvasArea}
+            </div>
             <Button
               type="button"
               size="lg"

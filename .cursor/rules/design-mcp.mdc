@@ -20,3 +20,12 @@ rails or second mouths unless explicitly asked.
 Scan-station materials: `ds_tokens({ axis: "station-skin" })` (catalog =
 `src/design-system/themes/station-skins.ts`). Call `applyStationSkin(name)`.
 Do not hex-fill a well or fork a packing-bench class on one station.
+
+Product identity: `ds_tokens({ axis: "sku-identity" })` (catalog =
+`src/lib/sku/sku-identity-law.ts`) and the verdict tool **`ds_sku_identity`**
+(`node tools/design-mcp/ds.mjs sku-identity`). Call before painting a product
+title, SKU or photo. The ZOHO item governs — read through
+`resolveSkuIdentityTitle`, reach the catalog with `SKU_CATALOG_JOIN_ON_SQL`
+(exact + org-scoped), take the photo from `RECEIVING_LINE_IMAGE_URL_SQL`. Do
+not spell an eleventh `||` title ladder; do not fill
+`sku_catalog.product_title` / `image_url` on a Zoho-owned row.

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { LayoutGroup } from '@/design-system/motion';
 import { WORKSPACE_SECTION_TITLE_CLASS } from './WorkspaceSectionLabel';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { CartonAddAction } from './CartonAddAction';
 import { PoLineRow } from './PoLineRow';

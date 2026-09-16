@@ -17,10 +17,6 @@ import { Button } from '@/design-system/primitives';
 import { MobileTopBar } from '@/components/mobile/redesign/MobileTopBar';
 import { NumericStep } from '@/components/barcode/bin-label-printer/NumericStep';
 import { LABEL_BUILDER_SELECTED } from '@/components/barcode/label-builder-layout';
-import {
-  FILTER_DROPDOWN_LABEL_CLASS,
-  FILTER_DROPDOWN_SELECT_CLASS,
-} from '@/design-system/components/FilterDropdownSelect';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,11 +40,17 @@ import {
   type MobilePrintStep,
 } from '@/lib/print/mobile-print-flow';
 import {
-  BAY_CHIP_COUNT,
   baysMatchingParity,
   expandRaggedBayLevelsPrintRun,
   type BayParity,
 } from '@/lib/print/expand-print-run';
+import {
+  DEFAULT_TOTE_COPIES_PER_SIDE,
+  MAX_TOTE_PRINT_RUN,
+  clampCopiesPerSide,
+  clampToteCount,
+  toteRunPlateCount,
+} from '@/lib/print/labelCopies';
 import {
   STAFF_PRINT_JOB_EVENT,
   STAFF_PRINT_OPTIONS_PATCH_EVENT,
@@ -63,7 +65,24 @@ import {
 } from '@/lib/print/staff-print-bridge';
 import { DEFAULT_CONFIG, loadConfig } from '@/components/barcode/rack-printer/rack-printer-config';
 import { MobilePrintPrinterStep, MobilePrintOptionsDropdown } from '@/components/mobile/print/MobilePrintPrinterStep';
-import { MobilePrintPreviewStep } from '@/components/mobile/print/MobilePrintPreviewStep';
+import { type TotePrintMode } from '@/components/mobile/print/TotePrintRunFields';
+import {
+  MobilePrintPreviewStep,
+  MobileTotePreviewStep,
+} from '@/components/mobile/print/MobilePrintPreviewStep';
+import {
+  MobilePrintBaysStep,
+  MobilePrintLevelsStep,
+  MobilePrintRoomStep,
+  type MobilePrintRoomOption,
+} from '@/components/mobile/print/MobilePrintLocationSteps';
+
+/**
+ * Quick-pick chips on the tote count step. A cart holds a dozen or two, so the
+ * chips cover the everyday run and `Custom count` carries the rest up to
+ * {@link MAX_TOTE_PRINT_RUN}.
+ */
+const TOTE_COUNT_CHIPS = 24;
 
 type Draft = {
   kind: MobilePrintJobKind | null;
@@ -73,6 +92,10 @@ type Draft = {
   bayParity: BayParity;
   selectedBays: number[];
   bayLevels: Record<number, number>;
+  toteCount: number;
+  toteMode: TotePrintMode;
+  copiesPerSide: number;
+  reprintCode: string;
   role: StaffPrintRole;
 };
 
@@ -84,6 +107,10 @@ const EMPTY_DRAFT: Draft = {
   bayParity: 'all',
   selectedBays: [],
   bayLevels: {},
+  toteCount: 10,
+  toteMode: 'new',
+  copiesPerSide: DEFAULT_TOTE_COPIES_PER_SIDE,
+  reprintCode: '',
   role: 'label',
 };
 
@@ -93,8 +120,20 @@ function readDraft(): Draft {
     const raw = sessionStorage.getItem(MOBILE_PRINT_DRAFT_KEY);
     if (!raw) return EMPTY_DRAFT;
     const parsed = JSON.parse(raw) as Partial<Draft> & { kind?: string };
-    const kind = parsed.kind === 'rack' || parsed.kind === 'bin' ? parsed.kind : null;
-    return { ...EMPTY_DRAFT, ...parsed, kind, selectedBays: parsed.selectedBays ?? [] };
+    const kind =
+      parsed.kind === 'rack' || parsed.kind === 'bin' || parsed.kind === 'tote'
+        ? parsed.kind
+        : null;
+    return {
+      ...EMPTY_DRAFT,
+      ...parsed,
+      kind,
+      selectedBays: parsed.selectedBays ?? [],
+      toteCount: clampToteCount(parsed.toteCount ?? EMPTY_DRAFT.toteCount),
+      toteMode: parsed.toteMode === 'reprint' ? 'reprint' : 'new',
+      copiesPerSide: clampCopiesPerSide(parsed.copiesPerSide ?? EMPTY_DRAFT.copiesPerSide),
+      reprintCode: typeof parsed.reprintCode === 'string' ? parsed.reprintCode : '',
+    };
   } catch {
     return EMPTY_DRAFT;
   }
@@ -150,6 +189,20 @@ export function MobilePrintWorkspace() {
   const kind = draft.kind;
   const next = nextMobilePrintStep(step, kind);
   const prev = prevMobilePrintStep(step, kind);
+
+  // The room step needs only name + zone letter; rows with no name cannot be
+  // picked or printed, so they never reach the list.
+  const roomOptions = useMemo<MobilePrintRoomOption[]>(
+    () =>
+      rooms
+        .map((room) => ({
+          id: room.id,
+          name: (room.room || room.name || '').trim(),
+          letter: (room.zone_letter || '').toUpperCase(),
+        }))
+        .filter((room) => room.name.length > 0),
+    [rooms],
+  );
 
   const effectiveBays = useMemo(
     () => baysMatchingParity(draft.selectedBays, draft.bayParity),
@@ -213,22 +266,31 @@ export function MobilePrintWorkspace() {
     [router],
   );
 
+  const isTote = kind === 'tote';
+  const toteTotes = draft.toteMode === 'reprint' ? 1 : clampToteCount(draft.toteCount);
+  const toteTotal = toteRunPlateCount(toteTotes, draft.copiesPerSide);
+  const runCount = isTote ? toteTotal : segments.length;
+
   const canContinue = useMemo(() => {
     if (step === 'job') return kind != null;
+    if (step === 'count') {
+      if (draft.toteMode === 'reprint') return draft.reprintCode.trim().length > 0;
+      return draft.toteCount >= 1 && draft.toteCount <= MAX_TOTE_PRINT_RUN;
+    }
     if (step === 'room') return !!draft.roomName && /^[A-Z]$/.test(draft.zoneLetter);
     if (step === 'aisle') return draft.aisle != null && draft.aisle >= 1;
     if (step === 'bays') return effectiveBays.length > 0;
     if (step === 'levels') return effectiveBays.every((b) => (draft.bayLevels[b] ?? 0) >= 1);
-    if (step === 'preview') return segments.length > 0;
-    if (step === 'ack') return segments.length > 0;
+    if (step === 'preview') return runCount > 0;
+    if (step === 'ack') return runCount > 0;
     if (step === 'options') return true;
-    if (step === 'print') return segments.length > 0;
+    if (step === 'print') return runCount > 0;
     return false;
-  }, [step, kind, draft, effectiveBays, segments.length]);
+  }, [step, kind, draft, effectiveBays, runCount]);
 
   const onBack = useCallback(() => {
     if (prev) go(prev);
-    else router.push('/m/home');
+    else router.push('/m/work');
   }, [prev, go, router]);
 
   const onContinue = useCallback(() => {
@@ -270,18 +332,29 @@ export function MobilePrintWorkspace() {
         const client = await getClient();
         const channel = client?.channels.get(channelName);
         if (!channel) throw new Error('print channel unavailable');
-        const job: StaffPrintJob = {
-          type: 'staff.print_job',
-          request_id: requestId,
-          grain: kind === 'bin' ? 'bin' : 'rack',
-          role: 'label',
-          location: {
-            roomName: draft.roomName,
-            gln: identity.gln,
-            orgSlug: user?.organizationSlug ?? null,
-            segments,
-          },
-        };
+        const job: StaffPrintJob = isTote
+          ? {
+              type: 'staff.print_job',
+              request_id: requestId,
+              grain: 'tote',
+              role: 'label',
+              tote:
+                draft.toteMode === 'reprint'
+                  ? { copiesPerSide: draft.copiesPerSide, code: draft.reprintCode.trim() }
+                  : { count: draft.toteCount, copiesPerSide: draft.copiesPerSide },
+            }
+          : {
+              type: 'staff.print_job',
+              request_id: requestId,
+              grain: kind === 'bin' ? 'bin' : 'rack',
+              role: 'label',
+              location: {
+                roomName: draft.roomName,
+                gln: identity.gln,
+                orgSlug: user?.organizationSlug ?? null,
+                segments,
+              },
+            };
         await channel.publish(STAFF_PRINT_JOB_EVENT, job);
       },
     });
@@ -290,9 +363,11 @@ export function MobilePrintWorkspace() {
   }, [
     channelName,
     kind,
+    isTote,
     sendModel,
     getClient,
     draft.roomName,
+    draft.toteCount,
     identity.gln,
     user?.organizationSlug,
     staffName,
@@ -323,7 +398,9 @@ export function MobilePrintWorkspace() {
 
   const primaryLabel =
     step === 'print'
-      ? `Print ${segments.length} label${segments.length === 1 ? '' : 's'}`
+      ? isTote
+        ? `Print ${runCount} tote${runCount === 1 ? '' : 's'}`
+        : `Print ${runCount} label${runCount === 1 ? '' : 's'}`
       : next
         ? 'Continue'
         : 'Done';
@@ -340,6 +417,7 @@ export function MobilePrintWorkspace() {
                 [
                   ['rack', 'Bay labels'],
                   ['bin', 'Bin labels'],
+                  ['tote', 'Tote labels'],
                 ] as const
               ).map(([id, label]) => (
                 <Button
@@ -362,30 +440,26 @@ export function MobilePrintWorkspace() {
             </>
           )}
 
+          {step === 'count' && (
+            <NumericStep
+              title="How many totes"
+              count={TOTE_COUNT_CHIPS}
+              selected={draft.toteCount}
+              onPick={(n) =>
+                setDraft((d) => ({ ...d, toteCount: Math.min(n, MAX_TOTE_PRINT_RUN) }))
+              }
+              customLabel="Custom count"
+            />
+          )}
+
           {step === 'room' && (
-            <>
-              {roomsLoading && <p className="text-role-caption text-text-soft">Loading rooms…</p>}
-              {rooms.map((room) => {
-                const name = (room.room || room.name || '').trim();
-                const letter = (room.zone_letter || '').toUpperCase();
-                if (!name) return null;
-                const ok = /^[A-Z]$/.test(letter);
-                return (
-                  <Button
-                    key={room.id}
-                    type="button"
-                    variant="secondary"
-                    radius="surface"
-                    disabled={!ok}
-                    className={cn('h-14 w-full justify-between', chipClass(draft.roomName === name))}
-                    onClick={() => ok && pickRoom(name, letter)}
-                  >
-                    <span>{name}</span>
-                    <span className="font-mono">{ok ? letter : 'No zone'}</span>
-                  </Button>
-                );
-              })}
-            </>
+            <MobilePrintRoomStep
+              rooms={roomOptions}
+              loading={roomsLoading}
+              selectedRoom={draft.roomName}
+              chipClass={chipClass}
+              onPick={pickRoom}
+            />
           )}
 
           {step === 'aisle' && (
@@ -399,80 +473,54 @@ export function MobilePrintWorkspace() {
           )}
 
           {step === 'bays' && (
-            <>
-              <p className="text-role-caption text-text-muted">Odds left · Evens right. Select every bay to print.</p>
-              <div className="grid grid-cols-3 gap-2">
-                {(['all', 'odds', 'evens'] as const).map((parity) => (
-                  <Button
-                    key={parity}
-                    type="button"
-                    variant="secondary"
-                    radius="surface"
-                    className={chipClass(draft.bayParity === parity)}
-                    onClick={() => setDraft((d) => ({ ...d, bayParity: parity }))}
-                  >
-                    {parity === 'all' ? 'All' : parity === 'odds' ? 'Odds' : 'Evens'}
-                  </Button>
-                ))}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: BAY_CHIP_COUNT }, (_, i) => i + 1).map((n) => (
-                  <Button
-                    key={n}
-                    type="button"
-                    variant="secondary"
-                    radius="surface"
-                    className={chipClass(draft.selectedBays.includes(n))}
-                    onClick={() => toggleBay(n)}
-                  >
-                    {n}
-                  </Button>
-                ))}
-              </div>
-            </>
+            <MobilePrintBaysStep
+              parity={draft.bayParity}
+              selectedBays={draft.selectedBays}
+              chipClass={chipClass}
+              onParity={(bayParity) => setDraft((d) => ({ ...d, bayParity }))}
+              onToggleBay={toggleBay}
+            />
           )}
 
           {step === 'levels' && (
-            <>
-              <p className="text-role-caption text-text-muted">Height per bay — one column.</p>
-              {effectiveBays.map((bay) => (
-                <label key={bay} className="block">
-                  <span className={FILTER_DROPDOWN_LABEL_CLASS}>Bay {bay}</span>
-                  <select
-                    className={FILTER_DROPDOWN_SELECT_CLASS}
-                    value={draft.bayLevels[bay] ?? config.maxLevels}
-                    onChange={(e) => {
-                      const level = Number(e.target.value);
-                      setDraft((d) => ({ ...d, bayLevels: { ...d.bayLevels, [bay]: level } }));
-                    }}
-                  >
-                    {Array.from({ length: config.maxLevels }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>
-                        {n} level{n === 1 ? '' : 's'}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ))}
-            </>
-          )}
-
-          {step === 'preview' && (
-            <MobilePrintPreviewStep
-              segments={segments}
-              roomName={draft.roomName}
-              gln={identity.gln}
+            <MobilePrintLevelsStep
+              bays={effectiveBays}
+              bayLevels={draft.bayLevels}
+              maxLevels={config.maxLevels}
+              onLevel={(bay, level) =>
+                setDraft((d) => ({ ...d, bayLevels: { ...d.bayLevels, [bay]: level } }))
+              }
             />
           )}
+
+          {step === 'preview' &&
+            (isTote ? (
+              <MobileTotePreviewStep count={runCount} />
+            ) : (
+              <MobilePrintPreviewStep
+                segments={segments}
+                roomName={draft.roomName}
+                gln={identity.gln}
+              />
+            ))}
 
           {step === 'ack' && (
             <div className={cn('border border-border-soft bg-surface-card p-4', cornerClass('card'))}>
               <p className="font-mono text-lg font-semibold text-text-default">
-                {draft.zoneLetter}-{String(draft.aisle ?? '').padStart(2, '0')}
+                {isTote
+                  ? `${runCount} tote${runCount === 1 ? '' : 's'}`
+                  : `${draft.zoneLetter}-${String(draft.aisle ?? '').padStart(2, '0')}`}
               </p>
               <p className="mt-2 text-role-caption text-text-muted">
-                {draft.roomName} · {effectiveBays.length} bay{effectiveBays.length === 1 ? '' : 's'} · {segments.length}{' '}
-                label{segments.length === 1 ? '' : 's'}
+                {isTote ? (
+                  'New boxes are created at Print — each plate is its own H- code.'
+                ) : (
+                  <>
+                    {draft.roomName} · {effectiveBays.length} bay
+                    {effectiveBays.length === 1 ? '' : 's'} · {runCount} label
+                    {runCount === 1 ? '' : 's'}
+                  </>
+                )}
               </p>
             </div>
           )}
@@ -490,7 +538,9 @@ export function MobilePrintWorkspace() {
           {step === 'print' && (
             <div className={cn('border border-border-soft bg-surface-card p-4', cornerClass('card'))}>
               <p className="text-sm font-semibold text-text-default">
-                {segments.length} labels · {draft.zoneLetter}-{String(draft.aisle ?? '').padStart(2, '0')}
+                {isTote
+                  ? `${runCount} tote plate${runCount === 1 ? '' : 's'}`
+                  : `${runCount} labels · ${draft.zoneLetter}-${String(draft.aisle ?? '').padStart(2, '0')}`}
               </p>
               <div className="mt-3 flex flex-col gap-3">
                 <MobilePrintOptionsDropdown status={status} role={role} onPatch={patchOptions} />

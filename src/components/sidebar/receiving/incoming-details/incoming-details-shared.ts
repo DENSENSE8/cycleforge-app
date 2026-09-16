@@ -1,5 +1,5 @@
 import { format, formatDistanceToNowStrict, parseISO } from 'date-fns';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
 

@@ -105,6 +105,8 @@ export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
   },
   async commit({ rows, mapping }) {
     const outcome = await postCsvOrderImport({ rows, mapping });
-    return outcome.ok ? { ok: true } : { ok: false, error: outcome.error };
+    return outcome.ok
+      ? { ok: true, insertedEntityIds: outcome.result.insertedOrderIds }
+      : { ok: false, error: outcome.error };
   },
 };

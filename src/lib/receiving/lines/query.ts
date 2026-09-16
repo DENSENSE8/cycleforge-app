@@ -15,6 +15,7 @@ import {
   normalizeReceivingHistorySearchScope,
 } from '@/lib/receiving-history-search';
 import { parseReceivingView, RECEIVING_VIEWS } from '@/lib/receiving/receiving-views';
+import { RECEIVING_HISTORY_LIMIT } from '@/lib/receiving/receiving-modes';
 import { parseTrackingInParam, TRACKING_IN_PARAM } from '@/lib/receiving/tracking-paste';
 
 /**
@@ -148,6 +149,8 @@ export type ReceivingLinesQuery = z.infer<typeof receivingLinesQuerySchema>;
 export function parseReceivingLinesQuery(searchParams: URLSearchParams): ReceivingLinesQuery {
   const id          = Number(searchParams.get('id'));
   const receivingId = Number(searchParams.get('receiving_id'));
+  // View is parsed BEFORE limit: the activity cap depends on it (below).
+  const viewRaw = String(searchParams.get('view') || '').trim().toLowerCase();
   // Capped at the list's own ceiling — this names a page, never a bulk export.
   const receivingIdIn = Array.from(
     new Set(
@@ -157,7 +160,11 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
         .filter((n) => Number.isFinite(n) && n > 0),
     ),
   ).slice(0, 500);
-  const limit       = Math.min(Number(searchParams.get('limit') || 200), 500);
+  // view=activity is History — the ENTIRE timeline (operator 2026-09-14),
+  // fetched in one long scroll; every other view stays a funnel page at the
+  // 500 ceiling. RECEIVING_HISTORY_LIMIT keeps client and server in step.
+  const limitCap = viewRaw === 'activity' ? RECEIVING_HISTORY_LIMIT : 500;
+  const limit       = Math.min(Number(searchParams.get('limit') || 200), limitCap);
   const offset      = Math.max(Number(searchParams.get('offset') || 0), 0);
   const search      = String(searchParams.get('search') || '').trim();
   const searchField = normalizeReceivingHistorySearchField(searchParams.get('search_field'));
@@ -167,7 +174,6 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const workflowFilter = String(searchParams.get('workflow_status') || '').trim().toUpperCase();
   // Wave-2 dead-arm removal: the no-view ?week_start/?week_end fallback was
   // deleted (grep-proven zero consumers) — those params are now ignored.
-  const viewRaw   = String(searchParams.get('view') || '').trim().toLowerCase();
   // Incoming-only: filters by the computed delivery_state bucket
   // (DELIVERED_UNOPENED, ARRIVING_TODAY, STALLED, IN_TRANSIT, AWAITING_TRACKING).
   // Mirrors the stat-tile click semantics on IncomingSidebarPanel.

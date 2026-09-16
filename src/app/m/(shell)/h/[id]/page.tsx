@@ -21,7 +21,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
 import { handlingUnitStatusChipClass } from '@/lib/handling-unit-status';
 import { getLast8 } from '@/components/ui/CopyChip';
@@ -163,9 +163,6 @@ export default function MobileHandlingUnitPage() {
     printHandlingUnitLabel({
       handlingUnitId: box.id,
       code: box.code,
-      unitCount: box.rollup.total,
-      locationName: box.location_name,
-      date: new Date().toLocaleDateString(),
     });
   }, [box]);
 
@@ -197,7 +194,7 @@ export default function MobileHandlingUnitPage() {
 
       {flash && (
         <div
-          className={`mx-3 mt-3 flex items-center gap-2 rounded-none px-3 py-2 text-sm font-semibold ${
+          className={`mx-3 mt-3 flex items-center gap-2 rounded-none px-3 py-2 text-role-field font-semibold ${
             flash.kind === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
@@ -242,7 +239,7 @@ export default function MobileHandlingUnitPage() {
                 if (e.key === 'Enter') submitAdd();
               }}
               placeholder="Scan unit (U-… / serial) to add"
-              className={cn("flex-1 rounded-none border border-border-default px-3 py-2 text-sm", focusRing('field', 'success'))}
+              className={cn("flex-1 rounded-none border border-border-default px-3 py-2 text-role-field", focusRing('field', 'success'))}
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -250,7 +247,7 @@ export default function MobileHandlingUnitPage() {
             <button
               onClick={submitAdd}
               disabled={!addInput.trim() || busy === 'add'}
-              className="flex items-center gap-1 rounded-none bg-teal-600 px-3 py-2 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-40"
+              className="flex items-center gap-1 rounded-none bg-teal-600 px-3 py-2 text-role-field font-semibold text-white active:bg-teal-700 disabled:opacity-40"
             >
               <Plus className="h-4 w-4" /> Add
             </button>

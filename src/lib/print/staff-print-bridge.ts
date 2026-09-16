@@ -10,6 +10,11 @@
  */
 
 import type { LocationSegments } from '@/lib/barcode-routing';
+import {
+  MAX_TOTE_PRINT_RUN,
+  clampCopiesPerSide,
+  DEFAULT_TOTE_COPIES_PER_SIDE,
+} from '@/lib/print/labelCopies';
 
 export const STAFF_PRINT_JOB_EVENT = 'staff_print_job';
 export const STAFF_PRINT_STATUS_EVENT = 'staff_print_status';
@@ -17,7 +22,7 @@ export const STAFF_PRINT_STATUS_REQUEST_EVENT = 'staff_print_status_request';
 export const STAFF_PRINT_PROGRESS_EVENT = 'staff_print_progress';
 export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers';
+export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -33,6 +38,22 @@ export type StaffPrintPapersPayload = {
   reprint?: boolean;
 };
 
+/**
+ * Bulk tote run. Mint jobs send a COUNT (never minted ids). Reprint jobs send
+ * the typed tote code; the desk looks it up and prints more plates of that
+ * identity. Copies is the sticker repeat of that identity — no × sides.
+ */
+export type StaffPrintTotePayload = {
+  count?: number;
+  copiesPerSide: number;
+  /** Existing tote `H-{id}` / numeric id / external code — reprint, no mint. */
+  code?: string;
+};
+
+// The tote run's ceiling lives in `labelCopies` (dependency-free print
+// constants) because the server's zod schema must read the same number
+// without importing this wire module.
+
 export type StaffPrintJob = {
   type: 'staff.print_job';
   request_id: string;
@@ -40,6 +61,7 @@ export type StaffPrintJob = {
   role: StaffPrintRole;
   location?: StaffPrintLocationPayload;
   papers?: StaffPrintPapersPayload;
+  tote?: StaffPrintTotePayload;
 };
 
 export type StaffPrintProfileSnap = {
@@ -105,8 +127,38 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
   const requestId = String(rec.request_id ?? '').trim();
   if (!requestId) return null;
   const grain = rec.grain;
-  if (grain !== 'rack' && grain !== 'bin' && grain !== 'papers') return null;
+  if (grain !== 'rack' && grain !== 'bin' && grain !== 'papers' && grain !== 'tote') return null;
   const role = rec.role === 'paper' ? 'paper' : 'label';
+
+  if (grain === 'tote') {
+    const tote = rec.tote;
+    if (!tote || typeof tote !== 'object') return null;
+    const t = tote as Record<string, unknown>;
+    const copiesPerSide = clampCopiesPerSide(
+      asInt(t.copiesPerSide) ?? DEFAULT_TOTE_COPIES_PER_SIDE,
+    );
+    const code = String(t.code ?? '').trim();
+    if (code) {
+      return {
+        type: 'staff.print_job',
+        request_id: requestId,
+        grain,
+        role: 'label',
+        tote: { copiesPerSide, code },
+      };
+    }
+    const count = asInt(t.count);
+    // Bounded here as well as at the route: an unbounded count off the wire is
+    // a printer that never stops and a table that fills with orphan boxes.
+    if (count == null || count < 1 || count > MAX_TOTE_PRINT_RUN) return null;
+    return {
+      type: 'staff.print_job',
+      request_id: requestId,
+      grain,
+      role: 'label',
+      tote: { count, copiesPerSide },
+    };
+  }
 
   if (grain === 'papers') {
     const papers = rec.papers;

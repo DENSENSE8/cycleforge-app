@@ -40,6 +40,8 @@ interface ItemRow {
   sku_catalog_id: number | null;
   product_title: string | null;
   image_url: string | null;
+  /** Zoho item photo when it has one, catalog image only as a fallback. */
+  resolved_image_url: string | null;
   quantity_on_hand: string | null;
 }
 
@@ -62,18 +64,26 @@ function codeToken(model: string): string | null {
   return codes.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
-// The sku → sku_catalog join is on a string key (sku), so when we scope to a
-// tenant we MUST also align organization_id across the join (rule 3) — otherwise
-// a same-SKU catalog row from another org could attach to this org's item. The
-// join condition is parameterized by callers: `joinAnd` is '' (raw-pool path) or
-// ' AND sc.organization_id = i.organization_id' (tenant path).
-function selectClause(joinAnd: string): string {
+// The sku → sku_catalog join is on a STRING key, so organization_id is aligned
+// across it unconditionally (SKU IDENTITY LAW, src/lib/sku/sku-identity-law.ts).
+// `items` always carries organization_id, so the raw-pool path can align it too
+// — the old `joinAnd` parameter made the alignment conditional on a tenant
+// being passed, which left one code path able to attach another org's row.
+//
+// Identity comes from `items` here (this query DRIVES off the Zoho mirror), so
+// the catalog contributes only a fallback title and its image.
+function selectClause(): string {
   return `
   SELECT i.zoho_item_id, i.name, i.sku,
          sc.id AS sku_catalog_id, sc.product_title, sc.image_url,
+         CASE
+           WHEN NULLIF(i.image_document_id, '') IS NOT NULL
+             THEN '/api/zoho/items/' || i.zoho_item_id || '/image'
+           ELSE COALESCE(NULLIF(i.image_url, ''), sc.image_url)
+         END AS resolved_image_url,
          i.quantity_on_hand
   FROM items i
-  LEFT JOIN sku_catalog sc ON sc.sku = i.sku${joinAnd}
+  LEFT JOIN sku_catalog sc ON sc.sku = i.sku AND sc.organization_id = i.organization_id
 `;
 }
 // Prefer items that have a catalog row, then ones in stock, then active.
@@ -87,26 +97,26 @@ const ORDER = `
 async function queryByWords(words: string[], orgId?: OrgId): Promise<ItemRow[]> {
   if (words.length === 0) return [];
   const conds = words.map((_, k) => `i.name ILIKE '%' || $${k + 1} || '%'`).join(' AND ');
-  // When orgId is present, scope the items read to the tenant ($N after the word
-  // params) and align org across the string-key (sku) join; when omitted, keep
-  // the exact prior raw-pool SQL/params.
   if (orgId) {
     const orgIdx = words.length + 1;
-    const sql = `${selectClause(' AND sc.organization_id = i.organization_id')} WHERE ${conds} AND i.organization_id = $${orgIdx} ${ORDER}`;
+    const sql = `${selectClause()} WHERE ${conds} AND i.organization_id = $${orgIdx} ${ORDER}`;
     const res = await tenantQuery<ItemRow>(orgId, sql, [...words, orgId]);
     return res.rows;
   }
-  const res = await pool.query<ItemRow>(`${selectClause('')} WHERE ${conds} ${ORDER}`, words);
+  const res = await pool.query<ItemRow>(`${selectClause()} WHERE ${conds} ${ORDER}`, words);
   return res.rows;
 }
 
 async function queryByCode(code: string, orgId?: OrgId): Promise<ItemRow[]> {
   if (orgId) {
-    const sql = `${selectClause(' AND sc.organization_id = i.organization_id')} WHERE i.name ILIKE '%' || $1 || '%' AND i.organization_id = $2 ${ORDER}`;
+    const sql = `${selectClause()} WHERE i.name ILIKE '%' || $1 || '%' AND i.organization_id = $2 ${ORDER}`;
     const res = await tenantQuery<ItemRow>(orgId, sql, [code, orgId]);
     return res.rows;
   }
-  const res = await pool.query<ItemRow>(`${selectClause('')} WHERE i.name ILIKE '%' || $1 || '%' ${ORDER}`, [code]);
+  const res = await pool.query<ItemRow>(
+    `${selectClause()} WHERE i.name ILIKE '%' || $1 || '%' ${ORDER}`,
+    [code],
+  );
   return res.rows;
 }
 
@@ -151,8 +161,13 @@ export async function resolveModelToCatalog(model: string, orgId?: OrgId): Promi
     sku: best.sku,
     item_name: best.name,
     sku_catalog_id: skuCatalogId,
-    product_title: best.product_title ?? best.name,
-    image_url: best.image_url,
+    // SKU IDENTITY LAW: this query drives off the Zoho mirror, so `i.name` IS
+    // the SoT. It used to read `best.product_title ?? best.name`, which handed
+    // a contaminated catalog title (132 rows) priority over the Zoho item the
+    // match was made against — a label OCR'd as a Wave Radio could answer with
+    // an unrelated remote control.
+    product_title: best.name || best.product_title,
+    image_url: best.resolved_image_url,
     resolved: best.zoho_item_id != null,
     via,
   };

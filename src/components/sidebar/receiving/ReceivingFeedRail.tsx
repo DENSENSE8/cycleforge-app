@@ -19,7 +19,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { railSnapshotFeedParam } from '@/lib/receiving/rail/rail-snapshot-cache';
 import { fetchRailSnapshot, persistRailSnapshot } from '@/lib/receiving/rail/rail-snapshot-client';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
 import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';

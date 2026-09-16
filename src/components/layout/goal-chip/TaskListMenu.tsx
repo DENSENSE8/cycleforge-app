@@ -9,16 +9,16 @@
  * gesture at a different scope. What separates them is only WHERE the dots sit —
  * on a row, or on the list's head.
  *
- * **"View everything" LEAVES this panel.** Every task, sorted, with its deleted
- * half and a record plane, is `Home → Tasks` (`tasks.mine` in the table
- * registry) — a real spreadsheet. Rendering a second archived list inline here
- * would be a hand-rolled twin of that surface's Deleted lane, in 290px, which
- * is the fork this panel was just ported out of. The panel previews and edits
- * the current list; the table is where you triage.
+ * **No navigating items as of 2026-09-14.** "View everything" and "Deleted
+ * tasks" pointed at `Home → Tasks` (`/?mode=tasks`), and that mode was
+ * unmounted when Home became the single Daily surface — the links would have
+ * landed on the daily checklist. They return when the `tasks.mine` table gets
+ * a route of its own; rendering a second archived list inline here, in 290px,
+ * would be the hand-rolled twin this panel was ported out of. The panel
+ * previews and edits the current list.
  */
 
-import Link from 'next/link';
-import { MoreHorizontal, Archive, Check, Trash2, ExternalLink } from '@/components/Icons';
+import { MoreHorizontal, Check, Trash2 } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import {
   DropdownMenu,
@@ -33,7 +33,6 @@ export function TaskListMenu({
   listLabel,
   doneCount,
   total,
-  onNavigate,
   onClearCompleted,
   onDeleteAll,
   touch = false,
@@ -42,8 +41,6 @@ export function TaskListMenu({
   listLabel: string;
   doneCount: number;
   total: number;
-  /** Close the popover when a menu item navigates away. */
-  onNavigate?: () => void;
   onClearCompleted: () => void;
   onDeleteAll: () => void;
   touch?: boolean;
@@ -61,16 +58,11 @@ export function TaskListMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom" sideOffset={2} className="min-w-[12rem]">
-        <DropdownMenuItem className={itemClass} asChild>
-          <Link href="/?mode=tasks" onClick={onNavigate}>
-            <ExternalLink className="h-4 w-4" /> View everything
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem className={itemClass} asChild>
-          <Link href="/?mode=tasks&filter=deleted" onClick={onNavigate}>
-            <Archive className="h-4 w-4" /> Deleted tasks
-          </Link>
-        </DropdownMenuItem>
+        {/* The "View everything" / "Deleted tasks" deep-links to
+           `/?mode=tasks` were cut with the Tasks mode (2026-09-14): that URL
+           now lands on the Daily checklist, and a link that lands somewhere
+           else is worse than no link. They return when the tasks table gets a
+           route of its own again. */}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className={itemClass}

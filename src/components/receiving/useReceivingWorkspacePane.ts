@@ -23,7 +23,7 @@ import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
 import { useScanStance } from '@/components/station/scan-bar';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';

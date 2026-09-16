@@ -49,6 +49,8 @@ export type CsvOrderCanonicalKey = (typeof CSV_ORDER_CANONICAL_FIELDS)[number]['
 
 export type CsvOrderImportResult = {
   inserted: number;
+  /** Newly created orders, for a caller that must reveal them in a live queue. */
+  insertedOrderIds: number[];
   /** Existing orders the writer BACKFILLED (additive — blanks only). */
   updated: number;
   /** In-batch duplicate order numbers, first occurrence wins. */
@@ -215,6 +217,11 @@ export async function postCsvOrderImport(body: {
       ok: true,
       result: {
         inserted: json.inserted ?? 0,
+        insertedOrderIds: Array.isArray(json.insertedOrderIds)
+          ? json.insertedOrderIds
+              .map(Number)
+              .filter((id) => Number.isFinite(id) && id > 0)
+          : [],
         updated: json.updated ?? 0,
         skipped: json.skipped ?? 0,
         errors: Array.isArray(json.errors) ? json.errors : [],

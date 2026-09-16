@@ -67,22 +67,58 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
 }
 
 /**
- * The kiosk pane's three touch steps (Issue · Information · Authorization) as
- * satisfied/unsatisfied gates.
+ * The kiosk pane's FOUR touch steps as satisfied/unsatisfied gates:
+ * Reason · Device · Contact · Authorization.
  *
  * Feeds `StepProgressHeader` (PG6: progression is a COUNT of satisfied
  * required units, never the index of the step in view — a pointer parked on
- * step 3 with nothing filled reads 0/3, not 3/3). Each gate is evaluated
- * independently so back-editing an earlier step un-fills its segment.
+ * the last step with nothing filled reads 0/4, not 4/4). Each gate is
+ * evaluated independently so back-editing an earlier step un-fills its
+ * segment.
+ *
+ * ## Why Device split out of Contact (2026-09-15)
+ *
+ * Serial and price rode along in the contact step as "extras", so one screen
+ * asked both *who are you* and *what is the device worth*. Operator: *"there
+ * should be contact information just as phone number name email address and
+ * address with serial number and price under a different stepper."* They are
+ * different subjects with different owners at the counter — the staffer reads
+ * the serial off the chassis and quotes the price; the customer gives their
+ * own details — so they are different units.
+ *
+ * DEVICE is serial + price. CONTACT is the phone (the match key); name, email
+ * and address are warnings on the visit, never gates — same rule the cart's
+ * triage applies, so the two flows cannot disagree about what blocks.
+ *
+ * ## Why the TICKET decision rides AUTHORIZATION (2026-09-15)
+ *
+ * The create-or-link question was briefly a fifth unit. Operator: *"because
+ * the stepper is full at that review and sign step, would it be best to
+ * include a slider … below the signature so it would be mounted under one
+ * step?"* It is the same unit: authorizing the drop-off is signing the
+ * paperwork AND saying which conversation it belongs to, both on the sheet's
+ * own screen. One tap does not earn a progress segment of its own.
+ *
+ * `ticketSettled` (`isKioskTicketChoiceSettled`) is passed in rather than read
+ * off `RepairFormData` because the decision is a VISIT fact on the session
+ * root, not a line fact — `ticketWork` is transaction-level, one per submit
+ * however many devices were dropped off. Widening the line form with it is the
+ * same mistake the address avoided.
+ *
+ * SETTLED, not "answered": the slider opens on Create and an untouched control
+ * files a new ticket, so an untouched visit is not blocked. What blocks is the
+ * half-finished state — slid to Link with no ticket picked.
  */
 export function repairStepGates(
   data: RepairFormData,
   hasSignature: boolean,
-): readonly [boolean, boolean, boolean] {
+  ticketSettled: boolean,
+): readonly [boolean, boolean, boolean, boolean] {
   return [
     hasRepairIssue(data),
-    !!data.serialNumber.trim() && data.customer.phone.replace(/\D/g, '').length >= 7,
-    canSubmitRepairIntake(data, hasSignature),
+    !!data.serialNumber.trim() && !!data.price.trim(),
+    data.customer.phone.replace(/\D/g, '').length >= 7,
+    canSubmitRepairIntake(data, hasSignature) && ticketSettled,
   ] as const;
 }
 

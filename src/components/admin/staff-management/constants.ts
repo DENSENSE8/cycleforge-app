@@ -33,5 +33,5 @@ export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }>
   { value: '/walk-in',     label: 'Walk-in' },
   { value: '/fba',         label: 'Amazon Prep' },
   { value: '/inventory?section=replenish', label: 'Replenish' },
-  { value: '/admin',       label: 'Admin' },
+  { value: '/operations', label: 'Operations' },
 ];

@@ -1,5 +1,5 @@
 import type { PackerRecord } from '@/hooks/usePackerLogs';
-import { isStalled } from '@/components/shipping/ShipmentStatusBadge';
+import { outboundSignals } from '@/lib/orders/outbound-signals';
 import {
   deriveOutboundState,
   hasLeftWarehouse,
@@ -76,19 +76,14 @@ export function dedupeShippedRecords(records: PackerRecord[]): PackerRecord[] {
 
 /** Attach the derived outbound state (packed-time vs left-warehouse-time) to a record. */
 export function deriveShippedRecord(r: PackerRecord): DerivedPackerRecord {
-  const stalled = isStalled({
-    isTerminal: r.is_terminal ?? null,
-    category: r.latest_status_category ?? null,
-    latestEventAt: r.latest_event_at ?? null,
-  });
-  const input = {
+  const input = outboundSignals({
     packedAt: r.created_at,
     shipConfirmedAt: r.ship_confirmed_at ?? null,
     latestStatusCategory: r.latest_status_category ?? null,
+    latestEventAt: r.latest_event_at ?? null,
     isTerminal: r.is_terminal ?? null,
     hasException: r.has_exception ?? null,
-    stalled,
-  };
+  });
   return {
     ...r,
     outboundState: deriveOutboundState(input),

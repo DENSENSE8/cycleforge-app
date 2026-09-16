@@ -13,7 +13,7 @@ import {
   conditionGradeTableLabel,
   workflowStatusTableLabel,
   WORKFLOW_BADGE,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';

@@ -7,6 +7,7 @@ import {
   parseArrivalGuidedStep,
   parseReceivingCartonPhotoStage,
 } from '@/lib/receiving/photo-scope';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 function PhotoPageInner() {
   const params = useParams<{ id: string }>();
@@ -43,8 +44,15 @@ function PhotoPageInner() {
         if (!alive) return;
         const line = body?.receiving_lines?.[0];
         if (line) {
+          // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
           const title = String(
-            line.item_name || line.catalog_product_title || line.sku || line.zoho_item_id || '',
+            resolveSkuIdentityTitle({
+              zoho_item_title: line.zoho_item_title,
+              catalog_product_title: line.catalog_product_title,
+              item_name: line.item_name,
+              sku: line.sku,
+              zoho_item_id: line.zoho_item_id == null ? null : String(line.zoho_item_id),
+            }) || '',
           ).trim();
           const po =
             line.zoho_purchaseorder_number || line.receiving_zoho_purchaseorder_number || null;

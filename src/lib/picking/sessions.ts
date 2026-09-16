@@ -7,8 +7,12 @@
  * Workflow:
  *   1. `startSession({ orderId, pickerStaffId, deviceId })`   — opens a session
  *   2. `confirmPick({ sessionId, allocationId, ...    })`     — ALLOCATED → PICKING → PICKED
+ *      (with `toteScan`: also binds the unit into that handling unit and
+ *      stamps the tote↔order pairing — one tote carries one order)
  *   3. `recordShortPick({ sessionId, allocationId, ... })`    — releases short remainder back to STOCKED
  *   4. `completeSession({ sessionId })`                       — closes the session
+ *      (and stages every tote paired to the order: OPEN → STAGED, the state
+ *      the pack-side scan dispatch maps to `stagedForPack`)
  *
  * Each step is atomic — one DB transaction, all writes succeed or none do.
  * `clientEventId` accepts a UUID so mobile retries are idempotent.
@@ -19,6 +23,7 @@ import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { Queryable } from '@/lib/neon/serial-units-queries';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,10 +75,16 @@ export type ConfirmPickInput = {
   allocationId: number;
   actorStaffId: number;
   clientEventId?: string | null;
+  /**
+   * Raw tote scan — `H-{id}`, numeric id, or an external tote barcode. When
+   * present the pick binds the unit into that handling unit and stamps the
+   * tote↔order pairing (one tote carries one order; pick → pack loop).
+   */
+  toteScan?: string | null;
 };
 
 export type ConfirmPickResult =
-  | { ok: true; serialUnitId: number; pickedAt: string }
+  | { ok: true; serialUnitId: number; pickedAt: string; toteCode?: string | null }
   | { ok: false; status: 404 | 409; error: string };
 
 export type ShortPickReason =
@@ -246,6 +257,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
            FROM order_unit_allocations oua
            JOIN serial_units su  ON su.id = oua.serial_unit_id
       LEFT JOIN sku_catalog  sc  ON sc.sku = su.sku
+                                AND sc.organization_id = su.organization_id
       LEFT JOIN locations    l   ON l.id::text = su.current_location
           WHERE oua.order_id = $1
             AND oua.state IN ('ALLOCATED', 'PICKING')
@@ -366,6 +378,113 @@ export async function startSession(input: StartSessionInput, orgId?: OrgId): Pro
   }
 }
 
+// ─── Tote pairing (pick → pack loop) ────────────────────────────────────────
+
+interface ToteRow {
+  id: number;
+  code: string;
+  status: string;
+  pairedOrderId: number | null;
+}
+
+type ToteRead =
+  | { ok: true; tote: ToteRow }
+  | { ok: false; status: 404 | 409; error: string };
+
+/**
+ * Resolve the tote a picker scanned — `H-{id}`, numeric id, or an external
+ * barcode (`handling_units.code`) — lock it (FOR UPDATE), and guard it for
+ * THIS order. One tote carries one order: a tote already paired to a
+ * different order 409s instead of silently merging two orders' units into
+ * one box, which would break the pack-side "scan opens THE order" contract.
+ */
+async function readToteForOrder(
+  client: Queryable,
+  orgId: OrgId,
+  rawScan: string,
+  orderId: number,
+): Promise<ToteRead> {
+  const raw = rawScan.trim();
+  if (!raw) return { ok: false, status: 404, error: 'empty tote scan' };
+  const hMatch = /^H-(\d+)$/i.exec(raw);
+  const numeric = Number(raw);
+  const ref = hMatch
+    ? Number(hMatch[1])
+    : Number.isInteger(numeric) && numeric > 0
+      ? numeric
+      : null;
+  const toteQ =
+    ref != null
+      ? await client.query<ToteRow>(
+          `SELECT id, code, status, paired_order_id AS "pairedOrderId"
+             FROM handling_units
+            WHERE id = $1 AND organization_id = $2
+            FOR UPDATE`,
+          [ref, orgId],
+        )
+      : await client.query<ToteRow>(
+          `SELECT id, code, status, paired_order_id AS "pairedOrderId"
+             FROM handling_units
+            WHERE code = $1 AND organization_id = $2
+            FOR UPDATE`,
+          [raw, orgId],
+        );
+  const tote = toteQ.rows[0];
+  if (!tote) return { ok: false, status: 404, error: `tote ${raw} not found` };
+  if (tote.status !== 'OPEN' && tote.status !== 'STAGED') {
+    return {
+      ok: false,
+      status: 409,
+      error: `tote ${tote.code} is ${tote.status} — use an open tote`,
+    };
+  }
+  if (tote.pairedOrderId != null && tote.pairedOrderId !== orderId) {
+    return {
+      ok: false,
+      status: 409,
+      error: `tote ${tote.code} already carries another order — use a fresh tote`,
+    };
+  }
+  return { ok: true, tote };
+}
+
+/**
+ * Stamp the tote↔order pairing and move the unit into the tote. The
+ * predicate re-checks everything {@link readToteForOrder} verified while
+ * holding the row lock, so a miss here is unreachable by construction —
+ * throw (rollback) rather than return, so a half-picked unit can never
+ * commit without its tote binding.
+ */
+async function bindToteForPick(
+  client: Queryable,
+  orgId: OrgId,
+  tote: ToteRow,
+  orderId: number,
+  serialUnitId: number,
+  actorStaffId: number,
+): Promise<void> {
+  const pairQ = await client.query(
+    `UPDATE handling_units
+        SET paired_order_id = $1,
+            paired_at = COALESCE(paired_at, NOW()),
+            paired_by_staff_id = $2
+      WHERE id = $3
+        AND organization_id = $4
+        AND (paired_order_id IS NULL OR paired_order_id = $1)
+        AND status IN ('OPEN', 'STAGED')`,
+    [orderId, actorStaffId, tote.id, orgId],
+  );
+  if (pairQ.rowCount === 0) {
+    throw new Error(`tote ${tote.code} pairing changed under lock — pick rolled back`);
+  }
+  await client.query(
+    `UPDATE serial_units
+        SET handling_unit_id = $1, updated_at = NOW()
+      WHERE id = $2 AND organization_id = $3`,
+    [tote.id, serialUnitId, orgId],
+  );
+}
+
 export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promise<ConfirmPickResult> {
   // ── Org-scoped path: GUC-wrapped transaction; org-ownership predicates on
   // the allocation read/write (404 on a foreign-org allocation) + orgId
@@ -392,6 +511,16 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
       if (alloc.state === 'PICKED' || alloc.state === 'PACKED' || alloc.state === 'SHIPPED') {
         return { ok: false, status: 409, error: `allocation already ${alloc.state}` };
       }
+      // Tote gate — resolve + lock + guard BEFORE any write, so a bad tote
+      // fails fast with nothing committed.
+      let tote: ToteRow | null = null;
+      if (input.toteScan) {
+        const toteRead = await readToteForOrder(client, orgId, input.toteScan, alloc.order_id);
+        if (!toteRead.ok) {
+          return { ok: false, status: toteRead.status, error: toteRead.error };
+        }
+        tote = toteRead.tote;
+      }
 
       const unitResult = await transition(
         {
@@ -401,7 +530,12 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
           actorStaffId: input.actorStaffId,
           station: 'MOBILE',
           clientEventId: input.clientEventId ?? null,
-          payload: { source: 'picking.confirm', sessionId: input.sessionId, allocationId: alloc.id },
+          payload: {
+            source: 'picking.confirm',
+            sessionId: input.sessionId,
+            allocationId: alloc.id,
+            toteCode: tote?.code ?? null,
+          },
         },
         client,
         orgId,
@@ -419,11 +553,16 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
         [alloc.id, orgId],
       );
 
+      if (tote) {
+        await bindToteForPick(client, orgId, tote, alloc.order_id, alloc.serial_unit_id, input.actorStaffId);
+      }
+
       // Pick time = state-transition timestamp on the inventory_event we just wrote.
       return {
         ok: true,
         serialUnitId: alloc.serial_unit_id,
         pickedAt: new Date().toISOString(),
+        toteCode: tote?.code ?? null,
       };
     });
   }
@@ -453,6 +592,16 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
       await client.query('ROLLBACK');
       return { ok: false, status: 409, error: `allocation already ${alloc.state}` };
     }
+    // Tote gate — same fail-fast ordering as the org-scoped branch.
+    let tote: ToteRow | null = null;
+    if (input.toteScan) {
+      const toteRead = await readToteForOrder(client, orgId, input.toteScan, alloc.order_id);
+      if (!toteRead.ok) {
+        await client.query('ROLLBACK');
+        return { ok: false, status: toteRead.status, error: toteRead.error };
+      }
+      tote = toteRead.tote;
+    }
 
     // ALLOCATED → PICKED (skip the transient PICKING; the picker is at the
     // bin and the scan confirms the pick in a single tap. Active-state PICKING
@@ -466,7 +615,12 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
         actorStaffId: input.actorStaffId,
         station: 'MOBILE',
         clientEventId: input.clientEventId ?? null,
-        payload: { source: 'picking.confirm', sessionId: input.sessionId, allocationId: alloc.id },
+        payload: {
+          source: 'picking.confirm',
+          sessionId: input.sessionId,
+          allocationId: alloc.id,
+          toteCode: tote?.code ?? null,
+        },
       },
       client,
       orgId,
@@ -483,12 +637,17 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
       [alloc.id],
     );
 
+    if (tote) {
+      await bindToteForPick(client, orgId, tote, alloc.order_id, alloc.serial_unit_id, input.actorStaffId);
+    }
+
     await client.query('COMMIT');
     // Pick time = state-transition timestamp on the inventory_event we just wrote.
     return {
       ok: true,
       serialUnitId: alloc.serial_unit_id,
       pickedAt: new Date().toISOString(),
+      toteCode: tote?.code ?? null,
     };
   } catch (err) {
     try { await client.query('ROLLBACK'); } catch { /* noop */ }
@@ -630,14 +789,21 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
   }
 }
 
-export async function completeSession(input: { sessionId: number; actorStaffId: number }, orgId: OrgId): Promise<{ ok: true } | { ok: false; status: 404; error: string }> {
+export async function completeSession(
+  input: { sessionId: number; actorStaffId: number },
+  orgId: OrgId,
+): Promise<
+  { ok: true; stagedTotes: string[] } | { ok: false; status: 404; error: string }
+> {
   // ── Org-scoped path: GUC-wrapped transaction. picking_sessions has NO
   // organization_id column (child of orders) → scope the UPDATE via the parent
   // order (UPDATE … FROM orders + parent org predicate, 404 cross-org). The
   // close note is written on the same client with orgId threaded through.
   if (orgId) {
-    return withTenantTransaction<{ ok: true } | { ok: false; status: 404; error: string }>(orgId, async (client) => {
-      const result = await client.query(
+    return withTenantTransaction<
+      { ok: true; stagedTotes: string[] } | { ok: false; status: 404; error: string }
+    >(orgId, async (client) => {
+      const result = await client.query<{ id: number; order_id: number }>(
         `UPDATE picking_sessions ps
             SET ended_at = NOW()
            FROM orders o
@@ -645,24 +811,45 @@ export async function completeSession(input: { sessionId: number; actorStaffId: 
             AND ps.ended_at IS NULL
             AND o.id = ps.order_id
             AND o.organization_id = $2
-        RETURNING ps.id`,
+        RETURNING ps.id, ps.order_id`,
         [input.sessionId, orgId],
       );
       if (result.rowCount === 0) {
         return { ok: false, status: 404, error: `session ${input.sessionId} not found or already closed` };
       }
+      const orderId = result.rows[0].order_id;
+
+      // Close the pick → pack loop: every tote paired to this order becomes
+      // STAGED, the state `objectStateForHandlingUnitStatus` maps to
+      // `stagedForPack` — the pack Card's existing trigger. Only OPEN moves:
+      // an IN_TEST tote belongs to the testing side, and STAGED needs no
+      // re-stamp. Membership itself was written pick-by-pick (bindToteForPick).
+      const stagedQ = await client.query<{ code: string }>(
+        `UPDATE handling_units
+            SET status = 'STAGED'
+          WHERE organization_id = $1
+            AND paired_order_id = $2
+            AND status = 'OPEN'
+          RETURNING code`,
+        [orgId, orderId],
+      );
+
       // Log the close as a session-level note so audit timelines reflect it.
       await recordInventoryEvent(
         {
           event_type: 'NOTE',
           actor_staff_id: input.actorStaffId,
           station: 'MOBILE',
-          payload: { source: 'picking.complete', sessionId: input.sessionId },
+          payload: {
+            source: 'picking.complete',
+            sessionId: input.sessionId,
+            stagedTotes: stagedQ.rows.map((r) => r.code),
+          },
         },
         client,
         orgId,
       );
-      return { ok: true };
+      return { ok: true, stagedTotes: stagedQ.rows.map((r) => r.code) };
     });
   }
 

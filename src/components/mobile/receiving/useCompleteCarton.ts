@@ -44,7 +44,7 @@ import {
 } from '@/components/mobile/receiving/complete-carton';
 import { photoPolicyOverrideField } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function useCompleteCarton(row: ReceivingLineRow | null) {
   const [state, setState] = useState<CompleteCartonOutcome>(COMPLETE_CARTON_IDLE);

@@ -30,6 +30,7 @@ import { RoomDetailForm } from './RoomDetailForm';
 import { LabelPrintWorkspace } from './LabelPrintWorkspace';
 import { RackLabelWorkspace } from './RackLabelWorkspace';
 import { RackDetailView } from './RackDetailView';
+import { TotePlateWorkspace } from './TotePlateWorkspace';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
 import {
@@ -37,6 +38,7 @@ import {
   parseLocationsTab,
   type LocationsTab,
 } from '@/lib/inventory/locations-path';
+import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
 import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
 import { LABEL_BUILDER } from '@/components/barcode/label-builder-layout';
 import { ChevronDown } from '@/components/Icons';
@@ -54,6 +56,8 @@ const LOCATIONS_FACET_TABS = LOCATIONS_TABS.filter((id) => id !== 'bins');
 
 function locationsFacetLabel(id: LocationsTab): string {
   if (id === 'bays') return LOCATION_BAY_LABEL_PLURAL;
+  if (id === 'totes') return 'Totes';
+  if (id === 'manage') return 'Manage';
   return id.charAt(0).toUpperCase() + id.slice(1);
 }
 
@@ -112,10 +116,12 @@ export function LocationsWorkspace() {
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}
           {tab === 'labels' ? <LabelPrintWorkspace /> : null}
+          {tab === 'totes' ? <TotePlateWorkspace /> : null}
           {tab === 'bays' ? (
             rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
           ) : null}
           {tab === 'map' ? <MapTabBody /> : null}
+          {tab === 'manage' ? <LocationsManagementTab /> : null}
           {tab === 'bins' ? (
             <BinsTabSheet />
           ) : null}

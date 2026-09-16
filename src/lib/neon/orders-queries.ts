@@ -85,6 +85,182 @@ const WA_DEADLINE_LATERAL = `
     LIMIT 1
   ) wa_deadline ON TRUE`;
 
+/**
+ * Pick facts for one order — who picked it and when. Aliases: `pick_alloc`
+ * (allocation-level), `pick_sess` (session-level fallback), `s_picked` (face).
+ *
+ * `order_unit_allocations` is the only order→unit link, but it records no pick
+ * actor and no pick stamp: /api/pick/scan writes `state` alone (pick/scan
+ * route.ts step 4), and the row's own timestamps are allocated_at /
+ * released_at / returned_at — confirmed against information_schema on
+ * 2026-09-14, so there is no allocation column to read a pick time off. The
+ * pick ACT is the inventory_events row the same transaction emits (PICKED, or
+ * FORCE_PICK on the operator-override path); that carries actor_staff_id +
+ * occurred_at.
+ *
+ * States past PICKED count: pack and ship advance the SAME allocation row
+ * (lib/inventory/sync-legacy-pack.ts), so an `= 'PICKED'` gate would blank the
+ * pick fact on exactly the packed rows this CTE lists. `occurred_at >=
+ * oua.allocated_at` stops a re-allocated unit from inheriting the pick of its
+ * previous (RETURNED) allocation cycle.
+ *
+ * Allocation beats session per fact, not per row: an event with a NULL actor
+ * still contributes its stamp while the name falls to the session picker —
+ * both describe the same order's pick, and a stamp with no face beats a blank.
+ *
+ * Adds five columns to the caller's GROUP BY.
+ *
+ * **Exported because the outbound queue has THREE independent order readers**
+ * (this file's `ORDER_SERIALS_CTE`, `getShippedOrderById`, and
+ * `src/app/api/orders/route.ts` — the live path the To-ship / Pending grid
+ * actually fetches; see that route's own comment at :506). A fact added to one
+ * does not reach the others, which is exactly how the Pick column spent months
+ * painting tester data. One string, three call sites, so they cannot drift.
+ */
+export const PICK_FACTS_LATERALS = `
+  LEFT JOIN LATERAL (
+    SELECT ie.actor_staff_id AS picked_by,
+           ie.occurred_at    AS picked_at
+    FROM order_unit_allocations oua
+    JOIN inventory_events ie
+      ON ie.serial_unit_id  = oua.serial_unit_id
+     AND ie.organization_id = oua.organization_id
+     AND ie.event_type IN ('PICKED', 'FORCE_PICK')
+     AND ie.occurred_at    >= oua.allocated_at
+    WHERE oua.order_id        = o.id
+      AND oua.organization_id = o.organization_id
+      AND oua.state IN ('PICKED', 'PACKED', 'SHIPPED', 'RETURNED')
+    ORDER BY ie.occurred_at DESC NULLS LAST, ie.id DESC
+    LIMIT 1
+  ) pick_alloc ON true
+  LEFT JOIN LATERAL (
+    SELECT ps.picker_staff_id                   AS picked_by,
+           COALESCE(ps.ended_at, ps.started_at) AS picked_at
+    FROM picking_sessions ps
+    WHERE ps.order_id        = o.id
+      AND ps.organization_id = o.organization_id
+      AND NOT ps.abandoned
+    ORDER BY COALESCE(ps.ended_at, ps.started_at) DESC, ps.id DESC
+    LIMIT 1
+  ) pick_sess ON true
+  /*
+   * Third arm — the PICKER DESK's own scan. Operator 2026-09-14, after the
+   * first pass blanked this column: for this org "Picker" is not \`/m/pick\`,
+   * it is \`/test?ship=urgent\` (SIDEBAR_PAGE_NAV \`ready-to-pack\` →
+   * label 'Picker'). Measured that day: 49 TECH/TRACKING_SCANNED rows, 0
+   * allocation picks, 0 picking_sessions. Reading only the two arms above
+   * therefore showed an empty Pick cell for the one pick workflow in use.
+   *
+   * It keys on the SHIPMENT, not the order, because that is what the scan
+   * carries — the same key \`packer_logs\` uses, which is what finally puts
+   * Pick and Pack on one axis.
+   *
+   * TRACKING_SCANNED only: the QC verdict activities on the same station
+   * (SERIAL_ADDED / WS_ORDER_TESTED, and \`tech_serial_numbers.tested_by\`)
+   * are a DIFFERENT verb, and letting them in here is exactly the borrowed
+   * tester data this projection replaced.
+   */
+  LEFT JOIN LATERAL (
+    SELECT sal.staff_id  AS picked_by,
+           sal.created_at AS picked_at
+    FROM station_activity_logs sal
+    WHERE sal.shipment_id     = o.shipment_id
+      AND sal.organization_id = o.organization_id
+      AND sal.station         = 'TECH'
+      AND sal.activity_type   = 'TRACKING_SCANNED'
+    ORDER BY sal.created_at DESC, sal.id DESC
+    LIMIT 1
+  ) pick_station ON o.shipment_id IS NOT NULL
+  LEFT JOIN staff s_picked
+    ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by)`;
+
+/**
+ * Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the
+ * warehouse" stamp plus who scanned it. Mirrors packer-logs-week.ts.
+ *
+ * Exported for the same reason as {@link PICK_FACTS_LATERALS}: the third order
+ * reader (`src/app/api/orders/route.ts`) never projected these, which is why
+ * the slot table's Scanned-out column dashed on every row while the field
+ * catalog documented the gap instead of closing it. One string, both readers.
+ */
+export const SHIP_OUT_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT
+        MAX(so.created_at) AS ship_confirmed_at,
+        (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
+      FROM station_activity_logs so
+      WHERE so.activity_type = 'SHIP_CONFIRM'
+        AND o.shipment_id IS NOT NULL
+        AND so.shipment_id = o.shipment_id
+        AND so.organization_id = o.organization_id
+    ) ship_out ON true
+    LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by`;
+
+/**
+ * The two ESTIMATE arms of an order line's price. Aliases: `listing_price`
+ * (channel ask for the SKU), `unit_price` (ask for the exact allocated box).
+ * `orders.sale_amount` needs no lateral — it is already on the row.
+ *
+ * Measured 2026-09-15 on live prod: 6 of 4467 orders carry `sale_amount`, so
+ * reading only the sold column shows a dash on 99.9% of the book. All 1557
+ * `platform_listings` rows ARE priced, which is why these arms exist at all.
+ * `resolveLinePrice` (lib/orders/price-resolve.ts) turns the three facts into
+ * one displayable number and flags the estimates as estimates.
+ *
+ * Two join keys, not one: `sku_catalog_id` is the strong link but was NULL on
+ * all 1557 listing rows until migration 2026-09-15b backfilled 177 of them,
+ * and the rest still key only on the merchant SKU string. `NULLIF(BTRIM(...),
+ * '')` on the order's SKU is load-bearing — 36 of the 64 unshipped lines carry
+ * no SKU at all, and a bare `UPPER(BTRIM(o.sku))` would pair every one of
+ * them with any listing whose `merchant_sku_normalized` is blank.
+ *
+ * The ORDER BY prefers a listing from the channel the order actually came from
+ * (case-insensitive: `account_source` holds ecwid / ECWID / Ecwid): what we
+ * ask on eBay is not what we ask on our own storefront, so the order's own
+ * channel is the right estimate. `p.id DESC` terminates the ranking so the
+ * same row wins on every run — a price that flickers between reads is worse
+ * than no price.
+ *
+ * `serial_unit_listings` is EMPTY today (0 rows). The arm is a LEFT JOIN
+ * LATERAL returning at most one row, so it contributes NULL rather than
+ * dropping the order — the unit-priced path can start working the day a lister
+ * prices a serialized unit, with no query change. `state = 'ALLOCATED'` only:
+ * a released or returned allocation no longer describes what is shipping.
+ */
+export const PRICE_FACTS_LATERALS = `
+    LEFT JOIN LATERAL (
+      SELECT p.listing_price_cents,
+             p.platform
+      FROM platform_listings p
+      WHERE p.organization_id = o.organization_id
+        AND p.listing_price_cents IS NOT NULL
+        AND (
+          p.sku_catalog_id = o.sku_catalog_id
+          OR p.merchant_sku_normalized = UPPER(NULLIF(BTRIM(o.sku), ''))
+        )
+      ORDER BY
+        (NULLIF(LOWER(BTRIM(o.account_source)), '') IS NOT NULL
+          AND LOWER(BTRIM(p.platform)) = LOWER(BTRIM(o.account_source))) DESC,
+        COALESCE(p.is_active, false) DESC,
+        (p.sku_catalog_id IS NOT NULL AND p.sku_catalog_id = o.sku_catalog_id) DESC,
+        p.updated_at DESC NULLS LAST,
+        p.id DESC
+      LIMIT 1
+    ) listing_price ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT sul.listing_price_cents
+      FROM order_unit_allocations oua
+      JOIN serial_unit_listings sul
+        ON sul.serial_unit_id  = oua.serial_unit_id
+       AND sul.organization_id = oua.organization_id
+      WHERE oua.order_id        = o.id
+        AND oua.organization_id = o.organization_id
+        AND oua.state           = 'ALLOCATED'
+        AND sul.listing_price_cents IS NOT NULL
+      ORDER BY sul.listed_at DESC NULLS LAST, sul.id DESC
+      LIMIT 1
+    ) unit_price ON TRUE`;
+
 const ORDER_SERIALS_CTE = `
   order_serials AS (
     SELECT
@@ -164,6 +340,9 @@ const ORDER_SERIALS_CTE = `
       shipped_out_staff.name                 AS shipped_out_by_name,
       pl.packer_photos_url,
       pl.tracking_type,
+      COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by) AS picked_by,
+      s_picked.name AS picked_by_name,
+      to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
       COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
       MIN(tsn.tested_by)::int AS tested_by,
       MIN(tsn.created_at)::text AS test_date_time,
@@ -278,18 +457,8 @@ const ORDER_SERIALS_CTE = `
       ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC
       LIMIT 1
     ) test_sal ON true
-    -- Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the
-    -- warehouse" timestamp + who scanned it out. Mirrors packer-logs-week.ts.
-    LEFT JOIN LATERAL (
-      SELECT
-        MAX(so.created_at) AS ship_confirmed_at,
-        (ARRAY_AGG(so.staff_id ORDER BY so.created_at DESC))[1] AS shipped_out_by
-      FROM station_activity_logs so
-      WHERE so.activity_type = 'SHIP_CONFIRM'
-        AND o.shipment_id IS NOT NULL
-        AND so.shipment_id = o.shipment_id
-    ) ship_out ON true
-    LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
+    ${PICK_FACTS_LATERALS}
+    ${SHIP_OUT_LATERAL}
     LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
       tsn.organization_id = o.organization_id
       AND (
@@ -319,7 +488,10 @@ const ORDER_SERIALS_CTE = `
              wa_t.assigned_tech_id, wa_p.assigned_packer_id,
              pl.packed_by, pl.packed_at, pl.packer_photos_url, pl.tracking_type,
              pack_sal.created_at, test_sal.created_at,
-             ship_out.ship_confirmed_at, ship_out.shipped_out_by, shipped_out_staff.name
+             ship_out.ship_confirmed_at, ship_out.shipped_out_by, shipped_out_staff.name,
+             pick_alloc.picked_by, pick_alloc.picked_at,
+             pick_sess.picked_by, pick_sess.picked_at,
+             pick_station.picked_by, pick_station.picked_at, s_picked.name
   )`;
 
 // Search path variant: swaps the carrier-accepted gate for a packer-scan gate.
@@ -622,6 +794,9 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           to_char(pack_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
           pl.packer_photos_url,
           pl.tracking_type,
+          COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by) AS picked_by,
+          s_picked.name AS picked_by_name,
+          to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
           COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
           MIN(tsn.tested_by)::int AS tested_by,
           MIN(tsn.created_at)::text AS test_date_time,
@@ -736,6 +911,7 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
             AND sal.activity_type = 'SERIAL_ADDED'
           ORDER BY sal.created_at DESC NULLS LAST, sal.id DESC LIMIT 1
         ) test_sal ON true
+        ${PICK_FACTS_LATERALS}
         LEFT JOIN tech_serial_numbers tsn ON /* CF-03 */ (
       tsn.organization_id = o.organization_id
       AND (
@@ -766,7 +942,10 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
                  stn.carrier,
                  wa_t.assigned_tech_id, wa_p.assigned_packer_id,
                  pl.packed_by, pl.packed_at, pl.packer_photos_url, pl.tracking_type,
-                 pack_sal.created_at, test_sal.created_at
+                 pack_sal.created_at, test_sal.created_at,
+                 pick_alloc.picked_by, pick_alloc.picked_at,
+                 pick_sess.picked_by, pick_sess.picked_at,
+             pick_station.picked_by, pick_station.picked_at, s_picked.name
       )
       SELECT os.*,
              s1.name AS tested_by_name,

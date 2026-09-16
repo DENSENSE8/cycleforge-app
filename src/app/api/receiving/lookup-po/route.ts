@@ -31,6 +31,8 @@ import {
 } from '@/lib/receiving/unbox-lookup-scan';
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
+import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
+import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { resolveInboundCartonByTracking } from '@/lib/inbound/resolve-inbound-tracking';
 import { resolveInboundCartonByOrderId } from '@/lib/inbound/resolve-inbound-order';
 import type { ReceivingExceptionCode } from '@/lib/receiving/exception-codes';
@@ -161,15 +163,22 @@ interface ReceivingLineLite {
 async function fetchLines(receivingId: number, orgId: string): Promise<ReceivingLineLite[]> {
   // Zoho identity reads from receiving_line_zoho (rz) — the spine copies are
   // write-dead and drop next migration.
+  //
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts). Two defects fixed
+  // 2026-09-15: the catalog join carried NO organization_id at all (the only
+  // tenant-blind SKU-keyed join in the tree), and `image_url` came off bare
+  // `sc.image_url` — so a contaminated catalog row put a WRONG PRODUCT PHOTO
+  // on 7 response paths. The image now runs the same ladder as every receiving
+  // grid: Zoho item photo when the item exists, catalog only when it does not.
   const result = await tenantQuery<ReceivingLineLite>(
     orgId,
     `SELECT rl.id, rl.sku, rz.zoho_item_id, rz.zoho_purchaseorder_id,
             rl.quantity_expected, rl.quantity_received, rl.item_name,
-            sc.image_url
+            ${RECEIVING_LINE_IMAGE_URL_SQL}
      FROM receiving_line rl
      LEFT JOIN receiving_line_zoho rz
        ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
-     LEFT JOIN sku_catalog sc ON sc.sku = rl.sku
+     LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
      WHERE rl.receiving_id = $1
      ORDER BY rl.id ASC`,
     [receivingId],

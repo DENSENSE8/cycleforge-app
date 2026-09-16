@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { SIDEBAR_PAGE_NAV } from '@/lib/sidebar-navigation';
 import { buildNavDestinations } from './nav-destinations';
 import { searchNav } from './nav-search';
+import { isTabParked } from './parked-tabs';
 
 const DESTINATIONS = buildNavDestinations(SIDEBAR_PAGE_NAV);
 
@@ -30,15 +31,23 @@ test('the screenshot case: "incoming" returns the Inbound desk', () => {
   assert.ok(hits.length > 0, 'Inbound / Incoming must be findable');
 
   const inbound = hits.find((h) => h.item.pageId === 'incoming' && !h.item.childId);
-  assert.ok(inbound, 'the Inbound leaf desk must be among the hits');
-  assert.equal(inbound!.item.label, 'Inbound');
+  assert.ok(inbound, 'the Deliveries desk must be among the hits');
+  // Faced Deliveries since 2026-09-14 (a child never wears its parent's name);
+  // "inbound" still reaches it through the row's `keywords`, so the rename does
+  // not read as a deletion to anyone searching the old word.
+  assert.equal(inbound!.item.label, 'Deliveries');
 });
 
 test('modes are first-class destinations, not just parents', () => {
-  // Every mode of every page is reachable by its own name.
-  const modeCount = SIDEBAR_PAGE_NAV.reduce((n, p) => n + (p.children?.length ?? 0), 0);
+  // Every mode of every page is reachable by its own name — except a mode whose
+  // door is parked (`@/lib/nav/parked-tabs`). Search is a door, so a parked tab
+  // must NOT be offered back here; `parked-tabs.test.ts` pins that direction.
+  const modeCount = SIDEBAR_PAGE_NAV.reduce(
+    (n, p) => n + (p.children ?? []).filter((c) => !isTabParked(p.id, c.id)).length,
+    0,
+  );
   const emitted = DESTINATIONS.filter((d) => d.childId).length;
-  assert.equal(emitted, modeCount, 'every registered mode must emit a destination');
+  assert.equal(emitted, modeCount, 'every unparked mode must emit a destination');
 
   // …and a modeful page still emits its own row, or its name goes unsearchable
   // whenever no mode happens to share it.
@@ -66,8 +75,8 @@ test('multi-token queries reach the Inbound desk', () => {
   const hits = searchNav(DESTINATIONS, 'inbound');
   assert.ok(hits.length > 0, '"inbound" should reach the Inbound desk');
   assert.ok(
-    hits.some((h) => h.item.pageId === 'incoming' && h.item.label === 'Inbound'),
-    'Inbound leaf must be among the hits',
+    hits.some((h) => h.item.pageId === 'incoming' && h.item.label === 'Deliveries'),
+    'the Deliveries desk must still answer to "inbound" via its keywords',
   );
 });
 

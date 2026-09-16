@@ -45,7 +45,12 @@ export function CompoundRowDetailBand({
       role="row"
       data-compound-row-detail=""
       aria-label={`Details for ${title.trim() || 'this line'}`}
-      className={cn(ledgerGridRowShellClass(false), 'bg-surface-canvas')}
+      // Leaf face, not a canvas wash — same ruling as the group band
+      // (SlotTableGroupParentRow). Operator 2026-09-14: expanded state is an
+      // OUTLINE, never a grayed-out row, so the inserted detail row paints the
+      // leaf's own `bg-surface-card`. Opaque, not transparent:
+      // LEDGER_GRID_FROZEN_CELL is `bg-inherit`.
+      className={cn(ledgerGridRowShellClass(false), 'bg-surface-card')}
       style={{ gridTemplateColumns: template, minHeight: COMPOUND_ROW_PX }}
       onClick={(event) => event.stopPropagation()}
     >

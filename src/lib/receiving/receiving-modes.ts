@@ -36,6 +36,16 @@ export const INCOMING_PAGE_SIZE = 50;
 export const RECEIVING_TABLE_LIMIT = 500;
 
 /**
+ * History ceiling (operator 2026-09-14: "the inbound history displays the
+ * ENTIRE history of all the products"). History is the all-time log — its
+ * fetch asks for the whole timeline, not a funnel page, so its limit (and the
+ * matching server cap in `parseReceivingLinesQuery`) sits above
+ * {@link RECEIVING_TABLE_LIMIT}. Sized for the org's full line count with
+ * headroom; the week pill still narrows to one week when chosen explicitly.
+ */
+export const RECEIVING_HISTORY_LIMIT = 3000;
+
+/**
  * The display modes the lines table itself knows how to render. The sidebar's
  * full `ReceivingMode` union also has `pickup` and `unfound`, but those are
  * handled upstream (a route switch / a different right-pane component), never
@@ -154,6 +164,15 @@ export interface ReceivingModeContext {
   historySearchScope: ReceivingHistorySearchScope;
   /** History sort axis (`?sort=`); see HISTORY_SORT_WIRE_IDS / HISTORY_SORT_OPTIONS. */
   historySort: string;
+  /**
+   * TRUE only when `?weekOffset` is EXPLICITLY in the URL (operator
+   * 2026-09-14: History defaults to the ENTIRE timeline — "all the products,
+   * all time" — and the week window narrows only when a week is actually
+   * chosen). Absent param and `weekOffset=0` both used to parse to "current
+   * week"; this flag is what keeps "All" and "this week" distinct. Parsed in
+   * `useReceivingModeContext` via `searchParams.has(...)`.
+   */
+  historyWeekExplicit?: boolean;
   // Incoming facets
   incomingSearch: string;
   incomingState: string | null;
@@ -388,11 +407,11 @@ const historyMode: ReceivingModeDescriptor = {
   serverSorted: false,
   isIncoming: false,
   pageSize: null,
-  sortOptions: HISTORY_SORT_OPTIONS,
-  defaultSort: HISTORY_DEFAULT_SORT,
   buildParams(ctx) {
     const p = new URLSearchParams({
-      limit: String(RECEIVING_TABLE_LIMIT),
+      // The ENTIRE timeline (operator 2026-09-14) — history is the log, not a
+      // funnel page; the server lifts the cap for view=activity to match.
+      limit: String(RECEIVING_HISTORY_LIMIT),
       offset: '0',
     });
     p.set('include', 'serials');
@@ -406,6 +425,18 @@ const historyMode: ReceivingModeDescriptor = {
     applyStaffParam(p, ctx);
     return p;
   },
+  skipWeekFilter(ctx) {
+    // ALL TIME by default (operator 2026-09-14: "the inbound history displays
+    // the entire history of all the products"). The week window narrows only
+    // when `?weekOffset` is explicitly chosen (historyWeekExplicit — absent
+    // param used to collide with weekOffset=0 as "current week"). Text or
+    // non-default source scope still narrows globally regardless of week.
+    return (
+      ctx.historyWeekExplicit !== true
+      || ctx.historySearch.length > 0
+      || ctx.historySearchScope !== 'all'
+    );
+  },
   queryKey(ctx) {
     return [
       QUERY_ROOT,
@@ -417,11 +448,6 @@ const historyMode: ReceivingModeDescriptor = {
       normalizeHistorySort(ctx.historySort),
       ctx.staffFilterId ?? 'all',
     ] as const;
-  },
-  skipWeekFilter(ctx) {
-    // Text or non-default source scope narrows globally — bypass week slicing
-    // so matches stay visible regardless of when they were scanned.
-    return ctx.historySearch.length > 0 || ctx.historySearchScope !== 'all';
   },
   emptyMessage(ctx) {
     return ctx.historySearch || ctx.historySearchScope !== 'all'

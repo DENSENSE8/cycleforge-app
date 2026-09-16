@@ -8,21 +8,25 @@ import { getDbTableChannelName, getRepairsChannelName, safeChannelName } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-export function useRepairsTable(search?: string | null, tab: RepairTab = 'active') {
+export function useRepairsTable(
+  search?: string | null,
+  tab: RepairTab = 'active',
+  needsLabel = false,
+) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const repairsChannel = safeChannelName(() => getRepairsChannelName(orgId!));
   const repairDbChannel = safeChannelName(() => getDbTableChannelName(orgId!, 'public', 'repair_service'));
-  const queryKey = ['repairs', search || '', tab] as const;
+  const queryKey = ['repairs', search || '', tab, needsLabel] as const;
 
   const query = useQuery<RSRecord[]>({
     queryKey,
     queryFn: async () => {
-      const url = search
-        ? `/api/repair-service?q=${encodeURIComponent(search)}&tab=${encodeURIComponent(tab)}`
-        : `/api/repair-service?tab=${encodeURIComponent(tab)}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({ tab });
+      if (search) params.set('q', search);
+      if (needsLabel) params.set('needsLabel', '1');
+      const res = await fetch(`/api/repair-service?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch repairs');
       const data = await res.json();
       return data.rows || data.repairs || [];

@@ -18,7 +18,7 @@ import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { openPoIntake } from '@/lib/inbound/po-intake-store';
 
 export function UnboxDeskActions() {

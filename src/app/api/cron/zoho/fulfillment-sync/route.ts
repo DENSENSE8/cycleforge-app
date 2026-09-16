@@ -60,12 +60,9 @@ export async function GET(req: NextRequest) {
   const config = getFulfillmentSyncConfig();
 
   try {
-    // Delta cursor — first run bootstraps from configurable lookback.
-    let since: Date | null = null;
-    if (mode === 'delta') {
-      const cursor = await getSyncCursor(CURSOR_KEY);
-      since = cursor ?? new Date(Date.now() - config.bootstrapLookbackDays * 24 * 60 * 60 * 1000);
-    }
+    // Delta window is resolved PER ORG inside the sweep: a shared watermark
+    // advanced only when EVERY org had a clean live run means one failing
+    // tenant freezes every tenant's window (the zoho_po_mirror freeze).
 
     // Distributed lock so an overlapping tick / manual trigger / Vercel retry
     // can't double-push. Fan out per Zoho-connected org (plus USAV while it uses
@@ -76,7 +73,26 @@ export async function GET(req: NextRequest) {
       withCronRun('zoho.fulfillment_sync', async () => {
         const perOrg = await forEachOrgWithProvider(
           'zoho',
-          (orgId) => syncShippedOrdersToZoho({ since, dryRun: dryRunOverride, limit, orgId }),
+          async (orgId) => {
+            let since: Date | null = null;
+            if (mode === 'delta') {
+              const cursor = await getSyncCursor(CURSOR_KEY, orgId);
+              since =
+                cursor ??
+                new Date(Date.now() - config.bootstrapLookbackDays * 24 * 60 * 60 * 1000);
+            }
+            const report = await syncShippedOrdersToZoho({
+              since,
+              dryRun: dryRunOverride,
+              limit,
+              orgId,
+            });
+            // Advance THIS org's watermark after ITS own error-free live run.
+            if (!report.dryRun && report.errored === 0) {
+              await updateSyncCursor(CURSOR_KEY, new Date(), orgId);
+            }
+            return report;
+          },
           { includeDogfoodTransitional: true },
         );
 
@@ -84,7 +100,6 @@ export async function GET(req: NextRequest) {
         const errors: string[] = [];
         let dryRunSeen = false;
         let invoiceMode: SyncRunReport['invoiceMode'] | null = null;
-        let allLiveErrorFree = true;
         for (const r of perOrg) {
           if (r.ok && r.result) {
             totals.scanned += r.result.scanned;
@@ -93,19 +108,14 @@ export async function GET(req: NextRequest) {
             totals.errored += r.result.errored;
             dryRunSeen = dryRunSeen || r.result.dryRun;
             invoiceMode = r.result.invoiceMode;
-            if (r.result.dryRun || r.result.errored > 0) allLiveErrorFree = false;
             if (errors.length < 25) errors.push(...r.result.errors);
           } else {
             totals.errored += 1;
-            allLiveErrorFree = false;
             if (errors.length < 25) errors.push(`org ${r.orgId}: ${r.error instanceof Error ? r.error.message : String(r.error)}`);
           }
         }
 
-        // Advance the (shared) cursor only after every org had an error-free LIVE run.
-        if (allLiveErrorFree && perOrg.length > 0) {
-          await updateSyncCursor(CURSOR_KEY, new Date());
-        }
+        // Cursors advance per org above; nothing global to advance here.
         return {
           ...totals,
           dryRun: dryRunSeen,
@@ -127,7 +137,7 @@ export async function GET(req: NextRequest) {
       mode,
       dryRun: summary.dryRun,
       invoiceMode: summary.invoiceMode,
-      cursor: { resource: CURSOR_KEY, since: since?.toISOString() ?? null },
+      cursor: { resource: CURSOR_KEY, per_org: true },
       orgs_swept: summary.orgs_swept,
       orgs_failed: summary.orgs_failed,
       totals: {

@@ -37,24 +37,13 @@ const QcChecklistWorkspace = dynamic(
   },
 );
 
-// Lazy-load the kit-parts ("what's in the box") workspace — only mounts when view=kit.
-const KitPartsWorkspace = dynamic(
-  () => import('./KitPartsWorkspace').then((m) => m.KitPartsWorkspace),
-  {
-    ssr: false,
-    loading: () => <div className="p-6 text-sm text-text-faint">Loading kit parts…</div>,
-  },
-);
-
-// Lazy-load the Catalog MDM browser — only mounts when view=catalog.
-const ProductsCatalogWorkspace = dynamic(
-  () =>
-    import('./catalog/ProductsCatalogWorkspace').then((m) => m.ProductsCatalogWorkspace),
-  {
-    ssr: false,
-    loading: () => <div className="p-6 text-sm text-text-faint">Loading catalog…</div>,
-  },
-);
+// Reference (`view=catalog`) and Kit Parts (`view=kit`) were removed 2026-09-15
+// (operator: *"these are all the tabs that are not working properly"*). Their
+// values left `PRODUCTS_VIEWS`, so a stale bookmark folds to Manuals and the
+// switch below is exhaustive without them. `ProductsCatalogWorkspace`,
+// `CatalogBulkActionBar`, `KitPartsWorkspace` and `KitPartsSection` are
+// deleted; the catalog TABLE (a PRODUCT_TABLES cohort peer) is untouched and
+// retires on its own gated increment.
 
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();
@@ -69,12 +58,6 @@ export function ProductsWorkspace() {
     // from the sidebar's QcProductPicker via `?skuId=`).
     case 'qc':
       return <QcChecklistWorkspace />;
-    // Kit Parts view: right pane shows the selected SKU's "what's in the box"
-    // BOM editor (selection comes from the sidebar's KitPartsPicker, `?skuId=`).
-    case 'kit':
-      return <KitPartsWorkspace />;
-    case 'catalog':
-      return <ProductsCatalogWorkspace />;
     // Manuals (default) renders the PDF viewer in the main pane — selection
     // comes from the sidebar's LibraryBrowser (`?id=`).
     case 'manuals':

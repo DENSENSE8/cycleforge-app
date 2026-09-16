@@ -111,33 +111,72 @@ describe('orders catalog', () => {
 });
 
 describe('resolveOrdersSlotValue — stage events', () => {
-  it('picked: ctx display name + formatted stamp; missing station dashes', () => {
+  it('picked: the allocation-level pick scan resolves that picker and stamp', () => {
     const value = resolveOrdersSlotValue(
-      row({ test_activity_at: '2026-07-13 16:15:00' }),
+      row({ picked_by: 9, picked_by_name: 'Tuan', picked_at: '2026-07-13 16:15:00' }),
       'orders.picked',
-      { testerDisplay: 'Tuan' },
+      // The tester face the queue row still passes must not reach this cell.
+      { testerDisplay: 'Marco' },
     );
-    assert.equal(value?.kind, 'stage_event');
-    assert.ok(value && 'who' in value);
-    if (value?.kind !== 'stage_event') return;
+    if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(value.who, 'Tuan');
+    assert.equal(value.whoStaffId, 9);
     assert.match(String(value.at), /^Jul 13/);
     assert.equal(value.station, null);
   });
 
-  it('picked: the `---` nobody-face and the `1` sentinel stamp resolve to null', () => {
-    const value = resolveOrdersSlotValue(row({ test_date_time: '1' }), 'orders.picked', {
-      testerDisplay: '---',
+  it('picked: a session-only row falls back to the session picker (feed COALESCEs both into one projection)', () => {
+    const value = resolveOrdersSlotValue(
+      row({ picked_by: 4, picked_by_name: 'Lena', picked_at: '2026-07-14 09:30:00' }),
+      'orders.picked',
+    );
+    if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
+    assert.equal(value.who, 'Lena');
+    assert.equal(value.whoStaffId, 4);
+    assert.match(String(value.at), /^Jul 14/);
+  });
+
+  it('picked: neither allocation nor session — the cell resolves empty', () => {
+    assert.deepEqual(resolveOrdersSlotValue(row(), 'orders.picked'), {
+      kind: 'stage_event',
+      who: null,
+      whoStaffId: null,
+      at: null,
+      station: null,
     });
+  });
+
+  it('picked: a TESTED row with no pick data resolves EMPTY — Pick no longer borrows testing data (2026-09-14)', () => {
+    // The Picker desk's own scan IS a pick signal, but it reaches this resolver
+    // as `picked_*` through PICK_FACTS_LATERALS' `pick_station` arm. The tester
+    // VERDICT family must never stand in for it here: a QC test is a different
+    // verb, and a resolver-level fallback would fix one of the feed's three
+    // readers while leaving the other two blank.
+    const tested = row({
+      tested_by: 7,
+      tester_id: 3,
+      tested_by_name: 'Marco',
+      tester_name: 'Marco',
+      test_date_time: '2026-07-13T16:15:00Z',
+      test_activity_at: '2026-07-13 16:15:00',
+    });
+    assert.deepEqual(resolveOrdersSlotValue(tested, 'orders.picked', { testerDisplay: 'Marco' }), {
+      kind: 'stage_event',
+      who: null,
+      whoStaffId: null,
+      at: null,
+      station: null,
+    });
+  });
+
+  it('picked: the `---` nobody-face and the `1` sentinel stamp resolve to null', () => {
+    const value = resolveOrdersSlotValue(
+      row({ picked_by_name: '---', picked_at: '1' }),
+      'orders.picked',
+    );
     if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(value.who, null);
     assert.equal(value.at, null);
-  });
-
-  it('picked: falls back to the wire name when the view layer passes none', () => {
-    const value = resolveOrdersSlotValue(row({ tested_by_name: 'Marco' }), 'orders.picked');
-    if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
-    assert.equal(value.who, 'Marco');
   });
 
   it('packed: bench short label rides the station line', () => {
@@ -166,24 +205,19 @@ describe('resolveOrdersSlotValue — stage events', () => {
     });
   });
 
-  it('actor STAFF ID rides each step — scan actor first, assignee fallback', () => {
-    const tested = resolveOrdersSlotValue(
-      row({ tested_by: 7, tester_id: 3 }),
-      'orders.picked',
-    );
-    if (tested?.kind !== 'stage_event') return assert.fail('expected stage_event');
-    assert.equal(tested.whoStaffId, 7);
-
-    const assignedOnly = resolveOrdersSlotValue(row({ tester_id: 3 }), 'orders.picked');
-    if (assignedOnly?.kind !== 'stage_event') return assert.fail('expected stage_event');
-    // Assigned-but-untested: the mark shows WHO should act (pending verb).
-    assert.equal(assignedOnly.whoStaffId, 3);
+  it('actor STAFF ID rides each step', () => {
+    const picked = resolveOrdersSlotValue(row({ picked_by: 7 }), 'orders.picked');
+    if (picked?.kind !== 'stage_event') return assert.fail('expected stage_event');
+    assert.equal(picked.whoStaffId, 7);
 
     const packed = resolveOrdersSlotValue(row({ packed_by: 12 }), 'orders.packed');
     if (packed?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(packed.whoStaffId, 12);
 
-    const nobody = resolveOrdersSlotValue(row({ tested_by: 'x', tester_id: 0 }), 'orders.picked');
+    // A tester id is NOT a picker id — the Pick mark stays blank on it. The
+    // Picker desk's scan arrives as `picked_by` from the SQL `pick_station`
+    // arm, so it never needs the tester columns to reach this resolver.
+    const nobody = resolveOrdersSlotValue(row({ tested_by: 7, tester_id: 3 }), 'orders.picked');
     if (nobody?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(nobody.whoStaffId, null);
   });

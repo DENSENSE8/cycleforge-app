@@ -7,7 +7,7 @@
  * there is deliberately no fabricated "confidence score" field.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * A normalized inbound package under triage, derived from a `ReceivingLineRow`.

@@ -4,103 +4,77 @@
  * Empty / paired location Card on the `/m/scan` identification kernel.
  *
  * WMS job: scan or type a location → if empty, search Zoho catalog (title or
- * SKU) → pick a hit → Square-style qty keypad → PATCH put into `bin_contents`
- * (registering the `locations` row first when the sticker was never printed into
- * the table). Paired: adjust with the same keypad, unpair (take entire qty), or
- * change to another SKU.
+ * SKU) → pick a hit → keypad the opening quantity → PATCH put into
+ * `bin_contents` (registering the `locations` row first when the sticker was
+ * never printed into the table). Paired: correct the count in place.
  *
- * Search rows mirror the shipping exceptions catalog face: Zoho image left,
- * product title, SKU as subtitle — via {@link ItemRecordThumb} + zoho_catalog.
+ * ## Correcting a count is one tap
+ *
+ * The paired face used to be a read-only card over a 2×2 button grid whose
+ * only stock path was a FULLSCREEN keypad: `− Stock` → `1` → `Confirm` → back
+ * = four taps and a context swap to move one unit. Most floor corrections are
+ * ±1 or ±2, so the common case paid the cost of the rare one.
+ *
+ * Now every paired SKU carries {@link LocationQtyStrip}: `−`, the live count,
+ * `+`, and a narrow `123` key that escalates to the keypad for a typed number.
+ * One tap, no navigation, repeatable. Taps coalesce into ONE write per burst
+ * ({@link useBinQtyCommit}) — six taps are one `put 6`, not six ledger rows.
+ *
+ * The quick path carries no reason picker: it commits the API's own
+ * `BIN_ADD` / `BIN_PULL` defaults, because a reason that `requires_note` or
+ * `requires_photo` cannot be satisfied by a single tap. Reasons live on the
+ * keypad, where there is room to answer for one.
+ *
+ * ## Height is fixed, deliberately
+ *
+ * `MobileScanIdentify` swaps the camera panel for this sheet in the SAME slot
+ * of `MobileStationShell`, and `STATION_SHEET_HEIGHT_CLASS` exists so the tape
+ * above does not jump when it does. The empty face is a one-line fact plus a
+ * hand-off — it no longer hosts a search field, so it fits the fixed height
+ * with room to spare.
+ *
+ * ## Freshness on return needs no listener
+ *
+ * The pair and qty routes change what is in the bin, but returning to
+ * `/m/scan` remounts this page (App Router unmounts page components on
+ * navigation — verified: back shows the camera, not a surviving sheet), and a
+ * fresh scan re-fetches occupancy anyway. Cross-device drift while the tab
+ * sits foregrounded is the one unhandled case; the fix if it ever bites is
+ * moving `contents` under the react-query key the qty page already
+ * invalidates, not an event listener here.
  *
  * Callers: MobileScanIdentify only. APIs: GET/PATCH /api/locations/[barcode],
  * POST /api/locations/register, GET /api/sku-catalog/search?searchField=zoho_catalog.
- * Schemas: LocationsPatchBody (put/take). User: pair Zoho SKU to location with
- * keypad stock add/subtract and full unpair reversibility.
+ * Schemas: LocationsPatchBody (put/take). User: pair Zoho SKU to location, then
+ * correct its count in one tap with full unpair reversibility.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Package, Search, X } from '@/components/Icons';
-import { Button, IconButton, TextField } from '@/design-system/primitives';
-import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
-import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
-import {
-  BinStockNumpadSheet,
-  type BinNumpadRow,
-} from '@/components/sku/BinStockNumpadSheet';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { X } from '@/components/Icons';
+import { Button } from '@/design-system/primitives/Button';
+import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
-import { useKeyboard } from '@/hooks/useKeyboard';
+import { vibrateScan } from '@/lib/scan-feedback/play';
 import {
   locationCode,
   parseLocationCodeFlat,
   unwrapScannedLocation,
-  type LocationSegments,
 } from '@/lib/barcode-routing';
-import { safeRandomUUID } from '@/lib/safe-uuid';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { MobileStationSheet } from '@/components/mobile/station/MobileStationSheet';
+import { STATION_SHEET_HEIGHT_CLASS } from '@/components/mobile/station/station-metrics';
 import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
-
-export type LocationBindContent = {
-  sku: string;
-  qty: number;
-  productTitle: string | null;
-  imageUrl?: string | null;
-};
-
-export type LocationBindSnapshot = {
-  code: string;
-  face: string;
-  contents: LocationBindContent[];
-};
+import { LocationQtyStrip } from './LocationQtyStrip';
+import { useBinQtyCommit } from './use-bin-qty-commit';
+import { ensureRegistered, unpairSku } from './location-bind-api';
+import type { LocationBindContent, LocationBindSnapshot } from './location-bind-types';
 
 type Phase = 'search' | 'paired';
 
 function faceFor(code: string): string {
   const segs = parseLocationCodeFlat(code);
   return segs ? locationCode(segs) : code;
-}
-
-async function ensureRegistered(code: string, segs: LocationSegments): Promise<void> {
-  const res = await fetch(`/api/locations/${encodeURIComponent(code)}`, {
-    credentials: 'include',
-    cache: 'no-store',
-  });
-  if (res.ok) return;
-  if (res.status !== 404) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || `Location lookup failed (${res.status})`);
-  }
-  // Sticker scanned before print-register — mint the row under Zone {letter}.
-  await registerLocations(`Zone ${segs.zone}`, [segs]);
-}
-
-async function fetchOccupancy(code: string): Promise<LocationBindContent[]> {
-  const res = await fetch(`/api/locations/${encodeURIComponent(code)}`, {
-    credentials: 'include',
-    cache: 'no-store',
-  });
-  if (res.status === 404) return [];
-  if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || `Failed to load location (${res.status})`);
-  }
-  const json = (await res.json()) as {
-    contents?: Array<{
-      sku?: string;
-      qty?: number;
-      productTitle?: string | null;
-    }>;
-  };
-  return (json.contents ?? [])
-    .filter((c) => Number(c.qty) > 0 && c.sku)
-    .map((c) => ({
-      sku: String(c.sku),
-      qty: Number(c.qty) || 0,
-      productTitle: c.productTitle ?? null,
-      imageUrl: null,
-    }));
 }
 
 export function MobileLocationBindSheet({
@@ -119,148 +93,148 @@ export function MobileLocationBindSheet({
   const code = unwrapScannedLocation(rawCode);
   const segs = parseLocationCodeFlat(code);
   const face = faceFor(code);
-  const { keyboardHeight } = useKeyboard({ threshold: 80 });
+  const router = useRouter();
 
   const [contents, setContents] = useState<LocationBindContent[]>(initialContents);
-  const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pendingSku, setPendingSku] = useState<SkuCatalogItem | null>(null);
-  const [numpadOpen, setNumpadOpen] = useState(false);
-  const [numpadMode, setNumpadMode] = useState<'plus' | 'minus'>('plus');
-  const [numpadRow, setNumpadRow] = useState<BinNumpadRow | null>(null);
 
-  const phase: Phase = contents.length > 0 && !pendingSku ? 'paired' : 'search';
-  const primary = contents[0] ?? null;
-
-  const { data: hits = [], isFetching } = useSkuCatalogSearch(query, {
-    limit: 24,
-    searchField: 'zoho_catalog',
-  });
+  const phase: Phase = contents.length > 0 ? 'paired' : 'search';
 
   useEffect(() => {
     setContents(initialContents);
   }, [initialContents, rawCode]);
 
+  // Quick-adjust reconciliation reads the CURRENT rows without re-creating its
+  // callbacks on every keystroke — a changing `onCommitted` identity would
+  // restart the burst timer inside the commit hook.
+  const contentsRef = useRef(contents);
+
   const publish = useCallback(
     (next: LocationBindContent[]) => {
+      contentsRef.current = next;
       setContents(next);
       onChanged({ code, face, contents: next });
     },
     [code, face, onChanged],
   );
 
-  const refresh = useCallback(async () => {
-    const next = await fetchOccupancy(code);
-    const withImages = next.map((row) => {
-      const prior = contents.find((c) => c.sku === row.sku);
-      return prior?.imageUrl ? { ...row, imageUrl: prior.imageUrl } : row;
-    });
-    publish(withImages);
-    return withImages;
-  }, [code, contents, publish]);
+  useEffect(() => {
+    contentsRef.current = contents;
+  }, [contents]);
 
-  const openPutKeypad = useCallback((item: SkuCatalogItem) => {
-    setPendingSku(item);
-    setNumpadMode('plus');
-    setNumpadRow({
-      sku: item.sku,
-      qty: 0,
-      productTitle: item.product_title,
-    });
-    setNumpadOpen(true);
-    setError(null);
-  }, []);
-
-  const openAdjustKeypad = useCallback(
-    (mode: 'plus' | 'minus') => {
-      if (!primary) return;
-      setPendingSku(null);
-      setNumpadMode(mode);
-      setNumpadRow({
-        sku: primary.sku,
-        qty: primary.qty,
-        productTitle: primary.productTitle,
-      });
-      setNumpadOpen(true);
-      setError(null);
+  /** Apply a signed change to one SKU's committed qty, dropping emptied rows. */
+  const applyQty = useCallback(
+    (sku: string, resolve: (prev: number) => number) => {
+      const next = contentsRef.current
+        .map((row) => (row.sku === sku ? { ...row, qty: Math.max(0, resolve(row.qty)) } : row))
+        .filter((row) => row.qty > 0);
+      publish(next);
     },
-    [primary],
+    [publish],
   );
 
-  const ensureThenReady = useCallback(async () => {
-    if (!segs) throw new Error('Invalid location code');
-    await ensureRegistered(code, segs);
-  }, [code, segs]);
+  const onCommitStart = useCallback(
+    (sku: string, delta: number) => applyQty(sku, (prev) => prev + delta),
+    [applyQty],
+  );
 
-  const unpair = useCallback(async () => {
-    if (!primary || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await ensureThenReady();
-      const idempotencyKey = safeRandomUUID();
-      const res = await fetch(`/api/locations/${encodeURIComponent(code)}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify({
-          action: 'take',
-          sku: primary.sku,
-          qty: primary.qty,
-          staffId,
-          reason: 'BIN_UNPAIR',
-          clientEventId: idempotencyKey,
-        }),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        error?: string;
-      } | null;
-      if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || `Unpair failed (${res.status})`);
-      }
-      publish([]);
-      setQuery('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unpair failed');
-    } finally {
-      setBusy(false);
-    }
-  }, [busy, code, ensureThenReady, primary, publish, staffId]);
+  const onCommitted = useCallback(
+    ({ sku, binQty }: { sku: string; binQty: number | null }) => {
+      // `binQty` is the server's answer and outranks our optimistic maths.
+      // Offline writes have none — the delta we already folded in stands.
+      if (binQty == null) return;
+      applyQty(sku, () => binQty);
+    },
+    [applyQty],
+  );
+
+  const onFailed = useCallback(
+    ({ sku, delta, message }: { sku: string; delta: number; message: string }) => {
+      applyQty(sku, (prev) => prev - delta);
+      setError(message);
+    },
+    [applyQty],
+  );
 
   const invalidateKey = useMemo(() => ['mobile-location-bind', code] as const, [code]);
 
-  const onNumpadSuccess = useCallback(
-    async (nextQty: number) => {
-      const sku = numpadRow?.sku;
-      const title =
-        pendingSku?.product_title ??
-        numpadRow?.productTitle ??
-        primary?.productTitle ??
-        null;
-      const imageUrl = pendingSku?.image_url ?? primary?.imageUrl ?? null;
-      if (sku && nextQty > 0) {
-        publish([{ sku, qty: nextQty, productTitle: title, imageUrl }]);
-      } else {
-        await refresh();
-      }
-      setPendingSku(null);
-      setNumpadOpen(false);
-      setNumpadRow(null);
+  const quick = useBinQtyCommit({
+    binBarcode: code,
+    staffId,
+    invalidateKey,
+    onCommitStart,
+    onCommitted,
+    onFailed,
+  });
+
+  const bump = useCallback(
+    (sku: string, step: number, baseQty: number) => {
+      setError(null);
+      const accepted = quick.bump(sku, step, baseQty);
+      // A refused tap is the floor clamp, not a miss — the reject pattern says
+      // "that did nothing" without the operator having to look up.
+      vibrateScan(accepted ? 'success' : 'reject');
+      return accepted;
     },
-    [numpadRow, pendingSku, primary, publish, refresh],
+    [quick],
   );
 
+  /**
+   * The ±1 strip handles the common correction. Anything else — a typed
+   * number, a reason code, a direction change — is the qty JOB, and that owns
+   * a screen now rather than a fullscreen sheet that covered the tape and the
+   * location it was editing.
+   *
+   * Whatever the thumb already counted is committed first, so the page opens
+   * on the real on-hand rather than a number a burst is about to change
+   * underneath it.
+   */
+  const openQtyPage = useCallback(
+    (row: LocationBindContent) => {
+      void quick.flush();
+      router.push(
+        `/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(row.sku)}`,
+      );
+    },
+    [code, quick, router],
+  );
+
+  const unpair = useCallback(
+    async (row: LocationBindContent) => {
+      if (busy) return;
+      await quick.flush();
+      setBusy(true);
+      setError(null);
+      try {
+        if (!segs) throw new Error('Invalid location code');
+        await ensureRegistered(code, segs);
+        await unpairSku({ code, sku: row.sku, qty: row.qty, staffId });
+        publish(contentsRef.current.filter((c) => c.sku !== row.sku));
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unpair failed');
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, code, publish, quick, segs, staffId],
+  );
+
+  // A location that was never print-registered still needs a row before the
+  // qty page can write to it. Registering on MOUNT rather than when a keypad
+  // opened means the pair route can assume the location exists.
   useEffect(() => {
-    if (!numpadOpen || !segs) return;
+    if (!segs) return;
     void ensureRegistered(code, segs).catch((err) => {
       setError(err instanceof Error ? err.message : 'Could not register location');
     });
-  }, [numpadOpen, code, segs]);
+  }, [code, segs]);
+
+  const close = useCallback(() => {
+    void quick.flush();
+    onClose();
+  }, [onClose, quick]);
 
   if (!segs) {
     return (
@@ -277,22 +251,26 @@ export function MobileLocationBindSheet({
 
   return (
     <>
-      <div
-        className="shrink-0"
-        style={phase === 'search' ? { marginBottom: keyboardHeight } : undefined}
-      >
+      {/*
+        No text field lives in this sheet any more, so the `keyboardHeight`
+        lift that used to keep the search results above the OS keyboard is
+        gone with it. Nothing here can be typed into.
+      */}
+      <div className="shrink-0">
         <MobileStationSheet
           label={`Location ${face}`}
           collapsedLabel="Location"
           open
           onOpenChange={(next) => {
-            if (!next) onClose();
+            if (!next) close();
           }}
-          heightClass={phase === 'search' ? 'h-auto max-h-[55svh]' : 'h-auto'}
+          heightClass={
+            phase === 'search' ? 'h-auto max-h-[55svh]' : STATION_SHEET_HEIGHT_CLASS
+          }
           surfaceClass="bg-surface-card"
           showGrabBar={false}
         >
-          <div className="flex flex-col gap-2 px-3 pb-3 pt-2">
+          <div className="flex h-full min-h-0 flex-col gap-2 px-3 pb-3 pt-2">
             <div className="flex items-center gap-2">
               <IconButton
                 type="button"
@@ -300,7 +278,7 @@ export function MobileLocationBindSheet({
                 radius="flush"
                 ariaLabel="Close location"
                 icon={<X className="h-4 w-4" />}
-                onClick={onClose}
+                onClick={close}
                 className="shrink-0 text-text-muted hover:text-text-default"
               />
               <div className="min-w-0 flex-1">
@@ -319,151 +297,67 @@ export function MobileLocationBindSheet({
               </p>
             )}
 
-            {phase === 'paired' && primary ? (
-              <div className="space-y-3">
-                <div
-                  className={cn(
-                    'flex gap-3 border border-border-soft bg-surface-canvas p-2',
-                    cornerClass('surface'),
-                  )}
-                >
-                  <ItemRecordThumb imageUrl={primary.imageUrl} className="h-16 w-16 self-center" />
-                  <div className="min-w-0 flex-1 self-center">
-                    <p className="line-clamp-2 text-sm font-semibold text-text-default">
-                      {primary.productTitle?.trim() || primary.sku}
-                    </p>
-                    <p className="mt-0.5 font-mono text-role-caption text-text-soft">
-                      {primary.sku}
-                    </p>
-                    <p className="mt-1 font-mono text-lg font-semibold tabular-nums text-text-default">
-                      qty {primary.qty}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="md"
-                    className="min-h-11"
-                    onClick={() => openAdjustKeypad('minus')}
-                  >
-                    − Stock
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="md"
-                    className="min-h-11"
-                    onClick={() => openAdjustKeypad('plus')}
-                  >
-                    + Stock
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
+            {phase === 'paired' ? (
+              <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+                {contents.map((row) => (
+                  <LocationQtyStrip
+                    key={row.sku}
+                    content={row}
+                    pendingDelta={quick.pending[row.sku] ?? 0}
+                    onBump={(step) => bump(row.sku, step, row.qty)}
+                    onCancelPending={() => quick.cancel(row.sku)}
+                    onOpenKeypad={() => openQtyPage(row)}
+                  />
+                ))}
+                {/*
+                  Unpair takes the ENTIRE quantity, so it only offers itself
+                  when there is exactly one thing to take. On a location
+                  holding several SKUs a single "Unpair" cannot say which one
+                  it means, and guessing the first row is how stock leaves the
+                  wrong line. Emptying one row of a shared location is the qty
+                  page's take path, which names its SKU.
+                */}
+                {contents.length === 1 && contents[0] && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="md"
-                    className="min-h-11"
+                    radius="flush"
+                    className="self-start"
                     disabled={busy}
-                    onClick={() => void unpair()}
-                  >
-                    {busy ? '…' : 'Pair another'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="dangerSoft"
-                    size="md"
-                    className="min-h-11"
-                    disabled={busy}
-                    onClick={() => void unpair()}
+                    onClick={() => void unpair(contents[0]!)}
                   >
                     {busy ? 'Unpairing…' : 'Unpair'}
                   </Button>
-                </div>
+                )}
               </div>
             ) : (
-              <div className="flex max-h-[42svh] flex-col gap-2">
-                <TextField
-                  value={query}
-                  onChange={setQuery}
-                  label="Search SKU or title"
-                  autoFocus
-                  inputMode="search"
-                  autoComplete="off"
-                  trailing={
-                    isFetching ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
-                    ) : (
-                      <Search className="h-4 w-4 text-text-muted" />
-                    )
-                  }
-                />
-                <ul
-                  className="min-h-0 flex-1 divide-y divide-border-soft overflow-y-auto border border-border-soft bg-surface-canvas"
-                  role="listbox"
-                  aria-label="Zoho catalog matches"
+              /*
+                Empty location: the sheet states the fact and hands off. The
+                search list that used to live here fought the OS keyboard for
+                42svh inside a control strip; pairing is a JOB and now owns a
+                screen (`/m/pair/[code]`). Scanning still settles on the
+                kernel — only this tap navigates.
+              */
+              <div className="flex flex-col gap-2 pb-1">
+                <p className="text-role-caption text-text-soft">
+                  Nothing is paired to this location yet.
+                </p>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  radius="surface"
+                  className="w-full"
+                  onClick={() => router.push(`/m/pair/${encodeURIComponent(code)}`)}
                 >
-                  {query.trim() && !isFetching && hits.length === 0 && (
-                    <li className="px-3 py-4 text-center text-role-caption text-text-soft">
-                      No Zoho matches
-                    </li>
-                  )}
-                  {!query.trim() && (
-                    <li className="flex flex-col items-center gap-2 px-3 py-6 text-center text-text-soft">
-                      <Package className="h-6 w-6 text-text-faint" aria-hidden />
-                      <span className="text-role-caption">
-                        Type a SKU or product title to pair this location
-                      </span>
-                    </li>
-                  )}
-                  {hits.map((hit) => (
-                    <li key={`${hit.id}-${hit.sku}`}>
-                      <button
-                        type="button"
-                        role="option"
-                        className="flex w-full items-stretch gap-3 px-2 py-2 text-left active:bg-surface-hover"
-                        onClick={() => openPutKeypad(hit)}
-                      >
-                        <ItemRecordThumb
-                          imageUrl={hit.image_url}
-                          className="h-14 w-14 self-center"
-                        />
-                        <span className="min-w-0 flex-1 self-center">
-                          <span className="line-clamp-2 block text-sm font-semibold text-text-default">
-                            {hit.product_title || hit.sku}
-                          </span>
-                          <span className="mt-0.5 block font-mono text-role-caption text-text-soft">
-                            {hit.sku}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                  Pair a product
+                </Button>
               </div>
             )}
           </div>
         </MobileStationSheet>
       </div>
-
-      <BinStockNumpadSheet
-        open={numpadOpen}
-        onClose={() => {
-          setNumpadOpen(false);
-          setPendingSku(null);
-          setNumpadRow(null);
-        }}
-        binBarcode={code}
-        row={numpadRow}
-        invalidateKey={invalidateKey}
-        defaultMode={numpadMode}
-        onSuccess={(nextQty) => {
-          void onNumpadSuccess(nextQty);
-        }}
-      />
     </>
   );
 }

@@ -69,7 +69,7 @@ import { RepairServiceIdentify } from '@/components/receiving/workspace/line-edi
 import { ZohoItemPairTab } from '@/components/receiving/workspace/line-edit/ZohoItemPairTab';
 import { PoLinkTab } from '@/components/receiving/workspace/line-edit/PoLinkTab';
 import { UnfoundMatchStrip } from '@/components/receiving/workspace/line-edit/UnfoundMatchStrip';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { toTriagePackage } from '@/components/receiving/triage/triage-types';
 import { useUnmatchedItems } from '@/components/receiving/workspace/unmatched-items/useUnmatchedItems';
 import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';

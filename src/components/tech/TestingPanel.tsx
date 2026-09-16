@@ -39,7 +39,7 @@ import {
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import { stationComposerArrivalMode } from '@/lib/composer/station-composer-mode';
 import { CLAIM_RENDERS_IN_BOTH } from '@/components/receiving/workspace/claim/claim-surfaces';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine, dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { useTestingLineController } from '@/components/tech/hooks/useTestingLineController';
 import { invalidateSupportContextCaches } from '@/hooks';

@@ -7,6 +7,7 @@ import type { ProductDetailPayload } from './types';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import { ProductGtinField } from '@/components/products/ProductGtinField';
 import { BundleComponentsStrip } from '@/components/products/BundleComponentsStrip';
+import { ProductPackTimeCard } from '@/components/products/ProductPackTimeCard';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';
@@ -80,7 +81,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
         );
     }
 
-    const { product, platforms, stock } = payload;
+    const { product, platforms, stock, packProfile } = payload;
 
     return (
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
@@ -182,6 +183,16 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     )}
                 </DetailCard>
 
+                <ProductPackTimeCard
+                    catalogId={product.id}
+                    packProfile={packProfile}
+                    onSaved={(next) =>
+                        setPayload((prev) =>
+                            prev && prev.success ? { ...prev, packProfile: next } : prev,
+                        )
+                    }
+                />
+
                 <BundleComponentsStrip
                     catalogId={product.id}
                     sku={product.sku}
@@ -235,7 +246,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
             <div className="mt-6 text-xs text-text-soft">
                 Looking for ops controls?{' '}
                 <Link
-                    href={`/admin/inventory/sku/${encodeURIComponent(product.sku)}`}
+                    href={`/inventory/health/sku/${encodeURIComponent(product.sku)}`}
                     className="text-blue-600 underline"
                 >
                     Open admin drill-down

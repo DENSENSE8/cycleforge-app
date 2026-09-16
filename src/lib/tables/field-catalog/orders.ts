@@ -31,9 +31,9 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
   },
   {
     // Pick = inventory → pack handoff (industry WMS). Distinct from Pack
-    // (cartonize) and from Testing QC (`/test`). Feed stamps still ride the
-    // legacy tester/test_date columns until a dedicated pick projection lands;
-    // the SLOT id and verbs are Pick so org layouts speak the right language.
+    // (cartonize) and from Testing QC (`/test`). Reads the feed's own pick
+    // projection since 2026-09-14 — the tester/test_date columns it used to
+    // borrow belong to the TEST lane, not to this verb.
     id: 'orders.picked',
     family: 'orders',
     label: 'Pick',
@@ -43,9 +43,8 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     // Claimed-pending paints this verb (PICK); empty stays a dash. Done = Picked.
     stageLabels: { done: 'Picked', pending: 'Pick' },
     paths: {
-      who: 'tested_by_name|tester_name',
-      at: 'test_date_time|test_activity_at',
-      station: 'test_location_name',
+      who: 'picked_by_name',
+      at: 'picked_at',
     },
   },
   {

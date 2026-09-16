@@ -12,21 +12,16 @@
 import { useEffect, useState } from 'react';
 import { Button, TextField } from '@/design-system/primitives';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
+import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';
 import { looksLikeImei } from '@/lib/kiosk/scan-classify';
 import {
   useKioskSession,
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
-import {
-  KIOSK_PANE_FOOTER_BAND,
-  KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL_ROW,
-} from '@/app/kiosk/kiosk-chrome';
+import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
+import { KIOSK_POS_CTA } from '@/app/kiosk/kiosk-pos-surface';
 
-export function KioskBuybackPane({ hideHeader = false }: { hideHeader?: boolean }) {
+export function KioskBuybackPane() {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [imei, setImei] = useState('');
@@ -70,63 +65,51 @@ export function KioskBuybackPane({ hideHeader = false }: { hideHeader?: boolean 
   };
 
   return (
-    <div className="flex h-full flex-col" data-testid="kiosk-buyback-pane">
-      {hideHeader ? null : (
-      <div className={KIOSK_PANE_HEADER_BAND}>
-        <h2 className={KIOSK_PANE_HEADER_TITLE}>Buyback</h2>
-      </div>
-      )}
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="flex w-full flex-col divide-y divide-border-hairline">
-          <section>
-            <h3 className={KIOSK_SECTION_LABEL_ROW}>
-              Device
-            </h3>
-            <div className="space-y-3 px-4 py-4">
-              <TextField
-                label="IMEI"
-                value={imei}
-                onChange={setImei}
-                inputClassName="rounded-none"
-                data-testid="kiosk-buyback-imei"
-              />
-              <TextField
-                label="Offer ($)"
-                value={offerDollars}
-                onChange={setOfferDollars}
-                inputClassName="rounded-none"
-              />
-              <TextField
-                label="Grade"
-                value={grade}
-                onChange={setGrade}
-                inputClassName="rounded-none"
-              />
-              <TextField
-                label="Notes"
-                value={notes}
-                onChange={setNotes}
-                inputClassName="rounded-none"
-              />
-              {error && (
-                <p className="text-center text-sm font-semibold text-text-danger">{error}</p>
-              )}
-            </div>
-          </section>
-
-          {/* Same identity block as Repair / Retail / Pickup — one intake face. */}
-          <KioskCustomerIntake />
-        </div>
-      </div>
-      <div className={KIOSK_PANE_FOOTER_BAND}>
-        <Button
-          size="lg"
-          className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-          onClick={addToCart}
-        >
+    <KioskPaneForm
+      testId="kiosk-buyback-pane"
+      measure="divided"
+      footer={
+        <Button size="lg" className={KIOSK_POS_CTA} onClick={addToCart}>
           Add buyback credit
         </Button>
-      </div>
-    </div>
+      }
+    >
+      <section>
+        <h3 className={KIOSK_SECTION_LABEL_ROW}>Device</h3>
+        <div className="space-y-3 px-4 py-4">
+          <TextField
+            label="IMEI"
+            value={imei}
+            onChange={setImei}
+            inputClassName="rounded-none"
+            data-testid="kiosk-buyback-imei"
+          />
+          <TextField
+            label="Offer ($)"
+            value={offerDollars}
+            onChange={setOfferDollars}
+            inputClassName="rounded-none"
+          />
+          <TextField
+            label="Grade"
+            value={grade}
+            onChange={setGrade}
+            inputClassName="rounded-none"
+          />
+          <TextField
+            label="Notes"
+            value={notes}
+            onChange={setNotes}
+            inputClassName="rounded-none"
+          />
+          {error && (
+            <p className="text-center text-sm font-semibold text-text-danger">{error}</p>
+          )}
+        </div>
+      </section>
+
+      {/* Same identity block as Repair / Retail / Pickup — one intake face. */}
+      <KioskCustomerIntake />
+    </KioskPaneForm>
   );
 }

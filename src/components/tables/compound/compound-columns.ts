@@ -46,6 +46,7 @@
  */
 
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
+import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import {
   COMPOUND_GUTTER_TRACK_REM,
@@ -174,8 +175,30 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     // grid. An operator who works longer ids drags this wider once (it is the
     // resizable track it always was) and it sticks.
     width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Fulfillment',
-    gridLabel: 'Order',
+    // The identity header is the ENGINE's word, in BOTH faces — the law module
+    // is `slot-table-id-header-law.ts` and the families may not re-declare it
+    // (operator 2026-09-15: "the ID as the first column … instead of
+    // differences"). `'Fulfillment'` was an Orders-era leftover from when this
+    // track was carrier data; it survived in `label` because only `gridLabel`
+    // was ruled on 2026-09-14, and 22 column modules overrode both anyway.
+    label: SLOT_TABLE_ID_HEADER_WORD,
+    // **Id, not Order** (operator 2026-09-14: "the slot data table displays as
+    // id and not order for the second column" … "just Id"). ONE word for one
+    // track, on the
+    // shared skeleton: a per-family override would be a copied array, which
+    // `compound-row-model.test.ts` rejects by object identity — the assertion
+    // that keeps every compound table reading as one product.
+    //
+    // The word is portable and the track always held an identity handle: an
+    // order number on To-ship, a PO on Receiving, `daily_check_items.id` on
+    // Daily. What differs is the FACT in the cell, which is the only
+    // difference between two of these tables there is meant to be — a family
+    // whose handle is not a marketplace order paints it through
+    // `CompoundRowView.identityFace` instead of `orderId`.
+    //
+    // Same disposal as the Orders-only "Order date" on the DATES hover, which
+    // became the portable `COMPOUND_DATES_START_HOVER`.
+    gridLabel: SLOT_TABLE_ID_HEADER_WORD,
     type: 'id',
     align: 'start',
     frozen: true,

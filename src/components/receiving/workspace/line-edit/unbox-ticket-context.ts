@@ -5,7 +5,7 @@
  * Arrival will port the same rules later; Unbox dogfoods first.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 

@@ -1,6 +1,8 @@
 # Build and dependency artifacts
 .next
 .next-perf
+.next-perf-si
+.next-perf-lh
 node_modules
 desktop-dist
 build
@@ -29,6 +31,9 @@ vision/data
 # Vercel rejects the upload outright ("is not a valid symlink"), so this took
 # down production deploys, CI's included.
 .antigravitycli
+# Same class: lane worktrees symlink this profile at an ABSOLUTE path into the
+# main checkout. Vercel unpacks it as an invalid symlink and aborts.
+tools/design-mcp/design-mcp.profile.json
 .gemini
 .obsidian
 .impeccable

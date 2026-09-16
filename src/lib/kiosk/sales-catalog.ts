@@ -1,25 +1,17 @@
 /**
- * Retail (non-repair) catalog for the kiosk Buy/Sell left rail.
- * Pure helpers: `sales-catalog-pure.ts`. This module owns the projection reads.
+ * Retail (non-repair) CATEGORY tree for the kiosk Buy/Sell rail.
+ * Pure helpers: `sales-catalog-pure.ts`. Product rows come from
+ * `catalog-search.ts` — it filters, ranks, and pages in SQL, which is why the
+ * whole-table product loader that used to live here is gone.
  */
 
 import 'server-only';
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { RepairCategoryLevel } from '@/lib/repair/ecwid-repair-catalog';
-import {
-  filterRetailProducts,
-  resolveRetailCategoryLevelFrom,
-} from './sales-catalog-pure';
+import { resolveRetailCategoryLevelFrom } from './sales-catalog-pure';
 
 export { filterRetailProducts, resolveRetailCategoryLevelFrom } from './sales-catalog-pure';
-
-/** Projection-first retail product list for the kiosk sales rail. */
-export async function loadRetailProductsForOrg(orgId: OrgId) {
-  const { loadProjectedListings } = await import('@/lib/repair/catalog-projection');
-  const listings = await loadProjectedListings(orgId);
-  return filterRetailProducts(listings);
-}
 
 /** Projection-first retail category level for the kiosk sales rail. */
 export async function loadRetailCategoryLevelForOrg(

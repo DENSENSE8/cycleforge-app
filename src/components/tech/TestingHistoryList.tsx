@@ -3,7 +3,7 @@
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';

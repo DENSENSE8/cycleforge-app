@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { parseZendeskListingFromPoNotes } from '@/lib/zoho-po-prefill';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';

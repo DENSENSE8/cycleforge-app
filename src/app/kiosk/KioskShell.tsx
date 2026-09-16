@@ -14,7 +14,7 @@
  * into the top header, the cart, the paperwork, the work, show, verify, etc."
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   ProductSelector,
   type ProductSelection,
@@ -29,14 +29,18 @@ import {
 import {
   useKioskSession,
   useKioskSessionActions,
-  type KioskCommandId,
 } from '@/lib/kiosk/kiosk-session-store';
+import type { KioskCommandId } from '@/lib/kiosk/commands';
 import { cartIsEmpty } from '@/lib/kiosk/cart-line';
 import { classifyKioskScan } from '@/lib/kiosk/scan-classify';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import { KIOSK_PANE_HEADER_TITLE } from './kiosk-chrome';
+import {
+  KIOSK_CENTRE_SURFACE,
+  KIOSK_PANE_HEADER_TITLE,
+  KIOSK_UTILITY_STAGE,
+} from './kiosk-chrome';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
 import { KioskBuybackPane } from './v2/KioskBuybackPane';
@@ -51,6 +55,7 @@ import {
 import { KioskCustomerFace } from './v2/KioskCustomerFace';
 import { KioskShowFace } from './v2/KioskShowFace';
 import { catalogRefFromPick } from '@/lib/kiosk/consult-proposal';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 
 /** Catalog API prefix per command — repair = `-RS`; retail = non-`-RS`. */
 function catalogBasePath(command: KioskCommandId): string {
@@ -81,7 +86,6 @@ export function KioskShell() {
   const [servicePrice, setServicePrice] = useState('');
   const [utilitySlot, setUtilitySlot] = useState<KioskUtilitySlotId | null>(null);
   const [cartFocus] = useState<KioskCartFocus | null>(null);
-  const hadLinesRef = useRef(false);
   const [catalogSearch, setCatalogSearch] = useState('');
 
   const resetBrowseState = useCallback(() => {
@@ -126,11 +130,12 @@ export function KioskShell() {
     };
   }, [session.faceManualOverride, session.consultStance, actions]);
 
-  useEffect(() => {
-    const hasLines = !cartIsEmpty(session.lines);
-    if (hasLines && !hadLinesRef.current) setUtilitySlot('cart');
-    hadLinesRef.current = hasLines;
-  }, [session.lines]);
+  // NOTE: there is deliberately NO auto-open of the cart slot here. The old
+  // effect switched to `utilitySlot='cart'` the moment the first line existed,
+  // which meant tapping a product on the catalog never showed a SELECTION —
+  // the click opened the cart and took the grid away. Selection now stays on
+  // the card (check dot + wash), the chrome cart badge counts up, and the
+  // staffer opens the cart when THEY choose to.
 
   // Global HID wedge — classify → cart / command, never drop focus.
   const onWedgeScan = useCallback(
@@ -138,7 +143,7 @@ export function KioskShell() {
       const classified = classifyKioskScan(raw);
       if (classified.kind === 'upc') {
         try {
-          const res = await fetch(
+          const res = await kioskFetchHealed(
             `/api/kiosk/sales/ecwid-products?barcode=${encodeURIComponent(classified.normalized)}&limit=5`,
           );
           const body = (await res.json().catch(() => ({}))) as {
@@ -214,9 +219,24 @@ export function KioskShell() {
     });
   }, [actions, session.activeCommand, servicePrice]);
 
-  const openRepairDetails = useCallback(() => {
-    setCatalogPhase('checkout');
-  }, []);
+  /**
+   * The catalog's primary key. REPAIR opens the details stage; RETAIL has no
+   * detail step — the tapped item is already a cart line (the sync effect
+   * below), so the only forward move is reviewing the cart.
+   *
+   * Before 2026-09-14 this always set `catalogPhase='checkout'`, but the
+   * prop is pinned to 'browse' for retail and `stageContent` is null there,
+   * so on Sales the key mutated state nobody read — it rendered, enabled,
+   * and did NOTHING. Operator: "the continue button for the services are
+   * not working."
+   */
+  const onCatalogContinue = useCallback(() => {
+    if (session.activeCommand === 'repair') {
+      setCatalogPhase('checkout');
+      return;
+    }
+    setUtilitySlot('cart');
+  }, [session.activeCommand]);
 
   const returnToRepairCatalog = useCallback(() => {
     setCatalogPhase('browse');
@@ -245,7 +265,7 @@ export function KioskShell() {
 
   const checkoutStage =
     session.activeCommand === 'repair' ? (
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className={KIOSK_CENTRE_SURFACE}>
         <KioskRepairPane
           selectedProduct={selectedProduct}
           price={servicePrice}
@@ -307,18 +327,51 @@ export function KioskShell() {
       data-testid="kiosk-shell"
       data-cart-empty={cartIsEmpty(session.lines) ? 'true' : 'false'}
     >
-      {utilitySlot !== null ? (
-        <KioskTopChrome
-          activeMode={activeServiceId}
-          onModeSwitch={handleCommandSwitch}
-          activeSlot={utilitySlot}
-          onSelect={setUtilitySlot}
-          cartCount={session.lines.length}
-          consultStance={session.consultStance}
-          onConsultStance={onStanceChange}
-        />
-      ) : null}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {/* ONE 56px header band at all times, never a second one stacked.
+          Catalog browse: the picker's glass trail (it owns the same chip
+          vocabulary). A utility slot open on the catalog, or a non-catalog
+          pane (buyback / pickup): this plain band — same chips, same height,
+          same positions — holding the paperwork/cart toggles so a panel
+          never covers its own way back. */}
+      {/* Band ONLY while a utility panel covers the work surface — the pane
+          branches (buyback/pickup) mount their own titled band, and the
+          catalog's trail lives inside ProductSelector. Rendering this band
+          when !showCatalog stacked a SECOND chrome over the pane band.
+
+          The CART is excluded (2026-09-15): it owns a StepProgressHeader, and
+          that band IS its header — X top-left exits, segments across the
+          middle. Painting this trail above it would stack exactly the two
+          chromes the frame law exists to prevent. Operator 2026-09-14:
+          "displaying without the header and then the X button top left to
+          close the cart and displaying a stepper on the top". Paperwork and
+          triage still paint their own titled band, so they still take this
+          trail; porting them onto KioskPaneForm is the next increment. */}
+      {utilitySlot !== null && utilitySlot !== 'cart' ? (
+          <KioskTopChrome
+            activeMode={activeServiceId}
+            onModeSwitch={handleCommandSwitch}
+            activeSlot={utilitySlot}
+            onSelect={setUtilitySlot}
+            cartCount={session.lines.length}
+            consultStance={session.consultStance}
+            onConsultStance={onStanceChange}
+          />
+        ) : null}
+      {/* The paperwork / triage SHEET is flat (operator 2026-09-14: "it should
+          not display a depth drop shadow"), so its separation cue is the
+          PLANE: the vacated stage drops to surface-sunken while one of those
+          bounded cards is up. The CART takes no second plane — it is a
+          full-bleed white centre surface now (KIOSK_CENTRE_SURFACE, the repair
+          intake skeleton), so there is nothing to contrast. Conditional either
+          way, never a permanent repaint: KIOSK_POS_CANVAS is the one browse
+          background and kiosk-pos-surface.test.ts pins it. */}
+      <div
+        className={cn(
+          'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
+          utilitySlot !== null && utilitySlot !== 'cart' && KIOSK_UTILITY_STAGE,
+        )}
+        data-kiosk-utility-stage={utilitySlot ?? undefined}
+      >
         <div
           className={cn(
             'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
@@ -331,6 +384,7 @@ export function KioskShell() {
           <ProductSelector
             key={session.activeCommand}
             apiBasePath={catalogBasePath(session.activeCommand)}
+            catalogSearchMode="server"
             appearance="flush"
             layout="kiosk-split"
             hideManualEntry
@@ -341,7 +395,12 @@ export function KioskShell() {
             catalogPhase={
               session.activeCommand === 'repair' ? catalogPhase : 'browse'
             }
-            onContinue={openRepairDetails}
+            onContinue={onCatalogContinue}
+            continueLabel={
+              session.activeCommand === 'repair'
+                ? undefined
+                : `Review cart · ${session.lines.length} item${session.lines.length === 1 ? '' : 's'}`
+            }
             onAddAnotherItem={returnToRepairCatalog}
             selectedProduct={selectedProduct}
             onSelect={onSelectProduct}
@@ -353,7 +412,7 @@ export function KioskShell() {
             stageContent={checkoutStage}
           />
         ) : session.activeCommand === 'buyback' ? (
-          <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
+          <div className={KIOSK_CENTRE_SURFACE}>
             <KioskTopChrome
               activeMode={activeServiceId}
               onModeSwitch={handleCommandSwitch}
@@ -364,10 +423,12 @@ export function KioskShell() {
               consultStance={session.consultStance}
               onConsultStance={onStanceChange}
             />
-            <KioskBuybackPane hideHeader />
+            {/* No `hideHeader` prop: the pane frame has no title face at all
+                (KioskPaneForm), so the trail above is the ONE header band. */}
+            <KioskBuybackPane />
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
+          <div className={KIOSK_CENTRE_SURFACE}>
             <KioskTopChrome
               activeMode={activeServiceId}
               onModeSwitch={handleCommandSwitch}
@@ -378,13 +439,13 @@ export function KioskShell() {
               consultStance={session.consultStance}
               onConsultStance={onStanceChange}
             />
-            <KioskPickupPane hideHeader onReset={resetBrowseState} />
+            <KioskPickupPane onReset={resetBrowseState} />
           </div>
         )}
         </div>
 
-        {utilitySlot === 'cart' && <KioskCartLedger focus={cartFocus} />}
-        {utilitySlot === 'paperwork' && <KioskPaperworkPanel />}
+        {utilitySlot === 'cart' && <KioskCartLedger focus={cartFocus} onClose={() => setUtilitySlot(null)} />}
+        {utilitySlot === 'paperwork' && <KioskPaperworkPanel onClose={() => setUtilitySlot(null)} />}
       </div>
     </div>
     </div>

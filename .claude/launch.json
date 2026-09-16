@@ -1,21 +1,11 @@
 {
   "version": "0.0.1",
-  "_comment": "ATTACH-ONLY BY DESIGN. There is deliberately no runtimeExecutable/runtimeArgs: a configuration with a `url` and no command attaches to an already-running server instead of spawning one. The user owns the dev server's lifecycle — see AGENTS.md. Do NOT re-add a command to 'make preview_start work'; if nothing is listening on :3050 the dev server simply is not running, and starting it is the user's call.",
+  "_comment": "ONE ORIGIN, ATTACH-ONLY BY DESIGN. :3050 is the switchboard and the only address an agent may use (AGENTS.md § 'Dev origin'; operator 2026-09-15: 'only work from 3050'). There is deliberately no runtimeExecutable/runtimeArgs: a configuration with a `url` and no command attaches to an already-running server instead of spawning one. Do NOT re-add a command to 'make preview_start work', and do NOT add a second entry on another port — if nothing answers on :3050 the pinned lane is down (`systemctl --user start cycleforge-lane@prod`), which is the operator's call. The :3051 warehouse-os worktree entry was removed 2026-09-15: it pointed into a different checkout and stood up a second origin nobody owned.",
   "configurations": [
     {
       "name": "cycleforge-dev",
       "url": "http://localhost:3050",
       "port": 3050
-    },
-    {
-      "_comment": "The warehouse-os refactor WORKTREE, on its own port. Added 2026-08-23 at the operator's explicit instruction ('run the dev server so I will be able to see it') — :3050 and the entry above remain the operator's and stay attach-only. The worktree carries its own node_modules (pnpm install 2026-08-23; Turbopack refuses to compile through the parent checkout's).",
-      "name": "warehouse-os-worktree",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "cd /home/michaelgarisek/Projects/cycleforge-app/.claude/worktrees/warehouse-os-refactor-8f2dc3 && AUTH_V2_ENABLED=false NEXT_PUBLIC_AUTH_V2_ENABLED=false exec node_modules/.bin/next dev --turbopack -p 3051"
-      ],
-      "port": 3051
     }
   ]
 }

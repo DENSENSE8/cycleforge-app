@@ -33,7 +33,7 @@
 @source not '../../docs';
 @source not '../../.claude';
 /* Ship-before-adoption roles + spacing intents (were safelist in v3). */
-@source inline("text-role-display text-role-title text-role-body text-role-data text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
+@source inline("text-role-display text-role-title text-role-body text-role-data text-role-field text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 
 .font-dm-sans {
   font-family: var(--font-sans);
@@ -368,6 +368,53 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .cf-boot-breathe,
   .cf-boot-sweep {
+    animation: none;
+  }
+}
+
+/* ── Scan pending wash ─────────────────────────────────────────────────────
+   The accent tint UNDER the mobile camera panel's glass bar
+   (`MobileCameraPanel`), breathing while at least one scanned label is still
+   unsettled on the server.
+
+   It exists because the bar's middle slot used to carry the sentence
+   "2 in flight". Prose is the wrong channel there: it is 11px caps on a 36px
+   bar, read by an operator whose eyes are on the BOX, and its length changes
+   every time the count does, so the slot's neighbours twitch. Peripheral
+   vision cannot read that line at all — but it detects a luminance change
+   across a 390px bar instantly, which is exactly the question being asked
+   ("is the machine still working?").
+
+   It tints the BAR, not a strip above it. Everything the bar says is about the
+   camera, so the pending signal belongs in the same glass, on the picture —
+   a separate lane outside the viewfinder read as unrelated page chrome and
+   cost 2px of lens (operator 2026-09-11).
+
+   Opacity ONLY — `background-color` is a paint property and animating it would
+   fight the scrim the white ink depends on. Duration is `--cf-motion-status`,
+   so this is a Band 2 effect by arithmetic (LAWS §M). The wash element carries
+   its own `data-motion="2"` stamp rather than the panel, so licensing this
+   heartbeat does not license status motion for everything else inside a scan
+   station. Outside a band-2 region the token is `0s` and the wash holds as a
+   static tint; reduced motion collapses every band the same way.
+
+   BOUNDED BY A REAL EVENT, never decorative: it starts on a commit and stops
+   when the queue empties. A loop that runs whether or not anything is
+   happening is the sweep line this house already deleted from `ScanSurface`.
+   The outcome of a scan is NOT shown here — that is the tape's focus row
+   (`STATION_TONE_GROUND`); this wash answers only "still pending". */
+@keyframes cf-scan-pending {
+  from { opacity: 0.28; }
+  to   { opacity: 1; }
+}
+.cf-scan-pending-wash {
+  opacity: 1;
+}
+[data-motion='2'].cf-scan-pending-wash {
+  animation: cf-scan-pending var(--cf-motion-status) ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-motion='2'].cf-scan-pending-wash {
     animation: none;
   }
 }

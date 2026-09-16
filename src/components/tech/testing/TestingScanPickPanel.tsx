@@ -23,7 +23,7 @@ import {
   BoxMembershipHint,
   serialLast8,
 } from '@/components/receiving/SerialPreviewStrip';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingScanPick } from '@/lib/testing/testing-scan-session-bridge';
 
 /** Amber, because an ambiguous scan is an exception state — not a failure. */

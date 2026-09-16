@@ -39,11 +39,11 @@ import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileA
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
 import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHistory';
 import { useArrivalStation } from '@/components/mobile/receiving/useArrivalStation';
-import {
-  MobileLocationBindSheet,
-  type LocationBindContent,
-  type LocationBindSnapshot,
-} from '@/components/mobile/scan/MobileLocationBindSheet';
+import { MobileLocationBindSheet } from '@/components/mobile/scan/MobileLocationBindSheet';
+import type {
+  LocationBindContent,
+  LocationBindSnapshot,
+} from '@/components/mobile/scan/location-bind-types';
 
 function locationFace(code: string): string {
   const segs = parseLocationCodeFlat(code);
@@ -201,6 +201,14 @@ function MobileScanIdentifyInner() {
       void (async () => {
         try {
           const dispatch = await resolve(value);
+          const returnTo = searchParams.get('returnTo');
+          if (returnTo === '/m/orders/new') {
+            // The shared dispatch path has already classified this scan. Return
+            // the raw value to the mobile intake surface so it can decide whether
+            // it is an order number, SKU, or item number without a second parser.
+            router.push(`/m/orders/new?scan=${encodeURIComponent(value)}`);
+            return;
+          }
           if (!dispatch) {
             submitRaw(value);
             return;
@@ -230,7 +238,7 @@ function MobileScanIdentifyInner() {
         }
       })();
     },
-    [resolve, router, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
+    [resolve, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
   );
 
   const actions = useMemo(() => {
@@ -260,12 +268,31 @@ function MobileScanIdentifyInner() {
     [actions],
   );
 
+  /**
+   * Unsettled commits — the lip lane's input, and the only thing on the panel
+   * that animates. Zero means the server has answered everything.
+   */
+  const pending = inFlight + dispatching;
+
+  /**
+   * The middle slot, as a COUNT.
+   *
+   * It used to read `2 in flight` / `Offline — nothing is recorded`: prose in
+   * an 11px band, read by someone whose eyes are on the box, re-flowing its
+   * neighbours every time the number changed. The lane now carries "is
+   * anything pending" in the channel peripheral vision actually has (a moving
+   * edge), so this line only has to carry the NUMBER — which is also what
+   * keeps the count reachable by AT, since motion may never be a sole channel.
+   *
+   * `Offline` stays a word because it is not a quantity, and it is the one
+   * state where the operator must stop: the lane goes static danger under it.
+   */
   const status = useMemo(() => {
-    if (!online) return 'Offline — nothing is recorded';
+    if (!online) return 'Offline';
     if (cameraOff) return 'Camera off';
-    if (inFlight + dispatching > 0) return `${inFlight + dispatching} in flight`;
+    if (pending > 0) return `${pending} pending · ${arrived} in`;
     return `${arrived} in`;
-  }, [online, cameraOff, inFlight, dispatching, arrived]);
+  }, [online, cameraOff, pending, arrived]);
 
   if (classifyRid != null) {
     return <MobileArrivalClassifyFlow receivingId={classifyRid} step={classifyStep} />;
@@ -317,6 +344,7 @@ function MobileScanIdentifyInner() {
             collapsedLabel="Scan a label"
             status={status}
             statusAlert={cameraOff || !online}
+            pending={pending}
             onDecode={onDecode}
             onErrorChange={setCameraOff}
             armRequest={armRequest}

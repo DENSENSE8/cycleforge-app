@@ -11,7 +11,7 @@ import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { poHeaderStatusChipClass } from '@/lib/po-header-status';
-import { workflowStatusTableLabel } from '@/components/station/receiving-constants';
+import { workflowStatusTableLabel } from '@/lib/receiving/receiving-constants';
 import { workflowStageBadge } from '@/lib/receiving/workflow-stages';
 import { receivingPhotosGalleryUrl } from '@/lib/photos/mobile-gallery-url';
 

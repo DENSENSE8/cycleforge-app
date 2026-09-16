@@ -33,8 +33,9 @@ import { test, expect } from '@playwright/test';
  *
  *   • `detail:inventory-sync` — its only trigger (`ShippedActionsButton`) has
  *     zero mounts in the app; both files sit in `knip-baseline.json` as unused.
- *     There is no page that can open it. The port matches `OrderSyncDialog`
- *     exactly; coverage lands when the button is remounted.
+ *     There is no page that can open it. The port matched the sidebar's
+ *     `OrderSyncDialog` exactly (that file is deleted; `ShippedDetailsPanel` is
+ *     the live non-modal exemplar); coverage lands when the button is remounted.
  */
 
 /** Both backdrop variants carry their z-band token in the class string. */

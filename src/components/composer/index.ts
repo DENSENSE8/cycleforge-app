@@ -13,8 +13,8 @@ export {
 } from './ComposerModeRow';
 export { ComposerStagedPhotoStrip } from './ComposerStagedPhotoStrip';
 export { TicketComposer } from './TicketComposer';
-export { useTicketComposer } from './useTicketComposer';
-export type { TicketComposerApi } from './useTicketComposer';
+export { useTicketComposer } from '@/lib/composer/use-ticket-composer';
+export type { TicketComposerApi } from '@/lib/composer/use-ticket-composer';
 export { useTicketThreadActivation } from './useTicketThreadActivation';
 export { ComposerTicketCcStrip } from './ComposerTicketCcStrip';
 export { ComposerTicketChannelToggle } from './ComposerTicketChannelToggle';

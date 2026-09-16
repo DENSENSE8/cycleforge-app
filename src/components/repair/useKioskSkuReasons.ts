@@ -17,6 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import { mergeReasonLabel, visibleReasonBase } from '@/lib/repair/sku-reasons';
 
 const ENDPOINT = '/api/kiosk/repair/issues';
@@ -50,7 +51,7 @@ export function useKioskSkuReasons(sku: string | null | undefined): KioskSkuReas
   useEffect(() => {
     let active = true;
     const url = sku ? `${ENDPOINT}?sku=${encodeURIComponent(sku)}` : ENDPOINT;
-    fetch(url)
+    kioskFetchHealed(url)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!active) return;
@@ -84,7 +85,7 @@ export function useKioskSkuReasons(sku: string | null | undefined): KioskSkuReas
       addedRef.current.labels = mergeReasonLabel(addedRef.current.labels, trimmed);
       setAdding(true);
       try {
-        const res = await fetch(ENDPOINT, {
+        const res = await kioskFetchHealed(ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sku, label: trimmed }),

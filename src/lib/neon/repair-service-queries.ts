@@ -35,6 +35,7 @@ export interface RSRecord {
   delivered_at?: string | null;
   received_at?: string | null;
   intake_confirmed_at?: string | null;
+  label_printed_at?: string | null;
   received_by_staff_id?: number | null;
   customer_id?: number | null;
   customer_name?: string | null;
@@ -116,6 +117,7 @@ function mapRepairRow(row: any): RSRecord {
     delivered_at: normalizePSTTimestamp(row.delivered_at) || null,
     received_at: normalizePSTTimestamp(row.received_at) || null,
     intake_confirmed_at: normalizePSTTimestamp(row.intake_confirmed_at) || null,
+    label_printed_at: normalizePSTTimestamp(row.label_printed_at) || null,
     received_by_staff_id: row.received_by_staff_id == null ? null : Number(row.received_by_staff_id),
     customer_id: row.customer_id == null ? null : Number(row.customer_id),
     customer_name: row.customer_name ?? null,
@@ -145,6 +147,7 @@ const REPAIR_SELECT_COLUMNS = `
   rs.delivered_at,
   rs.received_at,
   rs.intake_confirmed_at,
+  rs.label_printed_at,
   rs.received_by_staff_id,
   rs.customer_id,
   COALESCE(c.display_name, c.customer_name, CONCAT_WS(' ', c.first_name, c.last_name)) AS customer_name,
@@ -157,21 +160,30 @@ const REPAIR_FROM = `
   LEFT JOIN customers c ON c.id = rs.customer_id
 `;
 
-function buildRepairTabWhere(tab: RepairTab) {
+/** Extra row predicates shared by list + search — orthogonal to the status tab. */
+function buildRepairNeedsLabelWhere(needsLabel?: boolean): string {
+  // A DATA facet, not a status value: `label_printed_at IS NULL` is the
+  // "needs its 2x1 sticker" queue (repair-chain G6 — no new status spelling).
+  return needsLabel ? 'AND rs.label_printed_at IS NULL' : '';
+}
+
+function buildRepairTabWhere(tab: RepairTab, needsLabel?: boolean) {
+  const label = buildRepairNeedsLabelWhere(needsLabel);
   const terminalList = sqlStatusInTerminal();
   const incomingSt = sqlIncomingTabStatus();
   if (tab === 'incoming') {
-    return `WHERE rs.status = ${incomingSt}`;
+    return `WHERE rs.status = ${incomingSt} ${label}`;
   }
   if (tab === 'done') {
-    return `WHERE rs.status IN ${terminalList}`;
+    return `WHERE rs.status IN ${terminalList} ${label}`;
   }
   return `WHERE rs.status != ${incomingSt}
           AND rs.status != ${sqlCancelledStatus()}
-          AND rs.status NOT IN ${terminalList}`;
+          AND rs.status NOT IN ${terminalList}
+          ${label}`;
 }
 
-function buildRepairSearchWhere(idx: number, tab?: RepairTab) {
+function buildRepairSearchWhere(idx: number, tab?: RepairTab, needsLabel?: boolean) {
   const base = `(
       rs.ticket_number ILIKE $${idx}
       OR rs.contact_info ILIKE $${idx}
@@ -185,20 +197,27 @@ function buildRepairSearchWhere(idx: number, tab?: RepairTab) {
       OR COALESCE(c.email, '') ILIKE $${idx}
     )`;
 
+  const label = buildRepairNeedsLabelWhere(needsLabel);
   const terminalList = sqlStatusInTerminal();
   const incomingSt = sqlIncomingTabStatus();
-  if (!tab) return `WHERE ${base}`;
-  if (tab === 'incoming') return `WHERE rs.status = ${incomingSt} AND ${base}`;
-  if (tab === 'done') return `WHERE rs.status IN ${terminalList} AND ${base}`;
+  if (!tab) return `WHERE ${base} ${label}`;
+  if (tab === 'incoming') return `WHERE rs.status = ${incomingSt} AND ${base} ${label}`;
+  if (tab === 'done') return `WHERE rs.status IN ${terminalList} AND ${base} ${label}`;
   return `WHERE rs.status != ${incomingSt}
           AND rs.status != ${sqlCancelledStatus()}
           AND rs.status NOT IN ${terminalList}
-          AND ${base}`;
+          AND ${base}
+          ${label}`;
 }
 
-export async function getAllRepairs(limit = 100, offset = 0, options?: { tab?: RepairTab }, orgId?: OrgId): Promise<RSRecord[]> {
+export async function getAllRepairs(
+  limit = 100,
+  offset = 0,
+  options?: { tab?: RepairTab; needsLabel?: boolean },
+  orgId?: OrgId,
+): Promise<RSRecord[]> {
   try {
-    const where = buildRepairTabWhere(options?.tab || 'active');
+    const where = buildRepairTabWhere(options?.tab || 'active', options?.needsLabel);
     if (orgId) {
       const result = await tenantQuery(
         orgId,
@@ -701,10 +720,14 @@ export async function createRepair(params: CreateRepairParams, orgId?: OrgId): P
   return record!;
 }
 
-export async function searchRepairs(query: string, options?: { tab?: RepairTab }, orgId?: OrgId): Promise<RSRecord[]> {
+export async function searchRepairs(
+  query: string,
+  options?: { tab?: RepairTab; needsLabel?: boolean },
+  orgId?: OrgId,
+): Promise<RSRecord[]> {
   try {
     const searchTerm = `%${query}%`;
-    const where = buildRepairSearchWhere(1, options?.tab);
+    const where = buildRepairSearchWhere(1, options?.tab, options?.needsLabel);
     if (orgId) {
       const result = await tenantQuery(
         orgId,
@@ -730,6 +753,46 @@ export async function searchRepairs(query: string, options?: { tab?: RepairTab }
   } catch (error) {
     console.error('Error searching repairs:', error);
     throw new Error('Failed to search repairs');
+  }
+}
+
+export type MarkLabelPrintedResult =
+  | { ok: true; repair: RSRecord; alreadyPrinted: boolean }
+  | { ok: false; status: 404; error: string };
+
+/**
+ * Stamp `label_printed_at` on a repair the first time its 2x1 REP-{id} label
+ * is printed (POST /api/repair-service/[id]/label-printed). Stamps ONLY when
+ * NULL — a reprint must not move the first-print instant, which is the fact
+ * the "Needs label" queue is ordered around. Org-scoped; 404 on cross-tenant
+ * or unknown id.
+ */
+export async function markRepairLabelPrinted(id: number, orgId?: OrgId): Promise<MarkLabelPrintedResult> {
+  try {
+    const update = orgId
+      ? await tenantQuery(
+          orgId,
+          `UPDATE repair_service
+              SET label_printed_at = now(), updated_at = now()
+            WHERE id = $1 AND organization_id = $2 AND label_printed_at IS NULL
+            RETURNING id`,
+          [id, orgId],
+        )
+      : await pool.query(
+          `UPDATE repair_service
+              SET label_printed_at = now(), updated_at = now()
+            WHERE id = $1 AND label_printed_at IS NULL
+            RETURNING id`,
+          [id],
+        );
+    const repair = await getRepairById(id, orgId);
+    if (!repair) {
+      return { ok: false, status: 404, error: `Repair ${id} not found` };
+    }
+    return { ok: true, repair, alreadyPrinted: (update.rowCount ?? 0) === 0 };
+  } catch (error) {
+    console.error('Error marking repair label printed:', error);
+    throw new Error('Failed to mark repair label printed');
   }
 }
 

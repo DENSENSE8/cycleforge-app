@@ -16,7 +16,7 @@
 
 import { useEffect } from 'react';
 import { emitAppEvent, useEventBridge } from '@/hooks';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingPackageSyncArgs {
   row: ReceivingLineRow;

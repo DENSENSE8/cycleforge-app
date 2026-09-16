@@ -210,7 +210,7 @@ export async function shopifyValidate(orgId: OrgId): Promise<HealthResult> {
 /** Connection-driven order ingestion. Incremental on the updated_at watermark. */
 export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
   const cursorKey = `shopify:orders:${orgId}`;
-  const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
+  const since = (await getSyncCursor(cursorKey, orgId)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   // Shopify search syntax: `updated_at:>=<ISO8601>`.
   const q = `updated_at:>=${since.toISOString()}`;
 
@@ -244,7 +244,7 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
 
     // Advance the watermark only on a clean run so a failure re-pulls.
     if (maxUpdatedAt > since.getTime()) {
-      await updateSyncCursor(cursorKey, new Date(maxUpdatedAt));
+      await updateSyncCursor(cursorKey, new Date(maxUpdatedAt), orgId);
     }
 
     return {

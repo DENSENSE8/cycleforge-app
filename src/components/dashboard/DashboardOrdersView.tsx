@@ -30,6 +30,8 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
+import { OrderSyncRunView } from '@/features/orders/sync/OrderSyncRunView';
+import { useOrdersSyncRunOptional } from '@/features/orders/sync/orders-sync-run-context';
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
@@ -86,7 +88,29 @@ export function DashboardOrdersView({
     }
   }, [searchParams, rows.length, setViewShellOpen]);
 
-  const body = showCsvStaging ? (
+  /**
+   * A sync TAKES THE STAGE (operator 2026-09-15). Same seam the CSV staging
+   * host has always used — the desk has one body, and a run is a body, not a
+   * floating overlay that leaves a half-stale table visible underneath.
+   *
+   * Null outside the desk (station embeds, modal-hosted tables), which is why
+   * the context read is the optional one.
+   */
+  const syncRun = useOrdersSyncRunOptional();
+  const showSyncRun = Boolean(syncRun?.run);
+
+  const body = showSyncRun && syncRun?.run ? (
+    <OrderSyncRunView
+      run={syncRun.run}
+      elapsedMs={syncRun.elapsedMs}
+      isRunning={syncRun.isRunning}
+      onCancel={syncRun.cancel}
+      onDismiss={syncRun.dismiss}
+      outcome={syncRun.outcome}
+      detail={syncRun.detail}
+      demo={syncRun.demo}
+    />
+  ) : showCsvStaging ? (
     <CsvImportStagingHost />
   ) : (
     <UnshippedTable
@@ -97,7 +121,7 @@ export function DashboardOrdersView({
     />
   );
 
-  const overlays = showCsvStaging ? null : selectionEnabled ? (
+  const overlays = showSyncRun || showCsvStaging ? null : selectionEnabled ? (
     <>
       <OrdersViewControlsRail />
       {selectionOverlays}

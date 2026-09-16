@@ -9,7 +9,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { copyToClipboard } from '@/utils/_dom';
 import { formatDateTimePST } from '@/utils/date';
 import { toast } from '@/lib/toast';
-import { type ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { type ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { type ReceivingDetailsLog } from './receiving-details-log';
 import { dispatchReceivingWorkspaceOpen } from '@/utils/events';
 import { ReceivingProgressTab } from './receiving/ReceivingProgressTab';

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sidebar for /admin?section=compatibility — filter the global compatibility
+ * Sidebar for /sourcing?mode=compatibility — filter the global compatibility
  * edge table by model.
  *
  * URL-state contract:

@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense, type ReactNode } from 'react';
+import { Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
+import { useMobileActionSlotNode } from './MobileActionSlot';
 import { MobileScanCta } from './mobile-scan-cta';
 
 /**
@@ -61,8 +62,14 @@ function MobilePageTitle() {
  * The **SCAN CTA owns the top-right corner** ({@link MobileScanCta}), mounted
  * HERE by the host on every mobile page — starting a scan is the act a warehouse
  * phone exists for, so it gets one fixed corner instead of living three taps
- * deep in the drawer. Pages pass their own controls via `actions`; a page must
- * never mount a second scan CTA of its own.
+ * deep in the drawer. A page contributes its own single action through
+ * {@link MobileActionSlotRegistrar}, which paints immediately LEFT of scan; a
+ * page must never mount a second scan CTA of its own.
+ *
+ * That slot replaced an `actions` **prop** (removed 2026-09-15). The prop was
+ * unreachable for its whole life: the only mount site is the host shell, which
+ * renders the page as `children` and cannot know its verbs, so no caller could
+ * ever pass it. See `MobileActionSlot.tsx` for why context is the honest edge.
  *
  * There is no unread dot on the menu button any more. It was added when the
  * inbox moved into the drawer, so the signal would survive the move; the inbox
@@ -77,15 +84,12 @@ function MobilePageTitle() {
 export const MobileTopBar = ({
   onBack,
   onMenu,
-  actions,
   overlay = false,
 }: {
   /** When provided, renders a back button on the far left. */
   onBack?: () => void;
   /** When provided, renders the sidebar-drawer toggle on the far left. */
   onMenu?: () => void;
-  /** Page-specific controls, placed left of the scan CTA. */
-  actions?: ReactNode;
   /**
    * Float the bar OVER the page instead of stacking above it.
    *
@@ -97,6 +101,7 @@ export const MobileTopBar = ({
    */
   overlay?: boolean;
 }) => {
+  const pageAction = useMobileActionSlotNode();
   return (
     <header
       className={cn(
@@ -128,7 +133,7 @@ export const MobileTopBar = ({
             radius="surface"
             icon={<Menu className="h-4 w-4" />}
             className={cn(
-              'ds-allow-control-size flex items-center justify-center',
+              'ds-allow-control-size flex items-center justify-center md:hidden',
               BAR_CONTROL,
               'border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
             )}
@@ -157,7 +162,7 @@ export const MobileTopBar = ({
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {actions}
+        {pageAction}
         <MobileScanCta />
       </div>
     </header>

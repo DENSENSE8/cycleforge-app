@@ -19,7 +19,7 @@ import { openInUnboxHref } from "@/lib/receiving/surface-path";
 import { useQueryClient } from "@tanstack/react-query";
 import { PoItemsSection } from "../PoItemsSection";
 import { ActiveLineConditionSerial } from "./ActiveLineConditionSerial";
-import type { ReceivingLineRow } from "@/components/station/receiving-line-row";
+import type { ReceivingLineRow } from "@/lib/receiving/receiving-line-row";
 import type { UnboxLineController } from "./unbox-line-controller";
 import {
   dispatchLineUpdated,

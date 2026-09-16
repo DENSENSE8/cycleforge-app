@@ -185,12 +185,25 @@ export interface OAuthStatePayload {
    * Null on every ordinary sign-in state.
    */
   linkAccountId?: string | null;
+  /**
+   * Sign-in door the round trip started from (`/signin` or `/m/signin`).
+   * Shared-account orgs redirect back here for the staff picker.
+   */
+  signinPath?: string | null;
 }
 
 export function newOAuthState(
   provider: PlatformProvider,
-  opts: { slug?: string | null; next?: string | null; verifier: string; persistent?: boolean; linkAccountId?: string | null },
+  opts: {
+    slug?: string | null;
+    next?: string | null;
+    verifier: string;
+    persistent?: boolean;
+    linkAccountId?: string | null;
+    signinPath?: string | null;
+  },
 ): OAuthStatePayload {
+  const signinPath = opts.signinPath === '/m/signin' ? '/m/signin' : opts.signinPath === '/signin' ? '/signin' : null;
   return {
     provider,
     state: randomBytes(24).toString('base64url'),
@@ -200,6 +213,7 @@ export function newOAuthState(
     next: opts.next ?? null,
     persistent: opts.persistent === true,
     linkAccountId: opts.linkAccountId ?? null,
+    signinPath,
   };
 }
 
@@ -216,7 +230,8 @@ export function decodeOAuthState(raw: string | undefined | null): OAuthStatePayl
     }
     // Same pre-existing-cookie tolerance as `persistent`: absent decodes as
     // null, never as a stale account id.
-    return { ...obj, persistent: obj.persistent === true, linkAccountId: obj.linkAccountId ?? null };
+    const signinPath = obj.signinPath === '/m/signin' ? '/m/signin' : obj.signinPath === '/signin' ? '/signin' : null;
+    return { ...obj, persistent: obj.persistent === true, linkAccountId: obj.linkAccountId ?? null, signinPath };
   } catch {
     return null;
   }

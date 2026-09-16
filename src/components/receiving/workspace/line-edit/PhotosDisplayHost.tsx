@@ -24,7 +24,7 @@ import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
 import { PhotosActionsArmedList } from './PhotosActionsArmedList';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { UnboxPhotoAction } from './unbox-side-tabs';
 

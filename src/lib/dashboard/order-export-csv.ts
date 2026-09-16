@@ -44,14 +44,11 @@ export interface ExportableOrderRow {
    *
    * Field aliases match the ones `orders-resolve.ts` reads for the status
    * columns, so the CSV and the on-screen step cells answer from the same
-   * facts. The pick step still rides the legacy tester/test columns; that is
-   * the feed's shape, not a second vocabulary (see the `orders.picked` note in
-   * the field catalog).
+   * facts. The pick step reads the feed's pick projection (`picked_*`) since
+   * 2026-09-14; the tester/test columns below belong to the TEST lane only.
    */
-  tested_by_name?: string | null;
-  tester_name?: string | null;
-  test_date_time?: string | null;
-  test_activity_at?: string | null;
+  picked_by_name?: string | null;
+  picked_at?: string | null;
   pack_activity_at?: string | null;
   shipped_out_by_name?: string | null;
   ship_confirmed_at?: string | null;
@@ -156,8 +153,8 @@ export function buildOrderExportRow(row: ExportableOrderRow): string[] {
     status,
     // Stamps go through the export formatter the Packed sheet already uses —
     // `MM/DD/YY HH:mm`, not a raw ISO instant a spreadsheet reads as text.
-    firstText(row.tested_by_name, row.tester_name),
-    formatExportDateTime24h(firstText(row.test_date_time, row.test_activity_at) || null),
+    firstText(row.picked_by_name),
+    formatExportDateTime24h(firstText(row.picked_at) || null),
     firstText(row.packed_by_name, row.packer_name),
     formatExportDateTime24h(packedAt || null),
     firstText(row.shipped_out_by_name),

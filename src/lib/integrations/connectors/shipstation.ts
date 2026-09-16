@@ -98,7 +98,7 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
   const cursorKey = `shipstation:orders:${orgId}`;
   let imported = 0;
   let updated = 0;
-  const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
+  const since = (await getSyncCursor(cursorKey, orgId)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   let maxModified = since.getTime();
   const lines: CanonicalOrderLine[] = [];
 
@@ -129,7 +129,7 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
 
     // Advance the watermark only on a clean run so a failure re-pulls.
     if (maxModified > since.getTime()) {
-      await updateSyncCursor(cursorKey, new Date(maxModified));
+      await updateSyncCursor(cursorKey, new Date(maxModified), orgId);
     }
   } catch (e) {
     return { ok: false, error: `shipstation: ${e instanceof Error ? e.message : String(e)}` };

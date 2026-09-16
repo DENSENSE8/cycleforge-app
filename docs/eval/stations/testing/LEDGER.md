@@ -33,13 +33,13 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
+_Skipped verify (--skip-verify). Run `pnpm run eval:station testing` for full gate._
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tech/TestingLineWorkspace.tsx` — snapshot `docs/eval/stations/testing/snapshots/2026-09-01-critique-TestingLineWorkspace.txt`
+- `src/components/tech/TestingLineWorkspace.tsx` — snapshot `docs/eval/stations/testing/snapshots/2026-09-16-critique-TestingLineWorkspace.txt`
 ```
 {
   "file": "src/components/tech/TestingLineWorkspace.tsx",
@@ -53,7 +53,7 @@ _Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **TestingLineWorkspace** — 2 files, 2 symbols (`docs/eval/stations/testing/snapshots/2026-09-01-impact-TestingLineWorkspace.json`)
+- **TestingLineWorkspace** — 2 files, 2 symbols (`docs/eval/stations/testing/snapshots/2026-09-16-impact-TestingLineWorkspace.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -65,5 +65,5 @@ _Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T08:13:49.029Z · station `testing`_
+_Updated 2026-09-16T15:43:09.511Z · station `testing`_
 <!-- /eval-ledger:auto:last-run -->

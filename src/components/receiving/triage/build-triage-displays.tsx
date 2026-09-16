@@ -28,7 +28,7 @@ import { CartonMatchHub } from '../workspace/line-edit/CartonMatchHub';
 import { ArrivalLocationsLeaf } from './ArrivalLocationsLeaf';
 import type { TriageStagingController } from './useTriageStaging';
 import type { ClaimModalMode } from '../workspace/claim/claim-types';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 const TicketDisplayHost = dynamic(
   () =>

@@ -12,6 +12,7 @@ export const PHOTO_ENTITY_TYPES = [
   'BIN_ADJUSTMENT',
   'SHARE_PACK',
   'ZENDESK_TICKET',
+  'REPAIR_SERVICE',
   'STAFF',
 ] as const;
 

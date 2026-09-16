@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
 import withBundleAnalyzerInit from "@next/bundle-analyzer";
+import { networkInterfaces } from "node:os";
 
 // ANALYZE=true pnpm build → .next/analyze/client.html (chunk treemap).
 const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === "true" });
@@ -139,10 +140,22 @@ const nextConfig: NextConfig = {
             { protocol: 'https', hostname: 'storage.googleapis.com', pathname: '/usav-photos-dev/**' },
         ],
     },
-    // Allow cross-device dev access through Cloudflare quick tunnels
-    // (pnpm dev:tunnel) and LAN IPs. Without this, Next 15+ blocks HMR and
-    // dev asset requests from origins other than localhost.
-    allowedDevOrigins: ['*.trycloudflare.com', '*.ngrok-free.app', '192.168.*', '*.michaelgarisek.com', '127.0.0.1', 'localhost'],
+    /* Cross-device dev access. `**` is load-bearing: a single `*` matches
+       exactly ONE label, so `*.michaelgarisek.com` never matched this lane's
+       own `prod.dev.michaelgarisek.com` and no IP glob can work at all
+       (`matchWildcardDomain`, next/dist/server/app-render/csrf-protection).
+       Local IPs are therefore enumerated, not pinned. Same block as main's
+       next.config.ts — see docs/dev/dev-server-runbook.md. */
+    allowedDevOrigins: [
+        'localhost',
+        ...Object.values(networkInterfaces())
+            .flat()
+            .flatMap((iface) => (iface && iface.family === 'IPv4' ? [iface.address] : [])),
+        '**.ts.net',
+        '**.michaelgarisek.com',
+        '**.trycloudflare.com',
+        '**.ngrok-free.app',
+    ],
     experimental: {
         webpackMemoryOptimizations: true,
         // Cap static/page-data workers. Vercel Enhanced is 8 cores / 16 GB;

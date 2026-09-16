@@ -11,6 +11,7 @@ import type {
   CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import type { KioskSlotEventTableRow } from '@/lib/kiosk/kiosk-slot-event-row';
+import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
 function str(value: string | null | undefined): string | null {
   const s = String(value ?? '').trim();
@@ -38,7 +39,12 @@ export function kioskSlotEventCompoundView(row: KioskSlotEventTableRow): Compoun
     thumbUrl: null,
     title: device,
     note: slot ? `Slot ${slot}` : null,
-    orderId: row.kioskDeviceId ? String(row.kioskDeviceId) : null,
+    // The Id track carries THIS family's handle, not an order: `identityFace`
+    // paints it plainly and copyably, without the marketplace brand dot and
+    // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
+    // column is Id product-wide).
+    identityFace: compoundIdentityFace(row.kioskDeviceId ? String(row.kioskDeviceId) : null, 'Device id'),
+    orderId: null,
     tracking: null,
     platformValue: null,
     carrier: null,

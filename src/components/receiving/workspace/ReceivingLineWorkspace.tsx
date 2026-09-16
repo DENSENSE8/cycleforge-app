@@ -5,7 +5,7 @@ import { LineEditPanel } from './LineEditPanel';
 import { TriagePanel } from '../triage/TriagePanel';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** Which de-coupled right-pane panel to render. */
 type ReceivingWorkspaceVariant = 'unbox' | 'triage';

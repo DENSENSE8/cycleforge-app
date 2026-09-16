@@ -5,7 +5,7 @@
  */
 
 import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export interface IncomingDetailsTarget {
   poId: string | null;

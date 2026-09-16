@@ -20,7 +20,7 @@ import { chipText, monoValue } from '@/design-system/tokens/typography/presets';
 import type { OptimisticSerialFlag } from '@/lib/receiving/optimistic-serials';
 import { useChipTooltip, useCopyChip } from '@/hooks';
 import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import { skuScanPrefixBeforeColon, getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import {
   EMPTY_CHIP_DISPLAY,
@@ -333,17 +333,22 @@ export function CopyChip({
    * One pixel over, so `truncate` fired and `0106-P-5` painted as `0106-P…` —
    * a last-8 display silently showing seven.
    *
-   * `8.25ch` covers the tracking with room to spare and keeps the fixed
-   * footprint that makes last-8 columns align. Truncation is off for these
-   * faces: with a hard eight-character cap upstream there is nothing to trim,
-   * and leaving it on only re-arms the same clipping if the metrics shift.
+   * `8.25ch` covers the tracking with room to spare and keeps the footprint
+   * that makes last-8 columns align. Truncation is off for these faces:
+   * ellipsising an identifier hands the reader a WRONG id, and leaving
+   * `truncate` on only re-arms the clipping above if the metrics shift.
+   *
+   * It is a FLOOR (`min-w`), not a cap, since `abbreviateIdentifier` cuts on a
+   * delimiter: `PO-123456789012` abbreviates to a twelve-character segment,
+   * which a hard `w-[8.25ch]` would have overflowed out of its own face. Short
+   * ids still hold the column; a long one grows instead of lying.
    */
   const isLastEight = displayWidth === 'last8';
   const isPriceFace = displayWidth === 'price';
   const displayOverflowClass =
     isLastEight || isPriceFace || !truncateDisplay ? 'whitespace-nowrap' : 'truncate';
   const displayWidthClass = isLastEight
-    ? 'w-[8.25ch] shrink-0'
+    ? 'min-w-[8.25ch] shrink-0 tabular-nums'
     : isPriceFace
       ? 'w-[6ch] shrink-0 tabular-nums'
       : '';

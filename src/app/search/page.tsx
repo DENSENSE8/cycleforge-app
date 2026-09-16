@@ -3,7 +3,8 @@
 /**
  * `/search` — cross-entity FIND workbench. Consumes {@link SearchFindSurface}.
  *
- * Callers: desktop shell. Query: `?q=` / `?sel=`. Phone SoT is `/m/search`.
+ * Callers: desktop shell. Query: `?q=` / `?sel=`. Phone SoT is `/m/search`,
+ * which mounts the same body at `density="compact"`.
  * User: searching for orders I must see who packed/picked/scanned out and identifier routing.
  */
 
@@ -19,7 +20,7 @@ export default function SearchPage() {
       <SurfaceParamHygiene />
       <Suspense fallback={<UniversalLoader isLoading label="Loading search" className="h-full" />}>
         <SearchPrimaryPaintShell>
-          <SearchFindSurface queryField={false} />
+          <SearchFindSurface density="comfortable" />
         </SearchPrimaryPaintShell>
       </Suspense>
     </div>

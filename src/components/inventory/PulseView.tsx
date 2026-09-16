@@ -8,11 +8,17 @@
  * the card painted is a bound field in `INVENTORY_EVENTS_FIELD_CATALOG`. This
  * file is the FEED; the display is {@link useInventoryEventsSpreadsheet} →
  * DataTable. `PulseWorkspace` points the same family at a different feed.
+ *
+ * Refresh is the desk header CTA (`DeskHeaderAction`), same altitude as every
+ * other page verb — not a second title row under Inventory.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import {
+  DeskActionSlotRegistrar,
+  DeskHeaderAction,
+} from '@/design-system/components/DeskActionSlot';
 import { DataTable } from '@/components/tables/DataTable';
 import { useInventoryEventsSpreadsheet } from './events-grid/useInventoryEventsSpreadsheet';
 import type { PulseEventRow, PulseEventsResponse } from './types';
@@ -66,26 +72,24 @@ export function PulseView() {
     emptyMessage: error ?? 'No inventory events yet.',
   });
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="flex shrink-0 items-center justify-between px-4 py-2 sm:px-6">
-        <div>
-          <h2 className="text-sm font-semibold text-text-default">Recent activity</h2>
-          <p className="text-xs text-text-soft">
-            Last {events?.length ?? 0} inventory events · auto-refresh 30s
-          </p>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<RefreshCw />}
-          loading={fetching}
-          onClick={() => void fetchEvents()}
-        >
-          Refresh
-        </Button>
-      </header>
+  const refreshAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        variant="secondary"
+        size="sm"
+        icon={<RefreshCw />}
+        loading={fetching}
+        onClick={() => void fetchEvents()}
+      >
+        Refresh
+      </DeskHeaderAction>
+    ),
+    [fetchEvents, fetching],
+  );
 
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <DeskActionSlotRegistrar role="primary">{refreshAction}</DeskActionSlotRegistrar>
       <DataTable {...sheet} />
     </div>
   );

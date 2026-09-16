@@ -1,6 +1,6 @@
 /**
- * Server paint seed for the mobile receiving feed (`/m/home`, `/m/receive`,
- * `/m/triage`, `/m/unbox`).
+ * Server paint seed for the mobile receiving feed (`/m/home`, `/m/receiving`,
+ * `/m/triage`).
  *
  * The feed is the phone's whole screen and its largest contentful element. It
  * used to arrive strictly after hydration: the query is gated on
@@ -23,7 +23,7 @@
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   MOBILE_FEED_SEED_LIMIT,
   mobileFeedParams,

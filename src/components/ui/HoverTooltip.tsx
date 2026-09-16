@@ -18,7 +18,9 @@ import {
   readTrustedTriggerRect,
   type PortalTooltipPlacement,
 } from '@/lib/ui/portal-anchor';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { motionDurations } from '@/design-system/foundations/motion';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { useCursorLabel } from '@/design-system/motion/use-cursor-label';
 import {
   useDeferredHoverEngine,
   useDeferredHoverMount,
@@ -65,6 +67,7 @@ export function HoverTooltip({
   placement = 'auto',
   openDelayMs = 0,
   disabled = false,
+  chrome = 'inverse',
 }: {
   label: ReactNode;
   children: ReactNode;
@@ -97,21 +100,37 @@ export function HoverTooltip({
    * wrapper in/out remounts the child and can drop an in-flight click.
    */
   disabled?: boolean;
+  /**
+   * `inverse` — dark help chip. `plain` — no outer chrome (product cards);
+   * enter/exit fade+zoom from the trigger (`transform-origin` on the icon).
+   */
+  chrome?: 'inverse' | 'plain';
 }) {
   const { mounted, triggerRef, bridge, activate, release } = useDeferredHoverMount<
     HTMLElement,
     HoverTooltipHandle
   >();
+  // Desk: the cursor follower carries it. Anywhere else: the anchored bubble.
+  // `plain` chrome keeps its anchored fade+zoom presentation — the follower
+  // only speaks the inverse help chip.
+  const cursor = useCursorLabel({ disabled });
 
   const onEnter = () => {
     if (disabled) return;
+    if (chrome === 'inverse' && cursor.enter(label, openDelayMs)) return;
     activate('hover', (h) => h.scheduleShow());
   };
   const onFocusTrigger = () => {
     if (disabled) return;
+    // Click-focus while the cursor already carries the label: one copy only.
+    // Keyboard focus with no hover still gets the bubble.
+    if (cursor.riding()) return;
     activate('focus', (h) => h.show());
   };
-  const dismiss = () => release((h) => h.hide());
+  const dismiss = () => {
+    cursor.leave();
+    release((h) => h.hide());
+  };
 
   const bubble = mounted ? (
     <HoverTooltipBubble
@@ -121,6 +140,7 @@ export function HoverTooltip({
       placement={placement}
       openDelayMs={openDelayMs}
       disabled={disabled}
+      chrome={chrome}
     />
   ) : null;
 
@@ -198,6 +218,7 @@ function HoverTooltipBubble({
   placement,
   openDelayMs,
   disabled,
+  chrome,
 }: {
   bridge: DeferredHoverBridge<HoverTooltipHandle>;
   triggerRef: MutableRefObject<HTMLElement | null>;
@@ -205,15 +226,23 @@ function HoverTooltipBubble({
   placement: PortalTooltipPlacement;
   openDelayMs: number;
   disabled: boolean;
+  chrome: 'inverse' | 'plain';
 }) {
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
   const openTimerRef = useRef<number | null>(null);
+  const leaveTimerRef = useRef<number | null>(null);
   const placementRef = useRef(placement);
   placementRef.current = placement;
   // Trigger rect captured on open; the bubble is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{
+    top: number;
+    left: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+  const [leaving, setLeaving] = useState(false);
 
   const clearOpenTimer = useCallback(() => {
     if (openTimerRef.current != null) {
@@ -222,8 +251,17 @@ function HoverTooltipBubble({
     }
   }, []);
 
+  const clearLeaveTimer = useCallback(() => {
+    if (leaveTimerRef.current != null) {
+      window.clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+  }, []);
+
   const show = useCallback(() => {
     if (disabled) return;
+    clearLeaveTimer();
+    setLeaving(false);
     // Ignore hidden / detached / off-viewport rects — otherwise the portal can
     // clamp to the viewport's top-left corner and look like a stray label
     // (e.g. SKU chip).
@@ -232,13 +270,39 @@ function HoverTooltipBubble({
       setAnchor(r);
       setPos(null);
     }
-  }, [disabled, triggerRef]);
+  }, [clearLeaveTimer, disabled, triggerRef]);
+
+  const posRef = useRef(pos);
+  posRef.current = pos;
+  const leavingRef = useRef(leaving);
+  leavingRef.current = leaving;
+  const chromeRef = useRef(chrome);
+  chromeRef.current = chrome;
+
+  const dismissNow = useCallback(() => {
+    clearOpenTimer();
+    clearLeaveTimer();
+    setLeaving(false);
+    setAnchor(null);
+    setPos(null);
+  }, [clearLeaveTimer, clearOpenTimer]);
 
   const hide = useCallback(() => {
     clearOpenTimer();
-    setAnchor(null);
-    setPos(null);
-  }, [clearOpenTimer]);
+    if (chromeRef.current === 'plain' && posRef.current && !leavingRef.current) {
+      setLeaving(true);
+      clearLeaveTimer();
+      leaveTimerRef.current = window.setTimeout(() => {
+        leaveTimerRef.current = null;
+        setAnchor(null);
+        setPos(null);
+        setLeaving(false);
+      }, Number.parseInt(motionDurations.fast, 10));
+      return;
+    }
+    if (chromeRef.current === 'plain' && leavingRef.current) return;
+    dismissNow();
+  }, [clearLeaveTimer, clearOpenTimer, dismissNow]);
 
   const scheduleShow = useCallback(() => {
     if (disabled) return;
@@ -265,8 +329,8 @@ function HoverTooltipBubble({
   // Tear down immediately when a sibling surface takes the hover face — do not
   // wait for mouseleave (the pointer often stays on the still-mounted trigger).
   useEffect(() => {
-    if (disabled) hide();
-  }, [disabled, hide]);
+    if (disabled) dismissNow();
+  }, [disabled, dismissNow]);
 
   useLayoutEffect(() => {
     if (!anchor || !bubbleRef.current) return;
@@ -278,14 +342,31 @@ function HoverTooltipBubble({
     });
     // Keep hidden (pos null) when clamp rejects — never paint at ~(MARGIN,MARGIN)
     // from a bad/stale anchor.
-    setPos(next);
+    if (!next) {
+      setPos(null);
+      return;
+    }
+    const bw = Math.max(b.width, 1);
+    const bh = Math.max(b.height, 1);
+    setPos({
+      top: next.top,
+      left: next.left,
+      originX: Math.max(0, Math.min(100, ((anchor.left + anchor.width / 2 - next.left) / bw) * 100)),
+      originY: Math.max(0, Math.min(100, ((anchor.top + anchor.height / 2 - next.top) / bh) * 100)),
+    });
   }, [anchor]);
 
   // Dismiss when the trigger unmounts, the pane scrolls, or the host panel
   // tears down — otherwise the body portal stays at a fixed viewport rect and
   // "leaks" over unrelated regions (e.g. condition pills over the notes tabs
   // after a mode switch or scroll in ReceivingLineWorkspace).
-  useEffect(() => () => hide(), [hide]);
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+      clearLeaveTimer();
+    },
+    [clearLeaveTimer, clearOpenTimer],
+  );
 
   useEffect(() => {
     if (!anchor) return;
@@ -295,6 +376,46 @@ function HoverTooltipBubble({
   }, [anchor, hide]);
 
   if (!anchor || typeof document === 'undefined') return null;
+
+  const measureSpan = (
+    <span
+      ref={bubbleRef}
+      aria-hidden
+      style={{ position: 'fixed', top: -9999, left: -9999, visibility: 'hidden' }}
+      className="pointer-events-none"
+    >
+      {label}
+    </span>
+  );
+
+  if (chrome === 'plain') {
+    return createPortal(
+      <>
+        {measureSpan}
+        {pos ? (
+          <span
+            role="tooltip"
+            style={{
+              position: 'fixed',
+              top: pos.top,
+              left: pos.left,
+              transformOrigin: `${pos.originX}% ${pos.originY}%`,
+              animationDuration: motionDurations.fast,
+            }}
+            className={cn(
+              'pointer-events-none z-tooltip',
+              leaving
+                ? 'animate-out fade-out-0 zoom-out-95 fill-mode-forwards'
+                : 'animate-in fade-in-0 zoom-in-95',
+            )}
+          >
+            {label}
+          </span>
+        ) : null}
+      </>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <span
@@ -308,7 +429,10 @@ function HoverTooltipBubble({
       }}
       className={cn(
         'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
-        cornerClass('flush'),
+        // Same 8px popover rung as the cursor-follow chip — one corner for
+        // the hover hint wherever it lands (operator 2026-09-15). The ROLE
+        // ladder renders rounded-none in this theme's industrial wave.
+        DROPDOWN_SHELL_CORNER,
       )}
     >
       {label}

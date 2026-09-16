@@ -3,24 +3,21 @@ import { HomeWorkspace } from '@/features/home/HomeWorkspace';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 /**
- * Home (`/`) — the start-of-shift workbench. Two modes over `?mode=` URL state:
- * `daily` (the checklist + the day's report, and the bare-`/` landing) and
- * `today` (the My Day triage feed).
+ * Daily (`/`, was Home) — the start-of-shift checklist, single surface.
  *
- * Unparked: bare `/` mounts the workspace instead of redirecting to the
- * dashboard, and the row ships in the Overview drill. Inbox, Tasks and Plan
- * were removed on 2026-08-19 — Plan (the forge console) kept working at its own
- * `/forge` route, which is where its bookmark already pointed.
+ * The mode router is gone (2026-09-14): Today and Tasks are unmounted, and
+ * what lands on bare `/` is the per-staff daily checklist
+ * (`HomeDailyMode`). The spine row is "Daily" with the lucide ListChecks
+ * glyph.
  *
- * `Suspense` wraps the client workspace because it reads `useSearchParams` for
- * the `?mode=` state (same mount shape as the Operations page). The frame is
- * INSIDE that boundary for the same reason — `DeskPageLayout` reads the params
- * too, to resolve which tab is lit.
+ * `Suspense` wraps the client workspace because it reads `useSearchParams`
+ * (`?date=` on the checklist); the frame is INSIDE that boundary for the
+ * same reason — `DeskPageLayout` reads the params too, to resolve the page.
  *
  * The frame is the one every desk and station wears as of 2026-08-31
- * (`@/design-system/components/DeskPageChrome`): the page title top-left and
- * Daily · Today · Tasks as its tab row, drawn from this page's own
- * `SIDEBAR_PAGE_NAV` children rather than a mode rail of its own.
+ * (`@/design-system/components/DeskPageChrome`): the page title top-left and,
+ * with no `SIDEBAR_PAGE_NAV` children left, no tab row — the honest shape
+ * for a single-surface desk.
  */
 export default function Home() {
   return (

@@ -68,7 +68,7 @@ import type {
   PoContext,
   ReceivingMode,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { PhotoRequestPublisher } from '@/components/sidebar/receiving/usePhotoRequestPublisher';

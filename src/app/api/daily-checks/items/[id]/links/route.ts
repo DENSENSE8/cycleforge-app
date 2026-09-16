@@ -11,11 +11,37 @@ import { DAILY_CHECK_LINK_ENTITY_TYPES } from '@/lib/daily-checks/types';
 
 export const runtime = 'nodejs';
 
-const CreateBody = z.object({
-  entityType: z.enum(DAILY_CHECK_LINK_ENTITY_TYPES),
-  entityId: z.number().int().positive(),
-  label: z.string().trim().min(1).max(200).nullable().optional(),
-});
+const CreateBody = z
+  .object({
+    entityType: z.enum(DAILY_CHECK_LINK_ENTITY_TYPES),
+    /** Absent/null on TRACKING — the tracking string rides `label`. */
+    entityId: z.number().int().positive().nullish(),
+    label: z.string().trim().min(1).max(200).nullable().optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (body.entityType === 'TRACKING') {
+      if (body.entityId != null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['entityId'],
+          message: 'a tracking link carries its value in label, not entityId',
+        });
+      }
+      if (!body.label) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['label'],
+          message: 'the tracking number is required on a tracking link',
+        });
+      }
+    } else if (body.entityId == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['entityId'],
+        message: 'entityId is required for ticket and work-order links',
+      });
+    }
+  });
 
 /** `/api/daily-checks/items/:id/links` — withAuth does not forward route params. */
 function itemIdFromPath(pathname: string): number | null {
@@ -60,7 +86,11 @@ export const POST = withAuth(
     }
     const parsed = CreateBody.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: 'entityType and entityId are required' }, { status: 400 });
+      const first = parsed.error.issues[0];
+      return NextResponse.json(
+        { error: first?.message ?? 'entityType and entityId are required' },
+        { status: 400 },
+      );
     }
     if (!(await dailyCheckItemExists({ orgId: ctx.organizationId, itemId }))) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
@@ -70,7 +100,7 @@ export const POST = withAuth(
         orgId: ctx.organizationId,
         itemId,
         entityType: parsed.data.entityType,
-        entityId: parsed.data.entityId,
+        entityId: parsed.data.entityId ?? null,
         label: parsed.data.label ?? null,
         createdByStaffId: ctx.staffId,
       });

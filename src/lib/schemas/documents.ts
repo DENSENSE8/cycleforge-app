@@ -16,6 +16,15 @@ export const OutboundDocumentAttachBody = z
   })
   .strict();
 
+/** PATCH /api/documents/[id] — atomically point an existing outbound document at new bytes. */
+export const OutboundDocumentReplaceBody = z
+  .object({
+    url: z.string().trim().min(1, 'url is required'),
+    filename: z.string().trim().nullable().optional(),
+    mimeType: z.string().trim().nullable().optional(),
+  })
+  .strict();
+
 /** POST /api/orders/[id]/documents/fetch — marketplace fetch trigger (Phase 4 stub). */
 export const OutboundDocumentFetchBody = z
   .object({

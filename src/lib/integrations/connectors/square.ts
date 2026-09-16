@@ -111,7 +111,7 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
     return { ok: false, error: 'square: no active locations (is the connection live?)' };
   }
 
-  const since = (await getSyncCursor(cursorKey)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
+  const since = (await getSyncCursor(cursorKey, orgId)) ?? new Date(Date.now() - FIRST_RUN_LOOKBACK_MS);
   let maxUpdatedAt = since.getTime();
   let pageCursor: string | undefined;
   const lines: CanonicalOrderLine[] = [];
@@ -163,7 +163,7 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
 
     // Advance the watermark only on a clean run so a failure re-pulls.
     if (maxUpdatedAt > since.getTime()) {
-      await updateSyncCursor(cursorKey, new Date(maxUpdatedAt));
+      await updateSyncCursor(cursorKey, new Date(maxUpdatedAt), orgId);
     }
 
     return {

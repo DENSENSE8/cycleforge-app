@@ -34,7 +34,10 @@ import {
   WhoRanLeaf,
   WorkOrderLeaf,
 } from './DailyCheckInspectorLeaves';
-import { useDailyCheckItemLinks, useDailyCheckLinkActions } from './useDailyCheckItemLinks';
+import {
+  useDailyCheckLinkActions,
+  useDailyCheckLinks,
+} from '@/lib/daily-checks/use-daily-check-links';
 
 const RAIL_ID = 'detail:daily-check';
 
@@ -51,7 +54,7 @@ function InspectorBody({
   onRetire?: (itemId: number) => void;
   retirePending?: boolean;
 }) {
-  const { data: links, isLoading: linksLoading } = useDailyCheckItemLinks(item.id);
+  const { data: links, isLoading: linksLoading } = useDailyCheckLinks(item.id);
   const { attach, detach } = useDailyCheckLinkActions(item.id);
 
   const ticketLink = links?.find((link) => link.entityType === TICKET_TYPE);
@@ -127,7 +130,7 @@ function InspectorBody({
                     icon={<MoreVertical className="h-3.5 w-3.5" />}
                     ariaLabel="More actions"
                     title="More actions"
-                    disabled={retirePending}
+                    disabled={retirePending === true}
                     data-testid="daily-check-inspector-more"
                   />
                 </span>
@@ -135,7 +138,7 @@ function InspectorBody({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   tone="danger"
-                  disabled={retirePending}
+                  disabled={retirePending === true}
                   onSelect={() => {
                     onRetire(item.id);
                     onClose();

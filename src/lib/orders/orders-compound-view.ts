@@ -266,14 +266,47 @@ export function ordersOrderedAt(
 }
 
 /**
- * ORDER-LEVEL rail — urgent only. Exception and out-of-stock are product
- * facts and paint on {@link ordersItemStatus}.
+ * The row's leading rail — TRIAGE HEAT, in precedence order.
+ *
+ * Urgent is the yellow bob (an operator promise about time). A shortage or an
+ * exception is the same bob in RED: operator 2026-09-15, "the out of stock
+ * alert component also carries the same flashing opacity and edge mark pulse in
+ * red, similar to urgent". Before that the rail was urgent-only, so the row
+ * that cannot ship at all was the quietest row on the desk.
+ *
+ * Precedence matches {@link ordersItemStatus} (exception over shortage) so the
+ * rail, the resting gutter glyph and the triangle beside the title are always
+ * talking about the same fact. One row, one mark.
  */
 export function ordersEdgeMark(
   record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception'>,
 ): CompoundRowView['edgeMark'] {
   if (record.is_urgent) {
-    return { label: 'Urgent', barClass: 'bg-yellow-400', pulse: true, tickClass: 'bg-yellow-100' };
+    return {
+      label: 'Urgent',
+      kind: 'urgent',
+      barClass: 'bg-yellow-400',
+      pulse: true,
+      tickClass: 'bg-yellow-100',
+    };
+  }
+  if (record.has_exception) {
+    return {
+      label: 'Exception',
+      kind: 'attention',
+      barClass: 'bg-rose-500',
+      pulse: true,
+      tickClass: 'bg-rose-100',
+    };
+  }
+  if (record.is_out_of_stock) {
+    return {
+      label: 'Out of stock',
+      kind: 'attention',
+      barClass: 'bg-rose-500',
+      pulse: true,
+      tickClass: 'bg-rose-100',
+    };
   }
   return null;
 }
@@ -411,6 +444,7 @@ export function ordersCompoundView(
     tracking_number?: string | null;
     account_source?: string | null;
     carrier?: string | null;
+    recent_import_label?: string | null;
   };
   const tracking = String(row.shipping_tracking_number || row.tracking_number || '').trim();
   const opNote = firstNote([record.notes]);
@@ -440,6 +474,8 @@ export function ordersCompoundView(
     return base;
   })();
 
+  const recentImportLabel = String(row.recent_import_label || '').trim() || null;
+  const edgeMark = ordersEdgeMark(record);
   return {
     id: String(record.id),
     thumbUrl: String(record.catalog_image_url || '').trim() || null,
@@ -450,7 +486,14 @@ export function ordersCompoundView(
     note: secondary,
     flagMark: parts.flagMark ?? null,
     itemStatus: ordersItemStatus(record),
-    edgeMark: ordersEdgeMark(record),
+    edgeMark,
+    importMark: recentImportLabel
+      ? {
+          label: recentImportLabel,
+          barClass: 'bg-[var(--ds-color-surface-accent)]',
+          tickClass: 'bg-[var(--ds-color-text-accent)]',
+        }
+      : null,
     orderId: String(record.order_id || '').trim() || null,
     tracking: tracking || null,
     trackings: (() => {

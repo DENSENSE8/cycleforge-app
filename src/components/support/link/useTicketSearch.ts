@@ -64,6 +64,19 @@ interface Params {
    * is why it lives here rather than being re-implemented per surface.
    */
   buildUrl: (query: string) => string | null;
+  /**
+   * The fetch used for the candidates call. Defaults to the global — a staff
+   * surface rides its session cookie and needs nothing else.
+   *
+   * The KIOSK does: a device principal's `cf_kiosk` cookie can be stale after
+   * another surface re-bound the row, and production has no server-side
+   * re-bind, so every device-authed client call goes through
+   * `kioskFetchHealed` (`src/lib/kiosk/kiosk-self-heal.ts`). That is a
+   * TRANSPORT difference, not a second search: the debounce, the abort, the
+   * error mapping and the stale-selection drop below are the same rules, which
+   * is why this is one injected function rather than a forked hook.
+   */
+  fetcher?: (url: string, init: RequestInit) => Promise<Response>;
 }
 
 /**
@@ -80,6 +93,7 @@ export function useTicketSearch({
   enabled,
   buildUrl,
   initialQuery = null,
+  fetcher,
 }: Params): UseTicketSearch {
   const [ticketQuery, setTicketQuery] = useState('');
   const [ticketResults, setTicketResults] = useState<TicketCandidate[]>([]);
@@ -123,13 +137,25 @@ export function useTicketSearch({
   // derived from props the caller already re-renders on.
   const url = enabled && open ? buildUrl(ticketQuery.trim()) : null;
 
+  /*
+   * Held in a ref for the same reason `buildUrl` is not an effect dep: callers
+   * pass an inline closure, so its identity changes every parent render and
+   * naming it as a dep would re-fire the fetch on each one. The transport is
+   * not part of what "the search changed" means.
+   */
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+
   useEffect(() => {
     if (!open || !enabled || !url) return;
     const ctrl = new AbortController();
     const handle = window.setTimeout(() => {
       setSearchLoading(true);
       setSearchError(null);
-      fetch(url, { cache: 'no-store', signal: ctrl.signal })
+      // Detached `fetch` is called as a plain function on purpose — the
+      // fallback is the global, never `window.fetch` off a receiver.
+      const send = fetcherRef.current ?? ((u: string, init: RequestInit) => fetch(u, init));
+      send(url, { cache: 'no-store', signal: ctrl.signal })
         .then(async (r) => {
           const data = await r.json().catch(() => null);
           if (!r.ok || !data?.success) {

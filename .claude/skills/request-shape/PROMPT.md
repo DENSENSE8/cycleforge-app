@@ -23,9 +23,10 @@ Candidate routes (the data-heavy workbenches named in `AGENTS.md`):
 > fires. Not bundle weight — that hunt is closed. Not query cost — if one
 > request is slow, name it and hand it back rather than consolidating around it.
 >
-> Measure a **production build** on an isolated distDir and a free port. The dev
-> server on `:3050` is mine — attach, never restart, and never build into the
-> `.next` it owns.
+> Measure a **production build** on an isolated distDir and a throwaway port —
+> the ONE measurement exception to the `:3050`-only rule. `:3050` is the single
+> app origin and it is mine: attach, never restart, never build into the
+> `.next` it owns, and never probe a lane port instead.
 >
 > Deliver a ranked list, highest (requests removed × ms saved) ÷ risk first.
 > For each item:
@@ -52,8 +53,8 @@ Candidate routes (the data-heavy workbenches named in `AGENTS.md`):
 > Not bundle weight (closed). Not query cost — report it, don't fix it.
 >
 > **How to work:**
-> 1. Measure a production build on an isolated distDir + port. Never touch the
->    dev server on `:3050`.
+> 1. Measure a production build on an isolated distDir + throwaway port. `:3050`
+>    stays the only app origin — never touch it, never probe a lane port.
 > 2. Classify every finding against the four axes *before* proposing a fix.
 >    Read the second focus cycle first — anything firing there ignores its own
 >    `staleTime`.
@@ -107,4 +108,4 @@ Each instruction below exists because its absence cost a session:
 | "lead with what under-delivered" | `count_only` was projected to remove ~3.5s and ~5.8s; it removed about half. |
 | "name it and hand it back" | The real remaining number on `/triage` is a query taking 1.8–3.6s to return 15 rows. No consolidation fixes that. |
 | "the seed gate" | A blocking 3.6s seed is strictly worse than a non-blocking 3.6s fetch. |
-| "never touch `:3050`" | A plain `pnpm build` clobbers the `.next` the operator's dev server owns. |
+| "never touch `:3050`", "never probe a lane port" | A plain `pnpm build` clobbers the `.next` the operator's dev server owns; and a lane-port probe skips the switchboard's cookie scoping, so it tests a namespace the operator's browser never sees. |

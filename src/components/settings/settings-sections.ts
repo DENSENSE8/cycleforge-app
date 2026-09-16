@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import {
+  Camera,
   FileText,
   Info,
   Link2,
@@ -18,13 +19,17 @@ import {
   User,
   Warehouse,
   Zap,
+  Wrench,
 } from '@/components/Icons';
 
 export type SettingsSection =
   | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'keyboard' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
-  | 'devices' | 'ai' | 'stations';
+  | 'devices' | 'ai' | 'stations'
+  // Absorbed from /admin on dissolution: org config and process master data
+  // that no desk owns.
+  | 'photos' | 'repair-issues';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -102,6 +107,8 @@ export const SETTINGS_SECTION_CATEGORY: Partial<Record<SettingsSection, Settings
   catalog: 'data',
   stations: 'data',
   receiving: 'data',
+  photos: 'data',
+  'repair-issues': 'data',
   devices: 'devices',
   audit: 'developer',
 };
@@ -141,6 +148,12 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   // Gate matches the door it uses — the nickname goes through
   // `PATCH /api/locations/[barcode]/properties`, which is `sku_stock.manage`.
   { id: 'stations',      label: 'Stations',      description: 'Name each packing & testing station',              group: 'Organization', requires: 'sku_stock.manage', icon: Settings, tone: 'success' },
+  // Ex-Admin › Receiving Photos: NAS endpoint, workflow folders, station
+  // picker defaults, photos platform.
+  { id: 'photos',        label: 'Photos & NAS',  description: 'NAS endpoint, storage folders & station defaults',  group: 'Organization', requires: 'admin.view', href: '/settings/photos', icon: Camera, tone: 'warning' },
+  // Ex-Admin › Repair Issues: process master data, the Platforms & types
+  // family — flow vocabulary the repair bench consumes but no desk owns.
+  { id: 'repair-issues', label: 'Repair issues', description: 'Global repair issue checklist templates',           group: 'Organization', requires: 'repair.intake', href: '/settings/repair-issues', icon: Wrench, tone: 'warning' },
   { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff', icon: User, tone: 'success' },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles', icon: ShieldCheck, tone: 'info' },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access', icon: Lock, tone: 'danger' },
@@ -158,6 +171,14 @@ export function getActiveSettingsSection(raw: string | null | undefined): Settin
 export function settingsSectionRoute(id: SettingsSection): string {
   const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === id);
   return def?.href ?? `/settings/${id}`;
+}
+
+/** Phone settings list: personal rows land on the me scroll; org rows keep their route. */
+export function settingsSectionHref(id: SettingsSection): string {
+  const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === id);
+  if (!def) return '/settings';
+  if (def.group === 'Personal') return `/settings/me#${def.id}`;
+  return settingsSectionRoute(def.id);
 }
 
 export function resolveSettingsSectionFromPath(pathname: string | null | undefined): SettingsSection | null {

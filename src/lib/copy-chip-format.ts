@@ -6,11 +6,17 @@
  * without pulling in React/client-only imports. `CopyChip.tsx` re-exports
  * these, so existing importers keep working.
  *
- * Display SoT: trailing **8** characters (dock match + fewer collisions than
- * last-8). Empty faces on LedgerGrid / queue sheets use the quiet em dash
- * {@link QUIET_CHIP_EMPTY} (2B) — never loud `--------`. Non-grid layouts that
- * still need an 8-char width-matching placeholder may pass
- * {@link EMPTY_CHIP_DISPLAY} explicitly.
+ * Display SoT: {@link abbreviateIdentifier} — the last delimiter-bounded
+ * segment, or the trailing {@link CHIP_DISPLAY_LEN} characters when the id
+ * carries no delimiter, with leading punctuation stripped and NO padding ever.
+ * The face is CAPPED at {@link CHIP_DISPLAY_LEN} no matter what (operator
+ * 2026-09-14: "must always display the last 8 of the digits no matter what
+ * for the copy chip component for the order number, no matter what
+ * platform"): a long final segment (e.g. `po:10084000397923`) is cut to its
+ * trailing 8, never shown whole. Empty faces on LedgerGrid / queue sheets
+ * use the quiet em dash {@link QUIET_CHIP_EMPTY} (2B) — never loud
+ * `--------`. Non-grid layouts that still need an 8-char width-matching
+ * placeholder may pass {@link EMPTY_CHIP_DISPLAY} explicitly.
  */
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 
@@ -31,23 +37,77 @@ export function normalizeCopyText(value: string | null | undefined): string {
   return String(value || '').trim();
 }
 
-/** Last 8 chars — display SoT for every typed id chip. */
-export function getLast8(value: string | null | undefined): string {
+/**
+ * Identifier delimiters. An id that carries one of these is a COMPOSED id —
+ * marketplace prefix, account segment, then the part that actually varies.
+ */
+const IDENTIFIER_DELIMITERS = /[-_/.:]+/;
+
+/**
+ * Shortest trailing segment worth showing on its own. Below this a segment is
+ * a check digit or a line suffix, not an identity, so the last-8 window reads
+ * better than `-2`.
+ */
+const MIN_SEGMENT_LEN = 4;
+
+/** Leading punctuation left behind by a blind window cut (`-0292212`). */
+const LEADING_NON_ALNUM = /^[^0-9a-z]+/i;
+
+/**
+ * The abbreviation SoT for every typed id chip.
+ *
+ * Cut on a DELIMITER, never at a blind offset. `raw.slice(-8)` turns
+ * `113-1397006-0292212` into `-0292212`: a leading dash reads as a negative
+ * number or a system error to someone scanning a column at speed, and a
+ * separator carries different visual weight than a digit, so the column edge
+ * goes jagged. Prefer the last delimiter-bounded segment; fall back to the
+ * last {@link CHIP_DISPLAY_LEN} characters ONLY when the id has no delimiter
+ * (or when the trailing segment is too short to identify anything); then strip
+ * any leading non-alphanumerics off the result.
+ *
+ * NEVER pads. `5034` stays `5034`, not `00005034` — staff read these aloud and
+ * key them into an RF scanner, and a padded id is a WRONG id. Uniformity comes
+ * from right-alignment plus `font-mono tabular-nums` (the right edge is the
+ * scanning line), never from falsifying the value.
+ *
+ * A leading `#` on an order chip is the HashIcon GLYPH — an identifier-class
+ * marker painted beside this string, not part of it. This never sees it.
+ *
+ * Returns `''` for an empty / sentinel input; chip-facing callers map that to
+ * their own empty face.
+ */
+export function abbreviateIdentifier(value: string | null | undefined): string {
   const raw = normalizeCopyText(value);
-  return raw.length > CHIP_DISPLAY_LEN ? raw.slice(-CHIP_DISPLAY_LEN) : raw || '---';
+  if (!raw) return '';
+  const segments = raw.split(IDENTIFIER_DELIMITERS).filter(Boolean);
+  const last = segments.length > 0 ? segments[segments.length - 1]! : '';
+  let candidate =
+    segments.length > 1 && last.length >= MIN_SEGMENT_LEN
+      ? last
+      : raw.length > CHIP_DISPLAY_LEN
+        ? raw.slice(-CHIP_DISPLAY_LEN)
+        : raw;
+  // Hard cap (operator 2026-09-14): the FACE never exceeds CHIP_DISPLAY_LEN —
+  // a delimiter's final segment can itself be longer than eight (a prefixed
+  // `po:10084000397923` used to render all fourteen digits).
+  if (candidate.length > CHIP_DISPLAY_LEN) candidate = candidate.slice(-CHIP_DISPLAY_LEN);
+  // An id of pure punctuation has nothing to strip down to — keep the cut.
+  return candidate.replace(LEADING_NON_ALNUM, '') || candidate;
+}
+/** Abbreviated identifier — display SoT for every typed id chip. */
+export function getLast8(value: string | null | undefined): string {
+  return abbreviateIdentifier(value) || '---';
 }
 
 /**
  * serial_number may be a CSV string aggregated via STRING_AGG (e.g. "SN1, SN2").
- * Parses it, takes the last individual serial, then returns its last 8 chars.
+ * Parses it, takes the last individual serial, then abbreviates that one.
  */
 export function getLast8Serial(value: string | null | undefined): string {
   const raw = normalizeCopyText(value);
   const parts = raw.split(',').map((s) => s.trim()).filter(Boolean);
   const last = parts.length > 0 ? parts[parts.length - 1] : '';
-  return last.length > CHIP_DISPLAY_LEN
-    ? last.slice(-CHIP_DISPLAY_LEN)
-    : last || '---';
+  return abbreviateIdentifier(last) || '---';
 }
 
 /**
@@ -95,9 +155,13 @@ export function resolveSerialDisplay(value: string | null | undefined): string {
 }
 
 /**
- * Shortest unique trailing suffixes for a set of serials (floor = last-8).
- * Sibling units on one carton often share a last-8; grow the preview until
- * each label is distinct so a multi-chip batch row does not look duplicated.
+ * Shortest unique trailing previews for a set of serials.
+ *
+ * The floor is the house abbreviation ({@link abbreviateIdentifier}), so a
+ * batch of one and a batch of many cut the same serial the same way. Sibling
+ * units on one carton often collapse to the same preview; only then does this
+ * grow a raw trailing window until every label is distinct, because the
+ * growth axis has to be LENGTH and a delimiter cut is not monotonic in length.
  * Empty / sentinel inputs collapse via {@link resolveSerialDisplay}.
  */
 export function disambiguateSerialDisplays(serials: readonly string[]): string[] {
@@ -105,6 +169,8 @@ export function disambiguateSerialDisplays(serials: readonly string[]): string[]
   if (cleaned.length === 0) return [];
   if (cleaned.length === 1) return [resolveSerialDisplay(cleaned[0])];
 
+  const abbreviated = cleaned.map((s) => resolveSerialDisplay(s));
+  if (new Set(abbreviated).size === abbreviated.length) return abbreviated;
   const maxLen = Math.max(0, ...cleaned.map((s) => s.length));
   let len = CHIP_DISPLAY_LEN;
   while (len <= maxLen) {

@@ -48,7 +48,7 @@ import { StationLocationsDisplay } from '@/components/station/location';
 import { SearchableSelectField } from '@/design-system/components';
 import { useReceivingLineLocationPort } from '@/components/receiving/line-location-port';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useTriageLocationPort } from './triage-location-port';
 import type { TriageStagingController } from './useTriageStaging';
 

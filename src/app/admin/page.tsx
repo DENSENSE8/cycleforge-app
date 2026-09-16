@@ -1,108 +1,81 @@
-import { StaffScheduleTab } from '@/components/admin/StaffScheduleTab';
-import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
-import { GoalsAnalyticsTab } from '@/components/admin/GoalsAnalyticsTab';
-import { QualityDashboardTab } from '@/components/admin/QualityDashboardTab';
-import { FBAManagementTab } from '@/components/admin/FBAManagementTab';
-import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
-import { FavoritesManagementTab } from '@/components/admin/FavoritesManagementTab';
-import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
-import { AdminLogsTab } from '@/components/admin/AdminLogsTab';
-import { ReasonCodesManagementTab } from '@/components/admin/ReasonCodesManagementTab';
-import { StationNasFoldersTab } from '@/components/admin/StationNasFoldersTab';
-import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection';
-import { BoseModelsManagementTab } from '@/components/admin/sourcing/BoseModelsManagementTab';
-import { CompatibilityManagementTab } from '@/components/admin/sourcing/CompatibilityManagementTab';
-import { SuppliersManagementTab } from '@/components/admin/sourcing/SuppliersManagementTab';
-import { SystemSyncActivityTab } from '@/components/admin/SystemSyncActivityTab';
-import { AdminOverviewTab } from '@/components/admin/AdminOverviewTab';
-import { getAdminSection, type AdminSection } from '@/components/admin/admin-sections';
-import { requirePermission } from '@/lib/auth/page-guard';
 import { redirect } from 'next/navigation';
 
-interface AdminPageProps {
+/**
+ * `/admin` — DISSOLVED. Every console section found its one true home; this
+ * route is the permanent redirect table. The spine's Admin row is gone with
+ * it — permission is `requires` on rows, not a destination.
+ *
+ * Homes: goals/quality/staff/sync/logs → Operations desk modes;
+ * suppliers/models/compatibility → Sourcing modes; locations → Inventory ›
+ * Locations `manage` tab; reason_codes/favorites → their own Inventory pages;
+ * fba catalog → Shipping › FBA `catalog` mode; po_mailbox → Inbound ›
+ * PO Mailbox; station_photos → Settings › Photos & NAS; repair_issues →
+ * Settings › Repair issues; connections → Settings › Apps & integrations ›
+ * Sync tools; integrations/access/roles were already Settings; architecture →
+ * /studio; overview → the monitor desk.
+ *
+ * This tree has no `/apps` marketplace route, so the integration homes stay
+ * under `/settings/integrations` (same reason `settings-sections.ts` does).
+ */
+const SECTION_HOMES: Record<string, string> = {
+  overview: '/operations',
+  goals: '/operations?mode=goals',
+  quality: '/operations?mode=quality',
+  staff_schedule: '/operations?mode=staff',
+  staff: '/operations?mode=staff',
+  system_sync: '/operations?mode=sync',
+  logs: '/operations?mode=logs',
+  suppliers: '/sourcing?mode=suppliers',
+  bose_models: '/sourcing?mode=models',
+  compatibility: '/sourcing?mode=compatibility',
+  locations: '/inventory/locations?tab=manage',
+  reason_codes: '/inventory/reason-codes',
+  favorites: '/inventory/favorites',
+  fba: '/shipping/fba?fbaMode=catalog',
+  po_mailbox: '/incoming?view=mailbox',
+  station_photos: '/settings/photos',
+  repair_issues: '/settings/repair-issues',
+  connections: '/settings/integrations/sync',
+  integrations: '/settings/integrations',
+  access: '/settings/access',
+  roles: '/settings/roles',
+  architecture: '/studio',
+};
+
+export default async function AdminRedirect({
+  searchParams,
+}: {
   searchParams: Promise<{
     section?: string;
     search?: string;
     mode?: string;
     staffId?: string;
     roleId?: string;
+    page?: string;
+    po_gmail_connected?: string;
+    po_gmail_error?: string;
   }>;
-}
-
-function renderTab(
-  activeTab: AdminSection,
-  args: { searchValue: string; mode?: string },
-) {
-  switch (activeTab) {
-    case 'overview':       return <AdminOverviewTab />;
-    case 'goals':          return <GoalsAnalyticsTab />;
-    case 'quality':        return <QualityDashboardTab />;
-    case 'staff_schedule': return <StaffScheduleTab />;
-    case 'connections':    return <ConnectionsManagementTab />;
-    case 'fba':            return <FBAManagementTab searchTerm={args.searchValue} />;
-    case 'bose_models':    return <BoseModelsManagementTab />;
-    case 'compatibility':  return <CompatibilityManagementTab />;
-    case 'suppliers':      return <SuppliersManagementTab />;
-    case 'logs':           return <AdminLogsTab initialSearch={args.searchValue} />;
-    case 'reason_codes':   return <ReasonCodesManagementTab />;
-    case 'system_sync':    return <SystemSyncActivityTab />;
-    case 'station_photos': return <StationNasFoldersTab mode={args.mode} />;
-    case 'po_mailbox':     return <PoMailboxAdminSection />;
-    case 'repair_issues':  return <RepairIssuesManagementTab />;
-    case 'favorites':      return <FavoritesManagementTab />;
-    case 'locations':      return <LocationsManagementTab />;
-  }
-}
-
-function buildSettingsRedirect(
-  path: string,
-  params: { staffId?: string; roleId?: string },
-): string {
-  const qs = new URLSearchParams();
-  if (params.staffId) qs.set('staffId', params.staffId);
-  if (params.roleId) qs.set('roleId', params.roleId);
-  const query = qs.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-export default async function AdminPage({ searchParams }: AdminPageProps) {
-  await requirePermission('admin.view', { enforce: true });
-
+}) {
   const params = await searchParams;
-  const rawSection = String(params.section || '').toLowerCase();
+  const raw = String(params.section || '').toLowerCase();
 
-  // The Operations / architecture board now lives only in /studio (Operations
-  // Studio). Redirect the retired admin tab — and its old `reasons` sub-mode
-  // deep link, which belongs to Reason Codes now a standalone section again.
-  if (rawSection === 'architecture') {
-    if (params.mode === 'reasons') redirect('/admin?section=reason_codes');
-    redirect('/studio');
-  }
+  let home = SECTION_HOMES[raw] ?? '/operations';
 
-  // Moved to Settings — preserve query params where applicable.
-  if (rawSection === 'integrations') {
-    redirect('/settings/integrations');
+  // Params worth keeping at their destination.
+  const extra = new URLSearchParams();
+  if (raw === 'logs' && params.search) extra.set('q', params.search);
+  if (raw === 'station_photos' && params.mode) extra.set('mode', params.mode);
+  if (raw === 'connections' && params.page) extra.set('page', params.page);
+  if (raw === 'access' && params.staffId) extra.set('staffId', params.staffId);
+  if (raw === 'roles' && params.roleId) extra.set('roleId', params.roleId);
+  if (raw === 'po_mailbox') {
+    if (params.po_gmail_connected) extra.set('po_gmail_connected', params.po_gmail_connected);
+    if (params.po_gmail_error) extra.set('po_gmail_error', params.po_gmail_error);
   }
-  if (rawSection === 'access') {
-    redirect(buildSettingsRedirect('/settings/access', { staffId: params.staffId }));
-  }
-  if (rawSection === 'roles') {
-    redirect(buildSettingsRedirect('/settings/roles', { roleId: params.roleId }));
-  }
-  if (rawSection === 'staff') {
-    redirect('/admin?section=staff_schedule');
-  }
+  // `architecture` had a `reasons` sub-mode that belongs to Reason Codes.
+  if (raw === 'architecture' && params.mode === 'reasons') home = '/inventory/reason-codes';
 
-  const activeTab = getAdminSection(params.section);
-  const sidebarSearch = (params.search || '').trim();
-
-  return (
-    <div className="flex h-full w-full bg-surface-canvas">
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="h-full min-h-0 w-full">
-          {renderTab(activeTab, { searchValue: sidebarSearch, mode: params.mode })}
-        </div>
-      </div>
-    </div>
-  );
+  const qs = extra.toString();
+  const joiner = home.includes('?') ? '&' : '?';
+  redirect(qs ? `${home}${joiner}${qs}` : home);
 }

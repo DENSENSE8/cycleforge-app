@@ -5,7 +5,8 @@
  * Edit pairs deep-links to Inventory Graph (sku_relationships SoT).
  * Distinguishes catalog edges from packing kit_parts names.
  *
- * Callers: ProductDetail, KitPartsWorkspace.
+ * Callers: ProductDetail. (KitPartsWorkspace was its second caller until that
+ * view was removed 2026-09-15.)
  * API: GET /api/sku-catalog/[id]/composition.
  * Schema: sku_relationships + sku_kit_parts (read via composition merge).
  * User: Implement multi-tenant kit / bundle display (Shopify-like).
@@ -67,7 +68,7 @@ export function BundleComponentsStrip({ catalogId, sku, className }: BundleCompo
         <div>
           <h2 className="text-role-caption font-semibold text-text-default">Bundle components</h2>
           <p className="mt-0.5 text-role-micro text-text-muted">
-            Catalog parent → child pairs (stockable). Packing checklist names live under Kit Parts.
+            Catalog parent → child pairs (stockable). Packing checklist names are authored per SKU.
           </p>
         </div>
         <Link

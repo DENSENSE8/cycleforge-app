@@ -1,4 +1,5 @@
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * Package-grouping + config-driven field model for the mobile receiving feed.
@@ -39,14 +40,15 @@ export type ReceivingFeedEntry =
       unit: ReceivingLineRow;
     };
 
-/** The product title SoT order — catalog title › Zoho item title › PO line name › id. */
+// SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
 export function unitTitle(row: ReceivingLineRow): string {
   return (
-    row.catalog_product_title ||
-    row.zoho_item_title ||
-    row.item_name ||
-    row.zoho_item_id ||
-    'Unnamed inbound line'
+    resolveSkuIdentityTitle({
+      zoho_item_title: row.zoho_item_title,
+      catalog_product_title: row.catalog_product_title,
+      item_name: row.item_name,
+      zoho_item_id: row.zoho_item_id == null ? null : String(row.zoho_item_id),
+    }) || 'Unnamed inbound line'
   );
 }
 

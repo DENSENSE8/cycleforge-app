@@ -11,7 +11,7 @@
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { RECEIVING_NAV_ICONS } from '@/lib/nav/station-nav-icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
 import { RECEIVING_TYPES } from '@/lib/receiving/receiving-type-meta';
 import type { ClaimType } from '@/lib/receiving-claim-type';

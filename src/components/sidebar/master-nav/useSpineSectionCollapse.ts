@@ -6,46 +6,55 @@ import { useCallback, useEffect, useState } from 'react';
  * Per-device open/closed state for the spine's section disclosures.
  *
  * Same call as the spine width (`SIDEBAR_SPINE_RESIZE.storageKey`): view
- * state for this device, not a staff prefs field. The store holds only CLOSED
- * ids so a newly registered section arrives open.
+ * state for this device, not a staff prefs field.
+ *
+ * The store holds OPEN ids. A lane the operator has never opened stays
+ * folded — including on first login, and including a newly registered
+ * section. The previous store held CLOSED ids so every new lane arrived
+ * open, which is what painted every parent expanded after sign-in.
  */
-const STORAGE_KEY = 'sidebar-spine-sections-closed';
+export const SPINE_SECTIONS_OPEN_STORAGE_KEY = 'sidebar-spine-sections-open';
 
-/**
- * Sections that start folded. Admin is a destination opened on purpose.
- * Stations and Workspaces start open. Sessions is omitted — Wave 2 does not
- * mount a sessions list.
- */
-export const SPINE_SECTION_CLOSED_BY_DEFAULT: Record<string, true> = {
-  admin: true,
-};
+/** Retired 2026-09-15 — closed-id polarity. Wiped on hydrate so leftover `[]` cannot reopen every lane. */
+export const SPINE_SECTIONS_CLOSED_STORAGE_KEY_LEGACY = 'sidebar-spine-sections-closed';
+
+export function parseSpineOpenSectionIds(raw: string | null): string[] | null {
+  if (raw == null) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((id): id is string => typeof id === 'string');
+  } catch {
+    return null;
+  }
+}
 
 export function useSpineSectionCollapse() {
-  const [closedSections, setClosedSections] = useState<ReadonlySet<string>>(
-    () => new Set(Object.keys(SPINE_SECTION_CLOSED_BY_DEFAULT)),
-  );
+  const [openSections, setOpenSections] = useState<ReadonlySet<string>>(() => new Set());
 
   useEffect(() => {
     let stored: string[] | null = null;
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed)) {
-        stored = parsed.filter((id): id is string => typeof id === 'string');
-      }
+      stored = parseSpineOpenSectionIds(
+        window.localStorage.getItem(SPINE_SECTIONS_OPEN_STORAGE_KEY),
+      );
+      window.localStorage.removeItem(SPINE_SECTIONS_CLOSED_STORAGE_KEY_LEGACY);
     } catch {
-      // Unreadable storage keeps the design defaults.
+      // Unreadable storage keeps the design default: all folded.
     }
-    if (stored) setClosedSections(new Set(stored));
+    if (stored) setOpenSections(new Set(stored));
   }, []);
 
   const setSectionOpen = useCallback((sectionId: string, open: boolean) => {
-    setClosedSections((prev) => {
+    setOpenSections((prev) => {
       const next = new Set(prev);
-      if (open) next.delete(sectionId);
-      else next.add(sectionId);
+      if (open) next.add(sectionId);
+      else next.delete(sectionId);
       try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
+        window.localStorage.setItem(
+          SPINE_SECTIONS_OPEN_STORAGE_KEY,
+          JSON.stringify([...next]),
+        );
       } catch {
         // Quota loss forgets the fold, not the current paint.
       }
@@ -53,5 +62,10 @@ export function useSpineSectionCollapse() {
     });
   }, []);
 
-  return { closedSections, setSectionOpen };
+  const isSectionOpen = useCallback(
+    (sectionId: string) => openSections.has(sectionId),
+    [openSections],
+  );
+
+  return { isSectionOpen, setSectionOpen };
 }

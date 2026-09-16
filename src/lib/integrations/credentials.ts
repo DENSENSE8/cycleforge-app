@@ -486,10 +486,15 @@ interface IntegrationDbRow {
 export async function getIntegrationCredentials<T = unknown>(
   orgId: OrgId,
   provider: IntegrationProvider,
-  options: { scope?: string | null } = {},
+  options: { scope?: string | null; includeInactive?: boolean } = {},
 ): Promise<T | null> {
   const scope = options.scope ?? null;
-  const key = cacheKey(orgId, provider, scope);
+  // `includeInactive` is for RECOVERY paths only (the self-heal sweep in
+  // connectors/self-heal.ts revalidating a row that got flipped to `error`).
+  // Normal callers must keep the status gate: a genuinely revoked credential
+  // has to surface as "Needs attention", not retry forever.
+  const includeInactive = options.includeInactive === true;
+  const key = `${cacheKey(orgId, provider, scope)}${includeInactive ? ':any' : ''}`;
   const cached = credCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value as T | null;
 
@@ -500,7 +505,7 @@ export async function getIntegrationCredentials<T = unknown>(
         WHERE organization_id = $1
           AND provider = $2
           AND COALESCE(scope, '') = COALESCE($3, '')
-          AND status = 'active'
+          ${includeInactive ? '' : "AND status = 'active'"}
         LIMIT 1`,
       [orgId, provider, scope],
     );
@@ -518,7 +523,7 @@ export async function getIntegrationCredentials<T = unknown>(
   // Zoho: if a vault row exists but is error/revoked, do NOT fall through to
   // ZOHO_REFRESH_TOKEN env — that would mask Integrations "Needs attention".
   // Env bootstrap remains only when no vault row exists.
-  if (provider === 'zoho' && orgId === DOGFOOD_ORG_ID) {
+  if (provider === 'zoho' && orgId === DOGFOOD_ORG_ID && !includeInactive) {
     try {
       const statusRow = await pool.query<{ status: string }>(
         `SELECT status
@@ -599,6 +604,54 @@ export async function upsertIntegrationCredentials(input: UpsertIntegrationInput
     ],
   );
   invalidateCredentialCache(input.orgId, input.provider);
+}
+
+/**
+ * Record a TRANSIENT provider failure (throttle, timeout, 5xx) without taking
+ * the connection offline. `status` stays `active` — only `last_error` moves, so
+ * Integrations can show "degraded" while every sync keeps retrying. Flipping
+ * `status` here is what caused the 2026-09-14 Zoho blackout: a 10-minute Zoho
+ * mint throttle turned into 25 hours of "not connected" because nothing but a
+ * human OAuth run clears `error`.
+ */
+export async function noteIntegrationWarning(
+  orgId: OrgId,
+  provider: IntegrationProvider,
+  error: string,
+  scope: string | null = null,
+): Promise<void> {
+  await pool.query(
+    `UPDATE organization_integrations
+        SET last_error = $1, updated_at = now()
+      WHERE organization_id = $2 AND provider = $3
+        AND COALESCE(scope, '') = COALESCE($4, '')
+        AND status = 'active'`,
+    [error.slice(0, 1000), orgId, provider, scope],
+  );
+}
+
+/**
+ * Heal a connection after proof it works (a successful token mint / API call).
+ * Clears `last_error` and lifts a previously latched `error` back to `active`,
+ * so a recovered throttle needs no human. Returns true when a row changed.
+ */
+export async function clearIntegrationError(
+  orgId: OrgId,
+  provider: IntegrationProvider,
+  scope: string | null = null,
+): Promise<boolean> {
+  const res = await pool.query(
+    `UPDATE organization_integrations
+        SET status = 'active', last_error = NULL, updated_at = now()
+      WHERE organization_id = $1 AND provider = $2
+        AND COALESCE(scope, '') = COALESCE($3, '')
+        AND (status <> 'active' OR last_error IS NOT NULL)
+        AND status <> 'revoked'`,
+    [orgId, provider, scope],
+  );
+  const changed = (res.rowCount ?? 0) > 0;
+  if (changed) invalidateCredentialCache(orgId, provider);
+  return changed;
 }
 
 export async function markIntegrationError(

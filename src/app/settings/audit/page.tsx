@@ -2,8 +2,19 @@
  * /settings/audit — admin-facing audit log viewer.
  *
  * Reads from `audit_logs` (the rich diff table written by withAuth's
- * audit-floor and by handlers via recordAudit). Filter by source/action,
- * paginate, expand a row to see the before/after JSON.
+ * audit-floor and by handlers via recordAudit). Filter by source/action and
+ * walk keyset pages of fifty.
+ *
+ * There is NO row expansion. `metadata` / `before_data` / `after_data` are
+ * written by `recordAudit`, selected below, and painted by nothing: this
+ * docblock promised "expand a row to see the before/after JSON" for a plane
+ * that was never built, and the sentence is gone rather than left standing as
+ * a feature claim (corrected 2026-09-12, Wave D). The day a diff plane ships
+ * it arrives with its own catalog facts.
+ *
+ * The table is the registered `audit-log` slot family, mounted through the
+ * client island `./AuditLogTable`: the guard, the query and the pagination
+ * stay here on the server, and only the rows cross the boundary.
  *
  * Tenant scoping: audit_logs doesn't have organization_id yet (next
  * migration wave). For now we filter by actor_staff_id ∈ staff of this
@@ -19,88 +30,20 @@ import pool from '@/lib/db';
 import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
 import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-
-
-
-interface AuditRow {
-  id: number;
-  created_at: Date;
-  actor_staff_id: number | null;
-  actor_name: string | null;
-  actor_role: string | null;
-  source: string;
-  action: string;
-  entity_type: string;
-  entity_id: string;
-  ip_address: string | null;
-  metadata: unknown;
-  before_data: unknown;
-  after_data: unknown;
-}
+import { toAuditLogRow, type AuditLogQueryRow } from '@/lib/audit/audit-log-row';
+import { AuditLogTable } from './AuditLogTable';
 
 const PAGE_SIZE = 50;
 
-function fmtTs(d: Date): string {
-  return new Date(d).toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
-  });
-}
-
-const AUDIT_COLUMNS: AdminTableColumn<AuditRow>[] = [
-  {
-    key: 'when',
-    header: 'When',
-    type: 'date',
-    cell: (row) => (
-      <span className="font-mono text-role-caption text-text-muted">{fmtTs(row.created_at)}</span>
-    ),
-  },
-  {
-    key: 'actor',
-    header: 'Actor',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.actor_name ?? `#${row.actor_staff_id ?? '—'}`}</div>
-        {row.actor_role && <div className="text-role-micro text-text-soft">{row.actor_role}</div>}
-      </>
-    ),
-  },
-  {
-    key: 'source_action',
-    header: 'Source · Action',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.action}</div>
-        <div className="text-role-micro text-text-soft">{row.source}</div>
-      </>
-    ),
-  },
-  {
-    key: 'entity',
-    header: 'Entity',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.entity_type}</div>
-        <div className="font-mono text-role-caption text-text-soft">{row.entity_id}</div>
-      </>
-    ),
-  },
-  {
-    key: 'ip',
-    header: 'IP',
-    type: 'text',
-    cell: (row) => (
-      <span className="font-mono text-role-caption text-text-soft">{row.ip_address ?? '—'}</span>
-    ),
-  },
-];
+/*
+  The five hand-written second-engine column objects that used to live here
+  are gone. Columns are DATA now: `field-catalog/audit-log.ts` names the eight
+  facts those five cells carried, `audit-log-resolve.ts` reads them, and the
+  shared engine paints them — so this desk gained header sort, search and a
+  Fields picker the second table engine was never going to grow for one page.
+*/
 
 interface PageProps {
   searchParams: Promise<{ source?: string; action?: string; cursor?: string }>;
@@ -124,7 +67,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
   args.push(PAGE_SIZE + 1); // +1 so we know if there's a next page
 
-  const r = await pool.query<AuditRow>(
+  const r = await pool.query<AuditLogQueryRow>(
     `SELECT a.id, a.created_at, a.actor_staff_id, s.name AS actor_name, a.actor_role,
             a.source, a.action, a.entity_type, a.entity_id, a.ip_address,
             a.metadata, a.before_data, a.after_data
@@ -135,10 +78,14 @@ export default async function AuditPage({ searchParams }: PageProps) {
       LIMIT $${args.length}`,
     args,
   );
-  const rows = r.rows.slice(0, PAGE_SIZE);
+  const page = r.rows.slice(0, PAGE_SIZE);
   const hasMore = r.rows.length > PAGE_SIZE;
-  const nextCursor = hasMore ? rows[rows.length - 1]?.id : null;
+  const nextCursor = hasMore ? page[page.length - 1]?.id : null;
   const isSearching = Boolean(source || action);
+  // Narrow to the wire row at the boundary: `created_at` becomes an ISO string
+  // and the three unpainted JSONB blobs are dropped rather than shipped to the
+  // client fifty times over. See `@/lib/audit/audit-log-row`.
+  const rows = page.map(toAuditLogRow);
 
   return (
     <div className={cn('min-h-screen antialiased', SETTINGS_FLOOR_CLASS)}>
@@ -148,6 +95,13 @@ export default async function AuditPage({ searchParams }: PageProps) {
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
         </p>
 
+        {/*
+          PAGE CHROME, and deliberately still an HTML GET form: `?source=` and
+          `?action=` narrow the SERVER query and the keyset cursor, which the
+          table's own filter menu cannot do — it filters the fifty rows in hand.
+          Folding these two into the Fields/filter menu means teaching that menu
+          to write server params, and that is its own brief. FOLLOW-UP.
+        */}
         <form className="flex flex-wrap items-center gap-2 rounded-none border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
           <label className="flex items-center gap-2">
             <span className="font-medium text-text-soft">Source</span>
@@ -173,13 +127,9 @@ export default async function AuditPage({ searchParams }: PageProps) {
           )}
         </form>
 
-        <AdminTable
-          columns={AUDIT_COLUMNS}
+        <AuditLogTable
           rows={rows}
-          rowKey={(row) => row.id}
-          emptyMessage="No audit entries yet."
-          searchEmptyMessage="No audit entries match."
-          isSearching={isSearching}
+          emptyMessage={isSearching ? 'No audit entries match.' : 'No audit entries yet.'}
         />
 
         {nextCursor && (

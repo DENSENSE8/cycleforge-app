@@ -2,7 +2,7 @@
 
 /**
  * Pass-pick sheet — pick another picker for this order. Commits on tap.
- * Sign-in SwitchStaffSheet is a different job (PIN identity).
+ * Sign-in SwitchStaffSheet is a different job (pinless act-as switch).
  */
 
 import { useEffect, useMemo, useState } from 'react';

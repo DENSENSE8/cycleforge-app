@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isRaillessSurface } from '@/lib/sidebar-navigation';
+import { hasSidebarContextPanel, isRaillessSurface } from '@/lib/sidebar-navigation';
 
 /**
  * The rail-less contract, as behaviour.
@@ -83,8 +83,10 @@ test('other scan stations keep their rail', () => {
 });
 
 test('the Inbound desk is rail-less by its own clause', () => {
-  // `/incoming` has NOT opted into deskChrome; deriving alone would hand its
-  // rail back, which is why the explicit clause stays until it opts in.
+  // Inbound opted into `deskChrome` on 2026-09-14 (its two lanes are its tab
+  // row), and is STILL rail-less by its own clause — the two flags stayed
+  // separate facts precisely so opting into the chrome could not silently take
+  // or hand back a 360px column.
   assert.equal(isRaillessSurface('/incoming', params()), true);
   assert.equal(isRaillessSurface('/incoming/anything', params()), true);
 });
@@ -99,12 +101,13 @@ test('no pathname is not a desk stage', () => {
 });
 
 test('wearing the desk chrome does NOT cost a desk its rail', () => {
-  // The 2026-08-31 decoupling, as behaviour. These four wear the same
+  // The 2026-08-31 decoupling, as behaviour. These wear the same
   // `DeskPageChrome` as Shipping and navigate BY their context rail — the
   // manual picker, the SKU picker and the exception list write the params
   // their bodies read. Deriving rail-less from `deskChrome` deleted exactly
   // this, which is why the flags are two facts and not one.
-  for (const path of ['/products', '/inventory', '/sourcing', '/operations']) {
+  // Inventory is the exception that *did* take `railless` (operator 2026-09-15).
+  for (const path of ['/products', '/sourcing', '/operations']) {
     assert.equal(
       isRaillessSurface(path, params()),
       false,
@@ -113,23 +116,42 @@ test('wearing the desk chrome does NOT cost a desk its rail', () => {
   }
 });
 
-test('Locations Labels and Bays are rail-less; Rooms Bins Map keep the rail', () => {
-  // Callers: isRaillessSurface contract. No data schemas.
-  // User: "Ensure that the left sidebar component is actually removed."
-  assert.equal(isRaillessSurface('/inventory/locations', params()), true);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=labels')), true);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=bays')), true);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=racks')), true);
-  assert.equal(isRaillessSurface('/warehouse', params()), true);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=rooms')), false);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=bins')), false);
-  assert.equal(isRaillessSurface('/inventory/locations', params('tab=map')), false);
+test('the Inventory desk is rail-less on every mount', () => {
+  // Callers: isRaillessSurface + CONTEXT_PANEL_ROUTE_KEYS. No data schemas.
+  // User: "remove the sidebar in general for all the mounting points, in the inventory page in general for the left sidebar"
+  for (const [path, qs] of [
+    ['/inventory', ''],
+    ['/inventory/triage', ''],
+    ['/inventory/pulse', ''],
+    ['/inventory/graph', ''],
+    ['/inventory?section=replenish', 'section=replenish'],
+    ['/inventory/locations', ''],
+    ['/inventory/locations', 'tab=rooms'],
+    ['/inventory/locations', 'tab=bins'],
+    ['/inventory/locations', 'tab=map'],
+    ['/inventory/locations', 'tab=manage'],
+    ['/inventory/locations', 'tab=totes'],
+    ['/warehouse', ''],
+    ['/warehouse', 'tab=rooms'],
+  ] as const) {
+    const search = qs.includes('=') ? params(qs) : params(qs);
+    const pathname = path.split('?')[0]!;
+    assert.equal(
+      isRaillessSurface(pathname, search),
+      true,
+      `${path}${qs ? `?${qs}` : ''} must collapse the left column`,
+    );
+  }
+  assert.equal(hasSidebarContextPanel('/inventory'), false);
+  assert.equal(hasSidebarContextPanel('/inventory/locations'), false);
+  assert.equal(hasSidebarContextPanel('/warehouse'), false);
 });
 
 test('rail-less is declared, never inferred from having tabs', () => {
-  // Shipping is the only page that declares it today. If a fifth desk ever
-  // reads `true` here, someone added `railless: true` on purpose — which is the
-  // whole point of the flag being written down.
+  // Shipping and Inventory declare it. If another desk ever reads `true` here,
+  // someone added `railless: true` on purpose — which is the whole point of
+  // the flag being written down.
   assert.equal(isRaillessSurface('/shipping/orders', params()), true);
+  assert.equal(isRaillessSurface('/inventory', params()), true);
   assert.equal(isRaillessSurface('/products', params('view=manuals')), false);
 });

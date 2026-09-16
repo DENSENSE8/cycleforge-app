@@ -43,12 +43,14 @@ export function isStalled(args: {
   category?: ShipmentStatusCategory | string | null;
   latestEventAt?: string | null;
   stallHours?: number;
+  /** Injectable clock — tests pin it; callers omit it. */
+  now?: number;
 }): boolean {
   if (args.isTerminal) return false;
   const cat = normalizeShipmentStatusCategory(args.category);
   if (cat === 'DELIVERED') return false;
   if (!args.latestEventAt) return false;
-  const ms = Date.now() - new Date(args.latestEventAt).getTime();
+  const ms = (args.now ?? Date.now()) - new Date(args.latestEventAt).getTime();
   if (!Number.isFinite(ms)) return false;
   return ms > (args.stallHours ?? 72) * 3_600_000;
 }

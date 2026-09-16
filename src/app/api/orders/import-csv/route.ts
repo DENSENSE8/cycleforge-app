@@ -6,6 +6,7 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
+import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 
 /**
  * POST /api/orders/import-csv
@@ -145,6 +146,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   //    away. The writer resolves it to a shipment and links it properly.
   let inserted = 0;
   let updated = 0;
+  let insertedOrderIds: number[] = [];
   if (deduped.length > 0) {
     try {
       const result = await ingestCanonicalOrders(
@@ -202,7 +204,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         },
       );
       inserted = result.insertedOrders;
+      insertedOrderIds = result.insertedOrderIds;
       updated = result.processedOrders - result.insertedOrders;
+      // Reserve units for the rows that just landed, so an uploaded file
+      // produces a pick list rather than an unallocated backlog. Non-fatal:
+      // the orders are committed and must not be re-imported because
+      // allocation hiccupped.
+      await autoAllocateAfterIngest(result.insertedOrderIds, {
+        orgId: ctx.organizationId,
+        staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,
+        source: 'orders-import-csv',
+      });
     } catch (error: any) {
       console.error('CSV order import insert error:', error);
       return NextResponse.json(
@@ -227,5 +239,5 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     },
   });
 
-  return NextResponse.json({ inserted, updated, skipped, errors });
+  return NextResponse.json({ inserted, insertedOrderIds, updated, skipped, errors });
 }, { permission: 'orders.import' });

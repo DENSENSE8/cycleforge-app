@@ -327,7 +327,7 @@ test('IDOR: shipped-order lookups reject cross-org (id + tracking)', { skip: !HA
   const stn = await pool.query(
     `INSERT INTO shipping_tracking_numbers
        (tracking_number_raw, tracking_number_normalized, carrier, is_carrier_accepted, organization_id)
-     VALUES ($1, $1, 'ups', true, $2) RETURNING id`,
+     VALUES ($1, $1, 'UPS', true, $2) RETURNING id`,
     [TRACKING, ORG_B],
   );
   const shipmentId = Number((stn.rows[0] as { id: string | number }).id);

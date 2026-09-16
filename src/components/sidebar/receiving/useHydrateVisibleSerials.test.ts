@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { rowsNeedingSerials, patchRowsWithSerials, seedOrPatchSiblingsSerials } from './useHydrateVisibleSerials';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { QueryClient } from '@tanstack/react-query';
 import {
   receivingSiblingsQueryKey,

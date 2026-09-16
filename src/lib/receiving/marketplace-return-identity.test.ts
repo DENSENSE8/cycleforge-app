@@ -33,7 +33,7 @@ test('Amazon purchase (PO) is not a return identity', () => {
   );
 });
 
-test('eBay RETURN uses eBay short + last8', () => {
+test('eBay RETURN uses eBay short + the abbreviated order id', () => {
   const orderId = '12-34567-89012';
   assert.equal(
     formatMarketplaceReturnIdentityTitle({
@@ -41,7 +41,10 @@ test('eBay RETURN uses eBay short + last8', () => {
       sourcePlatform: 'ebay',
       receivingType: 'RETURN',
     }),
-    'eBay – return – 67-89012',
+    // Was `67-89012` — a blind `slice(-8)` through the middle of a segment,
+    // which reads as a different order to anyone checking it against a label
+    // (operator 2026-09-12: cut on the delimiter).
+    'eBay – return – 89012',
   );
 });
 

@@ -5,12 +5,20 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
 /**
- * The Shipping **desk** frame — To ship · Amazon Prep · Shipped · Exceptions.
+ * The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions.
  *
  * A route GROUP, so every desk segment shares one {@link DeskPageLayout} mount
  * while `/shipping/scan-out` — a Scan Station — sits outside it and keeps its
  * edge-to-edge station shell. The group adds no URL segment: the routes are
  * still `/shipping/orders|fba|shipped|exceptions`.
+ *
+ * **`/shipping/fba` is inside this group but is NOT one of those tabs**
+ * (2026-09-14). FBA became a row in the Outbound LANE beside Shipping, so the
+ * Amazon Prep tab was deleted — two doors to one page is what the `deskChrome`
+ * law forbids. It still wears this frame: `useDeskPageChromeTabs` resolves
+ * title and tabs from whichever page the path resolves to, so the FBA board
+ * gets its own title ("FBA") and **no tab row** — it is not `deskChrome`, and
+ * its stages are `?fbaMode=` facets the board draws itself.
  *
  * Everything generic (tabs, title, CTA slot, fullscreen) moved into
  * `DeskPageLayout` on 2026-08-31 when the chrome became the design system's

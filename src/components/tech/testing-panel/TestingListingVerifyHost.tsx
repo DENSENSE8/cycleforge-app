@@ -12,7 +12,7 @@ import {
   resolveSellerClaimedCondition,
   type SellerClaimedCondition,
 } from '@/lib/receiving/seller-claimed-condition';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';

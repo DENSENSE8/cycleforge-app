@@ -18,6 +18,7 @@ import {
   publishReceivingPhotoChanged,
   publishPackerPhotoChanged,
   publishUnitPhotoChanged,
+  publishRepairChanged,
 } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
@@ -197,6 +198,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         serialUnitId: entityId,
         photoId: result.id,
         totalPhotoCount: await countUnitPhotos(ctx.organizationId, entityId),
+        source: 'photos.upload',
+      });
+    } else if (entityType === 'REPAIR_SERVICE') {
+      // Repair evidence rides the repair channel, not a photo channel: the
+      // /m/rs/{id} page and every repair desk surface already revalidate on
+      // repair.changed, so the strip below the Issue panel paints live.
+      await publishRepairChanged({
+        organizationId: ctx.organizationId as OrgId,
+        repairIds: [entityId],
         source: 'photos.upload',
       });
     }

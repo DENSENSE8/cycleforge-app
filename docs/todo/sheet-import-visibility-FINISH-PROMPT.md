@@ -57,8 +57,11 @@ dialog render blank for every run.
   untestable. Bundle-altitude recipe from `build-gotchas.md`.
 - `useOrdersSync.ts` — stopped hardcoding `emptyTransferDetails()`.
 
-**Skip visibility** — `SkippedRowsPanel` in `OrderSyncDialog.tsx`. Grouped by
-reason, actionable first, order chip → title → platform.
+**Skip visibility** — was `SkippedRowsPanel` in `OrderSyncDialog.tsx`; that file
+is deleted (2026-09-15). The live home is `buildSyncRunDetail`
+(`src/lib/orders-sync/run-detail.ts`) → `OrderSyncRunDetailSheet`, reading the
+shared `skip-reasons.ts` table. Grouped by reason, actionable first, order chip →
+title → platform.
 - New reasons: `blankRow` (counted, never listed), `fbaShipment`.
 - Ecwid rows render on the **Ecwid Direct tab**, not the sheet's skip list —
   one home per row (see §4).
@@ -143,10 +146,12 @@ title; only 259 are paired to a catalog SKU.
   Run with `node --conditions=react-server --import tsx`, or import only the pure
   modules (`transfer-sheet-eligibility`, `orders/sources/google-sheet-rows`).
 - **The chrome popover calls `/api/integrations/google_sheets/sync`**, NOT the
-  legacy NDJSON `/api/google-sheets/transfer-orders` that the sidebar's
-  `useOrdersImport` still uses. Watching the wrong route shows nothing.
-- **`/dashboard` defaults to the OUTBOUND domain**, so `DashboardManagementPanel`
-  never mounts. The import entry point is the chrome **IMPORT** button.
+  legacy NDJSON `/api/google-sheets/transfer-orders`. Since 2026-09-15 that
+  legacy route has no frontend caller at all (`useOrdersImport` is deleted).
+  Watching the wrong route shows nothing.
+- **`/dashboard` mounts `UnshippedSidebar`.** `DashboardManagementPanel` never
+  mounted and is now deleted. The import entry point is the chrome **IMPORT**
+  button.
 - **`TabSwitch` renders plain `<button>`s, not `role="tab"`.** A `role='tab'`
   locator matches nothing and blocks until the whole test times out.
 - **Playwright deletes a passing test's artifact dir** — a screenshot saved under

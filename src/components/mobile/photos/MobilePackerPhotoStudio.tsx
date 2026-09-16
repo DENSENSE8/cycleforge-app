@@ -306,7 +306,7 @@ function PackVerifyConfirm({
             autoCorrect="off"
             spellCheck={false}
             placeholder="Scan or type the tracking #"
-            className={cn("w-full rounded-none border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-body text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
+            className={cn("w-full rounded-none border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-field text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
           />
         </label>
         {canScan ? (

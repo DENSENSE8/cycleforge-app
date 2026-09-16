@@ -388,7 +388,7 @@ function BottlenecksSection({
 /**
  * People lens: the staff scoped to this node's station. READ-ONLY — each row is
  * a deep-LINK to the staff editor (Studio law #7); the lens never writes grants.
- * The staff editor lives at /admin?section=staff_schedule&staffId=<id>.
+ * The staff editor lives at /operations?mode=staff&staffId=<id>.
  */
 function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
   return (
@@ -403,7 +403,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
           <p className="text-xs font-semibold text-amber-700">No staff scoped to {people.station}</p>
           <p className="mt-0.5 text-role-caption text-amber-600">This step is a coverage gap.</p>
           <a
-            href="/admin?section=staff_schedule"
+            href="/operations?mode=staff"
             className="mt-1.5 inline-block text-role-caption font-semibold text-violet-700 underline-offset-2 hover:underline"
           >
             Assign staff in the editor →
@@ -420,7 +420,7 @@ function CoverageSection({ people }: { people: PeopleNodeCoverage }) {
               <li key={s.id}>
                 <HoverTooltip label="Open in the staff editor" asChild>
                   <a
-                    href={`/admin?section=staff_schedule&staffId=${s.id}`}
+                    href={`/operations?mode=staff&staffId=${s.id}`}
                     className="flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-surface-hover"
                   >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-role-eyebrow text-violet-700">

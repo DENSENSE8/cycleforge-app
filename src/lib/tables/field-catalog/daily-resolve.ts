@@ -45,6 +45,16 @@ export function resolveDailySlotValue(
         kind: 'value',
         text: row.markedAt ? formatDateKeyShort(row.markedAt.slice(0, 10)) : null,
       };
+    case 'daily.kind':
+      // Only the exception is marked: a bound Kind column dashes on recurring
+      // rows rather than painting a word on a hundred unremarkable ones.
+      return { kind: 'value', text: row.kind === 'once' ? 'Once' : null };
+    case 'daily.owner':
+      return {
+        kind: 'person',
+        staffId: row.assignedStaffId,
+        name: row.assignedStaffName,
+      };
     default:
       return null;
   }

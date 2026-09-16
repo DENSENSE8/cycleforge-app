@@ -203,6 +203,12 @@ export interface StaffPreferences {
    * catalog in registry order. Hydrated in `src/lib/nav/spine-slots.ts`.
    */
   spineSlots?: string[] | null;
+  /**
+   * Generation {@link spineSlots} was last rolled onto (`SPINE_SLOTS_VERSION`).
+   * Absent = pre-v1. No SQL migration: `prefs` is a JSONB bag merged with `||`,
+   * so a new key costs nothing and old rows read as `undefined`.
+   */
+  spineSlotsVersion?: number | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

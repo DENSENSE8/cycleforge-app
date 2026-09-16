@@ -2,7 +2,6 @@
 
 import { useSearchParams } from 'next/navigation';
 import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
-import { DashboardManagementPanel } from '@/components/sidebar/DashboardManagementPanel';
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
 import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
@@ -18,7 +17,7 @@ import {
  * for the dashboard Workbench.
  *
  * Three domains (`getDashboardDomainFromSearch`), each with a picker:
- *   • outbound — the order feed (UnshippedSidebar / management panel)
+ *   • outbound — the order feed (`UnshippedSidebar`), the only branch
  *   • inbound  — recents (`DashboardRecentsPanel`)
  *   • sales    — station hand-offs (`WalkInHistorySidebar`); Repairs L2
  *     (`?mode=repairs`) uses {@link RepairSidebarPanel} — never the Sales
@@ -55,28 +54,25 @@ export function DashboardOrdersContextPanel() {
     return <WalkInHistorySidebar />;
   }
 
-  const isOutbound =
-    dashboardSearch.orderView === 'unshipped' ||
-    dashboardSearch.orderView === 'tested' ||
-    dashboardSearch.orderView === 'packed' ||
-    dashboardSearch.orderView === 'shipped';
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1">
-        {isOutbound ? (
-          <UnshippedSidebar
-            embedded
-            hideSectionHeader
-            searchValue={dashboardSearch.searchQuery}
-            onSearchChange={dashboardSearch.setSearch}
-          />
-        ) : (
-          <DashboardManagementPanel
-            searchValue={dashboardSearch.searchQuery}
-            onSearchChange={dashboardSearch.setSearch}
-          />
-        )}
+        {/* One branch by design. `DashboardOrderView` is a 4-member URL
+            presence-flag type and `getDashboardOrderViewFromSearch` returns the
+            literal 'unshipped' (`dashboard-search-state.ts:98`), so the old
+            `isOutbound ? … : <DashboardManagementPanel/>` else-arm was
+            unreachable — and it was the last door onto the legacy import stream
+            (`useOrdersImport` → `OrderSyncDialog`, the second implementation
+            reporting its own numbers). Import is the measured run surface now:
+            the desk CTA over the table, `/m/orders/sync` on the phone.
+            Deleted 2026-09-15. Do not reintroduce a picker-shaped import card
+            here; a lane with one page paints one row. */}
+        <UnshippedSidebar
+          embedded
+          hideSectionHeader
+          searchValue={dashboardSearch.searchQuery}
+          onSearchChange={dashboardSearch.setSearch}
+        />
       </div>
       <OrderIngestRail
         open={dashboardSearch.showIntakeForm}

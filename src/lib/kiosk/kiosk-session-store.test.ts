@@ -274,3 +274,79 @@ describe('consult stance', () => {
   });
 });
 
+/**
+ * Operator 2026-09-15: *"Whenever I go to the kiosk page, it defaults to sales.
+ * It must default to repair service."* The store seeded `'retail'` while
+ * `/kiosk/v2` was already seeding the REPAIR catalog rail, so the tablet
+ * painted a repair first frame and then booted into Sales.
+ *
+ * The org's choice arrives with the HTML (`counter-boot.server.ts`), which
+ * means it can land at any point during boot — so what these defend is that it
+ * only ever lands on a PRISTINE counter.
+ */
+describe('the org’s opening command', () => {
+  /*
+   * The remembered org choice SURVIVES `resetSession` by design (a visit ending
+   * must not forget where the counter opens), so the file's shared reset cannot
+   * clear it — these tests pin it back to the fallback themselves. Record
+   * first, then reset: `resetSession` is what re-seeds `activeCommand` from it.
+   */
+  beforeEach(() => {
+    kioskSessionStore.applyDefaultCommand('repair');
+    kioskSessionStore.resetSession();
+  });
+
+  it('opens on repair out of the box, not on sales', () => {
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair');
+  });
+
+  it('adopts the org’s choice on a pristine counter', () => {
+    kioskSessionStore.applyDefaultCommand('pickup');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'pickup');
+  });
+
+  it('never overrides a staffer who has already picked', () => {
+    kioskSessionStore.setActiveCommand('buyback');
+    kioskSessionStore.applyDefaultCommand('retail');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'buyback');
+  });
+
+  it('never yanks a counter that already has lines', () => {
+    kioskSessionStore.addRetail({
+      title: 'Cable',
+      unitAmountCents: 999,
+      payload: { variationId: null, sku: 'CBL-1' },
+    });
+    kioskSessionStore.applyDefaultCommand('pickup');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair');
+  });
+
+  it('never overrides a desk-held mirror — that command is the server’s', () => {
+    mirrorOnce(1, [line()]);
+    assert.notEqual(kioskSessionStore.getSnapshot().sharedSessionId, null, 'mirror not attached');
+    kioskSessionStore.applyDefaultCommand('pickup');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair');
+  });
+
+  it('returns to the org’s choice on Next Customer, not to the fallback', () => {
+    kioskSessionStore.applyDefaultCommand('retail');
+    kioskSessionStore.setActiveCommand('buyback');
+    kioskSessionStore.resetSession();
+    // Both the pick AND the fallback lose to the org's setting here: a fresh
+    // visit is a fresh counter, and the counter opens where the org says.
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'retail');
+  });
+
+  it('remembers a choice it could not apply at the time', () => {
+    kioskSessionStore.addRetail({
+      title: 'Cable',
+      unitAmountCents: 999,
+      payload: { variationId: null, sku: 'CBL-1' },
+    });
+    kioskSessionStore.applyDefaultCommand('pickup');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair', 'must not yank');
+    kioskSessionStore.resetSession();
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'pickup');
+  });
+});
+

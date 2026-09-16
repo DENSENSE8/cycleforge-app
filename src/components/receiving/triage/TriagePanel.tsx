@@ -78,7 +78,7 @@ import {
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import { useTriageStaging } from './useTriageStaging';

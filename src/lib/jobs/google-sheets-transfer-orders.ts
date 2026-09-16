@@ -25,11 +25,14 @@ import {
 import { isPlanFeatureExemptOrg } from '@/lib/billing/plan-feature-gate';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
+import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 import { fetchEcwidCanonicalOrders } from '@/lib/orders/sources/ecwid-orders';
 import {
   bindSheetColumns,
   mapSheetRowsToCanonicalLines,
+  unboundOptionalColumns,
   type SheetRow,
+  type UnboundSheetColumn,
 } from '@/lib/orders/sources/google-sheet-rows';
 import type { SyncProgress, TransferOrderDetails } from '@/lib/orders-sync/types';
 import {
@@ -119,6 +122,16 @@ export interface GoogleSheetsTransferOrdersJobResult {
   skippedNoItemNumber?: number;
   skippedEcwid?: number;
   /**
+   * Optional columns row 1 never bound, and the titles that would bind them.
+   *
+   * Reported because a missing OPTIONAL column is silent by design — the index
+   * stays -1 and the cell reads '' — which is fine for `note` and fatal for
+   * `salePrice`: it is why 4467 orders hold 6 prices between them.
+   */
+  unboundColumns?: UnboundSheetColumn[];
+  /** Shorthand for the one unbound column that costs money. */
+  missingPriceColumn?: boolean;
+  /**
    * The skipped rows themselves (capped, blank padding excluded) so the
    * importer UI can show WHICH orders were dropped and why, instead of a
    * number the operator cannot act on.
@@ -146,6 +159,12 @@ interface SheetFetchResult {
   skippedRows: TransferSheetSkippedRow[];
   /** Rows whose blank Item Number was filled from an exact listing-title match. */
   recoveredRows: TransferSheetSkippedRow[];
+  /**
+   * Optional columns row 1 never bound. Reported so a missing price column is
+   * visible in the sync outcome instead of showing up months later as empty
+   * revenue.
+   */
+  unboundColumns: UnboundSheetColumn[];
 }
 
 /** Newest `Sheet_MM_DD_YYYY` tab, or the explicitly named one. */
@@ -261,6 +280,15 @@ async function fetchSheetLines(
 
   const sourceRows = (response.data.values || []) as SheetRow[];
   if (sourceRows.length < 2) fail(404, 'No data found in source tab');
+  // The measured "how many is it importing" number, as early as it is known.
+  // A phase repeat is the contract for this: the run ledger ACCUMULATES phase
+  // counts, and the first `fetching_sheet` carried none.
+  progress({
+    type: 'phase',
+    phase: 'fetching_sheet',
+    count: sourceRows.length - 1,
+    message: tabName,
+  });
 
   const headerRow = sourceRows[0] as unknown[];
   const { colIndices, missing } = bindSheetColumns(headerRow);
@@ -324,6 +352,16 @@ async function fetchSheetLines(
     });
   }
 
+  const unboundColumns = unboundOptionalColumns(colIndices);
+  if (unboundColumns.some((c) => c.field === 'salePrice')) {
+    // Loud on the server too. A missing price column is not a cosmetic gap:
+    // every row it touches imports with `sale_amount` NULL, and revenue
+    // reporting reads that column.
+    console.warn(
+      `[transfer-orders] sheet tab "${tabName}" has NO price column — orders will import with no sale amount. Add a column titled one of: Sale Price, Price, Amount, Order Total, Item Total, Sale Amount.`,
+    );
+  }
+
   return {
     tabName,
     lines: mapSheetRowsToCanonicalLines(filtered.eligible, colIndices),
@@ -331,6 +369,7 @@ async function fetchSheetLines(
     skips: filtered.skips,
     skippedRows: filtered.skippedRows,
     recoveredRows: recovered,
+    unboundColumns,
   };
 }
 
@@ -342,12 +381,18 @@ async function fetchEcwidLines(effectiveOrgId: OrgId, progress: SyncProgress): P
   progress({ type: 'phase', phase: 'fetching_ecwid' });
   try {
     const vault = await getIntegrationCredentials<EcwidCredentials>(effectiveOrgId, 'ecwid');
-    return await fetchEcwidCanonicalOrders(
+    const lines = await fetchEcwidCanonicalOrders(
       vault?.storeId && vault?.apiToken ? { storeId: vault.storeId, token: vault.apiToken } : undefined,
       { allowEnvFallback: isPlanFeatureExemptOrg(effectiveOrgId) },
     );
-  } catch (err: any) {
-    console.error('[transfer-orders] Ecwid API fetch failed (non-fatal):', err?.message);
+    progress({ type: 'phase', phase: 'fetching_ecwid', count: lines.length });
+    return lines;
+  } catch (err: unknown) {
+    console.error(
+      '[transfer-orders] Ecwid API fetch failed (non-fatal):',
+      err instanceof Error ? err.message : err,
+    );
+    progress({ type: 'phase', phase: 'fetching_ecwid', count: 0 });
     return [];
   }
 }
@@ -415,6 +460,16 @@ export async function runGoogleSheetsTransferOrders(
       source: 'google-sheets-transfer-orders',
       progress,
     });
+
+    // Freshly imported orders get their units reserved immediately, so the
+    // pick list exists the moment the sync lands instead of waiting for an
+    // operator to notice and press a button. Non-fatal by construction: the
+    // sheet rows are already written and must never be re-imported because a
+    // bin lookup failed.
+    await autoAllocateAfterIngest(result.insertedOrderIds, {
+      orgId: effectiveOrgId,
+      source: 'google-sheets-transfer-orders',
+    });
     progress({ type: 'phase', phase: 'done' });
 
     return {
@@ -445,6 +500,11 @@ export async function runGoogleSheetsTransferOrders(
       skippedRowDetails: sheet?.skippedRows ?? [],
       recoveredByTitle: sheet?.recoveredRows?.length ?? 0,
       recoveredRowDetails: sheet?.recoveredRows ?? [],
+      // Optional columns the sheet never bound. `salePrice` here is the
+      // difference between importing revenue and importing nulls, so the
+      // outcome must carry it rather than leaving the operator to infer it.
+      unboundColumns: sheet?.unboundColumns ?? [],
+      missingPriceColumn: (sheet?.unboundColumns ?? []).some((c) => c.field === 'salePrice'),
       durationMs: Date.now() - startedAt,
       details: result.details,
     };

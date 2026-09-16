@@ -95,11 +95,19 @@ export function isAllocatable(candidate: PickabilityCandidate): PickabilityResul
 export function pickableSerialUnitsWhereClause(): string {
   // ANY(ARRAY[...]) avoids ENUM:: arrays in the SQL since the new role list
   // lives in app code; the cast keeps null-safe via COALESCE.
+  //
+  // NO `su.expires_at` PREDICATE. One used to live here and `serial_units` has
+  // no such column, so EVERY query composing this fragment threw
+  // `column su.expires_at does not exist` — which silently disabled BOTH
+  // allocation doors (`POST /api/orders/[id]/allocate` and
+  // `/inventory/bulk-allocate`). That is the likeliest reason this org held
+  // exactly ONE allocation row against 116 pickable units (found 2026-09-14).
+  // Shelf life is not modelled on units anywhere in this schema; if it ever
+  // is, add the column in a migration FIRST, then re-add the predicate.
   return [
     `su.current_status = 'STOCKED'::serial_status_enum`,
     `(loc.id IS NULL OR loc.locked_for_count = false)`,
     `(loc.id IS NULL OR COALESCE(loc.bin_role, 'RESERVE') NOT IN ('STAGING','DOCK','QUARANTINE','DAMAGED','RETURNS','RECEIVING'))`,
-    `(su.expires_at IS NULL OR su.expires_at > NOW())`,
   ].join(' AND ');
 }
 

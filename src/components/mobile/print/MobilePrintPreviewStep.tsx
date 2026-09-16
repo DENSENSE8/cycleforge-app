@@ -1,17 +1,23 @@
 'use client';
 
 /**
- * /m/print display step — print-faithful location stickers before Print.
+ * `/m/print` display step — print-faithful stickers before Print.
  *
  * Callers: MobilePrintWorkspace preview step. Mounts LocationLabelFacePreview
- * (LabelFacePreview iframe). Do not hand-roll a second sticker.
- * User: printer, service, and display UX on mobile before printing.
+ * (bin / bay) or HandlingUnitLabelFacePreview (tote) — both LabelFacePreview
+ * iframes. Do not hand-roll a second sticker.
+ * User: printer, service, and display UX on mobile before printing; the tote
+ * preview must render the real HTML that prints (operator, 2026-09-15).
  */
 
 import { LocationLabelFacePreview } from '@/components/labels/LocationLabelFacePreview';
 import { locationCode, rackCode, type LocationSegments } from '@/lib/barcode-routing';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import {
+  HandlingUnitLabelFacePreview,
+  SPECIMEN_LPN_CODE,
+} from '@/components/labels/HandlingUnitLabelFacePreview';
 
 /** Dense tile sticker scale — same cap as LabelPrintRunPanel. */
 const RUN_FACE_MAX_SCALE = 1.05;
@@ -66,6 +72,30 @@ export function MobilePrintPreviewStep({
       {extra > 0 && (
         <p className="text-role-caption text-text-muted">+{extra} more print with this run</p>
       )}
+    </>
+  );
+}
+
+/**
+ * Tote run preview. ONE specimen, not N: every plate in a bulk run carries the
+ * same face until the desk mints, so six identical tiles would only cost
+ * scrolling. The code reads `H-###` because the real serials do not exist yet.
+ */
+export function MobileTotePreviewStep({ count }: { count: number }) {
+  return (
+    <>
+      <p className="text-role-caption text-text-muted">
+        {count} tote plate{count === 1 ? '' : 's'} — same 2×1 face the printer will fire.
+      </p>
+      <div className={cn('border border-border-soft bg-surface-card p-2', cornerClass('card'))}>
+        <p className="mb-1 font-mono text-role-micro font-semibold text-text-default">
+          {SPECIMEN_LPN_CODE}
+        </p>
+        <HandlingUnitLabelFacePreview fit="capped" maxScale={RUN_FACE_MAX_SCALE} />
+      </div>
+      <p className="text-role-caption text-text-muted">
+        Codes are assigned when the totes are created at Print — each plate gets its own.
+      </p>
     </>
   );
 }

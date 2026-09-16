@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst",
+      "kind": "function",
+      "name": "pinLineQtyFirst",
+      "location": "src/lib/tables/slot-table-line-qty.ts:84",
+      "exported": true,
+      "signature": "function pinLineQtyFirst( parts: readonly CompoundSubtitlePart[], ): CompoundSubtitlePart[]"
+    }
+  ]
+}

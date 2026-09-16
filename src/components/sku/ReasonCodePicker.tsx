@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { cn } from '@/utils/_cn';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -82,42 +83,50 @@ export function ReasonCodePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [direction]);
 
-  const selected = useMemo(
-    () => reasons.find((r) => r.id === value) ?? null,
-    [reasons, value],
-  );
-
+  /*
+   * NO LABEL and NO conditional child — both were removed 2026-09-15.
+   *
+   * The label was a hardcoded `<span>Reason</span>` with no prop to suppress
+   * it, printed above a select whose own value already reads "Put into bin".
+   * Redundant on every one of the four mounts, and on the action strip it was
+   * a title inside a 32px toolbar cell.
+   *
+   * The `requires_note` line was a conditional `<p>` INSIDE the same
+   * `<label>`, so this control had no fixed height: picking a reason that
+   * needs a note made it taller, and anything laid out beside it reflowed.
+   * That is the exact failure `slot-table-action-bar-law.ts` forbids. Every
+   * caller already reads `requires_note` off the `ReasonCode` this component
+   * hands to `onChange` and renders its own note field — so the internal line
+   * was duplicating a fact the host was already acting on.
+   *
+   * Height is now a TOKEN, not padding: `h-8` on the strip scale, `h-9` for a
+   * roomier sheet. `py-*` could never line up with a row of `h-*` controls.
+   */
   return (
-    <label className={`block ${compact ? '' : 'space-y-1'}`}>
-      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-        Reason
-      </span>
-      <select
-        value={value ?? ''}
-        onChange={(e) => {
-          const id = Number(e.target.value);
-          const match = reasons.find((r) => r.id === id) ?? null;
-          onChange(match);
-        }}
-        disabled={loading || reasons.length === 0}
-        className={`mt-1 w-full rounded-md border border-border-default bg-surface-card px-2 ${
-          compact ? 'py-1.5 text-role-caption' : 'py-2 text-sm'
-        } font-semibold text-text-default focus:border-blue-500 focus:outline-none disabled:opacity-50`}
-      >
-        {loading && <option>Loading…</option>}
-        {!loading &&
-          reasons.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-      </select>
-      {selected?.requires_note && (
-        <p className="mt-1 text-role-micro uppercase tracking-widest text-amber-700">
-          Reason needs a note
-        </p>
+    <select
+      value={value ?? ''}
+      onChange={(e) => {
+        const id = Number(e.target.value);
+        const match = reasons.find((r) => r.id === id) ?? null;
+        onChange(match);
+      }}
+      disabled={loading || reasons.length === 0}
+      aria-label="Reason"
+      className={cn(
+        'w-full rounded-md border border-border-default bg-surface-card px-2',
+        'font-semibold text-text-default focus:border-blue-500 focus:outline-none',
+        'disabled:opacity-50',
+        compact ? 'h-8 text-role-micro' : 'h-9 text-role-caption',
       )}
-    </label>
+    >
+      {loading && <option>Loading…</option>}
+      {!loading &&
+        reasons.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+    </select>
   );
 }
 

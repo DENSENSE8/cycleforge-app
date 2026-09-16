@@ -4,6 +4,7 @@ import {
   clampLabelCopies,
   parseLabelCopies,
   parseLabelCopiesWire,
+  toteRunPlateCount,
 } from './labelCopies';
 
 test('clampLabelCopies keeps 1..99 and defaults junk to 1', () => {
@@ -31,4 +32,9 @@ test('parseLabelCopies reads the print-page count param', () => {
   assert.equal(parseLabelCopies(null), 1);
   assert.equal(parseLabelCopies('8'), 8);
   assert.equal(parseLabelCopies('nope'), 1);
+});
+
+test('toteRunPlateCount is totes × copies with no side doubling', () => {
+  assert.equal(toteRunPlateCount(24, 4), 96);
+  assert.equal(toteRunPlateCount(1, 4), 4);
 });

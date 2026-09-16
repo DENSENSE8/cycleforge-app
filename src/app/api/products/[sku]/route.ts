@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
+import { getSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
+import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
+import { snapMinutes, tierForMinutes } from '@/lib/packing/pack-standard-stops';
 
 // GET /api/products/[sku]
 // Single product detail for the /products/[sku] page.
@@ -105,6 +108,28 @@ export async function GET(
             console.warn('[api/products/[sku]] serial_units count failed:', err);
         }
 
+        /*
+         * Time to pack — the standard this SKU's packs are weighted by.
+         *
+         * `source` is load-bearing, not decoration: 'profile' means a human set
+         * it, 'rules' means `classifyPackTier` guessed from the title. The desk
+         * card says which, because a KPI built on a title regex should not read
+         * like a measured standard. Never blank: the slider always opens on the
+         * number the KPI is actually using today.
+         */
+        const packOverride = await getSkuPackProfileLink(Number(product.id), orgId);
+        const packRules = classifyPackTier({
+            productTitle: product.product_title,
+            category: product.category,
+            sku: product.sku,
+        });
+        const packMinutes = snapMinutes(packOverride?.estimatedMinutes ?? packRules.estimatedMinutes);
+        const packProfile = {
+            minutes: packMinutes,
+            tier: tierForMinutes(packMinutes),
+            source: packOverride ? ('profile' as const) : ('rules' as const),
+        };
+
         return NextResponse.json({
             success: true,
             product,
@@ -113,6 +138,7 @@ export async function GET(
                 warehouse_qty: stock.rows[0]?.warehouse_qty ?? 0,
                 units_by_status: unitsByStatus,
             },
+            packProfile,
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Failed to fetch product';

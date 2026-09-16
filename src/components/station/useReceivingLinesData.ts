@@ -26,7 +26,7 @@ import {
   type DeliveredNotUnboxedResponse,
 } from '@/components/station/receiving-delivered-not-unboxed';
 import { mergeReceivingPackageMetaIntoRow } from './receiving-lines-table-helpers';
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
 interface UseReceivingLinesDataArgs {

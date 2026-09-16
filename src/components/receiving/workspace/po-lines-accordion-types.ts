@@ -1,5 +1,5 @@
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
 
 // `id` is optional to stay structurally compatible with the chip menu's
 // `SavedSerial` (whose id is optional). Callbacks guard with `if (s.id == null)`.

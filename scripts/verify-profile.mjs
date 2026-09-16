@@ -105,6 +105,100 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Boundary',
+    // Re-added 2026-09-14 (operator directive, C2) after the 2026-08-20 drift-gate
+    // deletion: THIS one law (mobile↔desktop component split, ARCHITECTURE.md) is
+    // binding again, single gate, ~15s. The other deleted drift gates stay deleted.
+    cmd: localBin('tsx'),
+    args: ['scripts/boundary-guard.ts', '--enforce'],
+    profiles: 'always',
+  },
+  {
+    name: 'Nav names',
+    // A parent and a child must never wear the same name (operator 2026-09-14).
+    // `always`, not `full`: it is a registry read (<1s), and the increments that
+    // would break it — renaming a lane, row or tab — are exactly the ones that
+    // run `verify:fast`. Same rule module as the Unit-tests gate
+    // (src/lib/nav/nav-name-collisions.ts) and as the ds_nav_names MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/nav-name-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Mobile-first',
+    // A lane the phone cannot run gets no door anywhere in the front end
+    // (operator 2026-09-14). Same reasoning for `always`: a registry read, and
+    // adding a nav row to an unported surface is a `verify:fast` increment.
+    // Rule module src/lib/nav/lanes.ts (LANE_MOBILE_FIRST) — also the
+    // Unit-tests gate and the ds_mobile_first MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/mobile-first-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Action bar',
+    // The slot-table action strip may not expand or collapse in height from a
+    // press (operator 2026-09-15). `always` for the same reason as the two
+    // gates above: a source read (<1s), and the increments that break it —
+    // adding a control to the strip, reaching for TextField, rendering a field
+    // conditionally — are exactly the ones that run `verify:fast`. Same rule
+    // module as the Unit-tests gate (src/lib/tables/slot-table-action-bar-law.ts);
+    // its runtime half is the useFixedBandHeight ResizeObserver.
+    cmd: localBin('tsx'),
+    args: ['scripts/action-bar-height-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Id header',
+    // Column one says `Id` on every peer that has an identity track (operator
+    // 2026-09-15). `always` for the same reason as the gates above: a source
+    // read (<1s), and the increment that breaks it — re-adding `label:
+    // identity.label` to a column module — is exactly a `verify:fast`
+    // increment. Same rule module as the Unit-tests gate
+    // (src/lib/tables/slot-table-id-header-law.ts) and the ds_id_header MCP
+    // face; ESLint catches the same line at write time.
+    cmd: localBin('tsx'),
+    args: ['scripts/id-header-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Identity purity',
+    // The ID column is strictly for machine identifiers (operator 2026-09-15).
+    // Staff names and person attributions belong exclusively in dedicated
+    // status/person columns. `always` gate: source read (<1s). Same rule module
+    // as the Unit-tests gate (src/lib/tables/slot-table-identity-purity-law.ts)
+    // and the ds_identity_purity MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/identity-purity-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Ground',
+    // A phone screen is ONE white sheet (operator 2026-09-15) — and the white
+    // is pinned at each altitude of the chain, not just asserted at the leaf.
+    // `always` for the same reason as the three gates above: a source read
+    // (<2s), and the increments that break it — painting a page background on
+    // /m, retouching the phone ground token, editing light.ts — are exactly the
+    // ones that run `verify:fast`. Same rule module as the Unit-tests gate
+    // (src/lib/mobile/mobile-ground.ts) and the ds_mobile_ground MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/mobile-ground-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Sku identity',
+    // One SKU, one title, one photo — the Zoho item governs (operator
+    // 2026-09-15). `always` for the same reason as the four gates above: a
+    // source read (<1s), and the increment that breaks it — hand-writing a
+    // sku_catalog join on a new surface, or re-adding the deleted
+    // similarity(product_title) guard — is exactly a `verify:fast` increment.
+    // Same rule module as the Unit-tests gate (src/lib/sku/sku-identity-law.ts)
+    // and the ds_sku_identity MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/sku-identity-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Unit tests',
     cmd: 'node',
     args: ['scripts/run-unit-tests.mjs'],

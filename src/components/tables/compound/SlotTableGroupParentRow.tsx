@@ -54,19 +54,28 @@
  * ## The duplication objection
  *
  * Unbox's other reason for dropping its summary was that it "duplicated Order /
- * PO already on every leaf". The answer is `quietIdentity`: a surface that
- * mounts this band must stop repeating the order/PO on its leaves so the fold
- * speaks it ONCE. The leaf keeps the BOX identity (tracking) as its primary
- * face — that is what distinguishes one line from the next. Dashing both
- * lines re-hides the box. Mounting the parent without quieting the order
- * number re-creates the noise that got the old summary deleted.
+ * PO already on every leaf". REVERSED (operator 2026-09-14): "it must display
+ * the order number for all the other rows, the child rows as well" — leaves
+ * keep their full identity (order on line 1, tracking/box on line 2), band and
+ * children paint the identical face, and the band's rolled facts sit above.
+ * The old `quietIdentity` dashing is retired; the flag survives only as a
+ * `data-group-child` marker.
  */
 
 import { cloneElement, isValidElement, type ReactNode } from 'react';
-import { CompoundCell, COMPOUND_TWO_LINE_CLASS } from '@/components/tables/compound/CompoundCell';
+import { CompoundCell } from '@/components/tables/compound/CompoundCell';
+import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { CompoundSelect } from '@/components/tables/compound/CompoundCells';
+import { CompoundEdgeRail } from '@/components/tables/compound/CompoundEdgeRail';
+import { compoundSelectStatusMarks } from '@/components/tables/compound/compound-select-status';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
-import { COMPOUND_ROW_PX, SLOT_TABLE_GROUP_FOLD_CLASS } from '@/components/tables/compound/compound-row-chrome';
+import {
+  COMPOUND_GUTTER_CHEVRON_BAND_CLASS,
+  COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
+  COMPOUND_GUTTER_RAIL_INSET_CLASS,
+  COMPOUND_ROW_PX,
+  SLOT_TABLE_GROUP_FOLD_INNER_CLASS,
+} from '@/components/tables/compound/compound-row-chrome';
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
 import { ChevronDown, ChevronRight } from '@/components/Icons';
 import { gridDataCellClass, LEDGER_GRID_FROZEN_CELL } from '@/design-system/components/grid';
@@ -74,7 +83,6 @@ import { ledgerGridRowShellClass } from '@/design-system/components/grid/grid-ce
 import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
-import { PoChip } from '@/components/ui/CopyChip';
 import { carrierBrandDotPaint, type CarrierBrandMeta } from '@/lib/carrier-brand';
 import { orderBoxCountLabel } from '@/lib/orders/order-group-identity';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
@@ -139,8 +147,24 @@ function isGutterColumn(key: string): boolean {
 }
 
 /**
- * The one visual group around a multi-line fold. Singletons pass through —
- * the leaf IS the order, and wrapping it would draw a box around every row.
+ * The multi-line fold wrapper. Singletons pass through — the leaf IS the
+ * order, and wrapping it would draw a box around every row.
+ *
+ * NO outline here (operator 2026-09-14: "just one hairline below the rows for
+ * multi items included in the PO — currently there is a full square around
+ * it"). The 4-side envelope ring was retired: the group's close is the ONE
+ * bottom hairline painted below — on the FOLD, not the leaf block, so it shows
+ * in BOTH states (operator 2026-09-14: "it must display when it's opened or
+ * closed, to display to the user that it's a multi-line-item row"):
+ * collapsed → under the title band; expanded → under the last leaf.
+ *
+ * The close is a BORDER token, not body-text ink (operator 2026-09-15:
+ * "instead of a black line displaying below the line"). It no longer has to
+ * shout, because MEMBERSHIP is now spoken by the children themselves —
+ * {@link SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} on each child's identity track —
+ * and this rule only has to say where the group ENDS. See
+ * {@link SLOT_TABLE_GROUP_FOLD_INNER_CLASS} for why the black ink was
+ * load-bearing before that and is not now.
  *
  * `role="rowgroup"` is load-bearing: the virtualizer shell is
  * `role="presentation"`, so this is what the table sees as the fold.
@@ -154,11 +178,32 @@ export function SlotTableGroupFold({
 }) {
   if (!multi) return children;
   return (
-    <div
-      role="rowgroup"
-      data-slot-table-fold=""
-      className={SLOT_TABLE_GROUP_FOLD_CLASS}
-    >
+    <div role="rowgroup" data-slot-table-fold="" className="relative">
+      {children}
+      <span aria-hidden data-slot-table-fold-close="" className={SLOT_TABLE_GROUP_FOLD_INNER_CLASS} />
+    </div>
+  );
+}
+
+/**
+ * The leaf block inside a multi-line {@link SlotTableGroupFold} — the expanded
+ * product rows. Pure geometry/semantics now: the fold's close hairline lives on
+ * {@link SlotTableGroupFold} so it paints in both fold states; this wrapper
+ * adds no paint of its own (its bottom coincides with the fold's).
+ *
+ * Same contract as the fold: singletons pass through untouched (the leaf IS
+ * the order). No `role` — the outer fold owns `role="rowgroup"`.
+ */
+export function SlotTableGroupFoldBody({
+  multi,
+  children,
+}: {
+  multi: boolean;
+  children: ReactNode;
+}) {
+  if (!multi) return children;
+  return (
+    <div data-slot-table-fold-body="" className="relative">
       {children}
     </div>
   );
@@ -184,6 +229,12 @@ export function SlotTableGroupParentRow({
   const selectLabel = `${selectCount} item${selectCount === 1 ? '' : 's'}`;
   const template = gridTemplate(columns);
   const frozenEdgeKey = [...columns].reverse().find((c) => c.frozen)?.key;
+  // The parent band reports the SAME resting marks as its leaves (operator
+  // 2026-09-15: "display out of stock status for the parent line item as
+  // well"). The rollup is the family's — To-ship folds `is_urgent` /
+  // `is_out_of_stock` / `has_exception` across the group before it hands over a
+  // view — so this only has to read it, once, for both select faces below.
+  const parentStatuses = view ? compoundSelectStatusMarks(view) : [];
 
   return (
     <div
@@ -191,7 +242,36 @@ export function SlotTableGroupParentRow({
       data-order-group-parent=""
       data-group-kind={identity?.kind ?? 'order'}
       aria-label={`${face || (identity?.kind === 'po' ? 'PO' : 'Order')} · ${boxLabel}`}
-      className={cn(ledgerGridRowShellClass(false), 'bg-surface-canvas')}
+      // SELECTION FEEDBACK (operator 2026-09-15): the band washes when the
+      // whole group is picked — parent-click or every child ticked both land
+      // on `checked === true`, which is the same fact. Before this the leaves
+      // turned blue under a white band and the operator could not tell a
+      // fully-selected order from a partly-selected one without counting.
+      //
+      // `'mixed'` deliberately does NOT wash: a full-row fill would claim a
+      // membership the group does not have, and the mixed square already says
+      // "some". The fill comes from the engine cascade every leaf uses
+      // (`ledgerRowFillClass` → QUEUE_ROW.selectedLedgerClass), so the band and
+      // its children can never wash in two different blues.
+      //
+      // Idle it is a leaf's card ground — NOT a canvas wash. Operator
+      // 2026-09-14: an expanded fold is an OUTLINE, not a grayed-out row.
+      // `bg-surface-canvas` here painted the band gray-50 against white leaves,
+      // which read as a disabled row rather than a parent. Opaque is still
+      // required, not `transparent`: LEDGER_GRID_FROZEN_CELL is `bg-inherit`,
+      // so a see-through row lets h-scrolled cells bleed under the sticky
+      // identity columns — and `ledgerRowFillClass` answers `bg-surface-card`
+      // when unselected, which is exactly that ground.
+      //
+      // `group/row`: the parent's select gutter carries the same resting-status
+      // ⇄ check swap as a leaf (operator 2026-09-15), and that face is scoped
+      // to the row hover group. Without the token the parent would sit on its
+      // status glyph forever and never offer the checkbox.
+      className={cn(
+        'group/row',
+        ledgerGridRowShellClass(false),
+        ledgerRowFillClass({ selected: checked === true, capabilities: { rowTriageFlags: false } }),
+      )}
       style={{ gridTemplateColumns: template, minHeight: COMPOUND_ROW_PX }}
     >
       {columns.map((col, i) => {
@@ -219,66 +299,84 @@ export function SlotTableGroupParentRow({
               key={col.key}
               data-col="select"
               data-select-gutter
+              // Same law as the leaf gutter: the rail is the CELL's, so it runs
+              // the full row height whether or not a fold chevron splits the
+              // box below the check.
+              data-edge-mark-host=""
               data-frozen-edge={frozenEdge}
-              className={className}
+              className={cn(className, 'relative')}
               style={style}
               onClick={(event) => event.stopPropagation()}
             >
+              {view?.edgeMark ? <CompoundEdgeRail mark={view.edgeMark} /> : null}
+              {/*
+                ONE select face, foldable or not: the mark plane is the whole
+                cell and `CompoundSelect` pins the mark to the TOP, exactly as a
+                leaf does. The old COMPOUND_TWO_LINE_CLASS stack boxed the
+                control into a 23.5px half instead (see
+                COMPOUND_GUTTER_CHEVRON_BAND_CLASS).
+              */}
+              <CompoundSelect
+                checked={checked}
+                chrome="hover"
+                statuses={parentStatuses}
+                onToggle={onToggle}
+                label={
+                  checked === true
+                    ? `Deselect ${selectLabel} in ${face || noun}`
+                    : `Select ${selectLabel} in ${face || noun}`
+                }
+              />
               {onToggleFold ? (
-                <div className={cn(COMPOUND_TWO_LINE_CLASS, 'w-full min-h-0')}>
-                  <div className="flex min-h-0 min-w-0 items-stretch">
-                    <CompoundSelect
-                      checked={checked}
-                      chrome="always"
-                      edgeMark={view?.edgeMark ?? undefined}
-                      onToggle={onToggle}
-                      label={
-                        checked === true
-                          ? `Deselect ${selectLabel} in ${face || noun}`
-                          : `Select ${selectLabel} in ${face || noun}`
-                      }
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className={cn(
-                      'ds-raw-button flex h-full w-full min-h-0 items-center justify-center text-text-soft',
-                      focusRing('control', 'neutral'),
-                    )}
-                    aria-expanded={!folded}
-                    aria-label={
-                      folded
-                        ? `Show lines in ${face || noun}`
-                        : `Hide lines in ${face || noun}`
-                    }
-                    data-group-fold=""
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleFold();
-                    }}
-                  >
-                    <span className="flex h-4 w-4 items-center justify-center">
-                      {folded ? (
-                        <ChevronRight className="h-3 w-3" aria-hidden />
-                      ) : (
-                        <ChevronDown className="h-3 w-3" aria-hidden />
-                      )}
-                    </span>
-                  </button>
-                </div>
-              ) : (
-                <CompoundSelect
-                  checked={checked}
-                  chrome="always"
-                  edgeMark={view?.edgeMark ?? undefined}
-                  onToggle={onToggle}
-                  label={
-                    checked === true
-                      ? `Deselect ${selectLabel} in ${face || noun}`
-                      : `Select ${selectLabel} in ${face || noun}`
+                /*
+                  Fold chevron — a REACH affordance in EVERY state (operator
+                  2026-09-15: "it should not display any collapse state, it
+                  should only display on hover"). Stricter than the leaf's
+                  detail chevron, which stands once open: this band already
+                  says it is a fold, in words the glyph cannot improve on —
+                  the identity line counts the boxes ("2 boxes") and the child
+                  rows are either under it or not. So the glyph is only ever
+                  an invitation, and it waits to be reached for.
+                */
+                <button
+                  type="button"
+                  className={cn(
+                    'ds-raw-button group/group-fold flex items-center justify-center text-text-soft',
+                    // Its own band under the top-pinned mark — the leaf
+                    // gutter's law, so band and leaf read as one column.
+                    COMPOUND_GUTTER_CHEVRON_BAND_CLASS,
+                    // Same rail reservation as the mark above it — one
+                    // vertical centre line down the gutter.
+                    COMPOUND_GUTTER_RAIL_INSET_CLASS,
+                    focusRing('control', 'neutral'),
+                  )}
+                  aria-expanded={!folded}
+                  aria-label={
+                    folded
+                      ? `Show lines in ${face || noun}`
+                      : `Hide lines in ${face || noun}`
                   }
-                />
-              )}
+                  data-group-fold=""
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleFold();
+                  }}
+                >
+                  <span
+                    className={cn(
+                      COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
+                      'transition-opacity',
+                      'opacity-0 group-hover/row:opacity-100 group-focus-visible/group-fold:opacity-100 [@media(hover:none)]:opacity-100',
+                    )}
+                  >
+                    {folded ? (
+                      <ChevronRight className="h-3 w-3" aria-hidden />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" aria-hidden />
+                    )}
+                  </span>
+                </button>
+              ) : null}
             </div>
           );
         }
@@ -302,17 +400,19 @@ export function SlotTableGroupParentRow({
                           style={identity.dot.style}
                         />
                       ) : null}
-                      {identity?.kind === 'po' ? (
-                        <PoChip value={face} dense />
-                      ) : (
-                        <OrderNumberMenuChip
-                          value={face}
-                          platformLabel={identity?.platformLabel ?? null}
-                          openHref={identity?.href ?? null}
-                          plain
-                          dense
-                        />
-                      )}
+                      {/* Operator 2026-09-14: NO `#` glyph on the multi-line
+                          band — POs paint the SAME plain order-chip face the
+                          leaves use (ReceivingOrderCell's OrderNumberMenuChip
+                          plain), so band and children answer "which id?" with
+                          one grammar. PoChip's hash glyph is for surfaces
+                          whose header does not already label the column. */}
+                      <OrderNumberMenuChip
+                        value={face}
+                        platformLabel={identity?.platformLabel ?? null}
+                        openHref={identity?.href ?? null}
+                        plain
+                        dense
+                      />
                     </span>
                   ) : (
                     <GridCellDash />
@@ -343,6 +443,7 @@ export function SlotTableGroupParentRow({
                         })}
                       </span>
                     ) : null}
+                    {/* Operator 2026-09-14: plain text, NO chip wrapper. */}
                     <span className="truncate text-text-default">{boxLabel}</span>
                   </span>
                 }

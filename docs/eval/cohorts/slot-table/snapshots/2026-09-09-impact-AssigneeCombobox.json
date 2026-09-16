@@ -1,0 +1,32 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox",
+  "files_affected": 3,
+  "total_symbols": 3,
+  "files": [
+    {
+      "file": "src/components/tables/compound/StageStaffAssignPopover.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "StageStaffAssignPopover"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundCells.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "CompoundStageStep"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundStaffRosterButton.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "CompoundStaffRosterButton"
+      ]
+    }
+  ]
+}

@@ -36,21 +36,43 @@ interface BuildDailyCheckReportInput {
 }
 
 function emptyRow(staffId: number, name: string, total: number): DailyCheckStaffRow {
-  return { staffId, name, doneItemIds: [], doneCount: 0, total, lastMarkedAt: null };
+  return {
+    staffId,
+    name,
+    doneItemIds: [],
+    doneCount: 0,
+    total,
+    lastMarkedAt: null,
+    markedAtByItemId: {},
+  };
 }
 
 export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyCheckReport {
   const { dateKey, items, marks, roster, viewerStaffId, viewerName } = input;
-  const total = items.length;
 
   // Item order is the report's order everywhere, so index once and reuse it
   // rather than sorting each staffer's ticks separately.
   const itemRank = new Map<number, number>();
   items.forEach((item, i) => itemRank.set(item.id, i));
+  const itemById = new Map(items.map((item) => [item.id, item]));
+
+  /**
+   * The PER-STAFF denominator — the rule that makes an owner mean anything.
+   * An item counts toward staffer S's `total` when it is recurring (the shift
+   * attestation everyone owes), unowned (the whole shift owes it), or owned by
+   * S. Without this, an owned one-off sits in all five staffers' denominators
+   * and reads "1 of 5 done" forever — exactly what `assigned_staff_id` exists
+   * to prevent.
+   */
+  const countsFor = (item: DailyCheckItem, staffId: number): boolean =>
+    item.kind === 'recurring' || item.assignedStaffId == null || item.assignedStaffId === staffId;
+
+  const totalFor = (staffId: number): number =>
+    items.reduce((sum, item) => (countsFor(item, staffId) ? sum + 1 : sum), 0);
 
   const byStaff = new Map<number, DailyCheckStaffRow>();
   for (const member of roster) {
-    byStaff.set(member.staffId, emptyRow(member.staffId, member.name, total));
+    byStaff.set(member.staffId, emptyRow(member.staffId, member.name, totalFor(member.staffId)));
   }
 
   for (const mark of marks) {
@@ -59,11 +81,16 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
     // Reachable when an item is retired mid-day.
     if (!itemRank.has(mark.itemId)) continue;
 
+    // A mark by a staffer the item does not count for is dropped the SAME way:
+    // an owned one-off ticked by someone covering the desk is a real gesture,
+    // but counting it would inflate a denominator it was never in.
+    if (!countsFor(itemById.get(mark.itemId)!, mark.staffId)) continue;
+
     let row = byStaff.get(mark.staffId);
     if (!row) {
       // Marked, but off the roster — someone who left, or a role change since.
       // Their work still counts; the report would otherwise silently lose it.
-      row = emptyRow(mark.staffId, `Staff #${mark.staffId}`, total);
+      row = emptyRow(mark.staffId, `Staff #${mark.staffId}`, totalFor(mark.staffId));
       byStaff.set(mark.staffId, row);
     }
 
@@ -73,6 +100,15 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
     if (!row.doneItemIds.includes(mark.itemId)) {
       row.doneItemIds.push(mark.itemId);
       row.doneCount += 1;
+    }
+    // WHEN, per task — the manager report reads a shift task by task, so the
+    // instant is kept beside the tick instead of being collapsed into
+    // `lastMarkedAt`. Earliest wins on a duplicate: the first attestation is
+    // the one that happened; an optimistic re-render must not move a time the
+    // operator already saw.
+    const seen = row.markedAtByItemId[mark.itemId];
+    if (seen == null || mark.markedAt < seen) {
+      (row.markedAtByItemId as Record<number, string>)[mark.itemId] = mark.markedAt;
     }
     if (row.lastMarkedAt == null || mark.markedAt > row.lastMarkedAt) {
       row.lastMarkedAt = mark.markedAt;
@@ -89,9 +125,10 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
     (a, b) => a.doneCount - b.doneCount || a.name.localeCompare(b.name),
   );
 
+  const fallbackViewerId = viewerStaffId ?? 0;
   const mine =
     (viewerStaffId != null ? byStaff.get(viewerStaffId) : undefined) ??
-    emptyRow(viewerStaffId ?? 0, viewerName ?? 'You', total);
+    emptyRow(fallbackViewerId, viewerName ?? 'You', totalFor(fallbackViewerId));
 
   return {
     dateKey,
@@ -99,6 +136,8 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
     staff,
     mine,
     totalDone: staff.reduce((sum, row) => sum + row.doneCount, 0),
-    totalPossible: total * staff.length,
+    // Per-staff denominators are no longer interchangeable, so the day's
+    // ceiling is the SUM of everyone's own list — not list × roster.
+    totalPossible: staff.reduce((sum, row) => sum + row.total, 0),
   };
 }

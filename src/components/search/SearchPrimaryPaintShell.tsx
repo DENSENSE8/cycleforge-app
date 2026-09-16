@@ -4,7 +4,7 @@
  * Client shell for `/search` — holds the house loading field over the body
  * until the `?sel=` record has actually resolved.
  *
- * It replaces `SearchOrderStationPane`'s bare `<div className="min-h-0 flex-1"
+ * It replaces the old station pane's bare `<div className="min-h-0 flex-1"
  * aria-busy />`: a deep-linked record used to land on an empty white plane with
  * only the header pulse to say anything was happening. Same recipe as
  * {@link UnboxBrowseShell} — the field owns no geometry, the real body stays

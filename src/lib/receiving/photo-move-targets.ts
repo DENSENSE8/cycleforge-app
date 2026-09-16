@@ -14,6 +14,7 @@ import {
   resolvePhotoMoveTargetTitle,
 } from '@/lib/receiving/photo-move-targets-shared';
 import { UNBOX_OPENED_PREDICATE_SQL } from '@/lib/receiving/unbox-scan-opened-sql';
+import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export {
@@ -242,9 +243,7 @@ async function queryTargets(
           LEFT JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
            AND (
@@ -305,17 +304,21 @@ async function queryTargets(
 
   /**
    * Prefer a line with real product identity over an early `'Unfound PO'` stub
-   * (ORDER BY rl.id alone often picked the placeholder). Same ladder the
-   * Unboxed rail paints via {@link receivingProductTitle}.
+   * (ORDER BY rl.id alone often picked the placeholder). Rank order IS the
+   * title ladder — {@link SKU_IDENTITY_TITLE_ORDER}: the Zoho item name first,
+   * the marketplace catalog title second. Before 2026-09-15 the catalog ranked
+   * 0 here AND won the ladder in `resolvePhotoMoveTargetTitle`, which is how
+   * carton 52827 (PO 10-15153-01528) painted the Ecwid wall mount while the PO
+   * desk painted the Zoho soundbar.
    */
   const productLineOrder = `
     CASE
-      WHEN COALESCE(sc.product_title, '') <> '' THEN 0
       WHEN (
         SELECT name FROM items
          WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
          LIMIT 1
-      ) IS NOT NULL THEN 1
+      ) IS NOT NULL THEN 0
+      WHEN COALESCE(sc.product_title, '') <> '' THEN 1
       WHEN COALESCE(rl.item_name, '') <> ''
        AND rl.item_name <> 'Unfound PO' THEN 2
       WHEN COALESCE(rl.sku, '') <> '' THEN 3
@@ -383,9 +386,7 @@ async function queryTargets(
           LEFT JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
          ORDER BY ${productLineOrder}
@@ -401,9 +402,7 @@ async function queryTargets(
           LEFT JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
          ORDER BY ${productLineOrder}
@@ -415,9 +414,7 @@ async function queryTargets(
           LEFT JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
            AND COALESCE(rl.item_name, '') <> ''
@@ -431,9 +428,7 @@ async function queryTargets(
           LEFT JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
            AND COALESCE(rl.sku, '') <> ''
@@ -446,9 +441,7 @@ async function queryTargets(
           JOIN receiving_line_zoho rz
             ON rz.receiving_line_id = rl.id
            AND rz.organization_id = rl.organization_id
-          LEFT JOIN sku_catalog sc
-            ON sc.sku = rl.sku
-           AND sc.organization_id = rl.organization_id
+          LEFT JOIN sku_catalog sc ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.receiving_id = r.id
            AND rl.organization_id = r.organization_id
            AND COALESCE(rz.zoho_item_id, '') <> ''

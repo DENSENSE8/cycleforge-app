@@ -52,7 +52,7 @@ import {
 import type {
   ReceivingLineRow,
   ReceivingLineUnitView,
-} from '@/components/station/receiving-line-row';
+} from '@/lib/receiving/receiving-line-row';
 import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';

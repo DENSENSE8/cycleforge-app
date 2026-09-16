@@ -12,6 +12,7 @@
  */
 
 import { Button } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 import {
   FILTER_DROPDOWN_LABEL_CLASS,
   FILTER_DROPDOWN_SELECT_CLASS,
@@ -43,7 +44,7 @@ export function MobilePrintOptionsDropdown({
           {role === 'paper' ? 'Paper printer' : 'Label printer'}
         </span>
         <select
-          className={FILTER_DROPDOWN_SELECT_CLASS}
+          className={cn(FILTER_DROPDOWN_SELECT_CLASS, 'text-role-field')}
           value={currentId ?? ''}
           onChange={(e) => {
             const id = e.target.value || null;

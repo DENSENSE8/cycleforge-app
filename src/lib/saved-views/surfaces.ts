@@ -113,6 +113,57 @@ export const SHEET_SAVED_VIEW_KEY = {
   unfound_queue: 'unfound_queue_saved_views',
   tech_all: 'tech_all_saved_views',
 } as const satisfies Record<string, string>;
+/**
+ * Default saved-view mounts for Phase-4 sheet bindings. The engine supplies
+ * these when a direct DataTable mount has not supplied a more specific config;
+ * queue and station mounts keep their existing route-aware configs.
+ */
+export const SHEET_SAVED_VIEW_CONFIG = {
+  catalog: {
+    storageKey: SHEET_SAVED_VIEW_KEY.products_catalog,
+    paramKeys: ['platform', 'linkFilter', 'pending', 'inactive', 'noChannels', 'noManuals', 'noQc', 'colsort', 'coldir'],
+  },
+  'inventory-units': {
+    storageKey: SHEET_SAVED_VIEW_KEY.inventory_units,
+    paramKeys: ['state', 'condition', 'colsort', 'coldir'],
+  },
+  bins: {
+    storageKey: SHEET_SAVED_VIEW_KEY.warehouse_bins,
+    paramKeys: ['status', 'room', 'colsort', 'coldir'],
+  },
+  repair: {
+    storageKey: SHEET_SAVED_VIEW_KEY.repair_queue,
+    paramKeys: ['tab', 'status', 'colsort', 'coldir'],
+  },
+  warranty: {
+    storageKey: SHEET_SAVED_VIEW_KEY.warranty_claims,
+    paramKeys: ['wstatus', 'wexp', 'colsort', 'coldir'],
+  },
+  'tracking-exceptions': {
+    storageKey: SHEET_SAVED_VIEW_KEY.tracking_exceptions,
+    paramKeys: ['status', 'carrier', 'colsort', 'coldir'],
+  },
+  ready: {
+    storageKey: SHEET_SAVED_VIEW_KEY.outbound_ready,
+    paramKeys: ['status', 'packStation', 'packPlaced', 'colsort', 'coldir'],
+  },
+  pickup: {
+    storageKey: SHEET_SAVED_VIEW_KEY.pickup_queue,
+    paramKeys: ['status', 'colsort', 'coldir'],
+  },
+  unfound: {
+    storageKey: SHEET_SAVED_VIEW_KEY.unfound_queue,
+    paramKeys: ['uf_kind', 'colsort', 'coldir'],
+  },
+  'tech-all': {
+    storageKey: SHEET_SAVED_VIEW_KEY.tech_all,
+    paramKeys: ['status', 'staff', 'colsort', 'coldir'],
+  },
+} as const;
+
+export function sheetSavedViewConfigForTable(tableId: string) {
+  return SHEET_SAVED_VIEW_CONFIG[tableId as keyof typeof SHEET_SAVED_VIEW_CONFIG] ?? null;
+}
 
 /** Storage key → DB surface (the `useSavedViews` consumers). */
 const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> = {

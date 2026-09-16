@@ -18,7 +18,8 @@
  * Raycast, Alfred (`⌥⌘C`), Paste (`⇧⌘V`), Maccy, Ditto — **none** of them put
  * clipboard history on a primary toolbar. It lives in the menu bar / system
  * tray, and the hotkey is what daily users actually press; the icon is there for
- * discovery. `StaffAccountFooter` ⋯ *is* this app's menu bar, so the button was
+ * discovery. `StaffAccountFooter`'s account panel *is* this app's menu bar,
+ * so the button was
  * already in the right neighbourhood — a utility drawer does not distinguish
  * setup utilities from work utilities, and clipboard history sitting beside a QR
  * sign-in is exactly Paste sitting beside a VPN toggle.

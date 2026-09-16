@@ -8,6 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
 import { Calendar as CalendarIcon, ChevronDown, X } from '@/components/Icons';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cursorClickTarget } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
@@ -262,31 +263,49 @@ function RangeDatePickerField({
 
   return (
     <Popover.Root open={open} onOpenChange={handleOpenChange}>
-      <Popover.Trigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          className={cn(TRIGGER_CLASS, hasValue ? 'text-text-default' : 'text-text-faint', className)}
-        >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-          <span className="flex-1 truncate">{label}</span>
-          {hasValue ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onChange(undefined);
-                setDraft(undefined);
-              }}
-              aria-label="Clear date range"
-              className="-mr-1 inline-flex h-5 w-5 items-center justify-center rounded text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          ) : null}
-        </button>
-      </Popover.Trigger>
+      {/*
+        Clear is a SIBLING of the trigger, not a child of it.
+        A `<button>` inside a `<button>` is invalid HTML: React logs a
+        hydration error on every paint of this chip, and the browser's own
+        recovery re-parents the inner button out of the trigger, so which
+        control a click lands on stops being ours to decide. The wrapper keeps
+        the one-chip look; `pr-7` reserves the X's gutter inside the trigger.
+      */}
+      <span className={cn('relative inline-flex', hasValue ? 'items-center' : null)}>
+        <Popover.Trigger asChild>
+          <button
+            type="button"
+            disabled={disabled}
+            className={cn(
+              TRIGGER_CLASS,
+              hasValue ? 'text-text-default pr-7' : 'text-text-faint',
+              className,
+            )}
+          >
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+            <span className="flex-1 truncate">{label}</span>
+          </button>
+        </Popover.Trigger>
+        {hasValue ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onChange(undefined);
+              setDraft(undefined);
+            }}
+            aria-label="Clear date range"
+            className={cn(
+              'absolute right-1 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded',
+              'text-text-faint hover:bg-surface-sunken hover:text-text-muted',
+              focusRing('control'),
+            )}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        ) : null}
+      </span>
 
       <Popover.Portal>
         <Popover.Content

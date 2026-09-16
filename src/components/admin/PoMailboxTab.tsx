@@ -50,10 +50,10 @@ export function PoMailboxTab() {
     if (connected === '1') {
       toast.success('PO mailbox connected');
       // strip the query param so a refresh doesn't re-toast
-      router.replace('/admin?section=po_mailbox');
+      router.replace('/incoming?view=mailbox');
     } else if (error) {
       toast.error(`Connect failed: ${error}`);
-      router.replace('/admin?section=po_mailbox');
+      router.replace('/incoming?view=mailbox');
     }
   }, [search, router]);
 

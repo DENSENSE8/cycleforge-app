@@ -703,7 +703,7 @@ export async function syncZohoPurchaseOrdersToReceiving(
     lastModifiedTime = formatApiOffsetTimestamp(cutoff);
   }
   if (!lastModifiedTime && !opts.days_back) {
-    const cursor = await getSyncCursor('zoho_purchase_orders');
+    const cursor = await getSyncCursor('zoho_purchase_orders', orgId);
     if (cursor) {
       lastModifiedTime = formatApiOffsetTimestamp(cursor);
     }
@@ -795,7 +795,7 @@ export async function syncZohoPurchaseOrdersToReceiving(
   }
 
   if (summary.failed === 0) {
-    await updateSyncCursor('zoho_purchase_orders', new Date()).catch(() => {});
+    await updateSyncCursor('zoho_purchase_orders', new Date(), orgId).catch(() => {});
   }
 
   return summary;

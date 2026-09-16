@@ -39,7 +39,7 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { toast } from '@/lib/toast';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { WorkspaceNotesCard } from '../workspace/line-edit/WorkspaceNotesCard';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function ArrivalCartonNotesEntry({
   row,

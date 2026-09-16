@@ -29,7 +29,7 @@ import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
 import { useNasConfig } from '@/hooks/useNasConfig';
 import { getNasBaseUrl, putNasPhoto } from '@/lib/nas-photos';
 import { describeUnitId } from '@/lib/inventory/unit-id-format';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import type { InventoryEventRow } from '@/lib/inventory/events';
 
 /**

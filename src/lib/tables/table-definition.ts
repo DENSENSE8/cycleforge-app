@@ -123,6 +123,15 @@ const TABLE_ENTITY_FAMILIES = [
    */
   'import-exception',
   'station-history',
+  /**
+   * Tech bench history — one row = one test scan, shaped into the shared
+   * `QueueRowRecord` by `techRecordToQueueRow`. Catalog:
+   * field-catalog/tech.ts. A SIBLING of `packer`, never a merge: the two
+   * benches answer different questions and carry different stamps.
+   */
+  'tech',
+  /** Packer bench history — `packerRecordToQueueRow` rows; catalog in field-catalog/packer.ts. */
+  'packer',
   'fba',
   'units',
   /** Settings › Kiosk devices — enrolled tablets; catalog in field-catalog/kiosk-devices.ts. */
@@ -138,6 +147,154 @@ const TABLE_ENTITY_FAMILIES = [
    * KEEP — family union so the field catalog typechecks; not a feed engine.
    */
   'walk-in-sales',
+  /**
+   * Settings › Active staff sessions — one row = one live `staff_sessions`
+   * row. Catalog: field-catalog/auth-sessions.ts. Revoke is a row verb, never
+   * an actions column.
+   */
+  'auth-sessions',
+  /** Admin › Cycle count campaigns — one row = one campaign; catalog in field-catalog/cycle-counts.ts. */
+  'cycle-counts',
+  /**
+   * Admin › Returns dock — one row = one RETURNED inventory_event. A SIBLING
+   * of `inventory-events`, never a merge: its own prefs bucket, the Ledger's
+   * cells. Catalog: field-catalog/admin-returns.ts.
+   */
+  'admin-returns',
+  /**
+   * Admin › Sourcing compatibility — one row = one model ↔ part edge.
+   * Catalog: field-catalog/part-compatibility.ts. Remove is a row verb behind
+   * a confirm plane, never an actions column.
+   */
+  'part-compatibility',
+  /**
+   * Unit detail › Order allocations — one row = one `order_unit_allocations`
+   * reservation. ONE family for both ends of the entity. Catalog:
+   * field-catalog/unit-allocations.ts.
+   */
+  'unit-allocations',
+  /**
+   * Unit detail › v1 `tech_serial_numbers` cross-refs — one row = one legacy
+   * tech-station serial record. Read-only. Catalog:
+   * field-catalog/unit-tsn-links.ts.
+   */
+  'unit-tsn-links',
+  /**
+   * Settings › Audit log — one row = one `audit_logs` row. Read-only: no row
+   * verbs and no record plane (the before/after diff was never built).
+   * Catalog: field-catalog/audit-log.ts.
+   */
+  'audit-log',
+  /**
+   * Admin › Inventory holds — one row = one `serial_units` row in ON_HOLD,
+   * joined to the HELD event that quarantined it. Catalog:
+   * field-catalog/admin-holds.ts. Release is a row verb that OPENS A PLANE
+   * (its payload takes a restore-status parameter), never a `<form>` in a cell.
+   */
+  'admin-holds',
+  /**
+   * Admin › Bulk allocate — one row = one unallocated `orders` row beside its
+   * SKU's STOCKED count. Catalog: field-catalog/admin-bulk-allocate.ts.
+   * Allocate is a row verb, never an actions column; `qty` and `eligible` are
+   * DERIVED in the resolver, so neither carries a `paths` entry.
+   */
+  'admin-bulk-allocate',
+  /**
+   * Admin › Cycle count LINES — one row = one `cycle_count_lines` row of one
+   * campaign. Catalog: field-catalog/cycle-count-lines.ts. Count / Approve /
+   * Reject are row verbs (the count opens a stage-overlay plane, because a
+   * parameterised write has no home on a compound row); never an actions column.
+   */
+  'cycle-count-lines',
+  /**
+   * Admin › Inventory open DRIFT alerts — one row = one unresolved
+   * `stock_alerts` DRIFT row. Read-only: `/api/cron/inventory/drift-check`
+   * opens and resolves them, so a row verb here would be a second writer into
+   * a table the cron owns. Catalog: field-catalog/admin-drift-alerts.ts.
+   */
+  'admin-drift-alerts',
+  /**
+   * Admin › Inventory sku_stock ↔ ledger drift — one row = one
+   * `v_sku_stock_drift` comparison. A read-time join: no id and no timestamp,
+   * so the SKU is the identity and the Dates chrome carries no fact.
+   * Read-only. Catalog: field-catalog/admin-sku-drift.ts.
+   */
+  'admin-sku-drift',
+  /**
+   * Settings › Team directory — one row = one `staff` row. Catalog:
+   * field-catalog/staff-directory.ts. The sign-in-policy write and Deactivate
+   * are row verbs behind stage-overlay planes, never cells; the retired desk
+   * had both as controls inside a cell.
+   */
+  'staff-directory',
+  /**
+   * Reports › Bin utilization — one row = one `mv_bin_utilization` bin,
+   * org-scoped by the route's `locations` join. Read-only: no row verbs and no
+   * record plane. Catalog: field-catalog/report-bin-utilization.ts. NOT
+   * `bins` — that family's row carries count stamps and flags this MV
+   * projection does not have.
+   */
+  'report-bin-utilization',
+  /**
+   * Reports › SKU velocity (30d) — one row = one SKU's movement totals,
+   * recomputed from the org-bearing base tables. Read-only. Catalog:
+   * field-catalog/report-velocity.ts.
+   */
+  'report-velocity',
+  /**
+   * Reports › Dead stock (90d+) — one row = one dormant SKU. A SIBLING of
+   * `report-velocity`, never a merge: two windows, two questions, different
+   * facts. Catalog: field-catalog/report-dead-stock.ts.
+   */
+  'report-dead-stock',
+  /**
+   * Reports › Staff day — one row = one (staffer × task) cell of one day's
+   * daily-check report. Read-only ("view only in a manager", operator
+   * 2026-09-15): no row verbs, no record plane — the interactive per-person
+   * view is /m/reports over the same `buildStaffDay` projection. Catalog:
+   * field-catalog/report-staff-day.ts.
+   */
+  'report-staff-day',
+  /**
+   * Reports › Packer day — one row = one PACK scan of one PST day
+   * (`station_activity_logs` + its `packer_log_enrichment`). Read-only: the
+   * editable thing is the SKU's time to pack, which lives on the product
+   * record the row title links to. Replaced the hand-rolled `<table>` on
+   * `/operations?mode=analytics`, retired 2026-09-16 because the operator
+   * could not trust a KPI strip whose deltas compared a partial day with a
+   * whole one. Catalog: field-catalog/report-packer-day.ts.
+   */
+  'report-packer-day',
+  /**
+   * Admin › per-SKU bin distribution — one row = one location holding this
+   * SKU. Read-only. Catalog: field-catalog/sku-bins.ts. NOT `bins` — that
+   * family's row is the warehouse-wide bin with its own count stamps and
+   * flags; this one is a per-SKU quantity in a location.
+   */
+  'sku-bins',
+  /**
+   * Admin › per-SKU stock ledger — one row = one `sku_stock_ledger` write.
+   * Read-only. Catalog: field-catalog/sku-ledger.ts. The retired `refs` cell
+   * packed three reference ids into one string; they are three facts here.
+   */
+  'sku-ledger',
+  /**
+   * Inventory › Stock — one row = one `(location, sku)` pair holding stock,
+   * warehouse-wide. Read-only. Catalog: field-catalog/location-stock.ts.
+   * Neither of its two neighbours: `bins` rows a LOCATION with aggregates over
+   * every SKU inside it, and `sku-bins` rows the pairs of ONE SKU on a page
+   * that already names it. This family spans the floor, so `room` is a fact it
+   * filters and sorts by and `product_title` is a real join.
+   */
+  'location-stock',
+  /**
+   * `/search` find plane — one row = one cross-entity search HIT. Read-only.
+   * Catalog: field-catalog/search-hits.ts. ONE family over six entity types
+   * on purpose: the row shape is the search wire (`AiSearchHit`), and six
+   * registrations of one dataset is the fork `REGISTER_ENTITY_NOT_PAGE`
+   * names. Heterogeneity is resolved at the adapter.
+   */
+  'search-hits',
 ] as const;
 
 /**

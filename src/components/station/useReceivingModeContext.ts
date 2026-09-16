@@ -27,6 +27,7 @@ import {
 } from '@/lib/receiving-history-search';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
+import { WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -109,6 +110,10 @@ export function useReceivingModeContext(): ReceivingModeState {
   // History reuses the shared `?sort=` param (modes are exclusive). The resolved
   // axis drives client day-banding + within-day order; the same sort is sent to
   // the API for the server ORDER BY window.
+  // History week window: ALL TIME unless `?weekOffset` is explicitly present
+  // (operator 2026-09-14 — the entire product/PO history is the default view;
+  // absent param and weekOffset=0 used to collide as "current week").
+  const historyWeekExplicit = isHistoryMode && searchParams.has(WEEK_OFFSET_PARAM);
   const historySort = isHistoryMode ? (searchParams.get('sort') || '').trim() : '';
   const historyAxis: ReceivingActivityAxis = isHistoryMode
     ? historySortGroupAxis(historySort)
@@ -173,6 +178,7 @@ export function useReceivingModeContext(): ReceivingModeState {
       historySearchField,
       historySearchScope,
       historySort,
+      historyWeekExplicit,
       incomingSearch,
       incomingState,
       incomingSort,
@@ -194,8 +200,8 @@ export function useReceivingModeContext(): ReceivingModeState {
       historySearchField,
       historySearchScope,
       historySort,
+      historyWeekExplicit,
       incomingSearch,
-      incomingState,
       incomingSort,
       incomingPoFrom,
       incomingPoTo,

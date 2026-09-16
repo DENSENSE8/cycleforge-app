@@ -60,7 +60,7 @@ export function RepairTable({ filter }: RepairTableProps) {
     data: repairs = [],
     isLoading: loading,
     refetch: refetchRepairs,
-  } = useRepairsTable(search, filter);
+  } = useRepairsTable(search, filter, searchParams.get('needsLabel') === '1');
 
   // The COLUMNS are the effective slot layout's materialization (staff ?? org
   // ?? product — wave 1.4 hand-model kill). Sort stays the queue's own `?sort=`

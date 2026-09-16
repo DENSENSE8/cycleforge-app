@@ -52,7 +52,7 @@ const c = (code, s) => (process.stdout.isTTY ? `\x1b[${code}m${s}\x1b[0m` : s);
 const GATES = gatesForProfile(PROFILE);
 
 const BANNER = {
-  fast: 'verify — inner loop (lint + typecheck)',
+  fast: 'verify — inner loop (lint + typecheck + boundary)',
   dogfood: 'verify — dogfood (tenant click-through)',
   full: 'verify — local CI mirror',
 };

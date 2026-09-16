@@ -7,11 +7,11 @@ import {
   getWorkflowIconMeta,
   shouldShowWorkflowStatusIcon,
   type ReceivingRowDisplay,
-} from '@/components/station/receiving-constants';
+} from '@/lib/receiving/receiving-constants';
 import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { GalleryPhotoCount, MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';

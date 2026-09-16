@@ -4,7 +4,7 @@ import {
   reserveLegacyPrintPopup,
 } from '@/lib/print/iframePrint';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   productLabelFace,
   type PrintProductLabelInput,

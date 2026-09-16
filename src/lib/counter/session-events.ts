@@ -35,7 +35,7 @@
 
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { isBuybackPayload, isRepairPayload } from '@/lib/kiosk/cart-line';
-import type { KioskCommandId } from '@/lib/kiosk/kiosk-session-store';
+import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
 import {
   consultStanceFromFace,
   EMPTY_CONSULT_PRESENTATION,
@@ -160,7 +160,7 @@ export function emptySessionSnapshot(sessionId: number): CounterSessionSnapshot 
     claimedByStaffId: null,
     claimedByStaffName: null,
     claimExpiresAtMs: null,
-    activeCommand: 'retail',
+    activeCommand: KIOSK_FALLBACK_COMMAND,
     face: 'staff',
     consultStance: 'work',
     presentation: { ...EMPTY_CONSULT_PRESENTATION },

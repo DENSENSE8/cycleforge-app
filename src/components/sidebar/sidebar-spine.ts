@@ -38,8 +38,14 @@ export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
  *
  * Two spellings of one measurement is a fork risk, so they live on adjacent
  * lines: change one, change the other.
+ *
+ * Exported since 2026-09-14 for `ui/sidebar.tsx`, which needs the measurement
+ * as a CSS custom property (`--sidebar-width-mobile`) rather than a class. The
+ * upstream shadcn copy hard-codes `18rem` there; this app has one spine width
+ * and the drawer is its pixel twin, so it reads that instead of inventing a
+ * second number.
  */
-const SIDEBAR_SPINE_WIDTH_PX = 240;
+export const SIDEBAR_SPINE_WIDTH_PX = 240;
 
 /**
  * Drag-to-resize + drag-to-collapse contract for the MasterNav spine
@@ -65,9 +71,10 @@ export const SIDEBAR_SPINE_RESIZE = {
 export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
 
 /**
- * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
+ * Chrome for MasterNav **identity menus** (org/workspace switch + staff
+ * account menu).
  *
- * Sole consumer today: {@link StaffAccountFooter}. The ⋯ panel is the
+ * Sole consumer today: {@link StaffAccountFooter}. The account panel is the
  * shadcn/ui Popover (`radix-popover`), anchored to the footer row so width
  * tracks the spine. Soft shell ({@link DROPDOWN_SHELL_CORNER}) + caption type
  * — peer of dropdown menus, not a flush industrial plate. Never fork
@@ -75,7 +82,7 @@ export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
  * `header-mode.guard.test.ts`.
  *
  * Gate: importers = StaffAccountFooter; API = class-string tokens only (no
- * schemas). User: account-details three-dots menu display (corners + motion).
+ * schemas). User: account-details menu display (corners + motion).
  */
 export const SIDEBAR_SPINE_MENU_PANEL_CLASS =
   `w-full overflow-hidden ${DROPDOWN_SHELL_CORNER} border border-border-soft bg-surface-card shadow-md`;
@@ -155,6 +162,94 @@ export const SPINE_DRILL_SCROLL_END_CLASS = 'pb-32';
 
 export const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
+/*
+ * `SPINE_CHILD_ROW_INDENT_CLASS` (`pl-8`) is DELETED, not deprecated
+ * (2026-09-14). It was the desk's way of marking a row inside an open group
+ * once the icon law took the glyph away — a 32px indent derived from
+ * `px-2` + a 16px glyph + the 8px gap.
+ *
+ * The operator replaced it with the mark the `/m` drawer already had: *"when a
+ * parent level design sidebar is open, it should display a hairline exactly
+ * like the pasted page component … a hairline on the left of all the child
+ * components."* So the child mark is now `spineRailLineClass`
+ * (`@/lib/nav/spine-section-accent`) on BOTH surfaces — one element, two colour
+ * tokens, inside a {@link SPINE_CHILD_RAIL_INSET_CLASS} group body. One law,
+ * one paint; do not reintroduce a second indent token beside it.
+ */
+
+/**
+ * Group-body inset that puts the child RAIL directly under the parent row's
+ * GLYPH — operator 2026-09-14: *"a hairline on the left side and aligned with
+ * the icon of the parent to the left of the child and then the name on the
+ * right side."*
+ *
+ * DERIVED, not chosen. Read it as arithmetic over tokens that already exist:
+ *
+ * ```
+ *   parent row pad            SPINE_ROW_SHELL_CLASS `px-2`        =  8px
+ * + half a parent glyph       SPINE_ROW_ICON_CLASS  `h-4 w-4` / 2 =  8px
+ *   ────────────────────────────────────────────────────────────────────
+ *   parent glyph CENTRE                                           = 16px
+ * - half the rail            `spineRailLineClass` `w-0.5` / 2      = -1px
+ *   ────────────────────────────────────────────────────────────────────
+ *   rail starts at                                                = 15px
+ * ```
+ *
+ * So the 2px rail spans 15→17px and is centred on 16px, the same column the
+ * parent's glyph occupies. `pl-2` (the previous value) put it at 8→10px —
+ * under the parent's left PAD, ~7px shy of its glyph.
+ *
+ * It is off the spacing scale on purpose; a 2px line cannot be centred on an
+ * even pixel from an even offset. shadcn spells the identical geometry as
+ * `mx-3.5 … translate-x-px border-l` on `SidebarMenuSub`; this repo states it
+ * once, as one number, because BOTH surfaces consume it.
+ *
+ * Both surfaces: the desk's `SidebarGroupContent` body and the `/m` drawer's
+ * open-group body. It works unchanged on the phone because the drawer's own
+ * `<nav>` pad shifts the parent glyph and the child rail by the SAME 8px, so
+ * the inset is measured from the group body either way. One law, one paint
+ * (N6f) — do not fork a per-surface value, and do not stack an indent token
+ * beside the rail.
+ */
+export const SPINE_CHILD_RAIL_INSET_CLASS = 'pl-[15px]';
+
+/**
+ * The CONTINUOUS child rail — one unbroken hairline from the **bottom of the
+ * parent's glyph** down to the **bottom of the child list**.
+ *
+ * Operator 2026-09-15: *"there's no hairline coming from the bottom of the
+ * icon from the parent level navigation down to the bottom of the child
+ * list."* Two separate defects sat behind that:
+ *
+ * 1. The per-row segments computed to `width: 0` — see the `shrink-0` note in
+ *    `spineRailLineClass`. Nothing was painting at all.
+ * 2. Even painting, segments only span the CHILD ROWS. They start at the first
+ *    child's top edge, 12px below the glyph, so the line read as detached from
+ *    the parent it belongs to rather than descending out of it.
+ *
+ * `-top-3` is that 12px, derived and not chosen: the parent row is
+ * {@link SPINE_ROW_FACE_CLASS} (`h-10`, 40px) and its glyph is
+ * {@link SPINE_ROW_ICON_CLASS} (16px) vertically centred, so 12px of air sits
+ * between the glyph's bottom edge and the row's bottom edge. Lifting the trunk
+ * by exactly that lands its top ON the glyph's bottom.
+ *
+ * `left-[15px]` is the same derivation as {@link SPINE_CHILD_RAIL_INSET_CLASS}
+ * and resolves against the group body's PADDING box, so the trunk lands in the
+ * identical column as the per-row segments on both surfaces (desk body starts
+ * at 0 → 15px; the `/m` body starts at the drawer's 8px `<nav>` pad → 23px,
+ * matching that surface's own glyph centre of 24px).
+ *
+ * The per-row segments stay and paint OVER this at the same x: the trunk is
+ * the structural guide (`border-soft`), the segment is the state marker
+ * (`text-default` on the row you are on). That is how a single `border-l` — the
+ * shadcn `SidebarMenuSub` shape — and a per-row active mark coexist instead of
+ * being a choice between them.
+ *
+ * Requires the group body to be a positioned ancestor (`relative`).
+ */
+export const SPINE_CHILD_RAIL_TRUNK_CLASS =
+  'pointer-events-none absolute left-[15px] -top-3 bottom-0 w-0.5 bg-border-soft';
+
 /** Destination labels — `role-body` (14px), regular weight. */
 export const SPINE_LABEL_CLASS = 'text-role-body font-normal';
 
@@ -178,5 +273,11 @@ export const SPINE_ROW_SHELL_CLASS = cn(
  */
 export const SPINE_SECTION_LABEL_STICKY_CLASS = 'sticky top-0 z-10 bg-surface-card';
 
-/** Scrollport thumb — same recipe as the ledger grid. */
-export const SPINE_SCROLLPORT_SCROLLBAR_CLASS = 'cf-grid-scrollbar';
+/**
+ * Scrollport thumb — same recipe as the ledger grid.
+ *
+ * Horizontal clip lives on `SidebarContent` (`overflow-x-clip`): `overflow-y: auto`
+ * otherwise computes overflow-x to auto, and this class paints a 10px thumb on
+ * both axes — that was the MasterNav sideways bar.
+ */
+export const SPINE_SCROLLPORT_SCROLLBAR_CLASS = 'cf-grid-scrollbar min-w-0';

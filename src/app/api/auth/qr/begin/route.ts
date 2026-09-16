@@ -3,14 +3,10 @@ import Ably from 'ably';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { getValidatedAblyApiKey } from '@/lib/realtime/ably-key';
 import { createQrLoginSession } from '@/lib/auth/qr-login';
+import { oauthOrigin } from '@/lib/auth/oauth-origin';
 import { hashQrToken, qrAuthCapability, qrAuthChannelName } from '@/lib/realtime/qr-auth-channel';
 
 export const runtime = 'nodejs';
-
-/** Mint the phone auth URL on this request host (tenant or apex). */
-function origin(req: NextRequest): string {
-  return req.nextUrl.origin;
-}
 
 let ablyRestClient: Ably.Rest | null = null;
 
@@ -32,7 +28,10 @@ export async function POST(req: NextRequest) {
 
   try {
     const { token, expiresAt } = await createQrLoginSession({ ip, userAgent: ua, persistent });
-    const authUrl = `${origin(req).replace(/\/$/, '')}/m/qr-auth?token=${encodeURIComponent(token)}`;
+    // The QR is scanned by a DIFFERENT device: the URL must carry the origin
+    // the BROWSER is on (x-forwarded-host behind the switchboard/tunnel), not
+    // req.nextUrl.origin — which collapses to localhost and strands the phone.
+    const authUrl = `${oauthOrigin(req)}/m/qr-auth?token=${encodeURIComponent(token)}`;
 
     // The push grant: subscribe-only on this session's anonymous channel,
     // dead when the QR dies. No key configured => the panel keeps polling —

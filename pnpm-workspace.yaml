@@ -1,3 +1,7 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
 allowBuilds:
   # Desktop shell — electron's postinstall downloads the Chromium binary, so the
   # shell cannot launch without it. electron-winstaller only runs when building
@@ -11,4 +15,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - '@ai-sdk/gateway@4.0.16'
   - '@ai-sdk/react@4.0.23'
-  - ai@7.0.22
+  - 'ai@7.0.22'

@@ -347,6 +347,7 @@ export const AUDIT_ACTION = {
   // to the deleted checklist_templates surface — dashboards key off those
   // values, so a new surface takes new ones rather than borrowing them.
   DAILY_CHECK_ITEM_CREATE: 'daily_check_item.create',
+  DAILY_CHECK_ITEM_UPDATE: 'daily_check_item.update',
   DAILY_CHECK_ITEM_RETIRE: 'daily_check_item.retire',
   QC_RESULT_RECORD: 'qc_result.record',
   // Kit-parts / BOM templates ("what's in the box" authoring CRUD)
@@ -574,6 +575,7 @@ export const AUDIT_ACTION = {
   // label attach; these cover the general CRUD lifecycle for both doc types.
   ORDER_DOCUMENT_ATTACH: 'order.document.attach',
   ORDER_DOCUMENT_FETCH:  'order.document.fetch',
+  ORDER_DOCUMENT_REPLACE: 'order.document.replace',
   ORDER_DOCUMENT_DELETE: 'order.document.delete',
   /** JIT pack Phase 1 — print bundle at pack-confirm (PrintNode or browser fallback). */
   ORDER_DOCUMENT_BUNDLE_PRINT: 'order.document.bundle_print',
@@ -590,7 +592,8 @@ export const AUDIT_ACTION = {
   REPAIR_SERVICE_CREATE: 'repair_service.create',
   REPAIR_SERVICE_UPDATE: 'repair_service.update',
   REPAIR_SERVICE_LINK:   'repair_service.link',
-  REPAIR_SERVICE_UNLINK: 'repair_service.unlink',
+  REPAIR_SERVICE_UNLINK:   'repair_service.unlink',
+  REPAIR_SERVICE_LABEL_PRINTED: 'repair_service.label_printed',
   // Pack / order (existing callers — keep their literals stable)
   PACK_COMPLETED: 'PACK_COMPLETED',
   // Packer Review Station — verification capture + manager review decision

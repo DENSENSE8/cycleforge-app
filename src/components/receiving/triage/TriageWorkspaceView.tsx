@@ -23,7 +23,7 @@ import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode'
 import {
   isPendingTriageScanRow,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
 import { useTriageWorkspaceTab } from '@/hooks/useTriageWorkspaceTab';
 import {

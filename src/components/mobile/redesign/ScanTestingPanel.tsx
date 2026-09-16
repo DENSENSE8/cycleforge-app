@@ -9,14 +9,14 @@ import {
   joinStackedIdentityKeys,
   StackedRowIdentity,
 } from '@/components/ui/StackedRowIdentity';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import { TestingLinePanel, type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import {
   type TestingVerdict,
   unitStatusToVerdict,
 } from '@/components/receiving/workspace/TestingStatusPills';
 import { resolveTestingScan } from '@/lib/testing/resolve-testing-scan';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 type State = 'idle' | 'loading' | 'ready' | 'empty' | 'error';
 

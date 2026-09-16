@@ -23,7 +23,8 @@ import {
   type PhotoAttachCandidate,
 } from '@/components/photos/photo-library-grid/PhotoAttachGrid';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { receivingPhotosQueryKey, refreshReceivingPhotos } from '@/lib/queries/receiving-queries';
 import {
   ASPECTS_BY_STAGE,
@@ -95,12 +96,8 @@ interface SiblingsResponse {
 
 /** Product identity for a line — Zoho item title precedence, then a bare id. */
 function lineTitle(line: ReceivingLineRow): string {
-  return (
-    line.zoho_item_title ||
-    line.catalog_product_title ||
-    line.item_name ||
-    `Item ${line.id}`
-  );
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  return resolveSkuIdentityTitle(line) || `Item ${line.id}`;
 }
 
 function lineMeta(line: ReceivingLineRow): string | undefined {

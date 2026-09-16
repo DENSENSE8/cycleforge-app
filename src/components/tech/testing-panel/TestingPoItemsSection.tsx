@@ -3,7 +3,7 @@
 import { PoItemsSection } from '@/components/receiving/workspace/PoItemsSection';
 import { InlineNotice } from '@/design-system/components';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingLineSlot } from './TestingLineSlot';
 import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';

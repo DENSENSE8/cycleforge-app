@@ -11,7 +11,7 @@
  * — mirrors TriageUnfoundList/TriageCombinedList.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';
 import { useTriageStagingMap } from './useTriageStagingMap';
 import { TriageStagingChips } from './TriageStagingChips';

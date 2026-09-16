@@ -22,15 +22,11 @@ import { SidebarNavOverlaySlider } from '@/components/sidebar/SidebarNavOverlayS
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import {
-  Activity,
   Database,
-  Warehouse,
-  Layers,
   MessageSquare,
   PackageCheck,
   RefreshCw,
   Sparkles,
-  TrendingUp,
   Wrench,
 } from '@/components/Icons';
 import { emitAiChatNew, emitAiChatPrompt } from '@/components/ai/ai-chat-events';
@@ -38,10 +34,7 @@ import { useQuery } from '@tanstack/react-query';
 import { OPERATIONS_QUERY_KEY } from '@/features/operations/components/operations-dashboard-logic';
 import type { DashboardData } from '@/features/operations/types';
 import {
-  ANALYTICS_RANGE_LABELS,
   JOURNEY_DIMENSION_ITEMS,
-  parseAnalyticsRange,
-  type AnalyticsRange,
 } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { useOperationsMode } from '@/components/sidebar/operations/useOperationsMode';
 import { useOperationsTimelineUrlState } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
@@ -57,17 +50,20 @@ import {
 import { SIGNAL_KIND_LIST, SIGNAL_KINDS } from '@/lib/surfaces/registry';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+// Ex-admin console rails, re-homed with their modes (admin dissolution).
+import { GoalsSidebarPanel } from '@/components/sidebar/GoalsSidebarPanel';
+import { StaffScheduleSidebarPanel } from '@/components/admin/StaffScheduleSidebarPanel';
+import { LogsSidebarPanel } from '@/components/admin/LogsSidebarPanel';
 
 
-const ANALYTICS_RANGES: AnalyticsRange[] = ['24h', '7d', '30d'];
-
-const ANALYTICS_SECTIONS: { id: string; label: string; icon: (p: { className?: string }) => JSX.Element }[] = [
-  { id: 'throughput', label: 'Throughput trend', icon: TrendingUp },
-  { id: 'stations', label: 'By station', icon: Warehouse },
-  { id: 'sources', label: 'By event type', icon: Database },
-  { id: 'velocity', label: 'Inventory velocity', icon: Layers },
-  { id: 'activity', label: 'Activity map', icon: Activity },
-];
+/*
+ * `ANALYTICS_RANGES` / `ANALYTICS_SECTIONS` and `AnalyticsSidebar` were
+ * deleted 2026-09-16 with the mode they steered. The range selector was one of
+ * the three clocks that made that page unreadable — a `24h/7d/30d` rail over
+ * sections whose KPI strip was fixed to "today" and whose packing block walked
+ * a PST day. The packer read now lives on `/reports?tab=packer`, which has ONE
+ * day and says which one.
+ */
 
 const INSIGHTS_CAPABILITIES = [
   { icon: PackageCheck, title: 'Throughput & pace', detail: 'Velocity, tested, FBA intake vs. yesterday' },
@@ -86,12 +82,16 @@ const INSIGHTS_PROMPTS = [
 export function OperationsSidebarPanel() {
   const { mode } = useOperationsMode();
 
-  if (mode === 'analytics') return <AnalyticsSidebar />;
   if (mode === 'insights') return <InsightsSidebar />;
   if (mode === 'history') return <HistorySidebar />;
   if (mode === 'signals') return <SignalsSidebar />;
   if (mode === 'reconciliation') return <ReconciliationSidebar />;
   if (mode === 'checks') return <ChecksSidebar />;
+  // Absorbed from /admin (dissolution): each mode keeps the rail its console
+  // section carried, so the filters the body reads still have their writer.
+  if (mode === 'goals') return <GoalsSidebarPanel />;
+  if (mode === 'staff') return <StaffScheduleSidebarPanel />;
+  if (mode === 'logs') return <LogsSidebarPanel />;
   // `plans` is no longer an Operations mode — forge/plans moved to Home and the
   // right pane redirects `?mode=plans` there (HOME-OPS §3.2). No plan-edit chrome
   // renders in Operations; a stale `?mode=plans` bookmark falls through to Live.
@@ -114,13 +114,22 @@ function LiveSidebar() {
   });
   const isLoading = !data;
 
+  /*
+   * The rail's four tiles, renamed to what their queries COUNT and carrying
+   * the window in words (2026-09-16). They used to sit under a `DeltaPill`
+   * whose number was today-so-far ÷ all-of-yesterday — a comparison of the
+   * clock, not the floor — and `/api/dashboard/operations` no longer returns a
+   * delta at all, so there is nothing to paint. Titles mirror
+   * `PRIMARY_KPI_CARDS`; the rail and the right pane must not name the same
+   * number two ways.
+   */
   const kpis = useMemo(
     () =>
       [
-        { key: 'all', label: 'Velocity', tone: 'text-blue-600' },
-        { key: 'tested', label: 'Tested', tone: 'text-emerald-600' },
-        { key: 'fba', label: 'FBA intake', tone: 'text-violet-600' },
-        { key: 'repair', label: 'Repair queue', tone: 'text-orange-600' },
+        { key: 'all', label: 'Scans today', tone: 'text-blue-600', meta: 'All stations · PST' },
+        { key: 'tested', label: 'Tested today', tone: 'text-emerald-600', meta: 'Tech bench · PST' },
+        { key: 'fba', label: 'FBA scans today', tone: 'text-violet-600', meta: 'FNSKU events · PST' },
+        { key: 'repair', label: 'Repair queue', tone: 'text-orange-600', meta: 'Open now' },
       ] as const,
     [],
   );
@@ -165,7 +174,7 @@ function LiveSidebar() {
                 <p className={cn('mt-0.5 text-xl font-semibold tabular-nums leading-none', k.tone)}>
                   {cell ? cell.value.toLocaleString() : isLoading ? '·' : '0'}
                 </p>
-                <DeltaPill delta={cell?.delta ?? 0} invert={k.key === 'repair'} />
+                <p className="mt-1 text-role-micro leading-tight text-text-soft">{k.meta}</p>
               </div>
             );
           })}
@@ -203,84 +212,6 @@ function LiveSidebar() {
 }
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
-
-function AnalyticsSidebar() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const range = parseAnalyticsRange(searchParams.get('range'));
-  const activeSection = searchParams.get('section') ?? '';
-
-  const setParam = useCallback(
-    (key: 'range' | 'section', value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('mode', 'analytics');
-      params.set(key, value);
-      router.replace(`/operations?${params.toString()}`);
-    },
-    [router, searchParams],
-  );
-
-  return (
-    <SidebarShell bodyClassName="pt-0 pb-6">
-      <div className={cn('space-y-5 pt-3')}>
-        <header>
-          <h2 className="text-xl font-semibold uppercase leading-none tracking-tighter text-text-default">Analytics</h2>
-          <p className="mt-1 text-role-eyebrow uppercase tracking-widest text-blue-600">
-            Trends · breakdowns · inventory health
-          </p>
-        </header>
-
-        <div>
-          <p className={cn(sectionLabel, 'mb-2')}>Time range</p>
-          <div className="flex flex-col gap-1">
-            {ANALYTICS_RANGES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setParam('range', r)}
-                /* ds-raw-button: vertical segmented time-range toggle (selection ring) — not a Button shape */
-                className={cn(
-                  'ds-raw-button flex items-center justify-between rounded-none border px-3 py-1.5 text-left text-role-caption font-semibold transition-colors',
-                  range === r
-                    ? 'border-blue-400 bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
-                    : 'border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover',
-                )}
-              >
-                {ANALYTICS_RANGE_LABELS[r]}
-                {range === r && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" aria-hidden />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className={cn(sectionLabel, 'mb-2')}>Jump to</p>
-          <ul className="flex flex-col gap-0.5">
-            {ANALYTICS_SECTIONS.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => setParam('section', s.id)}
-                  /* ds-raw-button: jump-to nav row (icon + label, selection ring) — not a Button shape */
-                  className={cn(
-                    'ds-raw-button flex w-full items-center gap-2 rounded-none inset-cozy text-left text-role-caption font-semibold transition-colors',
-                    activeSection === s.id
-                      ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'
-                      : 'text-text-muted hover:bg-surface-hover',
-                  )}
-                >
-                  <s.icon className="h-3.5 w-3.5 text-text-faint" />
-                  {s.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </SidebarShell>
-  );
-}
-
 // ── Insights (AI) ─────────────────────────────────────────────────────────────
 
 function InsightsSidebar() {
@@ -543,20 +474,9 @@ function ChecksSidebar() {
 }
 
 // ── Shared bits ───────────────────────────────────────────────────────────────
-
-function DeltaPill({ delta, invert = false }: { delta: number; invert?: boolean }) {
-  if (!delta) return <p className="mt-1 text-role-eyebrow font-semibold text-text-faint">No change</p>;
-  const positive = invert ? delta < 0 : delta > 0;
-  return (
-    <p
-      className={cn(
-        'mt-1 inline-flex items-center gap-0.5 text-role-eyebrow tabular-nums',
-        positive ? 'text-emerald-600' : 'text-rose-600',
-      )}
-    >
-      <TrendingUp className={cn('h-3 w-3', delta < 0 && 'rotate-180')} />
-      {delta > 0 ? '+' : ''}
-      {delta}%
-    </p>
-  );
-}
+//
+// `DeltaPill` was DELETED 2026-09-16 with the comparison it painted. It read
+// `summary[key].delta`, which `/api/dashboard/operations` computed as
+// today-so-far ÷ all-of-yesterday — so the arrow pointed at the clock. Its
+// `!delta` branch printed "No change", which is how three hardcoded zeros read
+// as a measurement. The rail's tiles now carry a window line instead.

@@ -18,10 +18,16 @@ import {
 } from '@/lib/auth/platform-oauth';
 
 test('state encode → decode round-trips', () => {
-  const s = newOAuthState('google', { slug: 'acme', next: '/dashboard', verifier: 'v'.repeat(43) });
+  const s = newOAuthState('google', {
+    slug: 'acme',
+    next: '/dashboard',
+    verifier: 'v'.repeat(43),
+    signinPath: '/m/signin',
+  });
   const decoded = decodeOAuthState(encodeOAuthState(s));
   ok(decoded);
   deepStrictEqual(decoded, s);
+  strictEqual(decoded.signinPath, '/m/signin');
 });
 
 test('decode rejects garbage / missing fields', () => {

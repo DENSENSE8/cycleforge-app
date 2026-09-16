@@ -11,9 +11,12 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   assert.equal(getMobileAppTitle('/receiving/lines/42'), 'Unbox');
   assert.equal(getMobileAppTitle('/unbox'), 'Unbox');
   assert.equal(getMobileAppTitle('/triage'), 'Arrival');
-  // `/incoming` is the Inbound desk (Pipeline + Docked lanes) — title mirrors
-  // the sidebar page label.
-  assert.equal(getMobileAppTitle('/incoming'), 'Inbound');
+  // `/incoming` is the Deliveries desk (On the way · History · PO Mailbox) —
+  // the title mirrors the sidebar page LABEL, which the name law renamed from
+  // *Inbound* to **Deliveries** on 2026-09-14 (a child never wears its
+  // parent's name; the lane keeps *Inbound*). This pin follows the label, it
+  // does not preserve the retired word.
+  assert.equal(getMobileAppTitle('/incoming'), 'Deliveries');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
   // 'Repair Service', not 'Repair': the title mirrors the sidebar page label,
   // and the walk-in bench was renamed there (Local Pickup · Repair Service) so
@@ -22,8 +25,14 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
 });
 
-test('getMobileAppTitle resolves mobile home and assigned-orders routes', () => {
-  assert.equal(getMobileAppTitle('/m/home'), 'Home');
+test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () => {
+  // `/m/home` IS the shift checklist since 2026-09-14 (it stopped being a
+  // redirect stub), and since the 2026-09-15 deletion it is the ONLY checklist
+  // word on the phone — `/m/checklist` (the SKU kit / QC editor) is gone, so
+  // its path falls through to the desktop page label rather than answering
+  // "Checklists".
+  assert.equal(getMobileAppTitle('/m/home'), 'Daily');
+  assert.equal(getMobileAppTitle('/m/settings'), 'Settings');
   assert.equal(getMobileAppTitle('/m/work'), 'Orders');
   assert.equal(getMobileAppTitle('/m/search'), 'Find');
   assert.equal(getMobileAppTitle('/m/pick'), 'Picks');
@@ -32,18 +41,17 @@ test('getMobileAppTitle resolves mobile home and assigned-orders routes', () => 
   assert.equal(getMobileAppTitle('/m/scan'), 'Scan');
   assert.equal(getMobileAppTitle('/m/id/scan-out/42'), 'Scan out');
   assert.equal(getMobileAppTitle('/m/id/pick/42'), 'Picks');
-  assert.equal(getMobileAppTitle('/m/checklist'), 'Checklists');
+  assert.notEqual(getMobileAppTitle('/m/checklist'), 'Checklists');
   assert.equal(getMobileAppTitle('/m/triage'), 'Scan');
-  assert.equal(getMobileAppTitle('/m/unbox'), 'Unbox');
+  // Inbound on the phone is the photo feed alone (operator 2026-09-15). The
+  // Unbox title went with its route, and `?mode=` no longer renames the feed —
+  // the Walk-In / Repair assertions deleted with the surfaces they named.
   assert.equal(getMobileAppTitle('/m/receiving'), 'Photo feed');
   assert.equal(
-    getMobileAppTitle('/m/receiving', new URLSearchParams('mode=local-pickup')),
-    'Walk-In',
-  );
-  assert.equal(
     getMobileAppTitle('/m/receiving', new URLSearchParams('mode=repair')),
-    'Repair',
+    'Photo feed',
   );
+  assert.equal(getMobileAppTitle('/m/orders/new'), 'Add order');
 });
 
 test('routeHasMobileContextRow includes receiving', () => {

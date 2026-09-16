@@ -25,8 +25,10 @@ export interface LabelFaceModel {
    * face where the product title fills a full top row, with condition·color on
    * the bottom row and no center band. `location` = coordinate-only inventory
    * sticker: large alphanumeric code, no room name / zone kicker / level gloss.
+   * `lpn` = the handling-unit (box / tote) licence plate: kicker, a large
+   * `H-{id}` code, then a member-count · date row over the bin name.
    */
-  kind?: 'receiving' | 'product' | 'location';
+  kind?: 'receiving' | 'product' | 'location' | 'lpn';
   /** Top-left (receiving: platform/type). For `product`, holds the full-top-row title. */
   topLeft: string;
   /** Top-right — date (receiving). Unused by `product`. */
@@ -68,9 +70,24 @@ export const LOCATION_LABEL_FACE_CSS =
   '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}';
 
 /**
+ * Handling-unit (box / tote) licence plate. Two rows: a `BOX / LPN` kicker
+ * pinned top-left, and the code filling the rest — left-aligned, vertically
+ * centred, as big as 2×1 stock allows.
+ *
+ * Operator ruling 2026-09-15: kicker top-left, ID left-middle, NO date. The
+ * member count and bin name are gone too — both are stale the instant a unit
+ * moves or the tote is carried anywhere, which is the entire job of a tote.
+ * What remains is the identity the scanner and the eye both use.
+ */
+export const LPN_LABEL_FACE_CSS =
+  '.hu-kicker{flex:0 0 auto;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280;text-align:left;line-height:1}' +
+  '.hu-code{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:flex-start;font-size:38px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}';
+
+/**
  * Build the info-column HTML + CSS for a label face. Feed the result straight
  * into the shared `printLabel`/`buildLabelHtml` shell along with `model.matrix`
  * and `model.hri`. Branches on `model.kind`: `location` is a single large code;
+ * `lpn` is the box licence plate (kicker · big code · count/date · bin);
  * `product` puts the title in a full top row with condition·color beneath;
  * `receiving` keeps the 4-corner grid.
  */
@@ -85,6 +102,14 @@ export function buildFaceInfoHtml(model: LabelFaceModel): {
       infoCss: LABEL_FACE_CSS + LOCATION_LABEL_FACE_CSS,
       infoAlign: 'center',
     };
+  }
+  if (model.kind === 'lpn') {
+    // `topLeft` is the kicker, `center` the code. Every other slot is ignored
+    // on this face by design — see LPN_LABEL_FACE_CSS.
+    const infoHtml =
+      `<div class="hu-kicker">${escapeLabelHtml(model.topLeft)}</div>` +
+      `<div class="hu-code">${escapeLabelHtml(model.center)}</div>`;
+    return { infoHtml, infoCss: LPN_LABEL_FACE_CSS, infoAlign: 'space-between' };
   }
   if (model.kind === 'product') {
     const infoHtml =

@@ -209,7 +209,7 @@ test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/ho
     { path: '/inventory/locations', key: 'tab', wire: 'labels' },
     { path: '/warehouse', key: 'tab', wire: 'labels' },
     { path: '/sourcing', key: 'mode', wire: 'queue' },
-    { path: '/', key: 'mode', wire: 'today' },
+    { path: '/', key: 'mode', wire: 'daily' },
     { path: '/operations', key: 'mode', wire: 'live' },
     { path: '/walk-in', key: 'mode', wire: 'sales' },
     { path: '/dashboard', key: 'mode', wire: 'outbound' },
@@ -323,36 +323,42 @@ test('a /products view switch carries nothing but the staff filter', () => {
   // The operator is in QC with a selection, a filter and a Labels history row.
   // Every one of these used to ride into the next view, because the switch
   // patched `?view=` on a copy of the whole query string.
-  const url = buildRouteUrl(PRODUCTS_ROUTE_PARAMS, { view: 'catalog', staff: 7 });
-  assert.equal(url, '/products?view=catalog&staff=7');
+  const url = buildRouteUrl(PRODUCTS_ROUTE_PARAMS, { view: 'pairing', staff: 7 });
+  assert.equal(url, '/products?view=pairing&staff=7');
 });
 
 test('/products drops another view\'s state on arrival', () => {
   const leaked = new URLSearchParams(
-    'view=catalog&skuId=4821&q=laptop&historyId=99&sort=title&labelsView=recent',
+    'view=qc&skuId=4821&q=laptop&historyId=99&sort=title&labelsView=recent',
   );
   const next = parseRouteParams(PRODUCTS_ROUTE_PARAMS, leaked);
   // Declared, so a pasted deep-link into one view keeps working…
-  assert.equal(next.get('view'), 'catalog');
+  assert.equal(next.get('view'), 'qc');
   // …while a value that only makes sense elsewhere still dies at the boundary.
   assert.equal(parseRouteParams(PRODUCTS_ROUTE_PARAMS, new URLSearchParams('triq=BOX-9')).toString(), '');
 });
 
 test('/products validates each view vocabulary through its own parser', () => {
   const parse = (qs: string) => parseRouteParams(PRODUCTS_ROUTE_PARAMS, new URLSearchParams(qs));
-  // Composed from parseProductsView / parseLabelsView / parseLinkFilter, so a
-  // value the surface would reject cannot sit in the URL pretending to be real.
-  assert.equal(parse('view=kit').get('view'), 'kit');
+  // Composed from parseProductsView / parseLabelsView, so a value the surface
+  // would reject cannot sit in the URL pretending to be real.
+  assert.equal(parse('view=qc').get('view'), 'qc');
   assert.equal(parse('view=nope').get('view'), null);
+  // Reference + Kit Parts were REMOVED 2026-09-15, and removal means the wire
+  // value dies at the boundary too — a stale bookmark folds back to Manuals
+  // rather than half-opening a body nobody maintains. This is the line that
+  // separates a removed tab from a parked one (`@/lib/nav/parked-tabs`), where
+  // the URL keeps working on purpose.
+  assert.equal(parse('view=catalog').get('view'), null);
+  assert.equal(parse('view=kit').get('view'), null);
   assert.equal(parse('labelsView=recent').get('labelsView'), 'recent');
   assert.equal(parse('labelsView=nope').get('labelsView'), null);
-  assert.equal(parse('linkFilter=unlinked_pending').get('linkFilter'), 'unlinked_pending');
-  assert.equal(parse('linkFilter=nope').get('linkFilter'), null);
   assert.equal(parse('sort=title').get('sort'), 'title');
   assert.equal(parse('sort=zoho_oldest').get('sort'), null);
-  // A catalog refine flag is present-means-on, never free text.
-  assert.equal(parse('pending=1').get('pending'), '1');
-  assert.equal(parse('pending=maybe').get('pending'), null);
+  // The Reference chrome's own keys went with it — undeclared is stripped.
+  assert.equal(parse('linkFilter=unlinked_pending').get('linkFilter'), null);
+  assert.equal(parse('platform=amazon').get('platform'), null);
+  assert.equal(parse('pending=1').get('pending'), null);
 });
 
 test('a Products selection cannot survive a landing on a receiving surface', () => {

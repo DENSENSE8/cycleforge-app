@@ -228,7 +228,7 @@ export function SearchStackDossier({
     ? [
         {
           id: `hop:${kind}:${id}`,
-          kind: 'hop' as const,
+          kind: 'custody' as const,
           at,
           title: status,
           body: claim

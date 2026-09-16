@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Package } from '@/components/Icons';
-import { QA_BADGE, COND_LABEL } from './receiving-constants';
+import { QA_BADGE, COND_LABEL } from '@/lib/receiving/receiving-constants';
 import { formatDateTimePST } from '@/utils/date';
 import { cartonReadHref } from '@/lib/receiving/surface-path';
 import type { ReceivingDetailsLog } from './receiving-details-log';

@@ -39,7 +39,7 @@ import {
 } from '@/lib/queries/receiving-queries';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { addUnmatchedLine } from '@/lib/receiving/add-unmatched-line-client';

@@ -17,9 +17,11 @@ import {
 } from '@/lib/dashboard/order-export-csv';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { orgHasActivity, useOnboardingStats } from '@/hooks/useOnboardingStats';
 import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { fetchUnshippedOrderRowById } from '@/lib/dashboard-table-data';
 import {
   cagedOrdersQuery,
   cagedRecordToQueueRow,
@@ -113,7 +115,7 @@ const EMPTY_UNSHIPPED_ROWS: ShippedOrder[] = [];
 /** Map an assignment/order-changed event payload to the flat row patch it implies
  *  (only the fields the event carries). Applied to the cache via
  *  {@link patchUnshippedOrderCache}. */
-function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
+export function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   const {
     testerId,
@@ -145,6 +147,13 @@ function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
         : Boolean(String(outOfStock || '').trim());
     patch.is_out_of_stock = flagged;
   }
+  // The urgent toggle rides the same event as assignments (useOrderAssignment
+  // dispatches isUrgent on every mutation). It was missing from BOTH the guard
+  // and the patch, so clearing urgency 200'd at the API, toasted "Urgent
+  // cleared"… and left the row yellow, the rail pulsing and the strip's
+  // transition label stuck on "Clear urgent" — the cache never heard (operator
+  // 2026-09-15, found through the relabelled pill).
+  if (detail?.isUrgent !== undefined) patch.is_urgent = Boolean(detail.isUrgent);
   if (notes !== undefined) patch.notes = notes;
   if (itemNumber !== undefined) patch.item_number = itemNumber;
   if (condition !== undefined) patch.condition = condition;
@@ -205,6 +214,15 @@ export function UnshippedTable({
   /** Must-ship / overdue — days past ship-by ≥ 0 (due today or late). */
   const lateOnly =
     searchParams.get('late') === '1' || searchParams.get('late') === 'true';
+  /** Ship-by aging bucket; unlike `late`, this is mutually complete. */
+  const agingRaw = String(searchParams.get('aging') || '').toLowerCase();
+  const agingBucket =
+    agingRaw === 'overdue' ||
+    agingRaw === 'today' ||
+    agingRaw === 'upcoming' ||
+    agingRaw === 'unscheduled'
+      ? agingRaw
+      : '';
   /** Exception row flag refine (`?rowFlag=awaiting_customer`). */
   const rowFlagFilter = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
   /**
@@ -227,13 +245,16 @@ export function UnshippedTable({
   // assigned work. Absent = ALL staff (current behavior preserved).
   const staffParam = Number(searchParams.get('staff'));
   const staffId = Number.isFinite(staffParam) && staffParam > 0 ? staffParam : undefined;
+  const openOrderIdRaw = searchParams.get('openOrderId');
+  const openOrderIdValue = Number(openOrderIdRaw);
+  const openOrderId =
+    Number.isFinite(openOrderIdValue) && openOrderIdValue > 0 ? openOrderIdValue : null;
   const paperworkId = parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM));
   const [walkIds, setWalkIds] = useState<number[] | null>(null);
   const { rows: selectedRailRows } = useRailActionSnapshot();
   const isSupportContext =
     parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
     ORDERS_DESK_SUPPORT_CONTEXT;
-
   const fetchWindow: number = SLOT_TABLE_PAGE_SIZES[SLOT_TABLE_PAGE_SIZES.length - 1];
   const [rowLimit, setRowLimit] = useState(fetchWindow);
   useEffect(() => {
@@ -243,11 +264,13 @@ export function UnshippedTable({
     statusFilter,
     urgentOnly,
     lateOnly,
+    agingBucket,
     rowFlagFilter,
     packPlacedOnly,
     packStationId,
     cagedOnly,
   ]);
+
 
   const query = useQuery({
     ...unshippedOrdersQuery({
@@ -274,6 +297,17 @@ export function UnshippedTable({
     // The key stays cached, so switching back repaints from cache.
     enabled: !cagedOnly,
   });
+  // A URL dossier can name a row outside the bounded first page. Fetch that
+  // single queue member and merge it into the same row collection so the
+  // engine's existing `scrollToKey` contract can select its page.
+  const deepLinkQuery = useQuery({
+    queryKey: ['dashboard-table', 'unshipped-deep-link', { openOrderId, staffId }],
+    queryFn: () => fetchUnshippedOrderRowById({ orderId: openOrderId as number, staffId }),
+    enabled: !cagedOnly && openOrderId != null,
+    staleTime: 60_000,
+    gcTime: 15 * 60 * 1000,
+  });
+
 
   const cagedQuery = useQuery({ ...cagedOrdersQuery(), enabled: cagedOnly });
   const cagedRows = useMemo(
@@ -393,6 +427,8 @@ export function UnshippedTable({
         detail.packerId !== undefined ||
         detail.deadlineAt !== undefined ||
         detail.outOfStock !== undefined ||
+        detail.isUrgent !== undefined ||
+        detail.isOutOfStock !== undefined ||
         detail.notes !== undefined ||
         detail.itemNumber !== undefined ||
         detail.condition !== undefined ||
@@ -441,7 +477,15 @@ export function UnshippedTable({
     [cagedOnly, onOpenRecord, router, searchParams],
   );
 
-  const allRecords = cagedOnly ? cagedRows : (query.data ?? EMPTY_UNSHIPPED_ROWS);
+  const allRecords = useMemo(() => {
+    if (cagedOnly) return cagedRows;
+    const loaded = query.data ?? EMPTY_UNSHIPPED_ROWS;
+    const deepLinked = deepLinkQuery.data;
+    if (!deepLinked || loaded.some((record) => Number(record.id) === Number(deepLinked.id))) {
+      return loaded;
+    }
+    return [...loaded, deepLinked];
+  }, [cagedOnly, cagedRows, deepLinkQuery.data, query.data]);
   // `?stage` is filtered SERVER-side; dashboard tabs no longer force a lane —
   // stage is a row fact. Optional `fulfillmentLane` remains for station embeds.
   // Facets: `?attention=1` (urgent), `?late=1` (must ship), `?ustatus`, `?rowFlag`.
@@ -527,6 +571,19 @@ export function UnshippedTable({
           if (!deadlineKey || !todayKey || deadlineKey > todayKey) return false;
         }
 
+        if (agingBucket) {
+          const deadlineKey = toPSTDateKey(row.deadline_at || row.ship_by_date || null);
+          const matchesAging =
+            agingBucket === 'unscheduled'
+              ? !deadlineKey
+              : agingBucket === 'overdue'
+                ? Boolean(deadlineKey && todayKey && deadlineKey < todayKey)
+                : agingBucket === 'today'
+                  ? Boolean(deadlineKey && todayKey && deadlineKey === todayKey)
+                  : Boolean(deadlineKey && todayKey && deadlineKey > todayKey);
+          if (!matchesAging) return false;
+        }
+
         if (rowFlagFilter) {
           if (String(row.row_flag || '').trim().toLowerCase() !== rowFlagFilter) return false;
         }
@@ -546,6 +603,7 @@ export function UnshippedTable({
       stageFilter,
       urgentOnly,
       lateOnly,
+      agingBucket,
       rowFlagFilter,
       packStationId,
       packPlacedOnly,
@@ -680,12 +738,12 @@ export function UnshippedTable({
     [],
   );
 
-  // First-run teaching state: a brand-new org with zero unshipped orders and no
-  // active search/filter sees the "connect a sales channel" CTA instead of three
-  // empty lanes that read as broken. Any active search/status/staff filter falls
-  // through to the board, which owns its own typed "no matches" empty per lane.
-  // Pack (and similar embeds) pass `awaitingMessage` so idle / failed-empty
-  // reads as "Awaiting scan" — never a rose degraded alert.
+  // First-run teaching state: a brand-new org sees the "connect a sales
+  // channel" CTA instead of three empty lanes that read as broken. Any active
+  // search/status/staff filter falls through to the board, which owns its own
+  // typed "no matches" empty per lane. Pack (and similar embeds) pass
+  // `awaitingMessage` so idle / failed-empty reads as "Awaiting scan" — never a
+  // rose degraded alert.
   const isIdleEmpty =
     !query.isLoading &&
     allRecords.length === 0 &&
@@ -693,6 +751,17 @@ export function UnshippedTable({
     !urgentOnly &&
     stageFilter === 'all' &&
     staffId === undefined;
+
+  // An empty QUEUE is not an empty ORG (operator 2026-09-14). This used to be
+  // `isIdleEmpty` alone, so `/shipping/orders` told an org with 4,422 orders
+  // and three live integrations to "connect a sales channel" the moment its
+  // to-ship lane drained — the one screen that must never read as unconfigured,
+  // because the operator's next move is to import, not to onboard.
+  //
+  // The org-level fact already exists (`GET /api/onboarding/stats`); the queue
+  // result set cannot answer this question and never could.
+  const onboarding = useOnboardingStats();
+  const hasActivity = orgHasActivity(onboarding.data);
 
   const isFirstRunEmpty =
     // An empty cage is not a brand-new org — showing "connect a sales channel"
@@ -703,7 +772,12 @@ export function UnshippedTable({
     // up. The degraded gate below catches it first; this keeps the teaching
     // state honest on its own terms.
     !queueError &&
-    isIdleEmpty;
+    isIdleEmpty &&
+    // UNKNOWN is not new. While the stats load — or if they fail — the ordinary
+    // empty stands. Teaching setup to an org we cannot prove is fresh is the
+    // exact defect above, and defaulting to it on a network blip would
+    // reintroduce it.
+    hasActivity === false;
 
   // Labels / export hooks MUST sit above the empty/awaiting/degraded early
   // returns. Callers: DashboardOrdersView / Pack embeds mount UnshippedTable.

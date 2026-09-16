@@ -1,0 +1,40 @@
+-- ============================================================================
+-- 2026-09-13a: drop the listed_name trigram index added hours earlier
+-- ============================================================================
+-- `2026-09-13_kiosk_catalog_search_indexes.sql` created
+-- `idx_platform_listings_listed_name_trgm` to accelerate the kiosk searcher's
+-- typo-tolerant name arm. EXPLAIN (ANALYZE) on the live dogfood catalog proves
+-- the planner cannot use it, so it is pure write cost:
+--
+--   pg_stat_user_indexes.idx_scan          = 0
+--   fuzzy predicate on 1,557 active rows   → Seq Scan, 12.4ms
+--   (sibling indexes the same migration added ARE used:
+--    idx_platform_listings_org_platform_name → Index Scan, 0.126ms
+--    idx_platform_listings_upc               → Index Scan, 0.029ms
+--    idx_platform_listings_merchant_sku_trgm → 4 scans)
+--
+-- Two independent reasons it can never be used as written:
+--
+--   1. The predicate is `word_similarity($q, LOWER(BTRIM(listed_name))) >= 0.3`
+--      (the shape `buildTextSearchVariants` emits). The index is on the RAW
+--      column, so the wrapped expression does not match it. This is the exact
+--      trap already documented at `src/lib/search/hybrid-retrieval.ts:111-119`,
+--      which hand-writes its trigram predicate for precisely this reason.
+--   2. pg_trgm's GIN opclass accelerates the `<%` OPERATOR, not the
+--      `word_similarity(...) >= threshold` function form. Even an expression
+--      index matching LOWER(BTRIM(...)) would still be skipped here.
+--
+-- Why drop rather than reshape the query to `<%`: at this catalog size the
+-- seq scan costs 12ms against a ~330ms Neon round trip — invisible — while
+-- `projectEcwidCatalog` rewrites the ENTIRE listing set hourly, so every index
+-- on this table is paid for on every sync. A GIN trigram index is the most
+-- expensive kind to maintain. Buying 12ms of read for an hourly full-catalog
+-- write amplification is the wrong trade until the catalog is an order of
+-- magnitude larger.
+--
+-- If a future catalog makes the seq scan matter, the fix is NOT to recreate
+-- this index: rewrite the fuzzy arm as `$q <% LOWER(BTRIM(listed_name))` and
+-- create the index on that same expression, following hybrid-retrieval.ts.
+-- ============================================================================
+
+DROP INDEX IF EXISTS idx_platform_listings_listed_name_trgm;

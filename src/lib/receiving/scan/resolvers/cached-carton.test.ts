@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveCachedCarton } from './cached-carton';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** Build a row carrying only the fields the resolver reads. */
 function row(p: Partial<ReceivingLineRow>): ReceivingLineRow {

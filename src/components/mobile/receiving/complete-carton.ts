@@ -13,7 +13,7 @@ import {
   readPhotoPolicyWaiver,
   type PhotoPolicyWaiver,
 } from '@/lib/receiving/photo-policy-override-wire';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export type CompleteCartonPhase = 'idle' | 'working' | 'blocked' | 'done' | 'error';
 

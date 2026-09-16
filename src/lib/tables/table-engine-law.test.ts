@@ -28,6 +28,7 @@ import {
   VERB_CATALOG_MODULES,
   VERB_DECLARATION_DEBT,
   ADMIN_TABLE_DEBT,
+  ADMIN_TABLE_ALLOW,
 } from '@/lib/tables/table-engine-law';
 
 const REPO = process.cwd();
@@ -268,21 +269,27 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
     const mounts = SOURCES.filter((file) =>
       /from ['"]@\/design-system\/components\/AdminTable['"]/.test(read(file)),
     ).sort();
-    const allowed = ADMIN_TABLE_DEBT.map((d) => d.file).sort();
+    // DEBT is shrink-only; ALLOW is the one ruled exemption (aggregate rows —
+    // see ADMIN_TABLE_ALLOW). A mount in neither list is a new second engine.
+    const allowed = [...ADMIN_TABLE_DEBT, ...ADMIN_TABLE_ALLOW]
+      .map((d) => d.file)
+      .sort();
     assert.deepEqual(
       mounts,
       allowed,
-      `AdminTable mounts must match ADMIN_TABLE_DEBT (shrink-only). Port to DataTable:\n${mounts.filter((f) => !allowed.includes(f)).join('\n')}`,
+      `AdminTable mounts must match ADMIN_TABLE_DEBT + ADMIN_TABLE_ALLOW (debt is shrink-only). Port to DataTable:\n${mounts.filter((f) => !allowed.includes(f)).join('\n')}`,
     );
-    for (const { file, why } of ADMIN_TABLE_DEBT) {
-      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from ADMIN_TABLE_DEBT`);
+    for (const { file, why } of [...ADMIN_TABLE_DEBT, ...ADMIN_TABLE_ALLOW]) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from its list`);
       assert.ok(why.length > 40, `${file}: name the fork, not just the file`);
     }
+    // The exemption has a price and the law states it: the wrapper survives
+    // while EITHER list names a mount.
     assert.equal(
       existsSync(path.join(REPO, 'src/design-system/components/AdminTable/AdminTable.tsx')),
-      ADMIN_TABLE_DEBT.length > 0,
-      ADMIN_TABLE_DEBT.length > 0
-        ? 'AdminTable.tsx must stay until ADMIN_TABLE_DEBT is empty'
+      allowed.length > 0,
+      allowed.length > 0
+        ? 'AdminTable.tsx must stay until ADMIN_TABLE_DEBT and ADMIN_TABLE_ALLOW are both empty'
         : 'AdminTable.tsx came back — delete it; DataTable is the engine',
     );
   });

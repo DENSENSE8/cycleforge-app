@@ -22,7 +22,7 @@ import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
 import { dispatchReceivingWorkspaceClose, dispatchReceivingCloseHistoryTriage } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { useReceivingDashboardMode } from '@/components/receiving/useReceivingDashboardMode';

@@ -5,7 +5,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { narrowTestingWorkspacePatch } from './testing-line-events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 describe('narrowTestingWorkspacePatch', () => {
   it('keeps serials/workflow/qty and drops age + unrelated hydrate fields', () => {

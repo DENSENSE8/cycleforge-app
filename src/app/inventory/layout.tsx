@@ -24,9 +24,9 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
  * measure — which is exactly the fork the chrome was made the design system's
  * to end.
  *
- * **The ledger rail stays.** Inventory is `deskChrome` but not `railless`: the
- * SKU / bin / unit pickers write the `?sku=` / `?bin=` / `?open=` its bodies
- * read.
+ * **Rail-less (operator 2026-09-15).** Inventory is `deskChrome` + `railless`:
+ * the left context column does not mount on ledger, triage, pulse, graph,
+ * replenish, locations, or the folded `/warehouse` aliases.
  */
 export default function InventoryLayout({ children }: { children: ReactNode }) {
   return (

@@ -11,7 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { DetailsResponse } from './incoming-details-shared';

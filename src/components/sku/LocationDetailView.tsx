@@ -13,6 +13,7 @@ import { BinCycleCountSheet } from '@/components/sku/BinCycleCountSheet';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
+import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -167,8 +168,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
     (msg: {
       data?: { activityType?: string; scanRef?: string | null };
     }) => {
-      const type = String(msg?.data?.activityType || '');
-      if (!type.startsWith('STOCK_DELTA_')) return;
+      if (!isStockDeltaActivity(msg?.data?.activityType)) return;
       const sku = String(msg?.data?.scanRef || '').trim().toUpperCase();
       if (!sku) return;
       const contents = data?.contents ?? [];

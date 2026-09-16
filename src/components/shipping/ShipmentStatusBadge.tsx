@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { AlertTriangle, Truck, Package, PackageCheck, RotateCcw, Clock } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { isStalled } from '@/lib/shipping/shipment-status';
 
 export type ShipmentStatusCategory =
   | 'LABEL_CREATED'
@@ -47,20 +48,12 @@ function normalizeCategory(value: string | null | undefined): ShipmentStatusCate
   return (upper in CATEGORY_STYLE ? upper : 'UNKNOWN') as ShipmentStatusCategory;
 }
 
-export function isStalled(args: {
-  isTerminal?: boolean | null;
-  category?: ShipmentStatusCategory | string | null;
-  latestEventAt?: string | null;
-  stallHours?: number;
-}): boolean {
-  if (args.isTerminal) return false;
-  const cat = normalizeCategory(args.category);
-  if (cat === 'DELIVERED') return false;
-  if (!args.latestEventAt) return false;
-  const ms = Date.now() - new Date(args.latestEventAt).getTime();
-  if (!Number.isFinite(ms)) return false;
-  return ms > (args.stallHours ?? 72) * 3_600_000;
-}
+/**
+ * The stall rule is data, not paint: `@/lib/shipping/shipment-status` owns it
+ * and every decider (shipped records, next step, URL params) reads it there.
+ * This component had a byte-identical copy, and a copy is a second answer
+ * waiting to drift.
+ */
 
 export function ShipmentStatusBadge({
   carrier,

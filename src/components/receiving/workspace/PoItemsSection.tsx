@@ -47,7 +47,7 @@ import type {
   ActiveRowSlot,
   PoLineSerialActions,
 } from './po-lines-accordion-types';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import {
   shouldUsePoAccordion,

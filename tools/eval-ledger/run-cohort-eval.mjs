@@ -4,13 +4,16 @@
  *
  *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs slot-table [--skip-verify]
  *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs shortcuts [--skip-verify]
+ *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs sku-identity [--skip-verify]
  *
- * slot-table — DataTable engine + PRODUCT_TABLES peers (the only DISPLAY SoT)
- * shortcuts — staff `?` paints letters on the CTAs (not a sheet)
+ * slot-table   — DataTable engine + PRODUCT_TABLES peers (the only DISPLAY SoT)
+ * shortcuts    — staff `?` paints letters on the CTAs (not a sheet)
+ * sku-identity — the ZOHO item governs one title / one SKU / one photo across
+ *                every reader AND writer; not a display cohort, an IDENTITY one
  *
  * Overlay is not a display cohort. Station mouth/domain: `eval:station <id>`.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import {
   SLOT_TABLE_COHORT_TRIPWIRE,
@@ -42,6 +45,17 @@ import {
   shortcutDisplayEvalManifest,
 } from '../../src/lib/keyboard/shortcut-display-cohort.ts'
 import {
+  SKU_IDENTITY_ENGINE,
+  SKU_IDENTITY_ENGINE_CONTRACT,
+  SKU_IDENTITY_FORBIDDEN,
+  SKU_IDENTITY_KNOWN_DEBT,
+  SKU_IDENTITY_PEERS,
+  SKU_IDENTITY_READ_LAW,
+  discoverSkuIdentity,
+  formatSkuIdentityDiscoverMarkdown,
+  skuIdentityEvalManifest,
+} from '../../src/lib/sku/sku-identity-cohort.ts'
+import {
   GARISEK_OS,
   REPO,
   evalStationPass,
@@ -54,9 +68,24 @@ import {
 
 function usage(code = 1) {
   console.error(
-    `usage: node --import tsx tools/eval-ledger/run-cohort-eval.mjs <slot-table|shortcuts> [--skip-verify]`,
+    `usage: node --import tsx tools/eval-ledger/run-cohort-eval.mjs <slot-table|shortcuts|sku-identity> [--skip-verify]`,
   )
   process.exit(code)
+}
+
+/** Every `src/**` TS file — the scan surface the identity cohort audits. */
+function srcTsFiles() {
+  const out = []
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir)) {
+      if (entry === 'node_modules' || entry.startsWith('.')) continue
+      const full = path.join(dir, entry)
+      if (statSync(full).isDirectory()) walk(full)
+      else if (/\.(ts|tsx)$/.test(entry)) out.push(path.relative(REPO, full))
+    }
+  }
+  walk(path.join(REPO, 'src'))
+  return out
 }
 
 function slotTableLedgerSeed() {
@@ -622,6 +651,276 @@ async function runShortcuts(skipVerify) {
   process.exit(ok ? 0 : 1)
 }
 
+function skuIdentityLedgerSeed() {
+  return `# SKU-identity cohort — eval ledger
+
+**SoT:** the **ZOHO item**. The cohort is every reader AND writer of a product
+title, SKU or photo — \`src/lib/sku/sku-identity-cohort.ts\`. Not one desk: the
+defect WAS the set disagreeing (the PO desk painted a soundbar while Move
+photos painted a wall mount for the same line, PO \`10-15153-01528\`).
+
+Run: \`pnpm run eval:cohort sku-identity\`
+
+Law: \`src/lib/sku/sku-identity-law.ts\` · Gate: \`Sku identity\` (\`always\`) in
+\`verify:fast\` · CLI: \`npx tsx scripts/sku-identity-guard.ts\` · MCP:
+**\`ds_sku_identity\`** (\`node tools/design-mcp/ds.mjs sku-identity\`)
+
+### Read law
+
+<!-- eval-ledger:auto:read-law -->
+_Not run yet._
+<!-- /eval-ledger:auto:read-law -->
+
+---
+
+## Locked wins
+
+- Exact + org-scoped catalog join (\`SKU_CATALOG_JOIN_ON_SQL\`); the read-path
+  \`similarity(product_title, …) >= 0.25\` predicate is DELETED at all 3 sites
+  plus its byte-parity fixture
+- One ladder (\`resolveSkuIdentityTitle\`): Zoho item name governs; the
+  marketplace title is the no-Zoho-item fallback (755 of 2862 lines need it)
+- Photo precedence via \`RECEIVING_LINE_IMAGE_URL_SQL\`; no bare \`sc.image_url\`
+  beside a line (\`lookup-po\` fed 7 response paths from one)
+- Platform writes fenced by \`skuCatalogNoZohoTwinPredicateSql()\`
+- Data cleaned by \`2026-09-15g_sku_identity_zoho_sot\` (994 provider ids, 132
+  titles, 132 shadowing images; idempotent re-run = 0/0/0)
+- Tripwires: \`src/lib/sku/sku-identity-law.test.ts\` + \`sku-identity-cohort.test.ts\`
+
+## Operator verdict
+
+_Human edits after walking the desks. Agents do not invent this._
+
+- **Status:** initial scaffold — awaiting first operator walk
+- **Approved:**
+- **Changes:**
+- **Do not regress:**
+
+## Open gaps
+
+_Agents: do not invent gaps. The machine queue is Known debt below. Judgment
+stays human._
+
+1. _(machine queue is Known debt / Violations below)_
+
+---
+
+## Machine gates
+
+<!-- eval-ledger:auto:machine-gates -->
+_Not run yet._
+<!-- /eval-ledger:auto:machine-gates -->
+
+## Tripwire result
+
+<!-- eval-ledger:auto:tripwire-result -->
+_Not run yet._
+<!-- /eval-ledger:auto:tripwire-result -->
+
+## Peer matrix (reader/writer × engine opt-in)
+
+<!-- eval-ledger:auto:peer-matrix -->
+_Not run yet._
+<!-- /eval-ledger:auto:peer-matrix -->
+
+## Engine contract
+
+<!-- eval-ledger:auto:engine-contract -->
+_Not run yet._
+<!-- /eval-ledger:auto:engine-contract -->
+
+## Violations
+
+<!-- eval-ledger:auto:violations -->
+_Not run yet._
+<!-- /eval-ledger:auto:violations -->
+
+## Known debt (shrink-only)
+
+<!-- eval-ledger:auto:known-debt -->
+_Not run yet._
+<!-- /eval-ledger:auto:known-debt -->
+
+## Graph impact matrix (engine symbols)
+
+<!-- eval-ledger:auto:graph-matrix -->
+_Not run yet._
+<!-- /eval-ledger:auto:graph-matrix -->
+
+## Design critique
+
+<!-- eval-ledger:auto:design-critique -->
+_Not run yet._
+<!-- /eval-ledger:auto:design-critique -->
+
+## graph_stats
+
+<!-- eval-ledger:auto:graph-stats -->
+_Not run yet._
+<!-- /eval-ledger:auto:graph-stats -->
+
+---
+
+<!-- eval-ledger:auto:last-run -->
+_Seeded — run \`pnpm run eval:cohort sku-identity\`._
+<!-- /eval-ledger:auto:last-run -->
+`
+}
+
+async function runSkuIdentity(skipVerify) {
+  const { day, ts } = stamp()
+  const manifest = skuIdentityEvalManifest()
+  ensureLedgerSeed(manifest.ledger, skuIdentityLedgerSeed())
+  mkdirSync(path.join(REPO, manifest.snapshotsDir), { recursive: true })
+
+  console.error(`[eval-cohort] tripwire ${manifest.tripwires.join(' ')}…`)
+  const trip = await run(
+    `node --require ./scripts/register-server-only-shim.cjs --import tsx --test ${manifest.tripwires
+      .map((t) => JSON.stringify(t))
+      .join(' ')}`,
+  )
+  const tripSnap = path.join(manifest.snapshotsDir, `${day}-tripwire.log`)
+  writeFileSync(path.join(REPO, tripSnap), trip.output)
+  const tripOk = trip.exitCode === 0
+
+  let verifyOk = null
+  let verifySnapshot = null
+  if (!skipVerify) {
+    const evalCli = path.join(GARISEK_OS, 'tools/eval-engineering/cursor-eval.mjs')
+    if (!existsSync(evalCli)) throw new Error(`missing ${evalCli}`)
+    console.error(`[eval-cohort] verify:fast (once)…`)
+    const res = await run(`node ${JSON.stringify(evalCli)} --root ${JSON.stringify(REPO)} --fast`)
+    verifyOk = res.exitCode === 0
+    verifySnapshot = path.join(manifest.snapshotsDir, `${day}-verify-fast.log`)
+    writeFileSync(path.join(REPO, verifySnapshot), res.output)
+  }
+
+  const result = await evalStationPass(
+    {
+      id: 'sku-identity',
+      label: manifest.label,
+      route: '/(sku-identity)',
+      handoff: null,
+      ledger: manifest.ledger,
+      snapshotsDir: manifest.snapshotsDir,
+      critiqueFiles: [...manifest.critiqueFiles],
+      graphSymbols: [...manifest.graphSymbols],
+      tripwires: [...manifest.tripwires],
+      workspace: SKU_IDENTITY_ENGINE.law,
+      exportName: 'resolveSkuIdentityTitle',
+    },
+    {
+      skipVerify: true,
+      day,
+      sharedVerify: skipVerify ? undefined : { ok: verifyOk, snapshot: verifySnapshot },
+    },
+  )
+
+  // The guard IS the violation scan — one implementation, so the cohort, the
+  // `Sku identity` gate and ds_sku_identity cannot disagree.
+  console.error(`[eval-cohort] sku-identity guard…`)
+  const guard = await run(`node_modules/.bin/tsx scripts/sku-identity-guard.ts --json`)
+  const guardSnap = path.join(manifest.snapshotsDir, `${day}-guard.json`)
+  writeFileSync(path.join(REPO, guardSnap), guard.output)
+  let guardPayload = null
+  try {
+    guardPayload = JSON.parse(guard.output)
+  } catch {
+    guardPayload = null
+  }
+  const guardOk = guard.exitCode === 0
+
+  const lawSrc = readFileSync(path.join(REPO, SKU_IDENTITY_ENGINE.law), 'utf8')
+  const imageSrc = readFileSync(path.join(REPO, SKU_IDENTITY_ENGINE.imageLadder), 'utf8')
+  const engineContract = [
+    `| Predicate | Result |`,
+    `|---|---|`,
+    ...Object.entries(SKU_IDENTITY_ENGINE_CONTRACT).map(([name, re]) => {
+      const src = name.startsWith('imageLadder') ? imageSrc : lawSrc
+      return `| ${name} | ${re.test(src) ? 'pass' : '**FAIL**'} |`
+    }),
+    ...Object.entries(SKU_IDENTITY_FORBIDDEN).map(([name, re]) => {
+      const hit = SKU_IDENTITY_PEERS.some((p) => {
+        try {
+          return re.test(readFileSync(path.join(REPO, p.file), 'utf8'))
+        } catch {
+          return false
+        }
+      })
+      return `| absent:${name} | ${hit ? '**FAIL**' : 'pass'} |`
+    }),
+  ].join('\n')
+
+  const report = discoverSkuIdentity(REPO, srcTsFiles())
+  const discoverMd = formatSkuIdentityDiscoverMarkdown(report)
+
+  const graphMatrix = [
+    `| Symbol | node_key | files_affected | snapshot |`,
+    `|---|---|---|---|`,
+    ...result.impacts.map((i) =>
+      i.error
+        ? `| ${i.symbol} | — | ${i.error} | \`${i.snapshot}\` |`
+        : `| ${i.symbol} | \`${i.nodeKey}\` | ${i.filesAffected} | \`${i.snapshot}\` |`,
+    ),
+  ].join('\n')
+
+  const critiqueBlock = result.critiques
+    .map((c) => {
+      if (c.error) return `- \`${c.file}\` — **${c.error}**`
+      const head = c.excerpt.split('\n').slice(0, 5).join('\n')
+      return `- \`${c.file}\` — \`${c.snapshot}\`\n\`\`\`\n${head}\n\`\`\``
+    })
+    .join('\n')
+
+  const statsBlock = await graphStatsBlock(manifest.snapshotsDir, day)
+  const machineGates = [
+    `| Date | Gate | Result | Snapshot |`,
+    `|------|------|--------|----------|`,
+    skipVerify
+      ? `| ${day} | verify:fast | _skipped (--skip-verify)_ | — |`
+      : `| ${day} | verify:fast | ${verifyOk ? 'pass' : '**FAIL**'} | \`${verifySnapshot}\` |`,
+    `| ${day} | sku-identity-guard | ${guardOk ? 'pass' : '**FAIL**'} | \`${guardSnap}\` |`,
+  ].join('\n')
+
+  patchLedger(path.join(REPO, manifest.ledger), {
+    'last-run': `_Updated ${new Date().toISOString()} · cohort \`sku-identity\` · run id \`${ts}\`_`,
+    'read-law': Object.entries(SKU_IDENTITY_READ_LAW)
+      .map(([k, v]) => `- **${k}** — ${v}`)
+      .join('\n'),
+    'machine-gates': machineGates,
+    'tripwire-result': tripOk
+      ? `**pass** — snapshot \`${tripSnap}\``
+      : `**FAIL** — snapshot \`${tripSnap}\`\n\`\`\`\n${trip.output.slice(0, 1200)}\n\`\`\``,
+    'peer-matrix': discoverMd.peers,
+    'engine-contract': engineContract,
+    'violations': `${discoverMd.violations}\n\n_Snapshot:_ \`${guardSnap}\``,
+    'known-debt': SKU_IDENTITY_KNOWN_DEBT.map((d) => `- ${d}`).join('\n'),
+    'graph-matrix': graphMatrix,
+    'design-critique': critiqueBlock || '_none_',
+    'graph-stats': statsBlock,
+  })
+
+  const ok = tripOk && guardOk && verifyOk !== false
+  console.log(
+    JSON.stringify(
+      {
+        ok,
+        cohort: 'sku-identity',
+        tripwire: tripOk,
+        guard: guardOk,
+        verify: verifyOk,
+        violations: guardPayload?.violations?.length ?? null,
+        uncoveredPeers: report.peerCoverage.filter((p) => !p.usesEngine).map((p) => p.id),
+        ledger: manifest.ledger,
+        runId: ts,
+      },
+      null,
+      2,
+    ),
+  )
+  process.exit(ok ? 0 : 1)
+}
+
 async function main() {
   const argv = process.argv.slice(2)
   const name = argv[0]
@@ -634,6 +933,7 @@ async function main() {
   }
   if (name === 'slot-table') return runSlotTable(skipVerify)
   if (name === 'shortcuts') return runShortcuts(skipVerify)
+  if (name === 'sku-identity') return runSkuIdentity(skipVerify)
   usage()
 }
 

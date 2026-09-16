@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import {
   conditionGradeTextClass,
   normalizeConditionGrade,

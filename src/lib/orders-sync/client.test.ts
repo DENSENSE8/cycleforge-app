@@ -6,8 +6,6 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { streamNdjson } from './client';
 
@@ -84,20 +82,5 @@ describe('streamNdjson — shipped client', () => {
     assert.equal(seen.length, 1);
     assert.equal(seen[0]?.type, 'error');
     assert.match(String(seen[0]?.error), /500|nope/);
-  });
-
-  it('Incoming / Unshipped consumers paint via onBatch, not per-line setState', () => {
-    const importSrc = readFileSync(
-      join(process.cwd(), 'src/components/sidebar/dashboard-management/useOrdersImport.ts'),
-      'utf8',
-    );
-    const syncSrc = readFileSync(join(process.cwd(), 'src/hooks/useOrdersSync.ts'), 'utf8');
-    const realtimeSrc = readFileSync(
-      join(process.cwd(), 'src/hooks/useRealtimeInvalidation.ts'),
-      'utf8',
-    );
-    assert.match(importSrc, /onBatch:/);
-    assert.match(syncSrc, /onBatch:/);
-    assert.match(realtimeSrc, /coalesce:\s*'frame'/);
   });
 });

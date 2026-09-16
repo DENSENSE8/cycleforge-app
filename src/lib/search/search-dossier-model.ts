@@ -5,12 +5,6 @@
  * order-exception blocker labels. Search paints them; it does not clear them.
  */
 
-import type { AiSearchHit } from '@/lib/search/ai-search-client';
-import {
-  identityKindFor,
-  orderIdFromHit,
-  unitSerialFromHit,
-} from '@/lib/search/search-result-identity';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   deriveOrderExceptionBlockers,
@@ -22,49 +16,6 @@ import {
   type CartonInspectorTotals,
 } from '@/components/receiving/inspector/carton-inspector-model';
 import { SHIPPING_EXCEPTIONS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
-
-export const SEARCH_ENTITY_SINGULAR: Record<string, string> = {
-  order: 'Order',
-  unit: 'Unit',
-  receiving: 'Carton',
-  sku: 'SKU',
-  repair: 'Repair',
-  fba: 'FBA',
-};
-
-export type SearchHitIdentityKind = 'order' | 'serial' | 'empty';
-
-export interface SearchHitLineView {
-  entityLabel: string;
-  title: string;
-  identity: string;
-  identityKind: SearchHitIdentityKind;
-  whenSource: string | null;
-  matchField: string;
-  /** Exact-id hits often omit facets; the row must still paint. */
-  sparse: boolean;
-  status: string | null;
-}
-
-export function searchHitLineView(hit: AiSearchHit): SearchHitLineView {
-  const orderId = orderIdFromHit(hit);
-  const serial = unitSerialFromHit(hit);
-  const tracking = hit.facets?.tracking_number?.trim() || '';
-  const identityKind = identityKindFor(hit, orderId, serial, tracking || null);
-  const identity =
-    identityKind === 'order' ? orderId : identityKind === 'serial' ? serial : '';
-  const facetValues = Object.values(hit.facets ?? {}).filter((v) => Boolean(v && String(v).trim()));
-  return {
-    entityLabel: SEARCH_ENTITY_SINGULAR[hit.entityType] ?? hit.entityType,
-    title: hit.title?.trim() || identity || `${hit.entityType} #${hit.id}`,
-    identity,
-    identityKind,
-    whenSource: hit.facets?.happened_at?.trim() || null,
-    matchField: String(hit.matchField ?? '').trim(),
-    sparse: facetValues.length === 0,
-    status: hit.facets?.status?.trim() || null,
-  };
-}
 
 export interface SearchDossierFinding {
   key: string;

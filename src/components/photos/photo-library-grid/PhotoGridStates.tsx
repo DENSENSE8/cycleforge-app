@@ -28,8 +28,15 @@ export function PhotoGridSkeleton() {
   );
 }
 
-/** Teaching empty state — explains the filter, doesn't just say "nothing here". */
-export function PhotoEmptyState() {
+/**
+ * Teaching empty state — explains the filter, doesn't just say "nothing here".
+ *
+ * Under an active find it says so instead: the find-bar narrows the photos
+ * already loaded (see `filterPhotosByQuery`), so "nothing matches" and "nothing
+ * captured" are different facts and must not share one sentence.
+ */
+export function PhotoEmptyState({ searchQuery = '' }: { searchQuery?: string }) {
+  const query = searchQuery.trim();
   return (
     <div
       className={cn(
@@ -38,10 +45,13 @@ export function PhotoEmptyState() {
       )}
     >
       <ImageIcon className="h-6 w-6 text-text-faint" />
-      <p className="text-sm font-semibold text-text-default">No photos in this view</p>
+      <p className="text-sm font-semibold text-text-default">
+        {query ? `No loaded photo matches “${query}”` : 'No photos in this view'}
+      </p>
       <p className="text-xs leading-relaxed text-text-soft">
-        Unboxing, packing, and claim photos land here as staff capture them. Widen the
-        date range or media type in the header to see more.
+        {query
+          ? 'The find box narrows the photos already loaded. Clear it, scroll to load more, or drill the PO / ticket in Filters.'
+          : 'Unboxing, packing, and claim photos land here as staff capture them. Widen the date range or media type in the header to see more.'}
       </p>
     </div>
   );

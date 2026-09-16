@@ -21,7 +21,7 @@ import {
   getCurrentPSTDateKey,
   parseDateKey,
 } from '@/utils/date';
-import { useDailyChecks } from '@/features/home/useDailyChecks';
+import { useDailyChecks } from '@/lib/daily-checks/use-daily-checks';
 import { DailyCheckReportPanel } from '@/features/daily-checks/DailyCheckReportPanel';
 
 export function OperationsChecksView() {

@@ -11,9 +11,8 @@ import {
   type GridSurfaceCapabilities,
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
-  INCOMING_GRID_COLUMNS,
   defaultDirForIncomingGridSort,
   isIncomingGridFrozen,
   isIncomingGridSortable,
@@ -38,7 +37,7 @@ export const INCOMING_GRID_CAPABILITIES: GridSurfaceCapabilities = {
  * of leaving a dead ruled band the width of the column that used to be there.
  */
 export function makeIncomingGridDescriptor(
-  columns: readonly IncomingGridColumn[] = INCOMING_GRID_COLUMNS,
+  columns: readonly IncomingGridColumn[],
 ): GridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn> {
   return makeGridSurfaceDescriptor<ReceivingLineRow, IncomingGridColumn>(
     'inbound.incoming',

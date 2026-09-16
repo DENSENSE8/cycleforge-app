@@ -22,7 +22,7 @@ import {
 import { resolveLiveReceivingMode } from '@/lib/surface-isolation';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';

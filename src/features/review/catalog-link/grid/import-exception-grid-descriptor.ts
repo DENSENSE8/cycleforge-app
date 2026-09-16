@@ -4,10 +4,7 @@ import {
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
-import {
-  IMPORT_EXCEPTION_GRID_COLUMNS,
-  type ImportExceptionGridColumn,
-} from './import-exception-grid-layout';
+import type { ImportExceptionGridColumn } from './import-exception-grid-layout';
 
 /**
  * Missing item number is a QUEUE, not a checklist:
@@ -36,5 +33,3 @@ export function makeImportExceptionGridDescriptor(
     IMPORT_EXCEPTION_GRID_CAPABILITIES,
   );
 }
-
-export { IMPORT_EXCEPTION_GRID_COLUMNS };

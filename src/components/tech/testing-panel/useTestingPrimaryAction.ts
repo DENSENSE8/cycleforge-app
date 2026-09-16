@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { unitStatusToVerdict } from '@/components/receiving/workspace/TestingStatusPills';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 
 export interface TestingPrimaryAction {

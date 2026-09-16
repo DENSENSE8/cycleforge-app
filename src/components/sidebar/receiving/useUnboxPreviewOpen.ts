@@ -3,7 +3,7 @@
 import { useCallback } from 'react';
 import { toast } from '@/lib/toast';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { buildUnmatchedStubRow } from './receiving-sidebar-shared';
 import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 import type { UnboxScanMode } from './ReceivingUnboxScanBar';

@@ -47,14 +47,10 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode') === 'full' ? 'full' : 'delta';
 
-  // Delta cursor — last successful sync time. First run bootstraps from
-  // 7 days back to keep the initial pull bounded.
-  let lastModified: string | undefined = undefined;
-  if (mode === 'delta') {
-    const cursor = await getSyncCursor(CURSOR_KEY);
-    const start = cursor ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    lastModified = formatApiOffsetTimestamp(start);
-  }
+  // Delta window is resolved PER ORG inside the sweep (below). A single shared
+  // cursor advanced only when EVERY org succeeded is what let one failing org
+  // freeze the watermark for everyone: prod sat on the 2026-07-11 cursor for
+  // two months and replayed it every 15 minutes.
 
   // Distributed lock so an overlapping tick / manual trigger / Vercel retry
   // can't double-run. Fan out per Zoho-connected org (plus USAV while it still
@@ -65,6 +61,15 @@ export async function GET(req: NextRequest) {
       const perOrg = await forEachOrgWithProvider(
         'zoho',
         async (orgId) => {
+          // Per-org delta cursor. First run bootstraps from 7 days back to
+          // keep the initial pull bounded.
+          let lastModified: string | undefined = undefined;
+          if (mode === 'delta') {
+            const cursor = await getSyncCursor(CURSOR_KEY, orgId);
+            const start = cursor ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            lastModified = formatApiOffsetTimestamp(start);
+          }
+
           const report = await syncZohoPoMirror(
             { mode, lastModifiedTime: lastModified, maxPages: 200, maxItems: 20000 },
             orgId,
@@ -89,7 +94,12 @@ export async function GET(req: NextRequest) {
                 )`,
             [orgId],
           );
-          return { report, autoResolved: resolved.rowCount ?? 0 };
+
+          // Advance THIS org's watermark when THIS org's pull was clean.
+          if (report.errors.length === 0) {
+            await updateSyncCursor(CURSOR_KEY, new Date(), orgId);
+          }
+          return { report, autoResolved: resolved.rowCount ?? 0, lastModified };
         },
         { includeDogfoodTransitional: true },
       );
@@ -110,9 +120,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Advance the (shared) cursor only when every org succeeded.
-      const allOk = errors.length === 0 && perOrg.every((r) => r.ok);
-      if (allOk) await updateSyncCursor(CURSOR_KEY, new Date());
+      // Cursors advance per org above; nothing global to advance here.
 
       return {
         ...totals,
@@ -131,7 +139,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: summary.errors.length === 0,
     mode,
-    cursor: { resource: CURSOR_KEY, last_modified_time: lastModified ?? null },
+    cursor: { resource: CURSOR_KEY, per_org: true },
     orgs_swept: summary.orgs_swept,
     orgs_failed: summary.orgs_failed,
     totals: {

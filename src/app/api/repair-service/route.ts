@@ -79,17 +79,21 @@ const handler = createCrudHandler({
 
   list: async (params) => {
     const tab = normalizeTab(params.tab);
+    const needsLabelRaw = params.searchParams.get('needsLabel');
+    const needsLabel = needsLabelRaw === '1' || needsLabelRaw === 'true';
     if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
     const orgId = params.organizationId;
-    const repairs = await getAllRepairs(params.limit, params.offset, { tab }, orgId);
+    const repairs = await getAllRepairs(params.limit, params.offset, { tab, needsLabel }, orgId);
     return { rows: repairs };
   },
 
   search: async (query, params) => {
     const tab = normalizeTab(params.tab);
+    const needsLabelRaw = params.searchParams.get('needsLabel');
+    const needsLabel = needsLabelRaw === '1' || needsLabelRaw === 'true';
     if (!params.organizationId) throw ApiError.unauthorized('Organization context required');
     const orgId = params.organizationId;
-    return searchRepairs(query, { tab }, orgId);
+    return searchRepairs(query, { tab, needsLabel }, orgId);
   },
 
   update: async (body, _req, organizationId) => {

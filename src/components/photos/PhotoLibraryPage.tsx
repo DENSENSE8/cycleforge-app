@@ -16,7 +16,13 @@ import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
   PHOTO_LIBRARY_HEADER_DISPLAY_MODES,
   sourceScopeFromFilters,
+  type PhotoSearchField,
 } from '@/lib/photos/library-filter-state';
+import { filterPhotosByQuery } from '@/lib/photos/photo-find';
+import { parsePhotoLibraryTicketSearch } from '@/lib/photos/ticket-search';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 import { useMediaLibraryShortcuts } from '@/hooks/useMediaLibraryShortcuts';
 import { usePhotoGridDensity } from '@/hooks/usePhotoGridDensity';
 import { getCurrentPSTDateKey } from '@/utils/date';
@@ -97,13 +103,32 @@ export function PhotoLibraryPage() {
 
   const scope = sourceScopeFromFilters(filters);
 
+  /**
+   * The find-bar, session-local — it NEVER writes the URL.
+   *
+   * Typing used to `patch({ poFinder })`, which soft-navigated `/ops/photos` and
+   * refetched the library on every keystroke: the wrong input for a filter, and
+   * the anti-pattern the slot-table lane already removed from every desk
+   * (`docs/todo/prod-slot-table-SOT-HANDOFF.md`). The box now narrows the rows
+   * already painted, the same way `filterShippedOrdersByQuery` and
+   * `receivingLineMatchesQuery` narrow theirs. Structured drills (PO, ticket,
+   * carton, date, label) stay URL filters — those are deep links, not typing.
+   */
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchField, setSearchField] = useState<PhotoSearchField>('all');
+  const visiblePhotos = useMemo(
+    () => filterPhotosByQuery(photos, searchQuery, { scope, field: searchField }),
+    [photos, searchQuery, searchField, scope],
+  );
+
   const resolvedTicketId = useMemo<string | undefined>(() => {
     if (filters.ticketId?.trim()) return filters.ticketId.trim().replace(/^#/, '');
-    // Claims search typed as a ticket # — carry it for leaf chrome + NAS archive
-    // even before photos resolve (same folder name as ReceivingClaimModal).
-    if (scope === 'claims' && filters.poFinder) {
-      const digits = filters.poFinder.trim().replace(/^#/, '');
-      if (/^\d+$/.test(digits)) return digits;
+    // A `?poFinder=` DEEP LINK typed as a ticket # (claims folder links) — carry
+    // it for leaf chrome + NAS archive even before photos resolve. Nothing on
+    // this page writes that param any more; the find-bar is local state.
+    if (scope === 'claims') {
+      const ticket = parsePhotoLibraryTicketSearch(filters.poFinder);
+      if (ticket) return ticket;
     }
     if (scope !== 'claims' || !filters.poFinder || photos.length === 0) return undefined;
     const tickets = new Set(
@@ -297,10 +322,25 @@ export function PhotoLibraryPage() {
     exitSelectMode();
   }, [scopeKey, exitSelectMode]);
 
+  /** Every id the find-bar is currently painting — the select-all target. */
+  const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
+
   // "Select all matching filters" — fetch every matching photo id (capped) for
   // the current filter set and select them, so a bulk share/ZIP/delete spans the
   // whole result, not just the loaded page.
+  //
+  // The find-bar is deliberately NOT part of that server set: it is a local
+  // narrowing of painted rows, and the ids endpoint only speaks filters. With a
+  // query typed, "all matching" therefore means the rows on screen — selecting
+  // the wider filter set would hand bulk delete photos the operator just
+  // narrowed away.
   const selectAllMatching = useCallback(async () => {
+    if (searchQuery.trim()) {
+      selectIds(visibleIds);
+      setSelectMode(true);
+      toast.success(`Selected ${visibleIds.length} matching “${searchQuery.trim()}”`);
+      return;
+    }
     try {
       const qs = photoLibraryFilterParams(filters).toString();
       const res = await fetch(`/api/photos/library/ids?${qs}`);
@@ -318,7 +358,16 @@ export function PhotoLibraryPage() {
     } catch {
       toast.error('Could not select all matching photos');
     }
-  }, [filters, selectIds]);
+  }, [filters, selectIds, searchQuery, visibleIds]);
+
+  /** `⌘A` / the rail's select-all: the painted rows, never the hidden ones. */
+  const selectAllShown = useCallback(() => {
+    if (!searchQuery.trim()) {
+      selectAll();
+      return;
+    }
+    selectIds(visibleIds);
+  }, [searchQuery, selectAll, selectIds, visibleIds]);
 
   // Grid keyboard shortcuts (the viewer owns its own keys). House
   // KeyboardShortcutsCheatSheet owns `?` — do not open a page sheet (cohort).
@@ -335,7 +384,7 @@ export function PhotoLibraryPage() {
     onToggleHelp: () => {
       // Yield to KeyboardShortcutsCheatSheet / selection inline overlays.
     },
-    onSelectAll: selectAll,
+    onSelectAll: selectAllShown,
     onEscape: exitSelectMode,
     onSelectViewIndex: selectViewByIndex,
   });
@@ -343,8 +392,8 @@ export function PhotoLibraryPage() {
   // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
   const shownIds = useMemo(
-    () => photos.map((p) => p.id).filter((id) => Number.isFinite(id) && id > 0),
-    [photos],
+    () => visiblePhotos.map((p) => p.id).filter((id) => Number.isFinite(id) && id > 0),
+    [visiblePhotos],
   );
 
   /**
@@ -381,8 +430,8 @@ export function PhotoLibraryPage() {
   }, [filters.imageType, filters.poRef, filters.receivingId, filters.ticketId, resolvedPoRef, resolvedTicketId]);
 
   const exportTitle = useMemo(
-    () => photoShareTitle(photos, scope, shownIds.length) || 'photos',
-    [photos, scope, shownIds.length],
+    () => photoShareTitle(visiblePhotos, scope, shownIds.length) || 'photos',
+    [visiblePhotos, scope, shownIds.length],
   );
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
@@ -710,6 +759,9 @@ export function PhotoLibraryPage() {
         <PhotoLibraryFindRow
           filters={filters}
           view={view}
+          search={{ value: searchQuery, onChange: setSearchQuery }}
+          searchField={searchField}
+          onSearchFieldChange={setSearchField}
           onPatch={patch}
           onApplyView={(payload) => applyView(payload.filters, payload.view)}
           onViewChange={handleViewChange}
@@ -723,7 +775,6 @@ export function PhotoLibraryPage() {
           }}
           onRefresh={refreshLibrary}
           isRefreshing={isRefreshing}
-          isSearching={query.isFetching}
           canManageViews={canManagePhotos}
         />
       }
@@ -748,8 +799,8 @@ export function PhotoLibraryPage() {
               }
             />
           }
-          shown={photos.length}
-          total={query.hasNextPage ? undefined : photos.length}
+          shown={visiblePhotos.length}
+          total={query.hasNextPage ? undefined : visiblePhotos.length}
           selected={selected.size}
         />
       }
@@ -768,7 +819,8 @@ export function PhotoLibraryPage() {
           className="relative min-h-0 flex-1"
         >
           <PhotoLibraryGrid
-            photos={photos}
+            photos={visiblePhotos}
+            searchQuery={searchQuery}
             view={view}
             gridDensity={gridDensity}
             sourceScope={sourceScopeFromFilters(filters)}
@@ -792,10 +844,11 @@ export function PhotoLibraryPage() {
               hasNextPage={query.hasNextPage}
               isFetchingNextPage={query.isFetchingNextPage}
               onLoadMore={() => void query.fetchNextPage()}
+              autoLoad={!searchQuery.trim()}
             />
-          ) : !query.isLoading && photos.length > 0 ? (
+          ) : !query.isLoading && visiblePhotos.length > 0 ? (
             <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
-              {`End of results · ${photoCountLabel(photos.length)}`}
+              {`End of results · ${photoCountLabel(visiblePhotos.length)}`}
             </p>
           ) : null}
         </Panel>
@@ -812,13 +865,13 @@ export function PhotoLibraryPage() {
       {showBatchRail ? (
         <PhotoBatchInspectorPanel
           rows={selectedPhotos}
-          total={photos.length}
+          total={visiblePhotos.length}
           selectedCount={selected.size}
           hasMore={query.hasNextPage}
           onSelectAllMatching={() => void selectAllMatching()}
           actions={photoBulkActions}
           onDeleteSelected={deleteSelectedPhotos}
-          onSelectAll={selectAll}
+          onSelectAll={selectAllShown}
           onClear={exitSelectMode}
         />
       ) : null}
@@ -857,15 +910,26 @@ export function PhotoLibraryPage() {
   );
 }
 
-/** Sentinel inside {@link DashboardScrollShell} so IntersectionObserver roots on the scroll port. */
+/**
+ * Sentinel inside {@link DashboardScrollShell} so IntersectionObserver roots on
+ * the scroll port.
+ *
+ * `autoLoad` is off while the find-bar holds a query. A local find can narrow
+ * the painted set to nothing, which leaves the sentinel parked in the viewport
+ * with no rows above it — and an auto-observer would then page the entire
+ * library one request at a time. With a query active the operator pulls the
+ * next page explicitly.
+ */
 function PhotoLibraryLoadMoreSentinel({
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+  autoLoad = true,
 }: {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
+  autoLoad?: boolean;
 }) {
   const scrollParent = useDashboardScrollParent();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -873,7 +937,7 @@ function PhotoLibraryLoadMoreSentinel({
   useEffect(() => {
     const el = sentinelRef.current;
     const root = scrollParent.current;
-    if (!el) return;
+    if (!el || !autoLoad) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
@@ -884,7 +948,7 @@ function PhotoLibraryLoadMoreSentinel({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, onLoadMore, scrollParent]);
+  }, [autoLoad, hasNextPage, isFetchingNextPage, onLoadMore, scrollParent]);
 
   return (
     <div
@@ -895,7 +959,19 @@ function PhotoLibraryLoadMoreSentinel({
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading more…
         </>
-      ) : null}
+      ) : autoLoad ? null : (
+        <button
+          type="button"
+          onClick={onLoadMore}
+          className={cn(
+            'ds-raw-button px-3 py-1.5 text-role-micro uppercase tracking-widest text-text-soft hover:text-text-default',
+            cornerClass('flush'),
+            focusRing('control'),
+          )}
+        >
+          Load more to search
+        </button>
+      )}
     </div>
   );
 }

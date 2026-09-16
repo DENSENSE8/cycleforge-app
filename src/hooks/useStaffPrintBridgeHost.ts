@@ -31,11 +31,18 @@ import {
 } from '@/lib/print/staff-print-bridge';
 import { getProfileForRole, listProfiles, setRoute } from '@/lib/print/browserPrint';
 import { isSilentPrintEnabled, setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
-import { printBinLabelRun, printRackLabelRun } from '@/lib/print/printLabelRun';
+import {
+  printBinLabelRun,
+  printHandlingUnitLabelRun,
+  printRackLabelRun,
+} from '@/lib/print/printLabelRun';
+import { mintTotesForPrint, toteReprintFromTyped } from '@/lib/print/tote-mint-api';
+import { platesPerTote } from '@/lib/print/labelCopies';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
 import { triggerPackPrintBundle } from '@/components/packer/pack-print-bundle';
 import type { RackSegments } from '@/lib/barcode-routing';
+import { toast } from '@/lib/toast';
 
 function snapshotStatus(): StaffPrintStatus {
   const label = getProfileForRole('label');
@@ -142,6 +149,15 @@ export function useStaffPrintBridgeHost() {
       const channel = client?.channels.get(channelName) ?? null;
       await publishDeviceAck(channel, job.request_id, 'print_job');
 
+      const onProgress = (done: number, total: number) => {
+        void channel?.publish(STAFF_PRINT_PROGRESS_EVENT, {
+          type: 'staff.print_progress',
+          request_id: job.request_id,
+          done,
+          total,
+        });
+      };
+
       if (job.grain === 'papers' && job.papers) {
         await triggerPackPrintBundle({
           orderRowId: job.papers.orderRowId,
@@ -151,16 +167,32 @@ export function useStaffPrintBridgeHost() {
         return;
       }
 
+      if (job.grain === 'tote' && job.tote) {
+        const copies = platesPerTote(job.tote.copiesPerSide);
+        try {
+          const result = job.tote.code
+            ? await printHandlingUnitLabelRun({
+                copies,
+                boxes: [toteReprintFromTyped(job.tote.code)],
+                onProgress,
+              })
+            : await printHandlingUnitLabelRun({
+                count: job.tote.count,
+                copies,
+                mint: (n) => mintTotesForPrint(n, job.request_id),
+                onProgress,
+              });
+          if (result.status === 'mint_failed') {
+            toast.error(result.error || 'Could not mint totes — nothing printed');
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : 'Could not print tote labels');
+        }
+        return;
+      }
+
       const loc = job.location;
       if (!loc) return;
-      const onProgress = (done: number, total: number) => {
-        void channel?.publish(STAFF_PRINT_PROGRESS_EVENT, {
-          type: 'staff.print_progress',
-          request_id: job.request_id,
-          done,
-          total,
-        });
-      };
 
       if (job.grain === 'rack') {
         const racks: RackSegments[] = loc.segments.map((s) => ({

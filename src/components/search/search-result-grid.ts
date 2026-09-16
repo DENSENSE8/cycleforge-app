@@ -1,18 +1,34 @@
 /**
  * Shared CSS Grid track template for comfortable-density search rows.
  *
- * Tracks: Glyph | Id | Match | Tracking | Age
- * (Monitor feed — no headers, no sort, no selection.)
+ * Tracks: **Id | Status | Match | Tracking | Age**
  *
- * Glyph = Package (order) / PackageOpen (receiving), both blue.
- * Id = OrderIdChip / Po last-8 (never tracking).
- * Match = title only.
- * Tracking = TrackingChip last-8 on the right.
- * Age = `auto` so an empty age/journey cell collapses and Match keeps the fr.
+ * ## Why the id leads (operator 2026-09-12)
+ *
+ * A warehouse reader scans top-to-bottom down the LEFT edge, and the thing
+ * they are checking a row against is the handle printed on the label in their
+ * hand. So the verifiable identifier owns the premier slot. It used to be
+ * fifth behind an entity glyph, which is the same picture on every row of a
+ * scoped list.
+ *
+ * The Id track is RIGHT-ALIGNED and its content is `font-mono tabular-nums`,
+ * so the column's right edge is a single line down the list. That — not
+ * padding the value to a fixed width — is where uniformity comes from: a
+ * padded id is a wrong id (`copy-chip-format.ts`).
+ *
+ * ## Why Status sits immediately beside it
+ *
+ * A state was a coloured dot on one edge of the row and its word on the other.
+ * That splits one fact across the full width and costs two fixations to read a
+ * single state. Dot and word are now one cluster in track two, next to the
+ * identity they qualify.
+ *
+ * Match = title only. Tracking = TrackingChip on the right. Age = `auto` so an
+ * empty age/journey cell collapses and Match keeps the fr.
  */
 
 export const SEARCH_RESULT_GRID =
-  'grid grid-cols-[1.25rem_4.25rem_minmax(0,1fr)_5.5rem_auto] items-center gap-x-2.5';
+  'grid grid-cols-[7rem_6.5rem_minmax(0,1fr)_5.5rem_auto] items-center gap-x-2.5';
 
 /**
  * Comfortable row pad — `inset-field` (px-3 py-2) so the selection ring has
@@ -21,25 +37,10 @@ export const SEARCH_RESULT_GRID =
 export const SEARCH_RESULT_ROW_PAD = 'inset-field';
 
 /**
- * Header-preview track template — the find dropdown's aligned row.
+ * The identity track's content face — the law in two utilities.
  *
- * Tracks: Status | Id | Match | Tracking | Photos
- *
- * Status leads (leftmost) so the eye reads state → identity → what → where →
- * when across one line; the comfortable feed keeps its Glyph lead instead,
- * because /search is a monitor board and the header preview is a triage list.
- *
- * Photos is the trailing pack-photo CTA cell — ALWAYS painted, on every row,
- * showing a real count (`0` included) rather than appearing only when photos
- * exist. Fixed width so every row's CTA lands on the same vertical line.
- *
- * Sized against the 24rem find field, which the panel matches exactly. That
- * budget is why relative AGE is not a track here: six columns in 24rem leave
- * Match ~3rem, which truncates every title to nothing. The /search feed keeps
- * age because it has the width to spend.
+ * `justify-end` is what makes the column edge one line; the mono + tabular
+ * figures are what make the glyph advances equal so that edge is straight.
  */
-export const SEARCH_RESULT_DROPDOWN_GRID =
-  'grid grid-cols-[4.25rem_4rem_minmax(0,1fr)_4.5rem_2.5rem] items-center gap-x-1.5';
-
-/** Header-preview row pad — tighter than comfortable; the panel is a preview. */
-export const SEARCH_RESULT_DROPDOWN_ROW_PAD = 'px-3 py-2';
+export const SEARCH_RESULT_ID_CELL =
+  'flex min-w-0 items-center justify-end font-mono tabular-nums';

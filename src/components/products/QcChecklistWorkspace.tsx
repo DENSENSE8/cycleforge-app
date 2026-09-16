@@ -2,14 +2,11 @@
 
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, Loader2, Package, PackageOpen, ChevronRight } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Check, Loader2, Package } from '@/components/Icons';
 import { useProductsSkuIdParam } from '@/hooks/useProductsSkuIdParam';
 import { useSkuQcChecks } from '@/hooks/useSkuQcChecks';
-import { useSkuKitParts } from '@/hooks/useSkuKitParts';
 import { QcChecklistSection } from '@/components/manuals/sections/QcChecklistSection';
 import { SourceThisButton } from '@/components/sourcing/SourceThisButton';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /**
  * Right-pane workspace for the Products → QC Checklist view. Reads the selected
@@ -18,13 +15,13 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
  * Shows a centered empty state until a product is picked.
  */
 export function QcChecklistWorkspace() {
-  const { skuId, setSkuId } = useProductsSkuIdParam();
+  // `setSkuId` is the sidebar picker's writer; this pane only READS the
+  // selection now. The "N kit" jump next to Source was removed 2026-09-15 with
+  // the Kit Parts view it opened.
+  const { skuId } = useProductsSkuIdParam();
 
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useSkuQcChecks(skuId);
-  // Sibling per-SKU surface — same sku_catalog.id anchor; surface the kit-parts
-  // count and let the user jump straight to "what's in the box".
-  const { data: kit } = useSkuKitParts(skuId);
 
   const handleRefresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['sku-qc-checks', skuId] });
@@ -100,20 +97,6 @@ export function QcChecklistWorkspace() {
           </div>
         </div>
         <SourceThisButton skuId={catalog.id} label="Source" variant="secondary" />
-        <HoverTooltip label="View what's in this product's box" asChild>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            icon={<PackageOpen />}
-            iconRight={<ChevronRight />}
-            onClick={() => setSkuId(catalog.id, 'kit')}
-            ariaLabel="View what's in this product's box"
-            className="h-auto shrink-0 gap-1 rounded-full bg-surface-canvas px-3 py-1 text-role-micro uppercase tracking-wider text-text-soft ring-1 ring-border-soft hover:bg-surface-sunken hover:text-text-muted"
-          >
-            {kit?.parts.length ?? 0} kit
-          </Button>
-        </HoverTooltip>
         <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-role-micro uppercase tracking-wider text-blue-600">
           {checks.length} steps
         </span>

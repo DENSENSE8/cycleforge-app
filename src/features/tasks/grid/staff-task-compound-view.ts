@@ -20,6 +20,7 @@ import type {
 import { STATION_LABEL, type StationKey } from '@/components/layout/goal-chip/goal-chip-shared';
 import { workStatusLabel } from '@/lib/work-orders/work-status-display';
 import type { StaffTaskRow } from './staff-task-row';
+import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
 /** Whole days between now and a deadline; negative when still ahead of it. */
 function daysPast(deadlineMs: number, nowMs: number): number {
@@ -76,6 +77,11 @@ export function staffTaskCompoundView(
     // every family since the inline editor was removed.
     note: station,
     // A personal to-do has no order and no carrier. Honest nulls.
+    // The Id track carries THIS family's handle, not an order: `identityFace`
+    // paints it plainly and copyably, without the marketplace brand dot and
+    // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
+    // column is Id product-wide).
+    identityFace: compoundIdentityFace(row.id, 'Task id'),
     orderId: null,
     tracking: null,
     platformValue: null,

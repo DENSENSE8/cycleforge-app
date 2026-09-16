@@ -3,6 +3,7 @@
 import { motion } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -32,8 +33,16 @@ import { cn } from '@/utils/_cn';
  */
 export const TOKENS = {
   colors: {
-    /** Page ground for every mobile surface — white sheet; depth lives on cards. */
-    background: 'bg-surface-card',
+    /**
+     * Page ground for every mobile surface — white sheet; depth lives on cards.
+     *
+     * It is the HOUSE token, re-exported rather than restated, so the phone and
+     * the kiosk cannot drift onto two whites and a flip stays one edit
+     * (`appMobilePageGroundClass`). A screen that paints `bg-surface-canvas` on
+     * its own root is overriding this, which is what made `/m/pair` grey while
+     * the shell around it was white.
+     */
+    background: appMobilePageGroundClass,
     /** Raised panel on that ground. */
     card: 'bg-surface-card border border-border-soft',
     text: {

@@ -18,7 +18,7 @@ import {
   type ReceivingActivityAxis,
   type ReceivingPoGroup,
 } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
 import {
   defaultDirForReceivingGridSort,

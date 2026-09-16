@@ -1,142 +1,53 @@
+/**
+ * The flat `INCOMING_GRID_COLUMNS` spreadsheet array is DELETED — `/incoming`
+ * mounts `INCOMING_COMPOUND_COLUMNS` like every other desk. The geometry and
+ * per-track label assertions that pinned that hand array went with it; what a
+ * consumer can still observe is pinned here: the sort vocabulary, the frozen
+ * pane of the mounted model, the two catalogs' separation, and the comparator.
+ */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-  INCOMING_GRID_COLUMNS,
+  INCOMING_COMPOUND_COLUMNS,
   INCOMING_GRID_LOCKED_KEYS,
   INCOMING_GRID_SORTABLE_KEYS,
   defaultDirForIncomingGridSort,
   flipIncomingGridSortDir,
-  incomingContentMinWidthRem,
-  incomingGridColumnTrackRem,
-  incomingGridHeaderShowsLabel,
-  incomingGridTemplate,
   isIncomingGridFrozen,
   isIncomingGridSortable,
 } from '@/lib/receiving/receiving-grid-layout';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import { TABLE_COLUMNS } from '@/lib/tables/table-columns';
 import { INCOMING_FIELD_CATALOG } from '@/lib/tables/field-catalog/incoming';
 import { RECEIVING_FIELD_CATALOG } from '@/lib/tables/field-catalog/receiving';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
-  it('is select · order · title · date · age · qty · condition · status · platform · tracking · zoho', () => {
-    assert.deepEqual(
-      INCOMING_GRID_COLUMNS.map((c) => c.key),
-      ['select', 'order', 'title', 'date', 'age', 'qty', 'condition', 'status', 'platform', 'tracking', 'zoho'],
-    );
-  });
-
-  it('labels Product Title on the title track', () => {
-    const title = INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')!;
-    assert.equal(title.label, 'Product Title');
-    assert.equal(title.gridLabel, undefined);
-    // Notion overflow pilot — fixed preferred track, not the fill `1fr` other
-    // families still use. Content-sized columns can exceed the card and scroll.
-    assert.equal(title.width, 'minmax(16rem, 16rem)');
-    assert.equal(title.width.includes('1fr'), false);
-  });
-
-  it('labels Status on its own track (hideKey rest)', () => {
-    const status = INCOMING_GRID_COLUMNS.find((c) => c.key === 'status')!;
-    assert.equal(status.label, 'Status');
-    assert.equal(status.hideKey, 'rest');
-    assert.equal(status.type, 'tag');
-  });
-
-  // Unbox Sheets golden (2026-08-04): only `select` is frozen — order/title
-  // scroll with the sheet (same as Receiving).
-  it('locks select only as the frozen identity pane (Sheets-class)', () => {
-    assert.deepEqual([...INCOMING_GRID_LOCKED_KEYS], ['select']);
-    assert.ok(isIncomingGridFrozen('select'));
-    assert.equal(isIncomingGridFrozen('order'), false);
-    assert.equal(isIncomingGridFrozen('title'), false);
-    assert.equal(isIncomingGridFrozen('qty'), false);
-  });
-
-  it('the order track scrolls — always-on, never a tier, start-aligned', () => {
-    const order = INCOMING_GRID_COLUMNS.find((c) => c.key === 'order')!;
-    assert.equal(order.frozen, undefined);
-    assert.equal(order.hideKey, undefined, 'order stays always-on (no pref key)');
-    assert.equal(order.tier, undefined);
-    // A transaction identity reads left, like a name — not end-aligned like the
-    // reference identifiers (`tracking`).
-    assert.equal(order.align, 'start');
-  });
-
-  // Inbound ↔ History one family (2026-08-10): the icon-only exception is
-  // OVERTURNED. Incoming follows History sentence-case — no data column declares
-  // headerGlyphOnly, and geometry (`gridHeaderShowsLabel`) owns the narrow-track
-  // glyph fallback, the same rule History already lives by.
-  it('no data column declares headerGlyphOnly (History sentence-case parity)', () => {
-    for (const col of INCOMING_GRID_COLUMNS) {
-      if (col.key === 'select') continue; // chrome gutter — no label, no header
+describe('incoming mounted column model', () => {
+  it('freezes exactly the compound model’s frozen prefix', () => {
+    const frozen = INCOMING_COMPOUND_COLUMNS.filter((c) => c.frozen).map((c) => c.key);
+    assert.deepEqual([...INCOMING_GRID_LOCKED_KEYS], frozen);
+    for (const col of INCOMING_COMPOUND_COLUMNS) {
       assert.equal(
-        col.headerGlyphOnly,
-        undefined,
-        `${col.key} must NOT declare headerGlyphOnly — Incoming follows History sentence-case`,
-      );
-      assert.ok(col.label, `${col.key} keeps a label`);
-    }
-  });
-
-  it('the wide identity/reference headers show their sentence-case word', () => {
-    for (const key of ['order', 'title', 'tracking']) {
-      const col = INCOMING_GRID_COLUMNS.find((c) => c.key === key)!;
-      assert.equal(
-        incomingGridHeaderShowsLabel(col),
-        true,
-        `${key} header should read its word like History`,
+        isIncomingGridFrozen(col.key),
+        Boolean(col.frozen),
+        `${col.key} freeze disagrees with the mounted column model`,
       );
     }
   });
 
-  it('the qty header keeps its Qty word via labelFitRem 3.5 (History parity)', () => {
-    const qty = INCOMING_GRID_COLUMNS.find((c) => c.key === 'qty')!;
-    assert.equal(qty.headerGlyphOnly, undefined);
-    assert.equal(qty.labelFitRem, 3.5);
-    assert.equal(qty.label, 'Qty');
-  });
-
-  it('does NOT flex title — Notion overflow pilot (fixed preferred track)', () => {
-    const template = incomingGridTemplate();
-    assert.equal(
-      (template.match(/1fr/g) ?? []).length,
-      0,
-      'Incoming opts out of the fill track so columns can exceed the card',
-    );
-    // Fixed preferred width; drag-resize still overrides via `--cf-col-title`.
-    // Rem floors density-scale for spreadsheet zoom (`--cf-density`).
-    assert.match(
-      template,
-      /var\(--cf-col-title, calc\(16rem \* var\(--cf-density, 1\)\)\)/,
-      'title is a fixed 16rem preferred track, not minmax(…, 1fr)',
-    );
-  });
-
-  it('ships a lean default — condition + platform are opt-in', () => {
-    const tierOf = (key: string) =>
-      INCOMING_GRID_COLUMNS.find((c) => c.key === key)?.tier ?? 'core';
-    // Pre-arrival rows have no condition grade and the channel is secondary to
-    // the PO/tracking identity — both cost horizontal budget for a blank cell.
-    assert.equal(tierOf('condition'), 'optional');
-    assert.equal(tierOf('platform'), 'optional');
-    // The scan spine stays on by default. `order` is absent here on purpose —
-    // it is always-on (no hideKey / no tier), like Receiving's order track.
-    for (const key of ['date', 'age', 'qty', 'status', 'tracking']) {
-      assert.equal(tierOf(key), 'core', `${key} must ship visible`);
+  it('never marks a column optional without a hideKey', () => {
+    // An `optional` track with no pref key can never be turned back on.
+    for (const col of INCOMING_COMPOUND_COLUMNS) {
+      if (col.tier === 'optional') assert.ok(col.hideKey, `${col.key} needs a hideKey`);
     }
   });
 
   it('owns a distinct incoming TableId (not shared with receiving)', () => {
     // Split 2026-07-30 — Incoming and Unbox/History no longer share prefs.
-    //
-    // This used to assert the distinction against `TABLE_COLUMNS`: incoming's
-    // hide-key list had no `serial`, receiving's did. Both buckets are `[]`
-    // since the wave 1.3 slot port — hiding a fact is unbinding it from a slot
-    // — so the two entries are still separate but no longer CARRY the
-    // difference. It lives in the two field catalogs now, which is where a
-    // porter would look for it, so that is what this pins.
+    // Both `TABLE_COLUMNS` buckets are `[]` since the slot port (hiding a fact
+    // is unbinding it from a slot), so the difference lives in the two field
+    // catalogs — which is where a porter would look for it.
     assert.ok(TABLE_COLUMNS.incoming, 'incoming must stay a TableId');
     assert.ok(TABLE_COLUMNS.receiving, 'receiving must stay a TableId');
     assert.notEqual(
@@ -167,34 +78,27 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
     const shared = incomingIds.filter((id) => receivingIds.includes(id));
     assert.deepEqual(shared, [], 'the two catalogs must share no field id');
   });
+});
 
-  it('never marks a column optional without a hideKey', () => {
-    // An `optional` track with no pref key can never be turned back on.
-    for (const col of INCOMING_GRID_COLUMNS) {
-      if (col.tier === 'optional') assert.ok(col.hideKey, `${col.key} needs a hideKey`);
-    }
-  });
-
-  it('marks every data column sortable', () => {
+describe('isIncomingGridSortable — the one sortability answer', () => {
+  it('keeps the fact words sortable and the chrome tracks not', () => {
     assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('title'));
     assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('status'));
     assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('tracking'));
     assert.equal(isIncomingGridSortable('select'), false);
     assert.equal(isIncomingGridSortable('age'), true);
   });
-});
 
-describe('incomingContentMinWidthRem / header label fit', () => {
-  it('sums rem floors across all columns', () => {
-    const sum = INCOMING_GRID_COLUMNS.reduce((s, c) => s + incomingGridColumnTrackRem(c), 0);
-    assert.equal(incomingContentMinWidthRem(), sum);
-    assert.ok(sum > 40, 'content min is wide enough to force h-scroll on narrow panes');
-  });
-
-  it('title header shows Product Title (sentence-case parity)', () => {
-    const title = INCOMING_GRID_COLUMNS.find((c) => c.key === 'title')!;
-    assert.equal(title.headerGlyphOnly, undefined);
-    assert.equal(incomingGridHeaderShowsLabel(title), true);
+  it('resolves every painted DATA track to a fact it can order by', () => {
+    for (const col of INCOMING_COMPOUND_COLUMNS) {
+      if (isSlotTableChromeTrack(col.key)) continue;
+      if (col.key === '_fill') continue;
+      assert.equal(
+        isIncomingGridSortable(col.key),
+        true,
+        `${col.key} is painted as a data track but resolves to no sort fact`,
+      );
+    }
   });
 });
 

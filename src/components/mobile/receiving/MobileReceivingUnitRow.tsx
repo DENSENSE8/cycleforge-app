@@ -3,13 +3,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Camera, ChevronDown, Image as ImageIcon } from '@/components/Icons';
-import { getStatusDotBg, workflowStatusTableLabel } from '@/components/station/receiving-constants';
+import { getStatusDotBg, workflowStatusTableLabel } from '@/lib/receiving/receiving-constants';
 import { ConditionGradeChip, TicketChip, UnitPriceChip, getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { GalleryPhotoCount, MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { buildUnitFields, unitTitle } from '@/components/mobile/receiving/receiving-feed-entries';
 import { chipText } from '@/design-system/tokens/typography/presets';

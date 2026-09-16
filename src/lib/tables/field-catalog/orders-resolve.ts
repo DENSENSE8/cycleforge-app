@@ -30,7 +30,13 @@ import { formatCurrency } from '@/utils/_number';
 import { formatMonthDayTimePST } from '@/utils/date';
 
 export interface OrdersSlotContext {
-  /** Normalized tester face from the queue view layer (`---` = missing). */
+  /**
+   * Normalized tester face from the queue view layer (`---` = missing). Still
+   * accepted because the queue row passes ONE context object to every resolver
+   * entry point, but no orders field reads it since Pick stopped borrowing the
+   * tester family (operator ruling 2026-09-14) — the tester face now belongs to
+   * `ordersIdentityLine` and the `tech` catalog's own TEST lane.
+   */
   testerDisplay?: string | null;
   /** Normalized packer face from the queue view layer (`---` = missing). */
   packerDisplay?: string | null;
@@ -78,18 +84,32 @@ function staffId(...candidates: unknown[]): number | null {
 }
 
 /**
- * Pick step facts. Wire columns are still the legacy tester/test_date family
- * until a dedicated pick projection exists — the catalog id is `orders.picked`.
+ * Pick step facts, off the feed's own pick projection (`picked_by_name` /
+ * `picked_by` / `picked_at`).
+ *
+ * Until the operator ruling of 2026-09-14 this read the tester/test_date
+ * family, so an order that had been TESTED but never picked painted a picker
+ * who had never touched it. A row with tester data and no pick data now
+ * resolves EMPTY.
+ *
+ * **The Picker-station scan is handled in SQL, not here.** That desk is
+ * `/test?ship=urgent` for this org, so its scans are a real pick signal — but
+ * they enter through `PICK_FACTS_LATERALS`' `pick_station` arm
+ * (`station_activity_logs` TECH/TRACKING_SCANNED), NOT by re-reading the
+ * tester columns. Two reasons that distinction is load-bearing: a QC verdict
+ * (`tech_serial_numbers.tested_by`, SERIAL_ADDED) is a different verb from a
+ * pick scan and must never masquerade as one; and the feed has THREE readers,
+ * so a fallback written here would fix one of them.
  */
-function pickedStep(row: OrdersRow, ctx: OrdersSlotContext): CompoundSlotValue {
+function pickedStep(row: OrdersRow): CompoundSlotValue {
   return {
     kind: 'stage_event',
-    who: person(ctx.testerDisplay) ?? person(str(row, 'tested_by_name') ?? str(row, 'tester_name')),
-    // Scan actor first, assignee fallback — same precedence as the name.
-    whoStaffId: staffId(row.tested_by, row.tester_id),
-    at: stamp(row.test_date_time, row.test_activity_at),
-    // Not projected by the To-ship feed yet — blank until a bench stamp lands.
-    station: str(row, 'test_location_name'),
+    who: person(str(row, 'picked_by_name')),
+    whoStaffId: staffId(row.picked_by),
+    at: stamp(row.picked_at),
+    // No pick bench on the wire: the pick scan's station is 'PACK' for every
+    // event (api/pick/scan), which would paint the wrong desk's name here.
+    station: null,
   };
 }
 
@@ -137,7 +157,7 @@ export function resolveOrdersSlotValue(
   const row = record as OrdersRow;
   switch (fieldId) {
     case 'orders.picked':
-      return pickedStep(row, ctx);
+      return pickedStep(row);
     case 'orders.packed':
       return packedStep(row, ctx);
     case 'orders.scanned_out':

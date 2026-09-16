@@ -178,6 +178,12 @@ export default async function IntegrationsPage({
           </p>
           <div className="flex items-center gap-2">
             <Link
+              href="/settings/integrations/sync"
+              className="text-role-caption font-semibold text-blue-600 hover:underline"
+            >
+              Sync tools →
+            </Link>
+            <Link
               href="/settings/integrations/diagnostics"
               className="text-role-caption font-semibold text-blue-600 hover:underline"
             >

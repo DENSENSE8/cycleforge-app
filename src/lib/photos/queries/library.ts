@@ -69,9 +69,20 @@ export interface LibraryFilters {
   poFinderKind?: PoFinderKind | null;
 }
 
-export type PoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'sku' | 'ticket' | 'any';
+export type PoFinderKind =
+  | 'order'
+  | 'tracking'
+  | 'serial'
+  | 'po'
+  | 'sku'
+  | 'ticket'
+  | 'repair'
+  | 'customer'
+  | 'any';
 
-const PO_FINDER_KINDS: readonly PoFinderKind[] = ['order', 'tracking', 'serial', 'po', 'sku', 'ticket', 'any'];
+const PO_FINDER_KINDS: readonly PoFinderKind[] = [
+  'order', 'tracking', 'serial', 'po', 'sku', 'ticket', 'repair', 'customer', 'any',
+];
 
 export function isPoFinderKind(value: unknown): value is PoFinderKind {
   return typeof value === 'string' && (PO_FINDER_KINDS as readonly string[]).includes(value);
@@ -333,6 +344,64 @@ function ticketLinkedPhotoExists(id: string, hashForm: string, plainForm: string
     )`;
 }
 
+/**
+ * Repair-linked evidence: photos linked to a repair_service row. `rawValue`
+ * accepts `RS-125` / `REP-125` / bare `125` (exact id) or free text matched
+ * against ticket #, product title and issue — "repair service in general".
+ */
+function repairLinkedExistsSql(params: unknown[], rawValue: string): string {
+  const trimmed = rawValue.trim();
+  const idMatch = /^(?:RS-?|REP-)?(\d+)$/i.exec(trimmed);
+  if (idMatch) {
+    params.push(Number(idMatch[1]));
+    const id = `$${params.length}`;
+    return `EXISTS (
+        SELECT 1 FROM photo_entity_links l
+          JOIN repair_service rs
+            ON l.entity_type = 'REPAIR_SERVICE' AND rs.id = l.entity_id
+           AND rs.organization_id = p.organization_id
+         WHERE l.photo_id = p.id
+           AND l.organization_id = p.organization_id
+           AND rs.id = ${id}
+      )`;
+  }
+  params.push(`%${trimmed}%`);
+  const v = `$${params.length}`;
+  return `EXISTS (
+      SELECT 1 FROM photo_entity_links l
+        JOIN repair_service rs
+          ON l.entity_type = 'REPAIR_SERVICE' AND rs.id = l.entity_id
+         AND rs.organization_id = p.organization_id
+       WHERE l.photo_id = p.id
+         AND l.organization_id = p.organization_id
+         AND (
+           COALESCE(rs.ticket_number, '') ILIKE ${v}
+           OR COALESCE(rs.product_title, '') ILIKE ${v}
+           OR COALESCE(rs.issue, '') ILIKE ${v}
+         )
+    )`;
+}
+
+/** Customer-name evidence: photos on a repair filed for a matching customer. */
+function customerLinkedExistsSql(params: unknown[], rawValue: string): string {
+  params.push(`%${rawValue.trim()}%`);
+  const v = `$${params.length}`;
+  return `EXISTS (
+      SELECT 1 FROM photo_entity_links l
+        JOIN repair_service rs
+          ON l.entity_type = 'REPAIR_SERVICE' AND rs.id = l.entity_id
+         AND rs.organization_id = p.organization_id
+        LEFT JOIN customers c
+          ON c.id = rs.customer_id AND c.organization_id = p.organization_id
+       WHERE l.photo_id = p.id
+         AND l.organization_id = p.organization_id
+         AND COALESCE(
+           c.display_name, c.customer_name,
+           CONCAT_WS(' ', NULLIF(c.first_name, ''), NULLIF(c.last_name, '')),
+           rs.contact_info
+         ) ILIKE ${v}
+    )`;
+}
 /** Claims scope: any photo that belongs under a filed/linked Zendesk claim. */
 function claimsScopePhotoExists(): string {
   return `(
@@ -454,6 +523,15 @@ function poFinderExists(params: unknown[], kind: PoFinderKind, rawValue: string)
   if (kind === 'ticket') {
     return ticketFinderExists(params, rawValue);
   }
+  // Repair + customer resolve against repair_service links, not cartons, and
+  // bind their own params — handled before the `%like%` push below so that
+  // placeholder stays dead-parameter-free.
+  if (kind === 'repair') {
+    return repairLinkedExistsSql(params, rawValue);
+  }
+  if (kind === 'customer') {
+    return customerLinkedExistsSql(params, rawValue);
+  }
 
   params.push(`%${rawValue}%`);
   const v = `$${params.length}`;
@@ -471,7 +549,8 @@ function poFinderExists(params: unknown[], kind: PoFinderKind, rawValue: string)
   }
   if (kind === 'any') {
     // The smart "All" scope: serial OR tracking OR order OR PO OR SKU OR
-    // Zendesk ticket, plus free-text/OCR (po_ref + photo_analysis).
+    // Zendesk ticket OR repair OR customer, plus free-text/OCR (po_ref +
+    // photo_analysis).
     const cartons = (['serial', 'tracking', 'order', 'po', 'sku'] as const)
       .map((k) => cartonExistsSql(cartonResolverSql(k, v)))
       .join(' OR ');
@@ -479,7 +558,9 @@ function poFinderExists(params: unknown[], kind: PoFinderKind, rawValue: string)
         SELECT 1 FROM photo_analysis a
          WHERE a.photo_id = p.id AND a.metadata::text ILIKE ${v})`;
     const ticketMatch = ticketFinderExists(params, rawValue);
-    return `(${poRefMatch} OR ${ocrMatch} OR ${ticketMatch} OR ${skuLinkedExistsSql(v)} OR ${cartons})`;
+    const repairMatch = repairLinkedExistsSql(params, rawValue);
+    const customerMatch = customerLinkedExistsSql(params, rawValue);
+    return `(${poRefMatch} OR ${ocrMatch} OR ${ticketMatch} OR ${repairMatch} OR ${customerMatch} OR ${skuLinkedExistsSql(v)} OR ${cartons})`;
   }
   return cartonExistsSql(cartonResolverSql(kind, v));
 }
@@ -574,8 +655,14 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     // Scope filter (no specific entity): keep ONLY photos linked to this entity
     // type — e.g. packing = PACKER_LOG. Receiving photos link as RECEIVING or
     // RECEIVING_LINE, so unboxing matches both.
+    // Repair scope is TWO entity kinds: REPAIR_SERVICE (counter/tech evidence
+    // on the repair ticket) and SERIAL_UNIT (bench captures of the device).
     const types =
-      filters.entityType === 'RECEIVING' ? ['RECEIVING', 'RECEIVING_LINE'] : [filters.entityType];
+      filters.entityType === 'RECEIVING'
+        ? ['RECEIVING', 'RECEIVING_LINE']
+        : filters.entityType === 'REPAIR_SERVICE'
+          ? ['REPAIR_SERVICE', 'SERIAL_UNIT']
+          : [filters.entityType];
     params.push(types);
     clauses.push(`
       EXISTS (
@@ -831,9 +918,9 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
                WHEN EXISTS (SELECT 1 FROM photo_entity_links l
                              WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
                                AND l.entity_type IN ('RECEIVING', 'RECEIVING_LINE')) THEN 'unboxing'
-               WHEN EXISTS (SELECT 1 FROM photo_entity_links l
-                             WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
-                               AND l.entity_type = 'SERIAL_UNIT') THEN 'repair'
+              WHEN EXISTS (SELECT 1 FROM photo_entity_links l
+                            WHERE l.photo_id = p.id AND l.organization_id = p.organization_id
+                              AND l.entity_type IN ('SERIAL_UNIT', 'REPAIR_SERVICE')) THEN 'repair'
                ELSE NULL
              END) AS source_scope
        FROM photos p

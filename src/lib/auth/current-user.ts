@@ -49,6 +49,13 @@ export interface CurrentUser {
    * fetch, which would otherwise show initials for a beat on every cold boot.
    */
   avatarPhotoId: number | null;
+  /**
+   * Signed-in email shown under the name on the account row. Resolved from
+   * `accounts.primary_email` via `staff.account_id`; in a shared-account org
+   * an act-as staff has no account of their own, so the front-door umbrella
+   * account's email shows instead. Null when neither resolves.
+   */
+  email: string | null;
 }
 
 interface StaffOverrideRow {
@@ -58,6 +65,7 @@ interface StaffOverrideRow {
   permissions_removed: string[] | null;
   mobile_display_config: unknown;
   avatar_photo_id: number | null;
+  account_email: string | null;
 }
 
 async function loadStaffOverrides(staffId: number, orgId: string): Promise<StaffOverrideRow | null> {
@@ -74,15 +82,51 @@ async function loadStaffOverrides(staffId: number, orgId: string): Promise<Staff
       30,
       [CACHE_TAGS.staffOverrides],
       async () => {
+        // Email lives in account_emails (verified, unique per address) —
+        // accounts.primary_email is an unpopulated denormalized pointer.
+        // LATERAL picks the account's best email: verified first, newest
+        // first.
         const r = await pool.query(
-          `SELECT name, role, permissions_added, permissions_removed, mobile_display_config,
-                  avatar_photo_id
-             FROM staff
-            WHERE id = $1
-            LIMIT 1`,
+          `SELECT s.name, s.role, s.permissions_added, s.permissions_removed,
+                 s.mobile_display_config, s.avatar_photo_id,
+                 ae.email AS account_email
+            FROM staff s
+            LEFT JOIN LATERAL (
+              SELECT x.email
+                FROM account_emails x
+               WHERE x.account_id = s.account_id
+               ORDER BY (x.verified_at IS NULL), x.verified_at DESC, x.created_at DESC
+               LIMIT 1
+            ) ae ON TRUE
+           WHERE s.id = $1
+           LIMIT 1`,
           [staffId],
         );
-        return (r.rows[0] as StaffOverrideRow | undefined) ?? null;
+        const row = (r.rows[0] as StaffOverrideRow | undefined) ?? null;
+        if (!row || row.account_email) return row;
+        // Shared-account org: an act-as staff row has no account of its own —
+        // the email under the name is the umbrella account that signed in.
+        // The org-settings gate lives in SQL so individual (per-email) orgs
+        // never leak another member's address. Best-effort: a failure here
+        // must not nuke the override load.
+        try {
+          const umbrella = await pool.query<{ email: string | null }>(
+            `SELECT ae.email
+               FROM memberships m
+               JOIN account_emails ae ON ae.account_id = m.account_id
+               JOIN organizations o ON o.id = m.org_id
+              WHERE m.org_id = $1
+                AND m.status = 'active'
+                AND o.settings ->> 'staffLoginModel' = 'shared'
+              ORDER BY m.created_at ASC,
+                       (ae.verified_at IS NULL), ae.verified_at DESC, ae.created_at DESC
+              LIMIT 1`,
+            [orgId],
+          );
+          return { ...row, account_email: umbrella.rows[0]?.email ?? null };
+        } catch {
+          return row;
+        }
       },
     );
   } catch {
@@ -145,6 +189,7 @@ async function buildCurrentUser(session: SessionRow | null): Promise<CurrentUser
     permissionsRemoved: removed,
     mobileDisplayConfig,
     avatarPhotoId: overrides?.avatar_photo_id ?? null,
+    email: overrides?.account_email ?? null,
   };
 }
 

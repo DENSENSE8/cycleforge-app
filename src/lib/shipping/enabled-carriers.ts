@@ -12,6 +12,14 @@ import type { CarrierCode } from './types';
  */
 export const ENABLED_SYNC_CARRIERS: readonly CarrierCode[] = ['UPS', 'FEDEX'];
 
+/**
+ * Case-INSENSITIVE on purpose. The column is uppercase by constraint
+ * (2026-09-13 migration), but seven INSERT sites supply `carrier` themselves
+ * and one lane row reached production as lowercase `usps`. A case-sensitive
+ * gate skips such a row forever, silently: no poll, no status, no error, and
+ * nothing on any desk says why. Compare the token, not the spelling.
+ */
 export function isCarrierSyncEnabled(carrier: string | null | undefined): boolean {
-  return !!carrier && (ENABLED_SYNC_CARRIERS as readonly string[]).includes(carrier);
+  const token = String(carrier ?? '').trim().toUpperCase();
+  return !!token && (ENABLED_SYNC_CARRIERS as readonly string[]).includes(token);
 }

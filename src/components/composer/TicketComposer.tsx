@@ -52,7 +52,7 @@ import { ComposerDrillMenu } from './ComposerDrillMenu';
 import { ComposerStagedPhotoStrip } from './ComposerStagedPhotoStrip';
 import { ComposerTicketChannelToggle } from './ComposerTicketChannelToggle';
 import { ComposerTicketInsetChrome } from './ComposerTicketInsetChrome';
-import { useTicketComposer } from './useTicketComposer';
+import { useTicketComposer } from '@/lib/composer/use-ticket-composer';
 
 const INSERT_ICONS = {
   browse: <Images className="h-3.5 w-3.5" />,

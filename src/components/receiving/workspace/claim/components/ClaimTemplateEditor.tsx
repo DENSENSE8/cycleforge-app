@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Barcode, Download, FileText, Pencil, Receipt, Tag, User } from '@/components/Icons';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DenseComposeBodyBand,
@@ -87,12 +88,8 @@ export function ClaimTemplateEditor({
   const serialInsertText = formatSerialsForNotes(serialNumbers);
 
   const trimmedInternalNotes = (row.notes || '').trim();
-  const trimmedSkuTitle = (
-    row.zoho_item_title ||
-    row.catalog_product_title ||
-    row.item_name ||
-    ''
-  ).trim();
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  const trimmedSkuTitle = resolveSkuIdentityTitle(row);
   const formattedUnitPrice = formatUnitPriceForNotes(row.unit_price);
   const trimmedSyncNotes = (row.receiving_zoho_notes ?? '').trim();
   const resolvedTicketId = parseZendeskTicketId(row.zendesk_ticket);

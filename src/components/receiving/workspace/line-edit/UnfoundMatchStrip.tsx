@@ -76,7 +76,7 @@ import { toast } from '@/lib/toast';
 import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   useUnfoundRefetchActions,
   type RefetchState,

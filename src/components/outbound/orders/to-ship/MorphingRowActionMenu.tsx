@@ -170,6 +170,13 @@ function isUrgentRow(row: unknown): boolean {
   return false;
 }
 
+function isOutOfStockRow(row: unknown): boolean {
+  if (!row || typeof row !== 'object') return false;
+  if ('is_out_of_stock' in row) return Boolean(row.is_out_of_stock);
+  if ('isOutOfStock' in row) return Boolean(row.isOutOfStock);
+  return false;
+}
+
 /**
  * The ENGINE-facing face of this panel — what `TableSurfaceBinding.rowPlane`
  * registers for the orders entity.
@@ -193,6 +200,7 @@ export function MorphingRowActionMenu({
   onClose,
   anchorRef,
   inline = false,
+  liveRecords,
 }: {
   record: ShippedOrder;
   open: boolean;
@@ -201,6 +209,15 @@ export function MorphingRowActionMenu({
   /** Mounted outside the virtualized row window. Portals into the in-flow
    *  slot under the column header so the labels stay visible. */
   inline?: boolean;
+  /**
+   * The grid's CURRENT rows, when the host has them. The rail selection store
+   * carries click-time snapshots (it only hears selection events), so a state
+   * derived from `actionRows` alone goes stale the moment a verb lands — the
+   * urgent pill kept promising "Clear urgent" on a row that was already
+   * cleared, and `markUrgent` read the stale flag to pick its direction.
+   * State reads prefer the live row by id and fall back to the snapshot.
+   */
+  liveRecords?: readonly ShippedOrder[];
 }) {
   const [view, setView] = useState<MenuView>('actions');
   const [notesOpen, setNotesOpen] = useState(false);
@@ -227,6 +244,10 @@ export function MorphingRowActionMenu({
   const orderId = Number(record.id);
   const { rows: selectedRows, actions: catalogActions } = useRailActionSnapshot();
   const actionRows = selectedRows.length > 0 ? selectedRows : [record];
+  // Freshest row per selected id — see the `liveRecords` prop. Snapshots stay
+  // the fallback so the strip still works on hosts that pass no records.
+  const liveById = new Map((liveRecords ?? []).map((row) => [Number(row.id), row]));
+  const stateRows = actionRows.map((row) => liveById.get(Number(orderIdOf(row))) ?? row);
   const actionIds = actionRows.map(orderIdOf).filter((id): id is number => id != null);
   const scanOutAction = catalogActions.find((action) => action.key === 'scan-out');
   const listingRuleAction = catalogActions.find((action) => action.key === 'listing-rule');
@@ -381,6 +402,8 @@ export function MorphingRowActionMenu({
         toast.error(body?.error || 'Could not upload the document');
         return;
       }
+      await queryClient.invalidateQueries({ queryKey: ['order-documents', id] });
+      refreshDomain('orders.outbound');
       toast.success(
         documentType === 'packing_slip'
           ? 'Packing slip linked — packer scan will print it'
@@ -490,8 +513,9 @@ export function MorphingRowActionMenu({
     dispatchOpenShippedDetails(record, 'queue', { force: true });
   };
 
-  const selectionIsUrgent = actionRows.length > 0 && actionRows.every(isUrgentRow);
-
+  // Live-derived (see `stateRows`): the label and the toggle direction must
+  // both answer the row's CURRENT urgency, not the click-time snapshot.
+  const selectionIsUrgent = stateRows.length > 0 && stateRows.every(isUrgentRow);
   const markUrgent = () => {
     const ids = actionIds.length > 0 ? actionIds : [orderId].filter((id) => Number.isFinite(id) && id > 0);
     if (ids.length === 0) {
@@ -504,6 +528,28 @@ export function MorphingRowActionMenu({
       {
         onSuccess: () => toast.success(next ? 'Marked urgent — pinned to top' : 'Urgent cleared'),
         onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not update urgent'),
+      },
+    );
+  };
+
+  const selectionIsOutOfStock = stateRows.length > 0 && stateRows.every(isOutOfStockRow);
+  const toggleOutOfStock = () => {
+    if (!selectionIsOutOfStock) {
+      openOutOfStock();
+      return;
+    }
+    const ids = actionIds.length > 0 ? actionIds : [orderId].filter((id) => Number.isFinite(id) && id > 0);
+    if (ids.length === 0) {
+      toast.error('Select an order first');
+      return;
+    }
+    assign.mutate(
+      { orderIds: ids, isOutOfStock: false },
+      {
+        onSuccess: () =>
+          toast.success(ids.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders'),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Could not clear out of stock'),
       },
     );
   };
@@ -674,7 +720,7 @@ export function MorphingRowActionMenu({
     if (!open) return;
     const actionByLetter = new Map<string, () => void>([
       ['u', markUrgent],
-      ['o', openOutOfStock],
+      ['o', toggleOutOfStock],
       ['r', runListingRule],
       [MORPHING_NOTES_HOTKEY.toLowerCase(), openNotes],
       [MORPHING_MORE_INFO_HOTKEY.toLowerCase(), openMoreInformation],
@@ -755,7 +801,16 @@ export function MorphingRowActionMenu({
                 aria-pressed={selectionIsUrgent}
                 onClick={markUrgent}
               >
-                {selectionIsUrgent ? 'Urgent' : 'Mark urgent'}
+                {/*
+                  A button label is the VERB it performs from the current
+                  state (operator 2026-09-15) — a state word ("Urgent") forces
+                  the operator to guess whether clicking sets, clears, or does
+                  nothing, and the row already reports urgency three other ways
+                  (edge rail + glyph, status pill, pinning). Transition labels
+                  both ways; the pressed styling carries the state, the label
+                  carries the promise. `u` still toggles either way.
+                */}
+                {selectionIsUrgent ? 'Clear urgent' : 'Mark urgent'}
               </Button>
               <Button
                 type="button"
@@ -764,21 +819,10 @@ export function MorphingRowActionMenu({
                 radius="pill"
                 icon={<AlertTriangle />}
                 data-testid="morphing-out-of-stock"
-                onClick={openOutOfStock}
+                aria-pressed={selectionIsOutOfStock}
+                onClick={toggleOutOfStock}
               >
-                Out of stock
-              </Button>
-              <Button
-                type="button"
-                variant="primarySoft"
-                size="sm"
-                radius="pill"
-                icon={<Bookmark />}
-                title="Item number → picker and packer. Repeats when that listing is ordered again."
-                data-testid="morphing-create-rule"
-                onClick={runListingRule}
-              >
-                Create rule
+                {selectionIsOutOfStock ? 'Clear out of stock' : 'Report out of stock'}
               </Button>
               <Button
                 type="button"
@@ -823,6 +867,22 @@ export function MorphingRowActionMenu({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" side="bottom">
+                  {/*
+                    CREATE RULE lives here, not on the strip (operator
+                    2026-09-15): a listing-level rule is rare and
+                    configuration-flavoured — it does not belong on every
+                    selection ahead of the verbs the floor uses constantly.
+                    The `r` hotkey still runs it without opening this menu.
+                  */}
+                  <DropdownMenuItem onSelect={runListingRule} data-testid="morphing-create-rule">
+                    <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Create rule
+                    {showHotkeys ? (
+                      <KeyboardKey aria-hidden size="sm" className="ml-auto">
+                        R
+                      </KeyboardKey>
+                    ) : null}
+                  </DropdownMenuItem>
                   <DropdownMenuItem onSelect={openMoreInformation}>
                     More information
                     {showHotkeys ? (
@@ -1072,6 +1132,7 @@ export function OrdersMorphingHost({
     <MorphingRowActionMenu
       record={record}
       open
+      liveRecords={records}
       onClose={() => {
         if (scope) emitToggleAll(scope, 'none');
       }}

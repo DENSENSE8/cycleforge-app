@@ -194,14 +194,16 @@ html[data-color-scheme='dark'] {
    Light authoring refs live in src/design-system/tokens/app-surface.ts.
 
    GROUND-PLANE RULE: no stop may resolve to `background-surface` (card white).
-   A wash host is the ground plane that cards cast onto — `tokens/shadows.ts`
-   ("depth needs a ground plane") requires canvas to sit a real step BELOW card
-   white (light: #eef2f7 vs #ffffff). `mint`/`cool` used to terminate on
-   `background-surface`, so past their stop the page ground WAS card white:
-   a `bg-surface-card` rail sat white-on-white with only its 1px border to
-   separate it, and `elevationCastClass` had nothing to cast onto — the exact
-   "every surface merged into one sheet" regression that rule was written for.
-   Terminate on canvas instead; the preset's character lives in `--ds-wash-from`.
+   A wash host is the ground plane cards sit on, and `background-canvas` is that
+   plane — light is now #fafafa vs #ffffff (operator 2026-09-15, "pin FAFAFA as
+   the standard light background"; the rationale and what it reverses are in
+   src/design-system/themes/light.ts). At a 2% delta ELEVATION no longer does
+   the separating: `shadow-elev-*` cast onto this plane will not read, so a
+   raised surface draws a HAIRLINE. The rule survives the retune for a
+   different reason than it was written for — a stop that lands ON card white
+   erases the plane entirely, which is how `mint`/`cool` once put a
+   `bg-surface-card` rail white-on-white with only its 1px border. Terminate on
+   canvas; the preset's character lives in `--ds-wash-from`.
    (`slate` still opens on `background-surface` — same defect, inverted.) */
 :root,
 html[data-app-wash='mint'] {
@@ -221,7 +223,7 @@ html[data-app-wash='slate'] {
 }
 html[data-app-wash='dawn'] {
   --ds-wash-from: color-mix(in srgb, var(--ds-color-background-canvas) 80%, #f8fafc);
-  --ds-wash-to: color-mix(in srgb, var(--ds-color-background-canvas) 55%, #eef2f7);
+  --ds-wash-to: color-mix(in srgb, var(--ds-color-background-canvas) 55%, #f1f5f9);
   --ds-wash-stop: 100%;
 }
 html[data-app-wash='flat'] {

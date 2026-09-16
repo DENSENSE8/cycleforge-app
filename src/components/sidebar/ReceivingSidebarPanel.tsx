@@ -32,7 +32,7 @@ import {
 } from '@/lib/realtime/channels';
 
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { buildPendingScanStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { TrackingScanResult } from '@/components/sidebar/receiving/useTrackingScan';
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';

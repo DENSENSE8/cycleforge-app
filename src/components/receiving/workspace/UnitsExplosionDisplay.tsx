@@ -28,7 +28,7 @@ import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit
 import { useSerialLookup, type SerialMatchedOrder } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { patchReceivingLineCondition } from '@/components/receiving/workspace/patch-receiving-line-condition';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';

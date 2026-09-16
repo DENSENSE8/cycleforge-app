@@ -16,6 +16,7 @@ import {
 } from '@/lib/global-search-pending';
 import { presentFindDossier } from '@/lib/search/find-dossier-model';
 import { presentCartonFindEvents } from '@/lib/search/find-events-from-sources';
+import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
 import {
   cartonDossierFindings,
   cartonDossierLines,
@@ -37,6 +38,9 @@ export function SearchReceivingDossier({
   const totals = payload?.totals ?? null;
 
   const linkedOrderQuery = useQuery(searchReceivingLinkedOrderQuery(receivingId, payload));
+  // Evidence lives IN the stream (§1.1) — the house carton-photo read, read-only
+  // (no poll, no realtime), never a Displays "Photos" leaf.
+  const cartonPhotos = useReceivingPhotos(receivingId, { readOnly: true });
   const linkedOrder = linkedOrderQuery.data?.status === 'ok' ? linkedOrderQuery.data.order : null;
 
   const resolveStatus =
@@ -118,6 +122,7 @@ export function SearchReceivingDossier({
     events: presentCartonFindEvents({
       events: payload?.events ?? [],
       totals,
+      photos: cartonPhotos.photos,
       createdAt: receiving.created_at,
       tracking,
       linkedOrderId,

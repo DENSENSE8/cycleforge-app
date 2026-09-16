@@ -1,4 +1,4 @@
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * Kind keys produced by STATION_TERMINAL_REGISTRY for unbox.

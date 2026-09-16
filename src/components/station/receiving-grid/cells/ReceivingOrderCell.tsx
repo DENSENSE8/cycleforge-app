@@ -18,6 +18,11 @@ import {
  * (`select · order`). Dense face: platform brand-identity micro-dot + plain
  * last-8 with hover **Open** (product/listing) · **Edit** (inspector), same
  * verbs as TRACK via {@link OrderNumberMenuChip}. Empty → {@link GridCellDash}.
+ *
+ * Operator 2026-09-14: the order number displays on EVERY row — fold children
+ * included ("it must display the order number for the child rows as well"),
+ * so the old `quietIdentity` dash is retired; band and children paint the
+ * identical face.
  */
 export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { poValue, platformLabel, platformMeta, row, onEditOrder, quietIdentity } = ctx;
@@ -30,9 +35,9 @@ export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
       data-col="order"
       className={receivingDataCellClass(col, rule, ctx)}
       style={receivingDataCellStyle(col, ctx)}
-      {...receivingFrozenEdgeProps(col)}
+      {...receivingFrozenEdgeProps(col, ctx.columns)}
     >
-      {empty || quietIdentity ? (
+      {empty ? (
         <GridCellDash />
       ) : (
         <span className="inline-flex min-w-0 items-center gap-1.5">

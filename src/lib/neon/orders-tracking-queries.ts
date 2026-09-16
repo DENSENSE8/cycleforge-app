@@ -20,7 +20,9 @@
  * ─────────────────────────────────────────────────────────────────
  */
 import type { PoolClient } from 'pg';
-import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
+import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
+import { resolveStoredCarrier, UNKNOWN_CARRIER } from '@/lib/shipping/carrier-resolution';
+import { isCarrierSyncEnabled } from '@/lib/shipping/enabled-carriers';
 import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { linkShipment, unlinkShipment, setPrimaryShipmentLink } from '@/lib/shipping/shipment-links';
@@ -28,6 +30,37 @@ import { healShipmentOrganizationId } from '@/lib/shipping/repository';
 
 /** Minimal pg client surface the helpers need (a pool client mid-transaction). */
 type Tx = Pick<PoolClient, 'query'>;
+
+/**
+ * Carrier + trackability for one pasted tracking number.
+ *
+ * Two facts, deliberately separate. This file used to collapse them: it read
+ * the THREE-carrier `detectCarrier` and stored `'UNKNOWN'` for anything else,
+ * so every Amazon, DHL, OnTrac and GSO paste lost its identity — 1,002 rows on
+ * the lane DB, each unpollable and indistinguishable from a genuinely
+ * unreadable barcode.
+ *
+ * - IDENTITY comes from the full pattern list (`resolveStoredCarrier`).
+ * - TRACKABILITY is whether we have a live integration for that identity.
+ *
+ * "Unknown" to an operator means "we cannot follow this", which is equally true
+ * of a carrier we can name but cannot call — so the message says which.
+ */
+function resolveTrackingCarrier(normalizedTracking: string): {
+  carrierForStorage: string;
+  isUnknownCarrier: boolean;
+  unknownCarrierMessage: string;
+} {
+  const { carrier } = resolveStoredCarrier({ tracking: normalizedTracking });
+  const named = carrier !== UNKNOWN_CARRIER;
+  return {
+    carrierForStorage: carrier,
+    isUnknownCarrier: !named || !isCarrierSyncEnabled(carrier),
+    unknownCarrierMessage: named
+      ? `No ${carrier} tracking integration yet; manual tracking only.`
+      : 'Carrier detection unavailable for this tracking format; manual tracking only.',
+  };
+}
 
 // ─── Tenancy note ─────────────────────────────────────────────────────────────
 //
@@ -105,11 +138,8 @@ export async function upsertOrderTracking(
     throw new Error('Tracking number is invalid');
   }
 
-  const detectedCarrier = detectCarrier(normalizedTracking);
-  const carrierForStorage = detectedCarrier ?? 'UNKNOWN';
-  const isUnknownCarrier = !detectedCarrier;
-  const unknownCarrierMessage =
-    'Carrier detection unavailable for this tracking format; manual tracking only.';
+  const { carrierForStorage, isUnknownCarrier, unknownCarrierMessage } =
+    resolveTrackingCarrier(normalizedTracking);
 
   // Gather ALL shipment IDs linked to this order — both from orders.shipment_id
   // and order_shipment_links. This ensures the duplicate check excludes every
@@ -354,11 +384,8 @@ export async function updateShipmentTrackingById(
     throw new Error('Tracking number already exists on another shipment');
   }
 
-  const detectedCarrier = detectCarrier(normalizedTracking);
-  const carrierForStorage = detectedCarrier ?? 'UNKNOWN';
-  const isUnknownCarrier = !detectedCarrier;
-  const unknownCarrierMessage =
-    'Carrier detection unavailable for this tracking format; manual tracking only.';
+  const { carrierForStorage, isUnknownCarrier, unknownCarrierMessage } =
+    resolveTrackingCarrier(normalizedTracking);
 
   // Heal orphan NULL org before the tenant-scoped UPDATE (FORCE RLS).
   await healShipmentOrganizationId(shipmentId, orgId);
@@ -458,11 +485,8 @@ export async function createAdditionalShipmentLink(
       }
     }
   } else {
-    const detectedCarrier = detectCarrier(normalizedTracking);
-    const carrierForStorage = detectedCarrier ?? 'UNKNOWN';
-    const isUnknownCarrier = !detectedCarrier;
-    const unknownCarrierMessage =
-      'Carrier detection unavailable for this tracking format; manual tracking only.';
+    const { carrierForStorage, isUnknownCarrier, unknownCarrierMessage } =
+      resolveTrackingCarrier(normalizedTracking);
 
     const insertedShipment = await client.query(
       `INSERT INTO shipping_tracking_numbers

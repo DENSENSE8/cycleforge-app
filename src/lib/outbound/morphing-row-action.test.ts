@@ -264,11 +264,24 @@ describe('Morphing paints a sticky top overlay, not a left popover', () => {
     assert.match(menu, /forceVariant=["']sheet["']/);
   });
 
-  it('urgent and out of stock lead; listing rule replaces assign', () => {
-    assert.match(menu, /Mark urgent[\s\S]*Out of stock[\s\S]*Create rule/);
+  it('state-changers lead with transition labels; rare verbs sit behind ⋮', () => {
+    // Operator 2026-09-15: a button label is the VERB it performs from the
+    // current state. "Urgent" as a label states a fact the row already shows
+    // three ways and hides whether clicking sets, clears, or does nothing —
+    // so the urgent pill reads "Clear urgent" when the selection is all-urgent
+    // and "Mark urgent" otherwise. "Out of stock" was a noun; the verb bar
+    // carries verbs. Create rule is rare and configuration-flavoured, so it
+    // moved into the ⋮ overflow (hotkey R unchanged).
+    assert.match(menu, /selectionIsUrgent \? 'Clear urgent' : 'Mark urgent'/);
+    assert.match(menu, /Report out of stock/);
+    assert.doesNotMatch(menu, /'Out of stock'</);
+    // Order: state-changers → utility verbs → the one terminal verb.
+    assert.match(menu, /Clear urgent' : 'Mark urgent'[\s\S]*Report out of stock[\s\S]*Notes[\s\S]*Upload docs[\s\S]*Mark scanned out/);
+    // Create rule is still reachable, but behind the overflow — not a strip pill.
+    assert.match(menu, /morphing-create-rule/);
+    assert.doesNotMatch(menu, /radius="pill"[^>]*data-testid="morphing-create-rule"/);
     assert.doesNotMatch(menu, /Assign picker/);
     assert.doesNotMatch(menu, /Assign packer/);
-    assert.match(menu, /morphing-create-rule/);
     assert.match(menu, /morphing-scan-out/);
     assert.match(menu, /morphing-upload-docs/);
     assert.match(menu, /\/api\/shipped\/scan-out/);

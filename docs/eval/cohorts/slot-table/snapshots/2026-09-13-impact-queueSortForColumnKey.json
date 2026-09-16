@@ -1,0 +1,72 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/utils/queue-display-sort.ts:queueSortForColumnKey",
+  "files_affected": 8,
+  "total_symbols": 8,
+  "files": [
+    {
+      "file": "src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "useOrdersSpreadsheet"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/orders-queue-descriptor.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "makeOrdersGridDescriptor"
+      ]
+    },
+    {
+      "file": "src/utils/queue-display-sort-compound.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "queue-display-sort-compound.test.ts"
+      ]
+    },
+    {
+      "file": "src/utils/queue-display-sort.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "isQueueSortableColumnKey"
+      ]
+    },
+    {
+      "file": "src/components/outbound/orders/OrderImportRecordsHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrderImportRecordsHost"
+      ]
+    },
+    {
+      "file": "src/components/outbound/orders/exceptions/OrderExceptionsWorkbench.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrderExceptionsWorkbench"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
+      ]
+    },
+    {
+      "file": "src/components/unshipped/UnshippedTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "UnshippedSheet"
+      ]
+    }
+  ]
+}

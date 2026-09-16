@@ -93,10 +93,17 @@ describe('importExceptionCompoundColumnsFor — the compound materialization', (
       ...IMPORT_EXCEPTION_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'import-exception.sheet' }, { fieldId: 'import-exception.seen' }],
     });
+    const keys = columns.map((c) => c.key);
+    // `COMPOUND_COLUMN_KEYS` is the SoT for the surrounding order. This used to
+    // hand-list every track, which forked the skeleton and went stale the moment
+    // `amount`/`actions` left it — so it pins only what this test is about: the
+    // status band opening straight after the state pill.
     assert.deepEqual(
-      columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      keys.filter((k) => !k.startsWith('status:')),
+      [...COMPOUND_COLUMN_KEYS],
     );
+    const stateAt = keys.indexOf('state');
+    assert.deepEqual(keys.slice(stateAt, stateAt + 3), ['state', 'status:1', 'status:2']);
   });
 });
 

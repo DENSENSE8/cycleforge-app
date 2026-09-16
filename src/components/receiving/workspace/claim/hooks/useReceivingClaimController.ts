@@ -7,7 +7,7 @@ import {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   claimWizardStartStep,
   claimWizardStepStates,

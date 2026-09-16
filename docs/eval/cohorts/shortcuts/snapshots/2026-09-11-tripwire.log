@@ -1,0 +1,22 @@
+▶ useSelectionStatusBarHotkeys
+  ✔ owns bind + `?` reveal in one module (1.642134ms)
+  ✔ surface register + reveal + teardown; toggle no-ops without a surface (0.420799ms)
+  ✔ re-export seam still resolves (0.238392ms)
+✔ useSelectionStatusBarHotkeys (3.537563ms)
+▶ shortcut-display cohort (SoT = KeyboardKey inside-right overlays)
+  ✔ engine files exist (1.15916ms)
+  ✔ KeyboardKey is gray face + black letter SoT (0.561583ms)
+  ✔ status bar reveals KeyboardKey inside-right overlay after `?` (0.363929ms)
+  ✔ column action row reveals KeyboardKey inside-right overlay after `?` (0.235601ms)
+  ✔ hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey (0.264898ms)
+  ✔ paint law documents inside-right overlay + refuse layout moves (0.283634ms)
+  ✔ discover KEEP paths exist; known-debt ratchet holds (309.547816ms)
+✔ shortcut-display cohort (SoT = KeyboardKey inside-right overlays) (313.998939ms)
+ℹ tests 10
+ℹ suites 2
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1335.813503

@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
+import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 
@@ -17,9 +18,21 @@ function requiredEnvAny(primaryName: string, aliases: string[] = []): string {
 /**
  * POST /api/sku-catalog/sync-ecwid-titles
  *
- * Fetches all enabled products from Ecwid, matches by SKU to sku_catalog,
- * and updates product_title with the Ecwid name.
- * Also backfills image_url from Ecwid thumbnails where missing.
+ * Fetches all enabled products from Ecwid and fills `sku_catalog.product_title`
+ * / `image_url` **only for rows Zoho does not own** — the SKU identity law's
+ * rule 4 (`src/lib/sku/sku-identity-law.ts`).
+ *
+ * Before 2026-09-15 this overwrote every SKU-string match, Zoho-twinned rows
+ * included. That is how catalog `00143` (Zoho: *Bose Solo Soundbar Series II*)
+ * came to read *"1x Original Bose UB-20 Wall Mount"*, `00031` (Zoho: *Bose
+ * Wave Music System*) read *"Bose SoundDock 10 remote control"*, and `00017`
+ * (Zoho: *Bose Wave Radio II*) read a CineMate remote — 132 of 1118 twinned
+ * rows contaminated, then rendered by every surface that reads the catalog
+ * title. The Ecwid text is not lost: it already lives on the listing row,
+ * `sku_platform_ids.display_name` / `listing_title`.
+ *
+ * 315 marketplace-only catalog rows have no Zoho twin and are still filled
+ * here — for those the Ecwid name IS the identity.
  */
 export const POST = withAuth(async (_req: NextRequest, ctx) => {
   try {
@@ -74,7 +87,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
     // Build set of Ecwid SKUs for deactivation check
     const ecwidSkus = new Set(allProducts.map((p) => p.sku));
 
-    // Batch update sku_catalog where SKU matches
+    // Batch update sku_catalog where SKU matches AND Zoho does not own the row
     let updated = 0;
     for (const product of allProducts) {
       // sku is a per-tenant string key — scope the title update to this org so
@@ -87,6 +100,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
              updated_at = NOW()
          WHERE sku = $3
            AND organization_id = $4
+           AND ${skuCatalogNoZohoTwinPredicateSql()}
            AND (product_title IS DISTINCT FROM $1 OR (image_url IS NULL AND $2::text IS NOT NULL))`,
         [product.name, product.thumbnailUrl, product.sku, ctx.organizationId],
       );

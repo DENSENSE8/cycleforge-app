@@ -14,8 +14,13 @@ export interface PrimaryKpiGridProps {
 
 /**
  * The four primary KPI tiles, composed from the Monitor {@link KpiStrip} /
- * `KpiTile` registry — eyebrow + compact delta (top-right) → hero number. Value and delta come
- * straight from the snapshot; clicking a tile opens {@link KpiDetailsModal}.
+ * `KpiTile` registry — eyebrow → hero number → the window-and-unit line.
+ *
+ * NO delta. The snapshot stopped carrying one on 2026-09-16 (see
+ * `operations-kpi-config.ts`), and the type change is what enforces it: there
+ * is no `cell.delta` to read. Clicking a tile opens {@link KpiDetailsModal},
+ * which lists the rows behind the number — the drill path a scalar needs to be
+ * checkable at all.
  */
 export function PrimaryKpiGrid({ summary, onOpen, activeKind }: PrimaryKpiGridProps) {
   return (
@@ -25,8 +30,7 @@ export function PrimaryKpiGrid({ summary, onOpen, activeKind }: PrimaryKpiGridPr
         return {
           label: card.title,
           value: cell?.value ?? 0,
-          delta: cell?.delta ?? 0,
-          invertDelta: card.invertDelta,
+          meta: card.meta,
           onOpen: () => onOpen(card.kind),
           active: activeKind === card.kind,
         };

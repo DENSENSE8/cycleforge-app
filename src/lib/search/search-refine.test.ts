@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import {
+  activeSearchRefineCount,
   applySearchDisplaySort,
   applySearchEtype,
   applySearchHstat,
@@ -15,6 +16,7 @@ import {
   parseSearchChan,
   applySearchChan,
   channelOptionsFromHits,
+  searchEntityCounts,
 } from '@/lib/search/search-refine';
 
 function hit(
@@ -175,4 +177,89 @@ test('clearSearchRefine drops the channel too — "Clear filters" must clear all
   assert.equal(p.get('etype'), null);
   assert.equal(p.get('hstat'), null);
   assert.equal(p.get('q'), 'keep', 'the query itself is not a refine');
+});
+
+// ── collapsed-trigger tally (phone refine sheet) ─────────────────────────────
+
+test('activeSearchRefineCount counts each live narrowing key once', () => {
+  assert.equal(activeSearchRefineCount(new URLSearchParams('q=bose')), 0);
+  assert.equal(activeSearchRefineCount(new URLSearchParams('etype=order')), 1);
+  assert.equal(
+    activeSearchRefineCount(new URLSearchParams('etype=order&hstat=Shipped&chan=ebay')),
+    3,
+  );
+});
+
+test('activeSearchRefineCount ignores sort — re-ordering is not narrowing', () => {
+  assert.equal(activeSearchRefineCount(new URLSearchParams('colsort=date')), 0);
+  assert.equal(
+    activeSearchRefineCount(new URLSearchParams('etype=order&colsort=date')),
+    1,
+    'a sorted, type-scoped list is narrowed once',
+  );
+});
+
+test('activeSearchRefineCount rejects junk the parsers reject', () => {
+  assert.equal(
+    activeSearchRefineCount(new URLSearchParams('etype=not_a_type&hstat=%20&chan=')),
+    0,
+    'a key the refine cannot apply must not inflate the trigger',
+  );
+});
+
+test('activeSearchRefineCount reads zero after clearSearchRefine', () => {
+  const p = new URLSearchParams('etype=order&hstat=Shipped&chan=ebay&q=keep');
+  clearSearchRefine(p);
+  assert.equal(activeSearchRefineCount(p), 0);
+});
+
+// ── scope-cluster counts (browse toolbar pills) ─────────────────────────────
+
+test('searchEntityCounts tallies every UI type and zero-fills the rest', () => {
+  const counts = searchEntityCounts([
+    hit({ id: 1, entityType: 'order' }),
+    hit({ id: 2, entityType: 'order' }),
+    hit({ id: 3, entityType: 'unit' }),
+  ]);
+  assert.equal(counts.total, 3);
+  assert.deepEqual(counts.byType, {
+    order: 2,
+    unit: 1,
+    receiving: 0,
+    sku: 0,
+    repair: 0,
+    fba: 0,
+    warranty: 0,
+    ticket: 0,
+    location: 0,
+  });
+});
+
+test('searchEntityCounts narrows by status and channel but never by etype', () => {
+  const hits = [
+    hit({ id: 1, entityType: 'order', facets: { status: 'Shipped', source_platform: 'eBay' } }),
+    hit({ id: 2, entityType: 'order', facets: { status: 'Open', source_platform: 'eBay' } }),
+    hit({ id: 3, entityType: 'unit', facets: { status: 'Shipped', source_platform: 'amazon' } }),
+    hit({ id: 4, entityType: 'unit', facets: { status: 'Shipped', source_platform: 'eBay' } }),
+  ];
+  const counts = searchEntityCounts(hits, { hstat: 'Shipped', chan: 'ebay' });
+  // A scope pill must keep answering "what would picking me show?" while the
+  // other facets are on — so orders stay visible even though unit is 2x.
+  assert.equal(counts.byType.order, 1);
+  assert.equal(counts.byType.unit, 1);
+  assert.equal(counts.total, 2);
+});
+
+test('searchEntityCounts counts an unknown wire type in total only', () => {
+  const counts = searchEntityCounts([
+    hit({ id: 1, entityType: 'import_exception' as never }),
+    hit({ id: 2, entityType: 'sku' }),
+  ]);
+  assert.equal(counts.total, 2);
+  assert.equal(counts.byType.sku, 1);
+  assert.equal(
+    Object.values(counts.byType).reduce((a, b) => a + b, 0),
+    1,
+    'no scope pill claims a type it cannot filter to',
+  );
 });

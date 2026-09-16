@@ -24,7 +24,7 @@ import {
 } from '@/lib/queries/receiving-queries';
 import type { QueryClient } from '@tanstack/react-query';
 import type { LookupPoData } from '@/lib/receiving/scan';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   buildMatchedStubRow,
   buildUnmatchedStubRow,

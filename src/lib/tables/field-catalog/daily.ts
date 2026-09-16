@@ -57,20 +57,46 @@ export const DAILY_FIELD_CATALOG: FieldCatalog = [
     slotKinds: ['status', 'subtitle'],
     paths: { value: 'markedAt' },
   },
+  {
+    // Cadence, not subject — the exception marker. Only `once` resolves a
+    // word; `recurring` says nothing ("only the exception is marked", the
+    // same law as the state pill: a hundred loud rows leave no signal).
+    id: 'daily.kind',
+    family: 'daily',
+    label: 'Kind',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'kind' },
+  },
+  {
+    // Who a `once` item belongs to. Person face = StaffAvatar + name; null on
+    // recurring and unowned rows paints the honest dash.
+    id: 'daily.owner',
+    family: 'daily',
+    label: 'Owner',
+    displayType: 'person',
+    slotKinds: ['status', 'subtitle'],
+    paths: { display: 'assignedStaffName', name: 'assignedStaffName', value: 'assignedStaffId' },
+  },
 ];
 
 /**
- * The PRODUCT default Daily layout — COMPOUND morph, nothing bound, which is
- * byte-for-byte what the shift board paints today. Reproduce, then improve.
+ * The PRODUCT default Daily layout — COMPOUND morph. The owner track is the
+ * one product binding: acceptance says an owned one-off paints that staffer's
+ * avatar on the desk by default, and the bound person track is the engine's
+ * one way to paint a StaffAvatar on a compound row (kiosk-devices' enrolled_by
+ * precedent). Everything else stays unbound — `daily.kind` paints its word in
+ * the note line with no binding, and an org that wants a Kind column binds it.
  * Guard: `daily.test.ts` parses this against the catalog.
  */
 export const DAILY_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',
   identityFieldId: 'daily.item',
-  statusBindings: [],
+  statusBindings: [{ fieldId: 'daily.owner' }],
   subtitleBindings: [],
   amountFieldId: null,
 };
+
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' Daily entry. */
 export const DAILY_TABLE_LAYOUT_ID = 'daily';

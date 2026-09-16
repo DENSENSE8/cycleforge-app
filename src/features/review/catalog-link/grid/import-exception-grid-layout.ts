@@ -11,7 +11,6 @@ import {
 } from '@/lib/tables/field-catalog/import-exception';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
@@ -55,76 +54,18 @@ export interface ImportExceptionGridColumn extends SlotTrackFields {
   omitCellIcon?: boolean;
 }
 
-export const IMPORT_EXCEPTION_GRID_COLUMNS: readonly ImportExceptionGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'order',
-    width: 'minmax(10rem, 10rem)',
-    label: 'Order',
-    type: 'id',
-    hideKey: 'order',
-    resizable: true,
-    omitCellIcon: true,
-    labelFitRem: 5,
-  },
-  {
-    key: 'source',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Account',
-    type: 'external',
-    hideKey: 'source',
-    labelFitRem: 5,
-  },
-  {
-    key: 'tracking',
-    width: 'minmax(10rem, 10rem)',
-    label: 'Tracking',
-    type: 'tracking',
-    hideKey: 'tracking',
-    resizable: true,
-    omitCellIcon: true,
-    labelFitRem: 5.5,
-  },
-  {
-    key: 'sheet',
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Sheet row',
-    type: 'number',
-    align: 'end',
-    hideKey: 'sheet',
-    labelFitRem: 6,
-  },
-  {
-    key: 'seen',
-    width: 'minmax(4.5rem, 4.5rem)',
-    label: 'Seen',
-    type: 'number',
-    align: 'end',
-    hideKey: 'seen',
-    labelFitRem: 4,
-  },
-  {
-    key: 'first',
-    width: 'minmax(7rem, 7rem)',
-    label: 'First seen',
-    type: 'date',
-    dateFace: 'stamp',
-    hideKey: 'first',
-    tier: 'optional',
-    labelFitRem: 6,
-  },
-  {
-    key: 'last',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Last seen',
-    type: 'date',
-    dateFace: 'stamp',
-    hideKey: 'last',
-    labelFitRem: 6,
-  },
-  GRID_FILL_COLUMN,
-] as const;
-
+/**
+ * Canonical Missing item number columns, in scan order.
+ *
+ * `select` is a structural gutter with no verb of its own — a click opens the
+ * catalog-link rail. `item` (the item number the sheet row is missing) is the
+ * reading track and is hideable because the compound mount already carries it
+ * as fulfillment.
+ *
+ * The hand flat array (`IMPORT_EXCEPTION_GRID_COLUMNS`) is DELETED — the
+ * compound materialization below is the one column model, and the desk mounts
+ * it.
+ */
 export function importExceptionCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly ImportExceptionGridColumn[] {
@@ -144,10 +85,28 @@ export function importExceptionCompoundColumnsFor(
 export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColumn[] =
   importExceptionCompoundColumnsFor(IMPORT_EXCEPTION_PRODUCT_LAYOUT);
 
+/**
+ * The `?colsort=` vocabulary.
+ *
+ * Two spellings reach the same fact and both are kept alive on purpose: the
+ * FLAT words (`order`, `tracking`, `sheet`, `seen`) are what live bookmarks
+ * carry, and the compound TRACK keys (`item`, `fulfillment`, `dates`, `state`)
+ * are what the mounted header emits since wave 1.3. Dropping either half
+ * breaks somebody — a saved link, or every header on the desk.
+ *
+ * Declared as the literal it always resolved to. It used to be derived by
+ * filtering the deleted `IMPORT_EXCEPTION_GRID_COLUMNS` — a sort vocabulary is
+ * not a column layout, and deriving it from a dead model kept the model alive
+ * for nothing.
+ */
 const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey[] = [
-  ...IMPORT_EXCEPTION_GRID_COLUMNS.filter((c) => c.sortable !== false).map(
-    (c) => c.key,
-  ),
+  'order',
+  'source',
+  'tracking',
+  'sheet',
+  'seen',
+  'first',
+  'last',
   'item',
   'fulfillment',
   'dates',

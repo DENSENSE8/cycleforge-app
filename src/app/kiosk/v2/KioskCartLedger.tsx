@@ -10,52 +10,55 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';
+import { KioskCartDoneFace } from './KioskCartDoneFace';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
 import { KioskCartSwipeRow } from '@/components/kiosk/KioskCartSwipeRow';
-import { CompoundRow } from '@/components/tables/compound/CompoundRow';
-import { cartLineCompoundView } from '@/lib/kiosk/cart-compound-view';
-import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
+import { KioskCartLineCard } from '@/components/kiosk/KioskCartLineCard';
 import { Loader2 } from '@/components/Icons';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
-  computeKioskCartTotals,
-} from '@/lib/kiosk/cart-line';
-import {
   useKioskSession,
   useKioskSessionActions,
-  lineTypeLabel,
 } from '@/lib/kiosk/kiosk-session-store';
 import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
-import { firstKioskBlocker } from '@/lib/kiosk/visit-triage';
+import { firstKioskBlocker, type KioskTriageSession } from '@/lib/kiosk/visit-triage';
+import {
+  KIOSK_CART_STEPS,
+  cartCompletedSteps,
+  cartStepBlockReason,
+  cartStepGates,
+  type KioskCartStep,
+} from '@/lib/kiosk/cart-step-gates';
+import { cartMoneySplit } from '@/lib/kiosk/cart-money';
+import { kioskTicketWork } from '@/lib/kiosk/repair-ticket-choice';
 import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import {
   KioskPaymentStepUpSheet,
   type KioskPaymentStepUpResult,
 } from '@/components/kiosk/KioskPaymentStepUpSheet';
+import { KIOSK_CENTRE_SURFACE, KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import {
-  KIOSK_UTILITY_PANEL_FACE,
-  KIOSK_META,
-  KIOSK_PANE_FOOTER_BAND,
-  KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
-} from '@/app/kiosk/kiosk-chrome';
+  KIOSK_POS_CTA,
+  KIOSK_POS_CTA_SECONDARY,
+} from '@/app/kiosk/kiosk-pos-surface';
 
-/**
- * The cart has no triage flags — a line is not a carton somebody paints. The
- * shared row takes the bag rather than a boolean so a family cannot half-answer
- * the question.
- */
-const KIOSK_CART_CAPABILITIES = { rowTriageFlags: false } as const;
+// (KIOSK_CART_CAPABILITIES deleted 2026-09-14, Phase 2 — a CompoundRow
+// capability bag. The cart's lines are touch cards now; there is no desk row
+// to tell "this family has no triage flags".)
 
 function formatCents(cents: number): string {
   const sign = cents < 0 ? '-' : '';
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
+
+/** Index of the terminal step — Pay. */
+const LAST_STEP = (KIOSK_CART_STEPS.length - 1) as KioskCartStep;
 
 export interface KioskCartFocus {
   lineId: string;
@@ -64,29 +67,17 @@ export interface KioskCartFocus {
   nonce: number;
 }
 
-export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {}) {
+export function KioskCartLedger({ focus, onClose }: { focus?: KioskCartFocus | null; onClose?: () => void } = {}) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [submitting, setSubmitting] = useState(false);
-  /**
-   * Bulk selection over the cart lines.
-   *
-   * Local to the ledger rather than in the session store: a selection is a
-   * VIEW state of the staff face, not a fact about the transaction, and
-   * mirroring it into `counter_sessions.version` would bump the shared version
-   * (and repaint the customer tablet) every time a cashier ticked a box.
+  /*
+   * Bulk line selection deleted 2026-09-14, Phase 2. It existed because
+   * `CompoundRow` offers a select gutter, not because the cart had a bulk
+   * verb: nothing ever read `selectedLineIds` — no bulk void, no bulk
+   * discount, no selection action bar. A checkbox column on a counter tablet
+   * that does nothing is worse than no column, and it is desk chrome besides.
    */
-  const [selectedLineIds, setSelectedLineIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const toggleLineSelected = useCallback((id: string) => {
-    setSelectedLineIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -94,31 +85,47 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [editFocusField, setEditFocusField] =
     useState<KioskCartFocus['field']>(undefined);
+  /** Which step is on SCREEN. Never the progress count — see PG6 below. */
+  const [step, setStep] = useState<KioskCartStep>(0);
 
-  // Triage deep-link: open that line's editor on the field that is failing.
+  /*
+   * Triage deep-link: open that line's editor on the field that is failing —
+   * and page the stepper back to Items, because a line editor opened behind
+   * the Customer step is an editor the operator cannot see.
+   */
   useEffect(() => {
     if (!focus) return;
     setEditingLineId(focus.lineId);
     setEditFocusField(focus.field);
+    setStep(0);
   }, [focus?.lineId, focus?.field, focus?.nonce, focus]);
   const idemKey = useRef<string | null>(null);
 
-  const totals = useMemo(
-    () => computeKioskCartTotals(session.lines),
-    [session.lines],
-  );
+  // (The separate `computeKioskCartTotals` memo went 2026-09-15: the cart had
+  // two money derivations in one component, and `cartMoneySplit` already
+  // returns the same signed total alongside the due-now / due-at-pickup split.)
 
-  // ONE gate model: the button and the Triage panel read the same blockers, so
-  // they can never disagree about why this visit cannot submit.
-  const blockReason = useMemo(
-    () =>
-      firstKioskBlocker({
-        lines: session.lines,
-        customerPhone: session.customerPhone,
-        customerName: session.customerName,
-        customerEmail: session.customerEmail,
-        customerAddress: session.customerAddress,
-      }),
+  /*
+   * WHEN the money is due — goods at this counter, a service quote at pickup.
+   * Drives the Review rows AND which terminal key exists at all, so the two
+   * cannot disagree about whether this visit takes payment.
+   */
+  const money = useMemo(() => cartMoneySplit(session.lines), [session.lines]);
+
+  /*
+   * ONE gate model, three consumers: the stepper's segment count, each step's
+   * Continue key, and the Save/Pay submit gate all read `collectKioskTriage`
+   * through `cart-step-gates`, so the button, the header and the triage panel
+   * can never disagree about why this visit cannot submit.
+   */
+  const triage = useMemo<KioskTriageSession>(
+    () => ({
+      lines: session.lines,
+      customerPhone: session.customerPhone,
+      customerName: session.customerName,
+      customerEmail: session.customerEmail,
+      customerAddress: session.customerAddress,
+    }),
     [
       session.lines,
       session.customerPhone,
@@ -127,12 +134,17 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
       session.customerAddress,
     ],
   );
+  const blockReason = useMemo(() => firstKioskBlocker(triage), [triage]);
+  // PG6: a COUNT of satisfied units, never the index of the step in view.
+  const completedSteps = useMemo(() => cartCompletedSteps(triage), [triage]);
+  const stepCanContinue = cartStepGates(triage)[step];
+  const stepBlockReason = cartStepBlockReason(triage, step);
 
   const postIntake = useCallback(
     async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
       if (!idemKey.current) idemKey.current = safeRandomUUID();
       const { retailLines, services } = mapKioskCartToCounterParts(session.lines);
-      const res = await fetch('/api/kiosk/intake', {
+      const res = await kioskFetchHealed('/api/kiosk/intake', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -150,7 +162,18 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
               retailLines,
               services,
               priorOrder: null,
-              ticketWork: services.length > 0 ? { mode: 'create' } : { mode: 'none' },
+              /*
+               * The VISIT's decision, not a hardcoded create.
+               *
+               * This line read `services.length > 0 ? { mode: 'create' } : …`,
+               * so the `attach` arm of the route's `ticketWork` union — and
+               * the `ATTACH_TICKET` outbox work type behind it — had no
+               * caller at all. The repair flow's last step now answers the
+               * question (`KioskTicketStep`), and `kioskTicketWork` maps that
+               * answer, falling back to `create` so a service visit nobody
+               * asked still files a ticket exactly as before.
+               */
+              ticketWork: kioskTicketWork(session.ticketChoice, services.length > 0),
             },
             opts,
           ),
@@ -219,248 +242,292 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
     [postIntake, actions],
   );
 
+  /*
+   * ## The cart wears the repair intake form's SKELETON, not a sheet
+   *
+   * Operator 2026-09-15: *"in terms of the cart component, it should be very
+   * similar to the repair service intake form with the stepper on top and its
+   * full width and then a fixed width in the middle. Why are you fixing width
+   * for the entire display? … There should be no reason why you're wrapping
+   * the cart form and then having another background for it. There should just
+   * be a white background."*
+   *
+   * So there is NO `KIOSK_UTILITY_SHEET` here and no second plane behind it.
+   * The cart is the centre surface itself: white, full-bleed, exactly like
+   * `KioskRepairPane`. {@link KioskPaneForm} is the shared skeleton and it owns
+   * the split the operator is describing — the step band goes edge to edge, the
+   * BODY gets `KIOSK_POS_FORM_MEASURE`. A bounded card would fix the width of
+   * the chrome too, which is what made the last build read as a popover.
+   *
+   * The band is also the ONLY band. Operator 2026-09-14, rejecting the titled
+   * build: *"displaying without the header and then the X button top left to
+   * close the cart and displaying a stepper on the top for the exact steps
+   * within the cart for the user to take."* No "Cart" title, no close control
+   * on the right; the X that exits is StepProgressHeader's, top-LEFT.
+   */
+  const exit = onClose ?? (() => {});
+
   if (result) {
     return (
-      <aside className={KIOSK_UTILITY_PANEL_FACE} data-testid="kiosk-cart-ledger">
-        <div className={KIOSK_PANE_HEADER_BAND}>
-          <h2 className={KIOSK_PANE_HEADER_TITLE}>Cart</h2>
-        </div>
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-          <p className="text-lg font-semibold tracking-tight">All set</p>
-          <p className="text-sm font-semibold text-text-soft">
-            {result.repairs.length === 1
-              ? `Service ${result.repairs[0].rsNumber} checked in.`
-              : result.repairs.length > 1
-                ? `${result.repairs.length} services checked in — ${result.repairs
-                    .map((r) => r.rsNumber)
-                    .join(', ')}.`
-                : 'Sale staged at the register.'}
-          </p>
-          {/* Callers: this success face. API: GET /api/kiosk/visit/[id]/receipt. User: "print out a receipt including everything" + "give internal staff as an internal record". */}
-          <div className="flex w-full max-w-sm flex-col gap-2">
-            <Button
-              variant="secondary"
-              className={cn('w-full', cornerClass('surface'))}
-              data-testid="kiosk-print-customer-receipt"
-              onClick={() => {
-                window.open(
-                  `/api/kiosk/visit/${result.counterTransactionId}/receipt?print=1`,
-                  '_blank',
-                  'noopener,noreferrer',
-                );
-              }}
-            >
-              Print customer receipt
-            </Button>
-            <Button
-              variant="ghost"
-              className={cn('w-full', cornerClass('surface'))}
-              data-testid="kiosk-print-staff-receipt"
-              onClick={() => {
-                window.open(
-                  `/api/kiosk/visit/${result.counterTransactionId}/receipt?print=1&copy=staff`,
-                  '_blank',
-                  'noopener,noreferrer',
-                );
-              }}
-            >
-              Print staff record
-            </Button>
-          </div>
-        </div>
-        <div className={KIOSK_PANE_FOOTER_BAND}>
-          <Button
-            size="lg"
-            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-            onClick={() => {
-              setResult(null);
-              actions.resetSession();
-            }}
-          >
-            Next customer
-          </Button>
-        </div>
-      </aside>
+      <div className={KIOSK_CENTRE_SURFACE} data-testid="kiosk-cart-ledger">
+        <KioskCartDoneFace
+          result={result}
+          onClose={exit}
+          onNextCustomer={() => {
+            setResult(null);
+            actions.resetSession();
+            setStep(0);
+          }}
+        />
+      </div>
     );
   }
 
   return (
-    <aside className={KIOSK_UTILITY_PANEL_FACE} data-testid="kiosk-cart-ledger">
-      <div className={KIOSK_PANE_HEADER_BAND}>
-        <h2 className={KIOSK_PANE_HEADER_TITLE}>Cart</h2>
-        <span className={cn('tabular-nums', KIOSK_META)}>
-          {session.lines.length} {session.lines.length === 1 ? 'line' : 'lines'}
-        </span>
-        {session.lines.length > 0 && (
-          // Delete-all. Two-tap confirm — a stray touch on a counter tablet must
-          // not wipe a ticket, and a modal over the work is not the house shape.
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn('shrink-0', confirmVoid && 'text-text-danger')}
-            data-testid="kiosk-cart-void-all"
-            onClick={() => {
-              if (!confirmVoid) {
-                setConfirmVoid(true);
-                return;
-              }
-              actions.clearCart();
-              setConfirmVoid(false);
-              setEditingLineId(null);
-            }}
-            onBlur={() => setConfirmVoid(false)}
-          >
-            {confirmVoid ? 'Void ticket?' : 'Void'}
-          </Button>
-        )}
-      </div>
+    <div className={KIOSK_CENTRE_SURFACE} data-testid="kiosk-cart-ledger">
+      <KioskPaneForm
+        testId="kiosk-cart-pane"
+        progress={{
+          current: completedSteps,
+          total: KIOSK_CART_STEPS.length,
+          onClose: exit,
+          closeLabel: 'Close cart',
+          label: 'Cart progress',
+        }}
+        footer={
+          <>
+            {step === 0 ? (
+              session.lines.length > 0 && (
+                // Delete-all, re-homed off the dead title band onto the step it
+                // belongs to. Two-tap confirm — a stray touch on a counter
+                // tablet must not wipe a ticket, and a modal over the work is
+                // not the house shape.
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className={cn('shrink-0', confirmVoid && 'text-text-danger')}
+                  data-testid="kiosk-cart-void-all"
+                  onClick={() => {
+                    if (!confirmVoid) {
+                      setConfirmVoid(true);
+                      return;
+                    }
+                    actions.clearCart();
+                    setConfirmVoid(false);
+                    setEditingLineId(null);
+                  }}
+                  onBlur={() => setConfirmVoid(false)}
+                >
+                  {confirmVoid ? 'Void ticket?' : 'Void'}
+                </Button>
+              )
+            ) : (
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => setStep((s) => (s === 2 ? 1 : 0))}
+                data-testid="kiosk-cart-step-back"
+              >
+                ‹ Back
+              </Button>
+            )}
 
-      <KioskCustomerIntake
-        fields={['phone', 'name', 'email', 'address']}
-        heading={null}
-        className="mx-auto w-full max-w-3xl shrink-0 border-b border-border-hairline"
-      />
-
-      {/*
-        The cart LINE LIST is the shared compound table — the same row Unbox,
-        Incoming, To-Ship, Tasks and Daily paint. It used to be a hand-rolled
-        `<li>` with a title, a meta line, a figure and a naked ✕. That row had
-        no selection at all (so nothing could be voided or discounted in bulk)
-        and exactly one verb, because a bare ✕ can only ever say one thing.
-
-        `counter_session_lines` is a DB table, so it reads as one.
-      */}
-      <div
-        role="table"
-        aria-label="Cart lines"
-        className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto"
+            {step < LAST_STEP ? (
+              <Button
+                size="lg"
+                className={KIOSK_POS_CTA}
+                disabled={!stepCanContinue}
+                title={stepBlockReason ?? undefined}
+                data-testid="kiosk-cart-continue"
+                onClick={() => setStep((s) => (s === 0 ? 1 : 2))}
+              >
+                Continue
+              </Button>
+            ) : money.takesPaymentNow ? (
+              <>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className={KIOSK_POS_CTA_SECONDARY}
+                  disabled={!!blockReason || submitting}
+                  title={blockReason ?? undefined}
+                  data-testid="kiosk-cart-save"
+                  onClick={() => void submitSave()}
+                >
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                </Button>
+                <Button
+                  size="lg"
+                  className={KIOSK_POS_CTA}
+                  disabled={!!blockReason || submitting}
+                  title={blockReason ?? undefined}
+                  data-testid="kiosk-cart-pay"
+                  onClick={() => {
+                    if (blockReason) {
+                      toast(blockReason);
+                      return;
+                    }
+                    setStepUpOpen(true);
+                  }}
+                >
+                  Pay {formatCents(money.dueNowCents)}
+                </Button>
+              </>
+            ) : (
+              /*
+               * Nothing is payable at this counter, so there is no Pay key to
+               * offer. Operator 2026-09-15: *"a repair service on drop off
+               * never takes money off, it just prints out a receipt."* Same for
+               * a pure trade-in, where the money moves the other way. ONE key:
+               * check the visit in, and the next face prints.
+               */
+              <Button
+                size="lg"
+                className={KIOSK_POS_CTA}
+                disabled={!!blockReason || submitting}
+                title={blockReason ?? undefined}
+                data-testid="kiosk-cart-save"
+                onClick={() => void submitSave()}
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Check in & print'}
+              </Button>
+            )}
+          </>
+        }
       >
-        {session.lines.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
-            Scan a UPC or pick from the catalog.
+        <div data-kiosk-cart-step={step}>
+          {/* ONE bold display header per step, top-left — the repair flow's
+              principle, not a second band. The quiet meta line under it keeps
+              the two facts the dead title band carried (line count, running
+              total) without competing with the header. */}
+          <h2 className="px-4 pt-5 text-left text-role-display font-bold text-text-default">
+            {KIOSK_CART_STEPS[step]}
+          </h2>
+          <p className={cn('px-4 pb-3 pt-1', KIOSK_META)} data-testid="kiosk-cart-summary">
+            {session.lines.length} {session.lines.length === 1 ? 'line' : 'lines'} ·{' '}
+            <span className="tabular-nums">{formatCents(money.totalCents)}</span>
           </p>
-        ) : (
-          session.lines.map((line) => (
-            <KioskCartSwipeRow
-              key={line.id}
-              canVoid={session.sharedSessionId === null}
-              onEdit={() => {
-                actions.setPresentation({ lineId: line.id, catalog: null });
-                setEditingLineId(line.id);
-              }}
-              onVoid={() => actions.removeLine(line.id)}
+
+          {step === 0 && (
+            /*
+              The cart LINE LIST is a stack of TOUCH CARDS, not the desk compound
+              table it used to mount (operator 2026-09-14: the full-width row grid
+              "is a wrong display… should display a mobile-like chip display
+              component"). `SURFACE_LAW` §5 is the law: lists on a phone-shaped
+              surface are cards; a DataTable is never the phone SoT. Facts ride
+              KioskChip pills inside the card; the card is the edit affordance;
+              void stays the swipe verb. The FRAME owns scrolling — this list
+              must not grow its own overflow region.
+            */
+            <div
+              role="list"
+              aria-label="Cart lines"
+              className="flex w-full flex-col gap-2 px-3 pb-4"
             >
-              <CompoundRow
-                data-cart-line-id={line.id}
-                data-testid="kiosk-cart-line"
-                role="button"
-                tabIndex={0}
-                aria-expanded={editingLineId === line.id}
-                aria-label={`Cart line ${line.title}`}
-                className="group/row cursor-pointer"
-                // The row IS the edit affordance (tap to correct) — the same
-                // gesture the hand-rolled row had, kept.
-                onClick={() => {
-                  actions.setPresentation({ lineId: line.id, catalog: null });
-                  setEditingLineId((prev) => (prev === line.id ? null : line.id));
-                }}
-                onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    actions.setPresentation({ lineId: line.id, catalog: null });
-                    setEditingLineId((prev) => (prev === line.id ? null : line.id));
-                  }
-                }}
-                columns={CART_COMPOUND_COLUMNS}
-                capabilities={KIOSK_CART_CAPABILITIES}
-                selected={selectedLineIds.has(line.id)}
-                // The family's only contribution: its DATA.
-                view={cartLineCompoundView(line)}
-                select={{
-                  checked: selectedLineIds.has(line.id),
-                  onToggle: () => toggleLineSelected(line.id),
-                  label: selectedLineIds.has(line.id)
-                    ? `Deselect ${line.title}`
-                    : `Select ${line.title}`,
-                }}
-                onOpen={() => setEditingLineId(line.id)}
-                actions={
-                  // Removing a line the customer already saw priced is a VOID,
-                  // and a void is staff work (session plan D5/P7). While a desk
-                  // holds this tablet the verb is ABSENT rather than dead — a
-                  // control that quietly does nothing is worse than no control.
-                  session.sharedSessionId === null
-                    ? [
-                        {
-                          key: 'void',
-                          label: `Void ${lineTypeLabel(line.type).toLowerCase()} line`,
-                          tone: 'danger' as const,
-                          onSelect: () => actions.removeLine(line.id),
-                        },
-                      ]
-                    : undefined
-                }
-              />
-              {editingLineId === line.id && (
-                <KioskCartLineEditor
-                  line={line}
-                  focusField={editFocusField ?? undefined}
-                  onDone={() => setEditingLineId(null)}
-                />
+              {session.lines.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
+                  Scan a UPC or pick from the catalog.
+                </p>
+              ) : (
+                session.lines.map((line) => (
+                  <div role="listitem" key={line.id}>
+                    <KioskCartSwipeRow
+                      canVoid={session.sharedSessionId === null}
+                      onEdit={() => {
+                        actions.setPresentation({ lineId: line.id, catalog: null });
+                        setEditingLineId(line.id);
+                      }}
+                      onVoid={() => actions.removeLine(line.id)}
+                    >
+                      <KioskCartLineCard
+                        line={line}
+                        open={editingLineId === line.id}
+                        onOpen={() => {
+                          actions.setPresentation({ lineId: line.id, catalog: null });
+                          setEditingLineId((prev) => (prev === line.id ? null : line.id));
+                        }}
+                      />
+                      {editingLineId === line.id && (
+                        <KioskCartLineEditor
+                          line={line}
+                          focusField={editFocusField ?? undefined}
+                          onDone={() => setEditingLineId(null)}
+                        />
+                      )}
+                    </KioskCartSwipeRow>
+                  </div>
+                ))
               )}
-            </KioskCartSwipeRow>
-          ))
-        )}
-      </div>
-
-      <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border-soft px-4 py-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className={KIOSK_META}>Total</span>
-          <span className="text-xl font-semibold tracking-tight tabular-nums">
-            {formatCents(totals.totalCents)}
-          </span>
-        </div>
-        {(error || blockReason) && (
-          <p className="mt-2 text-center text-sm font-semibold text-text-soft">
-            {error ?? blockReason}
-          </p>
-        )}
-      </div>
-
-      <div className={cn(KIOSK_PANE_FOOTER_BAND, 'gap-0')} data-kiosk-footer-band>
-        <Button
-          variant="secondary"
-          size="lg"
-          className={cn(
-            'h-full min-h-0 flex-1 rounded-none border-r border-border-soft',
-            cornerClass('flush'),
+            </div>
           )}
-          disabled={!!blockReason || submitting}
-          onClick={() => void submitSave()}
-        >
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-        </Button>
-        <Button
-          size="lg"
-          className={cn('h-full min-h-0 flex-1 rounded-none', cornerClass('flush'))}
-          disabled={!!blockReason || submitting}
-          onClick={() => {
-            if (blockReason) {
-              toast(blockReason);
-              return;
-            }
-            setStepUpOpen(true);
-          }}
-        >
-          Pay
-        </Button>
-      </div>
+
+          {step === 1 && (
+            <KioskCustomerIntake
+              entry
+              fields={['phone', 'name', 'email', 'address']}
+              heading={null}
+              className="bg-surface-card pb-4"
+            />
+          )}
+
+          {step === LAST_STEP && (
+            <div className="px-4 pb-6">
+              {/*
+                TWO facts, not one total, because a walk-in settles in two
+                moments: goods at the counter, a service quote when the device
+                is collected (operator 2026-09-15 — a drop-off "never takes
+                money off, it just prints out a receipt"). Still ONE staged
+                header; `cartMoneySplit` is display + key selection, never a
+                wire field. The pickup row is omitted when there is no service,
+                and the goods row when there are no goods: a $0.00 line an
+                operator has to read past is noise.
+              */}
+              <dl className="flex flex-col gap-2 border-t border-border-hairline pt-3">
+                {money.dueNowCents !== 0 && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className="text-base font-semibold text-text-default">
+                      {money.dueNowCents < 0 ? 'Due to customer' : 'Due now'}
+                    </dt>
+                    <dd
+                      className="text-2xl font-semibold tracking-tight tabular-nums"
+                      data-testid="kiosk-cart-due-now"
+                    >
+                      {formatCents(Math.abs(money.dueNowCents))}
+                    </dd>
+                  </div>
+                )}
+                {money.dueAtPickupCents !== 0 && (
+                  <div className="flex items-baseline justify-between gap-3">
+                    <dt className={KIOSK_META}>Due at pickup</dt>
+                    <dd
+                      className={cn('text-base font-semibold tabular-nums', KIOSK_META)}
+                      data-testid="kiosk-cart-due-at-pickup"
+                    >
+                      {formatCents(money.dueAtPickupCents)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {money.dueAtPickupCents !== 0 && !money.takesPaymentNow && (
+                <p className={cn('pt-2', KIOSK_META)}>
+                  Nothing to pay today — the receipt is the drop-off record.
+                </p>
+              )}
+              {(error || blockReason) && (
+                <p className="pt-3 text-center text-sm font-semibold text-text-soft">
+                  {error ?? blockReason}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </KioskPaneForm>
 
       <KioskPaymentStepUpSheet
         open={stepUpOpen}
         onClose={() => setStepUpOpen(false)}
         onAuthorized={onStepUpAuthorized}
       />
-    </aside>
+    </div>
   );
 }

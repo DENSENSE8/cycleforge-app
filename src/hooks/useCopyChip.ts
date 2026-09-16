@@ -14,6 +14,7 @@ import { formatTrackingTooltipLabel } from '@/lib/carrier-brand';
 import { formatPlatformTooltipLabel } from '@/lib/source-platform';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
+import { writeClipboardText } from '@/lib/clipboard';
 
 export interface ChipTooltipAnchor {
   /** Attach to the chip's outer wrapper — the tooltip positions off this rect. */
@@ -186,7 +187,10 @@ export function useCopyChip({
     if (disableTooltip || !tooltipCtxRef.current) return;
     const ctx = tooltipCtxRef.current;
     if (!ctx.isActiveAnchor(anchorId)) {
-      ctx.activate({ anchorId, value: tooltipValue, getRect, action: tooltipAction });
+      // `force`: a copy must show ITS receipt even while another chip's
+      // receipt is still holding the bubble — otherwise the second copy in a
+      // row would be parked behind the first and report nothing.
+      ctx.activate({ anchorId, value: tooltipValue, getRect, action: tooltipAction, force: true });
     }
     ctx.notifyCopied(anchorId);
   };
@@ -210,7 +214,12 @@ export function useCopyChip({
 
   const performCopy = () => {
     if (!canCopy) return false;
-    void navigator.clipboard.writeText(normalizedValue);
+    // `writeClipboardText`, never `navigator.clipboard` directly: that object
+    // is UNDEFINED on an insecure origin, so the bare call threw a TypeError
+    // and took the row down on every LAN/bench mount (2026-09-15). The boolean
+    // is why the history write and the "Copied" flash are below it — a chip
+    // that reports a copy it did not make is a data-entry bug one step removed.
+    if (!writeClipboardText(normalizedValue)) return false;
     recordCopy(normalizedValue, { kind: historyKind, display: historyDisplay });
     onCopy?.(normalizedValue);
     return true;
@@ -228,14 +237,18 @@ export function useCopyChip({
     flashTooltip();
   };
 
+  /**
+   * Click-to-copy. Feedback goes through {@link notifyCopiedUi}, which ACTIVATES
+   * the bubble when this chip is not the live anchor instead of skipping the
+   * confirmation. The old inline branch only called `notifyCopied` on an
+   * already-active anchor, so any re-render that tore the hover session down
+   * between pointer-enter and mouse-down (query refetch, row reselect,
+   * virtualizer recycle) made the click read as "the tooltip just disappeared":
+   * the copy landed and nothing said so.
+   */
   const handleCopy = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    if (!performCopy()) return;
-    if (tooltipTrigger === 'click') {
-      flashTooltip();
-    } else if (tooltipCtxRef.current?.isActiveAnchor(anchorId)) {
-      tooltipCtxRef.current.notifyCopied(anchorId);
-    }
+    if (performCopy()) notifyCopiedUi();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {

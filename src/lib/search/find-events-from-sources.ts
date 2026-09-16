@@ -6,7 +6,8 @@
  * User: Phase 2 — timeline as the document on FIND.
  */
 
-import { photoStageLabel, type PhotoEvidenceStage } from '@/lib/photos/stages';
+import { photoStageLabel, stageFromPhotoType, type PhotoEvidenceStage } from '@/lib/photos/stages';
+import type { ReceivingPhotoRow } from '@/hooks/useReceivingPhotos';
 import { cartonEventTitle } from '@/components/receiving/inspector/carton-inspector-model';
 import type { CartonInspectorEvent, CartonInspectorTotals } from '@/components/receiving/inspector/carton-inspector-model';
 import type {
@@ -14,10 +15,15 @@ import type {
   InventoryTimelineRow,
   OrderAuditRow,
   StationActivityRow,
+  ThreadMessageTimelineRow,
   UnitTimelinePhotoRow,
 } from '@/lib/timeline';
 import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
-import type { OrderTimelinePayload } from '@/lib/queries/order-timeline-query';
+import type {
+  EntitySignalTimelineRow,
+  OrderNoteTimelineRow,
+  OrderTimelinePayload,
+} from '@/lib/queries/order-timeline-query';
 import type { TimelineEventRow, UnitPhotoRow } from '@/components/inventory/types';
 import { inventoryEventTitle } from '@/lib/timeline/inventory-events';
 import { stationActivityTitle } from '@/lib/timeline/station-activity-events';
@@ -101,7 +107,7 @@ export function findEventsFromInventory(
     if (!at) continue;
     const type = String(row.event_type ?? '').trim();
     const note = String(row.notes ?? '').trim();
-    const kind = NOTE_TYPES.has(type) ? 'note' : EXCEPTION_TYPES.has(type) ? 'exception' : 'hop';
+    const kind = NOTE_TYPES.has(type) ? 'note' : EXCEPTION_TYPES.has(type) ? 'exception' : 'custody';
     const trail =
       row.prev_status && row.next_status && row.prev_status !== row.next_status
         ? `${row.prev_status} → ${row.next_status}`
@@ -146,6 +152,120 @@ export function findEventsFromTimelineRows(rows: readonly TimelineEventRow[]): F
   );
 }
 
+/**
+ * Conversation messages → `note` faces.
+ *
+ * `thread_messages` (via `entity_threads`) is the one note spine that spans
+ * every anchor — ORDER, SERIAL_UNIT, RECEIVING, REPAIR, WARRANTY_CLAIM. The
+ * order timeline route has always fetched it (`OrderTimelinePayload.threadMessages`)
+ * and `presentOrderFindEvents` dropped it on the floor, so the `note` kind
+ * only ever appeared for the two `inventory_events` types in {@link NOTE_TYPES}
+ * — i.e. almost never. Reading what is already on the wire costs no fetch.
+ *
+ * Visibility is the NOUN (an internal note and a customer-facing reply are not
+ * the same fact), mirroring `threadMessagesToTimeline`'s map so the workplace
+ * timeline and FIND never disagree about what a row is called. The body is a
+ * preview: FIND confirms a record, it does not render a conversation, and the
+ * interactive surface stays `ThreadPanel`. No composer, no write.
+ */
+const THREAD_NOTE_NOUN: Record<string, string> = {
+  internal: 'Note',
+  public: 'Reply',
+};
+const THREAD_PREVIEW_MAX = 140;
+
+export function findEventsFromThreadMessages(
+  rows: readonly ThreadMessageTimelineRow[],
+): FindEvent[] {
+  const events: FindEvent[] = [];
+  for (const row of rows) {
+    const at = isoAt(row.createdAt);
+    if (!at) continue;
+    const flat = String(row.body ?? '').replace(/\s+/g, ' ').trim();
+    if (!flat) continue;
+    const body =
+      flat.length > THREAD_PREVIEW_MAX ? `${flat.slice(0, THREAD_PREVIEW_MAX - 1)}…` : flat;
+    events.push({
+      id: `thread:${row.id}`,
+      kind: 'note',
+      at,
+      title: THREAD_NOTE_NOUN[String(row.visibility ?? '').trim()] ?? THREAD_NOTE_NOUN.internal,
+      body,
+      actor: String(row.authorName ?? '').trim() || undefined,
+    });
+  }
+  return events;
+}
+
+/**
+ * `order_notes` rows → `note` faces.
+ *
+ * The other note spine. `orders.notes` is one free-text column and was all the
+ * stream ever saw; everything staff typed into the notes trail lived in this
+ * TABLE and reached no face. Body is the note verbatim (trimmed) — an
+ * operational note is short by nature, and truncating the one sentence that
+ * explains a hold defeats the point.
+ */
+export function findEventsFromOrderNotes(
+  rows: readonly OrderNoteTimelineRow[],
+): FindEvent[] {
+  const events: FindEvent[] = [];
+  for (const row of rows) {
+    const at = isoAt(row.createdAt);
+    if (!at) continue;
+    const body = String(row.noteText ?? '').replace(/\s+/g, ' ').trim();
+    if (!body) continue;
+    events.push({
+      id: `ordernote:${row.id}`,
+      kind: 'note',
+      at,
+      title: 'Note',
+      body,
+      actor: String(row.authorName ?? '').trim() || undefined,
+    });
+  }
+  return events;
+}
+
+/**
+ * `entity_signals` → `exception` faces.
+ *
+ * The "why" spine. Until now the stream could paint a held or failed row with
+ * no reason attached, because the reason lives here and nothing read it. The
+ * reason code is the TITLE (that is the word the floor uses) and the free-text
+ * note is the body.
+ *
+ * `resolved` is deliberately left undefined: `entity_signals` records that
+ * something was observed, not that it was cleared, and FIND must never imply a
+ * resolution it cannot prove. Clearing stays a handoff.
+ */
+export function findEventsFromSignals(
+  rows: readonly EntitySignalTimelineRow[],
+): FindEvent[] {
+  const events: FindEvent[] = [];
+  for (const row of rows) {
+    const at = isoAt(row.occurredAt);
+    if (!at) continue;
+    const reason = String(row.reasonCode ?? '').trim();
+    const kindLabel = String(row.signalKind ?? '').trim();
+    const title = reason ? prettyType(reason) : kindLabel ? prettyType(kindLabel) : 'Signal';
+    const note = String(row.notes ?? '').replace(/\s+/g, ' ').trim();
+    // `severity` is DELIBERATELY not painted. The column is a SMALLINT that
+    // 2026-07-03l_entity_signals.sql:59 calls "optional 0..n weighting;
+    // app-defined", and no legend for it exists anywhere in the repo — so
+    // "Severity 3" would be a number the floor cannot read. The reason code
+    // and the note already carry the meaning. Paint it when a legend exists.
+    events.push({
+      id: `signal:${row.id}`,
+      kind: 'exception',
+      at,
+      title,
+      body: note || undefined,
+    });
+  }
+  return events;
+}
+
 function bindFromStationRow(row: StationActivityRow): FindBind | undefined {
   const type = String(row.activity_type ?? '').trim();
   const serial = String(row.serial_number ?? '').trim();
@@ -184,7 +304,7 @@ export function findEventsFromStationActivity(rows: readonly StationActivityRow[
     const actor = String(row.actor_name ?? '').trim() || undefined;
     events.push({
       id: `sal:${row.id}`,
-      kind: 'hop',
+      kind: 'custody',
       at,
       title: findHopTitle(row),
       stationCaption: String(row.station ?? '').trim() || undefined,
@@ -205,7 +325,7 @@ export function findEventsFromOrderAudit(rows: readonly OrderAuditRow[]): FindEv
     const tracking =
       String((after as { shipping_tracking_number?: unknown }).shipping_tracking_number ?? '').trim() ||
       String((row.metadata as { trackingNumber?: unknown } | null)?.trackingNumber ?? '').trim();
-    const kind = action === 'orders.tracking.added' ? 'bind' : 'hop';
+    const kind = action === 'orders.tracking.added' ? 'bind' : 'custody';
     const actor = String(row.actor_name ?? '').trim() || undefined;
     events.push({
       id: `audit:${row.id}`,
@@ -227,7 +347,7 @@ export function findEventsFromCarrier(rows: readonly CarrierEvent[], tracking?: 
     const loc = [row.event_city, row.event_state].filter(Boolean).join(', ');
     children.push({
       id: `carrier:${row.id}`,
-      kind: 'hop',
+      kind: 'custody',
       at,
       title:
         String(row.external_status_description ?? '').trim() ||
@@ -296,13 +416,53 @@ export function findEventsFromUnitPhotos(rows: readonly UnitPhotoRow[]): FindEve
   ];
 }
 
+/**
+ * Carton photos (`GET /api/receiving-photos`, the house carton read) grouped by
+ * evidence stage — one evidence event per stage at the newest capture, thumbs
+ * newest-first. Unclassified rows fold into one "Photos" event. In org-1 every
+ * entity-linked photo sits on a RECEIVING row, so without this the carton
+ * dossier never shows evidence.
+ */
+export function findEventsFromReceivingPhotos(rows: readonly ReceivingPhotoRow[]): FindEvent[] {
+  const byStage = new Map<PhotoEvidenceStage | 'unclassified', ReceivingPhotoRow[]>();
+  for (const row of rows) {
+    const url = String(row.photoUrl ?? '').trim();
+    if (!url) continue;
+    const stage =
+      stageFromPhotoType(row.receivingLineId ? 'RECEIVING_LINE' : 'RECEIVING', row.photoType ?? row.caption) ??
+      'unclassified';
+    const list = byStage.get(stage);
+    if (list) list.push(row);
+    else byStage.set(stage, [row]);
+  }
+  const events: FindEvent[] = [];
+  const order: Array<PhotoEvidenceStage | 'unclassified'> = [...PHOTO_SOURCE_ORDER.map((s) => PHOTO_SOURCE_STAGE[s]), 'unclassified'];
+  for (const stage of order) {
+    const list = byStage.get(stage);
+    if (!list || list.length === 0) continue;
+    const stamp = (row: ReceivingPhotoRow) => row.clientCapturedAt || row.createdAt || '';
+    const sorted = [...list].sort((a, b) => stamp(b).localeCompare(stamp(a)));
+    const at = isoAt(stamp(sorted[0]));
+    if (!at) continue;
+    events.push({
+      id: `evidence:carton:${stage}`,
+      kind: 'evidence',
+      at,
+      title: stage === 'unclassified' ? 'Photos' : `${photoStageLabel(stage)} photos`,
+      body: `${list.length} photo${list.length === 1 ? '' : 's'}`,
+      evidenceUrls: sorted.map((row) => String(row.photoUrl ?? '').trim()).filter(Boolean),
+    });
+  }
+  return events;
+}
+
 export function findEventsFromCartonEvents(rows: readonly CartonInspectorEvent[]): FindEvent[] {
   const events: FindEvent[] = [];
   for (const row of rows) {
     const at = isoAt(row.occurred_at);
     if (!at) continue;
     const type = String(row.event_type ?? '').trim();
-    const kind = NOTE_TYPES.has(type) ? 'note' : EXCEPTION_TYPES.has(type) ? 'exception' : 'hop';
+    const kind = NOTE_TYPES.has(type) ? 'note' : EXCEPTION_TYPES.has(type) ? 'exception' : 'custody';
     events.push({
       id: `carton:${row.id}`,
       kind,
@@ -331,13 +491,47 @@ export function findEventsFromPickSessions(
     const actor = String(row.actor_name ?? '').trim() || undefined;
     events.push({
       id: `pick:${row.id}`,
-      kind: 'hop',
+      kind: 'custody',
       at,
       title: 'Picked',
       actor,
     });
   }
   return events;
+}
+
+/**
+ * The operator's definition of a HOP (2026-09-12): the unit SHIPPED and came
+ * back under the SAME order id. `payload.lifecycle` is already order-scoped,
+ * so "same order id" is satisfied by construction — what this adds is the
+ * ORDERING, because a RETURNED with no prior SHIPPED is an inbound return,
+ * not a round trip, and must not light the Hops chip.
+ *
+ * Returns the ids of the RETURNED rows that close a round trip, so the caller
+ * re-kinds exactly those rows (`exception` → `hop`) instead of minting a
+ * duplicate face for an event already on the stream.
+ *
+ * KNOWN LIMIT, stated rather than faked: the operator's wording also requires
+ * "the exact same product being unboxed". The unbox leg lives on the
+ * RECEIVING spine and is not present in `OrderTimelinePayload`, so this
+ * detects ship→return only. A return that was never unboxed will still count.
+ * Closing that needs the carton spine joined into this payload.
+ */
+function roundTripReturnIds(
+  rows: ReadonlyArray<Pick<InventoryTimelineRow, 'id' | 'occurred_at' | 'event_type'>>,
+): Set<string> {
+  const chronological = [...rows]
+    .map((row) => ({ row, ms: Date.parse(String(row.occurred_at ?? '')) }))
+    .filter((entry) => Number.isFinite(entry.ms))
+    .sort((a, b) => a.ms - b.ms);
+  const ids = new Set<string>();
+  let shipped = false;
+  for (const { row } of chronological) {
+    const type = String(row.event_type ?? '').trim();
+    if (type === 'SHIPPED') shipped = true;
+    else if (type === 'RETURNED' && shipped) ids.add(`inv:${row.id}`);
+  }
+  return ids;
 }
 
 export function presentOrderFindEvents(
@@ -376,16 +570,26 @@ export function presentOrderFindEvents(
       ? ([
           {
             id: 'pack:order',
-            kind: 'hop' as const,
+            kind: 'custody' as const,
             at: packedAt,
             title: 'Packed',
             actor: packedByName,
           },
         ] satisfies FindEvent[])
       : [];
+  // A RETURNED that closes a ship→return loop is the operator's HOP, not a
+  // generic exception. Re-kind in place so the row keeps its stamp, actor and
+  // body and simply changes face — minting a second event would double-count
+  // the return in the outline.
+  const roundTrips = roundTripReturnIds(payload.lifecycle);
+  const lifecycle = findEventsFromInventory(payload.lifecycle).map((event) =>
+    roundTrips.has(event.id)
+      ? { ...event, kind: 'hop' as const, title: 'Round trip', resolved: undefined }
+      : event,
+  );
   return [
     ...(qty ? [qty] : []),
-    ...findEventsFromInventory(payload.lifecycle),
+    ...lifecycle,
     ...(hasInventoryPicked ? [] : findEventsFromPickSessions(payload.pickSessions ?? [])),
     ...findEventsFromStationActivity(payload.stationEvents),
     ...packHops,
@@ -393,12 +597,16 @@ export function presentOrderFindEvents(
     ...findEventsFromOrderAudit(payload.events),
     ...findEventsFromUnitTimelinePhotos(payload.unitPhotos),
     ...findEventsFromCarrier(payload.carrierEvents, extras.tracking),
+    ...findEventsFromThreadMessages(payload.threadMessages ?? []),
+    ...findEventsFromOrderNotes(payload.orderNotes ?? []),
+    ...findEventsFromSignals(payload.signals ?? []),
   ];
 }
 
 export function presentCartonFindEvents(input: {
   events: readonly CartonInspectorEvent[];
   totals: CartonInspectorTotals | null | undefined;
+  photos?: readonly ReceivingPhotoRow[];
   createdAt?: string | null;
   tracking?: string | null;
   linkedOrderId?: string | null;
@@ -421,5 +629,10 @@ export function presentCartonFindEvents(input: {
           },
         ] satisfies FindEvent[])
       : [];
-  return [...(qty ? [qty] : []), ...findEventsFromCartonEvents(input.events), ...bind];
+  return [
+    ...(qty ? [qty] : []),
+    ...findEventsFromCartonEvents(input.events),
+    ...findEventsFromReceivingPhotos(input.photos ?? []),
+    ...bind,
+  ];
 }

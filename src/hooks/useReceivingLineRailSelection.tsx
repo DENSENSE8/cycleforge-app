@@ -22,7 +22,7 @@ import {
   clearRailActions,
   publishRailActions,
 } from '@/lib/right-rail/rail-actions-store';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 
 interface UseReceivingLineRailSelectionArgs {

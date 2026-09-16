@@ -80,11 +80,11 @@ export type OutboundDocumentTypeFilter = 'shipping_label' | 'packing_slip' | 'al
  * Zendesk ticket → matching photos, with a text/OCR fallback. The specific
  * kinds force one path.
  */
-export type PhotoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'sku' | 'ticket' | 'any';
+export type PhotoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'sku' | 'ticket' | 'repair' | 'customer' | 'any';
 
 /** Sidebar search field-scope. 'all' maps to the 'any' finder kind (smart
  *  resolve across every identifier + text/OCR); the rest force one kind. */
-export type PhotoSearchField = 'all' | 'po' | 'order' | 'tracking' | 'serial' | 'sku' | 'ticket';
+export type PhotoSearchField = 'all' | 'po' | 'order' | 'tracking' | 'serial' | 'sku' | 'ticket' | 'repair' | 'customer';
 
 /** The finder kind a sidebar field-scope resolves to. */
 export function finderKindForField(field: PhotoSearchField): PhotoFinderKind {
@@ -99,6 +99,8 @@ export function fieldForFinderKind(kind: PhotoFinderKind | undefined): PhotoSear
 export const PHOTO_SEARCH_FIELDS: readonly PhotoSearchField[] = [
   'all',
   'ticket',
+  'repair',
+  'customer',
   'po',
   'order',
   'tracking',
@@ -109,6 +111,8 @@ export const PHOTO_SEARCH_FIELDS: readonly PhotoSearchField[] = [
 export const PHOTO_SEARCH_FIELD_LABELS: Record<PhotoSearchField, string> = {
   all: 'All',
   ticket: 'Ticket #',
+  repair: 'Repair',
+  customer: 'Customer',
   po: 'PO #',
   order: 'Order #',
   tracking: 'Tracking #',
@@ -232,6 +236,8 @@ export function isPhotoFinderKind(value: string | null | undefined): value is Ph
     value === 'po' ||
     value === 'sku' ||
     value === 'ticket' ||
+    value === 'repair' ||
+    value === 'customer' ||
     value === 'any'
   );
 }
@@ -354,9 +360,11 @@ export function entityTypeForSourceScope(scope: PhotoLibrarySourceScope): string
       return 'RECEIVING';
     case 'packing':
       return 'PACKER_LOG';
-    // Repair photos flow through the serialized unit (testing + repair captures).
+    // Repair evidence: photos linked to the repair-service ticket itself, plus
+    // the existing serial-unit captures (testing/repair bench shots). The
+    // library query widens this single param to both entity types.
     case 'repair':
-      return 'SERIAL_UNIT';
+      return 'REPAIR_SERVICE';
     case 'claims':
       return 'ZENDESK_TICKET';
     case 'outbound':

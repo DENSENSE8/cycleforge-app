@@ -9,12 +9,15 @@
  *   400 { error: 'INVALID_REQUEST' }    409 { error: 'MULTI_ORG_NOT_PROVISIONED' }
  *   401 { error: 'NOT_AUTHENTICATED' }  403 { error: 'NOT_A_MEMBER' }
  *   500 { error: 'INTERNAL' }
- *
  * On success the server revokes the old session and mints a new one for the
- * target org's staff profile, so callers HARD-reload to `/dashboard` — never
- * router.push — to reset React Query caches, Ably subscriptions, and the RLS
- * GUC cleanly to the new tenant.
+ * target org's staff profile, so callers HARD-reload — never router.push — to
+ * reset React Query caches, Ably subscriptions, and the RLS GUC cleanly to
+ * the new tenant. The landing URL RESPECTS THE SURFACE (operator 2026-09-15):
+ * a switch started from a phone route (`/m/…`) lands on that org's mobile
+ * home (`/m/home`); everything else lands on `/dashboard`.
  */
+
+import { isMobileFirstPath } from '@/lib/mobile/mobile-first-surface';
 
 export function orgInitials(name: string): string {
   return (
@@ -46,8 +49,9 @@ type SwitchOrgResult =
   | { ok: false; error: string };
 
 /**
- * POST /api/auth/switch-org. On success, hard-navigates to `/dashboard`
- * (does not return). On failure, returns a friendly error string.
+ * POST /api/auth/switch-org. On success, hard-navigates (does not return) to
+ * the SURFACE-AWARE landing: `/m/home` when the switch started on a phone
+ * route, `/dashboard` otherwise. On failure, returns a friendly error string.
  */
 export async function requestSwitchOrg(organizationId: string): Promise<SwitchOrgResult> {
   try {
@@ -61,8 +65,17 @@ export async function requestSwitchOrg(organizationId: string): Promise<SwitchOr
       const data = (await r.json().catch(() => ({}))) as { error?: string };
       return { ok: false, error: switchOrgErrorMessage(data.error) };
     }
-    // Hard reload — NOT router.push.
-    window.location.assign('/dashboard');
+    // Hard reload — NOT router.push. The landing surface mirrors where the
+    // switch started: phone routes stay phone routes in the new org.
+    //
+    // `isMobileFirstPath`, not a bare `startsWith('/m')`: `/manuals` and
+    // `/manuals/library` are DESKTOP routes that share the `/m` prefix, and a
+    // literal prefix test would bounce a desk user onto the phone home.
+    // `/m/home` is the canonical mobile landing (nav registry Daily leaf);
+    // there is no `/m` root page.
+    window.location.assign(
+      isMobileFirstPath(window.location.pathname) ? '/m/home' : '/dashboard',
+    );
     return { ok: true };
   } catch {
     return { ok: false, error: switchOrgErrorMessage(undefined) };

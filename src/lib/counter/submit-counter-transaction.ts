@@ -145,6 +145,14 @@ export interface SubmitCounterTransactionDeps {
       subtotalCents: number;
       totalCents: number;
       clientEventId: string;
+      /**
+       * Retail/buyback lines persisted WITH the header (same transaction).
+       * Repairs are excluded on purpose — repair_service rows are their
+       * record and the receipt prints them as devices; a copy here would
+       * double-print. Deterministic line_uuid (`clientEventId:idx`) keeps a
+       * replayed submit idempotent against the UNIQUE constraint.
+       */
+      retailLines: CounterRetailLine[];
     },
   ): Promise<HeaderRow>;
   patchHeader(
@@ -363,7 +371,35 @@ const defaultDeps: SubmitCounterTransactionDeps = {
           args.clientEventId,
         ],
       );
-      return toHeaderRow(res.rows[0]);
+      // The receipt's itemized truth for session-less visits rides the SAME
+      // transaction: a header without lines is a receipt that prints money
+      // and "No items on this visit."
+      if (args.retailLines.length > 0) {
+        const headerId = Number(res.rows[0]!.id);
+        for (let i = 0; i < args.retailLines.length; i += 1) {
+          const line = args.retailLines[i]!;
+          await client.query(
+            `INSERT INTO counter_transaction_lines
+               (organization_id, counter_transaction_id, line_uuid, line_type,
+                title, sku, variation_id, quantity, unit_amount_cents, sort_index)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+             ON CONFLICT (counter_transaction_id, line_uuid) DO NOTHING`,
+            [
+              orgId,
+              headerId,
+              `${args.clientEventId}:${i}`,
+              line.unitAmountCents < 0 ? 'BUYBACK' : 'RETAIL',
+              line.productTitle,
+              line.sku || null,
+              line.variationId,
+              line.quantity,
+              line.unitAmountCents,
+              i,
+            ],
+          );
+        }
+      }
+      return toHeaderRow(res.rows[0]!);
     });
   },
 
@@ -583,6 +619,7 @@ export async function submitCounterTransaction(
     subtotalCents,
     totalCents,
     clientEventId,
+    retailLines,
   });
 
   // ── The repairs (composed) ───────────────────────────────────────────────

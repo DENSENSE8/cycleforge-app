@@ -92,11 +92,13 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            c.email                                           AS customer_email,
            COALESCE(NULLIF(c.phone, ''), NULLIF(c.mobile, '')) AS customer_phone,
            COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ' '), '') AS serials,
+           alloc.allocated_serials,
            COALESCE(MAX(stn.tracking_number_raw), MAX(stn_link.tracking_number_raw)) AS tracking_number,
            COALESCE(STRING_AGG(DISTINCT stn_link.tracking_number_raw, ' ')
              FILTER (WHERE stn_link.tracking_number_raw IS NOT NULL
                AND stn_link.id IS DISTINCT FROM o.shipment_id), '') AS linked_trackings,
-           COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier
+           COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier,
+           notes_trail.note_trail
     FROM orders o
     LEFT JOIN tech_serial_numbers tsn       ON (
       tsn.organization_id = o.organization_id
@@ -124,18 +126,60 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     LEFT JOIN customers c
       ON c.id = o.customer_id
      AND c.organization_id = o.organization_id
+    -- Note trail. orders.notes is the single free-text COLUMN; everything
+    -- staff write through the notes UI lands in the order_notes TABLE
+    -- (2026-07-28_order_notes.sql: order_id + organization_id + note_text),
+    -- which was entirely unsearchable. Bounded to the 5 newest notes / 600
+    -- chars so a chatty order cannot consume the MAX_SEARCH_TEXT budget and
+    -- truncate the identifiers ahead of it.
+    LEFT JOIN LATERAL (
+      SELECT LEFT(COALESCE(STRING_AGG(n.note_text, ' ' ORDER BY n.created_at DESC), ''), 600)
+               AS note_trail
+      FROM (
+        SELECT note_text, created_at
+        FROM order_notes
+        WHERE order_id = o.id AND organization_id = o.organization_id
+        ORDER BY created_at DESC
+        LIMIT 5
+      ) n
+    ) notes_trail ON TRUE
+    -- Allocated serials. tech_serial_numbers is the LEGACY scan ledger; the
+    -- modern path binds a unit to an order through order_unit_allocations
+    -- (2026-05-17_inventory_v2_phase0.sql). An order whose units arrived that
+    -- way carried NO serial in its doc at all — the serial was on the order in
+    -- the database and unfindable by typing it. RELEASED allocations are
+    -- excluded: a released unit is no longer this order's, and keeping its
+    -- serial searchable here would point an operator at the wrong order.
+    -- LATERAL, not a join, so the 1:many edge cannot fan out the GROUP BY.
+    LEFT JOIN LATERAL (
+      SELECT COALESCE(STRING_AGG(DISTINCT su_a.serial_number, ' '), '') AS allocated_serials
+      FROM order_unit_allocations oua
+      JOIN serial_units su_a
+        ON su_a.id = oua.serial_unit_id
+       AND su_a.organization_id = o.organization_id
+      WHERE oua.order_id = o.id
+        AND oua.organization_id = o.organization_id
+        AND COALESCE(oua.state, '') <> 'RELEASED'
+    ) alloc ON TRUE
     WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])
-    GROUP BY o.id, c.display_name, c.customer_name, c.email, c.phone, c.mobile`,
+    GROUP BY o.id, c.display_name, c.customer_name, c.email, c.phone, c.mobile,
+             notes_trail.note_trail, alloc.allocated_serials`,
   SERIAL_UNIT: `
     SELECT su.id, su.serial_number, su.unit_uid, su.sku,
            su.current_status::text  AS current_status,
            su.condition_grade::text AS condition_grade,
            su.current_location, su.notes, su.received_at, su.created_at,
            su.shipping_tracking_number,
-           COALESCE(i.name, sc.product_title) AS product_title
+           COALESCE(i.name, sc.product_title) AS product_title,
+           -- The tote a unit is physically in. Staff hold the H- code off the
+           -- label (handling_units.code, 2026-06-08_handling_units_lpn.sql)
+           -- and had no way to turn it into the units inside.
+           hu.code AS handling_unit_code
     FROM serial_units su
     LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
     LEFT JOIN items i        ON i.zoho_item_id = su.zoho_item_id
+    LEFT JOIN handling_units hu
+           ON hu.id = su.handling_unit_id AND hu.organization_id = su.organization_id
     WHERE su.organization_id = $1 AND su.id = ANY($2::bigint[])`,
   // Aggregate the only 1:many join (receiving_line) in a LATERAL so the outer
   // SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id. (The LATERAL
@@ -174,11 +218,50 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
       FROM receiving_line rl WHERE rl.receiving_id = r.id
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,
+  // Platform crosswalk + BOM folded in as LATERAL aggregates so the outer
+  // SELECT stays GROUP-BY-free. Staff hold an ASIN, an eBay item id or a part
+  // name far more often than the internal SKU; without these the index could
+  // answer none of those. Each aggregate is LEFT-bounded so no single source
+  // can consume the whole canonical-text budget.
+  //
+  // `items` is the inventory-provider (Zoho) mirror and is joined by the ONE
+  // legal key: sku_catalog.provider_item_id = items.zoho_item_id
+  // (2026-07-22:23-27). NEVER by SKU string — items.sku and sku_catalog.sku
+  // are independent numbering schemes that collide on the same values
+  // (2026-07-22:5-9), so a string join would attach one product's provider
+  // identifiers to another's catalog row. This is also why `items` gets no
+  // entity type of its own: items.id is a uuid and entity_search_docs.entity_id
+  // is BIGINT by law (2026-07-03d:12-13). The join is 1:1 — zoho_item_id is
+  // UNIQUE (0000_baseline:2735) and provider_item_id is org-uniquely indexed
+  // (ux_sku_catalog_org_provider_item_id) — so no LATERAL and no GROUP BY.
   SKU: `
-    SELECT id, sku, product_title, category, upc, ean, gtin, notes,
-           lifecycle_status, is_active, created_at, updated_at
-    FROM sku_catalog
-    WHERE organization_id = $1 AND id = ANY($2::bigint[])`,
+    SELECT sc.id, sc.sku, sc.product_title, sc.category, sc.upc, sc.ean, sc.gtin, sc.notes,
+           sc.lifecycle_status, sc.is_active, sc.created_at, sc.updated_at,
+           sc.provider_item_id,
+           i.name AS item_name,
+           i.sku  AS item_sku,
+           i.upc  AS item_upc,
+           i.ean  AS item_ean,
+           plat.platform_skus, plat.platform_item_ids, plat.platform_accounts,
+           kit.kit_part_names, kit.kit_document_titles
+    FROM sku_catalog sc
+    LEFT JOIN items i
+      ON i.zoho_item_id = sc.provider_item_id
+     AND i.organization_id = sc.organization_id
+    LEFT JOIN LATERAL (
+      SELECT LEFT(COALESCE(STRING_AGG(DISTINCT sp.platform_sku, ' '), ''), 300)     AS platform_skus,
+             LEFT(COALESCE(STRING_AGG(DISTINCT sp.platform_item_id, ' '), ''), 300) AS platform_item_ids,
+             LEFT(COALESCE(STRING_AGG(DISTINCT sp.account_name, ' '), ''), 120)     AS platform_accounts
+      FROM sku_platform_ids sp
+      WHERE sp.sku_catalog_id = sc.id AND sp.organization_id = sc.organization_id
+    ) plat ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT LEFT(COALESCE(STRING_AGG(DISTINCT kp.component_name, ' '), ''), 300)  AS kit_part_names,
+             LEFT(COALESCE(STRING_AGG(DISTINCT kp.document_title, ' '), ''), 200)  AS kit_document_titles
+      FROM sku_kit_parts kp
+      WHERE kp.sku_catalog_id = sc.id AND kp.organization_id = sc.organization_id
+    ) kit ON TRUE
+    WHERE sc.organization_id = $1 AND sc.id = ANY($2::bigint[])`,
   REPAIR: `
     SELECT id, ticket_number, product_title, serial_number, issue, notes,
            status, source_system, source_order_id, source_tracking_number,
@@ -196,6 +279,60 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     LEFT JOIN fba_shipment_items fsi ON fsi.shipment_id = f.id
     WHERE f.organization_id = $1 AND f.id = ANY($2::bigint[])
     GROUP BY f.id`,
+  // Every join is 1:1, so the outer SELECT needs no GROUP BY and no LATERAL.
+  // `deleted_at IS NULL` is load-bearing, not hygiene: warranty_claims is
+  // SOFT-deleted (2026-06-09_warranty_zendesk_link.sql:10-12,19), so a
+  // tombstoned claim must return NO row here — the drain's parent-missing arm
+  // then DELETES its doc (drainSearchOutbox "Parent vanished" branch below).
+  // The migration's UPDATE trigger watches deleted_at for exactly that reason.
+  // Prose is LEFT-bounded at the source so a long denial write-up cannot
+  // consume the MAX_SEARCH_TEXT budget ahead of the claim number.
+  WARRANTY_CLAIM: `
+    SELECT wc.id, wc.claim_number, wc.serial_number, wc.sku, wc.product_title,
+           wc.source_system, wc.source_order_id, wc.source_tracking_number,
+           wc.zendesk_ticket_id, wc.status, wc.denial_reason_code,
+           LEFT(wc.denial_notes, 400) AS denial_notes,
+           LEFT(wc.notes, 600)        AS notes,
+           wc.created_at,
+           COALESCE(c.display_name, c.customer_name)           AS customer_name,
+           c.email                                             AS customer_email,
+           COALESCE(NULLIF(c.phone, ''), NULLIF(c.mobile, '')) AS customer_phone
+    FROM warranty_claims wc
+    LEFT JOIN customers c
+      ON c.id = wc.customer_id
+     AND c.organization_id = wc.organization_id
+    WHERE wc.organization_id = $1 AND wc.id = ANY($2::bigint[])
+      AND wc.deleted_at IS NULL`,
+  SUPPORT_TICKET: `
+    SELECT id, provider, external_ticket_id,
+           LEFT(subject_cache, 400) AS subject_cache,
+           status_cache, created_at, updated_at
+    FROM support_tickets
+    WHERE organization_id = $1 AND id = ANY($2::bigint[])`,
+  // `bin_contents` is the only 1:many edge, so it is a LEFT-bounded LATERAL and
+  // the outer SELECT stays GROUP-BY-free. The bin's own identifiers come first
+  // in the builder; the SKUs stored in it are the tail, bounded at 300 chars so
+  // a full pallet location cannot push the barcode past MAX_SEARCH_TEXT.
+  // No `is_active` predicate: a deactivated bin is still scannable off a
+  // printed label, so it stays indexed and reads back as INACTIVE
+  // (buildLocationDoc) rather than silently vanishing from search.
+  LOCATION: `
+    SELECT l.id, l.barcode, l.name, l.display_name, l.room,
+           l.row_label, l.col_label, l.zone_letter, l.bin_type,
+           l.bin_role::text      AS bin_role,
+           l.location_kind, l.is_active, l.locked_for_count,
+           LEFT(l.description, 400) AS description,
+           l.created_at, l.updated_at,
+           contents.content_skus
+    FROM locations l
+    LEFT JOIN LATERAL (
+      SELECT LEFT(COALESCE(STRING_AGG(DISTINCT bc.sku, ' '), ''), 300) AS content_skus
+      FROM bin_contents bc
+      WHERE bc.location_id = l.id
+        AND bc.organization_id = l.organization_id
+        AND bc.qty > 0
+    ) contents ON TRUE
+    WHERE l.organization_id = $1 AND l.id = ANY($2::bigint[])`,
 };
 
 function toVectorLiteral(vec: number[]): string {

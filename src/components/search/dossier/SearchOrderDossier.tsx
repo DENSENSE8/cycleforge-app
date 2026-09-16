@@ -132,6 +132,8 @@ export function SearchOrderDossier({
     lifecycle: [],
     stationEvents: [],
     threadMessages: [],
+    orderNotes: [],
+    signals: [],
     carrierEvents: [],
     rmaEvents: [],
     unitPhotos: [],

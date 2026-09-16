@@ -93,14 +93,21 @@ describe('receivingCompoundColumnsFor — the compound materialization', () => {
     assert.ok(RECEIVING_COMPOUND_COLUMNS.every((c) => c.fieldId === undefined));
   });
 
-  it('a bound fact opens a status track after the state pill, ahead of amount', () => {
+  it('a bound fact opens a status track after the state pill, ahead of the slack track', () => {
     const columns = receivingCompoundColumnsFor({
       ...RECEIVING_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'receiving.location' }, { fieldId: 'receiving.tracking' }],
     });
+    // Derived from the shared skeleton on purpose: a hand-typed copy of the
+    // track list goes stale the next time the skeleton gains a chrome track
+    // (it already did — this assertion pinned a pre-`dates` order with the
+    // retired `amount` / `actions` tracks). The CONTRACT is the position:
+    // bound facts land after the state pill and before the `_fill` slack.
+    const chrome = [...COMPOUND_COLUMN_KEYS];
+    const slack = chrome.pop();
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      [...chrome, 'status:1', 'status:2', slack],
     );
     assert.equal(columns.find((c) => c.key === 'status:1')?.fieldId, 'receiving.location');
   });

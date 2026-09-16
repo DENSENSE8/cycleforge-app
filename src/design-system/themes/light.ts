@@ -13,7 +13,7 @@ export const lightPalette: ThemePalette = {
   label: 'Light',
   hint: 'Bright — the default.',
   scheme: 'light',
-  preview: { canvas: '#eef2f7', card: '#ffffff', accent: '#2563eb', text: '#0f172a' },
+  preview: { canvas: '#fafafa', card: '#ffffff', accent: '#2563eb', text: '#0f172a' },
   page: { background: '#ffffff', foreground: '#171717' },
   vars: {
     // Neutral chrome (slate family)
@@ -21,12 +21,34 @@ export const lightPalette: ThemePalette = {
     'text-secondary': '#475569',
     'text-soft': '#64748b',
     'text-faint': '#94a3b8',
-    // Page/canvas plane sits a real step BELOW card white (~6%), not the old
-    // #f8fafc (~2%). Depth needs something to cast onto: at a 2% delta a
-    // raised card's shadow has no ground plane to read against and every
-    // surface flattens into one sheet of white. Keep card ↔ canvas separated
-    // when tuning; `surface-hover` stays the lighter row wash.
-    'background-canvas': '#eef2f7',
+    // ── The page plane: #fafafa, a 2% step under card white ─────────────────
+    //
+    // Operator ruling 2026-09-15: *"ensure that the FAFAFA token is pinned for
+    // a standard background in light mode."* This REVERSES the tuning below it,
+    // deliberately, so read both before touching either.
+    //
+    // It was #eef2f7 — a real ~6% step under card white — on the argument that
+    // depth needs something to cast onto: at a 2% delta a raised card's shadow
+    // has no ground plane to read against and every surface flattens into one
+    // sheet. That is still TRUE, and it is now the accepted cost. The operator
+    // had already been pulling the desk the same way (`tokens/desk-stage.ts`:
+    // *"the grey read as a gutter around a boxed-in table, and the page should
+    // read as one white sheet"*), and the phone/kiosk ground moved to card
+    // white outright.
+    //
+    // CONSEQUENCE, stated so nobody re-derives it as a bug: on this theme,
+    // separation is carried by HAIRLINES and borders, not by elevation. A
+    // surface that needs to read as raised on #fafafa must draw an edge —
+    // `shadow-elev-*` alone will not show. Do not "fix" a flat-looking card by
+    // darkening this value back; that is the ruling, not a regression.
+    //
+    // `surface-hover` (#f8fafc) is now DARKER than the canvas it washes, which
+    // is correct: a row hover reads against card white, not against the plane.
+    //
+    // PINNED: `scripts/mobile-ground-guard.ts` asserts this exact hex (verify
+    // `Ground`, `ds_mobile_ground`). Change it there in the same commit or the
+    // gate fails — which is the point.
+    'background-canvas': '#fafafa',
     'background-surface': '#ffffff',
     'surface-sunken': '#f1f5f9',
     'surface-hover': '#f8fafc', // row/interaction wash (≈ the classic gray-50 hover wash)

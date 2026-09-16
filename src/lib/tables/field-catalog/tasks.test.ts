@@ -81,10 +81,17 @@ describe('tasksCompoundColumnsFor — the compound materialization', () => {
       ...TASKS_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'tasks.station' }, { fieldId: 'tasks.resets' }],
     });
+    const keys = columns.map((c) => c.key);
+    // `COMPOUND_COLUMN_KEYS` is the SoT for the surrounding order. This used to
+    // hand-list every track, which forked the skeleton and went stale the moment
+    // `amount`/`actions` left it — so it pins only what this test is about: the
+    // status band opening straight after the state pill.
     assert.deepEqual(
-      columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      keys.filter((k) => !k.startsWith('status:')),
+      [...COMPOUND_COLUMN_KEYS],
     );
+    const stateAt = keys.indexOf('state');
+    assert.deepEqual(keys.slice(stateAt, stateAt + 3), ['state', 'status:1', 'status:2']);
     assert.equal(columns.find((c) => c.key === 'status:2')?.slotDisplayType, 'date');
   });
 });

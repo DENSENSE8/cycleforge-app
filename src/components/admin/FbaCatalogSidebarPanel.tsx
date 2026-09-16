@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sidebar for /admin?section=fba — picker for the FNSKU catalog.
+ * Sidebar for /shipping/fba?fbaMode=catalog — picker for the FNSKU catalog.
  *
  * URL-state contract:
  *   ?search=<q>     — search box value

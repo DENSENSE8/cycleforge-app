@@ -22,7 +22,7 @@ import {
   type KioskTriageItem,
 } from '@/lib/kiosk/visit-triage';
 import {
-  KIOSK_UTILITY_PANEL_FACE,
+  KIOSK_UTILITY_SHEET,
   KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
@@ -49,7 +49,7 @@ export function KioskTriagePanel({
   const warnings = items.filter((i) => i.severity === 'warn');
 
   return (
-    <aside className={KIOSK_UTILITY_PANEL_FACE} data-testid="kiosk-triage-panel">
+    <aside className={KIOSK_UTILITY_SHEET} data-testid="kiosk-triage-panel">
       <div className={KIOSK_PANE_HEADER_BAND}>
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Triage</h2>
         <span className={cn('tabular-nums', KIOSK_META)}>

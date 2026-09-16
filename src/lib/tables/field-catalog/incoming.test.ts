@@ -102,9 +102,15 @@ describe('incomingCompoundColumnsFor — the compound materialization', () => {
       ...INCOMING_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'incoming.expected' }],
     });
+    // Derived from the shared skeleton: a hand-typed track list goes stale the
+    // next time it gains a chrome track (it already did — this pinned a
+    // pre-`dates` order with the retired `amount` / `actions` tracks). The
+    // CONTRACT is the position: after the state pill, before the slack track.
+    const chrome = [...COMPOUND_COLUMN_KEYS];
+    const slack = chrome.pop();
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'amount', 'actions', '_fill'],
+      [...chrome, 'status:1', slack],
     );
     assert.equal(columns.find((c) => c.key === 'status:1')?.slotDisplayType, 'date');
   });

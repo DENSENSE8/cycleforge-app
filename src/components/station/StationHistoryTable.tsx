@@ -3,45 +3,47 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
-import { StationQueueRow } from '@/components/station/StationQueueRow';
-import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
-import { Copy, X } from '@/components/Icons';
-import { emitToggleAll } from '@/lib/selection/table-selection';
-import { useTableSelectMode } from '@/hooks/useTableSelectMode';
-import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { STATION_HISTORY_COLUMNS } from '@/components/station/station-history-columns';
-import { toTsvBlock } from '@/lib/station/format-station-copy-row';
+import { DataTable } from '@/components/tables/DataTable';
+import {
+  useBenchSpreadsheet,
+  type BenchFamily,
+} from '@/components/station/bench-grid/useBenchSpreadsheet';
+import type { SlotTableLayout } from '@/components/tables/useSlotTableLayout';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import type { OrdersQueueColumn, OrdersQueueColumnKey } from '@/lib/dashboard-order-row-layout';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import type { BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
-import type { TableId } from '@/lib/tables/table-columns';
+import type { RowGroup } from '@/lib/group-rows';
 import { sumDaySectionCounts } from '@/components/station/station-table-logic';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, type StationLayout } from '@/lib/station/table-url-params';
 import { useStationReconnectSync } from '@/hooks/station/useStationReconnectSync';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { formatWeekRangeCompact } from '@/utils/date';
+import { formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 
 /**
- * `StationHistoryTable<T>` — the shell for the Tech / Packer history tables
- * (station-table-unification-plan §Phase 2, cut over 2026-07-28). Rows render
- * through the shared `OrdersQueueTableRow` (via {@link StationQueueRow}) inside
- * the unified {@link StationListTable}, which composes the Workbench spreadsheet
- * SoT `LedgerGrid` — the same grid the Queue tab uses. The benches get
- * windowing, the week band, the ⋮ menu (row density + saved views), bulk
- * select, and a typed first-run empty.
+ * `StationHistoryTable<T>` — the Tech / Packer bench history desk.
  *
- * Per-staff column visibility and the density toggle went with the display
- * teardown (2026-08-29): the bench paints the canonical column model at one
- * row box, so there is nothing left to key by `tableId` here.
+ * Wave C of the slot-table SoT port: this was the last THIRD display engine.
+ * It used to render `StationQueueRow` (a per-family row component wrapping
+ * `OrdersQueueTableRow` over the hand `STATION_HISTORY_COLUMNS` array) inside
+ * `StationListTable`'s raw `LedgerGrid` — a table outside `PRODUCT_TABLES` and
+ * `REGISTERED_BINDINGS`, with its own week band, its own bulk bar and its own
+ * copy pill. `tech` and `packer` are now registered families on the ONE engine:
+ * the desk mounts {@link DataTable} with the feed from
+ * {@link useBenchSpreadsheet}, so the benches get header click-to-sort, the
+ * filter funnel, a Fields picker, saved views that capture columns, the shared
+ * selection gutter and selection-copy — none of it declared here.
+ *
+ * What this component still owns is genuinely the desk's, not the table's: the
+ * WEEK the query covers (portaled into the workspace chrome), the optional
+ * pipeline board, keyboard row focus and the `?techLogId=` deep link.
  */
 export interface StationHistoryTableProps<T> {
   loading: boolean;
-  isRefreshing: boolean;
   weekRange: WeekRange;
   weekOffset: number;
   onPrevWeek: () => void;
@@ -49,17 +51,21 @@ export interface StationHistoryTableProps<T> {
   onResetWeek?: () => void;
   /** `[date, records]` bands, newest day first, each day's rows pre-sorted. */
   daySections: [string, T[]][];
-  /** Stable row key so windowing survives re-sorts. */
-  getRowKey?: (record: T, index: number) => string;
-  /** Per-staff column-config + density bag (`tech` | `packer`). */
-  tableId: TableId;
-  /** Saved-views storage + params for the ⋮ menu. */
+  /** Which registered bench family paints — selects binding · columns · resolver. */
+  family: BenchFamily;
+  /**
+   * The caller's own slot layout (`useTechTableLayout` / `usePackerTableLayout`).
+   * Passed in rather than resolved here so each desk pays for one prefs read
+   * and this component branches on data, never on hooks.
+   */
+  layout: SlotTableLayout;
+  /** Saved-views storage + params. DataTable mounts the menu. */
   savedViewsStorageKey: string;
   savedViewsParamKeys: readonly string[];
   emptyMessage: string;
   /** Teaching first-run empty (zero rows, no active filter). */
   firstRunEmpty?: ReactNode;
-  /** Portal display controls into the owning workspace chrome. */
+  /** Portal the week pill into the owning workspace chrome. */
   toolbarPortalTarget?: HTMLElement | null;
   /** Pipeline (board) config — enables the Pipeline/All toggle (behind
    *  `NEXT_PUBLIC_STATION_PIPELINE_BOARDS`). Records are the flat, unbanded set;
@@ -72,9 +78,6 @@ export interface StationHistoryTableProps<T> {
     toDaySections: (records: T[]) => [string, T[]][];
     getRowDate?: (row: T) => string | null | undefined;
   };
-  /** Converged rendering + bulk select (Phase 7): rows render through the shared
-   *  `OrdersQueueTableRow` (via `StationQueueRow`) with a checkbox + copy-TSV
-   *  bulk bar. */
   selection: {
     scope: string;
     queueMode: StationSourceKind;
@@ -92,103 +95,116 @@ export interface StationHistoryTableProps<T> {
 
 export function StationHistoryTable<T>({
   loading,
-  isRefreshing,
   weekRange,
   weekOffset,
   onPrevWeek,
   onNextWeek,
-  onResetWeek,
   daySections,
-  getRowKey,
-  tableId,
+  family,
+  layout,
   savedViewsStorageKey,
   savedViewsParamKeys,
   emptyMessage,
   firstRunEmpty,
-  toolbarPortalTarget = null,
+  toolbarPortalTarget,
   pipeline,
   selection,
 }: StationHistoryTableProps<T>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { isMobile } = useUIModeOptional();
   const totalCount = sumDaySectionCounts(daySections);
-
-  // The canonical model IS what paints — per-staff hide/show went with the
-  // column-display rail, so there is no delta between the model and the grid.
-  // Bench-owned flat model (the Orders desk is slot-materialized now); dies
-  // with the station-history kill item.
-  const visibleColumns = STATION_HISTORY_COLUMNS;
 
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
 
-  // ── Bulk select + keyboard focus ──────────────────────────────────────────
-  // Always on — left gutter ☐, no week-band pencil.
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const orderedRecords = useMemo(() => daySections.flatMap(([, recs]) => recs), [daySections]);
-  const getRecordId = useCallback((r: T) => selection.getRecordId(r), [selection]);
-  const { selectedIds, toggle } = useTableSelectMode<T>({
-    scope: selection.scope,
-    selectMode: true,
-    rows: orderedRecords,
-    getId: getRecordId,
-  });
 
-  const copySelected = useCallback(async () => {
-    const chosen = orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r)));
-    if (chosen.length === 0) return;
-    const block = toTsvBlock(selection.copyHeader, chosen.map(selection.formatCopyRow));
-    try {
-      await navigator.clipboard.writeText(block);
-    } catch {
-      /* clipboard blocked (permissions) — silently ignore */
-    }
-  }, [selection, orderedRecords, selectedIds]);
+  /**
+   * The domain record behind a mapped row, by row id — how copy and row-open
+   * recover the `TechRecord` / `PackerRecord` without a second fetch.
+   */
+  const sourceById = useMemo(() => {
+    const map = new Map<string, T>();
+    for (const record of orderedRecords) map.set(String(selection.getRecordId(record)), record);
+    return map;
+  }, [orderedRecords, selection]);
 
-  // Map each record → queue-row shape and render the shared OrdersQueueTableRow
-  // (checkbox + serial chip) — the same row the outbound Queue grid uses.
-  const renderRow = useCallback(
-    (record: T, index: number, rowIndex?: number) => {
-      const id = selection.getRecordId(record);
-      return (
-        <StationQueueRow
-          record={selection.toQueueRow(record)}
-          index={index}
-          rowIndex={rowIndex}
-          queueMode={selection.queueMode}
-          selectMode
-          isChecked={selectedIds.has(id)}
-          isSelected={focusedId === id}
-          isMobile={isMobile}
-          columns={visibleColumns}
-          onToggleSelect={(event) => toggle(id, event.shiftKey)}
-          onRowClick={(mapped) => {
-            const source = getStationSourceRecord<T>(mapped) ?? record;
-            selection.onOpen(source);
-          }}
-        />
-      );
-    },
-    [selection, selectedIds, isMobile, visibleColumns, toggle],
+  const rows = useMemo(
+    () => orderedRecords.map((record) => selection.toQueueRow(record)),
+    [orderedRecords, selection],
   );
 
-  const selectedCount = orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r))).length;
+  const handleOpenRow = useCallback(
+    (row: QueueRowRecord) => {
+      const source = getStationSourceRecord<T>(row) ?? sourceById.get(String(row.id));
+      if (source) selection.onOpen(source);
+    },
+    [selection, sourceById],
+  );
 
-  // Keyboard focus → the row key to scroll to (works even when off-window).
-  const focusedKey = useMemo(() => {
-    if (focusedId == null || !getRowKey) return null;
-    const rec = orderedRecords.find((r) => selection.getRecordId(r) === focusedId);
-    return rec ? getRowKey(rec, 0) : null;
-  }, [focusedId, orderedRecords, selection, getRowKey]);
+  const feed = useBenchSpreadsheet({
+    family,
+    layout,
+    rows,
+    loading,
+    emptyMessage,
+    onOpenRow: handleOpenRow,
+  });
 
-  // Deep link: select + scroll to the row named by the URL param (?techLogId=…).
+  /**
+   * Day bands over the FED rows, so search and column sort narrow the bands
+   * instead of fighting them. The engine's own grouping is a single band; a
+   * bench reads as a diary, so the date band is the desk's contribution.
+   */
+  const dayGroups = useMemo(() => {
+    const byDay = new Map<string, QueueRowRecord[]>();
+    for (const row of feed.rows) {
+      let key = 'Unknown';
+      try {
+        key = toPSTDateKey(row.created_at as string) || 'Unknown';
+      } catch {
+        key = 'Unknown';
+      }
+      const bucket = byDay.get(key);
+      if (bucket) bucket.push(row);
+      else byDay.set(key, [row]);
+    }
+    return [...byDay.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, dayRows]) => [
+        date,
+        dayRows.map((row) => ({ key: `k:${row.id}`, rows: [row] })),
+      ]) as [string, RowGroup<QueueRowRecord>[]][];
+  }, [feed.rows]);
+
+  /**
+   * Selection copy keeps the bench's own TSV vocabulary
+   * (`format-station-copy-row`), which is written against the DOMAIN record —
+   * so the cells come from splitting that line rather than from a second
+   * column list that could drift from it.
+   */
+  const copyExport = useMemo(
+    () => ({
+      columns: selection.copyHeader,
+      toRow: (row: QueueRowRecord) => {
+        const source = getStationSourceRecord<T>(row) ?? sourceById.get(String(row.id));
+        return source ? selection.formatCopyRow(source).split('\t') : [];
+      },
+    }),
+    [selection, sourceById],
+  );
+
+  // Deep link: focus the row named by the URL param (?techLogId=…).
   const deepLinkValue = selection.deepLinkParam ? searchParams.get(selection.deepLinkParam) : null;
   useEffect(() => {
     if (!deepLinkValue) return;
     const targetId = Number(deepLinkValue);
-    if (Number.isFinite(targetId) && orderedRecords.some((r) => selection.getRecordId(r) === targetId)) {
+    if (
+      Number.isFinite(targetId) &&
+      orderedRecords.some((r) => selection.getRecordId(r) === targetId)
+    ) {
       setFocusedId(targetId);
     }
   }, [deepLinkValue, selection, orderedRecords]);
@@ -196,7 +212,10 @@ export function StationHistoryTable<T>({
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (orderedRecords.length === 0) return;
-      const curIdx = focusedId == null ? -1 : orderedRecords.findIndex((r) => selection.getRecordId(r) === focusedId);
+      const curIdx =
+        focusedId == null
+          ? -1
+          : orderedRecords.findIndex((r) => selection.getRecordId(r) === focusedId);
       if (e.key === 'ArrowDown') {
         e.preventDefault();
         const next = Math.min(orderedRecords.length - 1, curIdx < 0 ? 0 : curIdx + 1);
@@ -214,20 +233,8 @@ export function StationHistoryTable<T>({
   );
 
   const boardEnabled = Boolean(pipeline) && STATION_PIPELINE_BOARDS;
-  const layout: StationLayout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
+  const layoutMode: StationLayout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
 
-  const setLayout = useCallback(
-    (next: StationLayout) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'all') params.delete(LAYOUT_PARAM);
-      else params.set(LAYOUT_PARAM, next);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname || '/'}?${qs}` : pathname || '/', { scroll: false });
-    },
-    [searchParams, router, pathname],
-  );
-
-  const headerControls = null;
   const weekPill = (
     <DateRangePickerPill
       label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
@@ -236,100 +243,74 @@ export function StationHistoryTable<T>({
     />
   );
   // House chrome recipe (Unbox · Shipped · FBA · Testing history): the period
-  // calendar icon + ⋮ menu ride in the workbench chrome controls slot, so the
-  // table itself is a plain framed card with no second header band inside it. A caller with no
-  // portal target keeps the in-table `DateRangeHeader`.
+  // pill rides in the workbench chrome controls slot, so the table itself is a
+  // plain framed card with no second header band inside it.
   const portaledControls = toolbarPortalTarget
-    ? createPortal(
-        <div className="flex items-center gap-2">{weekPill}</div>,
-        toolbarPortalTarget,
-      )
+    ? createPortal(<div className="flex items-center gap-2">{weekPill}</div>, toolbarPortalTarget)
     : null;
 
-  // Bulk-action bar — pinned to the bottom of the table's relative region when
-  // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
-  const bulkBar =
-    selectedCount > 0 ? (
-      <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
-        <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
-          <span className="text-role-caption font-semibold text-text-muted">{selectedCount} selected</span>
-          {/* ds-raw-button: compact bulk-action capsule button */}
-          <button
-            type="button"
-            onClick={() => void copySelected()}
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <Copy className="h-3.5 w-3.5" /> Copy
-          </button>
-          {/* ds-raw-button: clear-selection capsule button */}
-          <button
-            type="button"
-            aria-label="Clear selection"
-            onClick={() => emitToggleAll(selection.scope, 'none')}
-            className="inline-flex items-center rounded-full p-1 text-text-faint transition-colors hover:text-text-default"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-    ) : null;
+  /**
+   * Board lane rows. The pipeline board is a different display KIND (lanes, not
+   * a table), so it keeps its own list body; the row it paints is the engine's
+   * compound row, from the same feed as the table.
+   */
+  const renderBoardRow = useCallback(
+    (record: T, _index: number, rowIndex?: number): ReactNode => {
+      const row = selection.toQueueRow(record);
+      return feed.renderRow?.(row, rowIndex ?? 0, {
+        columns: (feed.columns ?? []) as readonly OrdersQueueColumn[],
+      });
+    },
+    [feed, selection],
+  );
+
+  if (boardEnabled && layoutMode === 'board' && pipeline) {
+    return (
+      <>
+        {portaledControls}
+        <StationPipelineBoard<T, string>
+          prefsKey={pipeline.prefsKey}
+          lanes={pipeline.lanes}
+          bucket={pipeline.bucket}
+          records={pipeline.records}
+          loading={loading}
+          renderRow={renderBoardRow}
+          toDaySections={pipeline.toDaySections}
+          getRowDate={pipeline.getRowDate}
+          headerStartSlot={<div className="flex items-center gap-2">{weekPill}</div>}
+        />
+      </>
+    );
+  }
 
   return (
     <>
-        {portaledControls}
-        {boardEnabled && layout === 'board' && pipeline ? (
-          <StationPipelineBoard<T, string>
-            prefsKey={pipeline.prefsKey}
-            lanes={pipeline.lanes}
-            bucket={pipeline.bucket}
-            records={pipeline.records}
-            loading={loading}
-            renderRow={renderRow}
-            getRowKey={getRowKey}
-            toDaySections={pipeline.toDaySections}
-            getRowDate={pipeline.getRowDate}
-            headerStartSlot={<div className="flex items-center gap-2">{weekPill}</div>}
-            headerEndSlot={headerControls}
-          />
-        ) : (
-          <div
-            // `h-full` alongside `flex-1`: the pack/tech hosts lay this out in a
-            // fixed-height BLOCK container (`h-[calc(100dvh-13rem)]`), where
-            // `flex-1` resolves to nothing and the box grows to content — which
-            // collapses the virtualizer's viewport measurement and renders an
-            // empty grid. `h-full` bounds it under a block parent; `flex-1`
-            // still governs under a flex one. (The legacy StationWeekTable used
-            // `h-full` for exactly this reason.)
-            className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
-            tabIndex={0}
-            onKeyDown={onKeyDown}
-            role="grid"
-            aria-label="Station records"
-          >
-            <StationListTable<T>
-              loading={loading}
-              isRefreshing={isRefreshing}
-              weekRange={weekRange}
-              weekOffset={weekOffset}
-              onPrevWeek={onPrevWeek}
-              onNextWeek={onNextWeek}
-              onResetWeek={onResetWeek}
-              showWeekControls
-              hideHeader={Boolean(toolbarPortalTarget)}
-              daySections={daySections}
-              totalCount={totalCount}
-              renderRow={renderRow}
-              getRowKey={getRowKey}
-              virtualized
-              scrollToKey={focusedKey}
-              headerEndSlot={headerControls}
-              emptyMessage={emptyMessage}
-              firstRunEmpty={firstRunEmpty}
-              capabilities={STATION_HISTORY_GRID_CAPABILITIES}
-            />
-            {bulkBar}
-          </div>
-        )}
+      {portaledControls}
+      <div
+        // `h-full` alongside `flex-1`: the pack/tech hosts lay this out in a
+        // fixed-height BLOCK container (`h-[calc(100dvh-13rem)]`), where
+        // `flex-1` resolves to nothing and the box grows to content — which
+        // collapses the virtualizer's viewport measurement and renders an
+        // empty grid. `h-full` bounds it under a block parent; `flex-1` still
+        // governs under a flex one.
+        className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+      >
+        <DataTable<QueueRowRecord, OrdersQueueColumnKey, OrdersQueueColumn>
+          {...feed}
+          orderGroupsByDate={dayGroups}
+          totalCount={totalCount}
+          selectionScope={selection.scope}
+          copyExport={copyExport}
+          emptyState={firstRunEmpty}
+          views={{
+            storageKey: savedViewsStorageKey,
+            paramKeys: savedViewsParamKeys,
+            layout: layout.effectiveLayout,
+          }}
+        />
+      </div>
     </>
   );
 }

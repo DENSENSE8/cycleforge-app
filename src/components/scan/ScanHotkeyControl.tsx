@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Barcode, Check, Search } from '@/components/Icons';
+import { Check, ScanBarcode, Search } from '@/components/Icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,7 +125,7 @@ export function ScanHotkeyControl({
     stance === 'preview' ? (
       <Search className={GLYPH_CLASS} />
     ) : (
-      (scanIcon ?? <Barcode className={GLYPH_CLASS} />)
+      (scanIcon ?? <ScanBarcode className={GLYPH_CLASS} />)
     );
 
   return (
@@ -166,7 +166,7 @@ export function ScanHotkeyControl({
                 {value === 'preview' ? (
                   <Search className="size-4" />
                 ) : (
-                  <Barcode className="size-4" />
+                  <ScanBarcode className="size-4" />
                 )}
                 <span className="text-role-caption font-semibold">
                   {STANCE_COPY[value].label}

@@ -27,6 +27,37 @@ ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built an
 `getInventoryBaseUrl()` (region-aware: `.com/.eu/.in/.com.au/.ca/.jp` from
 `ZOHO_DOMAIN`), and `invalidateAccessToken()`.
 
+### Access-token minting — INVARIANTS (2026-09-14 blackout)
+
+Zoho mints **at most 10 access tokens per refresh token per 10 minutes**
+(`zoho.com/developer/oauth/token-limits.html`). Exceeding it returns
+`400 Access Denied: You have made too many requests continuously.`
+
+On 2026-09-14 22:07Z we crossed it and Zoho went dark for **25 hours**: every
+cron logged `No inventory integration connected`, the PO mirror froze, and
+receiving could not push cartons as received. Three compounding causes, each now
+closed — do not reintroduce any of them:
+
+1. **One access token per PROCESS.** The cache was an in-process `Map`, i.e. one
+   token per Vercel lambda instance, per health poll, per cron tick. The token is
+   now shared fleet-wide in `organization_integrations.access_token_encrypted`
+   (`src/lib/integrations/access-token-store.ts`), minted once per expiry window
+   behind an in-process promise **and** a DB mint claim. Verified: 12 concurrent
+   callers → 1 mint; a second instance adopts the winner's token.
+   Never hold a checked-out client (`pg_advisory_lock`) across the mint —
+   `PG_POOL_MAX` is 5 and a 12-caller stampede exhausts the pool, which silently
+   degrades back to N mints.
+2. **A throttle classified as a dead credential.** `isCredentialAuthFailure`
+   matched `token refresh` and flipped `status='error'`. Transient failures now
+   route to `noteIntegrationWarning` (status stays `active`, `last_error`
+   records it) — see `credential-auth-failure.ts` and its tests.
+3. **`status='error'` was a latch with no key.** Nothing cleared it but a human
+   re-running OAuth. Now: a successful call/mint heals the row
+   (`clearIntegrationError`), and `GET /api/cron/integrations/refresh` (hourly)
+   revalidates every latched connection and lifts the latch when the credential
+   proves alive (`connectors/self-heal.ts`). A genuinely revoked grant keeps
+   failing validation and stays **Needs attention**.
+
 ### Connection health / reconnect
 
 - Access tokens expire in ~1 hour; that is normal and does **not** disconnect the
@@ -38,10 +69,24 @@ ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built an
   `/api/zoho/oauth/authorize` (OAuth on the Zoho card).
 - Vault is the SoT. Do not rely on `ZOHO_REFRESH_TOKEN` env once a vault row
   exists — env bootstrap is ignored while the vault row is `error`/`revoked`.
+- `INTEGRATION_KMS_KEY` must match the key the row was encrypted under. A local
+  `.env` with a different key cannot decrypt the prod payload (it surfaces as
+  "No active Zoho connection"); add the prod key, or list the old one in
+  `INTEGRATION_KMS_KEY_PREVIOUS`.
 - Avoid: revoking Cycle Forge under Zoho Connected Apps; regenerating the API
   console client secret without reconnecting the same day; minting extra refresh
   tokens in Postman/scripts (Zoho caps ~20 refresh tokens per user — older ones
   get dropped).
+
+### Delta cursors
+
+`sync_cursors` is keyed on `(organization_id, resource)`; `getSyncCursor` /
+`updateSyncCursor` take `orgId`. The migration landed 2026-07-11 without the
+caller change, so every cursor advance threw `no unique or exclusion constraint
+matching the ON CONFLICT specification` for two months: `zoho.po_sync` failed 173
+times and each 15-minute "delta" replayed since 2026-07-11. Cursors now advance
+**per org** inside the sweep — a shared watermark gated on "every org succeeded"
+lets one tenant freeze everyone.
 
 ## HTTP client — `src/lib/zoho/httpClient.ts`
 

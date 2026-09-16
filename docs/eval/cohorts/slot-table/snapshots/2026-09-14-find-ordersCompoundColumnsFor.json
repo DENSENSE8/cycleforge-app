@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor",
+      "kind": "function",
+      "name": "ordersCompoundColumnsFor",
+      "location": "src/lib/dashboard-order-row-layout.ts:102",
+      "exported": true,
+      "signature": "function ordersCompoundColumnsFor( layout: SlotLayout, options?: { queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped'; shortageDesk?: boolean; }, ): readonly OrdersQueueColumn[]"
+    }
+  ]
+}

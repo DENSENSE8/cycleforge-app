@@ -14,9 +14,17 @@ import pool from '@/lib/db';
 import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
 import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { StaffTable } from './StaffTable';
+import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 import { cn } from '@/utils/_cn';
 
-interface StaffRow {
+/**
+ * The SQL row this page selects. Wider than the desk's wire row on purpose —
+ * `default_home_path` and `color_hex` are read by the query and painted by no
+ * track, so they stop here rather than crossing the RSC boundary (see
+ * `staff-directory-row.ts`; the staff colour reaches the avatar through the
+ * identity cache, keyed on the id).
+ */
+interface StaffQueryRow {
   id: number;
   name: string;
   role: string;
@@ -35,7 +43,7 @@ export default async function StaffPage() {
   // auth_method / requires_sensitive_stepup (WS6.1) via to_jsonb so this query
   // is safe BEFORE the 2026-06-28_staff_auth_policy migration applies (missing
   // column → NULL key → COALESCE default 'pin' / false).
-  const r = await pool.query<StaffRow>(
+  const r = await pool.query<StaffQueryRow>(
     `SELECT s.id, s.name, s.role, s.status, COALESCE(s.active, true) AS active,
             (s.pin_hash IS NOT NULL) AS has_pin,
             s.last_login_at, s.default_home_path, s.color_hex,
@@ -55,8 +63,15 @@ export default async function StaffPage() {
           Invite teammates, change roles, deactivate access. Active sessions are revoked the moment you deactivate.
         </p>
 
-        <StaffTable initialStaff={r.rows.map((s) => ({
-          ...s,
+        <StaffTable initialStaff={r.rows.map((s): StaffDirectoryRow => ({
+          id: s.id,
+          name: s.name,
+          role: s.role,
+          status: s.status,
+          active: s.active,
+          has_pin: s.has_pin,
+          auth_method: s.auth_method,
+          requires_sensitive_stepup: s.requires_sensitive_stepup,
           last_login_at: s.last_login_at ? s.last_login_at.toISOString() : null,
         }))} />
       </div>

@@ -64,6 +64,12 @@ const STAGE_OPTIONS = [
   { id: 'tested', label: 'Tested' },
   { id: 'packed', label: 'Packed' },
 ] as const;
+const AGING_OPTIONS = [
+  { id: 'overdue', label: 'Overdue' },
+  { id: 'today', label: 'Due today' },
+  { id: 'upcoming', label: 'Upcoming' },
+  { id: 'unscheduled', label: 'No ship-by' },
+] as const;
 
 export interface ToShipChrome {
   search: { value: string; onChange: (value: string) => void; placeholder: string };
@@ -88,6 +94,7 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
   const laneTotals = fulfillmentLaneTotals(queueCounts);
   const activeFacet = getToShipTriageFacetFromSearch(searchParams);
   const stage = String(searchParams.get('stage') || '').toLowerCase();
+  const aging = String(searchParams.get('aging') || '').toLowerCase();
 
 
   const replaceParams = useCallback(
@@ -140,9 +147,16 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
               : (queueCounts?.byStage as { packed?: number } | undefined)?.packed || undefined,
         active: stage === option.id,
       })),
+      ...AGING_OPTIONS.map((option) => ({
+        id: option.id,
+        group: 'Ship-by age',
+        label: option.label,
+        active: aging === option.id,
+      })),
     ],
     [
       activeFacet,
+      aging,
       queueCounts?.mustShip,
       queueCounts?.urgent,
       queueCounts?.byStage,
@@ -160,10 +174,12 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
     [],
   );
 
-  // Facet picks stay mutually exclusive (the URL writer clears siblings);
-  // picking the active facet clears back to unfiltered — what "All" used to
-  // do, without spending a permanent option on it. Stage picks toggle
-  // independently and never clear the facet: the two axes compose.
+  const isAgingId = useCallback(
+    (id: string): boolean => AGING_OPTIONS.some((option) => option.id === id),
+    [],
+  );
+
+  // Facets replace one another; stage and aging are independent refinements.
   const onToggleFilter = useCallback(
     (id: string) => {
       replaceParams((params) => {
@@ -171,19 +187,26 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
           applyToShipTriageFacet(params, id === activeFacet ? 'all' : id);
           return;
         }
+        if (isAgingId(id)) {
+          if (params.get('aging') === id) params.delete('aging');
+          else params.set('aging', id);
+          return;
+        }
         if (params.get('stage') === id) params.delete('stage');
         else params.set('stage', id);
       });
     },
-    [replaceParams, isFacetId, activeFacet],
+    [replaceParams, isFacetId, isAgingId, activeFacet],
   );
 
   const onClearAllFilters = useCallback(() => {
     replaceParams((params) => {
       applyToShipTriageFacet(params, 'all');
       params.delete('stage');
+      params.delete('aging');
     });
   }, [replaceParams]);
+
 
   return {
     search: {

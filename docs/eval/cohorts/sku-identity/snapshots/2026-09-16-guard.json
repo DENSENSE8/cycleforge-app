@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "violations": [],
+  "law": "One SKU, one title, one photo (operator 2026-09-15). Join sku_catalog with SKU_CATALOG_JOIN_ON_SQL — exact and org-scoped, never similarity-gated. Read the title through resolveSkuIdentityTitle: the Zoho item name governs, the marketplace title is the no-Zoho-item fallback. A platform sync may fill sku_catalog.product_title / image_url only behind skuCatalogNoZohoTwinPredicateSql(); marketplace text belongs in sku_platform_ids.display_name."
+}

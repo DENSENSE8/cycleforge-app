@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   getOrdersChannelName,
   getRepairsChannelName,
@@ -20,11 +20,59 @@ import {
   patchUnshippedOrderTested,
 } from '@/lib/queries/dashboard-cache-patch';
 
-function invalidateOutboundQueues(queryClient: ReturnType<typeof useQueryClient>) {
+function invalidateOutboundQueues(queryClient: QueryClient) {
   for (const queryKey of OUTBOUND_QUERY_PREFIXES) {
     queryClient.invalidateQueries({ queryKey: [...queryKey] });
   }
   queryClient.invalidateQueries({ queryKey: ['outbound-search', 'labels-count'] });
+}
+
+/**
+ * The dashboard caches an order-row mutation has to refresh. `order.changed`
+ * (including the `pick.scan` / `packing-logs` publishes), `order.assignments`
+ * and `queue.assignments` all invalidate exactly this set — one copy so the
+ * three subscribers can't drift apart.
+ */
+function invalidateOrderDashboards(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
+  // The new counts key (Phase 2) lives under a SEPARATE prefix, so the row
+  // invalidate above doesn't cover it — refresh it explicitly.
+  invalidateUnshippedCounts(queryClient);
+  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
+  queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
+  queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
+  invalidateOutboundQueues(queryClient);
+}
+
+/**
+ * Ably hands the subscriber an envelope whose `data` is whatever the publisher
+ * sent (see `src/lib/realtime/publish.ts`). Unwrap it to a checked record so
+ * handlers can read payload fields without widening to `any`.
+ */
+function readEventData(message: unknown): Record<string, unknown> {
+  if (typeof message !== 'object' || message === null || !('data' in message)) return {};
+  const data = message.data;
+  return typeof data === 'object' && data !== null ? { ...data } : {};
+}
+
+/**
+ * Publishers put the discriminator on `data.source`; a few legacy senders put
+ * it on the envelope itself. Read both.
+ */
+function readEventSource(message: unknown): string {
+  const source = readEventData(message).source;
+  if (source != null) return String(source);
+  if (
+    typeof message === 'object' &&
+    message !== null &&
+    'source' in message &&
+    message.source != null
+  ) {
+    return String(message.source);
+  }
+  return '';
 }
 
 interface UseRealtimeInvalidationOptions {
@@ -67,22 +115,19 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     ordersChannel,
     'order.changed',
-    (message: any) => {
-      const source = String(message?.data?.source ?? message?.source ?? '');
-      if (source === 'orders.add') {
+    (message: unknown) => {
+      // `orders.add` fires right after the POST that created the row, and that
+      // POST already hands the new order back to the desk that added it. Every
+      // other open desk only needs the cheap counts key, so short-circuit
+      // before the full invalidate below queues an /api/orders refetch per add.
+      // Restored 2026-09-14 — without this branch a bulk add storms the feed.
+      if (readEventSource(message) === 'orders.add') {
         invalidateUnshippedCounts(queryClient);
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-      // The new counts key (Phase 2) lives under a SEPARATE prefix, so the row
-      // invalidate above doesn't cover it — refresh it explicitly.
-      invalidateUnshippedCounts(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
-      invalidateOutboundQueues(queryClient);
+      // Everything else (pack scans, `pick.scan`, tracking edits…) repaints the
+      // full desk.
+      invalidateOrderDashboards(queryClient);
     },
     !!ordersChannel && dashboard,
     frameCoalesce,
@@ -93,18 +138,7 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     ordersChannel,
     'order.assignments',
-    () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-      // The new counts key (Phase 2) lives under a SEPARATE prefix, so the row
-      // invalidate above doesn't cover it — refresh it explicitly.
-      invalidateUnshippedCounts(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
-      invalidateOutboundQueues(queryClient);
-    },
+    () => invalidateOrderDashboards(queryClient),
     !!ordersChannel && dashboard,
     frameCoalesce,
   );
@@ -112,18 +146,7 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     ordersChannel,
     'queue.assignments',
-    () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
-      // The new counts key (Phase 2) lives under a SEPARATE prefix, so the row
-      // invalidate above doesn't cover it — refresh it explicitly.
-      invalidateUnshippedCounts(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table'] });
-      queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
-      invalidateOutboundQueues(queryClient);
-    },
+    () => invalidateOrderDashboards(queryClient),
     !!ordersChannel && dashboard,
     frameCoalesce,
   );
@@ -169,8 +192,14 @@ export function useRealtimeInvalidation({
   useAblyChannel(
     ordersChannel,
     'order.tested',
-    (message: any) => {
-      patchUnshippedOrderTested(queryClient, message?.data ?? {});
+    (message: unknown) => {
+      const data = readEventData(message);
+      patchUnshippedOrderTested(queryClient, {
+        orderId: data.orderId,
+        testedBy: data.testedBy,
+        packLocationId: data.packLocationId,
+        packLocationName: data.packLocationName,
+      });
     },
     !!ordersChannel && dashboard,
   );

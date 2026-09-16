@@ -22,7 +22,7 @@ import {
   RECEIVING_OPEN_INCOMING_DETAILS_EVENT,
   type ReceivingOpenIncomingDetailsDetail,
 } from '@/utils/events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   incomingDetailsTargetFromRow,
   type IncomingDetailsTarget,

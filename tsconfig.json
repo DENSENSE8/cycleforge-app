@@ -38,10 +38,16 @@
     ".next-perf-si/types/**/*.ts",
     ".next-crashfix/types/**/*.ts",
     ".next-perf-lh/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-lh/types/**/*.ts",
+    ".next-lh/dev/types/**/*.ts",
+    ".next-perf-lh/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
+    "apps/mobile",
+    "packages/shared",
+    "apps/web",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]

@@ -10,11 +10,11 @@
  * org/staff/product layout document, not a deploy.
  *
  * The old flat `ORDERS_QUEUE_COLUMNS` array (tracks whose keys WERE fields:
- * `tester`, `testedAt`, `packStation`, …) moved to the station benches — the
- * one surface still painting it — as `STATION_HISTORY_COLUMNS`
- * (`src/components/station/station-history-columns.ts`), and dies with the
- * kill list's separate station-history item. Do not re-add a hand fact-track
- * array here; bind a catalog field instead.
+ * `tester`, `testedAt`, `packStation`, …) moved to the station benches as
+ * `STATION_HISTORY_COLUMNS`, and DIED there on 2026-09-11 when `tech` and
+ * `packer` became registered families on the one engine (Wave C). Nothing in
+ * the repo paints a hand fact-track array now. Do not re-add one here; bind a
+ * catalog field instead.
  *
  * The legacy two-zone shell helpers at the bottom serve the board / walk-in
  * rows that never joined the grid.
@@ -33,10 +33,12 @@ import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid
 /**
  * Stable key set for the orders-queue columns (scan order).
  *
- * The compound + slot keys are the Orders desk's whole vocabulary. The flat
- * fact keys after them survive ONLY for the station benches'
- * `STATION_HISTORY_COLUMNS` (typed against this model so the shared row can
- * render either); they leave with the station-history kill item.
+ * The compound + slot keys are the desk's whole vocabulary. The flat fact keys
+ * after them are NOT a column model any more — the last array that used them
+ * (`STATION_HISTORY_COLUMNS`) is deleted. They survive as the SORT vocabulary
+ * `compareQueueColumnRows` still speaks (`age`, `qty`, `condition`, `order`,
+ * `tracking`, …), which is a fact list, not a layout. Adding one here does not
+ * create a track; only a catalog binding can.
  */
 export type OrdersQueueColumnKey =
   | 'select'
@@ -45,6 +47,7 @@ export type OrdersQueueColumnKey =
   | 'item'
   | 'fulfillment'
   | 'state'
+  | 'dates'
   /**
    * Materialized SLOT tracks (`status:1…10`; sheet morph adds `subtitle:1…5`).
    * Keys are slot indices, never field ids — rebinding a slot keeps every

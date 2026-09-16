@@ -133,3 +133,9 @@ test('settings landing chrome is sentence case', async () => {
   assert.equal(billing?.tone, 'success', 'billing icon tone is success — not a green card wrap');
   assert.equal(SETTINGS_FLOOR_CLASS, 'bg-surface-accent', 'settings ground is accent wash, not gray canvas');
 });
+
+test('phone settings hrefs: personal → /settings/me#id, org → section route', async () => {
+  const { settingsSectionHref } = await import('@/components/settings/settings-sections');
+  assert.equal(settingsSectionHref('hardware'), '/settings/me#hardware');
+  assert.equal(settingsSectionHref('organization'), '/settings/organization');
+});

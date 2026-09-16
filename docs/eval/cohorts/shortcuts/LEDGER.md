@@ -42,13 +42,15 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify)._
+| Date | Gate | Result | Snapshot |
+|------|------|--------|----------|
+| 2026-09-15 | verify:fast | pass | `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Tripwire result
 
 <!-- eval-ledger:auto:tripwire-result -->
-**pass** — snapshot `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-tripwire.log`
+**pass** — snapshot `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-tripwire.log`
 <!-- /eval-ledger:auto:tripwire-result -->
 
 ## Engine contract
@@ -88,7 +90,7 @@ _Skipped verify (--skip-verify)._
 <!-- eval-ledger:auto:discover-next -->
 _No unblocked mechanical deletes. Menu-row kbd is judgment._
 
-_Snapshot:_ `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-discover.json`
+_Snapshot:_ `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-discover.json`
 <!-- /eval-ledger:auto:discover-next -->
 
 ## Discover — DELETE (mechanical)
@@ -126,16 +128,16 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| KeyboardKey | `component:src/design-system/primitives/KeyboardKey.tsx:KeyboardKey` | 25 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-KeyboardKey.json` |
-| KeyboardShortcutsCheatSheet | `component:src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx:KeyboardShortcutsCheatSheet` | 3 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-KeyboardShortcutsCheatSheet.json` |
-| useSelectionStatusBarHotkeys | `function:src/hooks/useSelectionStatusBarHotkeys.ts:useSelectionStatusBarHotkeys` | 8 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-useSelectionStatusBarHotkeys.json` |
-| TableStatusBar | `component:src/components/tables/TableStatusBar.tsx:TableStatusBar` | 41 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-TableStatusBar.json` |
+| KeyboardKey | `component:src/design-system/primitives/KeyboardKey.tsx:KeyboardKey` | 25 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-KeyboardKey.json` |
+| KeyboardShortcutsCheatSheet | `component:src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx:KeyboardShortcutsCheatSheet` | 3 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-KeyboardShortcutsCheatSheet.json` |
+| useSelectionStatusBarHotkeys | `function:src/hooks/useSelectionStatusBarHotkeys.ts:useSelectionStatusBarHotkeys` | 8 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-useSelectionStatusBarHotkeys.json` |
+| TableStatusBar | `component:src/components/tables/TableStatusBar.tsx:TableStatusBar` | 41 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-TableStatusBar.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/design-system/primitives/KeyboardKey.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-critique-KeyboardKey.txt`
+- `src/design-system/primitives/KeyboardKey.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-critique-KeyboardKey.txt`
 ```
 {
   "file": "src/design-system/primitives/KeyboardKey.tsx",
@@ -143,7 +145,7 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
   "problems": [],
   "design_system_used": [],
 ```
-- `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-critique-KeyboardShortcutsCheatSheet.txt`
+- `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-critique-KeyboardShortcutsCheatSheet.txt`
 ```
 {
   "file": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
@@ -151,7 +153,7 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
   "problems": [],
   "design_system_used": [
 ```
-- `src/components/tables/TableStatusBar.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-critique-TableStatusBar.txt`
+- `src/components/tables/TableStatusBar.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-critique-TableStatusBar.txt`
 ```
 {
   "file": "src/components/tables/TableStatusBar.tsx",
@@ -159,7 +161,7 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
   "problems": [
     {
 ```
-- `src/components/tables/DataTableColumnActionRow.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-critique-DataTableColumnActionRow.txt`
+- `src/components/tables/DataTableColumnActionRow.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-critique-DataTableColumnActionRow.txt`
 ```
 {
   "file": "src/components/tables/DataTableColumnActionRow.tsx",
@@ -176,21 +178,21 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
 - status: `ready`
 - last_built_at: `2026-09-06T22:48:33.312Z`
 - nodes: 41038 · edges: 191462 · embedded: 41038
-- snapshot: `docs/eval/cohorts/shortcuts/snapshots/2026-09-11-graph-stats.json`
+- snapshot: `docs/eval/cohorts/shortcuts/snapshots/2026-09-15-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-11T04:09:55.421Z · cohort `shortcuts` · run id `2026-09-11T04-09-30-385Z`_
+_Updated 2026-09-15T21:31:45.838Z · cohort `shortcuts` · run id `2026-09-15T21-29-20-268Z`_
 <!-- /eval-ledger:auto:last-run -->
 
 
 <!-- eval-ledger:auto:graph-impact -->
-- **KeyboardKey** — 25 files, 32 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-KeyboardKey.json`)
-- **KeyboardShortcutsCheatSheet** — 3 files, 3 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-KeyboardShortcutsCheatSheet.json`)
-- **useSelectionStatusBarHotkeys** — 8 files, 8 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-useSelectionStatusBarHotkeys.json`)
-- **TableStatusBar** — 41 files, 41 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-11-impact-TableStatusBar.json`)
+- **KeyboardKey** — 25 files, 32 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-KeyboardKey.json`)
+- **KeyboardShortcutsCheatSheet** — 3 files, 3 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-KeyboardShortcutsCheatSheet.json`)
+- **useSelectionStatusBarHotkeys** — 8 files, 8 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-useSelectionStatusBarHotkeys.json`)
+- **TableStatusBar** — 41 files, 41 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-15-impact-TableStatusBar.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 

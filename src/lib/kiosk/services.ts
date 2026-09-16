@@ -12,6 +12,7 @@ import {
   SalesPrice,
   RefreshCw,
 } from '@/components/Icons';
+import type { KioskCommandId } from './commands';
 
 export type KioskServiceId = 'sales' | 'pickup' | 'repair' | 'buyback';
 
@@ -98,22 +99,36 @@ export function liveKioskServices(): KioskServiceTile[] {
   return KIOSK_SERVICES.filter((s) => s.status === 'live');
 }
 
+/**
+ * Live commands as CHOOSER options — the org's default-command select in
+ * Settings, sourced from this tile SoT so the words on the picker are the words
+ * on the counter. Only `live` commands: an org cannot default to a `wip` pane
+ * that would render nothing.
+ */
+export function kioskCommandOptions(): {
+  command: KioskCommandId;
+  label: string;
+  blurb: string;
+}[] {
+  return liveKioskServices().map((service) => ({
+    command: serviceIdToCommand(service.id),
+    label: service.commandLabel,
+    blurb: service.blurb,
+  }));
+}
+
 /** Welcome-tile subset — excludes v2-only commands like buyback. */
 export function welcomeKioskServices(): KioskServiceTile[] {
   return KIOSK_SERVICES.filter((s) => s.status === 'live' && s.welcome);
 }
 
 /** Map service tile id → session command id (`sales` → `retail`). */
-export function serviceIdToCommand(
-  id: KioskServiceId,
-): 'repair' | 'retail' | 'buyback' | 'pickup' {
+export function serviceIdToCommand(id: KioskServiceId): KioskCommandId {
   if (id === 'sales') return 'retail';
   return id;
 }
 
-export function commandToServiceId(
-  command: 'repair' | 'retail' | 'buyback' | 'pickup',
-): KioskServiceId {
+export function commandToServiceId(command: KioskCommandId): KioskServiceId {
   if (command === 'retail') return 'sales';
   return command;
 }

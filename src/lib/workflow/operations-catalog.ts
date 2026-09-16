@@ -503,7 +503,7 @@ export const FLOWS: OpsFlow[] = [
     blurb: 'Bin audit: snapshot → count → variance review. Stage = cycle_count_lines.status.',
     stations: ['RECEIVING', 'ADMIN'],
     source: 'cycle_count_lines.status · src/lib/inventory/cycle-count.ts',
-    code: ['src/lib/inventory/cycle-count.ts', '/api/cycle-counts/campaigns', '/api/cycle-counts/lines/[id]', '/admin/inventory/cycle-counts'],
+    code: ['src/lib/inventory/cycle-count.ts', '/api/cycle-counts/campaigns', '/api/cycle-counts/lines/[id]', '/inventory/cycle-counts'],
     steps: [
       { stage: 'Pending', key: 'pending', station: 'Floor', note: 'Bin snapshot created from bin_contents; awaiting count', by: 'createCampaign' },
       { stage: 'Counted', key: 'counted', station: 'Floor', note: 'Count within variance tolerance → auto-approves on close', by: '/api/cycle-counts/lines/[id]' },

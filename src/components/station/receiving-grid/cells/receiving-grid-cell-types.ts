@@ -5,14 +5,12 @@
 
 import { gridDataCellClass } from '@/design-system/components/grid';
 import type { CSSProperties, ReactNode } from 'react';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
-  RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
-  RECEIVING_GRID_FROZEN_EDGE_KEY,
   type IncomingGridColumn,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
@@ -29,13 +27,12 @@ export type ReceivingGridCellCtx = {
   /**
    * The column model actually MOUNTED on this row.
    *
-   * Sticky-left offsets must derive from it, never from a family constant: a
-   * surface that swaps between the flat and compound models freezes a different
-   * prefix in each, and a key-only closure over one of them silently resolves
-   * the wrong slot for the other (the compound `thumb` pinned on top of the
-   * checkbox for exactly this reason).
+   * Sticky-left offsets and the frozen edge must derive from it, never from a
+   * family constant: a key-only closure over one model silently resolves the
+   * wrong slot for another (the compound `thumb` pinned on top of the checkbox
+   * for exactly this reason).
    */
-  columns?: readonly ReceivingGridCellColumn[];
+  columns: readonly ReceivingGridCellColumn[];
   selectMode: boolean;
   /** Either plane is live on this row — used for the row fill only. */
   isSelected: boolean;
@@ -146,17 +143,21 @@ export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true
  */
 export function receivingDataCellStyle(
   col: ReceivingGridCellColumn,
-  ctx?: ReceivingGridCellCtx,
+  ctx: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
   if (!col.frozen) return undefined;
-  return { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_GRID_COLUMNS, col.key) };
+  return { left: gridFrozenLeft(ctx.columns, col.key) };
 }
 
-/** `data-frozen-edge` only on the trailing frozen identity cell. */
+/**
+ * `data-frozen-edge` on the TRAILING frozen cell of the mounted model — the
+ * same rule `CompoundGridCell` applies. A family constant named a key one of
+ * the two models does not carry, so the shadow hung on nothing.
+ */
 export function receivingFrozenEdgeProps(
   col: ReceivingGridCellColumn,
+  columns: readonly ReceivingGridCellColumn[],
 ): { 'data-frozen-edge'?: true } {
-  return col.frozen && col.key === RECEIVING_GRID_FROZEN_EDGE_KEY
-    ? { 'data-frozen-edge': true }
-    : {};
+  const trailingFrozen = [...columns].reverse().find((c) => c.frozen)?.key;
+  return col.frozen && col.key === trailingFrozen ? { 'data-frozen-edge': true } : {};
 }

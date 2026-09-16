@@ -30,6 +30,8 @@ const CUSTOM_FONT_SIZES = [
   'role-caption',
   'role-eyebrow',
   'role-micro',
+  // Touch text-entry (16px, density-proof) — see tailwind.config.mjs.
+  'role-field',
 ] as const;
 
 const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({

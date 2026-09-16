@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Sidebar for /admin?section=suppliers — picker for the vendor list.
+ * Sidebar for /sourcing?mode=suppliers — picker for the vendor list.
  *
  * URL-state contract:
  *   ?search=<q>      — search box value

@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/tables/TableStatusBar.tsx:TableStatusBar",
+      "kind": "component",
+      "name": "TableStatusBar",
+      "location": "src/components/tables/TableStatusBar.tsx:290",
+      "exported": true,
+      "signature": "function TableStatusBar({ tabs, activeTab, onTabChange, lead, shown, total, selected = 0, selectionActions, onLoadMore, }: TableStatusBarProps)"
+    },
+    {
+      "node_key": "file:src/components/tables/TableStatusBar.tsx",
+      "kind": "file",
+      "name": "TableStatusBar.tsx",
+      "location": "src/components/tables/TableStatusBar.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/components/tables/TableStatusBar.tsx:TableStatusBarProps",
+      "kind": "interface",
+      "name": "TableStatusBarProps",
+      "location": "src/components/tables/TableStatusBar.tsx:114",
+      "exported": true,
+      "signature": "interface TableStatusBarProps"
+    }
+  ]
+}

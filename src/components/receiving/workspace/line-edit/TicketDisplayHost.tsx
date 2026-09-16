@@ -25,7 +25,7 @@
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { useTicketThreadActivation } from '@/components/composer/useTicketThreadActivation';
 import { ReceivingClaimPanel } from '../ReceivingClaimPanel';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ClaimModalMode } from '../claim/claim-types';
 
 export function TicketDisplayHost({

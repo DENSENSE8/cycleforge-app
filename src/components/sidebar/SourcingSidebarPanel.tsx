@@ -18,6 +18,9 @@ import { sidebarHeaderPillRowClass, SIDEBAR_GUTTER } from '@/components/layout/h
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { resolveSourcingMode } from '@/components/sourcing/sourcing-shared';
 import { SearchBar } from '@/components/ui/SearchBar';
+// Ex-admin sourcing pickers, re-homed with their modes (admin dissolution).
+import { BoseModelsSidebarPanel } from '@/components/admin/sourcing/BoseModelsSidebarPanel';
+import { CompatibilitySidebarPanel } from '@/components/admin/sourcing/CompatibilitySidebarPanel';
 
 const BY_ITEMS: HorizontalSliderItem[] = [
   { id: 'model', label: 'Model' },
@@ -141,11 +144,18 @@ export function SourcingSidebarPanel() {
         ]}
       >
         <p className="px-3 py-4 text-role-caption text-text-soft">
-          Sourcing suppliers ranked by spend. Read-only — add or edit suppliers in Admin › Suppliers.
+          Sourcing suppliers ranked by spend. Pick a row in the pane to edit one, or use Add supplier.
         </p>
       </SidebarShell>
     );
   }
+
+  // Absorbed from /admin (dissolution): Models and Compatibility keep the
+  // pickers their console sections carried. Without them `?model=` — which
+  // `BoseModelsManagementTab` reads to open its editor — would have no writer,
+  // and the pane would sit on its empty-detail state with no way in.
+  if (mode === 'models') return <BoseModelsSidebarPanel />;
+  if (mode === 'compatibility') return <CompatibilitySidebarPanel />;
 
   const statusItems = mode === 'queue' ? ALERT_STATUS_ITEMS : WATCH_STATUS_ITEMS;
   const sentinel = mode === 'queue' ? 'live' : 'all';

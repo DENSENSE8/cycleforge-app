@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Themed PIN numpad. Shared between /signin and the FAB SwitchStaffSheet.
+ * Themed PIN numpad. Mounted from /signin (the SwitchStaffSheet went
+ * PIN-less 2026-09-15 — it act-as mints without a pad now).
  *
  * Auto-submits on the 6th digit. Renders a passkey button when the staff has
  * passkeys registered (caller toggles `enablePasskey`). Keep callers thin —

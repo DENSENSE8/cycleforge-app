@@ -39,6 +39,13 @@ function normalizeSerialQuery(raw: string): string {
 
 export interface GlobalSearchResult {
   id: number;
+  /**
+   * Fan-out vocabulary. It is a strict SUPERSET of the doc-index vocabulary
+   * (`SearchHitEntityType`) by contract — `hitToResult` in find-records.ts
+   * widens a doc hit into this type without a map. `warranty` / `ticket` /
+   * `location` have no exact fan-out producer here yet (the doc arm is their
+   * only source), but they belong to the union so that invariant holds.
+   */
   entityType:
     | 'order'
     | 'repair'
@@ -46,6 +53,9 @@ export interface GlobalSearchResult {
     | 'receiving'
     | 'sku'
     | 'unit'
+    | 'warranty'
+    | 'ticket'
+    | 'location'
     | 'exception'
     | 'import_exception';
   title: string;

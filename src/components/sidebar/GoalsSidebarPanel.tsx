@@ -12,6 +12,9 @@ import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 
+/** Ex-Admin › Goals home after the dissolution: the monitor desk's Goals mode. */
+const OPERATIONS_GOALS_PATH = '/operations';
+
 const GOAL_VIEW_OPTIONS = [
   { value: 'all', label: 'All Staff' },
   { value: 'behind', label: 'Below 70%' },
@@ -230,9 +233,10 @@ export function GoalsSidebarPanel() {
 
   const selectStaff = (id: number) => {
     const next = new URLSearchParams(searchParams.toString());
-    next.set('section', 'goals');
+    next.set('mode', 'goals');
+    next.delete('section');
     next.set('staffId', String(id));
-    router.replace(`/admin?${next.toString()}`);
+    router.replace(`${OPERATIONS_GOALS_PATH}?${next.toString()}`);
   };
 
   const [rows, setRows] = useState<GoalRow[]>([]);
@@ -254,16 +258,20 @@ export function GoalsSidebarPanel() {
     }
 
     const nextSearch = nextParams.toString();
-    router.replace(nextSearch ? `/admin?${nextSearch}` : '/admin');
+    // Ex-Admin › Goals lives at `/operations?mode=goals` since the dissolution;
+    // the mode param rides in `nextParams`, so writing the desk path keeps the
+    // operator on the page whose filters this rail owns.
+    router.replace(nextSearch ? `${OPERATIONS_GOALS_PATH}?${nextSearch}` : OPERATIONS_GOALS_PATH);
   };
 
   const clearFilters = () => {
     const nextParams = new URLSearchParams(searchParams.toString());
-    nextParams.set('section', 'goals');
+    nextParams.set('mode', 'goals');
+    nextParams.delete('section');
     nextParams.delete('search');
     nextParams.delete('goalView');
     const nextSearch = nextParams.toString();
-    router.replace(nextSearch ? `/admin?${nextSearch}` : '/admin');
+    router.replace(nextSearch ? `${OPERATIONS_GOALS_PATH}?${nextSearch}` : OPERATIONS_GOALS_PATH);
   };
 
   const fetchRows = async () => {

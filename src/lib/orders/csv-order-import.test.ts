@@ -6,6 +6,7 @@ import {
   autoMapCsvOrderHeaders,
   classifyCsvOrderStagingRow,
   parseCsv,
+  postCsvOrderImport,
   projectCsvOrderRow,
 } from '@/lib/orders/csv-order-import';
 
@@ -287,5 +288,32 @@ describe('project + apply edits', () => {
     const next = applyCsvOrderCanonicalEdits(row, mapping, { sku: ' FIXED ' });
     assert.equal(next.SKU, 'FIXED');
     assert.equal(classifyCsvOrderStagingRow(next, mapping).status, 'ready');
+  });
+});
+
+describe('postCsvOrderImport', () => {
+  it('preserves inserted order ids returned by the import API', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          inserted: 1,
+          insertedOrderIds: [42],
+          updated: 0,
+          skipped: 0,
+          errors: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )) as typeof fetch;
+
+    try {
+      const result = await postCsvOrderImport({ rows: [], mapping: {} });
+      assert.deepEqual(result, {
+        ok: true,
+        result: { inserted: 1, insertedOrderIds: [42], updated: 0, skipped: 0, errors: [] },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

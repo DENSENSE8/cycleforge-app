@@ -2,9 +2,9 @@
  * ⌘K palette page buckets — Pin → SPINE_SECTIONS. A leftover `kind: 'bottom'`
  * row (none on the default map) still lands in an Account band.
  *
- * Composes {@link APP_SIDEBAR_NAV} / {@link getSidebarNavItems} +
- * {@link spineSectionIdForPage} + {@link spineAccentFor}. Never invents a
- * second nav map or section labels.
+ * Composes {@link getSidebarNavItems} — the ONE gated funnel, never the raw
+ * `APP_SIDEBAR_NAV` — with {@link spineSectionIdForPage} + {@link spineAccentFor}.
+ * Never invents a second nav map or section labels.
  */
 
 import { searchNav } from '@/lib/nav/nav-search';
@@ -13,7 +13,6 @@ import {
   type SpineAccentClasses,
 } from '@/lib/nav/spine-section-accent';
 import {
-  APP_SIDEBAR_NAV,
   filterPageChildren,
   getSidebarNavItems,
   getSidebarPageNav,
@@ -71,7 +70,18 @@ function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
 export function buildCommandBarNavGroups(
   permissions?: ReadonlySet<string>,
 ): CommandBarNavGroup[] {
-  const base = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
+  // THE ONE FUNNEL. The mobile-first gate lives inside `getSidebarNavItems`
+  // (`LANE_MOBILE_FIRST`), so the palette has to read it on BOTH paths. The
+  // old `permissions ? getSidebarNavItems(…) : APP_SIDEBAR_NAV` ternary
+  // bypassed the gate whenever a caller passed no permissions, and a no-arg
+  // `buildCommandBarNavGroups()` still emitted Sales / Support / Operations
+  // rows under their own band headings — a live breach of *"there should not
+  // even be any front end routing or links to it"* (operator 2026-09-14).
+  // `getSidebarNavItems` already no-ops permission filtering when the set is
+  // undefined, so the legacy unauthenticated semantics survive the fix; the
+  // `SPINE_SECTIONS` loop below already skips an empty band, so a hidden lane
+  // cannot paint a heading over nothing.
+  const base = getSidebarNavItems({ permissions });
   // Same reachability rule the spine applies: a page whose every mode was
   // permission-filtered is absent from the palette, not a row that opens onto a
   // denial state. Rows without a mode registry pass through untouched.

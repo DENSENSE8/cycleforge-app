@@ -55,7 +55,7 @@ Before touching any UI:
   ```
 - [x] SKU graph UI — Cytoscape at `/inventory/graph` (Relationships + Parts Zoho); CRUD via `/api/sku-catalog/graph` + `sku_relationships`
 - [ ] Unshipped rail badges: add count badges to rail pills
-- [ ] DashboardManagementPanel deduplication (follow-up from Unshipped+Pending merge)
+- [x] DashboardManagementPanel deduplication (follow-up from Unshipped+Pending merge) — resolved by deletion 2026-09-15: the panel was unreachable and its import stack was a second implementation (`docs/todo/order-sync-run-surface-HANDOFF.md` §7)
 - [ ] Station builder: wire drag-and-drop for block reordering (click-to-add is live, DND pending)
 - [ ] Station builder: wire attach-tracking action block
 

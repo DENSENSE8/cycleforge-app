@@ -16,7 +16,7 @@ import {
   type UnboxMiddleCartonNavId,
 } from '@/lib/receiving/unbox-middle-carton-nav-keys';
 import type { TerminalActionVm } from '@/lib/station-terminal';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
 import { scheduleFocusUnboxCaptureSerial } from './focus-unbox-capture-serial';
 

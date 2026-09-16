@@ -33,6 +33,8 @@ import {
   SLOT_TABLE_ENGINE,
   SLOT_TABLE_ENGINE_CONTRACT,
   SLOT_TABLE_ENGINE_LAYOUT_HOOKS,
+  SLOT_TABLE_COLUMN_ENGINE_FAMILIES,
+  SLOT_TABLE_COLUMN_MODULE_DEBT,
   SLOT_TABLE_GRAPH_SYMBOL_FILES,
   SLOT_TABLE_GRID_ROW_ALLOWLIST,
   SLOT_TABLE_PAINT_LAW,
@@ -42,6 +44,13 @@ import {
   slotTableGraphSymbolFile,
   slotTablePeerIds,
 } from './slot-table-cohort';
+import {
+  slotTableColumnsFor,
+  slotTableSortFactFor,
+} from '@/components/tables/compound/slot-table-columns';
+import { LOCATION_STOCK_FAMILY } from '@/lib/tables/field-catalog/location-stock';
+import { SKU_BINS_FAMILY } from '@/lib/tables/field-catalog/sku-bins';
+import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
 
 const ROOT = join(process.cwd());
 
@@ -134,6 +143,93 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       [],
       `GridRow allowlist is shrink-only. Remove these gone paths from SLOT_TABLE_GRID_ROW_ALLOWLIST:\n${missing.join('\n')}`,
     );
+  });
+
+  it('no new *-grid-layout.ts — the column law is the engine, not a family copy', () => {
+    const found: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        if (name === 'node_modules' || name === '.git' || name === '.next') continue;
+        const abs = join(dir, name);
+        if (statSync(abs).isDirectory()) walk(abs);
+        else if (name.endsWith('-grid-layout.ts')) {
+          found.push(relative(ROOT, abs).replaceAll('\\', '/'));
+        }
+      }
+    };
+    walk(join(ROOT, 'src'));
+    const allowed = new Set<string>(SLOT_TABLE_COLUMN_MODULE_DEBT);
+    const extra = found.filter((p) => !allowed.has(p)).sort();
+    const missing = [...allowed].filter((p) => !found.includes(p)).sort();
+    assert.deepEqual(
+      extra,
+      [],
+      `A new *-grid-layout.ts re-declares the engine's column law. Write a SlotTableFamily record (src/lib/tables/slot-table-family.ts) and mount slotTableColumnsFor instead. Added:\n${extra.join('\n')}`,
+    );
+    assert.deepEqual(
+      missing,
+      [],
+      `SLOT_TABLE_COLUMN_MODULE_DEBT is shrink-only. Remove these ported paths:\n${missing.join('\n')}`,
+    );
+  });
+
+  it('the engine families own no column module and paint from their record', () => {
+    for (const family of [LOCATION_STOCK_FAMILY, SKU_BINS_FAMILY]) {
+      assert.ok(
+        SLOT_TABLE_COLUMN_ENGINE_FAMILIES.includes(
+          family.tableId as (typeof SLOT_TABLE_COLUMN_ENGINE_FAMILIES)[number],
+        ),
+        `${family.tableId} must be listed as an engine-painted family`,
+      );
+      // DESCRIPTOR_CARRIES_DATA_NOT_BEHAVIOR: a closure here is the fork.
+      for (const [key, value] of Object.entries(family)) {
+        assert.notEqual(typeof value, 'function', `${family.tableId}.${key} is behavior, not data`);
+      }
+      const columns = slotTableColumnsFor(family, family.productLayout);
+      for (const chrome of COMPOUND_COLUMN_KEYS) {
+        assert.ok(
+          columns.some((c) => c.key === chrome),
+          `${family.tableId}: skeleton track ${chrome} was cut`,
+        );
+      }
+      // Every painted DATA header sorts; structural chrome never does.
+      for (const col of columns) {
+        const fact = slotTableSortFactFor(family, col);
+        if (isSlotTableChromeTrack(col.key)) {
+          assert.equal(fact, null, `${family.tableId}: ${col.key} is chrome and must not sort`);
+        } else {
+          assert.ok(fact, `${family.tableId}: ${col.key} paints a fact with a dead header`);
+        }
+      }
+      // A DATA chrome header's WORD and its SORT come from the same catalog
+      // field. The IDENTITY track is the exception and has its own law: the
+      // word is `Id` on every peer (`slot-table-id-header-law.test.ts`), the
+      // fact is still the family's.
+      const identityCol = columns.find((c) => c.key === 'fulfillment');
+      if (identityCol) {
+        assert.equal(
+          identityCol.gridLabel,
+          SLOT_TABLE_ID_HEADER_WORD,
+          `${family.tableId}: the identity header is the engine's word`,
+        );
+        assert.ok(
+          slotTableSortFactFor(family, identityCol),
+          `${family.tableId}: the identity header sorts nothing`,
+        );
+      }
+      for (const key of ['item', 'dates', 'state'] as const) {
+        const col = columns.find((c) => c.key === key);
+        if (!col) continue;
+        const fact = slotTableSortFactFor(family, col);
+        const field = family.catalog.find((f) => f.id === fact);
+        assert.ok(field, `${family.tableId}: ${key} sorts by a fact outside its catalog`);
+        assert.equal(
+          col.gridLabel,
+          family.chrome?.[key]?.gridLabel ?? family.chrome?.[key]?.label ?? field.label,
+          `${family.tableId}: ${key} header drifted from the fact it sorts`,
+        );
+      }
+    }
   });
 
   it('To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow', () => {
@@ -407,11 +503,19 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     // Callers: pnpm run eval:cohort slot-table. API: paint-law assertions for
     // leaf detail disclosure. Schema: none. User: "Implement the plan as
     // specified… Do NOT edit the plan file itself."
-    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /COMPOUND_TWO_LINE_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /COMPOUND_GUTTER_CHEVRON_BAND_CLASS/);
     assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /SlotTableGroupParentRow/);
-    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /pt-1/);
+    // 2026-09-15, second ruling: the 2026-09-04 top pin STANDS — the checklist
+    // icon is pinned to the top of the gutter and the chevron sits below it in
+    // its own band. Only the HORIZONTAL rail inset came from "centered in the
+    // middle". The law must say the current rule, not the reverted one.
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /COMPOUND_GUTTER_MARK_TOP_PIN_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /hover-ONLY in every state/);
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /resolveRowStatus\(row, queueMode\)/);
+    assert.match(SLOT_TABLE_PAINT_LAW.selectGutterStatus, /COMPOUND_GUTTER_RAIL_INSET_CLASS/);
     assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /data-row-detail/);
-    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /COMPOUND_TWO_LINE_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /COMPOUND_GUTTER_CHEVRON_BAND_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /group CHILD rows included/);
     assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /compoundRowDetailEstimatePx/);
     assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /BottomSheet/);
     assert.match(SLOT_TABLE_PAINT_LAW.personFace, /StaffAvatar/);

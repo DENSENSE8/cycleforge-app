@@ -3,7 +3,7 @@
  * Composes existing feeds; does not invent a second search engine.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
@@ -11,6 +11,7 @@ import {
   TECH_ALL_TRIAGE_TYPE_LABEL,
   type TechAllTriageType,
 } from '@/lib/tech/tech-all-triage-type';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 export type TechAllTriageScope = 'testing' | 'shipping' | 'unbox';
 
@@ -57,14 +58,14 @@ function receivingType(row: ReceivingLineRow): TechAllTriageType {
 }
 
 function receivingTitle(row: ReceivingLineRow): string {
-  return (
-    row.zoho_item_title ||
-    row.catalog_product_title ||
-    row.item_name ||
-    row.sku ||
-    row.zoho_purchaseorder_number ||
-    `Line #${row.id}`
-  ).trim();
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
+  const identity = resolveSkuIdentityTitle({
+    zoho_item_title: row.zoho_item_title,
+    catalog_product_title: row.catalog_product_title,
+    item_name: row.item_name,
+    sku: row.sku,
+  });
+  return (identity || row.zoho_purchaseorder_number || `Line #${row.id}`).trim();
 }
 
 function receivingUrgency(row: ReceivingLineRow): number {

@@ -4,8 +4,8 @@ import { Fragment, memo } from 'react';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
-} from '@/components/station/receiving-constants';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+} from '@/lib/receiving/receiving-constants';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import {
   resolveReceivingRowStageStamp,
@@ -32,11 +32,10 @@ import {
   workflowStageLabel,
 } from '@/lib/receiving/workflow-stages';
 import {
-  RECEIVING_GRID_COLUMNS,
   receivingGridRowShellClass,
-  receivingGridTemplate,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -89,7 +88,8 @@ interface ReceivingGridRowProps {
   statusVocabulary?: 'fine' | 'coarse';
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
-  columns?: readonly ReceivingGridColumn[];
+  /** The MOUNTED column model — no module-constant fallback. */
+  columns: readonly ReceivingGridColumn[];
   /**
    * Unbox History click-select: body click toggles bulk; double-click / Enter
    * opens. When false, legacy split planes (body opens, gutter toggles) or
@@ -134,7 +134,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   isHistory = false,
   statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
-  columns = RECEIVING_GRID_COLUMNS,
+  columns,
   clickSelect = false,
   onOpenWorkspace,
   historyTriageMenu = false,
@@ -344,7 +344,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         }),
       )}
       style={{
-        gridTemplateColumns: receivingGridTemplate(columns),
+        gridTemplateColumns: gridTemplate(columns),
         ...(selected || !rowFillHex ? undefined : { backgroundColor: rowFillHex }),
       }}
     >

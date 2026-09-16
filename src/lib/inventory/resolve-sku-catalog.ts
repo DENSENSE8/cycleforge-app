@@ -3,6 +3,10 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { queuePendingSku } from '@/lib/inventory/pending-skus';
 import { skuColorVariant, type SkuColorVariant } from '@/lib/inventory/sku-variant';
+import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+
+/** Rule 4 of the SKU identity law, for the unaliased `sku_catalog` reads below. */
+const NO_ZOHO_TWIN_SQL = skuCatalogNoZohoTwinPredicateSql('sku_catalog');
 
 export interface ResolvedSkuCatalog {
   id: number;
@@ -178,6 +182,11 @@ async function lookupSkuCatalogRow(
   const trimmed = String(skuInput ?? '').trim();
   if (!trimmed) return null;
 
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): leading-zero-stripped
+  // matching may only reach a row Zoho does NOT own. Stripping is how Ecwid
+  // `143` (a UB-20 wall mount) came to resolve to Zoho `00143` (a Bose Solo
+  // Soundbar). An exact quote of a Zoho SKU still matches exactly; only the
+  // loose arm is fenced off.
   if (orgId) {
     const { rows } = await tenantQuery<ResolvedSkuCatalog>(
       orgId,
@@ -185,7 +194,10 @@ async function lookupSkuCatalogRow(
         WHERE organization_id = $2
           AND (
             UPPER(TRIM(sku)) = UPPER(TRIM($1))
-            OR regexp_replace(UPPER(TRIM(sku)), '^0+', '') = regexp_replace(UPPER(TRIM($1)), '^0+', '')
+            OR (
+              regexp_replace(UPPER(TRIM(sku)), '^0+', '') = regexp_replace(UPPER(TRIM($1)), '^0+', '')
+              AND ${NO_ZOHO_TWIN_SQL}
+            )
           )
         ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC
         LIMIT 1`,
@@ -216,7 +228,13 @@ async function lookupSkuCatalogRow(
   const row = await queryOne<ResolvedSkuCatalog>`
     SELECT id, sku, product_title, gtin FROM sku_catalog
      WHERE UPPER(TRIM(sku)) = UPPER(TRIM(${trimmed}))
-        OR regexp_replace(UPPER(TRIM(sku)), '^0+', '') = regexp_replace(UPPER(TRIM(${trimmed})), '^0+', '')
+        OR (
+          regexp_replace(UPPER(TRIM(sku)), '^0+', '') = regexp_replace(UPPER(TRIM(${trimmed})), '^0+', '')
+          AND NOT EXISTS (SELECT 1 FROM items i
+                           WHERE i.sku = sku_catalog.sku
+                             AND i.organization_id = sku_catalog.organization_id
+                             AND i.status = 'active')
+        )
      ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM(${trimmed}))) DESC
      LIMIT 1`;
   if (row) return row;

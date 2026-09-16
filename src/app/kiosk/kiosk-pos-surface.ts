@@ -105,6 +105,25 @@ export const KIOSK_POS_CATEGORY_STACK = 'flex flex-col divide-y divide-border-ha
 export const KIOSK_POS_GRID = 'grid w-full gap-0 md:gap-3';
 
 /**
+ * How many catalog tiles load their photo EAGERLY, at high fetch priority.
+ *
+ * The LCP element on `/kiosk/v2` is a tile photo, and Lighthouse measured its
+ * resource-load DELAY at 4.2 s on a production build: the grid is fetched
+ * client-side, so no image is discoverable in the initial HTML, and every tile
+ * declared `loading="lazy"` on top of that.
+ *
+ * The grid is `auto-fill minmax(148px, 1fr)`, so an iPad-landscape row holds at
+ * most ~8 tiles and this is one row — above the fold by definition. Everything
+ * past it stays lazy, which is what keeps a several-hundred-tile catalog from
+ * requesting several hundred photos on open.
+ *
+ * Raise this only with a Lighthouse number in hand: more eager images is more
+ * bandwidth competing with the LCP one, which is the trade this constant exists
+ * to make visible.
+ */
+export const KIOSK_EAGER_TILE_COUNT = 8;
+
+/**
  * Product card — edge-separated cell on a phone, raised object from `md` up.
  *
  * Phone: hairline bottom/right seams on card white, square, flat (the FIND
@@ -328,6 +347,28 @@ export const KIOSK_POS_ENTRY =
 /** Multiline twin — notes and anything that wraps. */
 export const KIOSK_POS_ENTRY_AREA =
   'flex min-h-28 w-full rounded-xl border border-border-soft bg-surface-card px-4 py-3 text-sm text-text-default outline-none transition-[border-color,box-shadow] duration-150 placeholder:text-text-faint focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:bg-surface-canvas resize-none';
+
+/**
+ * Leading-glyph slot for an entry — the money mark on the price field.
+ *
+ * Operator 2026-09-15 asked for "a green price icon" on the repair form's
+ * price, so the field states its KIND before anyone reads the placeholder. The
+ * glyph is the house money mark (`Receipt`, documented in
+ * `icons/commerce.tsx` as the price glyph — LedgerGrid's Price header and
+ * `CHIP_TONES.price` already use it), tinted `text-text-success`. NOT a new
+ * dollar glyph: a second money icon is the duplicate-glyph failure the icon
+ * SoT exists to prevent.
+ *
+ * Three parts because an inline sibling would have to re-derive the field's
+ * border and fill: the HOST is the positioning context, the GLYPH floats over
+ * the field's own left inset, and the field takes `_INSET` so its text clears
+ * the mark. `cn()` is tailwind-merge, so `_INSET`'s `pl-*` overrides the
+ * field's `px-4` on the left only.
+ */
+export const KIOSK_POS_ENTRY_ICON_HOST = 'relative';
+export const KIOSK_POS_ENTRY_ICON =
+  'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-success';
+export const KIOSK_POS_ENTRY_ICON_INSET = 'pl-11';
 /**
  * Form measure — the fixed-width column every ENTRY surface renders in.
  *

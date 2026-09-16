@@ -54,7 +54,7 @@ import {
   StationArmedVerbList,
   type StationArmedVerb,
 } from '@/components/station/displays/StationArmedVerbList';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { zohoReceiptFace } from '@/lib/receiving/zoho-receipt-face';
 import { toast } from '@/lib/toast';

@@ -33,7 +33,7 @@ const VIEW: CompoundRowView = {
   amount: null,
 };
 
-const paint = (key: string) =>
+const paint = (key: string, detail?: { open: boolean }) =>
   renderToStaticMarkup(
     React.createElement(
       React.Fragment,
@@ -44,7 +44,16 @@ const paint = (key: string) =>
         rule: true,
         view: VIEW,
         onOpen: () => {},
-        select: { checked: false, onToggle: () => {}, label: 'Select row' },
+        select: {
+          checked: false,
+          onToggle: () => {},
+          label: 'Select row',
+          // A row with a DETAIL chevron is the case every Orders row is in, and
+          // the case the detail-less paint below cannot see.
+          detail: detail
+            ? { open: detail.open, onToggle: () => {}, label: 'this line' }
+            : undefined,
+        },
       }) as React.ReactElement,
     ),
   );
@@ -63,10 +72,38 @@ describe('the compound gutters are flush', () => {
     });
   }
 
-  it('select face sits at the top of the row cell', () => {
+  it('pins the select mark to the TOP of the track, past the edge rail', () => {
+    // Operator 2026-09-04 "most top of the column per rows", reaffirmed
+    // 2026-09-15 after a pass floated the mark to the middle of the row:
+    // "the checklist icon should be pinned to the top and the drop-down icon
+    // should be below the checklist icon". "Centered in the middle" was the
+    // HORIZONTAL track — hence the 3px rail reservation, not a vertical centre.
     const html = paint('select');
-    assert.match(html, /items-start justify-center/);
+    assert.match(html, /items-start/);
     assert.match(html, /\bpt-1\b/);
+    assert.match(html, /pl-\[3px\]/);
+  });
+
+  it('gives a detail row a chevron BAND below the pinned mark', () => {
+    // The failure this pins: the chevron used to share a `grid-rows-2` stack
+    // with the check, which boxed the CONTROL into the top 23.5px of a 48px
+    // cell — so its alignment was a statement about the half, not the row, and
+    // `items-center` there moved the glyph 0.25px instead of the 12px a reader
+    // of the class string would assume. The band is absolute, so the mark plane
+    // (and the checkbox hit plane) is the whole cell again.
+    const html = paint('select', { open: false });
+    assert.match(html, /data-row-detail/);
+    assert.match(html, /absolute inset-x-0 bottom-0 h-6/);
+    assert.doesNotMatch(html, /grid-rows-2/);
+    // The chevron is still a REACH affordance while closed.
+    assert.match(html, /opacity-0 group-hover\/row:opacity-100/);
+  });
+
+  it('stands the detail chevron once the band is open', () => {
+    const html = paint('select', { open: true });
+    assert.match(html, /data-row-detail/);
+    assert.match(html, /absolute inset-x-0 bottom-0 h-6/);
+    assert.doesNotMatch(html, /opacity-0 group-hover\/row:opacity-100/);
   });
 
   for (const key of ['fulfillment', 'item', 'state']) {

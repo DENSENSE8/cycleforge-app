@@ -30,6 +30,17 @@
  * (then `items.image_url`) instead of bare `sc.image_url`, matching
  * get-title-by-sku / sku-catalog search. Shared fragment:
  * `RECEIVING_LINE_IMAGE_URL_SQL` from ./sql-receiving-image.
+ *
+ * EDITED 2026-09-15 for a deliberate behavior change in build-sql.ts: the
+ * `sku_catalog` join drops its `similarity(sc.product_title, …) >= 0.25`
+ * predicate at all 3 sites and reads the shared `SKU_CATALOG_JOIN_ON_SQL`
+ * constant (`@/lib/sku/sku-identity-law`). The predicate was a contamination
+ * detector, not a key fix — the exact org-scoped join disagreed with
+ * `rz.zoho_item_id` on 0 of 2862 lines, while 132 catalog titles had been
+ * overwritten with Ecwid text. Migration `2026-09-15g_sku_identity_zoho_sot`
+ * removes the contamination; the `Sku identity` verify gate keeps the join
+ * shape. This file carries the identical edit so the parity guard stays
+ * byte-exact.
  */
 /* eslint-disable */
 import {
@@ -58,6 +69,7 @@ import {
   sqlReceivingZendeskTicketColumn,
 } from './sql-receiving-ticket';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from './sql-receiving-image';
+import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { parseReceivingView } from '@/lib/receiving/receiving-views';
 
 function currentLineIsMatchSql(alias: string): string {
@@ -263,16 +275,12 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
          LEFT JOIN staff staff_sb                ON staff_sb.id = scan_first.scanned_by
          -- sku_catalog join is on the SKU STRING, which collides across tenants;
          -- pin to the line's org so a same-SKU row in another tenant can't leak.
-         -- Title-guarded: rl.sku is a Zoho SKU whose numbering collides with the
-         -- marketplace catalog (Zoho 00143 Soundbar vs Ecwid 143 UB-20). Attach
-         -- the catalog row only when it's the SAME product. Compare against both
-         -- the listing-style item_name AND the clean Zoho items.name (canonical)
-         -- so noisy listing titles don't false-reject a correct catalog row.
-         LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
-                                                 AND GREATEST(
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
-                                                     ) >= 0.25
+         -- THE SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): exact +
+         -- org-scoped, nothing else. The old title-similarity predicate here was
+         -- a contamination detector, not a key fix — measured 0/2862 lines where
+         -- this join disagreed with rz.zoho_item_id. Migration 2026-09-15g
+         -- removed the contamination (132 Ecwid-overwritten titles) it hid.
+         LEFT JOIN sku_catalog sc                ON ${SKU_CATALOG_JOIN_ON_SQL}
          WHERE rl.id = $1 AND rl.organization_id = $2`,
     params: [id, orgId],
   };
@@ -393,15 +401,8 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
               WHERE rs.receiving_id = r.id
            ) rs_agg ON TRUE
            LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-           -- sku_catalog SKU-string join pinned to the line's org (cross-tenant SKU collision).
-           -- Title-guarded too: only attach when the catalog row is the SAME
-           -- product (Zoho/marketplace SKU namespaces collide on the number).
-           -- Compare against the listing item_name AND the clean Zoho items.name.
-           LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
-                                                   AND GREATEST(
-                                                         similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                         similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
-                                                       ) >= 0.25
+           -- SKU IDENTITY LAW — exact + org-scoped (src/lib/sku/sku-identity-law.ts).
+           LEFT JOIN sku_catalog sc                ON ${SKU_CATALOG_JOIN_ON_SQL}
            WHERE rl.receiving_id = $1 AND rl.organization_id = $2
            ORDER BY rl.id ASC`,
       params,
@@ -1363,15 +1364,8 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
          LEFT JOIN locations loc ON loc.id = rt.staging_location_id
          LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-         -- sku_catalog SKU-string join pinned to the line's org (cross-tenant SKU collision).
-         -- Title-guarded too: only attach when the catalog row is the SAME
-         -- product (Zoho/marketplace SKU namespaces collide on the number).
-         -- Compare against the listing item_name AND the clean Zoho items.name.
-         LEFT JOIN sku_catalog sc                ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
-                                                 AND GREATEST(
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE(rl.item_name, ''))),
-                                                       similarity(LOWER(sc.product_title), LOWER(COALESCE((SELECT name FROM items WHERE zoho_item_id = rz.zoho_item_id AND status = 'active' LIMIT 1), '')))
-                                                     ) >= 0.25
+         -- SKU IDENTITY LAW — exact + org-scoped (src/lib/sku/sku-identity-law.ts).
+         LEFT JOIN sku_catalog sc                ON ${SKU_CATALOG_JOIN_ON_SQL}
          LEFT JOIN staff staff_rb                ON staff_rb.id = rt.door_received_by
          LEFT JOIN staff staff_ub                ON staff_ub.id = ru.unboxed_by
          LEFT JOIN LATERAL (

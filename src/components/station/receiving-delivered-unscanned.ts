@@ -8,7 +8,7 @@
  * dates, product/item name, age band, and Zoho status ride along.
  */
 
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export interface DeliveredUnscanned {
   shipment_id: number;

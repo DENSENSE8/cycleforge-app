@@ -4,12 +4,17 @@
     "slot-table": "src/lib/tables/slot-table-cohort.ts",
     "slot-table-discover": "src/lib/tables/slot-table-discover.ts",
     "shortcuts": "src/lib/keyboard/shortcut-display-cohort.ts",
+    "sku-identity": "src/lib/sku/sku-identity-cohort.ts",
     "overlay-shell": "src/lib/station/scan-station-overlay-cohort.ts"
+  },
+  "laws": {
+    "sku-identity": "src/lib/sku/sku-identity-law.ts"
   },
   "commands": {
     "station": "pnpm run eval:station <id>",
     "cohortSlotTable": "pnpm run eval:cohort slot-table",
     "cohortShortcuts": "pnpm run eval:cohort shortcuts",
+    "cohortSkuIdentity": "pnpm run eval:cohort sku-identity",
     "discoverSlotTable": "pnpm run eval:discover"
   }
 }

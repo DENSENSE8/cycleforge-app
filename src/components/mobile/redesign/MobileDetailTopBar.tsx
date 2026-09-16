@@ -1,11 +1,12 @@
 'use client';
 
 import { ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { MobileScanCta } from '@/components/mobile/redesign/mobile-scan-cta';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { mobileRouteOwnsTopBar } from '@/lib/mobile/host-top-bar';
 import { cn } from '@/utils/_cn';
 
 interface MobileDetailTopBarProps {
@@ -34,9 +35,9 @@ interface MobileDetailTopBarProps {
  * order.
  *
  * Anatomy, left → right: back chevron (44×44, real `aria-label`) · optional
- * `lead` · eyebrow / title / meta stack · `right` slot · {@link MobileScanCta}.
- * The title block truncates so a long vendor name cannot push the right slot
- * off-screen.
+ * `lead` · eyebrow / title / meta stack · `right` slot · {@link MobileScanCta}
+ * **when this bar is the screen's only chrome**. The title block truncates so a
+ * long vendor name cannot push the right slot off-screen.
  *
  * ## Why it lives here and answers to this name
  *
@@ -45,9 +46,11 @@ interface MobileDetailTopBarProps {
  * receiving history — each hand-rolled the same anatomy with slightly different
  * paddings, chevron sizes and z-indexes. Consolidating them (2026-08-21) both
  * removed those five near-copies and fixed the reason it mattered: the SCAN
- * corner is mounted HERE, so a screen cannot join the app without it. The old
- * name also collided with the shell's own `MobileTopBar`, two files one import
- * typo apart.
+ * corner is mounted HERE, so a screen the host header withholds its bar from
+ * cannot join the app without one. On a route that KEEPS the host header, that
+ * header owns the corner and this bar paints no seat — see `ownsScanSeat`. The
+ * old name also collided with the shell's own `MobileTopBar`, two files one
+ * import typo apart.
  *
  * The prop surface is deliberately slot-shaped (`lead` · `meta` · `right`)
  * rather than flag-shaped. Seven surfaces with genuinely different record
@@ -64,6 +67,24 @@ export function MobileDetailTopBar({
   right,
 }: MobileDetailTopBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  /**
+   * The seat is mounted HERE only when nothing above this bar has one.
+   *
+   * On a route the host header withholds (`/m/u/`, `/m/t/`, `/m/pick/[id]`, …)
+   * this bar is the screen's only chrome and must carry SCAN — a detail screen
+   * is where an operator finishes one item and starts the next. On a route that
+   * KEEPS the host header, that header already owns the top-right corner, and
+   * a second seat here is a duplicate door to one destination
+   * (`mobile-scan-cta`: *"Scan has ONE door"*). Operator 2026-09-15, on
+   * `/m/pair`: *"remove the scan button from the same header with the text pair
+   * location."*
+   *
+   * Derived from the route, never a prop: a boolean would let any screen drop
+   * the app's primary action by accident, which is the failure the shared
+   * predicate exists to make impossible.
+   */
+  const ownsScanSeat = mobileRouteOwnsTopBar(pathname);
 
   const handleBack = useCallback(() => {
     if (backHref) router.push(backHref);
@@ -88,9 +109,28 @@ export function MobileDetailTopBar({
             {subtitle}
           </p>
         ) : null}
+        {/*
+          ONE title face, on the CF role scale — `text-role-body` + semibold
+          (14px/600), the same optical size as the list rows beneath it
+          (`ITEM_RECORD_MOBILE_TITLE.face`).
+
+          It was raw `text-base` (16px): a Tailwind family size, off the role
+          scale entirely, landing between `role-body` (14) and `role-title`
+          (18) — so it could not be compared with any content on the screen and
+          simply came out biggest. With `mono` it also came out WIDER at the
+          same px. On a record screen that reads as the subject; on a triage
+          screen, where the title is a PAGE NAME the operator already knows,
+          it outranked the product titles they are there to read (operator
+          2026-09-15: *"the hierarchy of the pair location is way too big
+          compared to the rest of the text"*).
+
+          `mono` now switches the FAMILY only — identifier vs prose — never the
+          size. A bar earns emphasis from its ground and its position, not from
+          being the one string on the screen off the scale.
+        */}
         <p
           className={cn(
-            'truncate text-base font-semibold tracking-tight text-text-default',
+            'truncate text-role-body font-semibold tracking-tight text-text-default',
             mono && 'font-mono',
           )}
         >
@@ -102,10 +142,9 @@ export function MobileDetailTopBar({
       </div>
       <div className="flex shrink-0 items-center gap-1">
         {right}
-        {/* Same corner, same control as the host header — a detail screen is
-            where an operator finishes one item and starts the next, so it is the
-            last place SCAN should go missing. */}
-        <MobileScanCta />
+        {/* Same corner, same control as the host header — and only when that
+            header is absent. See {@link ownsScanSeat}. */}
+        {ownsScanSeat ? <MobileScanCta /> : null}
       </div>
     </header>
   );

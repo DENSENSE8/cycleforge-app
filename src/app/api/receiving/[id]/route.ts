@@ -26,6 +26,7 @@ import {
 import type { OrgId } from '@/lib/tenancy/constants';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
 import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receiving-image';
+import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 
 // Built-in allowlist = SoT registry values. Must stay in sync with
@@ -247,7 +248,7 @@ export async function GET(
          ON rz.receiving_line_id = rl.id
         AND rz.organization_id = rl.organization_id
        LEFT JOIN sku_catalog sc
-         ON sc.sku = rl.sku AND sc.organization_id = rl.organization_id
+         ON ${SKU_CATALOG_JOIN_ON_SQL}
        LEFT JOIN receiving_carton r_cart ON r_cart.id = rl.receiving_id
        LEFT JOIN shipping_tracking_numbers stn_line ON stn_line.id = r_cart.shipment_id
        WHERE rl.receiving_id = $1 AND rl.organization_id = $2

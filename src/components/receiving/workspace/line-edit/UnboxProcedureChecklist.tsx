@@ -41,7 +41,7 @@
 import { ProcedureChecklist } from '@/design-system/components/procedure';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 type UnboxProcedureChecklistProps = {
   row: ReceivingLineRow;

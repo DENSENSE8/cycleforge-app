@@ -63,7 +63,7 @@ export function usePanelActions(
         return {
           key,
           ...catalog,
-          onAction: () => { window.location.href = `/admin?orderId=${encodeURIComponent(orderId)}`; },
+          onAction: () => { window.location.href = `/operations?mode=goals&orderId=${encodeURIComponent(orderId)}`; },
         };
       }
 

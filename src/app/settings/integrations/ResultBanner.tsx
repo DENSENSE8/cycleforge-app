@@ -47,6 +47,8 @@ const ERRORS: Record<string, string> = {
   ebay_invalid_oauth_state: 'The eBay connection link was invalid — please retry.',
   ebay_incomplete_oauth_state: 'The eBay connection link was incomplete — please retry.',
   ebay_oauth_state_expired: 'The eBay connection link expired — please retry.',
+  ebay_membership_revoked:
+    'Your access to this workspace changed during the eBay connection — sign in again, then reconnect the account from that workspace.',
   ebay_server_configuration: 'The eBay app is not fully configured on the server.',
   ebay_app_credentials_invalid: 'eBay rejected the app credentials (Cert ID / Client Secret). Update EBAY_CERT_ID with the full Production Cert ID from developer.ebay.com, then reconnect.',
   ebay_oauth_runame_invalid:

@@ -30,7 +30,7 @@ import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface PoCandidate {

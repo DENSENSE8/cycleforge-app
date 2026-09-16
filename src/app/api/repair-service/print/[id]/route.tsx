@@ -5,6 +5,7 @@ import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket'
 import {
   repairPaperLetterheadHtml,
   repairPaperTicketHeadingHtml,
+  repairSignatureInkHtml,
   repairSignatureRowHtml,
 } from '@/lib/repair/repair-paper-html';
 import { formatPhoneNumber } from '@/utils/phone';
@@ -309,10 +310,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           ${repairSignatureRowHtml({
             label: 'Drop Off X',
             dateText: `Date: ${startDateTime}`,
-            lineHeightPx: 96,
             borderClass: 'border-b-2 border-black', // ds-allow-raw-neutral: print ink
             innerHtml: dropoffSignatureUrl
-              ? `<img src="${dropoffSignatureUrl}" alt="Drop off signature for ${canonicalRsCode}" style="position:absolute;bottom:2px;left:0;height:90px;max-width:100%;width:auto;object-fit:contain;filter:contrast(2.2) brightness(0.55) saturate(0);" />`
+              ? repairSignatureInkHtml(
+                  dropoffSignatureUrl,
+                  `Drop off signature for ${canonicalRsCode}`,
+                )
               : '',
           })}
           <p class="text-xs italic">
@@ -336,10 +339,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           ${repairSignatureRowHtml({
             label: 'Pick Up X',
             dateText: `Date: ${pickupDateTime}`,
-            lineHeightPx: 96,
             borderClass: 'border-b-2 border-black', // ds-allow-raw-neutral: print ink
             innerHtml: pickupSignatureUrl
-              ? `<img src="${pickupSignatureUrl}" alt="Pickup signature for ${canonicalRsCode}" style="position:absolute;bottom:2px;left:0;height:90px;max-width:100%;width:auto;object-fit:contain;filter:contrast(2.2) brightness(0.55) saturate(0);" />`
+              ? repairSignatureInkHtml(
+                  pickupSignatureUrl,
+                  `Pickup signature for ${canonicalRsCode}`,
+                )
               : '',
           })}
           <p class="text-center font-semibold text-xl mt-4">Enjoy your repaired unit!</p>

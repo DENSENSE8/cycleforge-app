@@ -81,13 +81,23 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   // ── Desks the floor hands off to ──────────────────────────────────────────
   { code: 'CMD-GO-INBOUND',  label: 'Go · Inbound',    pageId: 'incoming',  childId: null,      sortOrder: 110 },
   { code: 'CMD-GO-ORDERS',   label: 'Go · Orders',     pageId: 'outbound',  childId: 'orders',  sortOrder: 130 },
-  { code: 'CMD-GO-FBA',      label: 'Go · Amazon prep',pageId: 'outbound',  childId: 'fba',     sortOrder: 140 },
+  // FBA became its OWN Outbound lane row (`fba`, `/shipping/fba`) when the tab
+  // left the To-ship band, so `outbound/fba` named a child that no longer
+  // exists — a sticker scanning into nothing. Points at the page and its
+  // default board, the same shape as CMD-GO-INVENTORY → `ledger`.
+  { code: 'CMD-GO-FBA',      label: 'Go · Amazon prep',pageId: 'fba',       childId: 'plan',    sortOrder: 140 },
   { code: 'CMD-GO-INVENTORY',label: 'Go · Inventory',  pageId: 'inventory', childId: 'ledger',  sortOrder: 150 },
   { code: 'CMD-GO-LOCATIONS',label: 'Go · Locations',  pageId: 'inventory', childId: 'locations', sortOrder: 160 },
-  { code: 'CMD-GO-PRODUCTS', label: 'Go · Products',   pageId: 'products',  childId: 'catalog', sortOrder: 170 },
+  // Was `catalog` (Reference) until 2026-09-15, when that tab was removed. The
+  // sticker names the DESK, so it lands on the desk's default mode — Manuals —
+  // the same shape as CMD-GO-INVENTORY → `ledger`.
+  { code: 'CMD-GO-PRODUCTS', label: 'Go · Products',   pageId: 'products',  childId: 'manuals', sortOrder: 170 },
   { code: 'CMD-GO-SUPPORT',  label: 'Go · Support',    pageId: 'support',   childId: 'tickets', sortOrder: 180 },
   { code: 'CMD-GO-OPS',      label: 'Go · Operations', pageId: 'operations',childId: 'live',    sortOrder: 190 },
-  { code: 'CMD-GO-HOME',     label: 'Go · Home',       pageId: 'home',      childId: 'daily',   sortOrder: 200 },
+  // `home` is MODELESS — Today and Tasks were unmounted and Daily is the page
+  // itself, so the entry declares no children and `home/daily` named one that
+  // does not exist. `childId: null` lands on `/`, which IS Daily.
+  { code: 'CMD-GO-HOME',     label: 'Go · Home',       pageId: 'home',      childId: null,      sortOrder: 200 },
 ] as const;
 
 // Deliberately ABSENT, so the omissions read as decisions rather than oversights:

@@ -4,7 +4,7 @@
  * Lets an admin override the mobile UI for one staff: (1) bottom-nav enabled
  * toggle, (2) which tabs render. Always shows the *effective* state (role
  * default + override). "Reset to role default" clears the override so the
- * resolver falls back to roles.mobile_defaults (editable in /admin?section=roles).
+ * resolver falls back to roles.mobile_defaults (editable in /settings/roles).
  */
 
 import { useEffect, useMemo, useState } from 'react';

@@ -1,0 +1,19 @@
+{
+  "next": "**Next mechanical gap:** `hand-grid-export:import-exception:IMPORT_EXCEPTION_GRID_COLUMNS`\n\n- Delete/retarget: `src/features/review/catalog-link/grid/import-exception-grid-layout.ts` (`IMPORT_EXCEPTION_GRID_COLUMNS`)\n- Keep: IMPORT_EXCEPTION_COMPOUND_COLUMNS (importExceptionCompoundColumnsFor)\n- Do: After any live flat mount is ported or given its own tableId, delete IMPORT_EXCEPTION_GRID_COLUMNS and retarget sort/default/descriptor callers at the materialization.",
+  "delete": [
+    "grid-default:incoming:incoming-grid-descriptor",
+    "grid-default:incoming:IncomingGridRow",
+    "grid-default:receiving:ReceivingGridRow",
+    "hand-grid-export:import-exception:IMPORT_EXCEPTION_GRID_COLUMNS",
+    "hand-grid-export:incoming:INCOMING_GRID_COLUMNS",
+    "hand-grid-export:receiving:RECEIVING_GRID_COLUMNS",
+    "hand-grid-export:tasks:TASKS_GRID_COLUMNS"
+  ],
+  "judgment": [
+    "catalog-orphan:fba:FBA_FIELD_CATALOG",
+    "out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS",
+    "table-columns-zombie:support-tickets"
+  ],
+  "unexpected": [],
+  "staleKnownDebt": []
+}

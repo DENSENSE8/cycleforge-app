@@ -16,7 +16,10 @@ interface MobilePhotoCountBadgeProps {
 
 /**
  * Compact camera + xN count used on mobile receiving rows and the carton sheet.
- * Gray x0 empty state; blue when one or more photos exist.
+ * Faint ink at x0 (no door to an empty gallery — the badge links only when
+ * there is something to look at); muted ink from x1. One size face per rung
+ * (`sm` default, `md` for sheet headers), tabular figures so x9→x10 does not
+ * jitter the row. Render contracts in MobilePhotoCountBadge.test.tsx.
  */
 export function MobilePhotoCountBadge({
   count,

@@ -56,7 +56,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
     });
 
     // ── 2. Mirror status refresh (delta) — drives the received-clears ──────
-    const mirrorCursor = await getSyncCursor(MIRROR_CURSOR_KEY);
+    const mirrorCursor = await getSyncCursor(MIRROR_CURSOR_KEY, ctx.organizationId);
     const mirrorStart = mirrorCursor ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const mirror = await syncZohoPoMirror({
       mode: 'delta',
@@ -65,7 +65,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
       maxItems: 20000,
     }, ctx.organizationId);
     if (mirror.errors.length === 0) {
-      await updateSyncCursor(MIRROR_CURSOR_KEY, new Date());
+      await updateSyncCursor(MIRROR_CURSOR_KEY, new Date(), ctx.organizationId);
     }
 
     // ── 3. Invalidate so the rail + tiles reflect the fresh state ──────────

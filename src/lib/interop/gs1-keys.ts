@@ -498,7 +498,12 @@ export type InternalEntityKind =
   | 'order'
   | 'sku'
   | 'location'
-  | 'shipment';
+  | 'shipment'
+  // Customer-service records. Neither is a trade item nor a logistic unit, so
+  // neither can borrow an existing kind without the URN asserting something
+  // false about the id it carries (a claim id is not an order id).
+  | 'claim'
+  | 'ticket';
 
 /** Build an internal identifier. Always available — needs no GS1 prefix. */
 export function internalIdentifier(

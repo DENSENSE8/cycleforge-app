@@ -10,6 +10,8 @@ import {
 } from '@/lib/orders/orders-search';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { PICK_FACTS_LATERALS, PRICE_FACTS_LATERALS, SHIP_OUT_LATERAL } from '@/lib/neon/orders-queries';
+import { resolveLinePrice } from '@/lib/orders/price-resolve';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import {
@@ -216,6 +218,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       inWarehouse,
       membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
+      // Payloads cached before the price projection existed have no price_*
+      // fields at all, and this cache lives 300s — without a version bump the
+      // desks would paint dashes for five minutes after deploy and blame the
+      // data. Bump this string whenever the resolved price changes shape.
+      priceProjectionVersion: 'price_facts_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=60' };
@@ -577,6 +584,29 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         staff_test_assignee.name AS tested_by_name,
         staff_pack_assignee.name AS packer_name,
         staff_packed_by.name     AS packed_by_name,
+        /*
+         * Pick facts — THIRD copy of this projection, for the reason stated at
+         * :506: this is the live path the To-ship / Pending grid fetches, and a
+         * fact added only to ORDER_SERIALS_CTE never reaches it. Operator
+         * 2026-09-14: the Pick column must show the picker, not the tester.
+         * The laterals themselves are imported, not re-typed, so the three
+         * readers cannot disagree about what a pick is.
+         */
+        COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by) AS picked_by,
+        s_picked.name AS picked_by_name,
+        to_char(
+          COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at),
+          'YYYY-MM-DD HH24:MI:SS'
+        ) AS picked_at,
+        /*
+         * Dock scan-out. The field catalog documented this column as "dashes
+         * honestly on a feed that does not stamp it yet" — this is that feed,
+         * so the dash was the gap, not the truth. Operator 2026-09-14: tie the
+         * routes together, so Pick · Pack · Scanned-out all read on one row.
+         */
+        to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
+        ship_out.shipped_out_by AS shipped_out_by,
+        shipped_out_staff.name  AS shipped_out_by_name,
         staff_pick_assignee.color_hex AS tester_color_hex,
         staff_pack_assignee.color_hex AS packer_color_hex,
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
@@ -585,7 +615,21 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         loc_pack.location_kind AS pack_location_kind,
         o.sku_catalog_id,
         sc.image_url AS catalog_image_url,
-        sc.category AS catalog_category
+        sc.category AS catalog_category,
+        /*
+         * Price facts — the raw three, resolved in JS below into the five
+         * price_* fields the desks read. They are selected UNCONDITIONALLY,
+         * outside the queueShape branch above: the thin listShape=queue
+         * projection is what /m/pick and the desk queues fetch, and a field
+         * present only in the full shape is invisible to exactly the surfaces
+         * that need it most. account_source rides along because the listing
+         * arm's provenance is meaningless without the channel it is compared
+         * against.
+         */
+        o.account_source,
+        listing_price.listing_price_cents AS listing_price_cents,
+        listing_price.platform           AS listing_platform,
+        unit_price.listing_price_cents   AS unit_listing_price_cents
       FROM orders o
       LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
       LEFT JOIN wa_deadline ON wa_deadline.entity_id = o.id
@@ -598,6 +642,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN order_pack_placements opp
         ON opp.order_id = o.id AND opp.organization_id = o.organization_id
       LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id
+      ${PICK_FACTS_LATERALS}
+      ${SHIP_OUT_LATERAL}
+      ${PRICE_FACTS_LATERALS}
       LEFT JOIN LATERAL (
         SELECT
           COALESCE(
@@ -983,6 +1030,52 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           : String(last.deadline_at);
       nextCursor = Buffer.from(JSON.stringify({ d, id: Number(last?.id) }), 'utf8').toString('base64');
     }
+
+    /*
+     * Three facts in, one number out. The resolution runs HERE, on every row
+     * of every shape, rather than as SQL CASE arms: precedence and cents
+     * parsing are one decision (lib/orders/price-resolve.ts) shared with the
+     * price-edit and backfill paths, and a second copy in SQL is how the
+     * pick/pack projections drifted apart before.
+     *
+     * The raw fact columns are destructured OFF the row on the way out. A
+     * consumer that read listing_price_cents directly would be re-deriving
+     * the precedence — and would paint a channel ask as revenue, which is the
+     * exact confusion price_is_estimate exists to prevent.
+     */
+    interface PriceColumns {
+      sale_amount?: string | number | null;
+      currency?: string | null;
+      unit_listing_price_cents?: number | null;
+      listing_price_cents?: number | null;
+      listing_platform?: string | null;
+      account_source?: string | null;
+    }
+    rows = rows.map((row) => {
+      const facts = row as PriceColumns;
+      const price = resolveLinePrice({
+        saleAmount:       facts.sale_amount ?? null,
+        currency:         facts.currency ?? null,
+        unitListingCents: facts.unit_listing_price_cents ?? null,
+        listingCents:     facts.listing_price_cents ?? null,
+        listingPlatform:  facts.listing_platform ?? null,
+        orderPlatform:    facts.account_source ?? null,
+      });
+      const {
+        listing_price_cents: _listingCents,
+        listing_platform: _listingPlatform,
+        unit_listing_price_cents: _unitListingCents,
+        ...rest
+      } = row;
+      return {
+        ...rest,
+        price_cents:       price.cents,
+        price_currency:    price.currency,
+        price_source:      price.source,
+        price_platform:    price.platform,
+        price_is_estimate: price.isEstimate,
+      };
+    });
 
     const payload = {
       orders:     rows,

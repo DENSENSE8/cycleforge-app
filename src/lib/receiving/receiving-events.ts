@@ -24,7 +24,7 @@
  * Add a new receiving event by adding its name + payload type here first.
  */
 
-import type { ReceivingLineRow } from './receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingPackageUpdatedDetail } from './receiving-lines-table-helpers';
 import type { ReceivingSelectLineDetail } from './receiving-sidebar-shared';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';

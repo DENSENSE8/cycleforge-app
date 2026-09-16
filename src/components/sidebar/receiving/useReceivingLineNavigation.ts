@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { focusWithinListKeyOwner, isListKeyRegionOpen } from '@/lib/keyboard/list-key-scope';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { filterLinesByPoGroup } from '@/lib/receiving/po-group-title';
 import {
   receivingSiblingsQueryKey,

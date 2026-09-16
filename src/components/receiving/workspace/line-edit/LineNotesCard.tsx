@@ -30,7 +30,7 @@ import {
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { useComposerTicketClaim } from './hooks/useComposerTicketClaim';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { zendeskKeys } from '@/hooks/useZendeskQueries';

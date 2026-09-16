@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Main pane for /admin?section=bose_models.
+ * Main pane for /sourcing?mode=models.
  *
  * Reads ?model=<id|'new'> from the URL (set by BoseModelsSidebarPanel):
  *   - 'new'    → create form
@@ -109,7 +109,7 @@ function CreateModelForm() {
       queryClient.invalidateQueries({ queryKey: qk.boseModels.all });
       const next = new URLSearchParams(searchParams.toString());
       next.set('model', String(body.model.id));
-      router.replace(`/admin?${next.toString()}`);
+      router.replace(`/sourcing?${next.toString()}`);
     },
   });
 
@@ -135,7 +135,7 @@ function CreateModelForm() {
         >
           Create model
         </Button>
-        <Button variant="ghost" onClick={() => router.replace('/admin?section=bose_models')}>Cancel</Button>
+        <Button variant="ghost" onClick={() => router.replace('/sourcing?mode=models')}>Cancel</Button>
       </div>
     </div>
   );
@@ -163,7 +163,7 @@ function ModelDetail({ id }: { id: number }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
       <div className="mx-auto w-full max-w-3xl space-y-6">
-        <ModelEditCard model={data.model} onSaved={invalidate} onDeleted={() => { invalidate(); router.replace('/admin?section=bose_models'); }} />
+        <ModelEditCard model={data.model} onSaved={invalidate} onDeleted={() => { invalidate(); router.replace('/sourcing?mode=models'); }} />
         <CompatibilityManager modelId={id} parts={data.parts} onChanged={() => { invalidate(); queryClient.invalidateQueries({ queryKey: qk.boseModels.detail(id) }); }} />
       </div>
     </div>

@@ -15,7 +15,7 @@ import { cn } from '@/utils/_cn';
 
 // Mirrors the pages that exist under src/app/m/ — keep in sync.
 const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
-  { value: '/m/home',      label: 'Home (hub)' },
+  { value: '/m/work',     label: 'Orders (hub)' },
   { value: '/m/scan',      label: 'Scan' },
   { value: '/m/receive',   label: 'Receive (door scan)' },
   { value: '/m/receiving', label: 'Receiving' },
@@ -61,7 +61,7 @@ export function LandingPageCard({
     : MOBILE_LANDING_OPTIONS;
 
   const desktopDefault = primaryRoleKey ? DESKTOP_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/dashboard' : '/dashboard';
-  const mobileDefault = primaryRoleKey ? MOBILE_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/m/home' : '/m/home';
+  const mobileDefault = primaryRoleKey ? MOBILE_ROLE_DEFAULTS[primaryRoleKey.toLowerCase()] ?? '/m/work' : '/m/work';
 
   return (
     <section className={`overflow-hidden rounded-none border ${borderClass} bg-surface-card shadow-sm`}>

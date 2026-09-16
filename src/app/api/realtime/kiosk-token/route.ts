@@ -48,6 +48,9 @@ function getAblyRestClient() {
   return ablyRestClient;
 }
 
+// Ably's `authUrl` grant issues a GET by default (KioskRealtimeProvider passes
+// no authMethod) — the route was POST-only, so every kiosk load logged a 405
+// and the realtime mirror never attached. Same grant, both verbs.
 export const POST = withKioskAuth(async (_req: NextRequest, ctx) => {
   const client = getAblyRestClient();
   if (!client) {
@@ -76,3 +79,4 @@ export const POST = withKioskAuth(async (_req: NextRequest, ctx) => {
 
   return NextResponse.json(tokenRequest, { headers: { 'cache-control': 'no-store' } });
 });
+export const GET = POST;

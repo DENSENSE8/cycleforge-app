@@ -17,6 +17,8 @@ import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { KioskAttractMediaCard } from './KioskAttractMediaCard';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
+import { kioskCommandOptions } from '@/lib/kiosk/services';
 
 
 
@@ -109,6 +111,9 @@ interface OrgProfileResponse {
   warrantyDays: number;
   packing: {
     enforcement: 'advisory' | 'block_until_matched';
+  };
+  kiosk: {
+    defaultCommand?: KioskCommandId;
   };
   brand: {
     name?: string;
@@ -536,9 +541,39 @@ export function OrganizationSection() {
             <option value="block_until_matched">Box until matched — flag the pack until every required item is confirmed</option>
           </select>
           <span className="mt-1 block text-xs text-text-soft">
-            Applies only to SKUs that have required kit parts defined (Products → Kit Parts). A SKU with no
+            Applies only to SKUs that have required kit parts defined. A SKU with no
             required parts is never blocked, so turning this on can&rsquo;t stall packing for products you haven&rsquo;t
             set up yet.
+          </span>
+        </label>
+      </div>
+
+      <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-text-default">Counter tablet</h3>
+        <label className="block max-w-sm">
+          <span className="mb-1 block text-xs font-medium text-text-muted">Default command</span>
+          <select
+            value={draft.kiosk?.defaultCommand ?? KIOSK_FALLBACK_COMMAND}
+            onChange={(e) =>
+              setDraft({
+                ...draft,
+                kiosk: { ...draft.kiosk, defaultCommand: e.target.value as KioskCommandId },
+              })
+            }
+            className={FILTER_DROPDOWN_SELECT_CLASS}
+          >
+            {/* Options come from KIOSK_SERVICES, so the words here are the
+                words on the counter, and a `wip` pane can never be chosen. */}
+            {kioskCommandOptions().map((option) => (
+              <option key={option.command} value={option.command}>
+                {option.label} — {option.blurb}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1 block text-xs text-text-soft">
+            Which screen the counter tablet opens on, and where a freshly opened desk session
+            starts. Switching command mid-visit never clears the cart, so this only sets the
+            starting point.
           </span>
         </label>
       </div>

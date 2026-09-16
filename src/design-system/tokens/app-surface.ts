@@ -24,7 +24,7 @@ interface WashPreset {
 }
 
 export const WASH_PRESETS: Record<WashName, WashPreset> = {
-  // previewTo is light-theme CANVAS (#eef2f7), not surface white: a wash host
+  // previewTo is light-theme CANVAS (#fafafa), not surface white: a wash host
   // is a ground plane for cards, so no stop may land on card white — see the
   // GROUND-PLANE RULE beside the `--ds-wash-*` blocks in styles/globals.css.
   mint: {
@@ -32,14 +32,14 @@ export const WASH_PRESETS: Record<WashName, WashPreset> = {
     label: 'Mint',
     hint: 'Unbox / receiving wash',
     previewFrom: '#f5fbfa',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   cool: {
     id: 'cool',
     label: 'Cool',
     hint: 'Soft teal fade',
     previewFrom: '#f8fbfb',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   slate: {
     id: 'slate',
@@ -53,7 +53,7 @@ export const WASH_PRESETS: Record<WashName, WashPreset> = {
     label: 'Dawn',
     hint: 'Cool gray schedule wash',
     previewFrom: '#f8fafc',
-    previewTo: '#eef2f7',
+    previewTo: '#fafafa',
   },
   flat: {
     id: 'flat',
@@ -79,6 +79,28 @@ export const appChromeMutedClass = 'bg-surface-card/95';
 
 /** Flat full-bleed work hosts — theme `background-canvas`. */
 export const appCanvasClass = 'bg-surface-canvas';
+
+/**
+ * PHONE page ground — theme `background-surface` (card white), not canvas.
+ *
+ * A phone screen is ONE plane. There is no rail beside it, no card floating on
+ * a stage, and nothing casting a shadow that needs a ground to read against —
+ * the reasons canvas sits a real step below card white on the desk
+ * (`themes/light.ts`, the GROUND-PLANE RULE in `styles/globals.css`) do not
+ * apply on 390px. What canvas buys there is a grey field behind white rows,
+ * which reads as a gap rather than a plane.
+ *
+ * The kiosk settled this first (operator, `kiosk-chrome.ts`: *"There should be
+ * no reason why you're wrapping the cart form and then having another
+ * background for it. There should just be a white background."*) and the phone
+ * follows it, through the SAME token — so `/m` and the kiosk are the same
+ * white by construction, not by two surfaces agreeing on a hex.
+ *
+ * Flipping the phone's ground is this one line. Flipping the DESK's means
+ * `background-canvas` in every `themes/*.ts`, and that is a different decision
+ * with the elevation system attached to it.
+ */
+export const appMobilePageGroundClass = 'bg-surface-card';
 
 /**
  * Depth-plane edge stroke — readable against chrome / page wash (mint / dark).

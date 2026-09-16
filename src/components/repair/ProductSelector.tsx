@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from '../Icons';
+import { ChevronLeft, ChevronRight, Search } from '../Icons';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
@@ -15,8 +15,6 @@ import { cornerClass, HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   KIOSK_META,
-  KIOSK_MODE_SPINE_ICON,
-  KIOSK_MODE_SPINE_ROW_IDLE,
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_TILE_TITLE,
 } from '@/app/kiosk/kiosk-chrome';
@@ -38,6 +36,7 @@ import {
   KIOSK_POS_CATEGORY,
   KIOSK_POS_CATEGORY_ACTIVE,
   KIOSK_POS_CATEGORY_IDLE,
+  KIOSK_EAGER_TILE_COUNT,
   KIOSK_POS_GRID,
   KIOSK_POS_IMAGE_WELL,
   KIOSK_POS_TRAIL_BAND,
@@ -45,6 +44,7 @@ import {
   KIOSK_POS_TRAIL_ICON,
 } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
+import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import {
   isCatalogRootSearchLevel,
   resolveCatalogProductPool,
@@ -398,7 +398,7 @@ export function ProductSelector({
 
     try {
       const query = parentId ? `?parentId=${encodeURIComponent(parentId)}` : '';
-      const response = await fetch(`${apiBasePath}/ecwid-categories${query}`);
+      const response = await kioskFetchHealed(`${apiBasePath}/ecwid-categories${query}`);
       const payload = (await response.json()) as CategoriesResponse;
 
       if (gen !== categoryFetchGen.current) return;
@@ -437,7 +437,7 @@ export function ProductSelector({
     if (append) setLoadingMoreProducts(true);
     else setLoadingProducts(true);
     try {
-      const response = await fetch(
+      const response = await kioskFetchHealed(
         `${apiBasePath}/ecwid-products?categoryId=${encodeURIComponent(categoryId)}&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
       );
       const payload = (await response.json()) as ProductsResponse;
@@ -461,7 +461,7 @@ export function ProductSelector({
     setError(null);
     if (!append) setSearch('');
     try {
-      const response = await fetch(`${apiBasePath}/ecwid-products?mode=all&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`);
+      const response = await kioskFetchHealed(`${apiBasePath}/ecwid-products?mode=all&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`);
       const payload = (await response.json()) as ProductsResponse;
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to load products');
       const rows = Array.isArray(payload.products) ? payload.products : [];
@@ -492,7 +492,7 @@ export function ProductSelector({
     else setLoadingRootSearch(true);
     setError(null);
     try {
-      const response = await fetch(
+      const response = await kioskFetchHealed(
         `${apiBasePath}/ecwid-products?q=${encodeURIComponent(query)}&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
       );
       const payload = (await response.json()) as ProductsResponse;
@@ -566,7 +566,7 @@ export function ProductSelector({
 
     let cancelled = false;
     setLoadingRootSearch(true);
-    fetch(`${apiBasePath}/ecwid-products?mode=all&limit=100&offset=0`)
+    kioskFetchHealed(`${apiBasePath}/ecwid-products?mode=all&limit=100&offset=0`)
       .then((r) => r.json() as Promise<ProductsResponse>)
       .then((payload) => {
         if (cancelled || !payload.success) return;
@@ -884,8 +884,23 @@ export function ProductSelector({
                 gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))',
               }}
             >
-              {filteredProducts.map((product) => {
+              {filteredProducts.map((product, index) => {
                 const selected = isSelected(product.id);
+                /*
+                 * LCP is a catalog tile photo, and Lighthouse measured its
+                 * resource-load DELAY at 4.2s: the grid is client-fetched, so
+                 * the browser cannot discover any image in the initial HTML,
+                 * and every tile then declared `loading="lazy"` —
+                 * `eagerlyLoaded: false` + `priorityHinted: false` on the
+                 * LCP-discovery audit.
+                 *
+                 * The first row is above the fold by definition (the grid is
+                 * `auto-fill minmax(148px,1fr)`, so an iPad-landscape row holds
+                 * at most ~8 tiles). Those load EAGER at high priority; the
+                 * rest stay lazy, which is what keeps a 400-tile catalog from
+                 * fetching 400 photos.
+                 */
+                const aboveFold = index < KIOSK_EAGER_TILE_COUNT;
                 return (
                   // ds-raw-button: selectable product image+price card with checkmark overlay, not a Button shape
                   <button
@@ -927,8 +942,9 @@ export function ProductSelector({
                           src={product.thumbnailUrl}
                           alt={product.name}
                           className="h-full w-full object-cover"
-                          loading="lazy"
-                          decoding="async"
+                          loading={aboveFold ? 'eager' : 'lazy'}
+                          fetchPriority={aboveFold ? 'high' : undefined}
+                          decoding={aboveFold ? 'sync' : 'async'}
                           width={400}
                           height={400}
                         />
@@ -1312,33 +1328,32 @@ export function ProductSelector({
     const catalogTrail = (
               <div className={cn(KIOSK_POS_TRAIL_BAND, 'pl-2 pr-3', KIOSK_POS_TOP_DOCK_INTERACTIVE)} data-testid="kiosk-catalog-trail">
               {/* Command dropdown LEADS the row (mode identity: Repair /
-                  Sales / Buyback / Pickup), search glyph second. The glyph
-                  is a TOGGLE — same vocabulary as the paperwork/cart icons
-                  trailing the row: press to open, press again to close
-                  (aria-pressed carries the state, label stays stable).
+                  Sales / Buyback / Pickup), search glyph second.
+
+                  ONE search glyph, and it both opens and closes (operator
+                  2026-09-15: *"there should not be two search icons. The
+                  search icon to close and to open should be the only search
+                  icon displayed."*). Two shipped before: this trail toggle
+                  AND `SearchField`'s own leading magnifier, plus a THIRD
+                  control — a standalone X — once the field was open. Now:
+                  `hideLeadingIcon` silences the field's copy, the standalone
+                  X is gone, and `aria-pressed` carries the state while the
+                  label stays stable.
+
+                  The glyph is the catalog `Search` on TOP_CHROME_ICON_FACE,
+                  the same face the back chevron wears — it used to be a
+                  hand-drawn inline <svg> at its own size, which is how the
+                  trail ended up with two magnifiers that did not even match.
+
                   While open the field owns the row's flexible middle — the
                   browse path is hidden, not crushed — and the dropdown +
-                  utilities hold their shrink-0 ground at both ends. The
-                  in-field X stays: a trailing close where the thumb is on
-                  a wide field. Both affordances run closeCatalogSearch,
-                  which also clears the query. */}
+                  utilities hold their shrink-0 ground at both ends. Esc and
+                  the toggle both run closeCatalogSearch, which also clears
+                  the query; the in-field clear X is a different verb (clear
+                  the text, stay open) and only appears with a value. */}
               {sidebarHeader}
               <IconButton
-                icon={
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                    aria-hidden
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="m20 20-3.5-3.5" />
-                  </svg>
-                }
+                icon={<Search className={TOP_CHROME_ICON_FACE} />}
                 ariaLabel="Search products"
                 aria-pressed={searchOpen}
                 size="md"
@@ -1362,36 +1377,29 @@ export function ProductSelector({
                   <SearchField
                     fillHost
                     hideUnderline
+                    hideLeadingIcon
                     placeholder={kioskSearchPlaceholder}
                     value={search}
                     onChange={setSearch}
                     className="min-w-0 flex-1"
                   />
-                  <IconButton
-                    icon={<X className={TOP_CHROME_ICON_FACE} aria-hidden />}
-                    ariaLabel="Close search"
-                    size="md"
-                    onClick={closeCatalogSearch}
-                    className={cn(HEADER_ICON_BTN_CLASS, KIOSK_POS_TRAIL_ICON)}
-                    data-testid="kiosk-search-close"
-                  />
                 </div>
               ) : null}
               {canGoBack ? (
-                <button
-                  type="button"
-                  aria-label="Go back"
+                // Same family as the search toggle / close above it: one trail
+                // icon vocabulary (IconButton + HEADER_ICON_BTN_CLASS +
+                // KIOSK_POS_TRAIL_ICON). This used to be a hand-rolled
+                // <button> wearing the dead KIOSK_MODE_SPINE_* tokens, which
+                // is what kept the retired command spine's chrome alive.
+                <IconButton
+                  icon={<ChevronLeft className={TOP_CHROME_ICON_FACE} aria-hidden />}
+                  ariaLabel="Go back"
+                  size="md"
                   disabled={loading}
                   onClick={goBackOneLevel}
-                  className={cn(
-                    'flex h-9 w-9 shrink-0 items-center justify-center',
-                    KIOSK_POS_TRAIL_ICON,
-                    focusRing('control', 'neutral'),
-                    KIOSK_MODE_SPINE_ROW_IDLE,
-                  )}
-                >
-                  <ChevronLeft className={cn(KIOSK_MODE_SPINE_ICON, 'text-text-soft')} />
-                </button>
+                  className={cn(HEADER_ICON_BTN_CLASS, KIOSK_POS_TRAIL_ICON)}
+                  data-testid="kiosk-catalog-back"
+                />
               ) : null}
               {!searchOpen && (
               <nav

@@ -51,7 +51,7 @@ Read first:
 | Navigators push, inspectors float | `AGENTS.md` hard laws |
 | Golden non-modal inspector | `ShippedDetailsPanel` (`detail:order`, `modal={false}`) |
 | Golden receiving float | `ReceivingDetailsStack` (`detail:receiving`, `modal={false}`, `elevated`, `closeOnOutsideClick`) |
-| Golden intake / sync | `NewOrderEntryOverlay`, `OrderSyncDialog` (Import / Add Order handoff — done) |
+| Golden intake / sync | `NewOrderEntryOverlay` (Import / Add Order handoff — done). `OrderSyncDialog` was the sync half; it is DELETED (2026-09-15, `order-sync-run-surface-HANDOFF.md` §7) — read `NewOrderEntryOverlay` or `ShippedDetailsPanel` for the registrar shape. |
 | Unbox station exception | `ReceivingToolPushStack` / `ReceivingClaimStack` / `ReceivingTicketStack` |
 | Motion / stable ids | `.claude/rules/display/motion-crossfade.md` — queue-processing exception |
 | E2E bar | `tests/e2e/dashboard-inspector-non-modal.spec.ts`, `tests/e2e/import-add-order-non-modal.spec.ts` |
@@ -102,7 +102,7 @@ Smallest win: add `modal={false}` + named `ariaLabel`. Optionally stabilize occu
 
 | Surface | File | Shell today | Callers | Target |
 |---|---|---|---|---|
-| **Inventory fulfillment sync** | `src/components/shipped/InventoryFulfillmentSyncDialog.tsx` | DS `Dialog` (centered) | `ShippedActionsButton` | Extract / register `detail:inventory-sync` `modal={false}` `ariaLabel="Inventory fulfillment progress"` — **literal twin of OrderSyncDialog port** |
+| **Inventory fulfillment sync** | `src/components/shipped/InventoryFulfillmentSyncDialog.tsx` | DS `Dialog` (centered) | `ShippedActionsButton` | Extract / register `detail:inventory-sync` `modal={false}` `ariaLabel="Inventory fulfillment progress"` — **literal twin of the `NewOrderEntryOverlay` port** (its twin `OrderSyncDialog` is deleted) |
 | **Incoming attach tracking** (if it blocks the Incoming grid) | `src/components/sidebar/receiving/IncomingAttachTrackingPopover.tsx` | DS `Dialog` | Incoming details / attach flows | Prefer non-modal rail **only if** product wants grid live during attach; else leave Dialog (short confirm). **Ask before porting.** |
 
 **Do not Phase-1 port in this wave (owned elsewhere or wrong contract):**
@@ -205,7 +205,8 @@ Same Phase 0 recipe on:
 
 ### Phase B — Inventory fulfillment sync port
 
-Mirror OrderSyncDialog:
+Mirror `NewOrderEntryOverlay` / `ShippedDetailsPanel` (the `OrderSyncDialog` this
+step used to name is deleted — same registrar shape, see `order-sync-run-surface-HANDOFF.md` §7):
 
 1. Keep body; wrap with `DetailStackRailRegistrar` `id="detail:inventory-sync"` `modal={false}` `ariaLabel="Inventory fulfillment progress"`.
 2. `if (!open) return null`; block dismiss while running.
@@ -281,7 +282,7 @@ flowchart TB
 | Unbox tool push (do copy for Wave C station) | `src/components/receiving/workspace/ReceivingToolPushStack.tsx` |
 | Registrar API | `src/components/right-rail/DetailStackRailRegistrar.tsx` |
 | Host / store | `RightRailHost.tsx`, `src/lib/right-rail/store.ts` |
-| Golden exemplars | `ShippedDetailsPanel.tsx`, `OrderSyncDialog.tsx` |
+| Golden exemplars | `ShippedDetailsPanel.tsx`, `NewOrderEntryOverlay.tsx` (`OrderSyncDialog.tsx` deleted 2026-09-15) |
 | Selection-plane coordination | `docs/todo/order-rail-selection-plane-PLAN.md` |
 | Prior wave (done) | `docs/todo/import-add-order-right-rail-HANDOFF.md` |
 | E2E exemplars | `tests/e2e/dashboard-inspector-non-modal.spec.ts`, `import-add-order-non-modal.spec.ts` |
@@ -307,7 +308,7 @@ flowchart TB
 ```
 Implement docs/todo/queue-inspector-non-modal-rail-HANDOFF.md.
 
-Pattern is locked — do not re-litigate. Match ShippedDetailsPanel / OrderSyncDialog /
+Pattern is locked — do not re-litigate. Match ShippedDetailsPanel / NewOrderEntryOverlay /
 ReceivingDetailsStack: DetailStackRailRegistrar → RightRailHost modal={false} +
 ariaLabel. Never hand-roll fixed right panels. Never use ReceivingToolPushStack for
 dashboard/Incoming/FBA board inspectors (Unbox-only). Never raise DS ratchet baselines.
@@ -320,7 +321,7 @@ Phase A1: same flip on RepairDetailsPanel (stable detail:claim), UnfoundQueueDet
 panel variant, SupportContextDetailPanel, GlobalDetailStackHost loading shell.
 
 Phase B: port InventoryFulfillmentSyncDialog off centered Dialog onto
-detail:inventory-sync modal={false} (mirror OrderSyncDialog).
+detail:inventory-sync modal={false} (mirror NewOrderEntryOverlay).
 
 Phase C (separate commit OK): TestingPanelModals leftover *Modal wrappers → tool push
 or non-modal rail using existing *Panel bodies; do not put Unbox Claim on RightRailHost.
@@ -357,3 +358,4 @@ Do not edit this handoff except to add Status log lines when phases complete.
 | 2026-08-01 | ⚠️ **Unrelated E2E breakage found, NOT fixed (different session's chrome refactor).** `receiving-tech-modes.spec.ts` (5 cases) and `receiving-param-isolation.spec.ts` (2) fail at their first gate, `getByRole('complementary')`. That element no longer exists anywhere on these routes: `ContextPanelLayout` renders no `<aside>` at all, and `SidebarNavColumn`'s is `role="navigation"` behind `everOpened` (the spine defaults closed, `ResponsiveLayout` `useState(false)`). The only `role="complementary"` left in the tree is the sidebar ERROR-boundary fallback. The specs' own comment still claims "the split pane's `<aside role=\"complementary\">` is always rendered". Fix is one anchor swap per spec; unrelated to the click-plane work, so it is reported rather than folded in. The Recent-pill rename inside `receiving-tech-modes.spec.ts` is applied and correct for when that anchor is repaired. |
 | 2026-08-01 | **Strip grammar: one hairline after the leading SCOPE tab, and Recent carries a count — ported to Home.** A workbench tab strip looks like a row of peers, but the first tab usually is not one: it is the scope the rest filter *within* (Unbox **Recent** = this operator's opens; My Day **Everything** = the unfiltered view). `withScopeDivider` in `workbench-shell.tsx` owns that placement for both, rather than a `dividerBefore: id === '…'` per surface — the second consumer is what makes it a grammar instead of a decoration. Exactly ONE rule, always after index 0: hairlines on both sides of a middle tab in a 3–4 tab strip read as a rendering bug, so **History's old `dividerBefore` was removed** rather than kept alongside the new one. Recent gained a badge from a lightweight `view=viewed` `limit=1` count (same shape as the Queue badge, its own query key so the KPI strip's 200-row fetch is not re-keyed); History stays bare, because a count on a whole-station archive is a database size, not a workload. Specs: `unbox-feed-opens-carton.spec.ts` and the new `home-scope-divider.spec.ts` both **measure** the rule's x against the tabs either side — "which edge" is the requirement, and a class assertion cannot tell left from right. |
 | 2026-08-01 | ⚠️ **Second unrelated red, NOT fixed: `npm run verify` Lint.** `src/lib/documents/ensure-outbound-docs.ts:122` has a bare `console.info`, which the gate counts as a failure (`no-console` allows only warn/error). The file is committed and unmodified in the working tree (commit `baa2243e0`, another session); every file this change set touches lints clean. One-line fix, but it belongs to that file's owner. Same disposition as the `role="complementary"` E2E anchors noted above. |
+| 2026-09-15 | **Exemplar repoint only — no phase work.** `OrderSyncDialog.tsx` is DELETED (`docs/todo/order-sync-run-surface-HANDOFF.md` §7: it was a second import implementation whose only mount was an unreachable branch). This doc named it as live in four places — the §3 law table, the Phase B target row, §7 Golden exemplars, and the §9 paste prompt — so a future agent would have hunted a missing file. All four now point at `NewOrderEntryOverlay` / `ShippedDetailsPanel`, which carry the same `DetailStackRailRegistrar` → `RightRailHost modal={false}` + `ariaLabel` shape. Phase B (`detail:inventory-sync`) is unaffected: its port landed 2026-07-31 and stays unreachable until `ShippedActionsButton` is remounted. |

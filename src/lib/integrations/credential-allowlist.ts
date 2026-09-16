@@ -28,7 +28,12 @@ const ALLOWLIST: Partial<Record<IntegrationProvider, ReadonlySet<CredentialOpera
   zoho: new Set<CredentialOperation>([
     // Inbound (receiving) sync — Waves 2-4.
     'purchaseorders.read',
+    'purchaseorders.write',
     'purchasereceives.read',
+    // Posting a purchase receive IS the "mark received in Zoho" write; it must
+    // be allowlisted or wrapping that path in withZohoCredential would deny it.
+    'purchasereceives.write',
+    'bills.read',
     'organizations.read',
     // Outbound fulfillment sync (push shipped orders into Zoho Inventory).
     'salesorders.read',

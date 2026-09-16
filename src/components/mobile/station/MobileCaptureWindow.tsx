@@ -14,17 +14,18 @@
  * — the title and the running count belong to `MobileStationShell`'s header, on
  * the page above it.
  *
- * ## A panel with a header, not a sheet (operator 2026-09-11)
+ * ## A panel with a glass bar, not a sheet (operator 2026-09-11)
  *
  * The chrome lives in {@link MobileCameraPanel}: a fixed, square-lipped bottom
- * panel with ONE short control row above the picture, three fixed slots —
+ * panel whose picture runs edge to edge, with ONE blurred bar floating on top
+ * of it and three fixed slots —
  *
  *   [ type-a-label ]      what is happening now      [ Done ]
  *
  * — replacing a draggable sheet whose dismiss was a gesture and whose controls
- * were painted over the live feed in three different corners. What this file
- * now supplies to that panel is the LEADING slot (below) and a status string;
- * it no longer positions anything absolutely over the image.
+ * were scattered over the feed in three unrelated corners. What this file
+ * supplies to that panel is the LEADING slot (below), a status string and a
+ * pending count; it positions nothing over the image itself.
  *
  * ## No STANDING text field — but a keyed fallback in the leading slot
  *
@@ -56,14 +57,19 @@
  * the status line and Done stay exactly where they were and the left control
  * swaps its glyph for cancel.
  *
- * ## Nothing is drawn on the feed
+ * ## ONE bar on the feed, and nothing else
  *
- * The stage is the live image and nothing else — no dimming mask, no corner
- * reticle, no sweep line, no title, no counter (operator 2026-09-04), and since
- * 2026-09-11 no control chrome either: the panel's header owns all three. The
- * frame IS the aim box, so a drawn one only repeats it. The only things that
- * ever cover the picture are the two states that REPLACE it — warm-up and a
- * dead lens.
+ * Every control on this surface is ABOUT the camera, so the bar sits ON the
+ * camera — glass, blurred, top of the stage — rather than as a strip outside
+ * the viewfinder that the eye has to leave the picture to collect
+ * (operator 2026-09-11, reversing the opaque band the first pass shipped).
+ *
+ * That is the whole chrome budget. No dimming mask, no corner reticle, no
+ * sweep line, no title, no counter (operator 2026-09-04), and no second pill
+ * in another corner — each of those has been here and each was deleted. The
+ * frame IS the aim box, so a drawn one only repeats it. Beyond the bar, the
+ * only things that ever cover the picture are the two states that REPLACE it —
+ * warm-up and a dead lens — and both inset themselves clear of it.
  *
  * ## Three states, and they must not look alike
  *
@@ -115,12 +121,19 @@ export function MobileCaptureWindow({
   /** What the collapsed bar says once the operator presses Done. */
   collapsedLabel = 'Scan',
   /**
-   * The header's middle slot — the shift count, or what is in flight. Painted
-   * whether or not the operator is typing: a commit that is still settling is
-   * exactly the thing they need to see while they key the next label.
+   * The header's middle slot — the shift count, or the number still settling.
+   * A COUNT, not a sentence: the lip lane says whether anything is pending,
+   * so this line no longer has to spell it out. Painted whether or not the
+   * operator is typing.
    */
   status,
   statusAlert,
+  /**
+   * How many scans the server has not answered yet. Drives the panel's lip
+   * lane — the one moving thing on the surface, and it only moves while this
+   * is above zero.
+   */
+  pending,
   /** Reported up so the station can react to a dead lens. */
   onErrorChange,
   /** Reported up when the operator puts the camera away, or brings it back. */
@@ -137,6 +150,7 @@ export function MobileCaptureWindow({
   collapsedLabel?: string;
   status?: string;
   statusAlert?: boolean;
+  pending?: number;
   onErrorChange?: (errored: boolean) => void;
   onArmedChange?: (armed: boolean) => void;
   armRequest?: number;
@@ -272,15 +286,18 @@ export function MobileCaptureWindow({
         collapsedLabel={collapsedLabel}
         status={status}
         statusAlert={statusAlert}
+        pending={pending}
         open={open}
         onOpenChange={setOpen}
         fitContent={manualOpen}
         stageClass={manualOpen ? 'bg-surface-card' : 'bg-stage'}
         /*
-          ONE slot, both modes. Off the feed and into the header row, which is
-          where it should always have been: it sat over the live image at
-          `absolute left-2 top-1.5`, competing with the picture for the same
-          pixels and moving whenever the lip's radius changed.
+          ONE slot, both modes — and it rides the bar, not the picture. It used
+          to be pinned `absolute left-2 top-1.5` over the live image on its own,
+          a control scattered in a corner with no relationship to the two beside
+          it. `tone="glass"` is the sanctioned face for chrome on live media
+          (the scrim carries the contrast); over the typed field there is no
+          picture, so it drops back to the neutral tone.
         */
         leading={
           manualOpen ? (
@@ -295,6 +312,7 @@ export function MobileCaptureWindow({
           ) : (
             <IconButton
               size="sm"
+              tone="glass"
               ariaLabel="Type the label instead"
               icon={<Type className="h-3.5 w-3.5" />}
               onClick={() => setManualOpen(true)}
@@ -321,11 +339,17 @@ export function MobileCaptureWindow({
           />
         )}
 
-        {/* Warm-up. Says which of the two silences this is. */}
+        {/*
+          Warm-up. Says which of the two silences this is.
+
+          `pt-9` clears the floating bar: this text is centred in the STAGE, and
+          the stage now runs under the glass, so without the inset the first
+          line sits behind Done.
+        */}
         {starting && (
           <div
             role="status"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 pt-9 text-center"
           >
             <span className={cn('text-role-eyebrow text-white', STATION_EYEBROW_CLASS)}>
               Starting camera
@@ -339,10 +363,12 @@ export function MobileCaptureWindow({
         {/*
           Keyed fallback — a MODE, not an overlay on the lens.
 
-          The stage collapses to this bar (`fitContent`) so the tape lip meets
-          the field with no empty stage between them. The cancel lives in the
-          header's left slot; Enter or the check commits. Parent `marginBottom`
-          rides the OS keyboard without parking the bar mid-screen.
+          The stage collapses to content (`fitContent`) so the tape meets the
+          field with no empty stage between them, and the bar comes off the
+          glass onto an opaque ground above it — there is no picture to float
+          on. The cancel lives in its left slot; Enter or the check commits.
+          Parent `marginBottom` rides the OS keyboard without parking the bar
+          mid-screen.
         */}
         {manualOpen && (
           <form
@@ -388,7 +414,7 @@ export function MobileCaptureWindow({
         {errored && !manualOpen && (
           <div
             role="alert"
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-scrim/85 px-8 text-center"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-scrim/85 px-8 pt-9 text-center"
           >
             <p className="text-role-caption font-medium text-rose-200">
               {scanner.error || 'Camera unavailable. Check permissions and reload.'}

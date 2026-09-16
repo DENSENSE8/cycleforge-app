@@ -2,6 +2,8 @@
 // Generated split of the former flat Icons.tsx (the nav-icon SoT).
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
+import { ListChecks as LucideListChecks } from 'lucide-react';
+
 export const Printer = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -59,18 +61,14 @@ export const ClipboardList = ({ className = "w-6 h-6" }: { className?: string })
 /**
  * ListChecks — the DAILY CHECKLIST glyph (Home → Daily).
  *
- * Deliberately not `ClipboardList`, which Home → Tasks already owns: two rows
- * on one switcher must not share a mark, or the operator cannot tell the
- * repeating daily list from project task work at a glance.
- *
- * Ticks + lines, no clipboard body — a list you run, not a document you carry.
- * strokeWidth={2} is the module default; nav surfaces override it to 1.5 via
- * NAV_ICON_STROKE_CLASS (`!important`), so this stays the bare glyph.
+ * The LUCIDE glyph itself (operator ruling 2026-09-14: the nav mark for Daily
+ * is the lucide-react checklist icon, not a house drawing) — ticks + lines, no
+ * clipboard body: a list you run, not a document you carry. Same wrapper shape
+ * as the other lucide ports in this barrel (`Warehouse`, `DoorOpen`), so nav
+ * stroke-weight overrides keep applying through the className pass-through.
  */
 export const ListChecks = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6.5l2 2 4-4M3 16.5l2 2 4-4M13 7h8M13 17h8" />
-    </svg>
+    <LucideListChecks className={className} />
 );
 
 export const FileText = ({ className = "w-6 h-6" }: { className?: string }) => (

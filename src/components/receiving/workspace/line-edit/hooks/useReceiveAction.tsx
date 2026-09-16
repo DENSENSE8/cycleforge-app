@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import { deferInvalidateReceivingFeeds, patchUnboxRailQtyByCarton } from '@/lib/queries/receiving-queries';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';

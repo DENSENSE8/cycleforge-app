@@ -59,7 +59,7 @@
  */
 
 import { useMemo } from 'react';
-import { FileText, Plus, RefreshCw, Download, ExternalLink } from '@/components/Icons';
+import { FileText, Plus, RefreshCw, Download, ExternalLink, Play } from '@/components/Icons';
 import {
   DeskActionSlotRegistrar,
   useDeskExportMenuAction,
@@ -75,14 +75,19 @@ import { useToShipPlatformSyncMenu } from '@/components/outbound/orders/useToShi
  * is the centered `OrderIntakeOverlay`, which is what `onAdd` opens, so the
  * rail's manual leaf was a second door onto the same job. Backfill's
  * `AwaitingEbayPanel` had no other host and left with the rail.
+ *
+ * `demo` runs the SCRIPTED import (sample rows, no network, no writes) through
+ * the same run surface as the real one, so the feedback can be reviewed and
+ * demoed without touching the production Google Sheet (operator 2026-09-15).
  */
-export type OrderIntakeMethod = 'file' | 'sync';
+export type OrderIntakeMethod = 'file' | 'sync' | 'demo';
 
 export function OrdersDeskAddAction({
   onAdd,
   onMethod,
   canImport = true,
   syncing = false,
+  syncProgressLabel = null,
 }: {
   /** The acknowledgment intake for ONE order (`?triage=new`). */
   onAdd: () => void;
@@ -92,6 +97,12 @@ export function OrdersDeskAddAction({
   canImport?: boolean;
   /** A sync is already running; the face reports it rather than starting a second. */
   syncing?: boolean;
+  /**
+   * Live position in the run ledger ("3/8 · 128 rows"). The face is the first
+   * place the operator looks after pressing, so it says how far along the run
+   * is rather than an indefinite "Syncing…".
+   */
+  syncProgressLabel?: string | null;
 }) {
   const platformMenu = useToShipPlatformSyncMenu();
   const exportAction = useDeskExportMenuAction();
@@ -106,7 +117,7 @@ export function OrdersDeskAddAction({
         embeddedChrome="header"
         tone="blue"
         icon={<RefreshCw aria-hidden className="h-3.5 w-3.5" />}
-        label={syncing ? 'Syncing…' : 'Sync Google Sheet'}
+        label={syncing ? (syncProgressLabel ?? 'Syncing…') : 'Sync Google Sheet'}
         loading={syncing}
         onClick={() => onMethod('sync')}
         menuPlacement="bottom"
@@ -154,12 +165,18 @@ export function OrdersDeskAddAction({
             onClick: onAdd,
             separatorBefore: true,
           },
+          {
+            label: 'Demo sync (sample data)',
+            icon: <Play aria-hidden className="h-3.5 w-3.5" />,
+            onClick: () => onMethod('demo'),
+            separatorBefore: true,
+          },
         ]}
         className="shrink-0"
       />
       </div>
     ),
-    [onAdd, onMethod, canImport, syncing, platformMenu, exportAction],
+    [onAdd, onMethod, canImport, syncing, syncProgressLabel, platformMenu, exportAction],
   );
 
   return <DeskActionSlotRegistrar>{control}</DeskActionSlotRegistrar>;

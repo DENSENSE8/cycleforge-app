@@ -19,7 +19,7 @@ import {
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { InlinePillOption } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';

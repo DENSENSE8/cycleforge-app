@@ -342,6 +342,14 @@ export const StaffPreferencesPutBody = z
      * drop; new catalog ids append. Cap 40. See `src/lib/nav/spine-slots.ts`.
      */
     spineSlots: z.array(z.string().min(1).max(64)).max(40).nullable().optional(),
+    /**
+     * Generation of {@link spineSlots} this row was last rolled onto
+     * (`SPINE_SLOTS_VERSION`). Absent / `null` = pre-v1. `migrateSpineSlots`
+     * writes it together with `spineSlots`, and the guard on this number is
+     * what makes a default-order change apply exactly ONCE per staffer rather
+     * than fighting their drag every render.
+     */
+    spineSlotsVersion: z.number().int().min(0).max(999).nullable().optional(),
   })
   .strict();
 

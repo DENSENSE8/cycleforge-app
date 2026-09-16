@@ -11,6 +11,7 @@
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
+import type { SyncProgress } from '@/lib/orders-sync/types';
 
 /** How a tenant authenticates the connection. */
 export type AuthKind = 'oauth' | 'nango' | 'vault';
@@ -91,6 +92,19 @@ export interface SyncOpts {
   cursor?: unknown;
   /** Google Sheets only: import a specific sheet tab instead of the latest. */
   manualSheetName?: string;
+  /**
+   * Live per-phase progress sink. Present only for an operator-driven run that
+   * is streaming its own response (the desk / `/m` sync surfaces); cron and
+   * settings "Sync now" leave it undefined and the connector falls back to its
+   * no-op.
+   *
+   * This is the field whose absence made a 60-second import report itself as a
+   * spinner that stopped: the underlying job has always taken a
+   * {@link SyncProgress}, and `orders-transfer.ts` was passing `undefined` for
+   * it, so every phase and every per-row detail the ingest emitted was
+   * discarded at the connector seam.
+   */
+  onProgress?: SyncProgress;
 }
 
 export interface SyncOutcome {
@@ -109,8 +123,8 @@ export interface SyncOutcome {
    *
    * This field is the prerequisite orders-transfer.ts named for retiring the
    * legacy NDJSON routes. Without it a connector sync reduces a whole import to
-   * two counters, and OrderSyncDialog — which renders per-row inserted/updated/
-   * unmatched-catalog lists — has literally nothing to draw.
+   * two counters, and the run's per-row record (`buildSyncRunDetail` →
+   * OrderSyncRunDetailSheet) has literally nothing to draw.
    */
   details?: unknown;
   /**
@@ -149,6 +163,16 @@ export interface ReconcileOutcome {
   error?: string;
 }
 
+/** Options for {@link IntegrationConnector.validate}. */
+export interface ValidateOpts {
+  /**
+   * Validate a connection whose vault row is NOT `active` (status `error`).
+   * Recovery-only: the self-heal sweep uses it to prove a latched connection
+   * actually works and lift the latch. Normal callers must leave it off.
+   */
+  allowInactive?: boolean;
+}
+
 export interface IntegrationConnector {
   provider: IntegrationProvider;
   authKind: AuthKind;
@@ -160,7 +184,7 @@ export interface IntegrationConnector {
   /** Rotate this org's tokens. Wired per-provider in Phase 1+. */
   refresh?(orgId: OrgId, scope?: string | null): Promise<TokenEnvelope | null>;
   /** Validate the stored credential (subsumes ad-hoc /health). */
-  validate?(orgId: OrgId, scope?: string | null): Promise<HealthResult>;
+  validate?(orgId: OrgId, scope?: string | null, opts?: ValidateOpts): Promise<HealthResult>;
   /** Connection-driven ingestion (replaces the transfer-orders buttons). */
   sync?(orgId: OrgId, opts?: SyncOpts): Promise<SyncOutcome>;
   /** Push channel stock/price OUT to the provider (bidirectional sync). Wired

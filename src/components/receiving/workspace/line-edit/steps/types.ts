@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * What a step body is handed — and, just as importantly, what it is NOT.

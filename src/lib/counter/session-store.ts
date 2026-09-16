@@ -46,7 +46,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { submitCounterTransaction } from './submit-counter-transaction';
 import { createTerminalCheckout } from './terminal-checkout';
 import type { CounterTransactionResult } from './counter-transaction-types';
-import type { KioskCommandId } from '@/lib/kiosk/kiosk-session-store';
+import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
 import {
   emptySessionSnapshot,
   isTerminalPaymentOutcome,
@@ -175,7 +175,19 @@ export interface CounterSessionDeps {
   insertSession(
     tx: CounterSessionTx,
     orgId: OrgId,
-    args: { clientEventId: string; kioskDeviceId: number | null; claimedByStaffId: number },
+    args: {
+      clientEventId: string;
+      kioskDeviceId: number | null;
+      claimedByStaffId: number;
+      /**
+       * Which pane the session opens on. Passed EXPLICITLY rather than left to
+       * `counter_sessions.active_command`'s `DEFAULT 'retail'`: the opening
+       * command is a per-org choice (`OrgSettings.kiosk.defaultCommand`), and a
+       * column default cannot express one. Operator 2026-09-15 — the counter
+       * must open on repair unless the org says otherwise.
+       */
+      activeCommand: KioskCommandId;
+    },
   ): Promise<number>;
   /** Conditional bump. Returns the new version, or null when `expected` lost. */
   bumpVersion(
@@ -399,7 +411,17 @@ async function mutate<T>(args: MutateArgs<T>): Promise<CounterSessionResult> {
 export async function createSession(
   orgId: OrgId,
   actor: CounterSessionActor,
-  args: { clientEventId: string; kioskDeviceId?: number | null },
+  args: {
+    clientEventId: string;
+    kioskDeviceId?: number | null;
+    /**
+     * The org's opening command (`getKioskDefaultCommand`). Resolved by the
+     * route, which holds the org, rather than read behind this function —
+     * `CounterSessionDeps` is the whole I/O surface here and a settings read
+     * hidden inside it would be a second, untestable one.
+     */
+    activeCommand?: KioskCommandId;
+  },
   deps: CounterSessionDeps = defaultDeps,
 ): Promise<CounterSessionResult> {
   // The desk opens every shared session (D5) — a walk-up with no desk keeps
@@ -413,6 +435,7 @@ export async function createSession(
       clientEventId: args.clientEventId,
       kioskDeviceId: args.kioskDeviceId ?? null,
       claimedByStaffId: actor.staffId,
+      activeCommand: args.activeCommand ?? KIOSK_FALLBACK_COMMAND,
     });
     const snapshot = (await deps.readSnapshot(tx, orgId, sessionId)) ?? emptySessionSnapshot(sessionId);
     return {
@@ -1212,10 +1235,16 @@ const defaultDeps: CounterSessionDeps = {
   async insertSession(tx, orgId, args) {
     const res = await asClient(tx).query(
       `INSERT INTO counter_sessions
-         (organization_id, kiosk_device_id, claimed_by_staff_id, client_event_id)
-       VALUES ($1, $2, $3, $4::uuid)
+         (organization_id, kiosk_device_id, claimed_by_staff_id, client_event_id, active_command)
+       VALUES ($1, $2, $3, $4::uuid, $5)
        RETURNING id`,
-      [orgId, args.kioskDeviceId, args.claimedByStaffId, args.clientEventId],
+      [
+        orgId,
+        args.kioskDeviceId,
+        args.claimedByStaffId,
+        args.clientEventId,
+        args.activeCommand,
+      ],
     );
     return Number(res.rows[0].id);
   },

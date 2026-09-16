@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader",
+      "kind": "component",
+      "name": "LedgerGridColumnHeader",
+      "location": "src/design-system/components/grid/LedgerGridColumnHeader.tsx:129",
+      "exported": true,
+      "signature": "function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({ columns, layout, isMobile = false, selectMode = false, selectionScope, selectGutterChrome = 'always', className, activeSort = null, sortDir = null, onSortColumn, onReorderColumn, onResizeColumn, labelFor, leadingChrome, }: LedgerGridColumnHeaderProps<C>)"
+    },
+    {
+      "node_key": "file:src/design-system/components/grid/LedgerGridColumnHeader.tsx",
+      "kind": "file",
+      "name": "LedgerGridColumnHeader.tsx",
+      "location": "src/design-system/components/grid/LedgerGridColumnHeader.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/design-system/components/grid/LedgerGridSurface.tsx:LedgerGridColumnHeaderApi",
+      "kind": "interface",
+      "name": "LedgerGridColumnHeaderApi",
+      "location": "src/design-system/components/grid/LedgerGridSurface.tsx:40",
+      "exported": true,
+      "signature": "interface LedgerGridColumnHeaderApi<K extends string, C extends LedgerGridColumnModel>"
+    }
+  ]
+}

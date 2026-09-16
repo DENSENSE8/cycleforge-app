@@ -75,6 +75,8 @@ export interface AuthSessionUser {
    *  this is always a single synthesized entry for the current org. */
   memberships: OrgMembership[];
   name: string;
+  /** Signed-in email for the account row under the name. Null/absent = none. */
+  email?: string | null;
   role: string;
   permissions: string[];
   mobileDisplayConfig?: MobileDisplayConfig;

@@ -7,7 +7,7 @@ import {
   framerPresenceMobile,
   framerTransitionMobile,
 } from '@/design-system/foundations/motion-framer';
-import { conditionBadgeTone, conditionGradeTableLabel } from '@/components/station/receiving-constants';
+import { conditionBadgeTone, conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import { Button } from '@/design-system/primitives';
 import type { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { PickTask } from './picker-shared';

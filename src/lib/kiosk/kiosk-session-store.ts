@@ -54,9 +54,8 @@ import type {
   RepairPayload,
   RetailPayload,
 } from '@/lib/kiosk/cart-line';
-
-/** Center work command — not a siloed mode that owns the session. */
-export type KioskCommandId = 'repair' | 'retail' | 'buyback' | 'pickup';
+import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
+import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 
 type KioskFace = 'staff' | 'customer';
 
@@ -94,11 +93,26 @@ interface KioskSessionSnapshot {
   sharedCustomerPhoneMasked: string;
   /** Repair lines the customer still has to sign — the tablet's actual job. */
   sharedAwaitingSignatureLineIds: string[];
+  /**
+   * Create a new helpdesk ticket for this visit, or attach it to an existing
+   * one. `null` = nobody has answered yet, which is what the repair flow's
+   * last step gates on (PG6 — see `repair-ticket-choice.ts`).
+   *
+   * A VISIT fact, like the contact trio above: `ticketWork` is
+   * transaction-level on `CounterTransactionInput`, so there is exactly one
+   * per submit however many devices the customer dropped off.
+   *
+   * Local only — deliberately NOT mirrored. A desk-held session's ticket
+   * linkage is the desk's to state, and there is no server field for it on
+   * `counter_sessions`; a tablet inventing one would be writing a fact the
+   * mirror cannot round-trip.
+   */
+  ticketChoice: KioskTicketChoice | null;
 }
 
 const INITIAL: KioskSessionSnapshot = {
   lines: [],
-  activeCommand: 'retail',
+  activeCommand: KIOSK_FALLBACK_COMMAND,
   face: 'staff',
   consultStance: 'work',
   presentation: { ...EMPTY_CONSULT_PRESENTATION },
@@ -114,6 +128,7 @@ const INITIAL: KioskSessionSnapshot = {
   sharedVersion: 0,
   sharedCustomerPhoneMasked: '',
   sharedAwaitingSignatureLineIds: [],
+  ticketChoice: null,
 };
 
 let snapshot: KioskSessionSnapshot = INITIAL;
@@ -135,6 +150,22 @@ export interface KioskSharedWriter {
 }
 
 let sharedWriter: KioskSharedWriter | null = null;
+
+/**
+ * Has a human picked a command on this tablet? Gates `applyDefaultCommand`:
+ * the org's default is a STARTING point, and an operator's pick outranks it
+ * for the rest of the visit. Cleared by `resetSession` — the next customer
+ * walks up to a counter that has made no choices.
+ */
+let commandChosen = false;
+
+/**
+ * The org's opening command once the server has stated it
+ * (`OrgSettings.kiosk.defaultCommand`, delivered with the `/kiosk/v2` HTML).
+ * Held here so `resetSession` returns to the ORG's choice rather than to the
+ * module fallback — "Next customer" and a fresh page load must agree.
+ */
+let defaultCommand: KioskCommandId = KIOSK_FALLBACK_COMMAND;
 
 function emit(): void {
   for (const l of listeners) l();
@@ -166,7 +197,8 @@ export const kioskSessionStore = {
   subscribe,
   /** Reset the whole visit (Done / Next Customer). */
   resetSession(): void {
-    setSnapshot({ ...INITIAL, lines: [] });
+    commandChosen = false;
+    setSnapshot({ ...INITIAL, lines: [], activeCommand: defaultCommand });
   },
   /** Clear lines + identity but keep the active command. */
   clearCart(): void {
@@ -180,9 +212,13 @@ export const kioskSessionStore = {
       awaitingCardSinceMs: null,
       pickupPrefill: null,
       buybackImeiPrefill: null,
+      // The decision belongs to the VISIT it was made for; the next customer's
+      // drop-off must not inherit a link to the last one's ticket.
+      ticketChoice: null,
     });
   },
   setActiveCommand(command: KioskCommandId): void {
+    commandChosen = true;
     if (snapshot.activeCommand === command) return;
     setSnapshot({
       ...snapshot,
@@ -190,6 +226,25 @@ export const kioskSessionStore = {
       // Command switch never clears lines — that was the silo bug.
       // It also never resets consult stance (Work · Show · Verify).
     });
+  },
+  /**
+   * Adopt the ORG's default command (`OrgSettings.kiosk.defaultCommand`).
+   *
+   * PRISTINE ONLY. The default answers "what does this counter open on", never
+   * "what is it showing now", so it must lose to anything that has already
+   * happened: a staffer's own pick, a cart with lines in it, or a desk-held
+   * mirror whose command is the server's to state. Without that the setting
+   * would yank an operator mid-visit on any re-render that re-ran it.
+   */
+  applyDefaultCommand(command: KioskCommandId): void {
+    // Recorded unconditionally: even when it cannot land NOW (mid-visit, or a
+    // desk holds the tablet), `resetSession` must return to the org's choice.
+    defaultCommand = command;
+    if (commandChosen) return;
+    if (snapshot.lines.length > 0) return;
+    if (snapshot.sharedSessionId !== null) return;
+    if (snapshot.activeCommand === command) return;
+    setSnapshot({ ...snapshot, activeCommand: command });
   },
   setConsultStance(stance: ConsultStance, opts?: { manual?: boolean }): void {
     const face = faceFromConsultStance(stance);
@@ -233,6 +288,16 @@ export const kioskSessionStore = {
       customerEmail: fields.email ?? snapshot.customerEmail,
       customerAddress: fields.address ?? snapshot.customerAddress,
     });
+  },
+  /**
+   * Record the visit's helpdesk decision (create vs attach).
+   *
+   * No write-through: see the field's note on the snapshot — there is no
+   * mirrored counterpart for it, so a bound tablet keeps it locally rather
+   * than posting a fact the server has nowhere to put.
+   */
+  setTicketChoice(choice: KioskTicketChoice | null): void {
+    setSnapshot({ ...snapshot, ticketChoice: choice });
   },
   setPickupPrefill(value: string | null): void {
     setSnapshot({ ...snapshot, pickupPrefill: value });
@@ -466,6 +531,10 @@ export function useKioskSessionActions() {
     setCustomer: useCallback(
       (fields: { phone?: string; name?: string; email?: string; address?: string }) =>
         kioskSessionStore.setCustomer(fields),
+      [],
+    ),
+    setTicketChoice: useCallback(
+      (choice: KioskTicketChoice | null) => kioskSessionStore.setTicketChoice(choice),
       [],
     ),
     setPickupPrefill: useCallback(

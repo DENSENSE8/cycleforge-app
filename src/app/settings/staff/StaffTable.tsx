@@ -1,14 +1,34 @@
 'use client';
 
 /**
- * Client island for /settings/staff.
+ * Client island for /settings/staff — the team directory.
  *
- * Renders the staff table, an invite modal, and inline role/active edits.
- * Optimistically mutates the local list and refetches from
- * /api/admin/staff/list after each mutation so we don't drift on errors.
+ * Off `AdminTable` 2026-09-12 (Wave D). The list is the slot `DataTable`
+ * (`staff-directory` PRODUCT_TABLES peer): header sort, the Fields picker and
+ * org-bindable columns arrive from the engine, none of which the seven
+ * hand-written column objects it replaced could ever grow. That history lives
+ * in `settings/staff-directory/staff-directory-grid-layout.ts` and in the
+ * family catalog.
+ *
+ * Three affordances changed shape, and each is worth naming at the mount:
+ *
+ * - **Sign-in policy** was an EDITOR inside the `auth` cell — a `<select>` and
+ *   a checkbox, each POSTing on change. It is a row VERB opening a
+ *   `DeskStageOverlay`, and the two controls now submit as ONE payload rather
+ *   than as two writes racing each other's refetch. The `STEP_UP_REQUIRED`
+ *   answer still raises its own toast (`staff-auth-policy-outcome.ts`).
+ * - **Deactivate** was a `<Button>` in a trailing actions cell behind
+ *   `window.confirm`. It is a `tone: 'danger'` row verb confirmed on a second
+ *   plane that can name the teammate and say what revoking does.
+ * - **The Role cell was a link** to `/settings/access?staffId=<id>`. A link
+ *   inside a cell is gone: the destination is the binding's `navigate` record
+ *   plane, wired here with the router, and `role` stays a sortable fact.
+ *
+ * The invite modal and the page's permission guard are untouched.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
 import {
   Dialog,
@@ -18,29 +38,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { DataTable } from '@/components/tables/DataTable';
+import {
+  apiErrorCode,
+  staffAuthPolicyFailure,
+} from '@/components/settings/staff-directory/staff-auth-policy-outcome';
+import { resolveStaffDirectoryRowActions } from '@/components/settings/staff-directory/staff-directory-verbs';
+import { useStaffDirectorySpreadsheet } from '@/components/settings/staff-directory/useStaffDirectorySpreadsheet';
+import {
+  StaffAuthPolicyPlane,
+  type StaffAuthPolicySubmit,
+} from '@/components/settings/staff-directory/StaffAuthPolicyPlane';
+import { StaffDeactivatePlane } from '@/components/settings/staff-directory/StaffDeactivatePlane';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
-interface StaffRow {
-  id: number;
-  name: string;
-  role: string;
-  status: string;
-  active: boolean;
-  has_pin: boolean;
-  last_login_at: string | null;
-  default_home_path: string | null;
-  color_hex: string;
-  // WS6.1 per-staff auth policy.
-  auth_method: string;               // 'pin' | 'password'
-  requires_sensitive_stepup: boolean;
-}
-
+// The row shape is the FAMILY's (`@/lib/staff/staff-directory-row`), shared
+// with the catalog, the resolver and the adapter. A row interface declared
+// beside a display is how two surfaces of one entity drift apart.
 interface StaffTableProps {
-  initialStaff: StaffRow[];
+  initialStaff: StaffDirectoryRow[];
 }
 
 // Initial role for the invite modal. Editing existing staff happens in
@@ -50,195 +70,121 @@ const ROLE_OPTIONS: ReadonlyArray<string> = [
   'inventory_manager', 'sales', 'viewer',
 ];
 
-function fmtLogin(iso: string | null): string {
-  if (!iso) return 'Never';
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-
 export function StaffTable({ initialStaff }: StaffTableProps) {
-  const [staff, setStaff] = useState<StaffRow[]>(initialStaff);
+  const router = useRouter();
+  const [staff, setStaff] = useState<StaffDirectoryRow[]>(initialStaff);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [busy, setBusy] = useState<number | 'invite' | null>(null);
-  const [filter, setFilter] = useState('');
+  // One plane is open at a time, so one busy flag covers both writes.
+  const [busy, setBusy] = useState(false);
+  const [policyTarget, setPolicyTarget] = useState<StaffDirectoryRow | null>(null);
+  const [deactivateTarget, setDeactivateTarget] = useState<StaffDirectoryRow | null>(null);
 
   const refresh = useCallback(async () => {
     const r = await fetch('/api/admin/staff/list', { credentials: 'include' });
-    if (r.ok) {
-      const data = await r.json();
-      setStaff(data.staff);
-    }
+    if (!r.ok) return;
+    const data = (await r.json()) as { staff?: StaffDirectoryRow[] };
+    setStaff(data.staff ?? []);
   }, []);
 
-  const deactivate = useCallback(async (id: number, name: string) => {
-    if (!confirm(`Deactivate ${name}? Their active sessions will be revoked immediately.`)) return;
-    setBusy(id);
+  const confirmDeactivate = useCallback(async (row: StaffDirectoryRow) => {
+    setBusy(true);
     try {
       const r = await fetch('/api/admin/staff/deactivate', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: row.id }),
       });
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        toast.error(`Couldn't deactivate: ${data.error || r.status}`);
+        const payload: unknown = await r.json().catch(() => null);
+        toast.error(`Couldn't deactivate: ${apiErrorCode(payload) ?? r.status}`);
         return;
       }
+      setDeactivateTarget(null);
       await refresh();
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }, [refresh]);
 
-  // WS6.1: persist a per-staff auth-policy change, then refetch. The update
-  // route is itself behind the sensitive-info wall, so surface STEP_UP_REQUIRED.
-  const updateAuthPolicy = useCallback(async (
-    id: number,
-    patch: { authMethod?: 'pin' | 'password'; requiresSensitiveStepUp?: boolean },
+  // WS6.1: persist BOTH policy fields in one write, then refetch. The update
+  // route is itself behind the sensitive-info wall, so a STEP_UP_REQUIRED
+  // answer is an instruction to re-authenticate, not a failure to report —
+  // `staffAuthPolicyFailure` owns that distinction.
+  const submitAuthPolicy = useCallback(async (
+    row: StaffDirectoryRow,
+    next: StaffAuthPolicySubmit,
   ) => {
-    setBusy(id);
+    setBusy(true);
     try {
       const r = await fetch('/api/admin/staff/update', {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, ...patch }),
+        body: JSON.stringify({ id: row.id, ...next }),
       });
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        if (data.error === 'STEP_UP_REQUIRED') {
-          toast.warning('This change needs step-up verification. Re-authenticate (PIN/passkey) and try again.');
-        } else {
-          toast.error(`Couldn't update auth policy: ${data.error || r.status}`);
-        }
+        const payload: unknown = await r.json().catch(() => null);
+        const failure = staffAuthPolicyFailure(apiErrorCode(payload), r.status);
+        if (failure.tone === 'warning') toast.warning(failure.message);
+        else toast.error(failure.message);
         return;
       }
+      setPolicyTarget(null);
       await refresh();
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }, [refresh]);
 
-  const filtered = useMemo(() => {
-    const q = filter.trim().toLowerCase();
-    if (!q) return staff;
-    return staff.filter((s) =>
-      s.name.toLowerCase().includes(q) ||
-      s.role.toLowerCase().includes(q) ||
-      s.status.toLowerCase().includes(q),
-    );
-  }, [staff, filter]);
+  const rowActions = useCallback(
+    (row: StaffDirectoryRow): readonly CompoundRowAction[] =>
+      resolveStaffDirectoryRowActions(row, {
+        onEditAuthPolicy: setPolicyTarget,
+        onDeactivate: setDeactivateTarget,
+      }),
+    [],
+  );
 
-  const isSearching = filter.trim().length > 0;
+  // The binding's `navigate` record plane. Settings → Access is where the
+  // Roles card is the authoritative editor — the destination the retired Role
+  // cell linked to, kept byte-for-byte.
+  const openAccess = useCallback(
+    (row: StaffDirectoryRow) => router.push(`/settings/access?staffId=${row.id}`),
+    [router],
+  );
 
-  const columns: AdminTableColumn<StaffRow>[] = [
-    {
-      key: 'name',
-      header: 'Name',
-      type: 'text',
-      cell: (s) => (
-        <div className={cn('flex items-center gap-2.5', !s.active && 'text-text-faint')}>
-          <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color_hex }} />
-          <span className="font-medium">{s.name}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'role',
-      header: 'Role',
-      type: 'tag',
-      cell: (s) => (
-        // Role is derived from staff_roles[0]. To edit, jump to the access
-        // detail page where the Roles card is the authoritative editor.
-        <HoverTooltip label="Edit roles in Settings → Access" asChild>
-          <a
-            href={`/settings/access?staffId=${s.id}`}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-0.5 text-role-caption font-medium text-text-muted hover:border-border-soft hover:bg-surface-hover hover:text-text-default',
-              !s.active && 'text-text-faint',
-            )}
-          >
-            {s.role}
-            <span className="text-text-faint">›</span>
-          </a>
-        </HoverTooltip>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      type: 'tag',
-      cell: (s) => <StatusPill status={s.status} active={s.active} />,
-    },
-    {
-      key: 'pin',
-      header: 'PIN',
-      type: 'tag',
-      cell: (s) => (
-        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
-          {s.has_pin ? 'Set' : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'auth',
-      header: 'Auth',
-      type: 'text',
-      cell: (s) => (
-        <AuthPolicyCell row={s} disabled={busy === s.id} onChange={updateAuthPolicy} />
-      ),
-    },
-    {
-      key: 'last_login',
-      header: 'Last login',
-      type: 'date',
-      cell: (s) => (
-        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
-          {fmtLogin(s.last_login_at)}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      cell: (s) =>
-        s.active ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => deactivate(s.id, s.name)}
-            disabled={busy === s.id}
-            className="text-text-soft hover:text-red-600"
-          >
-            Deactivate
-          </Button>
-        ) : null,
-    },
-  ];
+  const sheet = useStaffDirectorySpreadsheet({ rows: staff, rowActions, onOpenRow: openAccess });
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-none border border-border-soft bg-surface-card p-3 shadow-sm">
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter by name, role, or status…"
-          className={cn("w-full max-w-xs rounded-xl border border-border-soft bg-surface-card px-3 py-1.5 text-role-data", focusRing("field", "neutral"))}
-        />
+      <div className="flex flex-wrap items-center justify-end gap-2 rounded-none border border-border-soft bg-surface-card p-3 shadow-sm">
         <Button variant="brand" onClick={() => setInviteOpen(true)}>
           Invite teammate
         </Button>
       </div>
 
-      <AdminTable
-        columns={columns}
-        rows={filtered}
-        rowKey={(s) => s.id}
-        emptyMessage="No teammates yet."
-        searchEmptyMessage="No teammates match."
-        isSearching={isSearching}
-      />
+      <div className="relative flex min-h-0 min-w-0 flex-col">
+        <DataTable {...sheet} totalCount={staff.length} />
+
+        <StaffAuthPolicyPlane
+          row={policyTarget}
+          busy={busy}
+          onClose={() => {
+            if (!busy) setPolicyTarget(null);
+          }}
+          onSubmit={(row, next) => void submitAuthPolicy(row, next)}
+        />
+
+        <StaffDeactivatePlane
+          row={deactivateTarget}
+          busy={busy}
+          onClose={() => {
+            if (!busy) setDeactivateTarget(null);
+          }}
+          onConfirm={(row) => void confirmDeactivate(row)}
+        />
+      </div>
 
       <InviteModal
         open={inviteOpen}
@@ -249,61 +195,6 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
         }}
       />
     </>
-  );
-}
-
-function StatusPill({ status, active }: { status: string; active: boolean }) {
-  const effective = active ? status : 'deactivated';
-  const styles: Record<string, string> = {
-    active:       'bg-emerald-50 text-emerald-700',
-    invited:      'bg-amber-50 text-amber-700',
-    deactivated:  'bg-surface-sunken text-text-soft',
-  };
-  const css = styles[effective] ?? 'bg-surface-canvas text-text-soft';
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${css}`}>
-      {effective}
-    </span>
-  );
-}
-
-// WS6.1 per-staff auth policy control: sign-in method (PIN vs password) plus the
-// sensitive-information step-up wall. Both persist via /api/admin/staff/update.
-function AuthPolicyCell({
-  row,
-  disabled,
-  onChange,
-}: {
-  row: StaffRow;
-  disabled: boolean;
-  onChange: (id: number, patch: { authMethod?: 'pin' | 'password'; requiresSensitiveStepUp?: boolean }) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <HoverTooltip label="Sign-in method for this teammate" asChild>
-        <select
-          value={row.auth_method === 'password' ? 'password' : 'pin'}
-          disabled={disabled}
-          onChange={(e) => onChange(row.id, { authMethod: e.target.value as 'pin' | 'password' })}
-          className={cn("rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-muted disabled:opacity-50", focusRing("field", "neutral"))}
-        >
-          <option value="pin">PIN</option>
-          <option value="password">Password</option>
-        </select>
-      </HoverTooltip>
-      <HoverTooltip label="Require password step-up before sensitive screens" asChild>
-        <label className="inline-flex items-center gap-1 text-role-caption text-text-soft">
-          <input
-            type="checkbox"
-            checked={row.requires_sensitive_stepup}
-            disabled={disabled}
-            onChange={(e) => onChange(row.id, { requiresSensitiveStepUp: e.target.checked })}
-            className={cn("h-3.5 w-3.5 rounded border-border-default text-text-muted disabled:opacity-50", focusRing("control", "neutral"))}
-          />
-          Wall
-        </label>
-      </HoverTooltip>
-    </div>
   );
 }
 

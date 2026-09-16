@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import type { RowGroup } from '@/lib/group-rows';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
@@ -10,10 +10,15 @@ import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
 import {
   SlotTableGroupFold,
+  SlotTableGroupFoldBody,
   SlotTableGroupParentRow,
 } from '@/components/tables/compound/SlotTableGroupParentRow';
-import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
-import { receivingGroupIdentity } from '@/lib/receiving/receiving-group-identity';
+ import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
+ import { receivingGroupIdentity } from '@/lib/receiving/receiving-group-identity';
+import { bandQtyRollupPart } from '@/lib/receiving/receiving-group-rollup';
+import { receivingGroupRollup } from '@/lib/receiving/receiving-group-rollup';
+import { receivingCompoundView } from '@/lib/receiving/receiving-compound-view';
+import { displayReceivingProductTitle } from './cells';
 
 interface ReceivingGridGroupRowProps {
   group: RowGroup<ReceivingLineRow>;
@@ -35,7 +40,7 @@ interface ReceivingGridGroupRowProps {
   statusVocabulary?: 'fine' | 'coarse';
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
-  columns?: readonly ReceivingGridColumn[];
+  columns: readonly ReceivingGridColumn[];
   selectGutterChrome?: GridSelectGutterChrome;
   /** Unbox History: click toggles select; double-click opens. */
   clickSelect?: boolean;
@@ -106,8 +111,25 @@ export function ReceivingGridGroupRow({
   const { carriers, boxCount, trackings } = orderCarrierBoxes(group.rows);
   const ids = group.rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
   const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
-  const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : 'mixed';
+   const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : 'mixed';
 
+  // Band rollups (operator 2026-09-14, "implement all 1-3"): the band is a
+  // summary row — rolled status pill ("2 RECEIVED", worst tone wins) and
+  // summed qty (received/expected) under the lead product title, the same
+  // grammar To-ship's band already speaks via parentOrderLineTotals.
+  const rollup = receivingGroupRollup(group.rows);
+  const bandView = receivingCompoundView(group.rows[0]!, {
+    title: displayReceivingProductTitle(group.rows[0]!),
+    stateLabel: rollup.label,
+    stateTone: rollup.tone,
+    stateTip: rollup.tip,
+    delayDays: null,
+    tracking: null,
+    orderId: null,
+  });
+  bandView.subtitleParts = [
+    bandQtyRollupPart('receiving.qty', rollup.qtyReceived, rollup.qtyExpected),
+  ];
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => {
     const isOpen = handleToggleRow
       ? selectedId === row.id
@@ -175,9 +197,14 @@ export function ReceivingGridGroupRow({
           selectCount={group.rows.length}
           folded={folded}
           onToggleFold={() => setFolded((open) => !open)}
+          view={bandView}
         />
       ) : null}
-      {folded ? null : group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
+      {folded ? null : (
+        <SlotTableGroupFoldBody multi={multi}>
+          {group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
+        </SlotTableGroupFoldBody>
+      )}
     </SlotTableGroupFold>
   );
 }

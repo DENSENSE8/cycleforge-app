@@ -21,7 +21,7 @@
  */
 
 import type { CompoundStateTone } from '@/components/tables/compound/compound-row-model';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { incomingDeliveryStateFace } from './incoming-delivery-state-face';
 import {
   INCOMING_REMOVAL_REASON_FACE,

@@ -27,10 +27,18 @@
  * 2026-08-30 (operator override): the acknowledgment intake is now the
  * centered `OrderIntakeOverlay`, opened by the desk's Add / `?triage=`, so
  * this rail carries only the secondary ingest methods.
+ *
+ * 2026-09-15: the `sync` leaf is GONE. Order import is its own measured run
+ * surface now — the desk's Sync CTA (`OrderSyncRunView` over the table) and
+ * `/m/orders/sync` on the phone. This leaf was a second door onto the same job
+ * with its OWN `useOrdersSync()` instance, so an operator could start a second
+ * concurrent import from here and watch it in a rail-shaped panel that
+ * reported different numbers. Backfill (`AwaitingEbayPanel`) stays: it is a
+ * different job.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Database, FileText, Plus, RefreshCw } from '@/components/Icons';
+import { FileText, Plus, RefreshCw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   DESK_INSPECTOR_INDEX,
@@ -38,21 +46,18 @@ import {
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
-import { OrderSyncPanelBody } from '@/components/sidebar/OrderSyncDialog';
 import { useShippedFormSubmit } from '@/components/sidebar/dashboard-sidebar-hooks';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
-import { FileImportSection, SyncImportSection } from './OrderIngestPanel';
+import { FileImportSection } from './OrderIngestPanel';
 
 const ORDER_INGEST_RAIL_ID = 'detail:order-ingest';
 
 const MANUAL_LEAF = 'manual';
 const FILE_LEAF = 'file';
-const SYNC_LEAF = 'sync';
 const BACKFILL_LEAF = 'backfill';
 
 export function OrderIngestRail({
@@ -67,19 +72,17 @@ export function OrderIngestRail({
    * so a bulk import is two clicks (caret → method) instead of caret → Root
    * Index → method. `index` still shows the full list.
    */
-  initialLeaf?: 'index' | 'manual' | 'file' | 'sync' | 'backfill';
+  initialLeaf?: 'index' | 'manual' | 'file' | 'backfill';
 }) {
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
   const { active: importActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
-  const sync = useOrdersSync();
   const submitNewOrder = useShippedFormSubmit(onClose);
 
-  const resolveInitialLeaf = (leaf: 'index' | 'manual' | 'file' | 'sync' | 'backfill') => {
+  const resolveInitialLeaf = (leaf: 'index' | 'manual' | 'file' | 'backfill') => {
     if (leaf === 'manual') return MANUAL_LEAF;
     if (leaf === 'file') return FILE_LEAF;
-    if (leaf === 'sync') return SYNC_LEAF;
     if (leaf === 'backfill') return BACKFILL_LEAF;
     return DESK_INSPECTOR_INDEX;
   };
@@ -136,58 +139,19 @@ export function OrderIngestRail({
           ),
         });
       }
-      rows.push(
-        {
-          id: SYNC_LEAF,
-          label: 'Import latest orders',
-          subtitle: 'Refresh populate from connected channels',
-          icon: Database,
-          group: 'assets',
-          tone: sync.isTransferring ? 'action' : 'neutral',
-          content: (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <SyncImportSection
-                isTransferring={sync.isTransferring}
-                manualSheetName={sync.manualSheetName}
-                onSheetNameChange={sync.setManualSheetName}
-                status={sync.status}
-                onImport={() => {
-                  void sync.handleTransfer();
-                }}
-                onCancel={sync.handleCancelTransfer}
-              />
-              {/* Progress lives IN the leaf. Mounting `OrderSyncDialog` here
-                  registered a second occupant (`detail:order-sync`) into the
-                  one RightRailHost slot and evicted this very rail. */}
-              {sync.isSyncDialogOpen ? (
-                <OrderSyncPanelBody
-                  open
-                  onClose={() => sync.setIsSyncDialogOpen(false)}
-                  isRunning={sync.isTransferring}
-                  elapsedMs={sync.elapsedMs}
-                  onCancel={sync.handleCancelTransfer}
-                  sheets={sync.sheetsTask}
-                  ecwid={sync.ecwidTask}
-                  exceptions={sync.exceptionsTask}
-                />
-              ) : null}
-            </div>
-          ),
-        },
-        {
-          id: BACKFILL_LEAF,
-          label: 'Backfill',
-          subtitle: 'eBay / Ecwid catch-up',
-          icon: RefreshCw,
-          group: 'assets',
-          tone: 'neutral',
-          content: (
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-              <AwaitingEbayPanel />
-            </div>
-          ),
-        },
-      );
+      rows.push({
+        id: BACKFILL_LEAF,
+        label: 'Backfill',
+        subtitle: 'eBay / Ecwid catch-up',
+        icon: RefreshCw,
+        group: 'assets',
+        tone: 'neutral',
+        content: (
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <AwaitingEbayPanel />
+          </div>
+        ),
+      });
     }
 
     return rows;
@@ -199,12 +163,6 @@ export function OrderIngestRail({
     csv.open,
     onClose,
     submitNewOrder,
-    sync.handleCancelTransfer,
-    sync.handleTransfer,
-    sync.isTransferring,
-    sync.manualSheetName,
-    sync.setManualSheetName,
-    sync.status,
   ]);
 
   return (

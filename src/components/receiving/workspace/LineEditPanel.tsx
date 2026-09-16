@@ -62,7 +62,7 @@ import {
 } from '@/components/station/displays';
 import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
 import { ASSISTANT_DOCK_OPEN_EVENT } from '@/utils/events';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { useReturnOrderLinkage } from './line-edit/hooks/useReturnOrderLinkage';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';

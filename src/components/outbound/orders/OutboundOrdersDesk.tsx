@@ -8,7 +8,7 @@
  * `?context=support` and swaps the focus pane for ticket affordances.
  */
 
-import { Suspense, useCallback, useEffect } from 'react';
+import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { QueryClient } from '@tanstack/react-query';
@@ -35,6 +35,12 @@ import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake'
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
+import { useOrdersSyncDemo } from '@/hooks/useOrdersSyncDemo';
+import {
+  OrdersSyncRunProvider,
+  type OrdersSyncRunSurface,
+} from '@/features/orders/sync/orders-sync-run-context';
+import { syncRunProgress, syncRunRowsSeen } from '@/lib/orders-sync/run-steps';
 import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
@@ -120,6 +126,7 @@ function OutboundOrdersDeskContent({
    */
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
   const sync = useOrdersSync();
+  const demo = useOrdersSyncDemo();
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
 
@@ -129,10 +136,75 @@ function OutboundOrdersDeskContent({
         void sync.handleTransfer();
         return;
       }
+      if (method === 'demo') {
+        demo.start();
+        return;
+      }
       csv.open();
     },
-    [csv, sync],
+    [csv, demo, sync],
   );
+
+  /**
+   * ONE run surface for the table to yield to. The scripted demo and the live
+   * import publish the same shape — the run view cannot tell them apart, which
+   * is the point: what the demo shows is what production shows.
+   *
+   * The demo wins only while it holds a run; it never starts itself, so a real
+   * import can never be hidden behind sample numbers.
+   */
+  const runSurface = useMemo<OrdersSyncRunSurface>(
+    () =>
+      demo.run
+        ? {
+            run: demo.run,
+            elapsedMs: demo.elapsedMs,
+            isRunning: demo.isRunning,
+            outcome: demo.outcome,
+            detail: demo.detail,
+            demo: true,
+            cancel: demo.cancel,
+            dismiss: demo.dismiss,
+          }
+        : {
+            run: sync.run,
+            elapsedMs: sync.elapsedMs,
+            isRunning: sync.isTransferring,
+            outcome: sync.status,
+            detail: sync.runDetail,
+            demo: false,
+            cancel: sync.handleCancelTransfer,
+            dismiss: sync.dismissRun,
+          },
+    [
+      demo.run,
+      demo.elapsedMs,
+      demo.isRunning,
+      demo.outcome,
+      demo.detail,
+      demo.cancel,
+      demo.dismiss,
+      sync.run,
+      sync.elapsedMs,
+      sync.isTransferring,
+      sync.status,
+      sync.runDetail,
+      sync.handleCancelTransfer,
+      sync.dismissRun,
+    ],
+  );
+
+  /**
+   * The CTA face is the first place the operator looks after pressing, so it
+   * carries the ledger position rather than an indefinite "Syncing…".
+   */
+  const syncProgressLabel = useMemo(() => {
+    if (!sync.run || !sync.isTransferring) return null;
+    const progress = syncRunProgress(sync.run);
+    const rows = syncRunRowsSeen(sync.run);
+    const position = `${progress.completed}/${progress.total}`;
+    return rows > 0 ? `Syncing ${position} · ${rows} rows` : `Syncing ${position}`;
+  }, [sync.run, sync.isTransferring]);
 
   const { selectionEnabled, selectMode, selectionOverlays } =
     useOrderRailSelection(orderView);
@@ -176,6 +248,7 @@ function OutboundOrdersDeskContent({
   }
 
   return (
+    <OrdersSyncRunProvider value={runSurface}>
     <OrdersViewChromeProvider>
       <DashboardOrdersView
         orderView={orderView}
@@ -220,6 +293,7 @@ function OutboundOrdersDeskContent({
             onMethod={openIntakeMethod}
             canImport={canImportOrders && csv.live}
             syncing={sync.isTransferring}
+            syncProgressLabel={syncProgressLabel}
           />
           <OrdersDeskPastImportsAction />
           {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
@@ -228,6 +302,7 @@ function OutboundOrdersDeskContent({
         </>
       ) : null}
     </OrdersViewChromeProvider>
+    </OrdersSyncRunProvider>
   );
 }
 

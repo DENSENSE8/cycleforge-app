@@ -73,14 +73,21 @@ import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
-import { CompoundEdgeRail } from './CompoundEdgeRail';
+import { CompoundSelectStatusFace } from './CompoundSelectStatusFace';
+import type { CompoundSelectStatus } from './compound-select-status';
 import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
 import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
 import { CompoundSubtitleTextEditor } from './CompoundSubtitleTextEditor';
 import { CompoundCell, CompoundLine } from './CompoundCell';
+import { StruckLabel } from '@/design-system/components/StruckLabel';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
 import { ProductTitleLink } from './ProductTitleLink';
-import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
+import {
+  COMPOUND_GUTTER_MARK_TOP_PIN_CLASS,
+  COMPOUND_GUTTER_PX,
+  COMPOUND_GUTTER_RAIL_INSET_CLASS,
+  COMPOUND_ROW_PX,
+} from './compound-row-chrome';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
   DropdownMenu,
@@ -167,14 +174,32 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
 /**
  * Column 1 — the SELECTION mark, edge to edge, and never blank.
  *
- * A full-bleed square that always paints a checkmark: faded when the row is not
- * selected, solid on an accent ground when it is. That is the whole affordance
- * — an operator can see at a glance that the leftmost column is a checkmark
- * column, and can read straight down it to see what is ticked.
+ * ## Two altitudes in one 16px box (operator 2026-09-15)
  *
- * **One face, no chrome flag.** The flat spreadsheets still choose between
- * `'always'` / `'selected-only'` / `'sheets'` gutter chrome; the compound row
- * does not, because it has one display method by rule. The face here is fixed.
+ * The gutter reports the row's STATUS at rest and becomes the selection
+ * control the moment a pointer reaches the row: an urgent order flashes a
+ * lightning bolt while nobody is pointing at it, and that same box paints the
+ * checklist square under hover, keyboard focus, or a no-hover pointer. Neither
+ * face is a mode and neither is a mode switch — {@link GridSelectSquareFace}
+ * already paints itself in exactly those three conditions, and
+ * {@link CompoundSelectStatusFace} fades out under the same three, so the swap
+ * is one CSS answer rather than two components racing a state flag.
+ *
+ * A TICKED row keeps the accent square standing at every pointer position:
+ * membership must be readable straight down the column, so `status` is dropped
+ * once `checked` is anything but `false`. That is also why the status face only
+ * arrives with `'hover'` chrome — `'always'` (group-fold parents) never yields
+ * the box.
+ *
+ * **The resting glyph is a MARK, not a state pill.** Which facts qualify is
+ * {@link compoundSelectStatusMark}'s call, and ordinary rows resolve to
+ * nothing: a glyph on every row would rebuild the column of forty faded checks
+ * the operator retired on 2026-09-04.
+ *
+ * **The leading edge rail is NOT here.** It is the whole gutter CELL's, so it
+ * spans the full row height even where the cell splits into check-over-chevron
+ * — see {@link CompoundEdgeRail} and the `data-select-gutter` hosts. Painting
+ * it inside this face is what clipped it to the top half of a detail row.
  *
  * ## Interactive vs decorative is the presence of `onToggle`
  *
@@ -196,7 +221,7 @@ export function CompoundSelect({
   label,
   disabled = false,
   chrome = 'hover',
-  edgeMark,
+  statuses,
 }: {
   checked: boolean | 'mixed';
   /** Present ⇒ a real checkbox. Absent ⇒ a decorative face (row owns toggle). */
@@ -209,29 +234,47 @@ export function CompoundSelect({
    * `'always'` so the fold checkbox is findable without hunting a hover.
    */
   chrome?: GridSelectGutterChrome;
-  /** Leading edge rail — urgent / blocked. See {@link CompoundEdgeRail}. */
-  edgeMark?: CompoundRowView['edgeMark'];
+  /**
+   * The row's resting marks from {@link compoundSelectStatusMarks}, hottest
+   * first. Paints only where the square is hover-revealed and nothing is
+   * ticked; several marks take turns in the box.
+   */
+  statuses?: readonly CompoundSelectStatus[];
 }) {
-  const rail = edgeMark ? <CompoundEdgeRail mark={edgeMark} /> : null;
+  const resting =
+    statuses && statuses.length > 0 && chrome === 'hover' && checked === false ? statuses : null;
+  // BOTH faces share one box, pinned to the TOP of the gutter and inset past
+  // the rail (operator 2026-09-04 "most top of the column per rows", reaffirmed
+  // 2026-09-15 after a pass floated the mark to the row's middle: the checklist
+  // icon stays pinned to the top and the drop-down sits below it). One class
+  // pair, passed to both planes — a face that aligned differently from the
+  // control it stands in for would make the glyph jump on hover.
+  const faceCentring = cn(COMPOUND_GUTTER_MARK_TOP_PIN_CLASS, COMPOUND_GUTTER_RAIL_INSET_CLASS);
   // Decorative face — the ROW owns the toggle on click-select surfaces. Same
   // square the real control paints, so the two planes cannot look different.
   if (!onToggle) {
     return (
-      <span className="relative flex h-full w-full items-center justify-center">
-        {rail}
+      <span className={cn('relative flex h-full w-full justify-center', faceCentring)}>
+        {resting ? <CompoundSelectStatusFace statuses={resting} className={faceCentring} /> : null}
         <GridSelectSquareFace checked={checked} />
       </span>
     );
   }
   return (
     <span className="relative flex h-full w-full">
-      {rail}
+      {resting ? <CompoundSelectStatusFace statuses={resting} className={faceCentring} /> : null}
       <GridRowCheckbox
         checked={checked}
         onToggle={onToggle}
         label={label}
         disabled={disabled}
         chrome={chrome}
+        // Keeps GridRowCheckbox's own top pin (`items-start pt-1`) and adds the
+        // rail reservation — the compound gutter differs from a flat grid in
+        // the 3px inset only, never in the vertical pin. The hit plane is
+        // unchanged: the inset is INSIDE the full-cell button, and the button
+        // still spans every pixel above the chevron band.
+        className={faceCentring}
       />
     </span>
   );
@@ -697,7 +740,7 @@ export function CompoundItem({
 
   const kitFace = view.kitFace ?? null;
   const kitFaceLine = kitFace ? (
-    <HoverTooltip label={<KitCompositionHoverCard face={kitFace} />} focusable={false} asChild>
+    <HoverTooltip label={<KitCompositionHoverCard face={kitFace} />} chrome="plain" focusable={false} asChild>
       <span
         className="inline-flex h-3 max-w-full items-center truncate text-role-micro font-medium text-text-muted"
         data-testid="kit-face-chip"
@@ -763,7 +806,7 @@ export function CompoundItem({
   ) : (
     <span className="text-text-faint">Untitled</span>
   );
-  const titleWithActions = titleActions.length > 0 ? (
+  const titleFace = titleActions.length > 0 ? (
     <CopyChipHoverMenu
       menuLabel="Item number actions"
       items={titleActions}
@@ -775,6 +818,14 @@ export function CompoundItem({
   ) : (
     titleLine
   );
+  // The strike HOST only exists for a family that declared the field — see
+  // `CompoundRowView.titleStruck`. Absent ⇒ the title is the same node it was.
+  const titleWithActions =
+    view.titleStruck == null ? (
+      titleFace
+    ) : (
+      <StruckLabel struck={view.titleStruck}>{titleFace}</StruckLabel>
+    );
 
   return (
     <CompoundCell
@@ -797,6 +848,7 @@ export function CompoundItem({
                   itemStatus.tip
                 )
               }
+              chrome={itemStatus.card ? 'plain' : 'inverse'}
               focusable={false}
               asChild
             >
@@ -911,19 +963,33 @@ export function CompoundFulfillment({
       <GridCellDash />
     );
 
-  if (view.quietIdentity) {
-    return (
-      <CompoundCell
-        primary={trackingFace}
-        secondary={<GridCellDash />}
-      />
-    );
-  }
+  // Operator 2026-09-14: the order number displays on EVERY row — expanded
+  // children included ("it must display the order number for all the other
+  // rows, the child rows as well"). The old quietIdentity special-case dashed
+  // the order line on fold children because the band "spoke it once"; that is
+  // retired — every row answers "which order?" on line 1 and "which box?" on
+  // line 2 (tracking), band and children in one grammar.
+  // A family that declares `identityFace` has a LOCAL handle, not an order:
+  // plain, copyable, no brand dot and no marketplace menu (see the field's
+  // docblock). Checked first so the order path stays exactly as it was for
+  // every family that does have an order.
+  const identity = view.identityFace ?? null;
+  // …and its second-line twin. A local handle usually has a SECOND local
+  // handle (bin code over SKU, unit id over serial), which had nowhere to go
+  // while this line was carrier-only. Same paint as line 1: plain, copyable,
+  // no ring and no tracking menu.
+  const identitySub = view.identitySubFace ?? null;
 
   return (
     <CompoundCell
       primary={
-        view.orderId ? (
+        identity ? (
+          <HoverTooltip label={identity.label} asChild>
+            <CompoundLine mono>
+              <CopyableCellValue value={identity.value} dense />
+            </CompoundLine>
+          </HoverTooltip>
+        ) : view.orderId ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
             <OrderNumberMenuChip
@@ -938,7 +1004,17 @@ export function CompoundFulfillment({
           <GridCellDash />
         )
       }
-      secondary={trackingFace}
+      secondary={
+        identitySub ? (
+          <HoverTooltip label={identitySub.label} asChild>
+            <CompoundLine mono>
+              <CopyableCellValue value={identitySub.value} dense />
+            </CompoundLine>
+          </HoverTooltip>
+        ) : (
+          trackingFace
+        )
+      }
     />
   );
 }

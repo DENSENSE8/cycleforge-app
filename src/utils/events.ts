@@ -1,7 +1,7 @@
 import type { ShippedOrder } from '@/types/orders';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { SearchSelection } from '@/lib/search/search-selection';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { refreshDomains } from '@/lib/refresh/bus';

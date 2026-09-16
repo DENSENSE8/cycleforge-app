@@ -73,6 +73,8 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     attention: paramFlag,
     ustatus: paramText,
     stage: paramText,
+    /** Ship-by aging bucket: overdue, today, upcoming, or unscheduled. */
+    aging: paramEnum(['overdue', 'today', 'upcoming', 'unscheduled'] as const),
     late: paramFlag,
     /** Packing DESK/STAGING placement filter (Ready-to-Pack → To-ship). */
     packStation: paramPositiveInt,
@@ -156,6 +158,22 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
     main: paramText,
     details: paramText,
     r: paramText,
+    /**
+     * The FNSKU catalog rail's three keys (ex-Admin › Amazon Prep, reached as
+     * `?fbaMode=catalog`). `FbaCatalogSidebarPanel` is the only writer and
+     * `FBAManagementTab` the only reader, but the SPEC has to own them or the
+     * boundary parse rebuilds the query string without them and the rail's own
+     * selection vanishes between the click and the pane.
+     *
+     * `search` is the rail's filter box — deliberately NOT folded into
+     * `SHIPPING_COMMON.q`: the catalog rail queries `/api/admin/fba-fnskus?q=`
+     * with it, and `q` on this route already means the board's search.
+     */
+    search: paramText,
+    /** Selected FNSKU — the catalog pane's detail key. */
+    fnsku: paramText,
+    /** Rail disposition pills (`hydrated` · `stubs`; `all` is the bare URL). */
+    fbaFilter: paramEnum(['hydrated', 'stubs'] as const),
   },
   carries: SHIPPING_CARRIES,
 });

@@ -11,15 +11,14 @@
  * `daily_check_marks`), this is one staffer's own list (`staff_todos`). Two
  * stores, two questions, two tables — the shared thing is the engine.
  *
- * Facts are content-hard and trailing `_fill` owns the sole `1fr`, from the one
- * declaration (`GRID_FILL_COLUMN`). Nothing here re-derives geometry.
+ * Geometry is not declared here: the mounted model is the shared compound
+ * track set, where the trailing `_fill` owns the sole `1fr`.
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { TASKS_FIELD_CATALOG, TASKS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/tasks';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -58,75 +57,6 @@ export interface TasksGridColumn extends SlotTrackFields {
   resizable?: boolean;
   omitCellIcon?: boolean;
 }
-
-/**
- * Canonical Tasks columns, in scan order.
- *
- * `select` carries the surface's primary VERB — ticking the box checks the task
- * off — exactly as it does on Daily, which is why the capability bag below
- * declares `multiSelect: false` rather than mounting select-all over it.
- *
- * `due` is the recurring cycle's next reset, and reads `—` for a general task.
- * A recurring task has no deadline; it has a period, and the honest column says
- * when the period turns over rather than inventing a date.
- */
-export const TASKS_GRID_COLUMNS: readonly TasksGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'task',
-    frozen: true,
-    // Content-hard, never `1fr` — a flex track inside the FROZEN pane puts every
-    // following frozen cell's sticky `left` out by the difference.
-    width: 'minmax(20rem, 20rem)',
-    label: 'Task',
-    type: 'text',
-    resizable: true,
-    labelFitRem: 8,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'kind',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Kind',
-    type: 'tag',
-    hideKey: 'kind',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'station',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Station',
-    type: 'text',
-    hideKey: 'station',
-    labelFitRem: 5,
-  },
-  {
-    key: 'due',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Resets',
-    type: 'date',
-    hideKey: 'due',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'updated',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Checked',
-    type: 'date',
-    hideKey: 'updated',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  GRID_FILL_COLUMN,
-] as const;
 
 /**
  * COMPOUND (two-row) Tasks columns.
@@ -244,8 +174,8 @@ export function tasksColumnKeyForSort(
 
 /**
  * The comparator shape each fact sorts under. On the FACT rather than read off
- * a column: it used to be `TASKS_GRID_COLUMNS.find(...)?.type`, which returned
- * `undefined` for every compound track.
+ * a column: it used to be a `.find(...)?.type` lookup over the flat column
+ * array, which returned `undefined` for every compound track.
  */
 export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> = {
   task: 'text',

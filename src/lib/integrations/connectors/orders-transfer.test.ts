@@ -6,12 +6,13 @@ import { toOutcome } from './orders-transfer-outcome';
 import type { GoogleSheetsTransferOrdersJobResult } from '@/lib/jobs/google-sheets-transfer-orders';
 
 /**
- * Regression: the Sheets importer dialog rendered an empty body for every run.
+ * Regression: the Sheets importer reported an empty body for every run.
  *
- * OrderSyncDialog draws its whole body from `details` (inserted / updated /
- * unmatchedCatalog row lists). When the chrome popover was routed through the
- * connector seam, this mapping reduced the job result to two counters — so the
- * dialog had nothing to draw, and a sheet whose rows were ALL skipped looked
+ * The per-row record is drawn entirely from `details` (inserted / updated /
+ * unmatchedCatalog row lists) — today `buildSyncRunDetail`, then the deleted
+ * `OrderSyncDialog`. When the chrome popover was routed through the connector
+ * seam, this mapping reduced the job result to two counters — so that surface
+ * had nothing to draw, and a sheet whose rows were ALL skipped looked
  * identical to an already-up-to-date sheet ("0 / 0 / no changes").
  *
  * These assertions pin the passthrough that the orders-transfer.ts header

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Main pane for /admin?section=suppliers. Reads ?supplier=<id|'new'> and shows
+ * Main pane for /sourcing?mode=suppliers. Reads ?supplier=<id|'new'> and shows
  * a create form or an editable supplier card. eBay sellers are auto-created on
  * import; the rest are entered here.
  */
@@ -101,7 +101,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
       if (mode === 'create') {
         const next = new URLSearchParams(searchParams.toString());
         next.set('supplier', String(body.supplier.id));
-        router.replace(`/admin?${next.toString()}`);
+        router.replace(`/sourcing?${next.toString()}`);
       } else {
         queryClient.invalidateQueries({ queryKey: qk.suppliers.detail(supplier!.id) });
       }
@@ -110,7 +110,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
 
   const remove = useMutation({
     mutationFn: () => jsonFetch(`/api/suppliers/${supplier!.id}`, { method: 'DELETE' }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: qk.suppliers.all }); router.replace('/admin?section=suppliers'); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: qk.suppliers.all }); router.replace('/sourcing?mode=suppliers'); },
   });
 
   return (
@@ -135,7 +135,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           <Button variant="primary" loading={save.isPending} disabled={!form.name.trim()} onClick={() => save.mutate()}>{mode === 'create' ? 'Create' : 'Save changes'}</Button>
-          {mode === 'create' ? <Button variant="ghost" onClick={() => router.replace('/admin?section=suppliers')}>Cancel</Button> : null}
+          {mode === 'create' ? <Button variant="ghost" onClick={() => router.replace('/sourcing?mode=suppliers')}>Cancel</Button> : null}
         </div>
         {mode === 'edit' ? <Button variant="danger" size="sm" loading={remove.isPending} onClick={() => { if (confirm('Deactivate this supplier?')) remove.mutate(); }}>Deactivate</Button> : null}
       </div>

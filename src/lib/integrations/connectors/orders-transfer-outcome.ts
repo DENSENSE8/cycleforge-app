@@ -11,13 +11,15 @@ import type { GoogleSheetsTransferOrdersJobResult } from '@/lib/jobs/google-shee
 import type { SyncOutcome } from './types';
 
 /**
- * What this mapping drops, the importer dialog cannot draw.
+ * What this mapping drops, no import surface can draw.
  *
- * OrderSyncDialog renders its whole body from `details` (the inserted /
- * updated / unmatched-catalog row lists). This used to return only `ok`,
- * `imported` and `updated`, so once the chrome popover was routed through the
- * connector seam the dialog went blank for every run — and a sheet whose rows
- * were all skipped became indistinguishable from an up-to-date one.
+ * The run's per-row record (`buildSyncRunDetail` → OrderSyncRunDetailSheet, and
+ * before it the deleted `OrderSyncDialog`) is built entirely from `details` —
+ * the inserted / updated / unmatched-catalog row lists. This used to return
+ * only `ok`, `imported` and `updated`, so once the chrome popover was routed
+ * through the connector seam that surface went blank for every run — and a
+ * sheet whose rows were all skipped became indistinguishable from an
+ * up-to-date one.
  */
 export function toOutcome(r: GoogleSheetsTransferOrdersJobResult): SyncOutcome {
   return {

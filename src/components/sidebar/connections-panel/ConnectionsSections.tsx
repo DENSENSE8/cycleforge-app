@@ -33,7 +33,7 @@ export function ZohoSection({ c }: { c: ConnectionsPanelController }) {
     <SidebarSection title="Inventory sync" expanded={c.showZoho} onToggle={() => c.setShowZoho((v) => !v)}>
       <div className="border-b border-border-soft bg-surface-card px-4 py-3">
         <Link
-          href="/admin?section=connections&page=zoho-management"
+          href="/settings/integrations/sync?page=zoho-management"
           className={`inline-flex border-b border-border-strong py-1 ${sectionLabel} text-text-default`}
         >
           Inventory sync tools

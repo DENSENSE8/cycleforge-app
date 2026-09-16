@@ -14,6 +14,26 @@ export type PackingReportRow = {
   estimatedMinutes: number;
   trackingType: string | null;
   trackingOrScanRef: string | null;
+  /**
+   * The order's own number, or null when the pack scan never resolved to an
+   * order row. NOT interchangeable with {@link trackingOrScanRef}: the desk Id
+   * chip paints this on its first line and the tracking's last-8 on its
+   * second, so feeding the tracking into both printed one fact twice.
+   */
+  orderNumber: string | null;
+  /**
+   * The packer's `staff.id`. REQUIRED for parity with every other slot table:
+   * the shared `person` face resolves `staff.color_hex` from this id, so a null
+   * draws the default bubble for everybody — which is what made this family
+   * look like a fork of the engine rather than a member of it.
+   */
+  packerStaffId: number | null;
+  /**
+   * The order's marketplace / channel (`orders.account_source`). The shared Id
+   * chip resolves its platform mark from this, so without it the order number
+   * paints without the coloured channel dot its peers have.
+   */
+  platform: string | null;
   itemNumber: string | null;
   skuCatalogId: number | null;
   tierSource: PackTierSource;
@@ -25,6 +45,7 @@ export const PACKING_REPORT_COLUMNS: Array<{ key: keyof PackingReportRow; label:
   { key: 'packedAt', label: 'Packed at' },
   { key: 'packerName', label: 'Packer' },
   { key: 'itemNumber', label: 'Item number' },
+  { key: 'orderNumber', label: 'Order #' },
   { key: 'sku', label: 'SKU' },
   { key: 'productTitle', label: 'Product' },
   { key: 'packTier', label: 'Pack tier' },
@@ -59,6 +80,9 @@ export function mapPackingReportDbRow(r: {
   estimated_minutes: number;
   tracking_type: string | null;
   tracking_or_scan_ref: string | null;
+  order_number?: string | null;
+  packer_staff_id?: number | string | null;
+  platform?: string | null;
   item_number: string | null;
   sku_catalog_id: number | string | null;
   tier_source: string | null;
@@ -67,6 +91,7 @@ export function mapPackingReportDbRow(r: {
 }): PackingReportRow {
   const skuCatalogRaw = r.sku_catalog_id == null ? null : Number(r.sku_catalog_id);
   const packerLogRaw = r.packer_log_id == null ? null : Number(r.packer_log_id);
+  const staffRaw = r.packer_staff_id == null ? null : Number(r.packer_staff_id);
   return {
     packedAt: r.packed_at,
     packerName: r.packer_name,
@@ -76,6 +101,12 @@ export function mapPackingReportDbRow(r: {
     estimatedMinutes: Number(r.estimated_minutes) || 0,
     trackingType: r.tracking_type,
     trackingOrScanRef: r.tracking_or_scan_ref,
+    // `?? null` rather than a fallback to the tracking: an absent order number
+    // is the empty first line the operator asked for, not a place to reprint
+    // the tracking.
+    orderNumber: r.order_number ?? null,
+    packerStaffId: staffRaw != null && Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : null,
+    platform: String(r.platform ?? '').trim() || null,
     itemNumber: r.item_number,
     skuCatalogId: skuCatalogRaw != null && Number.isFinite(skuCatalogRaw) ? skuCatalogRaw : null,
     tierSource: resolvePackTierSource(r.tier_source, r.raw_pack_tier),

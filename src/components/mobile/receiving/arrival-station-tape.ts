@@ -25,7 +25,7 @@
  * Pure module: no React, no storage. Unit-tested in `arrival-station-tape.test.ts`.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   stationDedupeKey,
   STATION_TAPE_LIMIT,

@@ -41,14 +41,22 @@ interface StaffPickerListProps {
    * to true for callers that pass `recent` synchronously.
    */
   recentReady?: boolean;
-  /** Called when a staff is tapped. Disabled rows (no PIN) are intercepted. */
+  /** Called when a staff is tapped. */
   onPick: (s: StaffRow) => void;
-  /** Optional error display when a no-PIN row is tapped. */
+  /** Error strip under the list (e.g. a failed switch / sign-in). */
   onMessage?: (msg: string | null) => void;
   /** Surfaces the server-side auth policy (e.g. pinless rollout flag). */
   onPolicy?: (policy: { pinless: boolean }) => void;
   /** Case-insensitive name/role filter. Empty = full roster. */
   query?: string;
+  /**
+   * Drop the Group Panel wrapper. Rows are self-carded (rounded-xl border),
+   * so inside a sheet/dialog panel the extra outline is a duplicate.
+   * /signin keeps the panel — there it is the card.
+   */
+  flat?: boolean;
+  /** Hide the signed-in staff — the switch sheet lists who you could BECOME. */
+  excludeStaffId?: number;
 }
 
 function staffMatchesQuery(staff: StaffRow, query: string): boolean {
@@ -58,7 +66,7 @@ function staffMatchesQuery(staff: StaffRow, query: string): boolean {
   return staff.name.toLowerCase().includes(q) || role.includes(q);
 }
 
-export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy, query = '' }: StaffPickerListProps) {
+export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy, query = '', flat = false, excludeStaffId }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   // "The roster is empty" and "we could not load the roster" are DIFFERENT
@@ -110,7 +118,7 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   }, [reloadKey]);
 
   const { recentRows, otherRows } = useMemo(() => {
-    const visible = staff.filter((s) => staffMatchesQuery(s, query));
+    const visible = staff.filter((s) => s.id !== excludeStaffId && staffMatchesQuery(s, query));
     const map = new Map(visible.map((s) => [s.id, s] as const));
     const recents: StaffRow[] = [];
     for (const id of recent) {
@@ -118,7 +126,7 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
       if (hit) { recents.push(hit); map.delete(id); }
     }
     return { recentRows: recents, otherRows: Array.from(map.values()) };
-  }, [staff, recent, query]);
+  }, [staff, recent, query, excludeStaffId]);
   const filteredEmpty = staff.length > 0 && recentRows.length === 0 && otherRows.length === 0;
   const searching = query.trim().length > 0;
 
@@ -172,14 +180,14 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   return (
     <div className="space-y-6">
       {hasRecent && (
-        <Group label="Recent">
+        <Group label="Recent" flat={flat}>
           {recentRows.map((s) => (
             <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} isRecent />
           ))}
         </Group>
       )}
       {showOthers && otherRows.length > 0 && (
-        <Group label={hasRecent ? 'All staff' : undefined}>
+        <Group label={hasRecent ? 'All staff' : undefined} flat={flat}>
           {otherRows.map((s) => (
             <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} />
           ))}
@@ -209,7 +217,7 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   );
 }
 
-function Group({ label, children }: { label?: string; children: React.ReactNode }) {
+function Group({ label, flat, children }: { label?: string; flat?: boolean; children: React.ReactNode }) {
   return (
     <div>
       {label && (
@@ -217,9 +225,13 @@ function Group({ label, children }: { label?: string; children: React.ReactNode 
           {label}
         </div>
       )}
-      <Panel radius="2xl" padding="none" className="overflow-hidden bg-surface-card/80 backdrop-blur-sm shadow-gray-900/[0.03]">
-        {children}
-      </Panel>
+      {flat ? (
+        <div className="space-y-2">{children}</div>
+      ) : (
+        <Panel radius="2xl" padding="none" className="overflow-hidden bg-surface-card/80 backdrop-blur-sm shadow-gray-900/[0.03]">
+          {children}
+        </Panel>
+      )}
     </div>
   );
 }
@@ -232,11 +244,12 @@ interface RowProps {
 }
 
 function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
-  const needsSetup = !s.has_pin;
   return (
     // ONE staff row on the auth surface: the shared StaffChoiceRowButton
     // (email-flow display, operator 2026-09-08). The old per-staff
     // theme-hover variance table is gone with it - one identity, not two.
+    // No PIN-setup chip: switching is pinless (act-as), and at dogfood stage
+    // "tap to set up" was noise (operator 2026-09-15).
     <StaffChoiceRowButton
       staffId={s.id}
       name={s.name}
@@ -244,19 +257,11 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
       colorHex={s.color_hex}
       avatarPhotoId={s.avatar_photo_id ?? null}
       isRecent={isRecent}
-      ariaLabel={needsSetup ? `Set up PIN for ${s.name}, ${s.role}` : `Sign in as ${s.name}, ${s.role}`}
+      ariaLabel={`Sign in as ${s.name}, ${s.role}`}
       onPick={() => {
         onMessage?.(null);
         onPick(s);
       }}
-      pill={needsSetup ? (
-        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-surface-info px-1.5 py-0.5 text-role-eyebrow font-semibold tracking-normal text-text-info ring-1 ring-inset ring-border-info">
-          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M12 5v14" /><path d="M5 12h14" />
-          </svg>
-          Tap to set up
-        </span>
-      ) : undefined}
     />
   );
 }

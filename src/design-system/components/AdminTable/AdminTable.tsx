@@ -27,7 +27,7 @@ import { EmptyState } from '../../primitives/EmptyState';
 // for static rows aside from that thin scroll chrome.
 //
 // **No `'use client'` on this file, deliberately.** This component holds no
-// state of its own and most call sites (`/admin/inventory/**`, `/settings/audit`,
+// state of its own and most call sites (`/inventory/health/**`, `/settings/audit`,
 // …) are React Server Components. A directive here would put every one of them
 // behind a client boundary — the bundle-altitude trap in `build-gotchas.md`.
 // A caller that passes `onRowClick` is inherently interactive and must itself

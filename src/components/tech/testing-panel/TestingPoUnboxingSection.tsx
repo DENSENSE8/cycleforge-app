@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
 import type { LineCollapseController } from '@/components/station/collapse';

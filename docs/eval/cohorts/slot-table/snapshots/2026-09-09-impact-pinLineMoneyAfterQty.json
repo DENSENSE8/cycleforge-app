@@ -1,0 +1,80 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty",
+  "files_affected": 9,
+  "total_symbols": 9,
+  "files": [
+    {
+      "file": "src/lib/tables/slot-table-line-money.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "slot-table-line-money.test.ts"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundCells.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "CompoundItem"
+      ]
+    },
+    {
+      "file": "src/lib/tables/slot-table-line-qty.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "slotSubtitlePartsFor"
+      ]
+    },
+    {
+      "file": "src/components/station/receiving-grid/cells/index.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "viewFor"
+      ]
+    },
+    {
+      "file": "src/features/reports/metrics/SkuVelocityTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "paintRow"
+      ]
+    },
+    {
+      "file": "src/lib/tables/slot-table-line-qty.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "slot-table-line-qty.test.ts"
+      ]
+    },
+    {
+      "file": "src/features/reports/metrics/DeadStockTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "paintRow"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundGridCell.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "renderCompoundGridCell"
+      ]
+    },
+    {
+      "file": "src/components/tables/useCompoundSpreadsheet.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useCompoundSpreadsheet"
+      ]
+    }
+  ]
+}

@@ -39,11 +39,38 @@ export interface OrderPickSessionRow {
   actor_name: string | null;
 }
 
+/**
+ * One `order_notes` row. Kept structurally local, same discipline as
+ * `ThreadMessageTimelineRow`: this client module never imports a server-only
+ * domain module.
+ */
+export interface OrderNoteTimelineRow {
+  id: string | number;
+  noteText: string | null;
+  createdAt: string | null;
+  authorName?: string | null;
+}
+
+/** One `entity_signals` row — the diagnostic "why", not a status. */
+export interface EntitySignalTimelineRow {
+  id: string | number;
+  signalKind: string | null;
+  reasonCode: string | null;
+  /** `smallint` in Postgres — a rank, not a word. Never render it bare. */
+  severity: number | null;
+  notes: string | null;
+  occurredAt: string | null;
+}
+
 export interface OrderTimelinePayload {
   events: OrderAuditRow[];
   lifecycle: InventoryTimelineRow[];
   stationEvents: StationActivityRow[];
   threadMessages: ThreadMessageTimelineRow[];
+  /** `order_notes` TABLE — not the single `orders.notes` column. */
+  orderNotes: OrderNoteTimelineRow[];
+  /** `entity_signals` — the "why" behind a hold, a failure, a return. */
+  signals: EntitySignalTimelineRow[];
   carrierEvents: CarrierEvent[];
   rmaEvents: RmaTimelineRow[];
   unitPhotos: UnitTimelinePhotoRow[];
@@ -70,6 +97,8 @@ export async function fetchOrderTimeline(orderId: number): Promise<OrderTimeline
     lifecycle: (json.lifecycle ?? []) as InventoryTimelineRow[],
     stationEvents: (json.stationEvents ?? []) as StationActivityRow[],
     threadMessages: (json.threadMessages ?? []) as ThreadMessageTimelineRow[],
+    orderNotes: (json.orderNotes ?? []) as OrderNoteTimelineRow[],
+    signals: (json.signals ?? []) as EntitySignalTimelineRow[],
     carrierEvents: (json.carrierEvents ?? []) as CarrierEvent[],
     rmaEvents: (json.rmaEvents ?? []) as RmaTimelineRow[],
     unitPhotos: (json.unitPhotos ?? []) as UnitTimelinePhotoRow[],

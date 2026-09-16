@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
+import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import {
   Check,
   X,
@@ -473,7 +473,7 @@ function ActionPanel({
         autoFocus
         autoComplete="off"
         spellCheck={false}
-        className={cn("w-full rounded-none border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-mono text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
+        className={cn("w-full rounded-none border border-border-soft bg-surface-card px-3 py-2.5 text-role-field font-mono text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
       />
       <Button
         type="submit"
