@@ -65,5 +65,5 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station testing` for full ga
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-16T15:43:09.511Z · station `testing`_
+_Updated 2026-09-16T15:47:35.541Z · station `testing`_
 <!-- /eval-ledger:auto:last-run -->
