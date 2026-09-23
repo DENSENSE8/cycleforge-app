@@ -144,7 +144,7 @@ test('isKioskHostAllowedPath allowlist', () => {
   strictEqual(isKioskHostAllowedPath('/api/kiosk/dev-autopair'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/intake'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/visit/12/receipt'), true);
-  strictEqual(isKioskHostAllowedPath('/api/kiosk/repair/submit'), true);
+  strictEqual(isKioskHostAllowedPath('/api/kiosk/repair/ticket-candidates'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/repair/favorites'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/settings'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/sales/ecwid-products'), true);

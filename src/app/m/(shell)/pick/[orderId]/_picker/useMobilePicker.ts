@@ -7,6 +7,8 @@ import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet';
 import { matchScanToTask, toteRefFromScan, type PickOrder, type PickTask } from './picker-shared';
 import { setScanSubject } from '@/lib/stations/scan-subject-store';
+import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
+import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 
 /**
  * Owns the mobile picker session: auth bounce, camera lifecycle, the bootstrap
@@ -21,6 +23,7 @@ export function useMobilePicker() {
   const orderIdParam = params?.orderId;
   const orderId = Number(orderIdParam);
   const { user, isLoaded } = useAuth();
+  const { execute: executeWmsCommand } = useWmsRealtime();
   const scanner = useBarcodeScanner();
 
   const [order, setOrder] = useState<PickOrder | null>(null);
@@ -119,9 +122,10 @@ export function useMobilePicker() {
     setDetailsExpanded(false);
   }, [order, currentIndex, pickedAllocations]);
 
-  // ── Confirm pick (POST /api/picking/session/:id/confirm-pick)
+  // ── Confirm pick through the persistent execution socket. The deterministic
+  // command id makes a reconnect retry resolve to the original domain event.
   const handleConfirmPick = useCallback(async () => {
-    if (!currentTask || sessionId == null) return;
+    if (!currentTask || sessionId == null || !user) return;
     const serialGate = Boolean(currentTask.serialNumber?.trim());
     if (serialGate && !scanMatched) {
       setScanError('Scan this unit first.');
@@ -140,26 +144,36 @@ export function useMobilePicker() {
       return next;
     });
     try {
-      const res = await fetch(`/api/picking/session/${sessionId}/confirm-pick`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          allocation_id: allocationId,
-          client_event_id: `pick:${sessionId}:${allocationId}`,
-          tote_scan: toteRef,
-        }),
+      const wasLast = currentIndex >= totalTasks - 1;
+      const receipt = await executeWmsCommand({
+        v: 1,
+        commandId: `pick:${sessionId}:${allocationId}`,
+        organizationId: user.organizationId,
+        staffId: user.staffId,
+        issuedAt: new Date().toISOString(),
+        name: 'pick.confirm',
+        input: {
+          sessionId,
+          allocationId,
+          toteScan: toteRef,
+          completeSession: wasLast,
+        },
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        throw new Error(data.error || `confirm-pick ${res.status}`);
-      }
+      recordMobileSessionEntry({
+        id: `pick-${sessionId}-${allocationId}`,
+        job: 'pick',
+        title: currentTask.productTitle,
+        identifier: currentTask.serialNumber || currentTask.sku,
+        entityId: String(allocationId),
+        state: 'done',
+        href: `/m/pick/${orderIdParam}`,
+        at: new Date().toISOString(),
+        dedupeKey: `pick:${allocationId}`,
+      });
       // If this was the last open task, complete the session — the tote(s)
       // paired to this order flip to STAGED for the pack station.
-      const wasLast = currentIndex >= totalTasks - 1;
       if (wasLast) {
-        const completeRes = await fetch(`/api/picking/session/${sessionId}/complete`, { method: 'POST' });
-        const completeData = await completeRes.json().catch(() => ({}));
-        const staged = Array.isArray(completeData?.stagedTotes) ? completeData.stagedTotes : [];
+        const staged = Array.isArray(receipt.data.stagedTotes) ? receipt.data.stagedTotes : [];
         if (staged.length > 0) setStagedTote(String(staged[0]));
       } else {
         advance();
@@ -176,12 +190,12 @@ export function useMobilePicker() {
     } finally {
       setConfirming(false);
     }
-  }, [currentTask, sessionId, currentIndex, totalTasks, advance, scanMatched, toteRef]);
+  }, [currentTask, sessionId, user, currentIndex, totalTasks, executeWmsCommand, advance, scanMatched, toteRef, orderIdParam]);
 
-  // ── Record short pick (POST /api/picking/session/:id/short-pick)
+  // ── Record short pick through the same execution socket.
   const handleShortPick = useCallback(
     async (result: ShortPickResult) => {
-      if (!currentTask || sessionId == null) return;
+      if (!currentTask || sessionId == null || !user) return;
       const allocationId = currentTask.allocationId;
       // Optimistic mark.
       setPickedAllocations((prev) => {
@@ -190,20 +204,22 @@ export function useMobilePicker() {
         return next;
       });
       try {
-        const res = await fetch(`/api/picking/session/${sessionId}/short-pick`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            allocation_id: allocationId,
-            picked_qty: result.pickedQty,
-            planned_qty: result.plannedQty,
+        await executeWmsCommand({
+          v: 1,
+          commandId: `short:${sessionId}:${allocationId}`,
+          organizationId: user.organizationId,
+          staffId: user.staffId,
+          issuedAt: new Date().toISOString(),
+          name: 'pick.short',
+          input: {
+            sessionId,
+            allocationId,
+            pickedQty: result.pickedQty,
+            plannedQty: result.plannedQty,
             reason: result.reason,
             note: result.note,
-            client_event_id: `short:${sessionId}:${allocationId}`,
-          }),
+          },
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data.ok) throw new Error(data.error || `short-pick ${res.status}`);
         advance();
       } catch (err) {
         setPickedAllocations((prev) => {
@@ -214,7 +230,7 @@ export function useMobilePicker() {
         console.error('[m/pick] short-pick failed:', err);
       }
     },
-    [currentTask, sessionId, advance],
+    [currentTask, sessionId, user, executeWmsCommand, advance],
   );
 
   // ── Scan-gate. Optional confirm: a matching scan arms the dock.

@@ -37,7 +37,7 @@ import type { RailPeekFact } from '@/components/sidebar/rail-shell/RailPeekIdent
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   exceptionRailMetaCount,
-  sortExceptionQueueRows,
+  collapseExceptionRailByItem,
   type OrderExceptionRow,
 } from '@/lib/orders/order-exception-types';
 
@@ -48,9 +48,9 @@ const EXCEPTIONS_RAIL_LIMIT = 60;
  * the operator is here to clear (pairing) or a downstream fulfillment fact.
  */
 export function getExceptionStatusDot(row: OrderExceptionRow): string {
-  if (row.blockers.length === 0) return 'bg-emerald-500';
-  if (row.blockers.includes('unpaired')) return 'bg-amber-400';
-  return 'bg-blue-500';
+  if (row.blockers.length === 0) return 'bg-fill-success';
+  if (row.blockers.includes('unpaired')) return 'bg-fill-warning';
+  return 'bg-fill-info';
 }
 
 export function getExceptionStatusDotLabel(row: OrderExceptionRow): string {
@@ -105,7 +105,10 @@ export function ExceptionsRecentRail({
    * when the workbench's query settles — the same handoff
    * `ProductLabelsRecentRail` uses to filter client-side.
    */
-  const ordered = useMemo(() => sortExceptionQueueRows(rows), [rows]);
+  const ordered = useMemo(
+    () => collapseExceptionRailByItem(rows, selectedId),
+    [rows, selectedId],
+  );
   const version = useMemo(() => ordered.map((r) => r.id).join('|'), [ordered]);
   const queryKey = useMemo(() => ['order-exceptions.rail', version] as const, [version]);
   const fetchFn = useCallback(async () => ordered, [ordered]);
@@ -119,9 +122,8 @@ export function ExceptionsRecentRail({
         fetchFn={fetchFn}
         selectedId={selectedId}
         limit={EXCEPTIONS_RAIL_LIMIT}
-        // SQL + {@link sortExceptionQueueRows} share one axis: missing item
-        // number, then pair-once fan-out. Do not hoist the selected row — that
-        // would unpin the urgent cluster.
+        // Sorted + collapsed to one row per item number. Do not hoist the
+        // selected row — that would unpin the urgent cluster.
         preserveServerOrder
         pinSelectedLead={false}
         eyebrowTitle="Order exceptions"

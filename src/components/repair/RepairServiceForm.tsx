@@ -66,7 +66,7 @@ function RepairSignatureLine({
       <span className="whitespace-nowrap font-semibold">{label}</span>
       {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
       <div
-        className="relative overflow-hidden border-b border-black"
+        className="relative overflow-hidden border-b border-border-strong"
         style={{ height: signed ? REPAIR_PRINT_SIGNATURE_BAND.inkHeightPx : 24 }}
       >
         {signatureUrl ? (
@@ -158,7 +158,15 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
         <div className="flex border-b border-r border-black">
           {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
           <div className={`shrink-0 border-r border-black bg-surface-canvas p-2 font-semibold ${isCompact ? 'w-28' : 'w-40'}`}>Product Title:</div>
-          <div className="min-w-0 flex-1 break-words p-2">{productTitle}</div>
+          {/* A drop-off can carry several devices, so this cell is either ONE product
+              or a summary of many. On SCREEN the sheet is a fixed A4 column on a
+              counter tablet, so a pathological title would push the signature band
+              off the visible sheet — clamp it to three lines as the floor. On PAPER
+              nothing may be hidden: the customer signs what is printed, so `print`
+              keeps `break-words` alone and wraps to full length. Never pair with
+              `truncate` — `whitespace-nowrap` cancels the clamp
+              (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+          <div className={`min-w-0 flex-1 break-words p-2${isScreen ? ' line-clamp-3 text-pretty' : ''}`}>{productTitle}</div>
         </div>
         {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
         <div className="flex border-b border-r border-black">

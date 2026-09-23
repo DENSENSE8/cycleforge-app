@@ -15,8 +15,7 @@ ingestion, a local PO **mirror**, and a delta/full cron schedule. Fully built an
 - `GET /api/zoho/oauth/callback` (public) → exchanges the code for access + refresh
   tokens and persists them via `setZohoTokens()` into **`organization_integrations`**
   (`provider='zoho'`). Legacy `ebay_accounts.ZOHO_MAIN` token columns were removed in
-  the eBay vault migration (INT-002); transitional USAV fallback is `ZOHO_REFRESH_TOKEN`
-  env only when no vault row exists.
+  the eBay vault migration (INT-002); runtime Zoho credentials are vault-only.
 - `GET|POST /api/zoho/refresh-token` → refresh the short-lived access token (GET kicks
   off a fresh authorize flow; POST refreshes from the stored refresh token).
   POST does **not** mint a new refresh token — Zoho keeps the same refresh grant;
@@ -67,8 +66,8 @@ closed — do not reintroduce any of them:
   `last_error` (e.g. `invalid_code` / `invalid_client_secret`) and the Settings →
   Integrations card shows **Needs attention**. Reconnect via
   `/api/zoho/oauth/authorize` (OAuth on the Zoho card).
-- Vault is the SoT. Do not rely on `ZOHO_REFRESH_TOKEN` env once a vault row
-  exists — env bootstrap is ignored while the vault row is `error`/`revoked`.
+- Vault is the credential SoT. Runtime calls never fall back to a
+  deployment-wide refresh token.
 - `INTEGRATION_KMS_KEY` must match the key the row was encrypted under. A local
   `.env` with a different key cannot decrypt the prod payload (it surfaces as
   "No active Zoho connection"); add the prod key, or list the old one in
@@ -123,10 +122,12 @@ marks delivered (when tracking confirms) → creates an invoice. **Dry-run by de
 
 ## Webhooks — `src/lib/zoho/webhooks/`
 
-`POST /api/zoho/webhooks` verifies the signature (`verify.ts`,
-`ZOHO_WEBHOOK_SECRET` + `ZOHO_WEBHOOK_SIGNATURE_HEADER`), dedupes via the
+`POST /api/zoho/webhooks/{token}` resolves the organization by its opaque token,
+verifies the signature using that organization's vault-backed webhook secret,
+dedupes via the
 `zoho_webhook_events` table (`dedupe.ts`), normalizes (`normalize.ts`), and dispatches
 (`handlers.ts`) — e.g. PO created/updated, purchase-receive created.
+The tokenless endpoint is retired and returns `410`.
 
 ## Cron schedule (`vercel.json`)
 
@@ -148,9 +149,8 @@ marks delivered (when tracking confirms) → creates an invoice. **Dry-run by de
 |---|---|
 | `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | OAuth app creds. **Sensitive**. |
 | `ZOHO_ORG_ID` (or `ZOHO_ORGANIZATION_ID`) | Zoho Inventory organization id (required). |
-| `ZOHO_REFRESH_TOKEN` | Refresh token (env fallback; the callback persists to DB). |
+| `ZOHO_REFRESH_TOKEN` | Legacy migration input only; runtime credentials are vault-backed. |
 | `ZOHO_DOMAIN` | Accounts domain (default `accounts.zoho.com`; `.eu/.in/.com.au/.ca/.jp`). |
-| `ZOHO_WEBHOOK_SECRET` | Webhook HMAC secret. |
 | `ZOHO_WEBHOOK_SIGNATURE_HEADER` | Default `x-zoho-webhook-signature`. |
 | `ZOHO_WEBHOOK_SIGNATURE_ENCODING` | `hex` (default) or `base64`. |
 | `ZOHO_FULFILLMENT_DRY_RUN` | Default `true` — outbound fulfillment is read-only until flipped. |
@@ -162,8 +162,7 @@ marks delivered (when tracking confirms) → creates an invoice. **Dry-run by de
 - **`zoho_po_mirror`** — one header row per PO (`zoho_purchaseorder_id` PK, normalized
   number for matching, vendor/status/dates/totals, full `raw` jsonb, sync timestamps).
 - **`zoho_webhook_events`** — webhook dedupe log.
-- **`organization_integrations`** (`provider='zoho'`) — OAuth token SoT (vault).
-  Transitional USAV env: `ZOHO_REFRESH_TOKEN` when no vault row exists.
+- **`organization_integrations`** (`provider='zoho'`) — OAuth token and per-org webhook identity SoT (vault).
 
 ## Status / notes
 

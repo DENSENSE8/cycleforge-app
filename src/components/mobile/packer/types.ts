@@ -26,6 +26,9 @@ export interface PackerLogRow {
   item_number: string | null;
   condition: string | null;
   quantity: string | number | null;
+  /** Canonical order-line sale amount, displayed in the tactical pack trust row. */
+  sale_amount?: string | number | null;
+  currency?: string | null;
   sku: string | null;
   notes: string | null;
   serial_number: string | null;

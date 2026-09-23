@@ -140,17 +140,34 @@ export async function getEntitySubscription(
   return row ? toDto(row) : null;
 }
 
-/** One inbound-carton watch for Today Watch → Tracking display. */
+/**
+ * One inbound watch for Today Watch → Tracking display.
+ *
+ * TWO ARMS, one list. An `entity` watch points at a carton that is already in
+ * the door (`receivingId`); a `rule` watch is the PRE-ARRIVAL kind, which by
+ * construction has no carton to point at yet — so `receivingId` is null and
+ * the tracking string is the whole identity. A list that showed only the
+ * entity arm would answer "you are watching nothing" to the operator who just
+ * pasted a number, which is the exact moment they want to see it standing.
+ */
 type ReceivingWatchRow = {
-  receivingId: number;
+  /** Null while the watch is still pre-arrival. */
+  receivingId: number | null;
   /** Carrier tracking when the carton has an STN; null if unlinkable. */
   tracking: string | null;
+  /** True = waiting for the number to land; false = following a real carton. */
+  preArrival: boolean;
   updatedAtMs: number;
 };
 
 /**
- * Active entity subscriptions on `receiving` for one staffer — Today Watch list.
- * Joins STN for the tracking label the operator typed when they started watching.
+ * Active inbound watches for one staffer — Today Watch list.
+ *
+ * Entity arm joins STN for the tracking label the operator typed when they
+ * started watching; rule arm reads the canonical number off the predicate
+ * itself. Muted rows are excluded on both arms, which is also how a FULFILLED
+ * pre-arrival watch leaves this list (the fan-out worker mutes it on arrival —
+ * see `retireFulfilledTrackingWatches`).
  */
 export async function listReceivingWatchesForStaff(
   args: { orgId: OrgId; staffId: number; limit?: number },
@@ -158,33 +175,130 @@ export async function listReceivingWatchesForStaff(
 ): Promise<ReceivingWatchRow[]> {
   const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
   const res = await deps.query<{
-    receiving_id: string | number;
+    receiving_id: string | number | null;
     tracking: string | null;
+    pre_arrival: boolean;
     updated_at_ms: string | number;
   }>(
     args.orgId,
-    `SELECT ss.entity_id::bigint AS receiving_id,
-            COALESCE(stn.tracking_number_raw, stn.tracking_number_normalized) AS tracking,
-            (EXTRACT(EPOCH FROM ss.updated_at) * 1000)::bigint AS updated_at_ms
-       FROM staff_subscriptions ss
-       JOIN receiving_carton r
-         ON r.id = ss.entity_id
-        AND r.organization_id = ss.organization_id
-       LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-      WHERE ss.organization_id = $1
-        AND ss.staff_id = $2
-        AND ss.subscription_kind = 'entity'
-        AND ss.entity_type = 'receiving'
-        AND ss.state = 'subscribed'
-      ORDER BY ss.updated_at DESC
+    `SELECT receiving_id,
+            tracking,
+            pre_arrival,
+            (EXTRACT(EPOCH FROM updated_at) * 1000)::bigint AS updated_at_ms
+       FROM (
+         SELECT ss.entity_id::bigint AS receiving_id,
+                COALESCE(stn.tracking_number_raw, stn.tracking_number_normalized) AS tracking,
+                FALSE AS pre_arrival,
+                ss.updated_at
+           FROM staff_subscriptions ss
+           JOIN receiving_carton r
+             ON r.id = ss.entity_id
+            AND r.organization_id = ss.organization_id
+           LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+          WHERE ss.organization_id = $1
+            AND ss.staff_id = $2
+            AND ss.subscription_kind = 'entity'
+            AND ss.entity_type = 'receiving'
+            AND ss.state = 'subscribed'
+         UNION ALL
+         SELECT NULL::bigint AS receiving_id,
+                ss.match_tracking_normalized AS tracking,
+                TRUE AS pre_arrival,
+                ss.updated_at
+           FROM staff_subscriptions ss
+          WHERE ss.organization_id = $1
+            AND ss.staff_id = $2
+            AND ss.subscription_kind = 'rule'
+            AND ss.state = 'subscribed'
+            AND ss.match_tracking_normalized IS NOT NULL
+       ) watches
+      ORDER BY updated_at DESC
       LIMIT ${limit}`,
     [args.orgId, args.staffId],
   );
   return res.rows.map((row) => ({
-    receivingId: Number(row.receiving_id),
+    receivingId: row.receiving_id != null ? Number(row.receiving_id) : null,
     tracking: row.tracking != null ? String(row.tracking) : null,
+    preArrival: Boolean(row.pre_arrival),
     updatedAtMs: Number(row.updated_at_ms) || 0,
   }));
+}
+
+/**
+ * A PRE-ARRIVAL tracking watch — "tell me when this number lands", written
+ * before any carton exists.
+ *
+ * This is a `rule` row, not an `entity` row, and the distinction is the whole
+ * point. An entity subscription points at `(entity_type, entity_id)` and
+ * therefore cannot be written until the carton is in the door — which is why
+ * `POST /api/my-day/watch` used to answer *"This tracking has no inbound
+ * carton yet — receive it first, then watch"*, refusing the one case the
+ * operator most wants ("I am looking forward to receiving a package").
+ *
+ * A rule row is a predicate over a CLASS of events (2026-07-28c's header), so
+ * it is legal with no referent: `match_event_keys` names the arrival event and
+ * `match_tracking_normalized` narrows it to this number. When the carton is
+ * finally scanned, the fan-out worker's rule arm resolves this staffer exactly
+ * as it resolves a SKU rule.
+ *
+ * Idempotent by index, not by read-then-write: `ux_staff_subscriptions_rule_tracking`
+ * makes a second paste of the same number a no-op rather than a second
+ * notification. `state` is reset on conflict so re-watching a number the
+ * staffer previously muted turns it back on — the mute suppressed an auto-add,
+ * and this is an explicit act.
+ */
+export async function watchTrackingPreArrival(
+  args: {
+    orgId: OrgId;
+    staffId: number;
+    /** Canonical form — normalise BEFORE calling (extractCanonicalTracking). */
+    trackingNormalized: string;
+    /** The arrival event this watch waits on. */
+    eventKey: string;
+  },
+  deps: SubscriptionDeps = defaultSubscriptionDeps,
+): Promise<{ created: boolean }> {
+  const res = await deps.query(
+    args.orgId,
+    `INSERT INTO staff_subscriptions
+       (organization_id, staff_id, subscription_kind, state, reason,
+        match_event_keys, match_tracking_normalized)
+     VALUES ($1, $2, 'rule', 'subscribed', 'manual', ARRAY[$4]::text[], $3)
+     ON CONFLICT (organization_id, staff_id, match_tracking_normalized)
+       WHERE subscription_kind = 'rule' AND match_tracking_normalized IS NOT NULL
+       DO UPDATE SET state = 'subscribed', updated_at = now()
+     RETURNING (xmax = 0) AS inserted`,
+    [args.orgId, args.staffId, args.trackingNormalized, args.eventKey],
+  );
+  return { created: Boolean((res.rows[0] as { inserted?: boolean } | undefined)?.inserted) };
+}
+
+/**
+ * Stop a PRE-ARRIVAL watch — the operator's "Stop" on a number that has not
+ * landed yet.
+ *
+ * Muted rather than deleted, for the same reason `toggleEntitySubscription`
+ * retains a muted row: the row is the receipt, and re-pasting the number
+ * re-arms it through `watchTrackingPreArrival`'s ON CONFLICT instead of
+ * colliding with the unique index. Staff-scoped — one operator dropping a
+ * watch never silences a colleague's watch on the same number.
+ */
+export async function stopTrackingPreArrivalWatch(
+  args: { orgId: OrgId; staffId: number; trackingNormalized: string },
+  deps: SubscriptionDeps = defaultSubscriptionDeps,
+): Promise<{ stopped: number }> {
+  const res = await deps.query(
+    args.orgId,
+    `UPDATE staff_subscriptions
+        SET state = 'muted', updated_at = now()
+      WHERE organization_id = $1
+        AND staff_id = $2
+        AND subscription_kind = 'rule'
+        AND match_tracking_normalized = $3
+        AND state <> 'muted'`,
+    [args.orgId, args.staffId, args.trackingNormalized],
+  );
+  return { stopped: res.rowCount ?? 0 };
 }
 
 function canViewEntityType(

@@ -44,6 +44,22 @@ export interface LabelFaceModel {
   hri?: string;
 }
 
+/** Physical 2×1 face geometry shared by HTML and silent thermal rendering. */
+export const LABEL_FACE_SHELL = {
+  widthIn: 2,
+  heightIn: 1,
+  paddingXCssPx: 5,
+  paddingYCssPx: 4,
+  gapCssPx: 4,
+  matrixSizeIn: 0.86,
+} as const;
+
+/** LPN typography shared by HTML and silent thermal rendering. */
+export const LPN_LABEL_FACE_LAYOUT = {
+  kickerFontCssPx: 10,
+  codeFontCssPx: 30,
+} as const;
+
 /**
  * CSS for the face's info column. Class names are slot-neutral (tl/tr/center/
  * bl/br) so the same stylesheet serves carton and unit labels. Mirrors the
@@ -80,8 +96,11 @@ export const LOCATION_LABEL_FACE_CSS =
  * What remains is the identity the scanner and the eye both use.
  */
 export const LPN_LABEL_FACE_CSS =
-  '.hu-kicker{flex:0 0 auto;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280;text-align:left;line-height:1}' +
-  '.hu-code{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:flex-start;font-size:38px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}';
+  `.hu-kicker{flex:0 0 auto;font-size:${LPN_LABEL_FACE_LAYOUT.kickerFontCssPx}px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280;text-align:left;line-height:1}` +
+  // The info column shares a 2in face with the 0.86in DataMatrix. 30px keeps
+  // `H-100` (the first three-digit house plate) entirely on the paper instead
+  // of relying on an ellipsis to conceal a clipped identity.
+  `.hu-code{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:flex-start;font-size:${LPN_LABEL_FACE_LAYOUT.codeFontCssPx}px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`;
 
 /**
  * Build the info-column HTML + CSS for a label face. Feed the result straight
@@ -154,6 +173,9 @@ export function patchLabelFaceDocument(
 
   if (model.kind === 'location') {
     setText('.lcode', model.center);
+  } else if (model.kind === 'lpn') {
+    setText('.hu-kicker', model.topLeft);
+    setText('.hu-code', model.center);
   } else if (model.kind === 'product') {
     setText('.ptitle', model.topLeft);
     setText('.bl', model.bottomLeft);

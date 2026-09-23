@@ -2,7 +2,7 @@
  * POST /api/auth/qr/handoff/claim
  *
  * GateGuard: /m/claim + SignInQrScanDialog. Public. Mints phone session from
- * desk_to_phone handoff via token OR CF-XXXX short code.
+ * desk_to_phone handoff via token OR the 6-digit short code.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

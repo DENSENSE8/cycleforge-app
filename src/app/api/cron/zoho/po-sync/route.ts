@@ -24,6 +24,7 @@ import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { formatApiOffsetTimestamp } from '@/utils/date';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { forEachOrgWithProvider } from '@/lib/cron/for-each-org';
 import { tenantQuery } from '@/lib/tenancy/db';
 
@@ -32,16 +33,8 @@ export const maxDuration = 300;
 
 const CURSOR_KEY = 'zoho_po_mirror';
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   const startedAt = Date.now();
   const url = new URL(req.url);
@@ -101,7 +94,6 @@ export async function GET(req: NextRequest) {
           }
           return { report, autoResolved: resolved.rowCount ?? 0, lastModified };
         },
-        { includeDogfoodTransitional: true },
       );
 
       // Aggregate.

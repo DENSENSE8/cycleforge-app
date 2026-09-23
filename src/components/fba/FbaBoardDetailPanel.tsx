@@ -37,10 +37,10 @@ import { FbaDeleteControl } from './board-detail/FbaDeleteControl';
 export function FbaBoardDetailPanel({
   item,
   onClose,
-  onNavigate,
+  onNavigate: _onNavigate,
   onSaved,
-  disableMoveUp = false,
-  disableMoveDown = false,
+  disableMoveUp: _disableMoveUp = false,
+  disableMoveDown: _disableMoveDown = false,
 }: FbaBoardDetailPanelProps) {
   const {
     entries, scanLogs, loading,
@@ -70,11 +70,11 @@ export function FbaBoardDetailPanel({
               {/* Read-only metric — planned vs scanned for this FNSKU. */}
               <span className="flex h-full items-center gap-3 px-1 text-role-caption">
                 <span className="flex items-center gap-1 font-semibold text-text-muted">
-                  <ClipboardList className="h-3 w-3 text-purple-500" />
+                  <ClipboardList className="h-3 w-3 text-text-accent" />
                   <span className="tabular-nums">{totalExpected}</span>
                 </span>
-                <span className="flex items-center gap-1 font-semibold text-emerald-700">
-                  <Check className="h-3 w-3 text-emerald-500" />
+                <span className="flex items-center gap-1 font-semibold text-text-success">
+                  <Check className="h-3 w-3 text-text-success" />
                   <span className="tabular-nums">{totalActual}</span>
                 </span>
               </span>
@@ -181,7 +181,7 @@ export function FbaBoardDetailPanel({
                     className="flex items-center justify-between gap-3 rounded-none border border-border-hairline bg-surface-canvas/60 px-2.5 py-1.5"
                   >
                     <div className="flex min-w-0 items-center gap-2">
-                      <span className="shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider bg-purple-100 text-purple-700">
+                      <span className="shrink-0 rounded-none bg-surface-accent px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-accent">
                         {scanActionLabel(log.source_stage, log.event_type)}
                       </span>
                       <span className="truncate text-role-caption font-semibold text-text-muted">

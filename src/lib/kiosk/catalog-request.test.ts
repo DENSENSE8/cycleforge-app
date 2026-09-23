@@ -62,6 +62,35 @@ test('a barcode scopes the request on its own', () => {
   assert.equal(parsed.options.barcode, '017817656320');
 });
 
+test('mode=favorites scopes to the rail the ROUTE named', () => {
+  // The workspace is never the client's to choose — a device that could name it
+  // would read another rail's curated list off a query string.
+  const parsed = readKioskCatalogQuery(new URLSearchParams('mode=favorites&categoryId=42'), {
+    favoritesWorkspace: 'repair',
+  });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+
+  assert.equal(parsed.options.favoritesWorkspace, 'repair');
+  assert.equal(parsed.options.categoryId, null);
+});
+
+test('a rail with no favorites list refuses mode=favorites', () => {
+  assert.equal(parse('mode=favorites').ok, false);
+});
+
+test('a query outranks the favorites scope', () => {
+  // Someone asking for a product wants the catalog, not what the counter pinned.
+  const parsed = readKioskCatalogQuery(new URLSearchParams('mode=favorites&q=wave+radio'), {
+    favoritesWorkspace: 'sales',
+  });
+  assert.equal(parsed.ok, true);
+  if (!parsed.ok) return;
+
+  assert.equal(parsed.options.favoritesWorkspace, null);
+  assert.equal(parsed.options.query, 'wave radio');
+});
+
 test('limit is clamped and offset never goes negative', () => {
   const huge = parse('mode=all&limit=5000&offset=-10');
   assert.equal(huge.ok, true);

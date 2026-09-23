@@ -245,7 +245,7 @@ describe('report-dead-stock row view', () => {
     assert.equal(view.id, 'AMP-CHASSIS-77');
     assert.equal(view.title, 'Amp chassis, 77 series');
     assert.equal(view.titleHref, '/inventory/health/sku/AMP-CHASSIS-77');
-    assert.equal(view.orderId, 'AMP-CHASSIS-77');
+    assert.equal(view.identityFace?.value, 'AMP-CHASSIS-77');
     assert.equal(view.stateLabel, '184d');
     assert.equal(view.stateTone, 'neutral');
     assert.equal(view.stateTip, '184 days since the last ledger write');

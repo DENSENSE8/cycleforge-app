@@ -21,12 +21,13 @@
  * orders were unpaired, and under the old reading they were "perfectly
  * releasable" while their SKU resolved to nothing.
  *
- * ## Pairing is item-number grain; the list is order grain
+ * ## Pairing is item-number grain
  *
  * Pairing an item number to a catalog entry resolves EVERY order carrying that
  * item number, so `siblingUnpairedCount` tells the UI how many other rows one
- * pairing will clear. The list stays order-grain (what the operator asked for)
- * while the work stays pair-once (what keeps the backlog finite).
+ * pairing will clear. The table stays order-grain (triage across orders). The
+ * recents rail collapses to one row per item number — five copies of the
+ * same listing is not a worklist.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -35,6 +36,7 @@ import { evaluateReleaseGates } from './release-gates';
 import { exceptionHeldSql } from './exception-membership';
 import {
   deriveOrderExceptionBlockers,
+  resolveOrderExceptionRouting,
   type OrderExceptionRow,
   type OrderExceptionScope,
 } from './order-exception-types';
@@ -157,6 +159,10 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
       itemNumber: row.item_number,
       skuCatalogId,
     }),
+    routing: resolveOrderExceptionRouting(deriveOrderExceptionBlockers({
+      itemNumber: row.item_number,
+      skuCatalogId,
+    })),
     gates: evaluateReleaseGates({
       orderNumber: row.order_id,
       itemNumber: row.item_number,

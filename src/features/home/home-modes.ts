@@ -1,17 +1,16 @@
 /**
- * Shared types + constants for the Home ("/") surface.
+ * Shared types + constants for the Daily ("/") surface.
  *
- * ONE mode as of 2026-09-14: `daily`. The Today and Tasks modes were removed
- * from Home by operator ruling (their workbenches and backends stay on disk,
- * unmounted — deletion remains a separate, gated pass). Home IS the daily
- * checklist now; the nav spine names it "Daily" with the lucide ListChecks
- * glyph.
+ * ONE mode: `daily`. The page is the whole AGENDA — the org's shift checklist
+ * and the work a colleague handed you, in one table banded by type (operator
+ * 2026-09-22: *"consolidate the tasks into one display just under a type"*).
  *
- * `parseHomeMode` survives as the stale-link guard: a bookmark carrying
- * `?mode=today` / `?mode=tasks` (or the older `?mode=forge` the Plans spine
- * pin still writes) lands on Daily — the only live thing at `/` — instead of
- * a dead region. That is the same disposal doctrine every removed Home mode
- * has used (`inbox`, `collab`, `brief`, ops-plan `tasks`).
+ * A `?mode=tasks` tab existed for a few hours on 2026-09-22 and is gone with
+ * the consolidation; `?mode=today` and `?mode=forge` have been gone longer.
+ *
+ * `parseHomeMode` survives as the stale-link guard: a bookmark carrying any of
+ * those tokens lands on Daily — the only thing at `/` — instead of a dead
+ * region. That is the same disposal doctrine every removed Home mode has used.
  *
  * `?mode=` in the URL stays the single source of truth for the surface — this
  * module keeps only the vocabulary + its parser, so the registry and the page

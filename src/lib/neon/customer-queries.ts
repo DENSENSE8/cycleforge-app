@@ -24,6 +24,67 @@ export interface CustomerLookupRecord {
 }
 
 /**
+ * Find-or-create the `customers` row behind a PROVIDER contact (Ecwid today).
+ *
+ * Callers: `upsertEcwidIncomingRepair`. Schemas: `customers` (read + insert).
+ * User 2026-09-23: *"there is already a customers table for the API
+ * integration — it should import the repair service and the customers into the
+ * customers table and display correctly within the receipt page."*
+ *
+ * ## Why not `findOrCreateRepairCustomer`
+ *
+ * That helper matches phone → **name** → create, and `04-unified-route.md` §
+ * already rules that a bare NAME match silently merges two different "John
+ * Smith"s onto one record. A sync runs unattended over every order in the
+ * store, so it is the LAST place that hazard should be widened. This matches
+ * on keys only:
+ *
+ *   1. phone, by the repo's canonical NANP last-ten key — the same expression
+ *      `resolve-buyer-customers.ts`, `submit-counter-transaction.ts` and the
+ *      `idx_customers_phone_last10` index use, so a hit here is a hit there;
+ *   2. email, lower-cased exact;
+ *   3. otherwise create.
+ *
+ * Null when the contact carries neither a phone nor an email: a row with a name
+ * and nothing else is not an identity, it is a label, and minting one per sync
+ * pass would fill the book with duplicates nothing can ever match again.
+ */
+export async function resolveProviderCustomerId(
+  orgId: OrgId,
+  contact: { name?: string | null; phone?: string | null; email?: string | null },
+): Promise<number | null> {
+  const phoneDigits = String(contact.phone ?? '').replace(/\D/g, '').slice(-10);
+  const email = String(contact.email ?? '').trim().toLowerCase();
+  const name = String(contact.name ?? '').trim();
+  if (!phoneDigits && !email) return null;
+
+  const existing = await tenantQuery<{ id: number }>(
+    orgId,
+    `SELECT id
+       FROM customers
+      WHERE organization_id = $1
+        AND (
+          ($2 <> '' AND (
+            RIGHT(REGEXP_REPLACE(COALESCE(phone, ''), '\\D', '', 'g'), 10) = $2
+            OR RIGHT(REGEXP_REPLACE(COALESCE(mobile, ''), '\\D', '', 'g'), 10) = $2
+          ))
+          OR ($3 <> '' AND LOWER(COALESCE(email, '')) = $3)
+        )
+      ORDER BY id ASC
+      LIMIT 1`,
+    [orgId, phoneDigits, email],
+  );
+  const found = existing.rows[0];
+  if (found) return Number(found.id);
+
+  const created = await createRepairCustomer(
+    { name: name || email || contact.phone || '', phone: contact.phone ?? '', email: email || undefined },
+    orgId,
+  );
+  return Number(created.id);
+}
+
+/**
  * Find a customer by phone number.
  */
 export async function findCustomerByPhone(phone: string, orgId?: OrgId): Promise<CustomerRecord | null> {
@@ -275,5 +336,132 @@ export async function searchRepairCustomers(query: string, limit = 20, orgId?: O
     phone: row.phone ? String(row.phone) : null,
     email: row.email ? String(row.email) : null,
     updated_at: row.updated_at ? String(row.updated_at) : null,
+  }));
+}
+
+export interface CustomerSearchResult {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  shippingAddress: {
+    address1: string | null;
+    address2: string | null;
+    city: string | null;
+    state: string | null;
+    postalCode: string | null;
+    country: string | null;
+  };
+  shipstationCustomerId: string | null;
+  /** The customer's most recent order, if any. */
+  lastOrder: {
+    id: number;
+    orderRef: string | null;
+    title: string | null;
+    status: string | null;
+    orderDate: string | null;
+    /** As-shipped address snapshot from the latest label's STN metadata. */
+    lastShipTo: Record<string, unknown> | null;
+  } | null;
+}
+
+/**
+ * Operator customer search ("customer calls back — find them"): name (trgm
+ * ILIKE on the canonical name expressions), email, or phone. Phone queries
+ * with ≥10 digits match on the last 10 digits (the caller-match rule), so a
+ * typed "(415) 555-0100" finds a "+14155550100" record.
+ *
+ * Each hit carries the stored shipping address AND the last order + the
+ * as-shipped address snapshot from its latest label — the two facts a
+ * return/replacement label needs without asking the customer anything.
+ *
+ * Tenant-native: `orgId` is required (unlike the legacy helpers above, this
+ * has no dogfood-pool fallback).
+ */
+export async function searchCustomers(
+  query: string,
+  orgId: OrgId,
+  limit = 20,
+): Promise<CustomerSearchResult[]> {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(50, Number(limit))) : 20;
+  const normalized = String(query || '').trim();
+  if (!normalized) return [];
+
+  const digits = normalized.replace(/\D/g, '');
+  const last10 = digits.length >= 10 ? digits.slice(-10) : null;
+  const like = `%${normalized}%`;
+
+  const { rows } = await tenantQuery(
+    orgId,
+    `SELECT
+       c.id,
+       COALESCE(NULLIF(btrim(c.customer_name), ''), c.display_name,
+                NULLIF(btrim(CONCAT_WS(' ', NULLIF(c.first_name, ''), NULLIF(c.last_name, ''))), ''),
+                'Unknown') AS name,
+       NULLIF(c.phone, '') AS phone,
+       NULLIF(c.email, '') AS email,
+       NULLIF(c.shipping_address_1, '') AS addr1,
+       NULLIF(c.shipping_address_2, '') AS addr2,
+       NULLIF(c.shipping_city, '')      AS city,
+       NULLIF(c.shipping_state, '')     AS state,
+       NULLIF(c.shipping_postal_code, '') AS postal,
+       NULLIF(c.shipping_country, '')   AS country,
+       c.shipstation_customer_id,
+       o.id            AS last_order_id,
+       o.order_id      AS last_order_ref,
+       o.product_title AS last_order_title,
+       o.status        AS last_order_status,
+       o.order_date::text AS last_order_date,
+       stn.metadata->'ship_to' AS last_ship_to
+     FROM customers c
+     LEFT JOIN LATERAL (
+       SELECT id, order_id, product_title, status, order_date, shipment_id
+         FROM orders
+        WHERE customer_id = c.id AND organization_id = $3
+        ORDER BY order_date DESC NULLS LAST, id DESC
+        LIMIT 1
+     ) o ON TRUE
+     LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+    WHERE c.organization_id = $3
+      AND (
+        COALESCE(NULLIF(btrim(c.customer_name), ''), c.display_name, '') ILIKE $1
+        -- Immutable twin of idx_customers_fullname_trgm (CONCAT_WS is STABLE,
+        -- so the index — and this predicate — use the COALESCE || form).
+        OR NULLIF(btrim(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), '') ILIKE $1
+        OR lower(c.email) LIKE lower($1)
+        OR c.phone ILIKE $1
+        OR ($2::text IS NOT NULL AND (
+              right(regexp_replace(coalesce(c.phone, ''), '\\D', '', 'g'), 10) = $2
+           OR right(regexp_replace(coalesce(c.mobile, ''), '\\D', '', 'g'), 10) = $2))
+      )
+    ORDER BY o.order_date DESC NULLS LAST, c.updated_at DESC NULLS LAST, c.id DESC
+    LIMIT $4`,
+    [like, last10, orgId, safeLimit],
+  );
+
+  return rows.map((row) => ({
+    id: Number(row.id),
+    name: String(row.name || 'Unknown'),
+    phone: row.phone ? String(row.phone) : null,
+    email: row.email ? String(row.email) : null,
+    shippingAddress: {
+      address1: row.addr1 ?? null,
+      address2: row.addr2 ?? null,
+      city: row.city ?? null,
+      state: row.state ?? null,
+      postalCode: row.postal ?? null,
+      country: row.country ?? null,
+    },
+    shipstationCustomerId: row.shipstation_customer_id ? String(row.shipstation_customer_id) : null,
+    lastOrder: row.last_order_id
+      ? {
+          id: Number(row.last_order_id),
+          orderRef: row.last_order_ref ?? null,
+          title: row.last_order_title ?? null,
+          status: row.last_order_status ?? null,
+          orderDate: row.last_order_date ?? null,
+          lastShipTo: (row.last_ship_to as Record<string, unknown> | null) ?? null,
+        }
+      : null,
   }));
 }

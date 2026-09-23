@@ -103,7 +103,9 @@ export function FnskuCatalogInfoPanel({
             <IconButton
               type="button"
               onClick={openCatalogEdit}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+              size="xs"
+              radius="flush"
+              className="text-text-faint hover:bg-surface-sunken hover:text-text-muted"
               ariaLabel="Edit catalog details"
               icon={<Pencil className="h-3.5 w-3.5" />}
             />

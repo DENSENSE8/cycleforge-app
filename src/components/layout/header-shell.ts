@@ -6,7 +6,7 @@ import {
   appWashClass,
 } from '@/design-system/tokens/app-surface';
 import { NAV_ICON_STROKE_CLASS } from '@/components/icons/nav-weight';
-import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Inner bottom hairline shared by receiving sidebar + workspace chrome (not outer border-b). */
@@ -279,14 +279,24 @@ export const HEADER_ICON_GAP = 'gap-0';
 /** Flex row for a GlobalHeader icon cluster — beam-height, square cells. */
 export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
 
-/**
- * Leading inset for the top-chrome NAV cluster — the show/hide control and
- * Search beside it. `pl-2` (8px) plus the 32px {@link HEADER_ICON_WRAP}
- * centering a 16px glyph lands that glyph's left edge at **16px**, which is
- * where every spine row icon starts. Applied to BOTH mounts — the spine's top
- * band while open, GlobalHeader's nav cluster while closed.
+/*
+ * `TOP_CHROME_NAV_LEAD` (`pl-2`) is DELETED (operator 2026-09-22: "you left
+ * padding between the left side of the page and the sidebar icon. Ensure that
+ * they are the same placement both open and closed in terms of padding").
+ *
+ * It existed to land the 16px glyph's left edge at 16px, matching where a
+ * spine ROW icon starts. That reasoning held while the icon face was a 28px
+ * pill floating inside its cell — the pad was invisible because the cell had
+ * its own dead margin anyway. Once the face went flush and full-bleed, the
+ * 8px lead became a visible unlit gutter: the hover wash stopped short of the
+ * page's own left edge, which is the gap the operator is pointing at.
+ *
+ * Both mounts dropped it together — GlobalHeader's nav cluster (spine closed)
+ * and `SpineNavChrome`'s top band (spine open) — so the toggle sits in exactly
+ * the same place in both states, which is the second half of the ruling.
+ * `SpineNavChrome` keeps its own `pr-2`: that is the spine's TRAILING edge,
+ * a different axis, and nothing in the ruling touches it.
  */
-export const TOP_CHROME_NAV_LEAD = 'pl-2';
 /**
  * Gap between the beam's ZONES (nav cluster · scan dock · page context).
  * `gap-0.5` (2px) matches one cell's leftover air so zone boundaries share
@@ -321,22 +331,6 @@ export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
 export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CLASS);
 
 /**
- * Shared IconButton chrome for GlobalHeader — a 28px hover wash inside the
- * 32px beam cell, sunken on hover, {@link HEADER_ICON_CORNER} (`rounded-lg`).
- * Same 8px control rung as main's `cornerClass('control')` on this face.
- * IconButton defaults to flush; this class wins via `cn` / twMerge.
- *
- * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
- * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
- * base to `text-text-default` so the page name (icon + label) matched the
- * rail's bold title treatment — which left every OTHER header icon
- * (sidebar toggle, Pins, Recents, WO, clipboard, inbox) visibly lighter than
- * the page face sitting right beside them in the same cluster. One base
- * token for the whole GlobalHeader icon row now, matching the spine
- * (`spine-section-accent.ts` — ink constant, no dimming) on the other side
- * of the toggle: header and sidebar read as one ink system, not two.
- */
-/**
  * Page-identity face and its child menu — one compact width. Find lives on
  * the right rail ({@link CommandBar}), not beside this chip.
  */
@@ -352,9 +346,39 @@ export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
 export const HEADER_PAGE_MENU_SCROLL_CLASS =
   'max-h-[calc(100dvh-theme(spacing.20))] overflow-y-auto overscroll-contain scroll-pb-8';
 
+/**
+ * Shared IconButton chrome for GlobalHeader — the beam CELL itself, not a
+ * pill inside it: `h-full w-full` fills its {@link HEADER_ICON_WRAP} (32px
+ * wide × the 40px beam) and `cornerClass('flush')` squares it.
+ *
+ * **Operator 2026-09-22:** *"for all of the icons there should be no spacing
+ * or padding for the icons in terms of the on hover. It should be updated to
+ * displaying a zero corner radius on hover state and a selection state."*
+ *
+ * It was a 28px `rounded-lg` wash centred in the 32px cell, which left a ~6px
+ * dead margin on every edge — so hover and open state read as a chip floating
+ * ON the beam, and the beam's own top edge never lit. The bookmark chips were
+ * squared and made full-height the same day for the same reason; this is the
+ * icon half of that ruling, so the whole row shares ONE hover grammar: the
+ * cell lights, edge to edge, square.
+ *
+ * Consumers that are not on the beam override what they need through `cn` /
+ * twMerge — `KIOSK_POS_TRAIL_ICON` re-declares `h-9 w-9 rounded-full`,
+ * `PAGE_FACE_CLASS` re-declares width and justification. Later class wins.
+ *
+ * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
+ * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
+ * base to `text-text-default` so the page name (icon + label) matched the
+ * rail's bold title treatment — which left every OTHER header icon (sidebar
+ * toggle, Pins, Recents, WO, clipboard, inbox) visibly lighter than the page
+ * face beside them in the same cluster. One base token for the whole
+ * GlobalHeader icon row now, matching the spine (`spine-section-accent.ts` —
+ * ink constant, no dimming) on the other side of the toggle: header and
+ * sidebar read as one ink system, not two.
+ */
 export const HEADER_ICON_BTN_CLASS = cn(
-  'h-7 w-7 min-h-0 text-text-default transition-colors hover:bg-surface-sunken',
-  HEADER_ICON_CORNER,
+  'h-full w-full min-h-0 text-text-default transition-colors hover:bg-surface-sunken active:scale-100',
+  cornerClass('flush'),
 );
 
 /** Pressed / open fill for header icon toggles. */

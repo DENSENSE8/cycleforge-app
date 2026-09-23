@@ -29,6 +29,7 @@ import { recordAudit } from '@/lib/audit-logs';
 import { isTrialBlocked } from '@/lib/billing/trial-gate';
 import { isFeatureGated } from '@/lib/billing/feature-gate';
 import type { EntitlementFeature } from '@/lib/billing/feature-gate';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /**
  * Auth context handed to wrapped route handlers.
@@ -280,23 +281,30 @@ export function withAuth(
         ? await (handler as AnonymousApiHandler)(req, ctx)
         : await (handler as ApiHandler)(req, ctx);
     } catch (err) {
+      const requestId = safeRandomUUID();
       const message = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
       // Postgres errors carry .code; surface it so callers can branch.
       const pgCode = (err as { code?: string } | null)?.code;
       console.error(
-        `[withAuth] ${req.method} ${req.nextUrl.pathname} threw:`,
+        `[withAuth:${requestId}] ${req.method} ${req.nextUrl.pathname} threw:`,
         err,
       );
-      const payload: Record<string, unknown> = { error: 'INTERNAL', message };
-      if (pgCode) payload.code = pgCode;
-      if (process.env.NODE_ENV !== 'production' && stack) payload.stack = stack;
-      return NextResponse.json(payload, { status: 500 });
+      const payload: Record<string, unknown> = { error: 'INTERNAL', requestId };
+      if (process.env.NODE_ENV !== 'production') {
+        payload.message = message;
+        if (pgCode) payload.code = pgCode;
+        if (stack) payload.stack = stack;
+      }
+      return NextResponse.json(payload, {
+        status: 500,
+        headers: { 'x-request-id': requestId },
+      });
     }
 
-    // Audit floor: only on 2xx and when the handler didn't write its own
-    // rich row. Fire-and-forget — the response is already prepared so audit
-    // latency doesn't extend the client's wait.
+    // Audit floor: only on 2xx and when the handler didn't write its own rich
+    // row. Await it so serverless runtimes cannot freeze the invocation before
+    // the security record is flushed; writeAuditFloor remains fail-open.
     if (
       opts.audit &&
       !auditWritten &&
@@ -304,7 +312,7 @@ export function withAuth(
       response.status < 300
     ) {
       const responseClone = response.clone();
-      void writeAuditFloor(req, reqClone, responseClone, ctx, opts.audit);
+      await writeAuditFloor(req, reqClone, responseClone, ctx, opts.audit);
     }
 
     return response;

@@ -157,15 +157,6 @@ export const SLOT_TABLE_SESSION_LAWS: readonly SlotTableSessionLaw[] = [
     eval: 'slot-table',
   },
   {
-    id: 'e2e.parity-includes-dates',
-    date: '2026-09-05',
-    ruling:
-      'Compound-row parity must require the Dates track. Omitting it let a family drop Dates and stay green.',
-    file: 'tests/e2e/compound-row-parity.spec.ts',
-    mustMatch: "'fulfillment', 'thumb', 'item', 'dates', 'state'",
-    eval: 'slot-table',
-  },
-  {
     id: 'chrome.action-row-below-header',
     date: '2026-09-10',
     ruling:

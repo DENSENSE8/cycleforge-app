@@ -30,12 +30,14 @@ test('config: falls back to VISION_ANALYZE_BASE_URL then NEXT_PUBLIC_VISION_BASE
   strictEqual(
     resolveLocalVisionConfig({ localVisionBaseUrl: '' }, {
       VISION_ANALYZE_BASE_URL: 'https://tunnel.example',
+      VISION_TOKEN: 'secret',
     } as NodeJS.ProcessEnv)?.baseUrl,
     'https://tunnel.example',
   );
   strictEqual(
     resolveLocalVisionConfig(undefined, {
       NEXT_PUBLIC_VISION_BASE_URL: 'https://lan.example',
+      VISION_TOKEN: 'secret',
     } as NodeJS.ProcessEnv)?.baseUrl,
     'https://lan.example',
   );
@@ -44,6 +46,15 @@ test('config: falls back to VISION_ANALYZE_BASE_URL then NEXT_PUBLIC_VISION_BASE
 test('config: null when no base url is configured anywhere', () => {
   strictEqual(resolveLocalVisionConfig(undefined, {} as NodeJS.ProcessEnv), null);
   strictEqual(resolveLocalVisionConfig({ localVisionBaseUrl: '' }, {} as NodeJS.ProcessEnv), null);
+});
+
+test('config: null when the required token is absent', () => {
+  strictEqual(
+    resolveLocalVisionConfig(undefined, {
+      VISION_ANALYZE_BASE_URL: 'https://vision.example',
+    } as NodeJS.ProcessEnv),
+    null,
+  );
 });
 
 // ─── normalizeLocalVisionResponse ───────────────────────────────────────────
@@ -135,10 +146,13 @@ test('analyze: posts multipart to /analyze with the token header and maps the bo
   strictEqual(meta?.caption, 'QC35 label');
 });
 
-test('analyze: no token header sent when the box has no token', async () => {
+test('analyze: missing token fails closed without a network call', async () => {
   const { deps, calls } = fakeFetch(() => jsonResponse({ labels: ['x'] }));
-  await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: '' }, 'p.jpg', deps);
-  strictEqual('x-vision-token' in (calls[0].init.headers as Record<string, string>), false);
+  strictEqual(
+    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: '' }, 'p.jpg', deps),
+    null,
+  );
+  strictEqual(calls.length, 0);
 });
 
 test('analyze: null when config is missing (no call made)', async () => {
@@ -150,7 +164,7 @@ test('analyze: null when config is missing (no call made)', async () => {
 test('analyze: HTTP error degrades to null', async () => {
   const { deps } = fakeFetch(() => jsonResponse({ error: 'boom' }, 500));
   strictEqual(
-    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: '' }, 'p.jpg', deps),
+    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: 'secret' }, 'p.jpg', deps),
     null,
   );
 });
@@ -160,7 +174,7 @@ test('analyze: network throw degrades to null (box down)', async () => {
     throw new Error('ECONNREFUSED');
   });
   strictEqual(
-    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: '' }, 'p.jpg', deps),
+    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: 'secret' }, 'p.jpg', deps),
     null,
   );
 });
@@ -168,7 +182,7 @@ test('analyze: network throw degrades to null (box down)', async () => {
 test('analyze: unparseable body degrades to null', async () => {
   const { deps } = fakeFetch(() => new Response('<html>not json</html>', { status: 200 }));
   strictEqual(
-    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: '' }, 'p.jpg', deps),
+    await analyzeWithLocalVision(Buffer.from('x'), { baseUrl: 'https://v.example', token: 'secret' }, 'p.jpg', deps),
     null,
   );
 });

@@ -142,9 +142,9 @@ export function renderConnectionsMdx(items) {
     '',
     '**Promoted from** `docs/master-connections-and-refactor/staff-connections-planning.html` (checkboxes → tickets).',
     '**Narrative:** [staff plans](/docs/master-connections-and-refactor/staff/INDEX.md) · [technical index](/docs/master-connections-and-refactor/master-index-plan.md).',
-    '**Portfolio:** [WS-CONN](/docs/portfolio/INDEX.md). HTML is a **deprecated mirror** — live SoT is this document on `/forge` Plans Live.',
+    'HTML is a **deprecated mirror** — live SoT is this document on `/forge` Plans Live.',
     '',
-    'Statuses: `pending` | `in-progress` | `deployed`. Human review: portfolio review-protocol + INDEX log.',
+    'Statuses: `pending` | `in-progress` | `deployed`. Human review on the dogfood tunnel.',
     '',
   ];
 

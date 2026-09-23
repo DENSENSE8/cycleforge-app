@@ -10,11 +10,17 @@ export interface TechStaff {
 }
 
 /**
- * Loads the data the repair intake wizard needs up front: the technician
- * directory (filtered from active staff) and the SKU issue labels for the
- * selected favorite (or the default issue list).
+ * Loads the data the repair intake wizard needs: the technician directory
+ * (filtered from active staff) and the reason labels for the SELECTED SKU.
+ *
+ * The SKU is a string, not a `favorite_skus.id`, because favorites stopped
+ * being a separate rail (2026-09-16) — the operator picks from the catalog and
+ * a favorite is simply a pinned product in it. Per-SKU reasons therefore have
+ * to resolve from what the picker reports, which is also why they now work for
+ * any product instead of only for the handful that were favorited. Mirrors
+ * `useKioskSkuReasons`, which already keyed off the SKU string on the device.
  */
-export function useRepairIntakeData(favoriteSkuId?: number | null, kioskMode = false) {
+export function useRepairIntakeData(selectedSku?: string | null, kioskMode = false) {
   const [techs, setTechs] = useState<TechStaff[]>([]);
   // On the headless kiosk (device principal) both fetches below hit staff-only
   // endpoints that 401, and neither surface is shown — start settled + empty.
@@ -36,9 +42,8 @@ export function useRepairIntakeData(favoriteSkuId?: number | null, kioskMode = f
   useEffect(() => {
     if (kioskMode) return;
     let active = true;
-    const url = favoriteSkuId
-      ? `/api/repair/issues?favoriteSkuId=${favoriteSkuId}`
-      : '/api/repair/issues';
+    const sku = String(selectedSku || '').trim();
+    const url = sku ? `/api/repair/issues?sku=${encodeURIComponent(sku)}` : '/api/repair/issues';
     fetch(url)
       .then((r) => r.json())
       .then((data) => {
@@ -48,7 +53,7 @@ export function useRepairIntakeData(favoriteSkuId?: number | null, kioskMode = f
       })
       .catch(() => { if (active) setSkuIssues([]); });
     return () => { active = false; };
-  }, [favoriteSkuId, kioskMode]);
+  }, [selectedSku, kioskMode]);
 
   return { techs, loadingTechs, skuIssues };
 }

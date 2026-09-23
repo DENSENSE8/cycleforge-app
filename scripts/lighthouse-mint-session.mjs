@@ -2,7 +2,7 @@
 /**
  * Mint a session cookie for authenticated Lighthouse runs.
  *
- * Requires the target server (default http://localhost:3000) to be running
+ * Requires the switchboard (default http://localhost:3050) to be running
  * with AUTH_PINLESS_SIGNIN=true (or pass LH_STAFF_PIN). Mirrors the Playwright
  * global-setup pinless flow: staff-picker → signin with x-tenant-slug.
  *
@@ -12,7 +12,7 @@
  *
  * Env: LH_BASE_URL, LH_TENANT_SLUG (usav), LH_STAFF_NAME (Michael), LH_STAFF_PIN.
  */
-const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3050';
 const TENANT = process.env.LH_TENANT_SLUG || 'usav';
 const STAFF_NAME = process.env.LH_STAFF_NAME || 'Michael';
 const PIN = process.env.LH_STAFF_PIN;
@@ -54,8 +54,11 @@ async function main() {
     );
   }
   const setCookie = signinRes.headers.getSetCookie?.() ?? [signinRes.headers.get('set-cookie')];
-  const sid = setCookie.filter(Boolean).map((c) => c.split(';')[0]).find((c) => c.startsWith('cf_sid='));
-  if (!sid) throw new Error('signin succeeded but no cf_sid cookie in response');
+  const sid = setCookie
+    .filter(Boolean)
+    .map((c) => c.split(';')[0])
+    .find((c) => /^cf_sid(?:__[A-Za-z0-9_-]+)?=/.test(c));
+  if (!sid) throw new Error('signin succeeded but no switchboard-scoped cf_sid cookie in response');
   process.stdout.write(sid + '\n');
 }
 

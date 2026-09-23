@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search } from '../Icons';
+import { ChevronLeft, ChevronRight, Search, Star } from '../Icons';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
@@ -11,7 +11,7 @@ import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
-import { cornerClass, HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   KIOSK_META,
@@ -39,6 +39,10 @@ import {
   KIOSK_EAGER_TILE_COUNT,
   KIOSK_POS_GRID,
   KIOSK_POS_IMAGE_WELL,
+  KIOSK_POS_CARD_CELL,
+  KIOSK_POS_CARD_FAVORITE_PIP,
+  KIOSK_POS_CARD_FAVORITE_PIP_OFF,
+  KIOSK_POS_CARD_FAVORITE_PIP_ON,
   KIOSK_POS_TRAIL_BAND,
   KIOSK_POS_TRAIL_CONTROL,
   KIOSK_POS_TRAIL_ICON,
@@ -56,6 +60,11 @@ import {
   stockBadgeLabel,
   type CatalogAvailability,
 } from '@/lib/kiosk/catalog-search-pure';
+import {
+  buildFavoriteSkuKeySet,
+  isFavoriteSku,
+  type FavoriteWorkspaceKey,
+} from '@/lib/favorites/favorite-sku-key';
 
 export interface ProductSelection {
   type: string;
@@ -157,6 +166,17 @@ interface ProductSelectorProps {
    * it until that route is ported too.
    */
   catalogSearchMode?: 'client' | 'server';
+  /**
+   * Mount the FAVORITES scope: the picker lands on this workspace's curated
+   * list, offers it first in the category dropdown, and paints a favorite pip
+   * on every tile's top-right corner.
+   *
+   * The value names the LIST, not the endpoint — favorites are read and written
+   * through `${apiBasePath}/favorites`, so the route decides which workspace a
+   * rail may touch. Omitted (staff counter, legacy hosts) = no favorites scope
+   * and no pip, exactly as before.
+   */
+  favoritesWorkspace?: FavoriteWorkspaceKey;
 }
 
 interface CategoryNode {
@@ -220,6 +240,8 @@ const PRODUCT_PAGE_SIZE = 24;
 const CATALOG_SEARCH_DEBOUNCE_MS = 180;
 /** Combobox sentinel — not an Ecwid id. Clears the category filter. */
 const KIOSK_ALL_PRODUCTS_VALUE = 'all-products';
+/** Combobox sentinel — the curated list, `?mode=favorites`, not a category. */
+const KIOSK_FAVORITES_VALUE = 'favorites';
 
 /**
  * The availability line on a product card — "12 in stock" over "Z1-A-03 +1".
@@ -299,12 +321,15 @@ export function ProductSelector({
   hideBrowseSearch: _hideBrowseSearch,
   hideCartTray = false,
   catalogSearchMode = 'client',
+  favoritesWorkspace,
 }: ProductSelectorProps) {
   const kioskSplit = layout === 'kiosk-split';
   /** Flush POS chrome — only the kiosk-split catalog path. */
   const pos = kioskSplit;
   /** Stacked flush chrome — staff/legacy; never when POS split is active. */
   const flush = appearance === 'flush' && !pos;
+  /** Favorites scope + tile pip are mounted only when a rail names its list. */
+  const favoritesEnabled = Boolean(favoritesWorkspace);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [products, setProducts] = useState<EcwidProduct[]>([]);
   const [rootName, setRootName] = useState('Bose Repair Service');
@@ -348,6 +373,19 @@ export function ProductSelector({
   const [otherModelText, setOtherModelText] = useState('');
   const [showOther, setShowOther] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
+  /**
+   * Favorites scope — the curated list is painting the grid.
+   *
+   * A sibling of `showAllProducts` rather than a third value inside it: the
+   * shipped pool helpers (`isCatalogRootSearchLevel`) read that flag, and both
+   * scopes ARE the root level for search purposes — typing searches the whole
+   * catalog from either one.
+   */
+  const [showFavorites, setShowFavorites] = useState(false);
+  /** Workspace membership as normalized SKU keys — what each tile pip reads. */
+  const [favoriteKeys, setFavoriteKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
+  /** SKU whose pip is mid-flight; its own tile is the only one disabled. */
+  const [pendingFavoriteSku, setPendingFavoriteSku] = useState<string | null>(null);
   const [productsOffset, setProductsOffset] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
@@ -389,6 +427,11 @@ export function ProductSelector({
     if (initialLoad) setLoadingCategories(true);
     setError(null);
     setShowAllProducts(false);
+    // A cold mount ALSO calls this (to load the root category level) while the
+    // favorites landing is in flight, and must not cancel it. Only a real
+    // navigation — a drill, or a return to All products once the tree is
+    // hydrated — leaves the favorites scope.
+    if (parentId || categoriesHydratedRef.current) setShowFavorites(false);
     setProductsOffset(0);
     setHasMoreProducts(false);
     setSearch('');
@@ -443,6 +486,7 @@ export function ProductSelector({
       const payload = (await response.json()) as ProductsResponse;
       if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to load products');
       const rows = Array.isArray(payload.products) ? payload.products : [];
+      setShowFavorites(false);
       setProducts((prev) => (append ? [...prev, ...rows] : rows));
       setProductsOffset(offset + rows.length);
       setHasMoreProducts(Boolean(payload.hasMore));
@@ -467,6 +511,7 @@ export function ProductSelector({
       const rows = Array.isArray(payload.products) ? payload.products : [];
       setProducts((prev) => (append ? [...prev, ...rows] : rows));
       setShowAllProducts(true);
+      setShowFavorites(false);
       setProductsOffset(offset + rows.length);
       setHasMoreProducts(Boolean(payload.hasMore));
     } catch (err) {
@@ -477,6 +522,96 @@ export function ProductSelector({
     } finally {
       if (append) setLoadingMoreProducts(false);
       else setLoadingProducts(false);
+    }
+  };
+
+  /**
+   * The rail's curated list, as ordinary catalog tiles.
+   *
+   * Same route, same wire shape, same card as any other browse page — favorites
+   * are a SCOPE of the catalog (`?mode=favorites`), not a second data source
+   * with its own rail, its own card and its own idea of what a product is.
+   */
+  const fetchFavoriteProducts = async (offset = 0, append = false) => {
+    if (append) setLoadingMoreProducts(true);
+    else setLoadingProducts(true);
+    setError(null);
+    if (!append) setSearch('');
+    try {
+      const response = await kioskFetchHealed(
+        `${apiBasePath}/ecwid-products?mode=favorites&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
+      );
+      const payload = (await response.json()) as ProductsResponse;
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Failed to load favorites');
+      }
+      const rows = Array.isArray(payload.products) ? payload.products : [];
+      setProducts((prev) => (append ? [...prev, ...rows] : rows));
+      setShowFavorites(true);
+      setShowAllProducts(false);
+      setProductsOffset(offset + rows.length);
+      setHasMoreProducts(Boolean(payload.hasMore));
+    } catch (err) {
+      if (!append) {
+        setProducts([]);
+        setError(err instanceof Error ? err.message : 'Failed to load favorites');
+      }
+      setHasMoreProducts(false);
+    } finally {
+      if (append) setLoadingMoreProducts(false);
+      else setLoadingProducts(false);
+    }
+  };
+
+  /**
+   * Membership + landing, in one round trip on mount.
+   *
+   * The keys are needed either way (every tile's pip reads them, in every
+   * scope), and their COUNT answers where to land: a counter with pinned
+   * repairs opens on them, an org with none opens on All products rather than
+   * on an empty grid with a dropdown nobody has reason to open.
+   */
+  const hydrateFavorites = async () => {
+    let keys: string[] = [];
+    try {
+      const response = await kioskFetchHealed(`${apiBasePath}/favorites`);
+      const payload = (await response.json()) as { skus?: string[] };
+      if (response.ok && Array.isArray(payload?.skus)) keys = payload.skus;
+    } catch {
+      /* Favorites degrade to All products — never break the product step. */
+    }
+    setFavoriteKeys(buildFavoriteSkuKeySet(keys));
+    if (keys.length > 0) await fetchFavoriteProducts(0, false);
+    else if (kioskSplit) await fetchAllProducts(0, false);
+  };
+
+  /**
+   * Star / unstar the SKU on this tile. The response carries the rail's whole
+   * membership, so the set is replaced by the server's answer rather than
+   * patched from a guess — two tablets on one counter stay in agreement.
+   */
+  const toggleFavorite = async (product: EcwidProduct) => {
+    if (!favoritesEnabled) return;
+    const sku = String(product.sku || '').trim();
+    if (!sku || pendingFavoriteSku) return;
+
+    const nextFavorite = !isFavoriteSku(favoriteKeys, sku);
+    setPendingFavoriteSku(sku);
+    try {
+      const response = await kioskFetchHealed(`${apiBasePath}/favorites`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku, favorite: nextFavorite, label: product.name }),
+      });
+      const payload = (await response.json()) as { skus?: string[]; error?: string };
+      if (!response.ok || !Array.isArray(payload?.skus)) {
+        throw new Error(payload?.error || 'Failed to update favorite');
+      }
+      setFavoriteKeys(buildFavoriteSkuKeySet(payload.skus));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update favorite');
+    } finally {
+      setPendingFavoriteSku(null);
     }
   };
 
@@ -525,6 +660,10 @@ export function ProductSelector({
       void fetchSearchProducts(search, productsOffset, true);
       return;
     }
+    if (showFavorites) {
+      void fetchFavoriteProducts(productsOffset, true);
+      return;
+    }
     if (showAllProducts) {
       void fetchAllProducts(productsOffset, true);
       return;
@@ -537,17 +676,24 @@ export function ProductSelector({
   useEffect(() => {
     // Don't block first paint on the category waterfall — rail + search +
     // skeleton grid paint immediately; the catalog fills in when ready.
-    if (kioskSplit) void fetchAllProducts(0, false);
+    //
+    // With a favorites rail the LANDING is the curated list (operator
+    // 2026-09-16: favorites at the top of the kiosk display, All products
+    // behind the dropdown), and `hydrateFavorites` falls through to the
+    // all-products page when the org has pinned nothing.
+    if (favoritesEnabled) void hydrateFavorites();
+    else if (kioskSplit) void fetchAllProducts(0, false);
     void fetchCategoryLevel(null);
   }, []);
 
   // Lazy-load the full catalog once, on the first root-level keystroke. The
   // server response is Redis-cached, so this is a single cheap round trip and
   // every later keystroke filters in memory. Kiosk-split first-page paint
-  // flips showAllProducts — that must not disable this path.
+  // flips showAllProducts — that must not disable this path. Favorites is the
+  // root level too: typing there searches the whole catalog, not the pins.
   const isAtRootLevel = isCatalogRootSearchLevel({
     currentCategoryId,
-    showAllProducts,
+    showAllProducts: showAllProducts || showFavorites,
     kioskSplit,
   });
   useEffect(() => {
@@ -589,6 +735,9 @@ export function ProductSelector({
       searchDroveGridRef.current = false;
       searchFetchGen.current += 1;
       if (currentCategoryId) void fetchProducts(currentCategoryId, 0, false);
+      // Back to the scope the operator was in, favorites included — a cleared
+      // query must not silently promote them to the whole catalog.
+      else if (showFavorites) void fetchFavoriteProducts(0, false);
       else void fetchAllProducts(0, false);
       return;
     }
@@ -640,6 +789,19 @@ export function ProductSelector({
         return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
       });
 
+  /**
+   * Report the selection to the host.
+   *
+   * `model` is a JOIN and a SUM on purpose, and it is the STAFF single-intake
+   * title — one `repair_service` row, whatever was ticked. It is NOT a device
+   * title for a multi-device visit: the kiosk reads `selectedItems` and holds
+   * one cart line (one serial, one quote) PER product
+   * (`src/lib/kiosk/repair-devices.ts`), and visit-level chrome that has one
+   * line to say it in uses `summarizeProductTitles` — "Wave Radio II + 2 more"
+   * — rather than painting this string at `text-3xl` on the customer display.
+   * Do not "fix" the join here; the hosts that must not concatenate already
+   * do not read it.
+   */
   const notifyParent = (items: SelectedItem[]) => {
     const model = items.map((i) => i.name).join(', ');
     onSelect({ type: items.length > 0 ? rootName : '', model, sourceSku: deriveSourceSku(items) });
@@ -829,6 +991,16 @@ export function ProductSelector({
       </div>
   );
 
+  /** One chrome for the grid's advisory notices — no results, nothing pinned. */
+  const gridNoticeClass = cn(
+    'text-xs font-semibold text-amber-700',
+    pos
+      ? cn(cornerClass('flush'), 'bg-amber-50 px-4 py-3.5')
+      : flush
+        ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
+        : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
+  );
+
   const renderProductsGrid = () => (
     <>
       {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
@@ -847,7 +1019,9 @@ export function ProductSelector({
                 ? filteredProducts.length > 0
                   ? 'Updating products…'
                   : 'Loading products...'
-                : 'Products'}
+                : showFavorites
+                  ? 'Favorites'
+                  : 'Products'}
             </p>
           )}
           {pos &&
@@ -901,18 +1075,22 @@ export function ProductSelector({
                  * fetching 400 photos.
                  */
                 const aboveFold = index < KIOSK_EAGER_TILE_COUNT;
+                const favorited = isFavoriteSku(favoriteKeys, product.sku);
                 return (
-                  // ds-raw-button: selectable product image+price card with checkmark overlay, not a Button shape
+                  // The CELL, not the card, is the grid child: the card is a
+                  // <button> (tap = pick), so the favorite pip cannot nest
+                  // inside it and rides the cell's corner instead.
+                  <div key={product.id} className={pos ? KIOSK_POS_CARD_CELL : 'relative h-full'}>
+                  {/* ds-raw-button: selectable product image+price card with checkmark overlay, not a Button shape */}
                   <button
-                    key={product.id}
                     type="button"
                     data-testid="product-tile"
                     onClick={() => toggleProduct(product)}
                     className={
                       pos
-                        ? cn(KIOSK_POS_CARD, selected && KIOSK_POS_CARD_SELECTED)
+                        ? cn(KIOSK_POS_CARD, 'h-full', selected && KIOSK_POS_CARD_SELECTED)
                         : cn(
-                            'relative flex flex-col overflow-hidden text-left transition-all',
+                            'relative flex h-full flex-col overflow-hidden text-left transition-all',
                             flush
                               ? cn(
                                   'border border-border-hairline',
@@ -985,9 +1163,11 @@ export function ProductSelector({
                         </span>
                       )}
                       {selected && !pos && (
+                        // Top-LEFT, the same corner the POS dot uses: the cell's
+                        // top-right belongs to the favorite pip on every surface.
                         <div
                           className={cn(
-                            'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
+                            'absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
                             flush ? cornerClass('flush') : cornerClass('pill'),
                           )}
                         >
@@ -1045,6 +1225,37 @@ export function ProductSelector({
                       <span className={KIOSK_POS_CARD_SELECTED_FRAME} aria-hidden />
                     ) : null}
                   </button>
+                  {favoritesEnabled && product.sku ? (
+                    // ds-raw-button: 32px corner pip over a product photo —
+                    // Button would impose its own height, padding and fill.
+                    // Chrome is KIOSK_POS_CARD_FAVORITE_PIP*, never a literal.
+                    <button
+                      type="button"
+                      data-testid="product-favorite-pip"
+                      aria-pressed={favorited}
+                      aria-label={
+                        favorited
+                          ? `Remove ${product.name} from favorites`
+                          : `Add ${product.name} to favorites`
+                      }
+                      disabled={pendingFavoriteSku !== null}
+                      onClick={() => void toggleFavorite(product)}
+                      className={cn(
+                        KIOSK_POS_CARD_FAVORITE_PIP,
+                        favorited
+                          ? KIOSK_POS_CARD_FAVORITE_PIP_ON
+                          : KIOSK_POS_CARD_FAVORITE_PIP_OFF,
+                        pendingFavoriteSku === product.sku && 'opacity-60',
+                        focusRing('control', 'neutral'),
+                      )}
+                    >
+                      {/* `fill-current` overrides the icon's `fill="none"`
+                          attribute — a pinned star is solid, an unpinned one an
+                          outline, which is the only difference a glance needs. */}
+                      <Star className={cn('h-4 w-4', favorited && 'fill-current')} />
+                    </button>
+                  ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -1067,20 +1278,21 @@ export function ProductSelector({
         </div>
       )}
 
-      {!loadingProducts && filteredCategories.length === 0 && filteredProducts.length === 0 && (
-        <div
-          className={cn(
-            'text-xs font-semibold text-amber-700',
-            pos
-              ? cn(cornerClass('flush'), 'bg-amber-50 px-4 py-3.5')
-              : flush
-                ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
-                : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
-          )}
-        >
-          {search.trim() ? 'No results match your search.' : 'No items found at this level.'}
-        </div>
-      )}
+      {/* One notice, three reasons the grid is empty. Favorites needs its own
+          line because the categories still exist in that scope, so the
+          "nothing at this level" wording would never fire and the operator
+          would face a blank stage after unpinning the last SKU. */}
+      {!loadingProducts &&
+        filteredProducts.length === 0 &&
+        (search.trim() !== '' || showFavorites || filteredCategories.length === 0) && (
+          <div className={gridNoticeClass} data-testid="catalog-grid-notice">
+            {search.trim()
+              ? 'No results match your search.'
+              : showFavorites
+                ? 'Nothing pinned yet — tap the star on a product to add it to favorites.'
+                : 'No items found at this level.'}
+          </div>
+        )}
     </>
   );
 
@@ -1277,7 +1489,7 @@ export function ProductSelector({
   };
 
   const renderStackedBreadcrumbs = () => {
-    if (!(breadcrumbs.length > 0 || showAllProducts)) return null;
+    if (!(breadcrumbs.length > 0 || showAllProducts || showFavorites)) return null;
     return (
       <div
         className={cn(
@@ -1285,6 +1497,28 @@ export function ProductSelector({
           flush && 'border-b border-border-hairline px-4 py-2',
         )}
       >
+        {/* The stacked surface has no category dropdown, so this row is the
+            only way back to the curated list once the operator has drilled. */}
+        {favoritesEnabled ? (
+          <>
+            {showFavorites ? (
+              <span className="text-text-default">Favorites</span>
+            ) : (
+              // ds-raw-button: inline breadcrumb text link (no chrome)
+              <button
+                type="button"
+                data-testid="stacked-favorites-crumb"
+                onClick={() => void fetchFavoriteProducts(0, false)}
+                className="transition-colors hover:text-blue-600"
+              >
+                Favorites
+              </button>
+            )}
+            {showFavorites ? null : (
+              <ChevronRight className="h-3 w-3 flex-shrink-0 text-text-faint" />
+            )}
+          </>
+        ) : null}
         {showAllProducts ? (
           <>
             {/* ds-raw-button: inline breadcrumb text link (no chrome) — Button would add height/padding */}
@@ -1435,13 +1669,23 @@ export function ProductSelector({
                   testId="kiosk-catalog-category"
                   ariaLabel="Category"
                   triggerVariant="ghost"
-                  value={currentCategoryId ?? KIOSK_ALL_PRODUCTS_VALUE}
-                  placeholder="All products"
+                  value={
+                    showFavorites
+                      ? KIOSK_FAVORITES_VALUE
+                      : (currentCategoryId ?? KIOSK_ALL_PRODUCTS_VALUE)
+                  }
+                  placeholder={favoritesEnabled ? 'Favorites' : 'All products'}
                   searchPlaceholder="Search categories"
                   className={cn(KIOSK_POS_TRAIL_CONTROL, 'shrink-0 font-medium text-text-default', focusRing('control', 'neutral'))}
                   disabled={loading && !categoriesHydratedRef.current}
-                  contentClassName={cn('min-w-72 overflow-hidden', HEADER_ICON_CORNER)}
+                  contentClassName={cn('min-w-72 overflow-hidden', DROPDOWN_SHELL_CORNER)}
                   options={[
+                    // Favorites FIRST — the list the counter actually works from
+                    // (operator 2026-09-16), with the whole catalog one row
+                    // below it and the categories under that.
+                    ...(favoritesEnabled
+                      ? [{ value: KIOSK_FAVORITES_VALUE, label: 'Favorites' }]
+                      : []),
                     { value: KIOSK_ALL_PRODUCTS_VALUE, label: 'All products' },
                     ...(currentCategoryId && breadcrumbs.length > 0
                       ? [
@@ -1459,8 +1703,18 @@ export function ProductSelector({
                       })),
                   ]}
                   onChange={(next) => {
+                    if (next === KIOSK_FAVORITES_VALUE) {
+                      void fetchFavoriteProducts(0, false);
+                      return;
+                    }
                     if (next === KIOSK_ALL_PRODUCTS_VALUE) {
-                      void fetchCategoryLevel(null);
+                      // fetchCategoryLevel(null) is the ALL-products move on
+                      // kiosk-split: it returns the tree to root and refreshes
+                      // the grid through fetchAllProducts.
+                      setShowFavorites(false);
+                      void (categoriesHydratedRef.current && !currentCategoryId
+                        ? fetchAllProducts(0, false)
+                        : fetchCategoryLevel(null));
                       return;
                     }
                     if (next === currentCategoryId) {
@@ -1587,8 +1841,19 @@ export function ProductSelector({
             flowInPage ? '' : `${fillHeight ? 'flex-1' : 'max-h-[50vh]'} overflow-y-auto`,
           )}
         >
-          {!showAllProducts && filteredCategories.length > 0 && renderStackedCategories()}
-          {renderProductsGrid()}
+          {/* Favorites lead the stage (operator 2026-09-16); in every other
+              scope the category list still leads and the grid follows it. */}
+          {showFavorites ? (
+            <>
+              {renderProductsGrid()}
+              {filteredCategories.length > 0 && renderStackedCategories()}
+            </>
+          ) : (
+            <>
+              {!showAllProducts && filteredCategories.length > 0 && renderStackedCategories()}
+              {renderProductsGrid()}
+            </>
+          )}
         </div>
       )}
 

@@ -4,7 +4,7 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { Barcode, Check, Printer } from '../../Icons';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { printRepairLabel } from '@/lib/print/printRepairLabel';
+import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';
 import { STATUS_OPTIONS } from './repair-details-shared';
 import type { RepairDetailsController } from './useRepairDetailsPanel';
 
@@ -43,26 +43,14 @@ export function RepairStatusSection({ repair, c }: { repair: RSRecord; c: Repair
             size="lg"
             icon={<Barcode className="w-4 h-4 text-text-muted" />}
             onClick={() => {
-              const fullName = (repair.contact_info || '').split(',')[0]?.trim() || '';
-              const firstName = fullName.split(/\s+/)[0] || 'Repair';
-              const fmtDate = (d: Date) =>
-                d.toLocaleDateString('en-US', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  year: '2-digit',
-                });
-              const intake = repair.created_at ? new Date(repair.created_at) : new Date();
-              const due = new Date(intake.getTime());
-              // 10 calendar days — upper bound of the "3–10 working days" SLA on the receipt
-              due.setDate(due.getDate() + 10);
-              printRepairLabel({
-                repairId: repair.id,
-                rsCode: `RS-${repair.id}`,
-                firstName,
-                ticketNumber: repair.ticket_number || '',
-                date: fmtDate(new Date()),
-                dueDate: fmtDate(due),
-              });
+              printRepairLabel(
+                buildRepairLabelPayload({
+                  repairId: repair.id,
+                  customerName: repair.contact_info,
+                  ticketNumber: repair.ticket_number,
+                  intakeAt: repair.created_at,
+                }),
+              );
               // Record the first print so the repair leaves the Needs-label queue.
               void c.markLabelPrinted();
             }}

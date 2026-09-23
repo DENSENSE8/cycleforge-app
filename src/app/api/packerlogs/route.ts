@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { db } from '@/lib/drizzle/db';
 import { packerLogs } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
@@ -14,6 +14,7 @@ import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { createPackerLog } from '@/lib/packing/packer-log-writer';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     const { searchParams } = new URL(req.url);
@@ -88,29 +89,33 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           body.shippingTrackingNumber || '',
           ctx.organizationId,
         );
-        const newLog = await db.insert(packerLogs).values({
-            organizationId: ctx.organizationId,
-            shipmentId: shipmentId ?? undefined,
-            scanRef: scanRef ?? undefined,
-            trackingType: body.trackingType || 'ORDERS',
-            packedBy,
-        }).returning();
+        const trackingType = body.trackingType || 'ORDERS';
+        const written = await withTenantTransaction(ctx.organizationId, (client) =>
+            createPackerLog(client, {
+                organizationId: ctx.organizationId,
+                shipmentId: shipmentId ?? null,
+                scanRef: scanRef ?? null,
+                trackingType,
+                packedBy,
+                source: 'packerlogs.post',
+            }),
+        );
 
-        const packerLogId = newLog[0]?.id;
+        const packerLogId = written?.id;
         const salId = await createStationActivityLog(pool, {
             organizationId: ctx.organizationId,
             station: 'PACK',
-            activityType: body.trackingType === 'ORDERS' ? 'PACK_COMPLETED' : 'PACK_SCAN',
+            activityType: trackingType === 'ORDERS' ? 'PACK_COMPLETED' : 'PACK_SCAN',
             staffId: packedBy,
             shipmentId: shipmentId ?? null,
             scanRef: scanRef ?? body.shippingTrackingNumber ?? null,
             packerLogId,
             metadata: {
                 source: 'packerlogs.post',
-                tracking_type: body.trackingType || 'ORDERS',
+                tracking_type: trackingType,
             },
         });
-        if ((body.trackingType || 'ORDERS') === 'ORDERS') {
+        if (trackingType === 'ORDERS') {
             await recordAudit(pool, ctx, req, {
                 source: 'api.packerlogs.post',
                 action: AUDIT_ACTION.PACK_COMPLETED,
@@ -119,7 +124,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 stationActivityLogId: salId,
                 method: 'scan',
                 extra: {
-                    tracking_type: body.trackingType || 'ORDERS',
+                    tracking_type: trackingType,
                 },
             });
         }
@@ -141,7 +146,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         // Bust both packerlogs and orders caches: is_packed is computed in /api/orders,
         // so creating a new packer log must clear the orders cache too.
-        await invalidateCacheTags(['packing-logs', 'orders']);
+        await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders']);
 
         // Precompute the shipped-table read model for this new PACK scan so the
         // dashboard reads it from packer_log_enrichment instead of re-running the
@@ -154,7 +159,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 ),
             );
         }
-        const row = newLog[0];
+        const row = written ? {
+            id: written.id,
+            organizationId: ctx.organizationId,
+            shipmentId: shipmentId ?? null,
+            scanRef: scanRef ?? null,
+            trackingType,
+            completionState: written.completionState,
+            packedBy,
+            createdAt: written.createdAt,
+            updatedAt: written.createdAt,
+        } : null;
         return {
             status: 200,
             body: (row ? { ...row } : { success: true }) as Record<string, unknown>,
@@ -170,26 +185,44 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json(out.body, { status: out.status });
 }, { permission: 'packing.complete_order' });
 
-export const PUT = withAuth(async (req: NextRequest) => {
+export const PUT = withAuth(async (req: NextRequest, ctx) => {
     try {
         const body = await req.json();
-        const { id, ...updateData } = body;
+        const id = Number(body.id);
 
-        if (!id) {
-            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return NextResponse.json({ error: 'ID must be a positive integer' }, { status: 400 });
         }
+
+        // Keep this legacy metadata editor deliberately narrow. Completion,
+        // actor, tenant, and timestamps belong to the canonical packing writer
+        // and must never be mass-assigned from a request body.
+        const updateData: Partial<typeof packerLogs.$inferInsert> = {};
+        if (body.scanRef === null || typeof body.scanRef === 'string') {
+            updateData.scanRef = body.scanRef;
+        }
+        if (typeof body.trackingType === 'string' && body.trackingType.trim()) {
+            updateData.trackingType = body.trackingType.trim();
+        }
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No editable fields were provided' }, { status: 400 });
+        }
+        updateData.updatedAt = new Date();
 
         const updatedLog = await db
             .update(packerLogs)
             .set(updateData)
-            .where(eq(packerLogs.id, parseInt(id)))
+            .where(and(
+                eq(packerLogs.id, id),
+                eq(packerLogs.organizationId, ctx.organizationId),
+            ))
             .returning();
 
         if (updatedLog.length === 0) {
             return NextResponse.json({ error: 'Log not found' }, { status: 404 });
         }
 
-        await invalidateCacheTags(['packing-logs']);
+        await invalidateCacheTags(ctx.organizationId, ['packing-logs']);
         return NextResponse.json(updatedLog[0]);
     } catch (error: any) {
         console.error('Error updating packer log:', error);
@@ -225,7 +258,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
                 if (plId != null) {
                     await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
                 }
-                await invalidateCacheTags(['packing-logs', 'orders', 'shipped']);
+                await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
                 return NextResponse.json({ success: true });
             }
 
@@ -245,7 +278,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
 
             await client.query('DELETE FROM station_activity_logs WHERE packer_log_id = $1 AND organization_id = $2', [plId, orgId]);
             await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-            await invalidateCacheTags(['packing-logs', 'orders', 'shipped']);
+            await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
             return NextResponse.json({ success: true, deletedLog: { id: plId } });
         });
     } catch (error: any) {

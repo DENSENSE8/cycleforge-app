@@ -1,9 +1,18 @@
 import { withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  FAVORITE_WORKSPACE_KEYS,
+  isFavoriteWorkspaceKey,
+  normalizeFavoriteSku,
+  type FavoriteWorkspaceKey,
+} from './favorite-sku-key';
 
-export const FAVORITE_WORKSPACE_KEYS = ['repair', 'sku-stock', 'fba'] as const;
-
-export type FavoriteWorkspaceKey = typeof FAVORITE_WORKSPACE_KEYS[number];
+export {
+  FAVORITE_WORKSPACE_KEYS,
+  isFavoriteWorkspaceKey,
+  normalizeFavoriteSku,
+  type FavoriteWorkspaceKey,
+};
 
 export interface FavoriteSkuRecord {
   id: number;
@@ -55,13 +64,9 @@ export interface UpdateFavoriteSkuInput {
 }
 
 function assertWorkspaceKey(value: string): asserts value is FavoriteWorkspaceKey {
-  if (!FAVORITE_WORKSPACE_KEYS.includes(value as FavoriteWorkspaceKey)) {
+  if (!isFavoriteWorkspaceKey(value)) {
     throw new Error(`Unsupported workspace: ${value}`);
   }
-}
-
-function normalizeSkuForLookup(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 function mapFavoriteRow(row: any): FavoriteSkuRecord {
@@ -129,7 +134,7 @@ export async function createFavoriteSku(input: CreateFavoriteSkuInput, orgId: Or
   assertWorkspaceKey(input.workspaceKey);
   const sku = String(input.sku || '').trim();
   const label = String(input.label || '').trim();
-  const skuNormalized = normalizeSkuForLookup(sku);
+  const skuNormalized = normalizeFavoriteSku(sku);
 
   if (!sku || !skuNormalized) throw new Error('SKU is required');
   if (!label) throw new Error('Label is required');
@@ -271,7 +276,7 @@ export async function updateFavoriteSku(input: UpdateFavoriteSkuInput, orgId: Or
       const current = currentResult.rows[0];
       const nextSku = input.sku != null ? String(input.sku).trim() : String(current.sku || '');
       const nextLabel = input.label != null ? String(input.label).trim() : String(current.label || '');
-      const nextSkuNormalized = normalizeSkuForLookup(nextSku);
+      const nextSkuNormalized = normalizeFavoriteSku(nextSku);
 
       if (!nextSku || !nextSkuNormalized) throw new Error('SKU is required');
       if (!nextLabel) throw new Error('Label is required');
@@ -400,7 +405,7 @@ function isUniqueViolation(error: unknown): boolean {
 
 /** Resolve a SKU string to its org-scoped `favorite_skus.id`, or null. */
 export async function findFavoriteSkuIdBySku(sku: string, orgId: OrgId): Promise<number | null> {
-  const normalized = normalizeSkuForLookup(String(sku || ''));
+  const normalized = normalizeFavoriteSku(String(sku || ''));
   if (!normalized) return null;
 
   const result = await withTenantConnection(orgId, (client) =>
@@ -437,7 +442,7 @@ export async function ensureFavoriteSkuAnchor(
   orgId: OrgId,
 ): Promise<number> {
   const sku = String(input.sku || '').trim();
-  const normalized = normalizeSkuForLookup(sku);
+  const normalized = normalizeFavoriteSku(sku);
   if (!sku || !normalized) throw new Error('SKU is required');
   const label = String(input.label || '').trim() || sku;
 
@@ -461,4 +466,119 @@ export async function ensureFavoriteSkuAnchor(
     if (raced === null) throw error;
     return raced;
   }
+}
+
+/**
+ * The workspace's favorites as normalized KEYS, in curated order.
+ *
+ * For catalog sources that cannot filter in SQL — the staff repair route walks
+ * the live Ecwid storefront — so `selectFavoriteCatalogProducts` can narrow a
+ * page to the favorites without every caller re-deriving the key expression.
+ */
+export async function listFavoriteSkuKeys(
+  workspaceKey: FavoriteWorkspaceKey,
+  orgId: OrgId,
+): Promise<string[]> {
+  assertWorkspaceKey(workspaceKey);
+
+  const result = await withTenantConnection(orgId, (client) =>
+    client.query<{ sku_normalized: string }>(
+      `SELECT f.sku_normalized
+         FROM favorite_skus f
+         INNER JOIN favorite_sku_workspaces w
+           ON w.favorite_id = f.id
+          AND w.organization_id = f.organization_id
+        WHERE w.workspace_key = $1
+          AND w.is_active
+          AND f.organization_id = $2
+        ORDER BY w.sort_order ASC, f.label ASC, f.sku ASC`,
+      [workspaceKey, orgId],
+    ),
+  );
+  return result.rows.map((row) => String(row.sku_normalized || '')).filter(Boolean);
+}
+
+export interface SetFavoriteMembershipInput {
+  workspaceKey: FavoriteWorkspaceKey;
+  /** Catalog SKU the operator starred — the identity, not a favorites row id. */
+  sku: string;
+  /** True pins it to the workspace list; false unpins it. */
+  favorite: boolean;
+  /** Display name to seed a new anchor with. Never overwrites a curated label. */
+  label?: string | null;
+  staffId?: number | null;
+}
+
+/**
+ * Star / unstar a catalog SKU — the write behind the favorite pip on a product
+ * tile. Idempotent in both directions, so a double-tap cannot desync the tile.
+ *
+ * ## Why by SKU and not by `favorite_skus.id`
+ * The tile knows the catalog listing, never a favorites row: the grid is the
+ * whole projection, of which the favorites are a handful. `ensureFavoriteSkuAnchor`
+ * resolves (or creates) the identity anchor; this only decides MEMBERSHIP of a
+ * workspace list, which is what "favorite" means.
+ *
+ * ## Unpinning keeps the anchor
+ * Deleting the `favorite_skus` row would cascade `repair_issue_templates`
+ * (`favorite_sku_id` FK, ON DELETE CASCADE) and silently take the SKU's repair
+ * reasons with it. Unpinning removes the workspace row only; `listFavoriteSkus`
+ * INNER JOINs workspaces, so the SKU disappears from every list exactly as if
+ * the anchor were gone.
+ */
+export async function setFavoriteSkuMembership(
+  input: SetFavoriteMembershipInput,
+  orgId: OrgId,
+): Promise<{ favorited: boolean }> {
+  assertWorkspaceKey(input.workspaceKey);
+  const sku = String(input.sku || '').trim();
+  if (!sku || !normalizeFavoriteSku(sku)) throw new Error('SKU is required');
+
+  if (!input.favorite) {
+    const favoriteId = await findFavoriteSkuIdBySku(sku, orgId);
+    if (favoriteId === null) return { favorited: false };
+
+    await withTenantConnection(orgId, (client) =>
+      client.query(
+        `DELETE FROM favorite_sku_workspaces
+          WHERE favorite_id = $1
+            AND workspace_key = $2
+            AND organization_id = $3`,
+        [favoriteId, input.workspaceKey, orgId],
+      ),
+    );
+    return { favorited: false };
+  }
+
+  const favoriteId = await ensureFavoriteSkuAnchor({ sku, label: input.label }, orgId);
+
+  await withTenantConnection(orgId, async (client) => {
+    // The anchor may predate this star (a kiosk repair reason created it with
+    // the SKU as its label); seed a real label only where there is none.
+    if (input.label && String(input.label).trim()) {
+      await client.query(
+        `UPDATE favorite_skus
+            SET label = $1,
+                updated_by_staff_id = COALESCE($2, updated_by_staff_id),
+                updated_at = NOW()
+          WHERE id = $3
+            AND organization_id = $4
+            AND (BTRIM(COALESCE(label, '')) = '' OR label = sku)`,
+        [String(input.label).trim(), input.staffId ?? null, favoriteId, orgId],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO favorite_sku_workspaces (
+         favorite_id, workspace_key, sort_order, is_active, organization_id, updated_at
+       )
+       VALUES ($1, $2, 100, TRUE, $3, NOW())
+       ON CONFLICT (favorite_id, workspace_key)
+       DO UPDATE SET is_active = TRUE, updated_at = NOW()
+        WHERE favorite_sku_workspaces.organization_id = $3`,
+      [favoriteId, input.workspaceKey, orgId],
+    );
+  });
+
+  return { favorited: true };
 }

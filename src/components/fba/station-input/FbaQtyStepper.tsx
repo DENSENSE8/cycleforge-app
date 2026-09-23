@@ -24,13 +24,14 @@ export function FbaQtyStepper({
       <IconButton
         type="button"
         icon={<Plus className="h-3 w-3" />}
+        radius="flush"
         ariaLabel={`Increase ${fnsku} quantity`}
         onClick={(e) => {
           e.stopPropagation();
           onInc();
         }}
         disabled={qty >= PLAN_QTY_MAX}
-        className="flex h-6 w-10 items-center justify-center rounded-t-md border border-border-soft text-text-soft hover:bg-surface-hover"
+        className="flex h-6 w-10 items-center justify-center border border-border-soft text-text-soft hover:bg-surface-hover"
       />
       <DeferredQtyInput
         value={qty}
@@ -45,15 +46,16 @@ export function FbaQtyStepper({
       <IconButton
         type="button"
         icon={<Minus className="h-3 w-3" />}
+        radius="flush"
         ariaLabel={`Decrease ${fnsku} quantity`}
         onClick={(e) => {
           e.stopPropagation();
           onDec();
         }}
         disabled={qty <= 0}
-        className={`flex h-6 w-10 items-center justify-center rounded-b-md border ${
+        className={`flex h-6 w-10 items-center justify-center border ${
           qty <= 1
-            ? 'border-red-300 text-red-500 hover:bg-red-50'
+            ? 'border-border-danger text-text-danger hover:bg-surface-danger'
             : 'border-border-soft text-text-soft hover:bg-surface-hover'
         }`}
       />

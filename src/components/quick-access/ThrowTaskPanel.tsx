@@ -13,198 +13,56 @@
  * first frame and fills in as it resolves (spatial predictability), so the panel
  * never reflows under a hand that is already moving toward Throw.
  *
- * ## Resolution is server-side, and that is not an implementation detail
+ * ## This file is CHROME
  *
- * A tracking number is the single most likely thing to be in an operator's hand,
- * and `routeScan` — the client-side decoder — has **no tracking vocabulary**. It
- * decodes what this app PRINTS. Only `POST /api/scan/resolve` can turn a carrier
- * number into the order(s) it belongs to, so the field posts there and
- * {@link resolveThrowTargets} reads the answer back. A local parse would silently
- * fail on the commonest input.
- *
- * ## The two amplifiers are reported, never hidden
- *
- * `POST /api/tasks` returns what happened to the RECORD (`urgency`) and whether
- * the recipient was actually told (`notified`) alongside the task. Both may
- * degrade without failing the throw — a helpdesk that is down, or a ticket task
- * the inbox cannot anchor yet. A thrown-but-nobody-notified handoff looks
- * exactly like a delivered one, so the toast says which one happened rather
- * than reporting a flat success.
+ * The sequence — resolve the record server-side, load the roster, POST the
+ * task, report a degraded amplifier honestly — moved to {@link useThrowTask}
+ * when the task desk grew a composer that needed the same four steps with a
+ * different layout and a deadline. Two copies of that sequence is how one
+ * surface comes to report `skipped_entity` and the other reports a flat
+ * success. Everything below is this panel's arrangement and nothing else.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Inbox, Loader2, Package, Search, Send, Zap } from '@/components/Icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/lib/toast';
-import { safeRandomUUID } from '@/lib/safe-uuid';
-import { resolveThrowTargets, type ThrowTarget } from '@/lib/tasks/throw-targets';
+import { useThrowTask, throwTargetKey } from '@/hooks/useThrowTask';
 import { TASK_NOTE_MAX } from '@/lib/tasks/create-task-core';
 import { Button, Switch } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
-import { StaffRecipientList, type StaffRecipient } from './StaffRecipientList';
+import { StaffRecipientList } from './StaffRecipientList';
 
 interface ThrowTaskPanelProps {
   onClose: () => void;
 }
 
-type ResolveState =
-  | { status: 'idle' }
-  | { status: 'resolving' }
-  | { status: 'done'; targets: ThrowTarget[]; raw: string }
-  | { status: 'error' }
-  /**
-   * Resolve is gated on `sku_stock.view` while throwing is gated on
-   * `work_orders.claim`, so a role can legitimately hold one and not the other.
-   * Reported apart from a transient failure: "try again" is advice that can
-   * never work here, and the fix is an admin granting a permission.
-   */
-  | { status: 'denied' };
-
-const targetKey = (t: ThrowTarget) => `${t.entityType}:${t.entityId}`;
-
-/** Refusals `POST /api/tasks` can return, in words an operator can act on. */
-const REFUSAL_COPY: Record<string, string> = {
-  self_throw: 'You cannot throw a task at yourself.',
-  unsupported_entity: 'That record kind cannot carry a task.',
-  invalid_entity_id: 'That record could not be identified.',
-  invalid_assignee: 'That person could not be found.',
-  note_too_long: 'That note is too long.',
-};
-
 export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
-  const { user } = useAuth();
-
-  const [raw, setRaw] = useState('');
-  const [resolve, setResolve] = useState<ResolveState>({ status: 'idle' });
-  const [picked, setPicked] = useState<ThrowTarget | null>(null);
-  const [staff, setStaff] = useState<StaffRecipient[] | null>(null);
-  const [assignee, setAssignee] = useState<StaffRecipient | null>(null);
-  const [note, setNote] = useState('');
-  const [urgent, setUrgent] = useState(false);
-  const [throwing, setThrowing] = useState(false);
+  const throwTask = useThrowTask({ onThrown: onClose });
+  const {
+    raw,
+    setRaw,
+    resolve,
+    targets,
+    picked,
+    setPicked,
+    staff,
+    assignee,
+    setAssignee,
+    note,
+    setNote,
+    urgent,
+    setUrgent,
+    throwing,
+    canThrow,
+    runResolve,
+    submit,
+  } = throwTask;
 
   const scanRef = useRef<HTMLInputElement>(null);
-  // One key per attempt, so a double-fire or a flaky-network retry collapses to
-  // a no-op server-side instead of throwing the same record twice.
-  const idempotencyKey = useRef(safeRandomUUID());
-
   useEffect(() => {
     scanRef.current?.focus();
   }, []);
-
-  // The recipient list is needed on every throw, so it loads with the panel
-  // rather than on demand — a picker that spins after the record resolves puts
-  // the wait in the middle of the flow instead of before it.
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/auth/staff-picker', { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { staff?: StaffRecipient[] } | null) => {
-        if (cancelled) return;
-        setStaff((data?.staff ?? []).filter((s) => s.id !== user?.staffId));
-      })
-      .catch(() => {
-        if (!cancelled) setStaff([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.staffId]);
-
-  const runResolve = useCallback(async () => {
-    const value = raw.trim();
-    if (!value) return;
-    setResolve({ status: 'resolving' });
-    setPicked(null);
-    try {
-      const res = await fetch('/api/scan/resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // The route reads `input` — not `value`, which is the name the response
-        // uses for the decoded payload.
-        body: JSON.stringify({ input: value }),
-      });
-      const data = await res.json().catch(() => null);
-      if (res.status === 401 || res.status === 403) {
-        setResolve({ status: 'denied' });
-        return;
-      }
-      if (!res.ok || !data) {
-        setResolve({ status: 'error' });
-        return;
-      }
-      const targets = resolveThrowTargets(data);
-      setResolve({ status: 'done', targets, raw: value });
-      // One unambiguous answer needs no choosing — a scanned sticker names
-      // exactly one record, and asking the operator to confirm it is a click
-      // that says nothing.
-      if (targets.length === 1) setPicked(targets[0]);
-    } catch {
-      setResolve({ status: 'error' });
-    }
-  }, [raw]);
-
-  const submit = useCallback(async () => {
-    if (!picked || !assignee || throwing) return;
-    setThrowing(true);
-    try {
-      const res = await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey.current,
-        },
-        body: JSON.stringify({
-          entityType: picked.entityType,
-          entityId: picked.entityId,
-          assigneeStaffId: assignee.id,
-          note: note.trim() || undefined,
-          urgency: urgent ? 'urgent' : 'normal',
-        }),
-      });
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        const reason = typeof data?.error === 'string' ? data.error : '';
-        toast.error(REFUSAL_COPY[reason] ?? 'Could not throw that task.');
-        // A refused attempt is a different attempt once it is corrected.
-        idempotencyKey.current = safeRandomUUID();
-        return;
-      }
-
-      // Honest reporting: the task landed, but say so if an amplifier did not.
-      const notified: string = data?.notified ?? 'sent';
-      const urgency: string = data?.urgency ?? 'not_urgent';
-      const thrown = `${picked.label} → ${assignee.name}`;
-
-      if (notified === 'sent' && urgency !== 'failed') {
-        toast.success(`Thrown · ${thrown}`);
-      } else if (notified === 'skipped_entity') {
-        toast.warning(`Thrown · ${thrown}`, {
-          description: 'This record kind cannot raise an inbox item yet, so they were not notified.',
-        });
-      } else if (notified === 'failed') {
-        toast.warning(`Thrown · ${thrown}`, {
-          description: 'The task was created but the notification did not go out.',
-        });
-      } else {
-        toast.warning(`Thrown · ${thrown}`, {
-          description: 'The task was created but the record was not marked urgent.',
-        });
-      }
-      onClose();
-    } catch {
-      toast.error('Could not throw that task.');
-      idempotencyKey.current = safeRandomUUID();
-    } finally {
-      setThrowing(false);
-    }
-  }, [picked, assignee, throwing, note, urgent, onClose]);
-
-  const targets = resolve.status === 'done' ? resolve.targets : [];
-  const canThrow = Boolean(picked && assignee) && !throwing;
 
   return (
     <QuickAccessPanelShell
@@ -281,6 +139,13 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
             <p className="flex items-center gap-2 px-1 py-2 text-role-caption text-rose-600">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden /> That lookup failed. Try again.
             </p>
+          ) : resolve.status === 'refused' ? (
+            /* The chord panel only ever resolves in `record` mode, so this is
+               unreachable today — it is the branch that keeps the state union
+               exhaustive, and it says the server's words rather than a guess. */
+            <p className="flex items-center gap-2 px-1 py-2 text-role-caption text-text-danger">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden /> {resolve.message}
+            </p>
           ) : resolve.status === 'denied' ? (
             <p className="flex items-center gap-2 px-1 py-2 text-role-caption text-rose-600">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden /> Your role cannot look records up.
@@ -293,9 +158,9 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
           ) : (
             <ul className="space-y-1">
               {targets.map((t) => {
-                const active = picked != null && targetKey(picked) === targetKey(t);
+                const active = picked != null && throwTargetKey(picked) === throwTargetKey(t);
                 return (
-                  <li key={targetKey(t)}>
+                  <li key={throwTargetKey(t)}>
                     <button
                       type="button"
                       onClick={() => setPicked(t)}

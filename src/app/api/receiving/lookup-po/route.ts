@@ -154,10 +154,45 @@ interface ReceivingLineLite {
   sku: string | null;
   zoho_item_id: string | null;
   zoho_purchaseorder_id: string | null;
+  zoho_purchaseorder_number: string | null;
+  source_order_id: string | null;
+  inbound_source_type: string | null;
   quantity_expected: number | null;
   quantity_received: number;
   item_name: string | null;
   image_url: string | null;
+}
+
+/**
+ * The line shape every branch of this route puts on the wire.
+ *
+ * ORDER IDENTITY IS PART OF THE SCAN ANSWER, not a follow-up. The six response
+ * branches below each hand-spelled a subset that dropped
+ * `zoho_purchaseorder_number`, `source_order_id` and `inbound_source_type`, so
+ * a scanned marketplace carton reached the client with no order id at all:
+ * `buildMatchedStubRow` produced a row whose `getReceivingPoIdentityParts`
+ * ladder resolved to '', the station bar fell through to the internal numeric
+ * `linkedOrderNumber`, and the operator copied a DASHLESS number that finds
+ * nothing when pasted into eBay. The dashed order (`11-15183-54752`) only
+ * appeared after `GET /api/receiving-lines?include=serials` landed.
+ *
+ * These columns are already joined here (`rz`) — selecting them costs the scan
+ * nothing and removes the identity waterfall entirely.
+ */
+function serializeLookupLine(l: ReceivingLineLite) {
+  return {
+    id: l.id,
+    sku: l.sku,
+    item_name: l.item_name,
+    image_url: l.image_url,
+    zoho_item_id: l.zoho_item_id,
+    zoho_purchaseorder_id: l.zoho_purchaseorder_id,
+    zoho_purchaseorder_number: l.zoho_purchaseorder_number,
+    source_order_id: l.source_order_id,
+    inbound_source_type: l.inbound_source_type,
+    quantity_expected: l.quantity_expected,
+    quantity_received: l.quantity_received,
+  };
 }
 
 async function fetchLines(receivingId: number, orgId: string): Promise<ReceivingLineLite[]> {
@@ -173,6 +208,7 @@ async function fetchLines(receivingId: number, orgId: string): Promise<Receiving
   const result = await tenantQuery<ReceivingLineLite>(
     orgId,
     `SELECT rl.id, rl.sku, rz.zoho_item_id, rz.zoho_purchaseorder_id,
+            rz.zoho_purchaseorder_number, rl.source_order_id, rl.inbound_source_type,
             rl.quantity_expected, rl.quantity_received, rl.item_name,
             ${RECEIVING_LINE_IMAGE_URL_SQL}
      FROM receiving_line rl
@@ -1125,16 +1161,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             po_ids: Array.from(poIdsSet),
             pending_order_skus: pendingOrderSkus,
             receiving_package,
-            lines: lines.map((l) => ({
-              id: l.id,
-              sku: l.sku,
-              item_name: l.item_name,
-              image_url: l.image_url,
-              zoho_item_id: l.zoho_item_id,
-              zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-              quantity_expected: l.quantity_expected,
-              quantity_received: l.quantity_received,
-            })),
+            lines: lines.map(serializeLookupLine),
           });
         }
         if (mode === 'ticket') {
@@ -1285,16 +1312,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             inbound_source_order_id: inboundOrder.sourceOrderId,
             pending_order_skus: pendingOrderSkus,
             receiving_package,
-            lines: lines.map((l) => ({
-              id: l.id,
-              sku: l.sku,
-              item_name: l.item_name,
-              image_url: l.image_url,
-              zoho_item_id: l.zoho_item_id,
-              zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-              quantity_expected: l.quantity_expected,
-              quantity_received: l.quantity_received,
-            })),
+            lines: lines.map(serializeLookupLine),
             scan_id: orderScanId,
           });
         }
@@ -1397,16 +1415,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         po_ids: [poId],
         pending_order_skus: pendingOrderSkus,
         receiving_package,
-        lines: lines.map((l) => ({
-          id: l.id,
-          sku: l.sku,
-          item_name: l.item_name,
-          image_url: l.image_url,
-          zoho_item_id: l.zoho_item_id,
-          zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-          quantity_expected: l.quantity_expected,
-          quantity_received: l.quantity_received,
-        })),
+        lines: lines.map(serializeLookupLine),
       });
       } // end if (poId) — auto PO#-miss falls through to the tracking path below
     }
@@ -1489,16 +1498,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           po_ids: Array.from(poIdsSet),
           pending_order_skus: pendingOrderSkus,
           receiving_package,
-          lines: lines.map((l) => ({
-            id: l.id,
-            sku: l.sku,
-            item_name: l.item_name,
-            image_url: l.image_url,
-            zoho_item_id: l.zoho_item_id,
-            zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-            quantity_expected: l.quantity_expected,
-            quantity_received: l.quantity_received,
-          })),
+          lines: lines.map(serializeLookupLine),
         });
       }
       // Empty lines — carry the existing ids forward so the Zoho branch
@@ -1586,16 +1586,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         po_ids: [poId],
         pending_order_skus: pendingOrderSkus,
         receiving_package,
-        lines: lines.map((l) => ({
-          id: l.id,
-          sku: l.sku,
-          item_name: l.item_name,
-          image_url: l.image_url,
-          zoho_item_id: l.zoho_item_id,
-          zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-          quantity_expected: l.quantity_expected,
-          quantity_received: l.quantity_received,
-        })),
+        lines: lines.map(serializeLookupLine),
       });
     }
 
@@ -1853,16 +1844,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         multi_po_warning: secondaryPoIds.length > 0,
         zoho_reachable: true,
         receiving_package: receiving_package_matched,
-        lines: lines.map((l) => ({
-          id: l.id,
-          sku: l.sku,
-          item_name: l.item_name,
-          image_url: l.image_url,
-          zoho_item_id: l.zoho_item_id,
-          zoho_purchaseorder_id: l.zoho_purchaseorder_id,
-          quantity_expected: l.quantity_expected,
-          quantity_received: l.quantity_received,
-        })),
+        lines: lines.map(serializeLookupLine),
       });
     }
 

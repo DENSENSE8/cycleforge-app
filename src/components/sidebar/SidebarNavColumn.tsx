@@ -346,8 +346,9 @@ export function SidebarNavColumn({
               ? cn(
                   'h-auto origin-top-left border border-border-soft bg-surface-card',
                   cornerClass('surface'),
-                  elevationClass('overlay'),
-                  'shadow-elev-overlay-right',
+                  // Flat when shown — overlay ambient (`0 0 4px`) is the glow
+                  // around the open/peek spine. Border carries the card edge.
+                  elevationClass('flat'),
                   // The head's toggle + Search row is CHROME, not map. While
                   // peeking, the GlobalHeader cluster is still on screen at the
                   // same corner (the spine is not open, so the header keeps it),

@@ -7,6 +7,8 @@ import { describe, it } from 'node:test';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import {
   filterToShipByQuery,
+  filterToShipByPlatform,
+  filterToShipByOrderView,
   filterToShipByTab,
   isAssignedToShipRow,
   isToShipOutOfStock,
@@ -19,8 +21,33 @@ import {
   toShipPackerLabel,
   toShipGivenName,
   parseMobileToShipSort,
+  parseMobileOrderView,
   sortToShipRows,
 } from './to-ship-assignment';
+
+describe('mobile warehouse order views', () => {
+  const today = '2026-09-16';
+  const rows = [
+    row({ entityId: 1, deadlineAt: today }),
+    row({ entityId: 2, isUrgent: true }),
+    row({ entityId: 3, outOfStock: 'Out of stock' }),
+    row({ entityId: 4, shipmentId: 44, hasTechScan: true }),
+    row({ entityId: 5, shipmentId: 55, hasTechScan: true, packedAt: today }),
+  ];
+
+  it('parses only governed views', () => {
+    assert.equal(parseMobileOrderView('ready-to-pack'), 'ready-to-pack');
+    assert.equal(parseMobileOrderView('anything'), 'all');
+  });
+
+  it('derives each view from shared deadline and lifecycle facts', () => {
+    assert.deepEqual(filterToShipByOrderView(rows, 'must-go-today', today).map((r) => r.entityId), [1]);
+    assert.deepEqual(filterToShipByOrderView(rows, 'urgent', today).map((r) => r.entityId), [2]);
+    assert.deepEqual(filterToShipByOrderView(rows, 'blocked', today).map((r) => r.entityId), [3]);
+    assert.deepEqual(filterToShipByOrderView(rows, 'ready-to-pack', today).map((r) => r.entityId), [4]);
+    assert.deepEqual(filterToShipByOrderView(rows, 'packed', today).map((r) => r.entityId), [5]);
+  });
+});
 
 function row(over: Partial<WorkOrderRow> & { entityId: number }): WorkOrderRow {
   return {
@@ -75,6 +102,15 @@ describe('filterToShipByTab', () => {
       filterToShipByTab([assigned, unassigned], 'unassigned').map((r) => r.entityId),
       [2],
     );
+  });
+});
+
+describe('filterToShipByPlatform', () => {
+  it('filters by the connected marketplace without case-sensitive drift', () => {
+    const amazon = row({ entityId: 1, accountSource: 'Amazon' });
+    const ecwid = row({ entityId: 2, accountSource: 'Ecwid' });
+    assert.deepEqual(filterToShipByPlatform([amazon, ecwid], 'amazon').map((entry) => entry.entityId), [1]);
+    assert.deepEqual(filterToShipByPlatform([amazon, ecwid], 'ALL').map((entry) => entry.entityId), [1, 2]);
   });
 });
 

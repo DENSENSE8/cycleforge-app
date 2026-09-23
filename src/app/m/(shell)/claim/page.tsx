@@ -26,7 +26,7 @@ function ClaimContent() {
 
   const claim = useCallback(async () => {
     if (!token && !shortCode) {
-      setErrorMessage('No pairing code. Scan the QR on your computer, or type the four characters.');
+      setErrorMessage('No pairing code. Scan the QR on your computer, or type the digits below it.');
       setState('error');
       return;
     }
@@ -54,7 +54,7 @@ function ClaimContent() {
           CLAIM_FAILED: 'Could not claim this code. Refresh the desk QR.',
           STAFF_NOT_ACTIVE: 'This staff account is not active.',
           RATE_LIMITED: 'Too many attempts. Wait a minute.',
-          TOKEN_OR_CODE_REQUIRED: 'Enter the four-character code from your computer.',
+          TOKEN_OR_CODE_REQUIRED: 'Enter the numeric code from your computer.',
         };
         throw new Error(map[data.error ?? ''] || data.error || 'Claim failed.');
       }

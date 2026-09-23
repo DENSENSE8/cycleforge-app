@@ -77,6 +77,7 @@ export function MobileReceivingSwipeGallery({
       photos.map((p) => ({
         id: String(p.id),
         previewUrl: p.displayUrl,
+        uploadedBy: p.uploadedBy,
         deletable: true,
       })),
     [photos],

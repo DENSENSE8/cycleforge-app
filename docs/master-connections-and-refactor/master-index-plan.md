@@ -135,7 +135,7 @@ Cycle Forge already has the right **domain spines** — `serial_units` + `transi
 - **Gaps:**
   - Zoho connector has **no `sync()` / `pushInventory()` wired** — sync lives in ad-hoc crons/routes.
   - `zoho_*` columns still on core receiving tables; dual mirrors during cutover.
-  - Tenants cannot swap inventory providers without core changes — channel connector framework planned (`docs/roadmap/gap-closure-plan.md`) but incomplete.
+  - Tenants cannot swap inventory providers without core changes — channel connector framework planned but incomplete.
   - Local operational truth (bin, test, pack, pickup) is correct in principle but writeback paths still assume Zoho shapes.
 
 #### Local pickup — dual models
@@ -622,7 +622,7 @@ Admin/settings **Connections** = `organization_integrations` / connector registr
 
 - [x] Publish this index
 - [ ] Add `src/lib/connections/` with journey + link-types stubs composing existing readers
-- [ ] Point `docs/todo/README.md` + `context/INDEX.md` here
+- [ ] Point `docs/todo/README.md` here
 - [ ] Freeze rule: no new polymorphic hub without catalog update
 
 ### Phase 1 — Backend wiring

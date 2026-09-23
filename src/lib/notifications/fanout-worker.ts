@@ -26,13 +26,18 @@
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { QueryResult, QueryResultRow } from 'pg';
+import { extractCanonicalTracking } from '@/lib/tracking-format';
 import {
   ENTITY_VIEW_PERMISSION,
+  NOTIFIABLE_EVENTS,
   buildCollapseKey,
   buildDedupKey,
   isNotifiableEntityType,
   notifiableEvent,
 } from './event-vocabulary';
+
+/** The arrival a pre-arrival tracking watch was written to wait on. */
+const ARRIVAL_EVENT_KEY = NOTIFIABLE_EVENTS['receiving.carton.arrived'].key;
 
 /** Events on the same collapse_key inside this window fold into one row. */
 const COLLAPSE_WINDOW_MS = 60_000;
@@ -51,6 +56,24 @@ export interface FanoutDeps {
   ) => Promise<QueryResult<T>>;
   /** Permissions for a staffer, used as the write-time prefilter. */
   loadPermissions: (orgId: OrgId, staffIds: number[]) => Promise<Map<number, string[]>>;
+  /**
+   * Live mirror of a durable row onto the recipient's inbox channel.
+   *
+   * The durable write is the source of truth; this is what makes it ARRIVE.
+   * Without it the pipeline wrote `staff_inbox_items` rows a signed-in
+   * operator saw only on the next window focus — for a watched package
+   * landing at the door, that is the difference between a notification and a
+   * log entry.
+   */
+  publishInboxItem: (args: {
+    orgId: OrgId;
+    staffId: number;
+    itemId: number;
+    entityType: string;
+    entityId: number;
+    eventKey: string;
+    actorStaffId: number | null;
+  }) => Promise<void>;
   now: () => Date;
 }
 
@@ -73,6 +96,21 @@ const defaultFanoutDeps: FanoutDeps = {
     return tenantQuery(orgId, text, params);
   },
   loadPermissions: (orgId, staffIds) => loadStaffPermissions(orgId, staffIds),
+  // Dynamic for the same reason as the pool above: `@/lib/realtime/publish`
+  // pulls the Ably server SDK and the db-backed org lookup, neither of which
+  // may enter the module graph of a node:test process.
+  publishInboxItem: async (args) => {
+    const { publishInboxItem } = await import('@/lib/realtime/publish');
+    await publishInboxItem({
+      organizationId: args.orgId,
+      recipientId: args.staffId,
+      itemId: args.itemId,
+      entityType: args.entityType,
+      entityId: args.entityId,
+      eventKey: args.eventKey,
+      actorStaffId: args.actorStaffId,
+    });
+  },
   now: () => new Date(),
 };
 
@@ -155,14 +193,26 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
 
   const orgId = row.organization_id as OrgId;
   const entityId = Number(row.entity_id);
+  const facts = readMatchFacts(row.payload);
   const recipients = await resolveRecipients(
-    { orgId, entityType: row.entity_type, entityId, eventKey: row.event_key },
+    {
+      orgId,
+      entityType: row.entity_type,
+      entityId,
+      eventKey: row.event_key,
+      ...facts,
+    },
     deps,
   );
 
   // You are not notified about your own action.
   const targets = recipients.filter((r) => r.staffId !== row.actor_staff_id);
-  if (targets.length === 0) return { delivered: 0, collapsed: 0, skipped: false };
+  if (targets.length === 0) {
+    // Nothing to deliver, but the watch is still FULFILLED — the commonest
+    // case is the watcher scanning their own package at the door.
+    await retireFulfilledTrackingWatches(orgId, row.event_key, facts, deps);
+    return { delivered: 0, collapsed: 0, skipped: false };
+  }
 
   const permsByStaff = await deps.loadPermissions(
     orgId,
@@ -220,14 +270,15 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
       continue;
     }
 
-    const inserted = await deps.orgQuery(
+    const inserted = await deps.orgQuery<{ id: string | number }>(
       orgId,
       `INSERT INTO staff_inbox_items
          (organization_id, staff_id, subscription_id, entity_type, entity_id,
           event_key, actor_staff_id, reason, payload, dedup_key, collapse_key,
           state, occurred_at, last_event_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'unread', $12, $12)
-       ON CONFLICT (organization_id, staff_id, dedup_key) DO NOTHING`,
+       ON CONFLICT (organization_id, staff_id, dedup_key) DO NOTHING
+       RETURNING id`,
       [
         orgId,
         target.staffId,
@@ -244,7 +295,33 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
       ],
     );
     delivered += inserted.rowCount ?? 0;
+
+    // Only a genuinely NEW row is announced: ON CONFLICT returns nothing on a
+    // retry, so a redelivered batch cannot buzz the same operator twice.
+    // Best-effort — the durable row is already written, so a dropped push
+    // costs latency, never the notification.
+    const itemId = Number(inserted.rows[0]?.id);
+    if (Number.isFinite(itemId) && itemId > 0) {
+      try {
+        await deps.publishInboxItem({
+          orgId,
+          staffId: target.staffId,
+          itemId,
+          entityType: row.entity_type,
+          entityId,
+          eventKey: row.event_key,
+          actorStaffId: row.actor_staff_id,
+        });
+      } catch (err) {
+        console.warn('[fanout] inbox push skipped:', err);
+      }
+    }
   }
+
+  // Retired only after every insert has landed. Retiring earlier would mean a
+  // row that throws mid-loop comes back on retry to an empty recipient set —
+  // the watcher would lose the notification the retry existed to deliver.
+  await retireFulfilledTrackingWatches(orgId, row.event_key, facts, deps);
 
   return { delivered, collapsed, skipped: false };
 }
@@ -259,13 +336,97 @@ interface Recipient {
  * Entity subscribers ∪ rule matches for one event.
  *
  * Both arms are indexed: the entity arm hits
- * `idx_staff_subscriptions_entity_lookup`, the rule arm hits the GIN index on
- * `match_event_keys` plus the partial `match_sku` index. `state <> 'muted'` is
- * in both, so an explicit mute suppresses an auto-subscription as well as a
- * rule. DISTINCT ON keeps one row per staffer when both arms match.
+ * `idx_staff_subscriptions_entity_lookup`; the rule arm hits the GIN index on
+ * `match_event_keys` plus the partial `match_sku` / `match_tracking_normalized`
+ * indexes. `state <> 'muted'` is in both, so an explicit mute suppresses an
+ * auto-subscription as well as a rule. DISTINCT ON keeps one row per staffer
+ * when both arms match.
+ *
+ * **The rule arm narrows on every declared axis (fixed 2026-09-22).** It used
+ * to filter on `$4 = ANY(match_event_keys)` and nothing else — so a staffer
+ * who subscribed to "unbox events for SKU LEN-T480-i5" was notified on EVERY
+ * unbox event in the org. `match_sku` was written, indexed, and documented as
+ * a predicate, and never read; the docblock here even claimed the arm hit its
+ * index. A pre-arrival tracking watch added on the same axis would have
+ * inherited the defect exactly — every watcher firing on every carton — which
+ * is how the bug surfaced.
+ *
+ * NULL on an axis means "don't care" (2026-07-28c line 87), so each axis is
+ * `(match_X IS NULL OR match_X = $n)`. An event that carries no fact for an
+ * axis therefore matches only the rules that did not ask about it: a tracking
+ * rule never fires on an event with no tracking number.
  */
+interface MatchFacts {
+  sku: string | null;
+  trackingNormalized: string | null;
+}
+
+/**
+ * The narrowing facts an event carries, read from its outbox payload.
+ *
+ * Tracking is CANONICALISED here rather than at the scan: `recordReceivingScan`
+ * stores the keystrokes it was handed (`payload.trackingNumber`), and a watch
+ * is stored canonical, so comparing the two raw would miss on a pasted space
+ * or a carrier prefix.
+ */
+function readMatchFacts(payload: unknown): MatchFacts {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const sku = typeof p.sku === 'string' && p.sku.trim() ? p.sku.trim() : null;
+  const rawTracking =
+    typeof p.trackingNumber === 'string' && p.trackingNumber.trim()
+      ? p.trackingNumber.trim()
+      : null;
+  return {
+    sku,
+    trackingNormalized: rawTracking
+      ? extractCanonicalTracking(rawTracking) || rawTracking
+      : null,
+  };
+}
+
+/**
+ * A fulfilled pre-arrival tracking watch retires itself.
+ *
+ * `watchTrackingPreArrival` writes a `rule` row that says "tell me when THIS
+ * number lands". The number lands exactly once. Left live, that row would fire
+ * again the next time the same tracking string appears — carriers reuse
+ * numbers, and a return trip on the same label is the common case — so the
+ * operator would be notified about a package they collected weeks ago.
+ *
+ * MUTED, not deleted: the row is the receipt of a watch that was honoured, and
+ * `watchTrackingPreArrival`'s ON CONFLICT resets `state` to `subscribed`, so
+ * pasting the number again re-arms the same row rather than fighting the
+ * unique index. Entity subscriptions are untouched — following a carton you
+ * can now see is a standing relationship, not a fulfilled prediction.
+ */
+async function retireFulfilledTrackingWatches(
+  orgId: OrgId,
+  eventKey: string,
+  facts: MatchFacts,
+  deps: FanoutDeps,
+): Promise<void> {
+  if (eventKey !== ARRIVAL_EVENT_KEY || !facts.trackingNormalized) return;
+  await deps.orgQuery(
+    orgId,
+    `UPDATE staff_subscriptions
+        SET state = 'muted', updated_at = now()
+      WHERE organization_id = $1
+        AND subscription_kind = 'rule'
+        AND match_tracking_normalized = $2
+        AND state <> 'muted'`,
+    [orgId, facts.trackingNormalized],
+  );
+}
+
 async function resolveRecipients(
-  args: { orgId: OrgId; entityType: string; entityId: number; eventKey: string },
+  args: {
+    orgId: OrgId;
+    entityType: string;
+    entityId: number;
+    eventKey: string;
+    sku?: string | null;
+    trackingNormalized?: string | null;
+  },
   deps: FanoutDeps = defaultFanoutDeps,
 ): Promise<Recipient[]> {
   const res = await deps.orgQuery<RecipientRow>(
@@ -286,9 +447,19 @@ async function resolveRecipients(
             AND subscription_kind = 'rule'
             AND state <> 'muted'
             AND $4 = ANY(match_event_keys)
+            AND (match_sku IS NULL OR match_sku = $5)
+            AND (match_tracking_normalized IS NULL
+                 OR match_tracking_normalized = $6)
        ) matches
       ORDER BY staff_id, arm`,
-    [args.orgId, args.entityType, args.entityId, args.eventKey],
+    [
+      args.orgId,
+      args.entityType,
+      args.entityId,
+      args.eventKey,
+      args.sku ?? null,
+      args.trackingNormalized ?? null,
+    ],
   );
 
   return res.rows.map((r) => ({

@@ -13,9 +13,9 @@
  *     (idx_orders_unique_account_order)
  *   - getSyncCursor / updateSyncCursor for the incremental modifyDate watermark
  *
- * Ship-to is NOT written to `customers` here; the rate/label endpoints fetch the
- * authoritative ship-to + stored weight live from the v1 order. Populating
- * `customers` at sync time is a documented follow-up.
+ * Buyer identity (customerId / email / phone / ship-to) rides the canonical
+ * line's `buyer` block; the domain writer resolves it into `customers` and
+ * links `orders.customer_id` — the strong-identity tier, never name-matched.
  *
  * Lazily imported by the registry so the connection reader never bundles the
  * ShipStation client.
@@ -26,6 +26,7 @@ import { ingestConnectorOrders } from './ingest-connector-orders';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { getShipStationV1 } from '@/lib/shipping/shipstation/config';
 import type { ShipStationV1Order } from '@/lib/shipping/shipstation/orders-v1';
+import { syncShipStationStoresToCatalog } from '@/lib/catalog/shipstation-store-sync';
 import type { SyncOutcome } from './types';
 
 const ACCOUNT_SOURCE = 'shipstation';
@@ -61,6 +62,16 @@ function mapStatus(orderStatus: string | null): string {
  */
 function toCanonicalLine(order: ShipStationV1Order): CanonicalOrderLine {
   const { title, quantity } = summarizeItems(order);
+  const name =
+    order.shipTo?.name?.trim() || order.billTo?.name?.trim() || order.customerUsername?.trim() || '';
+  const phone = order.shipTo?.phone?.trim() || order.billTo?.phone?.trim() || '';
+  const shipTo = order.shipTo;
+  // Buyer identity when the source carries ANY strong key (channel id, email,
+  // phone). Name-only still flows through `customerName` below — the writer's
+  // weak tier.
+  const hasStrongIdentity = Boolean(
+    order.customerId != null || order.customerEmail?.trim() || phone,
+  );
   return {
     externalOrderId: String(order.orderNumber ?? ''),
     itemNumber: '',
@@ -69,10 +80,26 @@ function toCanonicalLine(order: ShipStationV1Order): CanonicalOrderLine {
     condition: '',
     quantity: String(quantity),
     notes: '',
-    // No buyer name on this adapter's payload yet; when it is wired, match on
-    // ShipStation's customer id/email rather than routing a name through
-    // `customerName` (name-only matching is the weakest identity signal).
     customerName: '',
+    buyer: hasStrongIdentity
+      ? {
+          channelCustomerId: order.customerId != null ? String(order.customerId) : '',
+          name,
+          email: order.customerEmail?.trim() || '',
+          phone,
+          shipTo: shipTo
+            ? {
+                address1: shipTo.addressLine1,
+                address2: shipTo.addressLine2 ?? null,
+                city: shipTo.cityLocality,
+                state: shipTo.stateProvince,
+                postalCode: shipTo.postalCode,
+                country: shipTo.countryCode,
+                residential: shipTo.residential ?? null,
+              }
+            : null,
+        }
+      : null,
     accountSource: ACCOUNT_SOURCE,
     trackings: [],
     shipByDate: null,
@@ -126,6 +153,16 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
     const counts = await ingestConnectorOrders(orgId, ACCOUNT_SOURCE, lines);
     imported = counts.imported;
     updated = counts.updated;
+
+    // Mirror the connected storefronts' marketplaces into the org platform
+    // catalog (additive, idempotent) so the classify picker offers the
+    // channels ShipStation already aggregates. Best-effort: a stores-list
+    // failure must never fail the order sync.
+    try {
+      await syncShipStationStoresToCatalog(orgId, await client.listStores());
+    } catch (e) {
+      console.warn('[shipstation-sync] store catalog mirror skipped:', e);
+    }
 
     // Advance the watermark only on a clean run so a failure re-pulls.
     if (maxModified > since.getTime()) {

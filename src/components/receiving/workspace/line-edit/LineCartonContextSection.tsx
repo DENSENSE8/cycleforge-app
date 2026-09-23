@@ -22,6 +22,7 @@ import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
+import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
 import { useCartonPoTotal } from './hooks/useCartonPoTotal';
 import type { UnboxLineController } from './unbox-line-controller';
 
@@ -138,6 +139,40 @@ export function LineCartonContextSection({
   // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
 
+  /**
+   * Order# for the identity chip — from the receiving SoT, NOT `c.poNumber`.
+   *
+   * `useReceivingLineCore` derives `poNumber` as
+   * `zoho_purchaseorder_number || zoho_purchaseorder_id`, with no
+   * `source_order_id` rung. A freshly scanned marketplace purchase has neither
+   * Zoho field yet — measured on this database, ten eBay lines from 2026-09-17
+   * to 09-19 carry a NULL PO number AND a NULL PO id while the real dashed
+   * order (`11-15183-54752`, `04-14979-98419`, …) sits in `source_order_id`.
+   * The chip therefore fell through to `linkedOrderNumber`, an internal
+   * numeric order id, and hover + copy handed the operator a dashless number
+   * string instead of the eBay order they scanned.
+   *
+   * `getReceivingPoIdentityParts` is the ladder the Unbox RAIL already uses
+   * (`ReceivingLineRailShell`), which is why one carton read
+   * `eBay · PO 22-15154-84089` on the left and `# 84089` with a dashless
+   * hover on the station bar. Same carton, two ladders — this removes the
+   * second one.
+   *
+   * Only the DISPLAY binding moves. `c.poNumber` keeps its write semantics:
+   * `useCartonLabelEditor` diffs the sticker reference against it before
+   * calling `persistPoNumber`, and `useUnboxLineController` guards
+   * serial auto-bind on it ("never overwrite an operator/Zoho-set PO#").
+   * Widening that value would silently change what gets written.
+   *
+   * The label resolver is unused here — only `poValue` is read — so it is the
+   * same no-op `() => ''` that `isReceivingPoGroupTitleRow` passes.
+   *
+   * The chip FACE is unchanged: `CartonContextCard` still runs this through
+   * `getLast8`, so it stays the truncated segment after the dash. Only the
+   * underlying value (hover preview + clipboard) regains its dashes.
+   */
+  const { poValue: cartonOrderNumber } = getReceivingPoIdentityParts(row, () => '');
+
   return (
     <CartonContextCard
       receivingId={row.receiving_id ?? null}
@@ -164,7 +199,7 @@ export function LineCartonContextSection({
       onEditListing={onEditListing}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
-      poDisplay={c.poNumber}
+      poDisplay={cartonOrderNumber || c.poNumber}
       onEditPo={onEditPo}
       poEditOpen={poEditOpen}
       linkedOrderNumber={linkedOrderNumber}

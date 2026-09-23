@@ -18,7 +18,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
   const stream = createNdjsonStream();
   (async () => {
     try {
-      const result = await runGoogleSheetsTransferOrders(undefined, 'ecwid', stream.emit, orgId);
+      const result = await runGoogleSheetsTransferOrders(orgId, undefined, 'ecwid', stream.emit);
       stream.emit({ type: 'result', result: result as unknown as Record<string, unknown> });
       ok = true;
     } catch (error: any) {

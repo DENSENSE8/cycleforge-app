@@ -8,8 +8,8 @@
  *   124 timeout (Cursor stop fail-opens; Hermes records unmeasured)
  *   75  infra missing (Cursor fail-open; Hermes fail)
  *
- * Always runs cursor-eval --fast. Scoped slot-table / eval:station when dirty
- * paths match (same rules as the former stop-eval-gate body). Hermes sets
+ * Always runs verify:fast. Scoped slot-table / eval:station when dirty
+ * paths match. Hermes sets
  * LOOP_RUN_ID so a clean worktree still runs verify:fast (no chat dirty-skip).
  *
  *   node tools/eval-ledger/machine-gate.mjs
@@ -23,8 +23,6 @@ import { fileURLToPath } from "node:url";
 import { PERF_REPAIR_LAW } from "./perf-target.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const GARISEK =
-  process.env.GARISEK_OS_ROOT || "/home/michaelgarisek/Projects/Garisek-OS";
 const NODE =
   process.env.CODE_GRAPH_NODE ||
   process.env.DESIGN_MCP_NODE ||
@@ -136,7 +134,7 @@ function run(cmd, cmdArgs, timeoutSec = VERIFY_TIMEOUT_SEC) {
 
 function repairBrief(snapshot, detail) {
   const snap = snapshot || "docs/eval/cohorts/slot-table/snapshots/";
-  let body = `Machine eval failed. Stamp .cursor/eval-session.json. Snapshot ${snap}. ${CYCLEFORGE_REPAIR_LAW}`;
+  let body = `Machine eval failed. Stamp .garisek/eval-session.json. Snapshot ${snap}. ${CYCLEFORGE_REPAIR_LAW}`;
   if (detail) {
     let clipped = detail.trim();
     if (clipped.length > 2000) clipped = clipped.slice(0, 2000) + "\n…(truncated)";
@@ -188,7 +186,7 @@ function main() {
     log("--dry-fail");
     fail(
       "docs/eval/cohorts/slot-table/snapshots/(dry-run)",
-      "DRY FAIL: fixture tripwire for machine-gate / Hermes / Cursor stop.",
+      "DRY FAIL: fixture tripwire for machine-gate / Hermes loop.",
     );
   }
 
@@ -207,20 +205,14 @@ function main() {
     process.exit(0);
   }
 
-  const evalCli = path.join(GARISEK, "tools/eval-engineering/cursor-eval.mjs");
-  if (!existsSync(evalCli)) {
-    log(`missing ${evalCli}`);
-    process.exit(75);
-  }
-
-  log(`cursor-eval --fast timeout=${VERIFY_TIMEOUT_SEC}s`);
-  const fast = run(NODE, [evalCli, "--root", ROOT, "--fast"]);
+  log(`verify:fast timeout=${VERIFY_TIMEOUT_SEC}s`);
+  const fast = run("pnpm", ["--config.verify-deps-before-run=false", "run", "verify:fast"]);
   if (fast.code === 124) {
-    log("cursor-eval timed out");
+    log("verify:fast timed out");
     process.exit(124);
   }
   if (fast.code !== 0) {
-    fail(".cursor/eval-session.json", fast.text);
+    fail(".garisek/eval-session.json", fast.text);
   }
 
   if (needsSlotTable(dirty) || args.has("--slot-table")) {

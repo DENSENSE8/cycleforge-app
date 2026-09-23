@@ -16,9 +16,7 @@ vocabulary lives here; neither plan re-declares it.
 |---|---|
 | **this file** | the shared decisions (D1–D9), the sequencing, and the rule amendments |
 | [`unbox-guided-procedure-BACKEND-PLAN.md`](./unbox-guided-procedure-BACKEND-PLAN.md) | vocabulary declaration, migrations, write waist, receipt read model, OCR endpoint |
-| [`unbox-guided-procedure-BACKEND-EXECUTION-PROMPT.md`](./unbox-guided-procedure-BACKEND-EXECUTION-PROMPT.md) | paste-in prompt for the backend lane |
 | [`unbox-guided-procedure-FRONTEND-PLAN.md`](./unbox-guided-procedure-FRONTEND-PLAN.md) | `ProcedureStack` DS primitive, step-body registry, PO accordion simplification, contextual composer, receipt display, mobile pairing |
-| [`unbox-guided-procedure-FRONTEND-EXECUTION-PROMPT.md`](./unbox-guided-procedure-FRONTEND-EXECUTION-PROMPT.md) | paste-in prompt for the frontend lane |
 | [`unbox-procedure-stack-MOTION-GEMINI-RESEARCH-BRIEFING.md`](./unbox-procedure-stack-MOTION-GEMINI-RESEARCH-BRIEFING.md) | the stack geometry / motion / radius / receipt / time research — **answered; verdict is D12** |
 
 ---

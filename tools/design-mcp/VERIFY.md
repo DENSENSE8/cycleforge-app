@@ -74,26 +74,17 @@ Radius rows must include `cornerClass('surface')`. Elevation rows must include
 ## 3. Registered for auto-discovery
 
 ```bash
-python3 -c "import json; print(list(json.load(open('.cursor/mcp.json'))['mcpServers']))"
-ls -l .mcp.json
+python3 -c "import json; print(list(json.load(open('.mcp.json'))['mcpServers']))"
 ```
 
-Expect `design-mcp` present alongside `motion`, `motion-plus`, `code-graph`,
-`figma`. `.mcp.json` is a **symlink to** `.cursor/mcp.json`. The `design-mcp`
-command is the **mise node shim** plus `tools/design-mcp/server.mjs` — not
-`run-mcp.sh`. Cursor spawns without a login shell; a PATH-dependent wrapper is
-how the catalog goes empty.
+Expect `design-mcp` alongside `motion` and `code-graph`. `.mcp.json` is a real
+file at the repo root. The `design-mcp` command is the **mise node shim** plus
+`tools/design-mcp/server.mjs` — not `run-mcp.sh`: a harness spawns without a
+login shell, and a PATH-dependent wrapper is how the catalog goes empty.
 
-**Agent catalog gap (operator 2026-08-31):** Cursor may lease
-`project-0-…-design-mcp` without writing tools into the agent MCP filesystem
-(only `plugin-*` namespaces appear in `GetDynamicTools`). Closing the gap:
-
-1. `tools/design-mcp/cursor-plugin/` + `.cursor/hooks` `workspaceOpen` returns
-   `pluginPaths` so the same server loads as a plugin.
-2. Symlink: `~/.cursor/plugins/local/cycleforge-design-mcp` → that plugin dir.
-3. CLI fallback: `node tools/design-mcp/ds.mjs contract|tokens|critique …`
-4. `sessionStart` injects naming + dumb-station law; `preToolUse` denies UI
-   writes without `.cursor/design-mcp-session.json`.
+If a harness does not surface the tools, use the CLI — same handlers:
+`node tools/design-mcp/ds.mjs contract|tokens|critique …`. There is no stamp,
+no `sessionStart` law injection and no write gate.
 
 ```bash
 ./tools/design-mcp/run-mcp.sh </dev/null 2>&1 | head -2

@@ -1,7 +1,7 @@
 import { Check, Loader2, Package, Plus, Search, X } from '@/components/Icons';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, TextField } from '@/design-system/primitives';
 import {
   Dialog,
   DialogContent,
@@ -56,7 +56,7 @@ export function FnskuSearchModal({
         <DialogHeader className="space-y-0 border-b border-border-soft px-4 py-3 text-left">
           <div className="mb-2 flex items-center justify-between">
             <div>
-              <p className="text-role-micro uppercase tracking-[0.16em] text-purple-600">Add Amazon SKU</p>
+              <p className="text-role-micro uppercase tracking-[0.16em] text-text-accent">Add Amazon SKU</p>
               <DialogTitle className="mt-0.5 text-sm font-semibold">Search shipment catalog</DialogTitle>
               <DialogDescription className="sr-only">
                 Search the shipment catalog by Amazon SKU (FNSKU), ASIN, SKU, or product title.
@@ -65,22 +65,19 @@ export function FnskuSearchModal({
             <IconButton
               type="button"
               onClick={onClose}
-              className="rounded-full border border-border-soft bg-surface-card p-2 text-text-soft hover:border-border-default hover:bg-surface-hover hover:text-text-default"
+              radius="flush"
+              className="border border-border-soft bg-surface-card p-2 text-text-soft hover:border-border-default hover:bg-surface-hover hover:text-text-default"
               ariaLabel="Close"
               icon={<X className="h-4 w-4" />}
             />
           </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-faint" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={query}
-              onChange={(e) => onQueryChange(e.target.value)}
-              placeholder="Search Amazon SKU, ASIN, SKU, or product title..."
-              className={"w-full rounded-xl border border-border-soft bg-surface-card py-2.5 pl-10 pr-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30" /* ds-allow-focus: identity/one-off hue or ring-0 */}
-            />
-          </div>
+          <TextField
+            ref={searchInputRef}
+            label="Search Amazon SKU, ASIN, SKU, or product title"
+            value={query}
+            onChange={onQueryChange}
+            inputClassName="font-semibold"
+          />
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
@@ -102,7 +99,7 @@ export function FnskuSearchModal({
               <p className="mt-1 text-role-micro text-text-faint">Try a different search term</p>
             </div>
           ) : (
-            <div className="divide-y divide-border-hairline overflow-hidden rounded-lg border border-border-soft">
+            <div className="divide-y divide-border-hairline overflow-hidden rounded-none border border-border-soft">
               {results.map((result) => {
                 const alreadyAdded = items.some(
                   (i) => i.fnsku.toUpperCase() === result.fnsku.toUpperCase(),
@@ -115,23 +112,24 @@ export function FnskuSearchModal({
                     fnsku={result.fnsku.toUpperCase()}
                     stationTheme={stationTheme}
                     leadingSlot={
-                      <div className="flex h-5 w-5 items-center justify-center rounded-md bg-purple-50">
-                        <Package className="h-3 w-3 text-purple-500" />
+                      <div className="flex h-5 w-5 items-center justify-center bg-surface-accent">
+                        <Package className="h-3 w-3 text-text-accent" />
                       </div>
                     }
                     rightSlot={
                       <HoverTooltip label={alreadyAdded ? 'Already in shipment' : 'Add to shipment'} asChild>
                         <IconButton
                           type="button"
+                          radius="flush"
                           disabled={alreadyAdded || isAdding}
                           onClick={() => void onAddFnsku(result)}
                           className={[
-                            'flex h-7 w-7 items-center justify-center rounded-lg border',
+                            'flex h-7 w-7 items-center justify-center border',
                             alreadyAdded
-                              ? 'cursor-default border-emerald-200 bg-emerald-50 text-emerald-600'
+                              ? 'cursor-default border-border-success bg-surface-success text-text-success'
                               : isAdding
-                                ? 'cursor-wait border-purple-200 bg-purple-50 text-purple-500'
-                                : 'border-purple-200 bg-surface-card text-purple-600 hover:border-purple-400 hover:bg-purple-50',
+                                ? 'cursor-wait border-border-accent bg-surface-accent text-text-accent'
+                                : 'border-border-accent bg-surface-card text-text-accent hover:bg-surface-accent',
                           ].join(' ')}
                           ariaLabel={alreadyAdded ? 'Already in shipment' : `Add ${result.fnsku} to shipment`}
                           icon={

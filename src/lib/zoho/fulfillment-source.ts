@@ -174,6 +174,7 @@ export async function findShippedOrdersForFulfillment(
       WHERE pl.shipment_id IS NOT NULL
         AND pl.shipment_id = o.shipment_id
         AND pl.tracking_type = 'ORDERS'
+        AND pl.completion_state = 'COMPLETED'
       ORDER BY pl.created_at DESC NULLS LAST LIMIT 1
     ) pk ON true
     LEFT JOIN staff s_packer ON s_packer.id = pk.packed_by

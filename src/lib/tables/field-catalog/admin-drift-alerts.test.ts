@@ -279,7 +279,7 @@ describe('admin-drift-alerts row view', () => {
     const view = adminDriftAlertsCompoundView(row());
     assert.equal(view.id, '4471');
     assert.equal(view.title, row().notes);
-    assert.equal(view.orderId, 'DELL-7050-I5');
+    assert.equal(view.identityFace?.value, 'DELL-7050-I5');
     assert.equal(view.stateLabel, 'Δ 12');
     assert.equal(view.stateTone, 'alert');
     // No carrier, no marketplace, no money, no photo on a stock alert.

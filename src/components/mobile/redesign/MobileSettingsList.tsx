@@ -2,11 +2,25 @@
 
 /**
  * Dedicated phone settings SoT (`/m/settings`). Grouped rows from the settings
- * registry; Log out is the last control in the list.
+ * registry; the two shift-change verbs close the list — Switch staff, then Log
+ * out last.
  *
  * Callers: `src/app/m/(shell)/settings/page.tsx`. Affected API: none.
  * User: "there must be a dedicated mobile settings display for this that will
- * have log out at the bottom of the settings list"
+ * have log out at the bottom of the settings list" · "switch staff button …
+ * above the logout button" · "it should be 'switch staff' the same name as it
+ * on the web application on desktop".
+ *
+ * Switch staff calls `openSwitcher()` — the app-wide `SwitchStaffSheet` that
+ * `WarehouseShell` already mounts (it wraps `/m/*` too), the same trigger the
+ * desktop spine footer (`sidebar/master-nav/StaffAccountFooter`) fires. That
+ * footer said "Change staff" while the sheet's own title and the Quick Access
+ * action said "Switch staff"; the operator settled it on the sheet's word.
+ *
+ * This list is the ONLY home for both verbs on the phone — the nav drawer's
+ * identity bar (`MobileAccountFooter`) is a door to here, nothing more
+ * (2026-09-23: *"it must display at the bottom of settings, not a logout
+ * button and a switch staff button at the bottom of the sidebar on mobile"*).
  */
 
 import Link from 'next/link';
@@ -14,6 +28,7 @@ import { ChevronRight } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
@@ -64,6 +79,7 @@ function SettingsRows({ sections }: { sections: SettingsSectionOption[] }) {
 
 export function MobileSettingsList() {
   const { user, signOut, has, isLoaded } = useAuth();
+  const { openSwitcher } = useStaffSwitcher();
   const displayName = user?.name?.trim() || (user ? `Staff #${user.staffId}` : 'Account');
 
   const personal = SETTINGS_SECTION_OPTIONS.filter((s) => s.group === 'Personal');
@@ -103,7 +119,16 @@ export function MobileSettingsList() {
         );
       })}
 
-      <div className="pt-2">
+      <div className="flex flex-col gap-2 pt-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="lg"
+          className="min-h-11 w-full justify-center text-text-default"
+          onClick={openSwitcher}
+        >
+          Switch staff
+        </Button>
         <Button
           type="button"
           variant="ghost"

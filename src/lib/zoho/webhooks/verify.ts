@@ -13,9 +13,6 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * always passes the *raw* (un-parsed) request body — JSON.stringify of the
  * parsed body will not match because Zoho preserves whitespace and key order.
  *
- * Required env:
- *   ZOHO_WEBHOOK_SECRET           — shared secret configured in Zoho
- *
  * Optional env (defaults shown):
  *   ZOHO_WEBHOOK_SIGNATURE_HEADER — primary header name to read.
  *                                   Default: `x-zoho-webhook-signature`
@@ -61,22 +58,17 @@ function decodeSignature(raw: string, encoding: 'hex' | 'base64'): Buffer | null
 }
 
 export interface VerifyOptions {
-  /**
-   * Per-tenant signing secret (Wave 3). When provided, the delivery is
-   * authenticated against THIS org's secret rather than the global env secret —
-   * so a body forged with one tenant's key can't be replayed against another.
-   * Omitted → falls back to the global `ZOHO_WEBHOOK_SECRET` (USAV/legacy).
-   */
-  secret?: string;
+  /** Per-tenant signing secret loaded from the integration vault. */
+  secret: string;
 }
 
 export function verifyZohoWebhookSignature(
   rawBody: string | Buffer,
   headers: Headers,
-  options: VerifyOptions = {},
+  options: VerifyOptions,
 ): VerifyResult {
-  const secret = (options.secret || process.env.ZOHO_WEBHOOK_SECRET || '').trim();
-  if (!secret) return { ok: false, reason: 'no signing secret available (per-org or ZOHO_WEBHOOK_SECRET)' };
+  const secret = options.secret.trim();
+  if (!secret) return { ok: false, reason: 'no per-org signing secret available' };
 
   const headerName = (process.env.ZOHO_WEBHOOK_SIGNATURE_HEADER || 'x-zoho-webhook-signature').trim();
   const encoding: 'hex' | 'base64' =

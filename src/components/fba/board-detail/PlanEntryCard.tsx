@@ -63,26 +63,27 @@ export function PlanEntryCard({
 
   return (
     <div className="rounded-none border border-border-soft bg-surface-card">
-      {/* ds-raw-button: full-width multi-line card-header expand toggle (left-aligned, composite content) */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        radius="flush"
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
       >
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3 shrink-0 text-purple-500" />
+            <Calendar className="h-3 w-3 shrink-0 text-text-accent" />
             <span className="text-role-caption font-semibold text-text-default">
               {entry.shipment_ref || formatPlanDate(entry.due_date)}
             </span>
           </div>
           <div className="flex items-center gap-3 pl-5 text-role-caption">
             <span className="flex items-center gap-1 font-semibold text-text-soft">
-              <ClipboardList className="h-3 w-3 text-purple-400" />
+              <ClipboardList className="h-3 w-3 text-text-accent" />
               <span className="tabular-nums">{entry.expected_qty}</span>
             </span>
-            <span className="flex items-center gap-1 font-semibold text-emerald-700">
-              <Check className="h-3 w-3 text-emerald-500" />
+            <span className="flex items-center gap-1 font-semibold text-text-success">
+              <Check className="h-3 w-3 text-text-success" />
               <span className="tabular-nums">{entry.actual_qty}</span>
             </span>
             <span className="text-role-micro text-text-faint">
@@ -93,7 +94,7 @@ export function PlanEntryCard({
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-text-faint transition-transform ${expanded ? 'rotate-180' : ''}`}
         />
-      </button>
+      </Button>
 
       {expanded && (
         <div className="space-y-4 border-t border-border-hairline px-3 py-3">
@@ -105,21 +106,25 @@ export function PlanEntryCard({
                 ariaLabel="Decrease quantity"
                 onClick={() => void saveQty(qty - 1)}
                 disabled={saving || qty <= 1}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft text-text-soft hover:bg-surface-hover disabled:opacity-40"
+                size="md"
+                radius="flush"
+                className="border border-border-soft hover:bg-surface-hover"
               />
               <DeferredQtyInput
                 value={qty}
                 min={1}
                 max={9999}
                 onChange={(v) => void saveQty(v)}
-                className={"h-10 w-16 rounded-lg border border-border-soft bg-surface-card text-center text-lg font-semibold tabular-nums text-text-default outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+                className="h-10 w-16 rounded-none border border-border-soft bg-surface-card text-center text-lg font-semibold tabular-nums text-text-default outline-none transition-colors focus:border-border-accent focus:ring-2 focus:ring-border-accent/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <IconButton
                 icon={<Plus className="h-3.5 w-3.5" />}
                 ariaLabel="Increase quantity"
                 onClick={() => void saveQty(qty + 1)}
                 disabled={saving}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-soft text-text-soft hover:bg-surface-hover disabled:opacity-40"
+                size="md"
+                radius="flush"
+                className="border border-border-soft hover:bg-surface-hover"
               />
               {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-text-faint" />}
             </div>
@@ -172,32 +177,37 @@ export function PlanEntryCard({
               size="sm"
               icon={<Trash2 className="h-3 w-3" />}
               onClick={() => setConfirmDelete(true)}
-              className="h-auto gap-1.5 px-0 text-role-micro text-red-500 hover:bg-transparent hover:text-red-700"
+              radius="flush"
+              className="h-auto gap-1.5 px-0 text-role-micro text-text-danger hover:bg-transparent hover:text-text-danger"
             >
               Remove entry
             </Button>
           ) : (
-            <div className="rounded-none border border-red-200 bg-red-50 p-3">
-              <p className="text-role-caption font-semibold text-red-800">
+            <div className="rounded-none border border-border-danger bg-surface-danger p-3">
+              <p className="text-role-caption font-semibold text-text-danger">
                 Remove this entry from {entry.shipment_ref || 'plan'}?
               </p>
               {deleteError && (
-                <p className="mt-1 text-role-micro font-semibold text-red-600">{deleteError}</p>
+                <p className="mt-1 text-role-micro font-semibold text-text-danger">{deleteError}</p>
               )}
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <Button
                   variant="secondary"
+                  size="sm"
+                  radius="flush"
                   onClick={() => { setConfirmDelete(false); setDeleteError(null); }}
-                  className="h-7 w-full rounded-md text-role-eyebrow uppercase tracking-wider text-text-muted"
+                  className="w-full text-role-eyebrow uppercase tracking-wider text-text-muted"
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="danger"
+                  size="sm"
+                  radius="flush"
                   icon={<Trash2 className="h-2.5 w-2.5" />}
                   loading={deleting}
                   onClick={() => void handleDelete()}
-                  className="h-7 w-full gap-1 rounded-md bg-red-600 text-role-eyebrow uppercase tracking-wider hover:bg-red-700"
+                  className="w-full gap-1 text-role-eyebrow uppercase tracking-wider"
                 >
                   {deleting ? 'Removing...' : 'Remove'}
                 </Button>

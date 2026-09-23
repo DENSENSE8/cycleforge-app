@@ -18,10 +18,7 @@
  *   • tracking_exceptions        → resolved
  *   • unfound_overlay            → checked (operator can ignore the row)
  *
- * Trigger points:
- *   • Hourly cron sweep (src/app/api/cron/reconcile-unmatched/route.ts)
- *   • Manually from the unfound queue UI ("Retry Zoho lookup")
- *   • After mailbox triage marks a PO uploaded
+ * Trigger point: the unfound queue UI's "Retry Zoho lookup" action.
  *
  * Failures are non-fatal — anything that goes wrong leaves the receiving
  * as 'unmatched' (except busy-shell attach, which redirects to the shell)
@@ -29,12 +26,12 @@
  * whether to retry.
  */
 
-import pool from '@/lib/db';
 import {
   searchPurchaseReceivesByTracking,
   searchPurchaseOrdersByTracking,
 } from '@/lib/zoho';
 import { ZohoRateLimitError } from '@/lib/zoho/httpClient';
+import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { resolveReceivingExceptionsByReceivingId } from '@/lib/tracking-exceptions';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { claimOrAbsorbZohoPoShell } from '@/lib/receiving/claim-zoho-po-shell';
@@ -130,17 +127,19 @@ async function findMirrorPoIdForTracking(
 
 export async function reconcileUnmatchedReceiving(
   receivingId: number,
+  orgId: OrgId,
 ): Promise<ReconcileResult> {
   // ─── Load the receiving row ─────────────────────────────────────────────
-  const recRes = await pool.query<ReceivingSnapshot>(
+  const recRes = await tenantQuery<ReceivingSnapshot>(
+    orgId,
     `SELECT r.id, r.source,
             stn.tracking_number_raw AS receiving_tracking_number,
             r.organization_id
        FROM receiving_carton r
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
-      WHERE r.id = $1
+      WHERE r.id = $1 AND r.organization_id = $2
       LIMIT 1`,
-    [receivingId],
+    [receivingId, orgId],
   );
   const rec = recRes.rows[0];
   if (!rec) {
@@ -165,18 +164,15 @@ export async function reconcileUnmatchedReceiving(
 
   // ─── Local mirror first (0 Zoho calls) ──────────────────────────────────
   const zohoPoIds = new Set<string>();
-  const orgId = rec.organization_id;
-  if (orgId) {
-    try {
-      const mirrorPoId = await findMirrorPoIdForTracking(
-        orgId as OrgId,
-        rec.receiving_tracking_number,
-        last8,
-      );
-      if (mirrorPoId) zohoPoIds.add(mirrorPoId);
-    } catch {
-      // Soft failure — fall through to live Zoho search.
-    }
+  try {
+    const mirrorPoId = await findMirrorPoIdForTracking(
+      orgId,
+      rec.receiving_tracking_number,
+      last8,
+    );
+    if (mirrorPoId) zohoPoIds.add(mirrorPoId);
+  } catch {
+    // Soft failure — fall through to live Zoho search.
   }
 
   // ─── Re-query Zoho only when mirror missed ──────────────────────────────
@@ -187,7 +183,7 @@ export async function reconcileUnmatchedReceiving(
     try {
       let receives: Awaited<ReturnType<typeof searchPurchaseReceivesByTracking>> = [];
       try {
-        receives = await searchPurchaseReceivesByTracking(last8);
+        receives = await withZohoOrg(orgId, () => searchPurchaseReceivesByTracking(last8));
       } catch (err) {
         if (isRateLimit(err)) {
           const message = err instanceof Error ? err.message : 'Zoho rate limit reached';
@@ -207,7 +203,7 @@ export async function reconcileUnmatchedReceiving(
       }
       if (zohoPoIds.size === 0) {
         try {
-          const pos = await searchPurchaseOrdersByTracking(last8);
+          const pos = await withZohoOrg(orgId, () => searchPurchaseOrdersByTracking(last8));
           for (const po of pos) {
             if (po.purchaseorder_id) zohoPoIds.add(po.purchaseorder_id);
           }
@@ -257,20 +253,22 @@ export async function reconcileUnmatchedReceiving(
   let promoted = false;
 
   try {
-    const promoteRes = await pool.query<{ id: number }>(
+    const promoteRes = await tenantQuery<{ id: number }>(
+      orgId,
       `UPDATE receiving_carton
           SET source = 'zoho_po',
               zoho_purchaseorder_id = $1,
               updated_at = NOW()
         WHERE id = $2
+          AND organization_id = $3
           AND (source = 'unmatched' OR zoho_purchaseorder_id IS NULL)
         RETURNING id`,
-      [primaryPoId, receivingId],
+      [primaryPoId, receivingId, orgId],
     );
     promoted = (promoteRes.rowCount ?? 0) > 0;
   } catch (err) {
     const pgCode = (err as { code?: string } | null)?.code;
-    if (pgCode !== '23505' || !orgId) {
+    if (pgCode !== '23505') {
       return {
         receivingId,
         promoted: false,
@@ -297,7 +295,7 @@ export async function reconcileUnmatchedReceiving(
       // Busy shell owns the PO — attach this box's tracking, re-parent scans +
       // photos, and dismiss the orphan from Unfound / Unbox Recent.
       const tracking = (rec.receiving_tracking_number || '').trim();
-      if (tracking && orgId) {
+      if (tracking) {
         await attachBoxToReceiving({
           receivingId: claim.shellReceivingId,
           trackingNumber: tracking,
@@ -310,8 +308,7 @@ export async function reconcileUnmatchedReceiving(
           );
         });
       }
-      if (orgId) {
-        await withTenantTransaction(orgId, async (client) => {
+      await withTenantTransaction(orgId, async (client) => {
           await client.query(
             `UPDATE receiving_scans
                 SET receiving_id = $1, source = 'zoho_po'
@@ -341,13 +338,12 @@ export async function reconcileUnmatchedReceiving(
                    checked_at = COALESCE(unfound_overlay.checked_at, NOW())`,
             [orgId, String(receivingId)],
           );
-        }).catch((err) => {
+      }).catch((err) => {
           console.warn(
             `[reconcile-unmatched] orphan absorb side-effects failed receiving=${receivingId}:`,
             err instanceof Error ? err.message : err,
           );
-        });
-      }
+      });
 
       winningReceivingId = claim.shellReceivingId;
       promoted = true;
@@ -364,8 +360,7 @@ export async function reconcileUnmatchedReceiving(
   if (!promoted) {
     // Soft miss on UPDATE (race) — try absorb in case a shell already holds the PO
     // without throwing (e.g. concurrent promote already claimed it between SELECT).
-    if (orgId) {
-      const claim = await withTenantTransaction(orgId, async (client) =>
+    const claim = await withTenantTransaction(orgId, async (client) =>
         claimOrAbsorbZohoPoShell(
           {
             orgId,
@@ -374,11 +369,11 @@ export async function reconcileUnmatchedReceiving(
           },
           client as unknown as TxClient,
         ),
-      );
-      if (claim.action === 'absorb' || claim.action === 'already') {
+    );
+    if (claim.action === 'absorb' || claim.action === 'already') {
         promoted = true;
         winningReceivingId = receivingId;
-      } else if (claim.action === 'conflict') {
+    } else if (claim.action === 'conflict') {
         winningReceivingId = claim.shellReceivingId;
         promoted = true;
         const tracking = (rec.receiving_tracking_number || '').trim();
@@ -390,7 +385,6 @@ export async function reconcileUnmatchedReceiving(
             organizationId: orgId,
           }).catch(() => undefined);
         }
-      }
     }
     if (!promoted) {
       return {
@@ -403,34 +397,29 @@ export async function reconcileUnmatchedReceiving(
 
   // ─── Claim local PO lines (unattached + unmatched donors), then import ───
   let linesImported = 0;
-  if (!orgId) {
-    console.warn(
-      `[reconcile-unmatched] receiving=${receivingId} has no organization_id; skipping Zoho line import`,
+  try {
+    const { ensurePoLinesOnReceiving } = await import('@/lib/receiving/adopt-po-lines');
+    const ensured = await ensurePoLinesOnReceiving(
+      primaryPoId,
+      winningReceivingId,
+      orgId,
+      { importIfEmpty: true },
     );
-  } else {
-    try {
-      const { ensurePoLinesOnReceiving } = await import('@/lib/receiving/adopt-po-lines');
-      const ensured = await ensurePoLinesOnReceiving(
-        primaryPoId,
-        winningReceivingId,
-        orgId,
-        { importIfEmpty: true },
-      );
-      linesImported = Math.max(ensured.adopted, ensured.lineCount);
-    } catch (err) {
-      console.warn(
-        `[reconcile-unmatched] line ensure failed for receiving=${winningReceivingId} po=${primaryPoId}:`,
-        err instanceof Error ? err.message : err,
-      );
-    }
+    linesImported = Math.max(ensured.adopted, ensured.lineCount);
+  } catch (err) {
+    console.warn(
+      `[reconcile-unmatched] line ensure failed for receiving=${winningReceivingId} po=${primaryPoId}:`,
+      err instanceof Error ? err.message : err,
+    );
   }
 
-  const exceptionsResolved = await resolveReceivingExceptionsByReceivingId(
-    winningReceivingId,
+  const exceptionsResolved = await withTenantTransaction(orgId, (client) =>
+    resolveReceivingExceptionsByReceivingId(winningReceivingId, client),
   ).catch(() => 0);
 
   try {
-    await pool.query(
+    await tenantQuery(
+      orgId,
       `INSERT INTO unfound_overlay
          (organization_id, source_kind, source_id, checked, checked_at)
        VALUES ($1, 'unmatched_receiving', $2, TRUE, NOW())
@@ -453,42 +442,4 @@ export async function reconcileUnmatchedReceiving(
     linesImported,
     exceptionsResolved,
   };
-}
-
-/**
- * Sweep recent unmatched receivings, retrying Zoho lookup for each.
- */
-export async function sweepUnmatchedReceivings(
-  options: {
-    maxAgeDays?: number;
-    limit?: number;
-  } = {},
-): Promise<{
-  scanned: number;
-  promoted: number;
-  results: ReconcileResult[];
-}> {
-  const maxAgeDays = Math.max(1, Math.min(30, options.maxAgeDays ?? 7));
-  const limit = Math.max(1, Math.min(200, options.limit ?? 50));
-
-  const candidates = await pool.query<{ id: number }>(
-    `SELECT id
-       FROM receiving_carton
-      WHERE source = 'unmatched'
-        AND shipment_id IS NOT NULL
-        AND receiving_date_time > NOW() - ($1 || ' days')::interval
-      ORDER BY receiving_date_time DESC
-      LIMIT $2`,
-    [String(maxAgeDays), limit],
-  );
-
-  const results: ReconcileResult[] = [];
-  let promoted = 0;
-  for (const row of candidates.rows) {
-    const r = await reconcileUnmatchedReceiving(Number(row.id));
-    results.push(r);
-    if (r.promoted) promoted++;
-  }
-
-  return { scanned: candidates.rows.length, promoted, results };
 }

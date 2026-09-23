@@ -27,7 +27,7 @@ This plan is **concrete and executable**. It prioritizes low-risk, high-signal w
 - **Legacy surface**: Setup/bootstrap routes (`setup-db`, `drizzle-setup`, etc.) removed in Phase 2 (historical only; modern path is `npm run db:migrate` + pending migrations runner).
 - **Dual paths**: Many Inventory V1 implementations behind `isInventoryV2*` flags.
 - **Deprecated structures**: Old "Shipped table" references in schema + comments.
-- **Good existing signals**: `dependency-cruiser` (with `no-orphans` rule), rich `context/` and `docs/` explaining historical refactors.
+- **Good existing signals**: `dependency-cruiser` (with `no-orphans` rule), a rich `docs/` tree explaining historical refactors.
 
 ## Phase Overview
 
@@ -156,7 +156,7 @@ In `scripts/`:
 - These routes are break-glass / historical.
 
 **Options** (decide per route):
-A. Delete entirely + update all references in README, `context/`, `docs/`, `docs/security/route-permissions.json`, audit scripts.
+A. Delete entirely + update all references in README, `docs/`, `docs/security/route-permissions.json`, audit scripts.
 B. Keep but return 410 Gone with a clear message and remove the heavy implementation.
 C. Move implementation to `scripts/` and keep a minimal authenticated stub.
 
@@ -318,7 +318,7 @@ Search for remnants of the "task templates + tags + daily checklist" system ment
 ### 7.4 Documentation maintenance
 
 - Keep `docs/dead-code-triage.md` up to date.
-- When a whole subsystem is cleaned (e.g. old receiving modes), add a short note in the relevant `context/WORKFLOW-*.md` or `docs/`.
+- When a whole subsystem is cleaned (e.g. old receiving modes), add a short note in the relevant the relevant `docs/` area folder.
 
 ---
 

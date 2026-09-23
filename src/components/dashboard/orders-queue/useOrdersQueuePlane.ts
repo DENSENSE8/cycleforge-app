@@ -283,10 +283,9 @@ export function useOrdersQueuePlane({
         return;
       }
 
-      // Sheets click-select is off on to-ship: the checkbox gutter owns the
-      // bulk set. Row body must NOT open the documents / order right rail —
-      // that parked prior panels with a "Draft saved." toast on every click
-      // (operator 2026-09-01).
+      // Checkbox gutter remains the only bulk-select gesture. A row-body tap is
+      // the record-open gesture: mobile and desktop now share the same V1
+      // order → documents path without turning a row tap into selection.
       if (clickSelect) {
         if ((event?.detail ?? 1) > 1) return;
         if (event?.shiftKey) {
@@ -296,6 +295,7 @@ export function useOrdersQueuePlane({
         toggle(Number(record.id), false);
         return;
       }
+      handleRowClick(record);
     },
     [railSelection, clickSelect, handleRowClick, toggle],
   );

@@ -88,6 +88,7 @@ export function KioskEntryField({
   multiline = false,
   icon,
   testId,
+  idScope,
 }: {
   name: string;
   value: string;
@@ -106,8 +107,20 @@ export function KioskEntryField({
    */
   icon?: ReactNode;
   testId?: string;
+  /**
+   * Disambiguator for the derived DOM id.
+   *
+   * REQUIRED when the same field NAME repeats on one screen — the repair
+   * pane's device repeater asks every device for its own "Serial number".
+   * Without it every copy after the first shares an id with the first, so its
+   * `<label for>` resolves to the wrong input and a screen reader announces
+   * the wrong device's field.
+   */
+  idScope?: string;
 }) {
-  const id = `kiosk-entry-${name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()}`;
+  const id = ['kiosk-entry', idScope, name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()]
+    .filter(Boolean)
+    .join('-');
   const withIcon = Boolean(icon) && !multiline;
   return (
     <div className={withIcon ? KIOSK_POS_ENTRY_ICON_HOST : undefined}>

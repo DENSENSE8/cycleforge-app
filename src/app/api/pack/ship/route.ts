@@ -9,6 +9,8 @@ import { tapWorkflow } from '@/lib/workflow/tap';
 import { isUnifiedEngineFulfillmentTaps, isFulfillmentSubstitution } from '@/lib/feature-flags';
 import { clearOrderPackPlacement } from '@/lib/packing/pack-placement';
 import { clearUnitPackPlacement } from '@/lib/packing/unit-pack-placement';
+import { createPackerLog } from '@/lib/packing/packer-log-writer';
+import { createStationActivityLog } from '@/lib/station-activity';
 
 /**
  * Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a
@@ -343,35 +345,33 @@ export const POST = withAuth(async (request, ctx) => {
 
       // 6. One packer_logs row for the order — keeps the existing
       //    shipped-dashboard query working.
-      const packerLog = await client.query<{ id: number }>(
-        `INSERT INTO packer_logs (organization_id, shipment_id, scan_ref, tracking_type, packed_by)
-         VALUES ($4::uuid, $1, $2, 'ORDERS', $3)
-         RETURNING id`,
-        [order.shipment_id ?? null, trackingNumber, actorStaffId, ctx.organizationId],
-      );
+      const packerLog = await createPackerLog(client, {
+        organizationId: ctx.organizationId,
+        shipmentId: order.shipment_id ?? null,
+        scanRef: trackingNumber,
+        trackingType: 'ORDERS',
+        packedBy: actorStaffId,
+        source: 'pack.ship',
+      });
 
       // 7. One SAL row for cross-station visibility.
-      await client.query(
-        `INSERT INTO station_activity_logs (
-           station, activity_type, shipment_id, scan_ref, staff_id, packer_log_id, notes, metadata, organization_id
-         )
-         VALUES ('PACK', 'PACK_SHIPPED', $1, $2, $3, $4, $5, $6::jsonb, $7)`,
-        [
-          order.shipment_id ?? null,
-          trackingNumber,
-          actorStaffId,
-          packerLog.rows[0]?.id ?? null,
-          `inventory v2 shipped order=${orderId} units=${perUnit.length}`,
-          JSON.stringify({
-            source: 'pack.ship',
-            order_id: orderId,
-            tracking_number: trackingNumber,
-            carrier,
-            units: perUnit.length,
-          }),
-          ctx.organizationId,
-        ],
-      );
+      await createStationActivityLog(client, {
+        organizationId: ctx.organizationId,
+        station: 'PACK',
+        activityType: 'PACK_SHIPPED',
+        shipmentId: order.shipment_id ?? null,
+        scanRef: trackingNumber,
+        staffId: actorStaffId,
+        packerLogId: packerLog?.id ?? null,
+        notes: `inventory v2 shipped order=${orderId} units=${perUnit.length}`,
+        metadata: {
+          source: 'pack.ship',
+          order_id: orderId,
+          tracking_number: trackingNumber,
+          carrier,
+          units: perUnit.length,
+        },
+      });
 
       // 8. Flip the order status last so observers see the events first.
       await client.query(
@@ -405,7 +405,7 @@ export const POST = withAuth(async (request, ctx) => {
         shipmentId: order.shipment_id ?? null,
         shipped_unit_count: perUnit.length,
         units: perUnit,
-        packer_log_id: packerLog.rows[0]?.id ?? null,
+        packer_log_id: packerLog?.id ?? null,
       };
     });
 

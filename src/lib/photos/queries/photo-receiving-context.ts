@@ -1,4 +1,5 @@
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
  * Viewer-only provenance detail for one photo, resolved from its RECEIVING /
@@ -25,14 +26,15 @@ export interface PhotoReceivingContext {
 
 export async function getPhotoReceivingContext(
   photoId: number,
-  organizationId: string,
+  organizationId: OrgId,
 ): Promise<PhotoReceivingContext | null> {
-  const res = await pool.query<{
+  const res = await tenantQuery<{
     carton_id: number | string | null;
     claim: string | null;
     tracking: string | null;
     serials: string[] | null;
   }>(
+    organizationId,
     `
     WITH lnk AS (
       SELECT

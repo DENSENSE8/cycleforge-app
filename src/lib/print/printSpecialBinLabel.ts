@@ -13,8 +13,8 @@
  * the left of the bottom row.
  */
 
-import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
-import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
+import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { printLabelFacesJob } from '@/lib/print/printLabelFacesJob';
 import {
   DEFAULT_RETURNS_TEST_BIN_BARCODE,
   returnsTestBinSymbol,
@@ -127,7 +127,13 @@ export function specialBinPayloadToFace(payload: SpecialBinLabelPayload): LabelF
   };
 }
 
-/** Print a 2×1 flat-barcode location label (silent USB when paired). */
+/**
+ * Print a 2×1 flat-barcode location label (silent USB when paired).
+ *
+ * `copies` rides the shared plate run rather than a printer repeat count — the
+ * CX418 answers `PRINT N,1` on a raster job with one label, so N stickers have
+ * to be N jobs (see `labelCopies.expandPlateRun`).
+ */
 async function printFlatLocationTagJob(
   payload: SpecialBinLabelPayload,
   copies = 1,
@@ -136,16 +142,10 @@ async function printFlatLocationTagJob(
   const face = specialBinPayloadToFace(payload);
   if (!face.matrix.value) return 'skipped';
 
-  const legacyPopup = reserveLegacyPrintPopup();
-  const { printLabelJob } = await import('@/lib/print/printLabel');
-  return printLabelJob({
+  return printLabelFacesJob({
+    faces: [face],
     name: payload.docName?.trim() || `Bin ${face.matrix.value}`,
-    ...buildFaceInfoHtml(face),
-    dataMatrix: face.matrix,
-    hri: face.hri,
-    face,
     copies: clampLabelCopies(copies),
-    legacyPopup,
   });
 }
 

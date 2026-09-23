@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { listSweepOrgIds } from '@/lib/cron/for-each-org';
@@ -31,9 +31,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   const dryRun = request.nextUrl.searchParams.get('dryRun') === '1';
 
   try {

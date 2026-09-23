@@ -190,20 +190,6 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 /** The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER}. */
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
 
-/**
- * GlobalHeader / spine-top icon faces — sidebar toggle, Search, and every
- * other HEADER_ICON_BTN_CLASS glyph.
- *
- * Main worktree paints these with `cornerClass('control')` → `rounded-lg`
- * (8px). Prod's `control` role stays flush (ops ladder). This named
- * exemption is that 8px rung, once, so the nav cluster cannot disagree
- * with main while `cornerClass('control')` keeps industrial square on
- * fields and workbench chrome.
- *
- * Not a licence to round an ops CTA or a table cell. Import this (or
- * HEADER_ICON_BTN_CLASS); never hand-write `rounded-lg` on a header icon.
- */
-export const HEADER_ICON_CORNER = 'rounded-lg';
 
 /**
  * MasterNav destination rows and the open-spine labelled Search face.

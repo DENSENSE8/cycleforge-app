@@ -24,7 +24,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
 import { effectivePermissionsForStaff } from '@/lib/auth/role-store';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
@@ -500,4 +500,42 @@ export async function resolveKioskStepUp(
     if (err instanceof PinError) return null;
     throw err;
   }
+}
+
+// ── Pinless staff sign-in (counter tools, not money) ────────────────────────
+
+/**
+ * Resolve a staffer the counter tablet SIGNED IN as, without a PIN.
+ *
+ * Operator 2026-09-22: *"remove the pin, use the same pinless sign in for the
+ * switching staff — this is dogfood."* The desk's own staff switch
+ * (`/api/auth/act-as-staff`, `SwitchStaffSheet`) has been PIN-less since
+ * 2026-09-15; the tablet's History face is the same act — naming who is
+ * standing there so the audit row has an actor — so it takes the same form.
+ *
+ * This is an IDENTITY CLAIM, not proof, and that is the whole difference from
+ * {@link resolveKioskStepUp}: it must never gate money. Payment keeps the PIN
+ * pad. What it does guarantee is that the claimed staffer is a real, active
+ * member of the DEVICE's org, so a tablet cannot attribute a reprint to a
+ * staffer in another tenant or to a deactivated account.
+ *
+ * Returns null for an unknown, deactivated or cross-org id.
+ */
+export async function resolveKioskStaffActor(
+  orgId: OrgId,
+  staffId: number,
+): Promise<number | null> {
+  if (!Number.isFinite(staffId) || staffId <= 0) return null;
+  const res = await tenantQuery<{ id: number }>(
+    orgId,
+    `SELECT id
+       FROM staff
+      WHERE id = $1
+        AND organization_id = $2
+        AND COALESCE(status, 'active') IN ('active', 'invited')
+        AND COALESCE(active, true) = true
+      LIMIT 1`,
+    [staffId, orgId],
+  );
+  return res.rows[0] ? Number(res.rows[0].id) : null;
 }

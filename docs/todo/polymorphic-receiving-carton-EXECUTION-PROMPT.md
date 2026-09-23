@@ -44,7 +44,7 @@ Zendesk, …) are connectors behind capability facades.
    (`entity_type`/`entity_id`, named CHECK, org-led indexes, tenant-from-birth, Drizzle same PR).
 4. `CLAUDE.md` + `.claude/rules/source-of-truth.md` + `.claude/rules/backend-patterns.md` +
    `.claude/rules/build-gotchas.md` + `.claude/rules/contextual-display.md`.
-5. `context/WORKFLOW-RECEIVING.md` — triage vs unbox semantics (independent timestamps).
+5. `docs/workflows/receiving.md` — triage vs unbox semantics (independent timestamps).
 6. Skills when triggered: `db-migration-author`, `new-route`, `domain-unit-test`, `org-scope`,
    `sidebar-mode`, `station-block`.
 7. Live evidence of what already shipped (do not redo):
@@ -83,7 +83,7 @@ Zendesk, …) are connectors behind capability facades.
 
 - **Work on `main` only.** Never create/switch branches. Never `git stash`. Never commit/push unless
   the human explicitly asks — leave the tree for GitHub Desktop.
-- **Never commit `.env`.** Document new env in `context/ENV-VARS.md` + blank `.env.example`.
+- **Never commit `.env`.** Document new env in `docs/ENV-VARS.md` + blank `.env.example`.
 - **Status changes only via `transition()` / `transitionReceivingLine()`** — end state: grep finds
   **zero** inline `UPDATE … SET workflow_status` outside the state-machine module (plan §10).
 - **Audit only via `recordAudit()`** with `AUDIT_ACTION` / `AUDIT_ENTITY` constants.

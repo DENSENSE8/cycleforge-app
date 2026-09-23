@@ -8,6 +8,7 @@ import { Button } from '@/design-system/primitives';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 interface RatesResponse {
@@ -58,7 +59,7 @@ interface BuyLabelSectionProps {
   /** Called after a purchase or void so the parent refreshes the document tray. */
   onChange: () => void;
   /**
-   * Station flush host — square faces (`rounded-none`) so Buy Label matches
+   * Station flush host — square faces (`cornerClass('flush')`) so Buy Label matches
    * Unbox pinned chrome under Labels Documents.
    */
   flush?: boolean;
@@ -105,8 +106,8 @@ export function BuyLabelSection({
   onRatesError,
   onPurchased,
 }: BuyLabelSectionProps) {
-  const face = flush ? 'rounded-none' : 'rounded-xl';
-  const faceSm = flush ? 'rounded-none' : 'rounded-lg';
+  const face = cornerClass(flush ? 'flush' : 'field');
+  const faceSm = cornerClass(flush ? 'flush' : 'control');
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [notifyCustomer, setNotifyCustomer] = useState(true);
@@ -213,7 +214,7 @@ export function BuyLabelSection({
             type="button"
             onClick={() => ratesMutation.mutate()}
             disabled={ratesMutation.isPending}
-            className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-violet-600 disabled:opacity-40"
+            className={cn('-my-0.5 flex items-center gap-1 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-text-accent disabled:opacity-40', cornerClass('chip'))}
           >
             {ratesMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
             Refresh
@@ -225,8 +226,8 @@ export function BuyLabelSection({
         {/* ── Success ───────────────────────────────────────────────────── */}
         {bought ? (
           <motion.div key="bought" {...paneMotion} className="space-y-2">
-            <div className={`${face} border border-emerald-200 bg-emerald-50 px-3 py-2.5`}>
-              <div className="flex items-center gap-1.5 text-emerald-700">
+            <div className={`${face} border border-border-success bg-surface-success px-3 py-2.5`}>
+              <div className="flex items-center gap-1.5 text-text-success">
                 <Check className="h-4 w-4" />
                 <span className="text-role-caption font-semibold">
                   {bought.idempotent ? 'Label already purchased' : 'Label purchased'}
@@ -234,16 +235,16 @@ export function BuyLabelSection({
               </div>
               <dl className="mt-2 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-role-eyebrow uppercase tracking-widest text-emerald-700/70">Tracking</dt>
+                  <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Tracking</dt>
                   <dd className="truncate font-mono text-role-caption font-semibold text-text-default">{bought.tracking}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-role-eyebrow uppercase tracking-widest text-emerald-700/70">Carrier</dt>
+                  <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Carrier</dt>
                   <dd className="text-role-caption font-semibold uppercase text-text-default">{bought.carrier}</dd>
                 </div>
                 {typeof bought.cost === 'number' ? (
                   <div className="flex items-center justify-between gap-2">
-                    <dt className="text-role-eyebrow uppercase tracking-widest text-emerald-700/70">Cost</dt>
+                    <dt className="text-role-eyebrow uppercase tracking-widest text-text-success opacity-70">Cost</dt>
                     <dd className="text-role-caption font-semibold text-text-default">{money(bought.cost, bought.currency)}</dd>
                   </div>
                 ) : null}
@@ -251,7 +252,7 @@ export function BuyLabelSection({
             </div>
 
             {bought.warning ? (
-              <div className={`flex items-start gap-1.5 ${faceSm} border border-dashed border-amber-200 bg-amber-50 px-3 py-2 text-role-eyebrow text-amber-700`}>
+              <div className={`flex items-start gap-1.5 ${faceSm} border border-dashed border-border-warning bg-surface-warning px-3 py-2 text-role-eyebrow text-text-warning`}>
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{bought.warning}</span>
               </div>
@@ -261,16 +262,16 @@ export function BuyLabelSection({
 
             {/* Void / refund */}
             {voidOpen ? (
-              <div className={`space-y-1.5 ${faceSm} border border-rose-200 bg-rose-50 px-3 py-2.5`}>
-                <label className="block text-role-eyebrow uppercase tracking-widest text-rose-700">Reason to void</label>
+              <div className={`space-y-1.5 ${faceSm} border border-border-danger bg-surface-danger px-3 py-2.5`}>
+                <label className="block text-role-eyebrow uppercase tracking-widest text-text-danger">Reason to void</label>
                 <input
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   placeholder="e.g. wrong service selected"
-                  className={cn('w-full', faceSm, 'border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none', focusRing('field', 'danger'))}
+                  className={cn('w-full', faceSm, 'border border-border-danger bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none', focusRing('field', 'danger'))}
                 />
                 {voidMutation.isError ? (
-                  <p className="text-role-eyebrow text-rose-600">{voidMutation.error.message}</p>
+                  <p className="text-role-eyebrow text-text-danger">{voidMutation.error.message}</p>
                 ) : null}
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -299,7 +300,7 @@ export function BuyLabelSection({
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => setVoidOpen(true)}
-                className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-rose-600"
+                className="flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-text-faint hover:text-text-danger"
               >
                 <Trash2 className="h-3 w-3" /> Void / refund this label
               </button>
@@ -308,17 +309,17 @@ export function BuyLabelSection({
         ) : ratesMutation.isPending ? (
           /* ── Loading ────────────────────────────────────────────────── */
           <motion.div key="loading" {...paneMotion} className="flex items-center gap-2 px-1 py-3 text-role-caption text-text-soft">
-            <Loader2 className="h-4 w-4 animate-spin text-violet-600" /> Fetching live rates…
+            <Loader2 className="h-4 w-4 animate-spin text-text-accent" /> Fetching live rates…
           </motion.div>
         ) : ratesMutation.isError ? (
           /* ── Error ──────────────────────────────────────────────────── */
           <motion.div key="error" {...paneMotion}>
-            <div className={`${face} border border-dashed border-rose-200 bg-rose-50 px-4 py-4 text-center`}>
-              <p className="text-role-caption font-semibold text-rose-700">{ratesMutation.error.message}</p>
+            <div className={`${face} border border-dashed border-border-danger bg-surface-danger px-4 py-4 text-center`}>
+              <p className="text-role-caption font-semibold text-text-danger">{ratesMutation.error.message}</p>
               <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
                 type="button"
                 onClick={() => ratesMutation.mutate()}
-                className="mt-1 text-role-eyebrow uppercase tracking-widest text-rose-700 hover:underline"
+                className="mt-1 text-role-eyebrow uppercase tracking-widest text-text-danger hover:underline"
               >
                 Try again
               </button>
@@ -341,10 +342,10 @@ export function BuyLabelSection({
                         type="button"
                         onClick={() => setSelectedRateId(rate.rateId)}
                         className={`flex w-full items-center gap-2 ${faceSm} px-2.5 py-1.5 text-left transition-colors ${
-                          selected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover'
+                          selected ? 'bg-surface-accent ring-1 ring-inset ring-border-accent' : 'hover:bg-surface-hover'
                         }`}
                       >
-                        <Truck className={`h-4 w-4 shrink-0 ${selected ? 'text-blue-600' : 'text-text-faint'}`} />
+                        <Truck className={`h-4 w-4 shrink-0 ${selected ? 'text-text-accent' : 'text-text-faint'}`} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-role-caption font-semibold text-text-default">{rate.carrierName}</p>
                           <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
@@ -358,7 +359,7 @@ export function BuyLabelSection({
                           </p>
                         </div>
                         {i === 0 ? (
-                          <span className="ml-1 shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-emerald-700 ring-1 ring-inset ring-emerald-200 leading-none">
+                          <span className={cn('ml-1 shrink-0 bg-surface-success px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-success ring-1 ring-inset ring-border-success leading-none', cornerClass('chip'))}>
                             Best
                           </span>
                         ) : null}
@@ -378,7 +379,7 @@ export function BuyLabelSection({
             {/* Buy / confirm bar */}
             {selectedRate ? (
               confirming ? (
-                <div className={`space-y-2 ${face} border border-violet-200 bg-violet-50 px-3 py-2.5`}>
+                <div className={`space-y-2 ${face} border border-border-accent bg-surface-accent px-3 py-2.5`}>
                   <p className="text-role-caption font-semibold text-text-default">
                     Purchase this <span className="font-semibold">{money(selectedRate.amount, selectedRate.currency)}</span>{' '}
                     {selectedRate.carrierName} {selectedRate.serviceName} label?
@@ -388,12 +389,12 @@ export function BuyLabelSection({
                       type="checkbox"
                       checked={notifyCustomer}
                       onChange={(e) => setNotifyCustomer(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-border-default text-violet-600"
+                      className={cn('h-3.5 w-3.5 border-border-default text-text-accent', cornerClass('chip'))}
                     />
                     Email the customer a tracking notification
                   </label>
                   {buyMutation.isError ? (
-                    <p className="text-role-eyebrow text-rose-600">{buyMutation.error.message}</p>
+                    <p className="text-role-eyebrow text-text-danger">{buyMutation.error.message}</p>
                   ) : null}
                   <div className="flex items-center gap-1.5">
                     <Button
@@ -413,7 +414,7 @@ export function BuyLabelSection({
                       icon={buyMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                       disabled={buyMutation.isPending}
                       onClick={() => selectedRate && buyMutation.mutate(selectedRate)}
-                      className="flex-1 bg-violet-600 text-white hover:bg-violet-700"
+                      className="flex-1 bg-accent-bg text-text-inverse hover:bg-accent-hover"
                     >
                       Confirm & buy
                     </Button>
@@ -425,7 +426,7 @@ export function BuyLabelSection({
                   variant="primary"
                   icon={<Truck className="h-4 w-4" />}
                   onClick={() => setConfirming(true)}
-                  className="w-full bg-violet-600 text-white hover:bg-violet-700"
+                  className="w-full bg-accent-bg text-text-inverse hover:bg-accent-hover"
                 >
                   Buy {money(selectedRate.amount, selectedRate.currency)} label
                 </Button>

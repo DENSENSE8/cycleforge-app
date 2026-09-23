@@ -197,6 +197,21 @@ export const SHIP_OUT_LATERAL = `
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by`;
 
 /**
+ * Latest physical dock-stage scan for a shipment. This is deliberately
+ * separate from packing: a packed carton is not eligible for scan-out until
+ * this append-only `DOCK_STAGED` event exists.
+ */
+export const DOCK_STAGING_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT MAX(stage.created_at) AS dock_staged_at
+      FROM station_activity_logs stage
+      WHERE stage.activity_type = 'DOCK_STAGED'
+        AND o.shipment_id IS NOT NULL
+        AND stage.shipment_id = o.shipment_id
+        AND stage.organization_id = o.organization_id
+    ) dock_stage ON true`;
+
+/**
  * The two ESTIMATE arms of an order line's price. Aliases: `listing_price`
  * (channel ask for the SKU), `unit_price` (ask for the exact allocated box).
  * `orders.sale_amount` needs no lateral — it is already on the row.
@@ -434,6 +449,7 @@ const ORDER_SERIALS_CTE = `
       WHERE pl.shipment_id IS NOT NULL
         AND pl.shipment_id = o.shipment_id
         AND pl.tracking_type = 'ORDERS'
+        AND pl.completion_state = 'COMPLETED'
       ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC
       LIMIT 1
     ) pl ON true
@@ -681,6 +697,7 @@ export async function getPackedOrdersForAi(opts: {
         WHERE pl2.shipment_id IS NOT NULL
           AND pl2.shipment_id = o.shipment_id
           AND pl2.tracking_type = 'ORDERS'
+          AND pl2.completion_state = 'COMPLETED'
         ORDER BY pl2.created_at DESC NULLS LAST LIMIT 1
       ) pl ON true
       LEFT JOIN LATERAL (
@@ -891,6 +908,7 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           WHERE pl.shipment_id IS NOT NULL
             AND pl.shipment_id = o.shipment_id
             AND pl.tracking_type = 'ORDERS'
+            AND pl.completion_state = 'COMPLETED'
           ORDER BY pl.created_at DESC NULLS LAST, id DESC LIMIT 1
         ) pl ON true
         LEFT JOIN LATERAL (
@@ -1612,4 +1630,3 @@ export async function getOrderById(id: number, orgId?: OrgId): Promise<Record<st
     : await pool.query(sql, params);
   return result.rows[0] ?? null;
 }
-

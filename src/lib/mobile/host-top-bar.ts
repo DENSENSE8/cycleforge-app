@@ -39,6 +39,8 @@ export const OWN_TOP_BAR_PREFIXES = [
   // Order import owns an X + title bar; a host header above it would stack two
   // chromes on one screen (operator 2026-09-15).
   '/m/orders/sync',
+  // Exception records own MobileDetailTopBar; the queue keeps the host bar.
+  '/m/exceptions/',
 ] as const;
 
 /**

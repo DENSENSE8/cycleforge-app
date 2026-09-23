@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { Check, Minus } from '@/components/Icons';
+import { Button } from '@/design-system/primitives/Button';
 import type { StationTheme } from '@/utils/staff-colors';
 import { printQueueTableUi } from '@/utils/staff-colors';
 
@@ -31,8 +32,11 @@ export function PrintTableCheckbox({
   const u = printQueueTableUi[stationTheme];
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
+      radius="flush"
       onClick={(event) => {
         event.stopPropagation();
         if (disabled) return;
@@ -47,8 +51,7 @@ export function PrintTableCheckbox({
       aria-disabled={disabled}
       aria-label={label ?? (checked ? 'Deselect item' : 'Select item')}
       className={[
-        'ds-raw-button',
-        'relative flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] transition-all duration-150 outline-none',
+        'relative flex h-5 w-5 flex-shrink-0 items-center justify-center border transition-all duration-150 outline-none',
         u.checkboxFocusRing,
         disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
         className ?? '',
@@ -66,7 +69,7 @@ export function PrintTableCheckbox({
             exit={reducedMotion ? undefined : { scale: 0 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <Minus className="w-[10px] h-[10px] text-white stroke-[3]" />
+            <Minus className="w-[10px] h-[10px] text-text-inverse stroke-[3]" />
           </motion.span>
         ) : checked ? (
           <motion.span
@@ -76,10 +79,10 @@ export function PrintTableCheckbox({
             exit={reducedMotion ? undefined : { scale: 0 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <Check className="w-[10px] h-[10px] text-white stroke-[3]" />
+            <Check className="w-[10px] h-[10px] text-text-inverse stroke-[3]" />
           </motion.span>
         ) : null}
       </AnimatePresence>
-    </button>
+    </Button>
   );
 }

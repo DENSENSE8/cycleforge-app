@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sheets as googleSheets } from '@googleapis/sheets';
 import { getGoogleAuth } from '@/lib/google-auth';
+import { getIntegrationCredentials, type GoogleSheetsCredentials } from '@/lib/integrations/credentials';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { normalizePSTTimestamp } from '@/utils/date';
@@ -13,31 +14,30 @@ import {
     upsertOpenOrdersException,
 } from '@/lib/sync/sheet-sync-common';
 import { withAuth } from '@/lib/auth/withAuth';
-import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
+import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { createPackerLog } from '@/lib/packing/packer-log-writer';
+import { attachTechSerial } from '@/lib/inventory/tech-serial';
 
-// No hardcoded default — the dogfood sheet id lives in the SPREADSHEET_ID env
-// (audit F30: never a tenant's live document id in source). Missing env → 503.
-function requiredSpreadsheetId(): string | null {
-  const v = (process.env.SPREADSHEET_ID ?? '').trim();
-  return v || null;
-}
 const FBA_LIKE_RE = /^(X00|X0|B0|FBA)/i;
+
+async function getGoogleSheetsClient(orgId: OrgId) {
+    const credentials = await getIntegrationCredentials<GoogleSheetsCredentials>(orgId, 'google_sheets');
+    const spreadsheetId = credentials?.defaultSpreadsheetId?.trim();
+    if (!credentials || !spreadsheetId) {
+        throw new Error('Google Sheets credentials and source spreadsheet are not configured for this organization.');
+    }
+    return {
+        sheets: googleSheets({ version: 'v4', auth: getGoogleAuth(credentials) }),
+        spreadsheetId,
+    };
+}
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
     try {
         const { scriptName } = await req.json();
         const orgId = ctx.organizationId;
-
-        // Fail closed when no sheet is configured — never fall back to a
-        // hardcoded (dogfood) document id.
-        if (!requiredSpreadsheetId()) {
-            return NextResponse.json(
-                { success: false, error: 'SPREADSHEET_ID is not configured for this deployment.' },
-                { status: 503 },
-            );
-        }
 
         switch (scriptName) {
             case 'checkShippedOrders':
@@ -72,6 +72,7 @@ async function executeCheckShippedOrders(orgId: OrgId) {
          FROM orders o
          INNER JOIN packer_logs pl ON pl.shipment_id = o.shipment_id
            AND pl.organization_id = o.organization_id
+           AND pl.completion_state = 'COMPLETED'
          WHERE o.shipment_id IS NOT NULL
            AND pl.tracking_type = 'ORDERS'
            AND o.organization_id = $1`,
@@ -86,10 +87,7 @@ async function executeCheckShippedOrders(orgId: OrgId) {
 }
 
 async function executeSyncTechSerialNumbers(orgId: OrgId) {
-    const auth = getGoogleAuth();
-    const sheets = googleSheets({ version: 'v4', auth });
-    const spreadsheetId = requiredSpreadsheetId();
-    if (!spreadsheetId) throw new Error('SPREADSHEET_ID is not configured');
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient(orgId);
 
     const techSheets = [
         { name: 'tech_1', testedBy: 1 },
@@ -218,20 +216,18 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
                     continue;
                 }
 
-                await client.query(
-                    `INSERT INTO tech_serial_numbers (
-                        shipment_id,
-                        scan_ref,
-                        serial_number,
-                        serial_type,
-                        created_at,
-                        tested_by,
-                        organization_id
-                    ) VALUES ($1, $2, $3, 'SERIAL', $4, $5, $6)`,
-                    [tsnShipmentId, tsnScanRef, serialNumber, testDateTime, techSheet.testedBy, orgId]
-                );
+                const insertedTsn = await attachTechSerial({
+                    serialNumber,
+                    serialType: 'SERIAL',
+                    shipmentId: tsnShipmentId,
+                    scanRef: tsnScanRef,
+                    testedBy: techSheet.testedBy,
+                    organizationId: orgId,
+                    createdAt: testDateTime,
+                }, client, orgId);
 
-                insertedForSheet++;
+                if (insertedTsn.id != null) insertedForSheet++;
+                else skippedExistingForSheet++;
             }
 
             totalInserted += insertedForSheet;
@@ -256,10 +252,7 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
 }
 
 async function executeSyncPackerLogs(orgId: OrgId) {
-    const auth = getGoogleAuth();
-    const sheets = googleSheets({ version: 'v4', auth });
-    const spreadsheetId = requiredSpreadsheetId();
-    if (!spreadsheetId) throw new Error('SPREADSHEET_ID is not configured');
+    const { sheets, spreadsheetId } = await getGoogleSheetsClient(orgId);
 
     const packerSheets = [
         { name: 'packer_1', packedBy: 4 },
@@ -344,22 +337,19 @@ async function executeSyncPackerLogs(orgId: OrgId) {
                     continue;
                 }
 
-                const insertedPl = await client.query(
-                    `INSERT INTO packer_logs (
-                        shipment_id,
-                        scan_ref,
-                        tracking_type,
-                        created_at,
-                        packed_by,
-                        organization_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6)
-                    RETURNING id`,
-                    [plShipmentId, plScanRef, 'ORDERS', normalizePSTTimestamp(packDateTime) ?? null, packerSheet.packedBy, orgId]
-                );
+                const insertedPl = await createPackerLog(client, {
+                    organizationId: orgId,
+                    shipmentId: plShipmentId,
+                    scanRef: plScanRef,
+                    trackingType: 'ORDERS',
+                    createdAt: normalizePSTTimestamp(packDateTime) ?? null,
+                    packedBy: packerSheet.packedBy,
+                    source: 'google-sheets.packer-import',
+                });
 
-                const insertedPlId = (insertedPl.rows[0]?.id as number | undefined) ?? null;
+                const insertedPlId = insertedPl?.id ?? null;
                 if (insertedPlId) {
-                    await mirrorLegacyPackToAllocations({
+                    await mirrorLegacyPackingToAllocations({
                         packerLogId: insertedPlId,
                         shipmentId: plShipmentId ?? null,
                         actorStaffId: packerSheet.packedBy ?? null,

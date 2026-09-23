@@ -25,6 +25,7 @@ import {
   getSidebarNavItems,
   spineSectionIdForPage,
 } from '../src/lib/sidebar-navigation';
+import { evaluateOutboundWorkflowContract } from '../src/lib/mobile/mobile-first-surface';
 
 const asJson = process.argv.includes('--json');
 
@@ -40,7 +41,8 @@ try {
     (s) => `hidden lane "${s.id}" still paints a spine header`,
   );
 
-  const violations = [...leaks, ...headerLeaks];
+  const outboundWorkflow = evaluateOutboundWorkflowContract();
+  const violations = [...leaks, ...headerLeaks, ...outboundWorkflow.violations];
   const painted = DESK_SPINE_SECTIONS.map((s) => s.label);
 
   if (asJson) {
@@ -50,8 +52,9 @@ try {
           ok: violations.length === 0,
           paintedLaneHeaders: painted,
           ledger,
+          outboundWorkflow,
           violations,
-          law: 'A lane the phone cannot run gets no door (operator 2026-09-14). "hidden" removes the DOOR, not the route; "desk-only" still displays and is queued for its port. Port a lane by flipping ONE entry in src/lib/nav/lanes.ts.',
+          law: 'A lane the phone cannot run gets no door. Outbound uses one workflow contract: mobile owns completion paths; desktop and stations are projections, not separate status machines.',
         },
         null,
         2,
@@ -60,6 +63,7 @@ try {
   } else {
     process.stdout.write(
       `mobile-first-guard: lanes painted → ${painted.join(' · ')}\n` +
+        `outbound workflow contract: v${outboundWorkflow.version} · ${outboundWorkflow.stages.length} stages\n` +
         `${ledger.map((r) => `  ${r.status.padEnd(9)} ${r.lane}`).join('\n')}\n` +
         (violations.length === 0
           ? 'no hidden lane has a door.\n'

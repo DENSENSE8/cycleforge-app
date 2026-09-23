@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Wrench, X, Check, Printer, Loader2 } from '../Icons';
+import { ChevronLeft, ChevronRight, Wrench, X, Check, Printer } from '../Icons';
 import { ProductSelector, type SelectedItem } from './ProductSelector';
 import { ReasonSelector } from './ReasonSelector';
 import { CustomerInfoForm, CONTACT_FIELDS } from './CustomerInfoForm';
@@ -12,14 +12,11 @@ import {
     RepairIntakeStepper,
     type RepairIntakeStepKey,
 } from './RepairIntakeStepper';
-import { FavoritesWorkspaceSection } from '@/components/sidebar/FavoritesWorkspaceSection';
 import { RepairPaperworkSheet } from './RepairPaperworkSheet';
 import { TextField, Button, IconButton } from '@/design-system/primitives';
-import type { FavoriteSkuRecord } from '@/lib/favorites/sku-favorites';
 import { REPAIR_STEP_COPY, buildInitialFormData, isContactFieldValid, canSubmitRepairIntake, getRepairSubmitBlockReason, hasRepairIssue, isContactComplete, isProductSelected } from './repair-intake-logic';
 import { useRepairIntakeData } from './useRepairIntakeData';
 import { useRepairCustomerSearch, type ExistingCustomer } from './useRepairCustomerSearch';
-import { buildDraftFromFavorite, favoriteToSelectedItems, fetchFavoriteIntakeContext } from './repair-favorite-intake';
 import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
 import { formatRepairSubmittedChromeLabel } from '@/lib/repair/repair-paper-ticket';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -41,7 +38,6 @@ interface RepairIntakeFormProps {
     /** Resolve with the created repair on success; resolve null/throw on failure. */
     onSubmit: (data: RepairFormData) => Promise<RepairSubmitResult | null | void>;
     initialData?: Partial<RepairFormData>;
-    favoriteSkuId?: number | null;
     /**
      * Headless kiosk variant (device principal, no staff session): a team member
      * fills this WITH the customer at the front desk. Hides staff-only
@@ -50,9 +46,10 @@ interface RepairIntakeFormProps {
      * The Ecwid category browser is the SAME `ProductSelector` staff use, just
      * pointed at the device-authed `/api/kiosk/repair/*` twins and with manual
      * entry suppressed — a kiosk repair always resolves to a real `-RS` SKU.
-     * Repair favorites load read-only from `/api/kiosk/repair/favorites`. Default off
-     * = the unchanged /repair staff flow. Submit still goes through the injected
-     * `onSubmit` (the kiosk host points it at the device-authed route).
+     * The picker lands on the repair FAVORITES scope on both surfaces; there is
+     * no separate favorites rail any more (2026-09-16). Submit still goes
+     * through the injected `onSubmit` (the kiosk host points it at the
+     * device-authed route).
      */
     kioskMode?: boolean;
 }
@@ -82,7 +79,7 @@ export interface RepairFormData {
 const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
 const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
-export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId, kioskMode = false }: RepairIntakeFormProps) {
+export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = false }: RepairIntakeFormProps) {
     // The kiosk runs full-screen on a front-desk tablet, so the 720px staff-modal
     // column left ~40% of the glass empty while the catalog stacked one item per
     // row. 960px is still a sane form measure for the contact/review steps (no
@@ -94,7 +91,6 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
     const [currentStep, setCurrentStep] = useState<RepairIntakeStepKey>('product');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
-    const [isFetchingFavorite, setIsFetchingFavorite] = useState(false);
     const [showPaperwork, setShowPaperwork] = useState(false);
     const [submitted, setSubmitted] = useState<RepairSubmitResult | null>(null);
 
@@ -107,7 +103,12 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
     const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
     const [contactFieldIndex, setContactFieldIndex] = useState(0);
 
-    const { techs, loadingTechs, skuIssues } = useRepairIntakeData(favoriteSkuId, kioskMode);
+    // Per-SKU reasons follow the PICKED product now — a favorite is just a
+    // pinned catalog row, so there is no curation id to key them off.
+    const { techs, loadingTechs, skuIssues } = useRepairIntakeData(
+        formData.product.sourceSku,
+        kioskMode,
+    );
     const { customerResults, loadingCustomers, customerSearchError } = useRepairCustomerSearch(
         !kioskMode && currentStep === 'contact' && customerMode === 'existing',
         customerQuery,
@@ -181,44 +182,6 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
             product: { type: 'Bose Repair Service', model, sourceSku: sku },
             price: price > 0 ? price.toFixed(2) : prev.price,
         }));
-    };
-
-    const handleUseFavorite = async (favorite: FavoriteSkuRecord) => {
-        setIsFetchingFavorite(true);
-        try {
-            // Kiosk device token cannot hit Ecwid / repair-issues — apply the
-            // cached favorite fields only (same fall-through the staff path uses
-            // when those fetches fail).
-            if (kioskMode) {
-                const items = favoriteToSelectedItems(favorite);
-                const draft = buildDraftFromFavorite(favorite);
-                setSelectedItems(items);
-                setFormData((prev) => ({
-                    ...prev,
-                    ...draft,
-                    product: draft.product ?? prev.product,
-                    customer: prev.customer,
-                    serialNumber: prev.serialNumber,
-                }));
-                setCurrentStep('issue');
-                return;
-            }
-
-            const { ecwidProduct, skuReasons } = await fetchFavoriteIntakeContext(favorite);
-            const items = favoriteToSelectedItems(favorite, ecwidProduct);
-            const draft = buildDraftFromFavorite(favorite, ecwidProduct, skuReasons);
-            setSelectedItems(items);
-            setFormData((prev) => ({
-                ...prev,
-                ...draft,
-                product: draft.product ?? prev.product,
-                customer: prev.customer,
-                serialNumber: prev.serialNumber,
-            }));
-            setCurrentStep('issue');
-        } finally {
-            setIsFetchingFavorite(false);
-        }
     };
 
     const handleNext = () => {
@@ -563,76 +526,28 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                     )}
 
                     {currentStep === 'product' && (
+                        // ONE picker, both principals. The favorites that used to
+                        // sit above it in their own quick-pick rail are now the
+                        // scope this picker LANDS on (`favoritesWorkspace`), with
+                        // All products and the categories behind its dropdown —
+                        // so a common repair is one tap and every other product
+                        // is reached the same way it always was.
                         <div className="relative space-y-8">
-                            {isFetchingFavorite && (
-                                <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-surface-card/80 backdrop-blur-sm">
-                                    <div className="flex items-center gap-2 text-text-muted">
-                                        <Loader2 className="h-5 w-5 animate-spin" />
-                                        <span className={SECTION_LABEL}>Loading product…</span>
-                                    </div>
-                                </div>
-                            )}
-                            {kioskMode ? (
-                                // Device principal: read-only repair favorites via
-                                // `/api/kiosk/repair/favorites`, plus a manual product
-                                // field when nothing matches. Price stays on Contact.
-                                <div className="space-y-8">
-                                    <FavoritesWorkspaceSection
-                                        variant="quick-pick"
-                                        workspaceKey="repair"
-                                        accent="blue"
-                                        title="Common repairs"
-                                        description=""
-                                        emptyLabel="No common repairs yet — search the catalog below"
-                                        useLabel="Start repair"
-                                        readOnly
-                                        listUrl="/api/kiosk/repair/favorites"
-                                        onUseFavorite={handleUseFavorite}
-                                    />
-
-                                    {/* No "All products" eyebrow here — the selector opens
-                                        with its own search + CATEGORIES heading, so the
-                                        label only pushed search further down the page. */}
-                                    <ProductSelector
-                                        onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
-                                        selectedProduct={formData.product.type ? formData.product : null}
-                                        onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
-                                        selectedItems={selectedItems}
-                                        onSelectedItemsChange={handleSelectedItemsChange}
-                                        apiBasePath="/api/kiosk/repair"
-                                        hideManualEntry
-                                        flowInPage
-                                    />
-                                </div>
-                            ) : (
-                                <>
-                                    <FavoritesWorkspaceSection
-                                        variant="quick-pick"
-                                        workspaceKey="repair"
-                                        accent="blue"
-                                        title="Common repairs"
-                                        description=""
-                                        emptyLabel="No repair favorites yet"
-                                        useLabel="Start repair"
-                                        allowRepairDefaults
-                                        onUseFavorite={handleUseFavorite}
-                                        searchSkuSuffixFilter="-RS"
-                                        fuzzyTitleSearch
-                                    />
-
-                                    <section className="space-y-3">
-                                        <p className={SECTION_LABEL}>All products</p>
-                                        <ProductSelector
-                                            onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
-                                            selectedProduct={formData.product.type ? formData.product : null}
-                                            onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
-                                            fillHeight
-                                            selectedItems={selectedItems}
-                                            onSelectedItemsChange={handleSelectedItemsChange}
-                                        />
-                                    </section>
-                                </>
-                            )}
+                            <ProductSelector
+                                onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
+                                selectedProduct={formData.product.type ? formData.product : null}
+                                onPriceChange={(price) => setFormData(prev => ({ ...prev, price }))}
+                                selectedItems={selectedItems}
+                                onSelectedItemsChange={handleSelectedItemsChange}
+                                favoritesWorkspace="repair"
+                                // Device principal reads/writes the same list
+                                // through the kiosk twins; a staff session uses
+                                // the default `/api/repair` pair.
+                                apiBasePath={kioskMode ? '/api/kiosk/repair' : undefined}
+                                hideManualEntry={kioskMode}
+                                flowInPage={kioskMode}
+                                fillHeight={!kioskMode}
+                            />
                         </div>
                     )}
 
@@ -641,7 +556,11 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                             {productSelected && (
                                 <div className="space-y-1">
                                     <p className={SECTION_LABEL}>Selected product</p>
-                                    <p className="text-sm font-semibold text-text-default">{formData.product.model}</p>
+                                    {/* A customer can drop off several devices, so this is either ONE
+                                        product or a summary of many — clamp so the issue step keeps its
+                                        rhythm. No `truncate`: its `whitespace-nowrap` cancels the clamp
+                                        (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+                                    <p className="text-sm font-semibold text-text-default line-clamp-2 break-words text-pretty">{formData.product.model}</p>
                                 </div>
                             )}
 

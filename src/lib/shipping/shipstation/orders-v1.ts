@@ -41,19 +41,36 @@ export interface ShipStationV1Item {
   weightOz: number | null;
 }
 
-/** A normalized v1 order — enough to sync into `orders` and to build a rate. */
+/** A normalized v1 order — enough to sync into `orders` (incl. buyer identity
+ * for the customer book), to build a rate, and to resolve a ship-to. */
 export interface ShipStationV1Order {
   orderId: number;
   orderNumber: string;
   orderDate: string | null;
   modifyDate: string | null;
   orderStatus: string | null;
+  /**
+   * ShipStation's stable per-account customer id (assigned on first sighting;
+   * keyed by email/username server-side). The strongest buyer identity the v1
+   * order carries — the dedupe key for `customers.shipstation_customer_id`.
+   */
+  customerId: number | null;
+  customerUsername: string | null;
   customerEmail: string | null;
   shipTo: ShipAddress | null;
+  billTo: ShipAddress | null;
   items: ShipStationV1Item[];
   orderTotal: number | null;
   /** Order-level parcel weight, normalized. Feeds the v2 rate/label package. */
   weight: { value: number; unit: WeightUnit } | null;
+  /**
+   * The ShipStation store the order belongs to (`advancedOptions.storeId`) and
+   * the marketplace it was placed on (e.g. 'eBay', 'Amazon', 'Shopify'). The
+   * channel identifications the platform catalog sync consumes — null when the
+   * payload omits them (manual orders).
+   */
+  storeId: number | null;
+  marketplace: string | null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -88,7 +105,10 @@ const V1AddressSchema = z
     city: z.string().nullish(),
     state: z.string().nullish(),
     postalCode: z.string().nullish(),
+    // v1 docs name the field `country`, but payloads in the wild (and the
+    // newer docs examples) also carry `countryCode` — accept either.
     country: z.string().nullish(),
+    countryCode: z.string().nullish(),
     phone: z.string().nullish(),
     residential: z.boolean().nullish(),
   })
@@ -108,11 +128,31 @@ const V1OrderSchema = z.object({
   orderDate: z.string().nullish(),
   modifyDate: z.string().nullish(),
   orderStatus: z.string().nullish(),
+  customerId: z.number().nullish(),
+  customerUsername: z.string().nullish(),
   customerEmail: z.string().nullish(),
   shipTo: V1AddressSchema,
+  billTo: V1AddressSchema,
   items: z.array(V1ItemSchema).nullish(),
   orderTotal: z.number().nullish(),
   weight: V1WeightSchema,
+  advancedOptions: z
+    .object({
+      storeId: z.number().nullish(),
+      source: z.string().nullish(),
+    })
+    .nullish(),
+});
+
+const V1StoreSchema = z.object({
+  storeId: z.number(),
+  storeName: z.string().nullish(),
+  marketplace: z.string().nullish(),
+  marketplaceName: z.string().nullish(),
+});
+
+const V1StoresResponseSchema = z.object({
+  stores: z.array(z.unknown()).nullish(),
 });
 
 const V1OrdersResponseSchema = z.object({
@@ -124,6 +164,7 @@ const V1OrdersResponseSchema = z.object({
 
 function toShipAddress(raw: z.infer<typeof V1AddressSchema>): ShipAddress | null {
   if (!raw || !raw.street1 || !raw.city) return null;
+  const country = raw.country ?? raw.countryCode;
   return {
     name: raw.name ?? '',
     phone: raw.phone ?? null,
@@ -133,7 +174,7 @@ function toShipAddress(raw: z.infer<typeof V1AddressSchema>): ShipAddress | null
     cityLocality: raw.city,
     stateProvince: raw.state ?? '',
     postalCode: raw.postalCode ?? '',
-    countryCode: (raw.country ?? 'US').toUpperCase(),
+    countryCode: (country ?? 'US').toUpperCase(),
     residential: raw.residential ?? null,
   };
 }
@@ -159,11 +200,35 @@ function mapOrder(raw: z.infer<typeof V1OrderSchema>): ShipStationV1Order {
     orderDate: raw.orderDate ?? null,
     modifyDate: raw.modifyDate ?? null,
     orderStatus: raw.orderStatus ?? null,
+    customerId: raw.customerId ?? null,
+    customerUsername: raw.customerUsername ?? null,
     customerEmail: raw.customerEmail ?? null,
     shipTo: toShipAddress(raw.shipTo),
+    billTo: toShipAddress(raw.billTo),
     items,
     orderTotal: raw.orderTotal ?? null,
     weight,
+    storeId: raw.advancedOptions?.storeId ?? null,
+    marketplace: raw.advancedOptions?.source ?? null,
+  };
+}
+
+/** A connected ShipStation store — one marketplace storefront. */
+export interface ShipStationV1Store {
+  storeId: number;
+  storeName: string | null;
+  /** Machine marketplace id ('eBay', 'Amazon', 'Shopify', …). */
+  marketplace: string | null;
+  /** Human marketplace name ('eBay', 'Amazon', 'Shopify', …). */
+  marketplaceName: string | null;
+}
+
+function mapStore(raw: z.infer<typeof V1StoreSchema>): ShipStationV1Store {
+  return {
+    storeId: raw.storeId,
+    storeName: raw.storeName ?? null,
+    marketplace: raw.marketplace ?? null,
+    marketplaceName: raw.marketplaceName ?? null,
   };
 }
 
@@ -243,6 +308,9 @@ export interface ListOrdersResult {
 export interface ShipStationV1Client {
   listOrders(params?: ListOrdersParams): Promise<ListOrdersResult>;
   getOrderByNumber(orderNumber: string): Promise<ShipStationV1Order | null>;
+  /** The account's connected stores — the marketplace identifications the
+   * platform catalog sync mirrors into the org's picker. */
+  listStores(): Promise<ShipStationV1Store[]>;
 }
 
 export function createShipStationV1Client(
@@ -288,5 +356,17 @@ export function createShipStationV1Client(
     return order.success ? mapOrder(order.data) : null;
   };
 
-  return { listOrders, getOrderByNumber };
+  const listStores = async (): Promise<ShipStationV1Store[]> => {
+    const json = await v1Fetch(apiKey, apiSecret, baseUrl, '/stores');
+    const parsed = V1StoresResponseSchema.safeParse(json);
+    if (!parsed.success) return [];
+    const stores: ShipStationV1Store[] = [];
+    for (const s of parsed.data.stores ?? []) {
+      const store = V1StoreSchema.safeParse(s);
+      if (store.success) stores.push(mapStore(store.data));
+    }
+    return stores;
+  };
+
+  return { listOrders, getOrderByNumber, listStores };
 }

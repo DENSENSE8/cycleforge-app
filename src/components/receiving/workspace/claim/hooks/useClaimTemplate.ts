@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClaimType } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
+import { resolveClaimSubjectIdentity } from '@/lib/zendesk-claim-subject-identity';
 import {
-  replaceClaimSubjectClaimTypeSegment,
-  replaceClaimSubjectIdentitySegment,
-  resolveClaimSubjectIdentity,
-} from '@/lib/zendesk-claim-subject-identity';
+  buildClaimSubject,
+  type ClaimSubjectParts,
+} from '@/lib/zendesk-claim-subject';
 import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 
 export interface ClaimCartonIdentityPatch {
@@ -126,6 +126,9 @@ export function useClaimTemplate({
     catalogTypeLabel: null,
   });
 
+  /** Server-rendered subject parts — the only input the title is made from. */
+  const subjectPartsRef = useRef<ClaimSubjectParts | null>(null);
+
   // Open-time carton identity only — live Platform/Type saves update the row
   // props; those must not re-clear Subject/Body (inline applyCartonIdentity +
   // receiving-package-updated own mid-session identity patches).
@@ -166,20 +169,33 @@ export function useClaimTemplate({
     };
   }, [open, receivingId, lineId]);
 
-  const patchSubjectIdentityFromState = useCallback(() => {
+  /**
+   * Re-render the WHOLE title from the parts the server shipped plus the
+   * in-panel classify state. One composer (`buildClaimSubject`), so a Platform
+   * or Type change moves the title immediately and cannot disagree with what
+   * the server would render for the same carton.
+   */
+  const renderSubjectFromState = useCallback(() => {
     if (subjectTouched.current) return;
     if (linkedTicketIdRef.current) return;
+    const parts = subjectPartsRef.current;
+    if (!parts) return;
     const id = identityRef.current;
-    const nextIdentity = resolveClaimSubjectIdentity({
-      sourcePlatform: id.sourcePlatform,
-      receivingType: id.receivingType,
-      isReturn: id.isReturn,
-      returnPlatform: id.returnPlatform,
-      claimTypeLabel: CLAIM_TYPE_LABEL[claimTypeRef.current],
-      catalogPlatformLabel: id.catalogPlatformLabel,
-      catalogTypeLabel: id.catalogTypeLabel,
-    });
-    setSubject((prev) => replaceClaimSubjectIdentitySegment(prev, nextIdentity));
+    setSubject(
+      buildClaimSubject({
+        ...parts,
+        identity: resolveClaimSubjectIdentity({
+          sourcePlatform: id.sourcePlatform,
+          receivingType: id.receivingType,
+          isReturn: id.isReturn,
+          returnPlatform: id.returnPlatform,
+          claimTypeLabel: CLAIM_TYPE_LABEL[claimTypeRef.current],
+          catalogPlatformLabel: id.catalogPlatformLabel,
+          catalogTypeLabel: id.catalogTypeLabel,
+        }),
+        claimTypeLabel: CLAIM_TYPE_LABEL[claimTypeRef.current],
+      }),
+    );
   }, []);
 
   const applyCartonIdentity = useCallback(
@@ -217,9 +233,9 @@ export function useClaimTemplate({
             ? patch.catalogTypeLabel
             : cur.catalogTypeLabel,
       };
-      patchSubjectIdentityFromState();
+      renderSubjectFromState();
     },
-    [patchSubjectIdentityFromState],
+    [renderSubjectFromState],
   );
 
   useEffect(() => {
@@ -246,27 +262,20 @@ export function useClaimTemplate({
       .then((r) => r.json().catch(() => null))
       .then((data) => {
         if (!data?.success) return;
-        if (!subjectTouched.current && typeof data.subject === 'string') {
-          // Link flow: ticket title owns Subject once a ticket is picked —
-          // claim-type preview may still refresh Body. Use the ref so a stale
-          // response started before the pick cannot clobber the ticket title.
-          if (!linkedTicketIdRef.current) {
-            const existing = subjectRef.current;
-            // Claim flip: middle segment only. Never rewrite identity (and never
-            // run resolveClaimSubjectIdentity — claim "Return" collapses identity
-            // to platform-only / paints Return from stale is_return).
-            if (claimTypeOnly && existing.includes(' // ')) {
-              setSubject(
-                replaceClaimSubjectClaimTypeSegment(
-                  existing,
-                  CLAIM_TYPE_LABEL[claimType],
-                ),
-              );
-            } else {
-              setSubject(data.subject);
-              // Full load / reset: re-align identity to in-panel Platform/Type.
-              patchSubjectIdentityFromState();
-            }
+        if (data.subjectParts && typeof data.subjectParts === 'object') {
+          subjectPartsRef.current = data.subjectParts as ClaimSubjectParts;
+        }
+        // Link flow: the picked ticket's real title owns Subject; the preview
+        // may still refresh Body. Ref, not prop — a response started before the
+        // pick must not clobber that title.
+        if (!subjectTouched.current && !linkedTicketIdRef.current) {
+          // ONE composer: re-render from the parts the server just shipped plus
+          // the in-panel Platform/Type. A claim-type flip is not a special case
+          // any more — it is the same render with a different label.
+          if (subjectPartsRef.current) {
+            renderSubjectFromState();
+          } else if (typeof data.subject === 'string') {
+            setSubject(data.subject);
           }
         }
         if (!descriptionTouched.current && typeof data.description === 'string') {
@@ -282,7 +291,7 @@ export function useClaimTemplate({
     return () => {
       ctrl.abort();
     };
-  }, [open, active, receivingId, lineId, claimType, resetNonce, patchSubjectIdentityFromState]);
+  }, [open, active, receivingId, lineId, claimType, resetNonce, renderSubjectFromState]);
 
   // Reclassify (platform / type) while claim is open — patch SUBJECT identity only.
   // Never bump resetNonce (that reloads body / PO / tracking and flashes compose).

@@ -55,14 +55,13 @@ import {
 import { WALKINSALES_COMPOUND_COLUMNS } from '@/components/walk-in/grid/walk-in-sales-grid-layout';
 import { CATALOG_LINK_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
-import { DAILY_COMPOUND_COLUMNS } from '@/lib/daily-checks/daily-grid-layout';
+import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
-import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
 import {
   INCOMING_COMPOUND_COLUMNS,
   RECEIVING_COMPOUND_COLUMNS,
 } from '@/lib/receiving/receiving-grid-layout';
-import { TASKS_COMPOUND_COLUMNS } from '@/lib/staff-todos/tasks-grid-layout';
+import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
 import { TECH_ALL_SHEET_COLUMNS } from '@/lib/tech/tech-all-grid-layout';
 
 type Col = { key: string; label?: string; gridLabel?: string };
@@ -78,7 +77,6 @@ const MATERIALIZATIONS: readonly { name: string; columns: readonly Col[] }[] = [
   { name: 'INCOMING_COMPOUND_COLUMNS', columns: INCOMING_COMPOUND_COLUMNS },
   { name: 'TASKS_COMPOUND_COLUMNS', columns: TASKS_COMPOUND_COLUMNS },
   { name: 'DAILY_COMPOUND_COLUMNS', columns: DAILY_COMPOUND_COLUMNS },
-  { name: 'CART_COMPOUND_COLUMNS', columns: CART_COMPOUND_COLUMNS },
   { name: 'CATALOG_LINK_COMPOUND_COLUMNS', columns: CATALOG_LINK_COMPOUND_COLUMNS },
   { name: 'IMPORT_EXCEPTION_COMPOUND_COLUMNS', columns: IMPORT_EXCEPTION_COMPOUND_COLUMNS },
   { name: 'TECH_COMPOUND_COLUMNS', columns: TECH_COMPOUND_COLUMNS },

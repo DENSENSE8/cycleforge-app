@@ -765,3 +765,33 @@ test('interop.read gates every standards-projection route', () => {
     );
   }
 });
+
+test('regression: work_orders.claim gates the whole task desk — read, throw and edit', () => {
+  // Increment 3 added GET beside the existing POST on /api/tasks, plus PATCH
+  // on /api/tasks/[id]. All three reuse the gate POST already carried: driving
+  // a task you were handed is the same everyday floor act as throwing one, and
+  // every floor role already holds work_orders.claim (scripts/seed-roles.mjs).
+  // A NEW permission here would have locked the desk to nobody by default.
+  assert.equal(isKnownPermission('work_orders.claim'), true);
+
+  const list = routeByPath('/api/tasks/route.ts');
+  assert.ok(list);
+  assert.equal(list.permission, 'work_orders.claim');
+  assert.deepEqual([...list.methods].sort(), ['GET', 'POST']);
+
+  const edit = routeByPath('/api/tasks/[id]/route.ts');
+  assert.ok(edit);
+  assert.equal(edit.permission, 'work_orders.claim');
+  assert.deepEqual(edit.methods, ['PATCH']);
+});
+
+test('regression: work_orders.claim gates the ticket-target resolver', () => {
+  // The Daily composer's Ticket face resolves a helpdesk number through this
+  // route before POST /api/tasks anchors to it. It MUST carry the same
+  // permission as that throw — a resolver a floor staffer is refused would be
+  // a type the composer offers and then cannot complete.
+  const r = routeByPath('/api/tasks/ticket-target/route.ts');
+  assert.ok(r, 'the ticket-target route should be in the manifest');
+  assert.equal(r.permission, 'work_orders.claim');
+  assert.deepEqual(r.methods, ['POST']);
+});

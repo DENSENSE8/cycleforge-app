@@ -49,7 +49,7 @@ export function FileImportSection({
         </Button>
       </div>
       {error ? (
-        <p className="px-4 py-2 text-role-caption text-rose-700" role="alert">
+        <p className="px-4 py-2 text-role-caption text-text-danger" role="alert">
           {error}{' '}
           <button type="button" className="underline" onClick={onClearError}>
             Dismiss

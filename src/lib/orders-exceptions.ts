@@ -547,8 +547,9 @@ export async function syncOrderExceptionsToOrders(
                  JOIN   shipping_tracking_numbers stn ON stn.id = pl.shipment_id
                  WHERE  RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18) = $1
                    AND  pl.tracking_type = 'ORDERS'
+                   AND  pl.completion_state = 'COMPLETED'
                    AND  pl.organization_id = $3
-               ) THEN 'shipped'
+               ) THEN 'packed'
                ELSE status
              END
          WHERE o.id = $2
@@ -564,7 +565,8 @@ export async function syncOrderExceptionsToOrders(
                  JOIN   shipping_tracking_numbers stn ON stn.id = pl.shipment_id
                  WHERE  RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18) = $1
                    AND  pl.tracking_type = 'ORDERS'
-               ) THEN 'shipped'
+                   AND  pl.completion_state = 'COMPLETED'
+               ) THEN 'packed'
                ELSE status
              END
          WHERE id = $2`,

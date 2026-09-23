@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Phone to-ship queue — `/m/work`.
+ * Phone to-ship queue — canonical `/m/orders`; `/m/work` is a compatibility
+ * alias.
  *
  * Compact All / Assigned / Unassigned pills, inline SearchField, sort
  * (including Title A–Z). White floor; raised white cards. Product thumb,
@@ -9,7 +10,7 @@
  * stock writes through useOrderAssignment and disables Ship.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowUpDown, RefreshCw } from '@/components/Icons';
 import {
@@ -29,10 +30,13 @@ import { bandWorkOrderRows } from '@/lib/work-orders/deadline-bands';
 import {
   MOBILE_TO_SHIP_SORTS,
   MOBILE_TO_SHIP_TABS,
+  MOBILE_ORDER_VIEWS,
+  filterToShipByOrderView,
+  filterToShipByPlatform,
   filterToShipByQuery,
   filterToShipByTab,
   isToShipOutOfStock,
-  mobileProcessOrderHref,
+  parseMobileOrderView,
   parseMobileToShipSort,
   parseMobileToShipTab,
   sortToShipRows,
@@ -41,31 +45,55 @@ import {
 } from '@/lib/work-orders/to-ship-assignment';
 import { MobileToShipRow } from '@/components/mobile/redesign/MobileToShipRow';
 import { MobileToShipSheet } from '@/components/mobile/redesign/MobileToShipSheet';
+import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
 import { useToShipOrders, type MobileToShipFeed } from '@/components/mobile/redesign/useToShipOrders';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
+import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 import { useAuth } from '@/contexts/AuthContext';
+import { MobileOrderExceptions } from '@/components/mobile/outbound/MobileOrderExceptions';
+import type { OutboundPriorityAction, OutboundTriageActionId } from '@/lib/shipping/outbound-workflow-actions';
 
 /** Phone order import — its own screen, with its own X (see MobileOrderSyncScreen). */
 const ORDER_SYNC_HREF = '/m/orders/sync';
 
-export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipFeed } = {}) {
+export function MobileToShipQueue({
+  feed = 'unshipped',
+  showImportSync: allowImportSync = true,
+}: {
+  feed?: MobileToShipFeed;
+  showImportSync?: boolean;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = parseMobileToShipTab(searchParams.get('tab'));
+  const orderView = parseMobileOrderView(searchParams.get('view'));
   const sort = parseMobileToShipSort(searchParams.get('sort'));
   const searchQuery = searchParams.get('q') ?? '';
+  const requestedPlatform = searchParams.get('platform') ?? 'all';
   const { rows, isPending, isError, isFetching } = useToShipOrders({
-    enabled: true,
+    enabled: orderView !== 'exceptions',
     searchQuery,
     feed,
   });
   const { getStaffName } = useStaffNameMap();
   const { mutate: assignOrder } = useOrderAssignment();
+  // Orders owns the canonical queue projection. Its one shared Ably subscriber
+  // invalidates the same cache keys as desk and station readers; no page-local
+  // socket or direct database listener is allowed here.
+  useRealtimeInvalidation({ dashboard: true, reconnect: true });
   const [sheetRow, setSheetRow] = useState<WorkOrderRow | null>(null);
+  const [activeRow, setActiveRow] = useState<WorkOrderRow | null>(null);
+  const [passPickRow, setPassPickRow] = useState<WorkOrderRow | null>(null);
   const [oosIds, setOosIds] = useState<ReadonlySet<number>>(() => new Set());
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   /**
    * Assignment tabs belong to PICKS, not to Orders (operator 2026-09-15:
@@ -80,10 +108,24 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
    */
   const showAssignmentTabs = feed === 'pending';
   const activeTab = showAssignmentTabs ? tab : 'all';
+  const platforms = useMemo(
+    () => Array.from(new Set(rows.map((row) => row.accountSource?.trim()).filter(Boolean) as string[])).sort(),
+    [rows],
+  );
+  const platform = platforms.some((candidate) => candidate.toLowerCase() === requestedPlatform.toLowerCase())
+    ? platforms.find((candidate) => candidate.toLowerCase() === requestedPlatform.toLowerCase()) ?? 'all'
+    : 'all';
 
   const groups = useMemo(() => {
+    const viewRows = orderView === 'exceptions'
+      ? []
+      : filterToShipByOrderView(rows, orderView);
     const filtered = sortToShipRows(
-      filterToShipByQuery(filterToShipByTab(rows, activeTab), searchQuery, getStaffName),
+      filterToShipByQuery(
+        filterToShipByPlatform(filterToShipByTab(viewRows, activeTab), platform),
+        searchQuery,
+        getStaffName,
+      ),
       sort,
       getStaffName,
     );
@@ -91,30 +133,27 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
       return filtered.length > 0 ? [{ band: 'none' as const, label: '', rows: filtered }] : [];
     }
     return bandWorkOrderRows(filtered);
-  }, [activeTab, getStaffName, rows, searchQuery, sort]);
+  }, [activeTab, getStaffName, orderView, platform, rows, searchQuery, sort]);
 
   const replaceParams = useCallback(
-    (patch: { tab?: MobileToShipTab; sort?: MobileToShipSort; q?: string }) => {
+    (patch: { tab?: MobileToShipTab; view?: typeof orderView; sort?: MobileToShipSort; q?: string; platform?: string }) => {
       const params = new URLSearchParams(searchParams.toString());
       if (patch.tab) params.set('tab', patch.tab);
+      if (patch.view) params.set('view', patch.view);
       if (patch.sort) params.set('sort', patch.sort);
       if (patch.q !== undefined) {
         const next = patch.q.trim();
         if (next) params.set('q', next);
         else params.delete('q');
       }
+      if (patch.platform !== undefined) {
+        if (patch.platform === 'all') params.delete('platform');
+        else params.set('platform', patch.platform);
+      }
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
     [pathname, router, searchParams],
-  );
-
-  const onProcess = useCallback(
-    (row: WorkOrderRow) => {
-      if (oosIds.has(row.entityId) || isToShipOutOfStock(row)) return;
-      router.push(mobileProcessOrderHref(row));
-    },
-    [oosIds, router],
   );
 
   const onOutOfStock = useCallback(
@@ -158,6 +197,44 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
     [assignOrder],
   );
 
+  const onClearHold = useCallback(
+    (row: WorkOrderRow) => {
+      assignOrder(
+        {
+          orderId: row.entityId,
+          isOutOfStock: false,
+          outOfStock: null,
+        },
+        {
+          onSuccess: () => {
+            setOosIds((current) => {
+              if (!current.has(row.entityId)) return current;
+              const next = new Set(current);
+              next.delete(row.entityId);
+              return next;
+            });
+            setSheetRow((current) =>
+              current?.id === row.id ? { ...current, outOfStock: null } : current,
+            );
+          },
+        },
+      );
+    },
+    [assignOrder],
+  );
+
+  const onTriage = useCallback(async (row: WorkOrderRow, action: OutboundTriageActionId) => {
+    if (action === 'out_of_stock') return;
+    const flag = action === 'damaged' ? 'damaged' : 'discrepancy';
+    const response = await fetch(`/api/orders/${row.entityId}/flag`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flag }),
+    });
+    if (!response.ok) throw new Error('Could not record order triage.');
+    setSheetRow(null);
+  }, []);
+
   const onOpenDetail = useCallback(
     (row: WorkOrderRow) => {
       setSheetRow(null);
@@ -166,20 +243,33 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
     [router],
   );
 
-  const onPassPicker = useCallback(
-    (row: WorkOrderRow, staff: { id: number; name: string }) => {
+  const onPriorityAction = useCallback(
+    (row: WorkOrderRow, action: OutboundPriorityAction) => {
       assignOrder({
         orderId: row.entityId,
-        testerId: staff.id,
-        testerName: staff.name,
+        isUrgent: action.id === 'mark_urgent',
       });
-      setSheetRow((current) =>
-        current?.id === row.id
-          ? { ...current, techId: staff.id, techName: staff.name, status: 'ASSIGNED' }
-          : current,
-      );
     },
     [assignOrder],
+  );
+
+  const onRowTriage = useCallback(
+    (row: WorkOrderRow, action: OutboundTriageActionId) => {
+      if (action === 'out_of_stock') {
+        onOutOfStock(row);
+        return;
+      }
+      void onTriage(row, action);
+    },
+    [onOutOfStock, onTriage],
+  );
+
+  const onRowHold = useCallback(
+    (row: WorkOrderRow) => {
+      if (oosIds.has(row.entityId) || isToShipOutOfStock(row)) onClearHold(row);
+      else onOutOfStock(row);
+    },
+    [onClearHold, onOutOfStock, oosIds],
   );
 
   /**
@@ -212,7 +302,7 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
    * the permission.
    */
   const { has } = useAuth();
-  const showImportSync = feed === 'unshipped' && has('orders.import');
+  const showImportSync = allowImportSync && feed === 'unshipped' && has('orders.import');
 
   const sortLabel = MOBILE_TO_SHIP_SORTS.find((option) => option.id === sort)?.label ?? 'Ship by';
 
@@ -221,6 +311,34 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
       <div className="bg-surface-card">
         <Inset space="chip">
           <div className="flex flex-col gap-1.5">
+            <div
+              role="tablist"
+              aria-label="Order views"
+              data-testid="mobile-order-view-tabs"
+              className="-mx-3 flex min-w-0 overflow-x-auto border-b border-border-hairline px-3"
+            >
+              {MOBILE_ORDER_VIEWS.map((option) => {
+                const selected = option.id === orderView;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    data-testid={`mobile-order-view-${option.id}`}
+                    onClick={() => replaceParams({ view: option.id })}
+                    className={cn(
+                      'ds-raw-button min-h-11 shrink-0 border-b-2 px-3 text-role-caption font-semibold',
+                      selected
+                        ? 'border-text-accent text-text-default'
+                        : 'border-transparent text-text-muted',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
             {/* Tabs own their row. Search + sort share the next ONE — the
                 sort control rides the search field's right edge (operator
                 2026-09-15: "close the search bar row and the sort row under
@@ -243,10 +361,10 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
                         aria-selected={selected}
                         onClick={() => replaceParams({ tab: option.id })}
                         className={cn(
-                          'ds-raw-button rounded-full px-2 py-0.5 text-role-caption font-semibold',
+                          'ds-raw-button border-b-2 px-2 py-1 text-role-caption font-semibold',
                           selected
-                            ? 'bg-text-default text-surface-card'
-                            : 'text-text-muted',
+                            ? 'border-text-accent text-text-default'
+                            : 'border-transparent text-text-muted',
                         )}
                       >
                         {option.label}
@@ -258,6 +376,7 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
                 <span className="min-w-0 flex-1" />
               )}
             </div>
+            {orderView !== 'exceptions' ? (
             <div data-testid="to-ship-search" className="flex items-center gap-1">
               <SearchField
                 value={searchQuery}
@@ -269,9 +388,32 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
               />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    radius="flush"
+                    data-testid="to-ship-platform-filter"
+                    aria-label={`Platform filter, ${platform === 'all' ? 'All platforms' : platform}`}
+                    className="shrink-0 whitespace-nowrap"
+                  >
+                    {platform === 'all' ? 'Platforms' : platform}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Connected platform</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => replaceParams({ platform: 'all' })}>All platforms</DropdownMenuItem>
+                  {platforms.map((candidate) => (
+                    <DropdownMenuItem key={candidate} onSelect={() => replaceParams({ platform: candidate })}>
+                      {candidate}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <IconButton
                     size="xs"
-                    radius="pill"
+                    radius="flush"
                     ariaLabel={`Sort, ${sortLabel}`}
                     data-testid="to-ship-sort"
                     icon={<ArrowUpDown className="h-3.5 w-3.5" />}
@@ -290,12 +432,18 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            ) : null}
           </div>
         </Inset>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-surface-card">
-        <Inset space="chip">
+      {orderView === 'exceptions' ? (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          <MobileOrderExceptions />
+        </div>
+      ) : (
+      <div data-testid="to-ship-roster" className="min-h-0 flex-1 overflow-y-auto bg-surface-card">
+        <div>
           {/*
             Sync sits IN the content, at the top, and scrolls away with it.
             NOT a bar: no border, no own surface layer, not sticky (operator
@@ -306,7 +454,7 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
             was the same error one altitude up.
           */}
           {showImportSync ? (
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="mb-3 flex items-center justify-between gap-3 px-3">
               <p className="min-w-0 text-role-caption text-text-muted">
                 {isPending ? 'Loading orders…' : `${rows.length} in the warehouse`}
               </p>
@@ -323,11 +471,11 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
             </div>
           ) : null}
           {isPending ? (
-            <p className="text-role-caption text-text-muted">Loading…</p>
+            <p className="px-3 text-role-caption text-text-muted">Loading…</p>
           ) : isError ? (
-            <p className="text-role-caption text-text-muted">Couldn&apos;t load orders.</p>
+            <p className="px-3 text-role-caption text-text-muted">Couldn&apos;t load orders.</p>
           ) : groups.length === 0 ? (
-            <p className="text-role-caption text-text-muted">
+            <p className="px-3 text-role-caption text-text-muted">
               {searchQuery.trim() ? 'No matching orders.' : 'No orders in this view.'}
             </p>
           ) : (
@@ -335,19 +483,25 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
               {groups.map((group) => (
                 <section key={group.band + group.label}>
                   {group.label ? (
-                    <h2 className="mb-1.5 px-1 text-role-eyebrow font-semibold uppercase tracking-widest text-amber-700">
+                    <h2 className="mb-1.5 px-3 text-role-eyebrow font-semibold uppercase tracking-widest text-text-warning">
                       {group.label}
                     </h2>
                   ) : null}
-                  <ul className="flex flex-col gap-2">
+                  <ul className="flex flex-col">
                     {group.rows.map((row) => (
                       <li key={row.id}>
                         <MobileToShipRow
                           row={row}
                           resolveName={getStaffName}
                           blocked={oosIds.has(row.entityId) || isToShipOutOfStock(row)}
-                          onOpen={setSheetRow}
-                          onProcess={onProcess}
+                          onOpen={setActiveRow}
+                          onOpenSheet={setSheetRow}
+                          onPassPick={setPassPickRow}
+                          onPriorityAction={onPriorityAction}
+                          onTriage={onRowTriage}
+                          onHold={onRowHold}
+                          now={now}
+                          active={activeRow?.id === row.id}
                         />
                       </li>
                     ))}
@@ -356,19 +510,32 @@ export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipF
               ))}
             </div>
           )}
-        </Inset>
+        </div>
       </div>
+      )}
 
       <MobileToShipSheet
         row={sheetRow}
         open={sheetRow != null}
         onClose={() => setSheetRow(null)}
-        onProcess={onProcess}
-        onOutOfStock={onOutOfStock}
         onOpenDetail={onOpenDetail}
-        onPassPicker={onPassPicker}
-        blocked={sheetRow != null && (oosIds.has(sheetRow.entityId) || isToShipOutOfStock(sheetRow))}
         resolveName={getStaffName}
+      />
+      <MobileToShipPickerSheet
+        row={passPickRow}
+        open={passPickRow != null}
+        onClose={() => setPassPickRow(null)}
+        onPass={(staff) => {
+          if (!passPickRow) return;
+          assignOrder(
+            {
+              orderId: passPickRow.entityId,
+              testerId: staff.id,
+              testerName: staff.name,
+            },
+            { onSuccess: () => setPassPickRow(null) },
+          );
+        }}
       />
     </div>
   );

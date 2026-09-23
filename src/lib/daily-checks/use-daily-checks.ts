@@ -23,20 +23,20 @@ import type {
 } from '@/lib/daily-checks/types';
 
 const KEY_PREFIX = ['daily-checks'] as const;
-const dailyChecksKey = (dateKey: string) => [...KEY_PREFIX, dateKey] as const;
+const dailyChecksKey = (dateKey: string, scope: 'mine' | 'all' = 'mine') => [...KEY_PREFIX, dateKey, scope] as const;
 
-async function fetchReport(dateKey: string): Promise<DailyCheckReport> {
-  const res = await fetch(`/api/daily-checks?date=${encodeURIComponent(dateKey)}`, {
+async function fetchReport(dateKey: string, scope: 'mine' | 'all'): Promise<DailyCheckReport> {
+  const res = await fetch(`/api/daily-checks?date=${encodeURIComponent(dateKey)}&scope=${scope}`, {
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`daily checks request failed (${res.status})`);
   return res.json() as Promise<DailyCheckReport>;
 }
 
-export function useDailyChecks(dateKey: string) {
+export function useDailyChecks(dateKey: string, scope: 'mine' | 'all' = 'mine') {
   return useQuery({
-    queryKey: dailyChecksKey(dateKey),
-    queryFn: () => fetchReport(dateKey),
+    queryKey: dailyChecksKey(dateKey, scope),
+    queryFn: () => fetchReport(dateKey, scope),
     staleTime: 15_000,
   });
 }

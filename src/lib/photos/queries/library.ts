@@ -1,4 +1,5 @@
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import {
   RECEIVING_PHOTO_LEGACY_PACKAGE,
   RECEIVING_PHOTO_PACKAGE,
@@ -12,7 +13,7 @@ import { mapPhotoRow } from './list-for-entity';
 import { dayLabel, weekRange, weekRangeLabel } from '@/lib/photos/date-hierarchy';
 
 export interface LibraryFilters {
-  organizationId: string;
+  organizationId: OrgId;
   cursor?: number | null;
   limit?: number;
   dateFrom?: string | null;
@@ -849,7 +850,8 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
   // All filters are self-contained EXISTS/scalar subqueries on `p`, so we select
   // straight from `photos` — no row-multiplying joins, hence no DISTINCT ON
   // (which Postgres would require to lead the ORDER BY, breaking date sort).
-  const res = await pool.query(
+  const res = await tenantQuery(
+    filters.organizationId,
     `SELECT p.id, p.organization_id, p.photo_type, p.taken_by_staff_id,
             p.po_ref, p.created_at, p.client_captured_at,
             (SELECT s.name FROM staff s
@@ -980,7 +982,8 @@ export async function listPhotoLibraryIds(
   const { clauses, params } = buildLibraryWhere(filters);
   const where = clauses.join(' AND ');
 
-  const countRes = await pool.query<{ total: number }>(
+  const countRes = await tenantQuery<{ total: number }>(
+    filters.organizationId,
     `SELECT COUNT(*)::int AS total FROM photos p WHERE ${where}`,
     params,
   );
@@ -988,7 +991,8 @@ export async function listPhotoLibraryIds(
 
   const sortDir = filters.sort === 'oldest' ? 'ASC' : 'DESC';
   const idParams = [...params, cap];
-  const idsRes = await pool.query<{ id: number }>(
+  const idsRes = await tenantQuery<{ id: number }>(
+    filters.organizationId,
     `SELECT p.id
        FROM photos p
       WHERE ${where}
@@ -1095,7 +1099,7 @@ export async function listPhotoLibraryFolders(
     orderExpr = `MAX(p.created_at) DESC`;
   }
 
-  const res = await pool.query<{
+  const res = await tenantQuery<{
     bucket_key: string;
     cnt: number;
     latest_at: Date | string;
@@ -1103,6 +1107,7 @@ export async function listPhotoLibraryFolders(
     date_from: string | null;
     date_to: string | null;
   }>(
+    filters.organizationId,
     `SELECT ${bucketExpr} AS bucket_key,
             COUNT(*)::int AS cnt,
             MAX(p.created_at) AS latest_at,
@@ -1185,5 +1190,4 @@ export async function listPhotoLibraryFolders(
 
   return { tiles, level };
 }
-
 

@@ -236,6 +236,15 @@ function findRepairItem(order: any): any | null {
   return items.find((item: any) => String(item?.sku || '').trim().toUpperCase().endsWith('-RS')) || null;
 }
 
+/** The buyer in PARTS — shipping person first, billing second, email last. */
+function extractEcwidContact(order: any): { name: string; phone: string; email: string } {
+  return {
+    name: String(order?.shippingPerson?.name || order?.billingPerson?.name || '').trim(),
+    phone: String(order?.shippingPerson?.phone || order?.billingPerson?.phone || order?.phone || '').trim(),
+    email: String(order?.email || '').trim(),
+  };
+}
+
 function extractEcwidContactInfo(order: any): string {
   const parts = [
     String(order?.shippingPerson?.name || order?.billingPerson?.name || order?.email || '').trim(),
@@ -298,15 +307,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         const repairItem = findRepairItem(order);
         if (repairItem) {
-          const repair = await upsertEcwidIncomingRepair({
-            orderId: String(order?.orderNumber ?? order?.id ?? '').trim() || null,
-            trackingNumber,
-            sku: String(repairItem?.sku || '').trim() || null,
-            productTitle: String(repairItem?.name || '').trim() || null,
-            contactInfo: extractEcwidContactInfo(order) || null,
-            orderDate: parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date)?.toISOString() ?? null,
-            notes: String(order?.customerComments || order?.orderComments || '').trim() || null,
-          });
+          const repair = await upsertEcwidIncomingRepair(
+            {
+              orderId: String(order?.orderNumber ?? order?.id ?? '').trim() || null,
+              trackingNumber,
+              sku: String(repairItem?.sku || '').trim() || null,
+              productTitle: String(repairItem?.name || '').trim() || null,
+              contactInfo: extractEcwidContactInfo(order) || null,
+              // The SAME three fields, unjoined. `contactInfo` is the string the
+              // paper falls back to; `contact` is what links the ticket to the
+              // `customers` row the receipt actually reads its name from.
+              contact: extractEcwidContact(order),
+              orderDate: parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date)?.toISOString() ?? null,
+              notes: String(order?.customerComments || order?.orderComments || '').trim() || null,
+            },
+            // REQUIRED, not optional-in-practice: `attachRepairCustomer` bails on
+            // a falsy orgId, so omitting this computed the `contact` above and
+            // then discarded it on every pass — and the upsert itself fell
+            // through to the un-tenant-scoped raw-pool branch.
+            orgId,
+          );
           touchedRepairIds.add(repair.id);
           updated += 1;
         } else {

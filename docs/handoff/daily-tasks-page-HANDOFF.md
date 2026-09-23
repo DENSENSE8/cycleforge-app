@@ -35,7 +35,7 @@ consolidate the three task systems into that one. Mobile-first, fixed width.
 | 2 | **Tasks** | `staff_todos` (migration `2026-06-09`) | one staffer's own list | `features/tasks/TasksWorkbench`, `StaffTaskInspectorRail`, `?task=` | `lib/staff-todos/*` |
 | 3 | **My Day** | `GET /api/my-day` | today's cross-queue workbench | `features/my-day/*` (+ watch rail) | `lib/my-day/*` |
 | — | legacy, already dead | `task_templates` / `daily_task_instances` in `src/lib/schema.sql` | — | none | marked "unused by any code — do not extend" |
-| — | out of scope | `ops_plan_tasks`, `receiving_tasks`, `replenishment_tasks` | domain work queues, not personal/daily lists | — | — |
+| — | out of scope | `ops_plan_tasks`, `replenishment_tasks` | domain work queues, not personal/daily lists | — | — |
 
 ### The API already covers the operator's verbs — build NO new schema
 

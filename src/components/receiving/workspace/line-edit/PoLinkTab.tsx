@@ -16,7 +16,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SearchBar } from '@/components/ui/SearchBar';
+import { StationDisplaySearchHeader } from '@/components/station/displays/StationDisplaySearchHeader';
+import { ItemRecordThumb } from '@/design-system/components/item-record';
+import { OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import {
   PairingCandidateRow,
   PairingLinkButton,
@@ -28,6 +30,8 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -39,6 +43,19 @@ interface PoCandidate {
   reference_number: string | null;
   vendor_name: string | null;
   status: string | null;
+}
+
+/** A previously-seen ORDER — the other namespace an operator pairs a box from. */
+interface OrderCandidate {
+  order_id: string;
+  product_title: string | null;
+  sku: string | null;
+  account_source: string | null;
+  status: string | null;
+  order_date: string | null;
+  item_count: number;
+  /** Product thumb via the SKU identity ladder — Zoho item photo, else catalog. */
+  image_url: string | null;
 }
 
 export function PoLinkTab({
@@ -58,6 +75,7 @@ export function PoLinkTab({
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkingIdentifier, setLinkingIdentifier] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,7 +104,11 @@ export function PoLinkTab({
     queryFn: async () => {
       const res = await fetch(`/api/receiving/po-search?q=${encodeURIComponent(trimmed)}`);
       if (!res.ok) throw new Error('PO search failed');
-      return (await res.json()) as { success: boolean; candidates: PoCandidate[] };
+      return (await res.json()) as {
+        success: boolean;
+        candidates: PoCandidate[];
+        orders?: OrderCandidate[];
+      };
     },
     // Always enabled — an empty query lists the most recent locally-stored
     // incoming POs; ≥2 chars filters the mirror.
@@ -94,6 +116,7 @@ export function PoLinkTab({
     staleTime: 15_000,
   });
   const candidates = data?.candidates ?? [];
+  const orderCandidates = data?.orders ?? [];
 
   const link = async (po: PoCandidate) => {
     if (linkingId) return;
@@ -235,8 +258,110 @@ export function PoLinkTab({
     }
   };
 
+  /**
+   * Link an identifier — the one the operator typed, or the `order_id` of a
+   * previous ORDER they picked from the results. The server decides the outcome
+   * ("/api/receiving/link-id"): `linked` when the id resolves to a purchase
+   * order or a sales order (its SKU/items are imported onto the carton), or
+   * `pending`, which records the id on a carton that STAYS unfound until the
+   * order is imported and claims it.
+   *
+   * There is no "no matches" state any more: whatever is in the box's label is
+   * always linkable from here.
+   */
+  const linkIdentifier = async (identifier: string) => {
+    const value = identifier.trim();
+    if (!value || linkingIdentifier) return;
+    setLinkingIdentifier(true);
+    try {
+      const res = await fetch('/api/receiving/link-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiving_id: receivingId,
+          line_id: row.id > 0 ? row.id : undefined,
+          identifier: value,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        outcome?: 'linked' | 'pending';
+        receiving_id?: number;
+        zoho_purchaseorder_id?: string | null;
+        zoho_purchaseorder_number?: string | null;
+        lines_imported?: number;
+        paired_onto?: number;
+      };
+      if (!res.ok || !body.success) {
+        toast.error(apiErrorMessage(body, res.status, `Link failed (${res.status})`));
+        return;
+      }
+
+      const imported = typeof body.lines_imported === 'number' ? body.lines_imported : 0;
+      const winnerId = body.paired_onto ?? null;
+
+      if (body.outcome === 'linked') {
+        const poLabel = body.zoho_purchaseorder_number || body.zoho_purchaseorder_id || value;
+        toast.success(
+          imported > 0
+            ? `Linked purchase order ${poLabel} · ${imported} item${imported === 1 ? '' : 's'} imported`
+            : `Linked purchase order ${poLabel}`,
+        );
+        if (winnerId != null && winnerId !== receivingId) {
+          invalidateReceivingFeeds(queryClient);
+          setQuery('');
+          router.replace(`${UNBOX_SURFACE_ROUTE}?openReceivingId=${winnerId}`);
+          return;
+        }
+        dispatchLineUpdated({
+          id: row.id,
+          zoho_purchaseorder_id: body.zoho_purchaseorder_id ?? null,
+          zoho_purchaseorder_number: body.zoho_purchaseorder_number ?? null,
+          receiving_source: 'zoho_po',
+        });
+      } else {
+        toast.success(`Linked ${value} — not imported yet, the carton stays unfound`);
+        // The id reads on the carton chip immediately: the primary `manual`
+        // purchase link dual-writes the spine cache the chip resolves from.
+        dispatchLineUpdated({
+          id: row.id,
+          source_order_id: value,
+          inbound_source_type: 'manual',
+        });
+      }
+      // Refresh THIS carton on the spot: the imported items have to appear in
+      // the open Items section without a manual reload, and the PO search this
+      // tab is showing must re-run now that the mirror may have gained the row.
+      invalidateReceivingFeeds(queryClient);
+      void queryClient.invalidateQueries({ queryKey: ['po-search'] });
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
+      window.dispatchEvent(
+        new CustomEvent('receiving-package-updated', {
+          detail: {
+            receiving_id: body.receiving_id ?? receivingId,
+            zoho_purchaseorder_number: body.zoho_purchaseorder_number ?? null,
+          },
+        }),
+      );
+      setQuery('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Link failed');
+    } finally {
+      setLinkingIdentifier(false);
+    }
+  };
+
   return (
-    <div className="space-y-2">
+    // Column, not a stack: `CartonMatchHub` (bareChrome) hands this leaf a
+    // BOUNDED height and its docblock states the contract — "the combobox takes
+    // its natural height, tabBody takes the rest and scrolls internally". This
+    // root was a plain `space-y-2`, so it had no scroller at all: the wrapper
+    // above is `overflow-hidden`, and a 1081px list inside an 846px box was
+    // simply CLIPPED — every candidate past the eighth was unreachable.
+    // Search stays pinned; only the results scroll.
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0">
       {/* The currently-linked PO is shown in the global header — not repeated
           here. This tab is purely the search-and-(re)link surface. */}
 
@@ -251,21 +376,22 @@ export function PoLinkTab({
         </p>
       ) : null}
 
-      {/* Search the local PO mirror (PO# / reference / vendor). */}
-      <SearchBar
+      {/* One search box over BOTH namespaces — purchase orders and previous
+          sales orders — because a box's label carries whichever the seller
+          printed. Chrome (inset, hairline, field face) is the shared
+          {@link StationDisplaySearchHeader}, not spelled here. */}
+      <StationDisplaySearchHeader
         value={query}
         onChange={setQuery}
-        placeholder="Search purchase order # / reference / vendor…"
+        placeholder="Search any order id, PO#, reference…"
         isSearching={isFetching}
-        variant="blue"
-        size="compact"
-        hideUnderline
         inputRef={searchInputRef}
         autoFocus={autoFocusSearch}
       />
+      </div>
 
-      {/* Results — the most recent locally-stored incoming POs by default; the
-          search box filters them. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+
       {isError ? (
         <p
           className={cn(
@@ -273,21 +399,72 @@ export function PoLinkTab({
             'border border-dashed border-rose-200 bg-rose-50 px-4 py-5 text-center text-xs text-rose-600',
           )}
         >
-          Couldn’t load purchase orders. Try again.
+          Couldn’t load orders. Try again.
         </p>
-      ) : isFetching && candidates.length === 0 ? (
-        <UniversalLoader isLoading label="Loading purchase orders" className="min-h-28" />
-      ) : candidates.length === 0 ? (
-        <p
-          className={cn(
-            cornerClass('flush'),
-            'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
-          )}
-        >
-          {trimmed ? `No purchase orders match “${trimmed}”.` : 'No incoming purchase orders stored yet.'}
-        </p>
+      ) : isFetching && candidates.length === 0 && orderCandidates.length === 0 ? (
+        <UniversalLoader isLoading label="Loading orders" className="min-h-28" />
       ) : (
-        <div className="space-y-1.5">
+        // Flush stack: `-space-y-px` pulls each row up onto its neighbour's
+        // border so adjacent 1px edges collapse into ONE hairline seam. The
+        // old `space-y-1.5` left a 6px canvas gutter between every candidate,
+        // which read as the list floating inside the pairing display rather
+        // than being its body.
+        <div className="-space-y-px">
+          {/* Every avenue paints the SAME row — thumb · id · product title —
+              so the operator reads one list whichever namespace answered
+              (operator 2026-09-23). `ItemRecordThumb` is the Store avenue's own
+              media primitive (`ecwid-search-rows.tsx`); with no image it paints
+              its placeholder, which keeps the row's geometry identical rather
+              than collapsing the column. */}
+          {/* The typed id leads: it is what the operator is holding, and it is
+              linkable whether or not anything below matches it. */}
+          {trimmed ? (
+            <PairingCandidateRow
+              media={<ItemRecordThumb imageUrl={null} />}
+              title={trimmed}
+              meta={
+                <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  Not in the system
+                </p>
+              }
+              action={
+                <PairingLinkButton
+                  loading={linkingIdentifier}
+                  disabled={linkingId !== null}
+                  onClick={() => void linkIdentifier(trimmed)}
+                  label="Link Id"
+                />
+              }
+            />
+          ) : null}
+
+          {orderCandidates.map((order) => (
+            <PairingCandidateRow
+              key={`order-${order.order_id}`}
+              media={<ItemRecordThumb imageUrl={order.image_url ?? null} />}
+              // Same grammar as the Store row (`ecwid-search-rows.tsx`): the
+              // PRODUCT leads and the identifiers follow as CopyChips — order
+              // first, SKU second. The two lists sit in one dropdown, so a row
+              // that inverted title and meta would read as a different kind of
+              // thing depending on which avenue answered.
+              title={order.product_title || order.order_id}
+              meta={
+                <div className="flex flex-wrap items-center gap-1">
+                  <OrderIdChip value={order.order_id} display={getLast8(order.order_id)} dense />
+                  {order.sku ? <SkuScanRefChip value={order.sku} display={order.sku} dense /> : null}
+                </div>
+              }
+              action={
+                <PairingLinkButton
+                  loading={linkingIdentifier}
+                  disabled={linkingId !== null}
+                  onClick={() => void linkIdentifier(order.order_id)}
+                  label="Link"
+                />
+              }
+            />
+          ))}
+
           {candidates.map((po) => {
             const isCurrent = currentPoId != null && po.zoho_purchaseorder_id === currentPoId;
             const isLinking = linkingId === po.zoho_purchaseorder_id;
@@ -295,14 +472,11 @@ export function PoLinkTab({
               <PairingCandidateRow
                 key={po.zoho_purchaseorder_id}
                 linked={isCurrent}
-                title={
-                  po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`
-                }
+                media={<ItemRecordThumb imageUrl={null} />}
+                title={po.zoho_purchaseorder_number || `PO ${po.zoho_purchaseorder_id}`}
                 meta={
                   <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                     {po.vendor_name || 'Unknown vendor'}
-                    {po.reference_number ? ` · ref ${po.reference_number}` : ''}
-                    {po.status ? ` · ${po.status}` : ''}
                   </p>
                 }
                 action={
@@ -320,8 +494,20 @@ export function PoLinkTab({
               />
             );
           })}
+
+          {!trimmed && candidates.length === 0 && orderCandidates.length === 0 ? (
+            <p
+              className={cn(
+                cornerClass('flush'),
+                'border border-dashed border-border-soft bg-surface-canvas px-4 py-5 text-center text-xs text-text-soft',
+              )}
+            >
+              Type an order id or PO#.
+            </p>
+          ) : null}
         </div>
       )}
+      </div>
     </div>
   );
 }

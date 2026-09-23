@@ -13,6 +13,3 @@ and you execute it against the codebase at `/mnt/e/cycleforge-app`.
    compile as given, apply the minimal fix to make it valid and note the deviation — do not redesign.
 5. After writing, run the command(s) named in the manifest's `### VERIFY` section and report the
    pass/fail result. Present the diffs (`git diff --stat`) so the sync step can log them.
-
-> This is the same rule set as `.cursor/rules/mfm-protocol.mdc`. If you ever build inside Cursor
-> instead of via Hermes, that file enforces identical behavior for Grok in Composer.

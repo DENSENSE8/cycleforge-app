@@ -53,6 +53,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnchoredLayer } from '@/design-system';
 import { useAuth } from '@/contexts/AuthContext';
 import { THROW_TASK_OPEN_EVENT } from '@/lib/app-events';
+import { registerShortcutOverviewGroup } from '@/lib/keyboard/shortcut-overview';
 import { ThrowTaskPanel } from './ThrowTaskPanel';
 
 /**
@@ -104,6 +105,28 @@ export function ThrowTaskHost() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  /**
+   * Teach the chord where the staff `?` already looks.
+   *
+   * The shortcut-display law is explicit that a bound letter must NOT stand on
+   * a resting Button — discovery is the `?` overlay for a mounted selection
+   * strip, and {@link KeyboardShortcutsCheatSheet} otherwise. `⌘⇧U` had
+   * neither: it was a real, app-wide binding that no surface advertised, so
+   * the only operators who had it were the ones who read the source.
+   *
+   * Registered from the HOST because the host owns the binding. A row that
+   * merely links here could advertise a chord this component had stopped
+   * listening for.
+   */
+  useEffect(() => {
+    if (!user) return;
+    return registerShortcutOverviewGroup({
+      id: 'tasks',
+      title: 'Tasks',
+      rows: [{ keys: ['⌘', '⇧', 'U'], label: 'Assign a task to a colleague' }],
+    });
+  }, [user]);
 
   // Signed out there is nobody to throw at, and no staff id to throw from.
   if (!user) return null;

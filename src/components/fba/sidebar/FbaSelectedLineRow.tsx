@@ -48,7 +48,7 @@ export function FbaSelectedLineRow({
   leadingSlot,
   hideCheckbox = false,
 }: FbaSelectedLineRowProps) {
-  const microcopyColor = microcopyTone === 'success' ? 'text-emerald-700' : 'text-text-soft';
+  const microcopyColor = microcopyTone === 'success' ? 'text-text-success' : 'text-text-soft';
   const showLeading = !hideCheckbox;
   const gridCols = showLeading
     ? 'grid-cols-[auto_minmax(0,1fr)_auto]'
@@ -88,6 +88,8 @@ export function FbaSelectedLineRow({
               <HoverTooltip label="Edit catalog details" asChild>
                 <IconButton
                   icon={<Pencil className="h-4 w-4 shrink-0" />}
+                  size="lg"
+                  radius="flush"
                   onPointerDown={(e) => {
                     /* Beat parent taps / drag handlers that might steal activation on touch */
                     e.stopPropagation();
@@ -96,7 +98,7 @@ export function FbaSelectedLineRow({
                     e.stopPropagation();
                     onEditDetails();
                   }}
-                  className="relative z-10 flex min-h-[2.25rem] min-w-[2.25rem] shrink-0 items-center justify-center rounded-md hover:bg-surface-sunken active:bg-surface-strong"
+                  className="relative z-10 hover:bg-surface-sunken active:bg-surface-strong"
                   ariaLabel={`Edit catalog details for ${fnsku}`}
                 />
               </HoverTooltip>

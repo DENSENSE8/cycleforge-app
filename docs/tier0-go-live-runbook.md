@@ -86,17 +86,16 @@ All additive + idempotent. Apply via `npm run db:migrate`. **Ordering matters fo
 After applying: `npm run tenancy:guard:check` and a smoke POST to `/api/zoho/purchase-receives/sync` (USAV) should still succeed.
 
 ### C2 — provision per-tenant Zoho webhooks (per org that connects Zoho)
-The legacy global-secret endpoint `/api/zoho/webhooks` still works for USAV. For **each tenant** (incl. migrating USAV off the global secret):
+The tokenless endpoint `/api/zoho/webhooks` is retired and returns `410`. For **each tenant**:
 1. The tenant connects Zoho via OAuth (`/api/zoho/oauth/authorize` → callback). The callback now mints + returns a one-time `{ webhook.url, webhook.signing_secret }`.
 2. **[tenant/you]** In Zoho → Settings → Automation → Webhooks, register that `url` with the `signing_secret` (header `x-zoho-webhook-signature`, hex HMAC-SHA256 of the raw body).
 3. Verify a test delivery: 200 with `{ ok: true }`; a wrong-secret body → 401; an event whose Zoho org id ≠ the connected account → 403.
-4. Once USAV is on its per-tenant URL, retire the global `ZOHO_WEBHOOK_SECRET` path.
+4. Confirm the tokenless URL returns `410` and remove any obsolete global webhook secret from deployment configuration.
 
-### C3 — migrate USAV's Zoho credentials into the vault (retire env creds)
-Today USAV's Zoho creds come from env (`ZOHO_CLIENT_ID/SECRET/REFRESH_TOKEN/ORG_ID`); `loadZohoCredentials` falls back to them, and the cron fan-out includes USAV via `includeUsavTransitional:true`. To finish:
-1. Connect USAV's Zoho through the OAuth flow so an `organization_integrations` (provider='zoho') vault row exists.
-2. Confirm `getIntegrationCredentials(USAV, 'zoho')` returns the vault row (not env).
-3. Drop `includeUsavTransitional` from the Zoho crons and remove the env-fallback once every connected org has a vault row.
+### C3 — migrate USAV's Zoho credentials into the vault (complete)
+Runtime credential lookup and cron fan-out are vault-only. The manual and cron
+fulfillment paths require an explicit organization id, and no Zoho env fallback
+remains in `getIntegrationCredentials`.
 
 ### C4 — FORCE candidates unlocked by Waves 2–6 (extends E1 step 5)
 Once `app_tenant` is live (Part B), these become enforceable after their remaining writers are GUC-safe:
@@ -106,7 +105,7 @@ Once `app_tenant` is live (Part B), these become enforceable after their remaini
 ### C5 — documented follow-ups (not blocking go-live; do at/around 2nd-tenant onboarding)
 - ~~**Per-org Zoho threading** for `po-mirror-sync.ts` / `fulfillment-sync.ts`~~ **DONE (2026-06-20)** — both are org-threaded + fanned out via `forEachOrgWithProvider('zoho', …)`. Zoho is now multi-tenant end-to-end (inbound + outbound). Note: the mirror + fulfillment sync-cursors are still a single shared key (advanced only when all orgs succeed) — split to per-org cursors when tenant Zoho timelines diverge enough to matter.
 - **Cron locking — DONE (2026-06-20):** all 31 cron routes now run under `withCronLock` (skip-on-overlap). Wave 4's concurrency/distributed-locking requirement is complete.
-- **Dead crons removed (2026-06-20):** `shipping/subscribe-{ups,fedex,usps}` (de-scheduled carrier-webhook path; polling via `sync-due` replaced them; USPS 403-blocked) and `cron/reconcile-unmatched` (never scheduled; superseded by tracking-exceptions — its lib `reconcileUnmatchedReceiving` is kept, still used by `scripts/reconcile-unfound-zoho.ts`). Now-orphaned libs `lib/jobs/{ups,fedex,usps}-subscribe-pending` + the `/api/webhooks/{ups,fedex,usps}` receivers can be removed once the webhook path is confirmed permanently shelved.
+- **Dead crons removed (2026-06-20):** `shipping/subscribe-{ups,fedex,usps}` (de-scheduled carrier-webhook path; polling via `sync-due` replaced them; USPS 403-blocked) and `cron/reconcile-unmatched` (never scheduled; the manual retry and explicitly org-scoped repair script remain). Now-orphaned libs `lib/jobs/{ups,fedex,usps}-subscribe-pending` + the `/api/webhooks/{ups,fedex,usps}` receivers can be removed once the webhook path is confirmed permanently shelved.
 - **Cron fan-out — partial.** Fanned out: the 4 Zoho crons + the 5 that already loop orgs (stock-alerts, inventory/drift-check, integrations/sync, integrations/reconcile, amazon/orders-sync). **Remaining (locked but still single global pass):** 11 tenant-data crons → `forEachActiveOrg` (photos/{analyze,nas-mirror}, replenishment/{detect,sync}, shipping/{metrics,reconcile-delivered}, sku-catalog/refresh-suggestions, sourcing/scan, staff-goals/history, workflow-node-stats, zoho/orders-ingest-drain); 4 provider crons → `forEachOrgWithProvider` + lib org-threading (ebay/refresh-tokens, google-sheets/transfer-orders, receiving/incoming-tracking-sync, shipping/sync-due, sourcing/scour). Each needs its queries rewritten to the per-org client / its provider lib threaded — do per-cron, NOT a blind sweep (a naïve wrap would run global queries N times). 2 global crons (cleanup, refresh-reports) are complete with lock-only.
 - **Composite-key flips** (each couples a migration to an `ON CONFLICT` target — do atomically with the matching code, NOT before): `api_idempotency_responses` → `(organization_id, idempotency_key, route)`; `receiving`/`local_pickup_orders` Zoho-id partial-uniques → per-org; `fba_fnskus` → `(organization_id, fnsku)`.
 - **hermes_* NOT NULL**: thread org through the external Hermes writer (sibling repo), then `SET NOT NULL` before FORCE.

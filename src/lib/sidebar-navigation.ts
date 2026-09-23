@@ -392,6 +392,14 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
   // Chat — streaming assistant workspace; `/ai` shares it.
   { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', spineBand: false, requires: 'dashboard.view' },
+  // NO standalone Tasks row. The assigned-work desk is a TAB on Daily
+  // (`/?mode=tasks`, see SIDEBAR_PAGE_NAV) — operator 2026-09-22: *"focus on
+  // daily only."* It briefly shipped here as a `spineBand: false` pin and that
+  // was the wrong altitude twice over: it put "Tasks" beside "Daily" as a
+  // sibling destination when it is one of Daily's two halves, and it made a
+  // second door to a surface the operator opens by reflex at the start of a
+  // shift. Quick assignment from anywhere is the ⌘⇧U chord (`ThrowTaskHost`),
+  // not a nav row.
   // Settings — parked off the map; the staff ⋯ menu is the spine door.
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'top', spineBand: false },
   // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
@@ -494,10 +502,13 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // stations do, and stays desktop-only (mobile-restricted).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk' },
   // ── End of map (was footer pins) ──────────────────────────────────────────
-  // Automations (href stays /studio). Catalog sub-route is an L2 child in
-  // SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only (pan/zoom canvas);
-  // MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
-  { id: 'studio',            label: 'Automations', href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view', spineFlat: true },
+  // Automations (href stays /studio). It EXPANDS since 2026-09-23 — the ruling
+  // *"the cron drop to assign tasks from designated tags should be included in
+  // the automations display in the sidebar"* is a request for rows, so the
+  // `spineFlat` opt-out is dropped and the lane paints its children: Studio
+  // (the canvas) · Rules (`/studio/automations`, the automations display) ·
+  // Catalog. Desktop-only (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
+  { id: 'studio',            label: 'Automations', href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Operations
   // › Logs (AdminLogsTab, with the Audit filter). The /settings/audit and
   // /audit-log/* routes still resolve directly.
@@ -625,6 +636,14 @@ export function isRaillessSurface(
   if (
     getSidebarPageNav(getSidebarNavPageId(pathname, searchParams ?? null))?.railless === true
   ) {
+    return true;
+  }
+  // `/studio/automations` (Automations › **Rules**) is rail-less: the catalog
+  // list IS the page, so there is nothing to pick from a left column, and the
+  // Studio canvas's Library rail beside it would advertise a surface the
+  // operator did not open. Declared here and not as `railless` on the page,
+  // because the page id `studio` also owns the CANVAS, which keeps its rail.
+  if (pathname === '/studio/automations' || pathname.startsWith('/studio/automations/')) {
     return true;
   }
   // Support keeps ONE left column: Tickets recents. Voicemail / Calls /
@@ -1224,16 +1243,19 @@ const REVIEW = '/review';
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Daily (was Home) ──────────────────────────────────────────────────────
   //
-  // Single-surface as of 2026-09-14: the Today and Tasks modes are unmounted
-  // (files and backends stay; deletion is a separate gated pass) and Home IS
-  // the daily checklist — so the spine row itself is "Daily" with the lucide
-  // ListChecks glyph, matching the L1 pin above.
+  // SINGLE-SURFACE. `/` is the whole AGENDA — the org's shift checklist and
+  // the work a colleague handed you, in ONE table banded by type (operator
+  // 2026-09-22: *"consolidate the tasks into one display just under a type,
+  // like type daily checklist and type task"*). The stores stay separate; only
+  // the display merged. See `src/lib/daily/daily-agenda-row.ts`.
   //
-  // History so the next move doesn't re-litigate it: the modes rode a
-  // full-width `HorizontalButtonSlider` band (banned twin of the GlobalHeader
-  // control), then the desk frame's tab row, and now they are gone — each
-  // step the same doctrine: a switcher slot is not free, and a mode earns one
-  // by being opened.
+  // It was two tabs (Checklist · Tasks) for a few hours the same day. A tab is
+  // a place you have to already be, and "what is on my plate today" is one
+  // list — so the tabs became band captions inside the one table.
+  //
+  // History so the next move doesn't re-litigate the SHAPE: the old modes rode
+  // a full-width `HorizontalButtonSlider` band (banned twin of the
+  // GlobalHeader control), then the desk frame's tab row, and now neither.
   //
   // NO children and NO `resolveChild`: the desk frame draws a header and a
   // card with no tab row, which is the honest shape for a single-surface desk
@@ -1407,6 +1429,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
+    // Rail-less (2026-09-16): the left column had exactly ONE tenant — the
+    // Favorites quick-pick rail — and favorites became a SCOPE of the shared
+    // catalog picker (`ProductSelector` `favoritesWorkspace` / `?mode=favorites`,
+    // star pip per tile), so the column was reserving 360px for nothing. Its
+    // other occupant, the `?new=true` intake overlay, moved to the right pane
+    // (`RepairIntakeHost`, a portal host beside `RepairTable`) — the desk
+    // navigates entirely by RepairWorkspaceHeader (Active/Done · search · Add).
+    railless: true,
   },
   {
     id: 'testing', label: 'Quality Control', href: `${TECH}?view=testing`, icon: TECH_NAV_ICONS.testing,
@@ -1949,23 +1979,31 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Automations (map L1) ──────────────────────────────────────────────────
-  // Studio is an ordinary map row (2026-08-29). `/studio/catalog` stays a named
-  // L2 child for ⌘K, the header Mode switcher, and the URL. Face matches
-  // SIDEBAR_TITLES.studio. Href stays /studio (not /automations).
+  // Studio is an ordinary map row (2026-08-29). `/studio/automations` (Rules)
+  // and `/studio/catalog` are named L2 children for ⌘K, the header Mode
+  // switcher, and the URL. Face matches SIDEBAR_TITLES.studio. Href stays
+  // /studio (not /automations).
   //
   // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
-  // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.
+  // delta — the three are three routes, not three views of one.
   {
     id: 'studio', label: 'Automations', href: '/studio', icon: Workflow,
-    kind: 'main', mainGroup: 'studio', requires: 'studio.view', spineFlat: true,
+    kind: 'main', mainGroup: 'studio', requires: 'studio.view',
     children: [
       { id: 'graph',   label: 'Studio',  icon: Share2,  to: () => ({ pathname: '/studio' }) },
+      // Rules (2026-09-23 ruling) — the first-principles automations display:
+      // every automation, its cadence/event, what turns it on, and its live
+      // cron health. NOT named "Automations": that is the parent's name, and
+      // the nav name-collision law (`@/lib/nav/nav-name-collisions`) forbids a
+      // child wearing it.
+      { id: 'rules',   label: 'Rules',   icon: Zap,     to: () => ({ pathname: '/studio/automations' }) },
       { id: 'catalog', label: 'Catalog', icon: Layers,  to: () => ({ pathname: '/studio/catalog' }) },
     ],
-    resolveChild: ({ pathname }) =>
-      pathname === '/studio/catalog' || pathname.startsWith('/studio/catalog/')
-        ? 'catalog'
-        : 'graph',
+    resolveChild: ({ pathname }) => {
+      if (pathname === '/studio/catalog' || pathname.startsWith('/studio/catalog/')) return 'catalog';
+      if (pathname === '/studio/automations' || pathname.startsWith('/studio/automations/')) return 'rules';
+      return 'graph';
+    },
   },
   // Admin is DISSOLVED — `/admin` is a redirect table (`src/app/admin/page.tsx`),
   // not a page with modes. Do not reintroduce an admin entry here.

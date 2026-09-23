@@ -261,7 +261,7 @@ function MappingSuggestions({ draft }: { draft: TableImportDraft }) {
       ) : null}
 
       {result?.rejectedHallucinations?.length ? (
-        <p className="text-role-micro text-amber-700">
+        <p className="text-role-micro text-text-warning">
           Ignored {result.rejectedHallucinations.length} suggestion
           {result.rejectedHallucinations.length === 1 ? '' : 's'} naming columns not in this file.
         </p>
@@ -286,7 +286,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
             <div key={field.key} className="space-y-1 px-4 py-2.5">
               <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                 {field.label}
-                {field.required ? <span className="ml-1 text-rose-600">*</span> : null}
+                {field.required ? <span className="ml-1 text-text-danger">*</span> : null}
               </p>
               <select
                 value={selected}
@@ -302,7 +302,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
                   'h-8 w-full border bg-surface-card px-2 text-role-caption font-semibold text-text-default',
                   cornerClass('flush'),
                   missingRequired
-                    ? cn('border-rose-300', focusRing('field', 'danger'))
+                    ? cn('border-border-danger', focusRing('field', 'danger'))
                     : cn('border-border-soft', focusRing('field', 'accent')),
                 )}
               >
@@ -353,7 +353,7 @@ function StagingBatchLeaf({ draft }: { draft: TableImportDraft }) {
         ))}
       </div>
       {unmappedRequired.length > 0 ? (
-        <p className="px-4 py-3 text-role-micro text-amber-800">
+        <p className="px-4 py-3 text-role-micro text-text-warning">
           {unmappedRequired.map((f) => f.label).join(', ')} is not mapped, so no row
           can be imported yet.
         </p>

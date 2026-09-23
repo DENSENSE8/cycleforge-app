@@ -19,10 +19,10 @@
  * provable by a test rather than by unplugging a router
  * (8 — station-down is first-class and
  * degrade-not-block). Visible chrome today is the Operations TV pill + mobile
- * `NetworkChip` — there is no app-root banner.
+ * There is no app-root banner or connection-status chip.
  *
  * Program: `docs/todo/station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`
- * (P2 · D4 · D12).
+ * (P2 · D4 · D12). There is no application-level connection badge.
  */
 
 /**

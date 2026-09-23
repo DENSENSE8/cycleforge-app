@@ -16,8 +16,6 @@ export const ebayAccounts = pgTable('ebay_accounts', {
   // not globally — two tenants may both label an account 'ebay-main'.
   accountName: varchar('account_name', { length: 50 }).notNull(),
   ebayUserId: varchar('ebay_user_id', { length: 100 }),
-  accessToken: text('access_token').notNull(),
-  refreshToken: text('refresh_token').notNull(),
   tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }).notNull(),
   refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }).notNull(),
   marketplaceId: varchar('marketplace_id', { length: 20 }).default('EBAY_US'),
@@ -626,20 +624,6 @@ export const inboundWorkflowStatusEnum = pgEnum('inbound_workflow_status_enum', 
 
 // DAILY TASK LOGIC REMOVED
 
-// NEW: Receiving tasks table
-export const receivingTasks = pgTable('receiving_tasks', {
-  organizationId: orgIdCol(),
-  id: serial('id').primaryKey(),
-  trackingNumber: varchar('tracking_number', { length: 100 }).notNull(),
-  orderNumber: varchar('order_number', { length: 100 }),
-  status: varchar('status', { length: 20 }).default('pending'),
-  receivedDate: timestamp('received_date', { withTimezone: true }),
-  processedDate: timestamp('processed_date', { withTimezone: true }),
-  notes: text('notes'),
-  staffId: integer('staff_id').references(() => staff.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
-
 // Source of truth tables - generic columns for all
 const _genericColumns = {
   col1: serial('col_1').primaryKey(),
@@ -666,6 +650,10 @@ export const customers = pgTable('customers', {
   id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
   orderId: text('order_id'),
   zohoContactId: text('zoho_contact_id'),
+  /** ShipStation's per-account stable customer id — the connector's tier-1
+   * buyer dedupe key (migration 2026-09-23; unique per org via
+   * ux_customers_org_shipstation_id). */
+  shipstationCustomerId: text('shipstation_customer_id'),
   contactType: text('contact_type').default('customer'),
   displayName: text('display_name'),
   firstName: text('first_name'),
@@ -1076,13 +1064,14 @@ export const entityNotes = pgTable('entity_notes', {
  * `flag` is CHECK-constrained in the DDL (`order_flags_flag_chk`) to the ids in
  * `src/lib/orders/order-row-flags.ts` — Drizzle has no first-class
  * "text with an enumerated CHECK", so the vocabulary lives there and both are
- * extended in the same change. Migration `2026-07-31_order_flags.sql`.
+ * extended in the same change. Migrations `2026-07-31_order_flags.sql` and
+ * `2026-09-17_order_flags_discrepancy.sql`.
  */
 export const orderFlags = pgTable('order_flags', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: orgIdCol(),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-  /** 'priority' | 'hold' | 'damaged' | 'awaiting_customer' | 'ready' */
+  /** 'priority' | 'hold' | 'damaged' | 'discrepancy' | 'awaiting_customer' | 'ready' */
   flag: text('flag').notNull(),
   setByStaffId: integer('set_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1188,6 +1177,11 @@ export const packerLogs = pgTable('packer_logs', {
   /** Raw scan value for non-carrier scans (SKU codes, FNSKUs, garbage) */
   scanRef: text('scan_ref'),
   trackingType: varchar('tracking_type', { length: 20 }).notNull(),
+  /**
+   * CAPTURING owns pre-confirmation photo evidence; only COMPLETED is a
+   * physical pack fact. Existing rows defaulted to COMPLETED in the migration.
+   */
+  completionState: varchar('completion_state', { length: 20 }).notNull().default('COMPLETED'),
   packedBy: integer('packed_by').references(() => staff.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
@@ -1308,7 +1302,6 @@ export const receiving = pgTable('receiving_carton', {
   targetChannel: targetChannelEnum('target_channel'),
   zohoPurchaseReceiveId: text('zoho_purchase_receive_id'),
   zohoWarehouseId: text('zoho_warehouse_id'),
-  quantity: text('quantity'),
   /** Carton-level support / ops notes (not per receiving_lines row). */
   supportNotes: text('support_notes'),
   /** Zoho PO header notes (overall, carton-level) — the "Zoho Notes" tab's primary
@@ -1538,8 +1531,6 @@ export const receivingLines = pgTable('receiving_line', {
   sku: text('sku'),
 
   // Quantities
-  /** Legacy column; prefer quantity_received / quantity_expected */
-  quantity: integer('quantity'),
   quantityReceived: integer('quantity_received').default(0),
   quantityExpected: integer('quantity_expected'),
 
@@ -2429,8 +2420,6 @@ export type EbayAccount = typeof ebayAccounts.$inferSelect;
 export type NewEbayAccount = typeof ebayAccounts.$inferInsert;
 export type Staff = typeof staff.$inferSelect;
 export type NewStaff = typeof staff.$inferInsert;
-export type ReceivingTask = typeof receivingTasks.$inferSelect;
-export type NewReceivingTask = typeof receivingTasks.$inferInsert;
 export type Receiving = typeof receiving.$inferSelect;
 export type NewReceiving = typeof receiving.$inferInsert;
 export type LocalPickupItem = typeof localPickupItems.$inferSelect;
@@ -2701,6 +2690,11 @@ export const skuCatalog = pgTable('sku_catalog', {
   replenishTargetCents: integer('replenish_target_cents'),
   /** Per-SKU pack/handling guidance shown to the packer before confirm (P1-PCK-02). Added 2026-06-21. */
   notes: text('notes'),
+  /**
+   * Closed operational safety facts for outbound rows. These are deliberately
+   * distinct from free-text `notes`; see outbound-handling-facts.ts.
+   */
+  handlingFlags: text('handling_flags').array().notNull().default(sql`ARRAY[]::text[]`),
   /**
    * External inventory-provider item id (`items.zoho_item_id` while Zoho is the
    * adapter). Join inventory mirror on this id — never on SKU string.
@@ -5469,6 +5463,12 @@ export const staffSubscriptions = pgTable('staff_subscriptions', {
   matchPlatform: text('match_platform'),
   matchStation: text('match_station'),
   matchSeverityMin: smallint('match_severity_min'),
+  /**
+   * kind='rule': the canonical tracking number a pre-arrival watch waits on
+   * (2026-09-22). A real column, not `match_extra`, because the fan-out worker
+   * FILTERS on it — see the migration header.
+   */
+  matchTrackingNormalized: text('match_tracking_normalized'),
   /** Variant config ONLY — never a filter predicate (see the migration header). */
   matchExtra: jsonb('match_extra'),
   slaEventKey: text('sla_event_key'),
@@ -5486,6 +5486,12 @@ export const staffSubscriptions = pgTable('staff_subscriptions', {
   ruleSkuIdx: index('idx_staff_subscriptions_rule_sku')
     .on(table.organizationId, table.matchSku)
     .where(sql`subscription_kind = 'rule' AND state <> 'muted' AND match_sku IS NOT NULL`),
+  ruleTrackingIdx: index('idx_staff_subscriptions_rule_tracking')
+    .on(table.organizationId, table.matchTrackingNormalized)
+    .where(sql`subscription_kind = 'rule' AND state <> 'muted' AND match_tracking_normalized IS NOT NULL`),
+  ruleTrackingUnique: uniqueIndex('ux_staff_subscriptions_rule_tracking')
+    .on(table.organizationId, table.staffId, table.matchTrackingNormalized)
+    .where(sql`subscription_kind = 'rule' AND match_tracking_normalized IS NOT NULL`),
   ruleEventKeysIdx: index('idx_staff_subscriptions_rule_event_keys')
     .using('gin', table.matchEventKeys)
     .where(sql`subscription_kind = 'rule' AND state <> 'muted'`),
@@ -6015,6 +6021,10 @@ export const dailyCheckItems = pgTable('daily_check_items', {
   effectiveFrom: date('effective_from').notNull(),
   /** Civil day the item left the list; NULL = still live. Exclusive bound. */
   retiredAt: date('retired_at'),
+  /** Every new item is staff-owned; NULL is retained for legacy shared rows. */
+  kind: text('kind').notNull().default('recurring'),
+  assignedStaffId: integer('assigned_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  glyph: text('glyph'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({

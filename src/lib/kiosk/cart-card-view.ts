@@ -8,10 +8,9 @@
  * cart "should display a mobile-like chip display component with a rounded
  * corner radius and kind of pills and buttons".
  *
- * The derivations live here so the card and {@link cartLineCompoundView} state
- * the same facts from `counter_session_lines` (`type` · `title` · `quantity` ·
- * `unit_amount_cents` · `payload` · `voided_at`) — one line cannot read
- * differently on the tablet than on the desk.
+ * These derivations are the single interpretation of `counter_session_lines`
+ * (`type` · `title` · `quantity` · `unit_amount_cents` · `payload` ·
+ * `voided_at`) for every cart face.
  */
 
 import {

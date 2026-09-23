@@ -15,8 +15,9 @@
  */
 
 import type { MobileNavTabId } from '@/lib/auth/mobile-display-config';
-import { BarChart3, ListChecks, PackageOpen, Printer } from '@/components/Icons';
+import { BarChart3, Inbox, ListChecks, PackageOpen, Printer } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
+import { OUTBOUND_WORKFLOW_SURFACES } from '@/lib/mobile/mobile-first-surface';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 
 // ─── Destination tree (sidebar drawer) ───────────────────────────────────────
@@ -78,8 +79,9 @@ const OUTBOUND = domainLane('fulfillment');
 //
 // **Operator ruling (2026-09-14):** the mobile app's live surface is the
 // unbox photo feed, picks, location scanning, and the identification kernel.
-// Find and the /m/pack route were deleted with that pass. **Daily came back**
-// the same day as a real surface: `/m/home` is the phone face of the shift
+// Find was deleted with that pass. Packing returned 2026-09-17 as its own
+// partial phone surface. **Daily came back** the same day as a real surface:
+// `/m/home` is the phone face of the shift
 // checklist (the mobile SoT for the check verb), and it leads the drawer
 // because it is the first thing a staffer runs on a shift.
 //
@@ -181,10 +183,38 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     // `matchPrefixes` describes ROUTES, not rows: `/m/orders/[orderId]` still
     // resolves and belongs to this lane, so a deep-link there marks Outbound
     // active even though no row points at it.
-    matchPrefixes: ['/m/work', '/m/pick', '/m/orders'],
+    matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/exceptions'],
     children: [
-      { kind: 'leaf', id: 'orders', label: 'Orders', href: '/m/work' },
-      { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
+      {
+        kind: 'leaf',
+        id: 'orders',
+        label: OUTBOUND_WORKFLOW_SURFACES.orders.label,
+        href: OUTBOUND_WORKFLOW_SURFACES.orders.canonicalMobilePath,
+      },
+      {
+        kind: 'leaf',
+        id: 'picks',
+        label: OUTBOUND_WORKFLOW_SURFACES.picks.label,
+        href: OUTBOUND_WORKFLOW_SURFACES.picks.canonicalMobilePath,
+      },
+      {
+        kind: 'leaf',
+        id: 'packing',
+        label: 'Packing',
+        href: '/m/pack',
+      },
+      {
+        kind: 'leaf',
+        id: 'shipping-packing',
+        label: OUTBOUND_WORKFLOW_SURFACES.shipping.label,
+        href: OUTBOUND_WORKFLOW_SURFACES.shipping.canonicalMobilePath,
+      },
+      {
+        kind: 'leaf',
+        id: 'exceptions',
+        label: OUTBOUND_WORKFLOW_SURFACES.exceptions.label,
+        href: OUTBOUND_WORKFLOW_SURFACES.exceptions.canonicalMobilePath,
+      },
     ],
   },
   // CROSS-LANE, so an L0 row rather than a member of any lane: a shift report
@@ -201,6 +231,37 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     icon: BarChart3,
     requires: 'operations.view',
   },
+  // CROSS-LANE for the same reason Reports is, and an L0 row for the same
+  // reason: an arrival notice, a mention and an SLA breach belong to no single
+  // lane, so seating this under Inbound would name only one of its senders.
+  //
+  // **Why the row exists at all.** The desk header inbox came back 2026-09-22
+  // carrying the "watch a tracking number" control, and `SURFACE_LAW` §1
+  // refuses a desk-only surface without a `/m` twin or a recorded exception —
+  // this is the twin, not a mirror: `/m/inbox` owns the whole verb (watch,
+  // stop, read) rather than reflecting the desk panel. The operator's own
+  // framing is a floor one (2026-09-22: *"if you are looking forward to
+  // receiving a package … input a tracking number"*); the number is read off a
+  // phone and the carton is scanned with one.
+  //
+  // Gated on `home.inbox.view` — the permission `GET /api/inbox` and
+  // `PATCH /api/inbox/[id]` already carry, so a staffer who would 404 at the
+  // data never sees the door. The Home Inbox org flag is a SEPARATE axis and
+  // is deliberately not a nav condition: the screen answers "not enabled here"
+  // in one plain line, which a missing row could not.
+  {
+    kind: 'leaf',
+    id: 'inbox',
+    label: 'Inbox',
+    href: '/m/inbox',
+    icon: Inbox,
+    requires: 'home.inbox.view',
+  },
+  // NO separate Tasks row (operator 2026-09-23: *"there should just be only one
+  // task system"*). A thrown task and a daily check are two stores but ONE list
+  // on the phone: `/m/home` renders both, ticks both, and `work_orders.claim`
+  // decides only whether the assigned-work rows appear on it. A second door to
+  // the same work is how an operator ends up asking which list is real.
   { kind: 'leaf', id: 'print', label: 'Print', href: '/m/print', icon: Printer },
 ];
 

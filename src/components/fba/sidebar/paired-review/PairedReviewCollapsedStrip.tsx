@@ -1,4 +1,5 @@
 import { ChevronDown } from '@/components/Icons';
+import { Button } from '@/design-system/primitives/Button';
 
 /** Compact one-line strip shown when the combine-review panel is collapsed. */
 export function PairedReviewCollapsedStrip({
@@ -14,10 +15,13 @@ export function PairedReviewCollapsedStrip({
 }) {
   return (
     <div className="shrink-0 border-b border-border-hairline px-3 py-2">
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
+        radius="flush"
         onClick={onToggleExpanded}
-        className="ds-raw-button flex w-full items-center justify-between gap-2 rounded-lg border border-border-soft bg-surface-canvas/90 px-2.5 py-2 text-left transition-colors hover:bg-surface-sunken"
+        className="h-auto w-full justify-between gap-2 border border-border-soft bg-surface-canvas/90 px-2.5 py-2 text-left hover:bg-surface-sunken"
         aria-expanded={false}
       >
         <span className="text-role-micro uppercase tracking-widest text-text-muted">
@@ -29,13 +33,13 @@ export function PairedReviewCollapsedStrip({
               {selectedCount} · {collapsedTotalQty}
             </span>
           ) : lockedFbaId ? (
-            <span className="truncate font-mono text-role-micro text-emerald-700">{lockedFbaId}</span>
+            <span className="truncate font-mono text-role-micro text-text-success">{lockedFbaId}</span>
           ) : (
             <span className="text-role-micro font-semibold text-text-faint">Tap to expand</span>
           )}
           <ChevronDown className="h-4 w-4 shrink-0 text-text-faint" />
         </div>
-      </button>
+      </Button>
     </div>
   );
 }

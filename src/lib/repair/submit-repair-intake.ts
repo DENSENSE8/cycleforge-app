@@ -3,12 +3,13 @@
  * domain helper.
  *
  * Everything here is scoped by `orgId` + the submitted body; NOTHING depends on
- * a staff actor. That is deliberate: the staff route (`/api/repair/submit`,
- * `withAuth` + `repair.intake`) and the headless kiosk route
- * (`/api/kiosk/repair/submit`, `withKioskAuth` device principal, no PIN) both
- * call this one helper, so the two surfaces can never drift. Extracting the
- * former inline route body into this helper is the route → domain-helper
- * pattern from.
+ * a staff actor. That is deliberate: it was extracted so the staff route
+ * (`/api/repair/submit`, `withAuth` + `repair.intake`) and the device-authed
+ * kiosk twin could never drift. The kiosk twin is gone as of 2026-09-16 — the
+ * counter writes repairs through `submitCounterTransaction` now, one
+ * `repair_service` row per device on the visit — so the staff route is this
+ * helper's only caller, and the principal-agnostic shape is what keeps it
+ * reusable rather than what keeps two surfaces in step.
  *
  * Validation failures throw `RepairIntakeValidationError` (callers map → 400);
  * any other throw is an internal error (callers map → 500).

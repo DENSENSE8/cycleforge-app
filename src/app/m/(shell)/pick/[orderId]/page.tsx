@@ -22,11 +22,11 @@
 
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { ProgressDots } from '@/components/mobile/ProgressDots';
 import { ConfirmDock } from '@/components/mobile/ConfirmDock';
 import { ShortPickSheet } from '@/components/mobile/picker/ShortPickSheet';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { useMobilePicker } from './_picker/useMobilePicker';
 import { PickerTaskCard } from './_picker/PickerTaskCard';
 import { LoadingShell, ErrorShell, EmptyShell, CompleteCard } from './_picker/PickerShells';
@@ -54,7 +54,7 @@ function PickerInner() {
 
   // ── Render gates
   if (!isLoaded || !user) return null;
-  if (loadError) return <ErrorShell error={loadError} onBack={() => router.push('/m/pick')} />;
+  if (loadError) return <ErrorShell error={loadError} onBack={() => router.replace('/m/pick')} />;
   // Chrome first: an order that has not resolved still needs the back button and
   // the SCAN corner, or a bad deep link is a dead end.
   if (!order) {
@@ -65,7 +65,7 @@ function PickerInner() {
       </div>
     );
   }
-  if (totalTasks === 0) return <EmptyShell onBack={() => router.push('/m/pick')} />;
+  if (totalTasks === 0) return <EmptyShell onBack={() => router.replace('/m/pick')} />;
 
   // ── Render
   // The session page hides the bottom nav (HIDDEN_PREFIXES match in
@@ -78,7 +78,7 @@ function PickerInner() {
       <MobileDetailTopBar
         backHref="/m/pick"
         lead={
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken text-sm font-semibold text-text-default">
+          <span className={`${cornerClass('pill')} grid h-9 w-9 shrink-0 place-items-center bg-surface-sunken text-sm font-semibold text-text-default`}>
             {order.customerInitials}
           </span>
         }
@@ -87,7 +87,6 @@ function PickerInner() {
         right={
           <>
             <ProgressDots done={doneCount} total={totalTasks} />
-            <NetworkChip compact />
           </>
         }
       />
@@ -101,8 +100,8 @@ function PickerInner() {
         <div
           className={`mb-3 rounded-none border px-3 py-2 text-xs font-semibold ${
             toteRef
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-              : 'border-amber-300 bg-amber-50 text-amber-900'
+              ? 'border-border-success bg-surface-success text-text-success'
+              : 'border-border-warning bg-surface-warning text-text-warning'
           }`}
         >
           {toteRef ? (
@@ -115,7 +114,11 @@ function PickerInner() {
           )}
         </div>
         {allDone || !currentTask ? (
-          <CompleteCard onBack={() => router.push('/m/pick')} tote={stagedTote} />
+          <CompleteCard
+            onBack={() => router.replace('/m/pick')}
+            onStartPacking={() => router.replace(`/m/pack/start/${order.orderId}`)}
+            tote={stagedTote}
+          />
         ) : (
           <PickerTaskCard
             currentTask={currentTask}

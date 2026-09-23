@@ -114,13 +114,9 @@ const nextConfig: NextConfig = {
     // same checkout — dev clobbers `.next`. Unset ⇒ default `.next`.
     distDir: process.env.NEXT_DIST_DIR || '.next',
     outputFileTracingRoot: process.cwd(),
-    // Type-check + lint are the gate in CI (.github/workflows/ci.yml runs
-    // `eslint src` + `tsc --noEmit`). Running them AGAIN inside `next build`
-    // is redundant, and on this ~550k-LOC strict project the in-build `tsc`
-    // step ("Running TypeScript …") GC-thrashes under the build heap and
-    // wedges Vercel prod deploys until the 45-min build timeout. Keep the
-    // Vercel build a pure bundler step; CI owns correctness.
-    typescript: { ignoreBuildErrors: true },
+    // Keep the production build fail-closed. CI typechecks earlier for faster
+    // feedback, while Next repeats the check so a deployment cannot bypass CI
+    // and publish a revision that does not compile.
     // Next 16 removed the `eslint` build key — `next build` no longer runs ESLint,
     // so there is nothing to disable here; CI's `eslint src` is the lint gate.
     // Remote hosts allowed through the next/image optimizer. The mobile

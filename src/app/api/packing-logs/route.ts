@@ -14,12 +14,13 @@ import { publishActivityLogged, publishOrderChanged, publishPackerLogChanged, pu
 import { ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
-import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
+import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { writeLedgerDelta } from '@/lib/inventory/write-ledger-delta';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import type { ScanClassification } from '@/utils/packer';
+import { createPackerLog, touchPackerLog } from '@/lib/packing/packer-log-writer';
 
 /**
  * LEGACY packer aliases — the old station UI sent packer "1/2/3", which meant
@@ -139,6 +140,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LEFT JOIN orders o ON o.shipment_id = pl.shipment_id AND pl.shipment_id IS NOT NULL
             WHERE pl.packed_by = $1
               AND pl.organization_id = $4
+              AND pl.completion_state = 'COMPLETED'
             ORDER BY pl.id DESC
             LIMIT $2 OFFSET $3
         `, [staffId, limit, offset, ctx.organizationId]);
@@ -309,18 +311,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     const { shipmentId: fbaShipId, scanRef: fbaScanRef } = await resolveShipmentId(scanInput, ctx.organizationId);
 
                     // Log the packer scan
-                    const fbaPackerInsert = await client.query(`
-                        INSERT INTO packer_logs (shipment_id, scan_ref, tracking_type, created_at, packed_by, organization_id)
-                        VALUES ($1, $2, 'FBA', $3, $4, $5)
-                        ON CONFLICT DO NOTHING
-                        RETURNING id, created_at::text
-                    `, [fbaShipId, fbaScanRef ?? scanInput, packDateTime, staffId, ctx.organizationId]);
+                    const fbaPackerLog = await createPackerLog(client, {
+                        organizationId: ctx.organizationId,
+                        shipmentId: fbaShipId,
+                        scanRef: fbaScanRef ?? scanInput,
+                        trackingType: 'FBA',
+                        createdAt: packDateTime,
+                        packedBy: staffId,
+                        source: 'packing-logs.fba',
+                        onConflictDoNothing: true,
+                    });
 
-                    const fbaPackerLogId = fbaPackerInsert.rows[0]?.id ?? null;
-                    const fbaCreatedAt = fbaPackerInsert.rows[0]?.created_at ?? packDateTime;
+                    const fbaPackerLogId = fbaPackerLog?.id ?? null;
+                    const fbaCreatedAt = fbaPackerLog?.createdAt ?? packDateTime;
 
                     if (fbaPackerLogId) {
-                        await mirrorLegacyPackToAllocations({
+                        await mirrorLegacyPackingToAllocations({
                             packerLogId: fbaPackerLogId,
                             shipmentId: fbaShipId ?? null,
                             actorStaffId: staffId,
@@ -366,7 +372,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         sku: fba.fnskus,
                     };
 
-                    await invalidateCacheTags(['packing-logs', 'fba-board']);
+                    await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'fba-board']);
                     if (fbaRecord.id) await prependToPackerLogsCache(staffId, fbaRecord, ctx.organizationId);
 
                     // Hand off to a paired phone (if any) for the photo flow.
@@ -442,28 +448,28 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 if (nfExisting.rows.length > 0) {
                     notFoundPackerLogId = nfExisting.rows[0].id;
                     notFoundCreatedAt = nfExisting.rows[0].created_at ?? packDateTime;
-                    await client.query(
-                        `UPDATE packer_logs SET updated_at = NOW(), packed_by = $2 WHERE id = $1 AND organization_id = $3`,
-                        [notFoundPackerLogId, staffId, ctx.organizationId]
-                    );
+                    await touchPackerLog(client, {
+                        organizationId: ctx.organizationId,
+                        packerLogId: Number(notFoundPackerLogId),
+                        packedBy: staffId,
+                        source: 'packing-logs.not-found-rescan',
+                    });
                 } else {
-                    const notFoundInsert = await client.query(`
-                        INSERT INTO packer_logs (
-                            shipment_id,
-                            scan_ref,
-                            tracking_type,
-                            created_at,
-                            packed_by,
-                            organization_id
-                        ) VALUES ($1, $2, $3, $4, $5, $6)
-                        RETURNING id, created_at::text
-                    `, [nfShipmentId, nfScanRef, classification.trackingType, packDateTime, staffId, ctx.organizationId]);
-                    notFoundPackerLogId = notFoundInsert.rows[0]?.id ?? null;
-                    notFoundCreatedAt = notFoundInsert.rows[0]?.created_at ?? packDateTime;
+                    const notFoundLog = await createPackerLog(client, {
+                        organizationId: ctx.organizationId,
+                        shipmentId: nfShipmentId,
+                        scanRef: nfScanRef,
+                        trackingType: classification.trackingType,
+                        createdAt: packDateTime,
+                        packedBy: staffId,
+                        source: 'packing-logs.not-found',
+                    });
+                    notFoundPackerLogId = notFoundLog?.id ?? null;
+                    notFoundCreatedAt = notFoundLog?.createdAt ?? packDateTime;
                 }
 
                 if (notFoundPackerLogId) {
-                    await mirrorLegacyPackToAllocations({
+                    await mirrorLegacyPackingToAllocations({
                         packerLogId: notFoundPackerLogId,
                         shipmentId: nfShipmentId ?? null,
                         actorStaffId: staffId,
@@ -527,7 +533,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     },
                 });
 
-                await invalidateCacheTags(['packing-logs', 'orders', 'orders-next', 'shipped']);
+                await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
                 if (nfSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: nfSalId, station: 'PACK', activityType: 'PACK_COMPLETED', staffId, scanRef: nfScanRef ?? scanInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
                 if (notFoundRecord.id) await prependToPackerLogsCache(staffId, notFoundRecord, ctx.organizationId);
 
@@ -566,13 +572,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
             const order = orderLookup.rows[0];
 
-            // Update status only — shipped state is derived from shipping_tracking_numbers
+            // A pack scan records PACKED. Only the physical dock scan-out path
+            // may advance an order to SHIPPED.
             await client.query(`
                 UPDATE orders
-                SET status = 'shipped'
+                SET status = 'packed'
                 WHERE id = $1
                   AND organization_id = $2
-                  AND (status IS NULL OR status != 'shipped')
+                  AND (status IS NULL OR status != 'packed')
             `, [order.id, ctx.organizationId]);
 
             // Upsert a PACK work_assignment as DONE.
@@ -608,28 +615,28 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             if (foundExisting.rows.length > 0) {
                 foundPackerLogId = foundExisting.rows[0].id;
                 foundCreatedAt = foundExisting.rows[0].created_at ?? packDateTime;
-                await client.query(
-                    `UPDATE packer_logs SET updated_at = NOW(), packed_by = $2 WHERE id = $1 AND organization_id = $3`,
-                    [foundPackerLogId, staffId, ctx.organizationId]
-                );
+                await touchPackerLog(client, {
+                    organizationId: ctx.organizationId,
+                    packerLogId: Number(foundPackerLogId),
+                    packedBy: staffId,
+                    source: 'packing-logs.order-rescan',
+                });
             } else {
-                const foundInsert = await client.query(`
-                    INSERT INTO packer_logs (
-                        shipment_id,
-                        scan_ref,
-                        tracking_type,
-                        created_at,
-                        packed_by,
-                        organization_id
-                    ) VALUES ($1, NULL, $2, $3, $4, $5)
-                    RETURNING id, created_at::text
-                `, [orderShipmentId, classification.trackingType, packDateTime, staffId, ctx.organizationId]);
-                foundPackerLogId = foundInsert.rows[0]?.id ?? null;
-                foundCreatedAt = foundInsert.rows[0]?.created_at ?? packDateTime;
+                const foundLog = await createPackerLog(client, {
+                    organizationId: ctx.organizationId,
+                    shipmentId: orderShipmentId,
+                    scanRef: null,
+                    trackingType: classification.trackingType,
+                    createdAt: packDateTime,
+                    packedBy: staffId,
+                    source: 'packing-logs.order',
+                });
+                foundPackerLogId = foundLog?.id ?? null;
+                foundCreatedAt = foundLog?.createdAt ?? packDateTime;
             }
 
             if (foundPackerLogId) {
-                await mirrorLegacyPackToAllocations({
+                await mirrorLegacyPackingToAllocations({
                     packerLogId: foundPackerLogId,
                     shipmentId: orderShipmentId ?? null,
                     actorStaffId: staffId,
@@ -696,7 +703,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 },
             });
 
-            await invalidateCacheTags(['packing-logs', 'orders', 'orders-next', 'shipped']);
+            await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
             if (foundSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: foundSalId, station: 'PACK', activityType: 'PACK_COMPLETED', staffId, scanRef: order.tracking_number ?? scanInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
             if (foundRecord.id) await prependToPackerLogsCache(staffId, foundRecord, ctx.organizationId);
 
@@ -832,22 +839,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             skuUpdated = addQty !== 0;
         }
 
-        const nonOrderInsert = await client.query(`
-            INSERT INTO packer_logs (
-                scan_ref,
-                shipment_id,
-                tracking_type,
-                created_at,
-                packed_by,
-                organization_id
-            ) VALUES ($1, NULL, $2, $3, $4, $5)
-            RETURNING id, created_at::text
-        `, [classification.normalizedInput, classification.trackingType, packDateTime, staffId, ctx.organizationId]);
+        const nonOrderLog = await createPackerLog(client, {
+            organizationId: ctx.organizationId,
+            shipmentId: null,
+            scanRef: classification.normalizedInput,
+            trackingType: classification.trackingType,
+            createdAt: packDateTime,
+            packedBy: staffId,
+            source: 'packing-logs.non-order',
+        });
 
-        const nonOrderPackerLogId = nonOrderInsert.rows[0]?.id ?? null;
+        const nonOrderPackerLogId = nonOrderLog?.id ?? null;
         if (nonOrderPackerLogId) {
             // shipment_id is null for non-order scans; mirror still safe (no-op).
-            await mirrorLegacyPackToAllocations({
+            await mirrorLegacyPackingToAllocations({
                 packerLogId: nonOrderPackerLogId,
                 shipmentId: null,
                 actorStaffId: staffId,
@@ -869,7 +874,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         const nonOrderRecord = {
             id: nonOrderPackerLogId,
-            created_at: nonOrderInsert.rows[0]?.created_at ?? packDateTime,
+            created_at: nonOrderLog?.createdAt ?? packDateTime,
             tracking_number: classification.normalizedInput,
             packed_by: staffId,
             order_id: null,
@@ -891,11 +896,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                 source: 'packing-logs',
                 tracking_type: classification.trackingType,
             },
-            createdAt: nonOrderInsert.rows[0]?.created_at ?? packDateTime,
+            createdAt: nonOrderLog?.createdAt ?? packDateTime,
         });
         if (nonOrderSalId) publishActivityLogged({ organizationId: ctx.organizationId, id: nonOrderSalId, station: 'PACK', activityType: 'PACK_SCAN', staffId, scanRef: classification.normalizedInput, fnsku: null, source: 'packing-logs' }).catch(() => {});
 
-        await invalidateCacheTags(['packing-logs', 'orders', 'orders-next', 'shipped']);
+        await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
         if (nonOrderRecord.id) await prependToPackerLogsCache(staffId, nonOrderRecord, ctx.organizationId);
 
         return NextResponse.json({

@@ -23,9 +23,8 @@ export interface DailyTaskRow {
   /** How many responsible staff ticked it — the `team` numerator. */
   teamDone: number;
   /**
-   * The item's denominator: the roster, or just the owner when the item is
-   * owned. The report drops non-responsible marks, so `0/5` on an owned item
-   * would be a fraction over a denominator nobody owes.
+   * The item's denominator: the roster for recurring and unowned one-off work;
+   * only an assigned one-off narrows it to one staffer.
    */
   teamTotal: number;
   /** When the viewer ticked it (ISO), or null. */
@@ -65,7 +64,7 @@ export function buildDailyTaskRows(
     assignedStaffName: item.assignedStaffName,
     done: doneIds.has(item.id),
     teamDone: teamDoneByItem.get(item.id) ?? 0,
-    teamTotal: item.assignedStaffId != null ? 1 : rosterSize,
+    teamTotal: item.kind === 'once' && item.assignedStaffId != null ? 1 : rosterSize,
     markedAt: markedAtByItemId?.get(item.id) ?? null,
   }));
 }

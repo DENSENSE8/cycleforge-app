@@ -30,7 +30,6 @@ import {
   type MobileScanVerdict,
 } from '@/components/mobile/redesign/scan-verdict';
 import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { resolveViaLookupPo, type ScanResolutionMode } from '@/lib/receiving/scan';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { useAuth } from '@/contexts/AuthContext';
@@ -242,10 +241,6 @@ export default function RedesignedMobileUniversalScan() {
         <div className="mb-1.5 flex items-center gap-1.5 px-1">
           <ActiveIcon className="h-4 w-4 text-text-muted" />
           <h1 className="text-base font-semibold tracking-tight text-text-default">{active.label}</h1>
-          {/* Link state belongs on the surface that COMMITS scans: a phone that
-              silently lost wifi mid-aisle otherwise looks identical to one whose
-              scans are landing. */}
-          <NetworkChip compact className="ml-auto" />
         </div>
         <HorizontalButtonSlider
           variant="segmented"

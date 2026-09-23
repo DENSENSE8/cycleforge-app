@@ -109,7 +109,7 @@ export async function fetchPackerLogRows(
   const today = getCurrentPSTDateKey();
   const cacheTTL = weekEnd && weekEnd < today ? 86400 : 120;
 
-  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, cacheLookup);
+  const cached = await getCachedJson<any[]>(CACHE_NAMESPACE, orgId, cacheLookup);
   if (cached) {
     return { rows: cached, cacheTTL, cacheHit: true };
   }
@@ -305,6 +305,8 @@ export async function fetchPackerLogRows(
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_by_date,
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD HH24:MI:SS') AS deadline_at,
         o.item_number,
+        o.sale_amount,
+        o.currency,
         NULLIF(TRIM(COALESCE(o.condition, '')), '') AS condition,
         COALESCE(o.quantity, sal.metadata->>'quantity') AS quantity,
         COALESCE(
@@ -725,6 +727,8 @@ export async function fetchPackerLogRows(
         ) AS product_title,
         ${deadlineCols}
         o.item_number,
+        o.sale_amount,
+        o.currency,
         NULLIF(TRIM(COALESCE(o.condition, '')), '') AS condition,
         COALESCE(o.quantity, sal.metadata->>'quantity') AS quantity,
         COALESCE(
@@ -934,7 +938,7 @@ export async function fetchPackerLogRows(
 
   // Defer the cache write so it never blocks TTFB. Safe in both Route Handlers
   // and Server Components on Next 16.
-  after(() => setCachedJson(CACHE_NAMESPACE, cacheLookup, rows, cacheTTL, CACHE_TAGS));
+  after(() => setCachedJson(CACHE_NAMESPACE, orgId, cacheLookup, rows, cacheTTL, CACHE_TAGS));
 
   // Heal missing projection rows in the background so subsequent reads stay on
   // the fast path (order_match_fallback above is the correctness safety net).

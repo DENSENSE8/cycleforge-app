@@ -41,11 +41,11 @@ interface ConfirmDockProps {
   };
 }
 
-const TONE_CLASSES: Record<ConfirmDockTone, string> = {
-  primary: 'bg-gradient-to-br from-blue-500 to-blue-700 shadow-blue-600/30',
-  success: 'bg-gradient-to-br from-emerald-500 to-emerald-700 shadow-emerald-600/30',
-  warning: 'bg-gradient-to-br from-amber-500 to-amber-700 shadow-amber-600/30',
-  neutral: 'bg-gradient-to-br from-gray-700 to-gray-900 shadow-gray-700/30',
+const TONE_VARIANT: Record<ConfirmDockTone, 'primary' | 'success' | 'warning' | 'secondary'> = {
+  primary: 'primary',
+  success: 'success',
+  warning: 'warning',
+  neutral: 'secondary',
 };
 
 export function ConfirmDock({
@@ -75,11 +75,13 @@ export function ConfirmDock({
     >
       <Button
         type="button"
-        variant="primary"
+        variant={TONE_VARIANT[tone]}
+        radius="flush"
+        size="lg"
         onClick={handlePrimary}
         disabled={blocked}
         loading={loading}
-        className={`h-14 w-full rounded-none text-sm tracking-wide shadow-md ${TONE_CLASSES[tone]}`}
+        className="w-full text-sm tracking-wide"
       >
         {label}
       </Button>
@@ -88,10 +90,11 @@ export function ConfirmDock({
           type="button"
           variant="ghost"
           size="sm"
+          radius="flush"
           onClick={handleSecondary}
           disabled={loading}
           className={`mt-2 h-8 w-full text-xs ${
-            secondary.destructive ? 'text-red-600 active:text-red-700' : 'text-text-soft active:text-text-muted'
+            secondary.destructive ? 'text-text-danger' : 'text-text-soft'
           }`}
         >
           {secondary.label}

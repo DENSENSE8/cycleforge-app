@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict'; import { readFileSync } from 'node:fs'; import test from 'node:test';
+test('FBA quick-add modal uses governed flush chrome and semantic error ink', () => { const source = readFileSync('src/components/fba/FbaQuickAddFnskuModal.tsx', 'utf8'); assert.match(source, /radius="flush"/); assert.match(source, /elevation="none"/); assert.match(source, /text-text-danger/); assert.doesNotMatch(source, /shadow-zinc|text-red-600|radius="2xl"/); });

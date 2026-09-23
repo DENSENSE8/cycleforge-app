@@ -1,8 +1,7 @@
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
-import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { LABEL_FACE_SHELL, type LabelFaceModel } from '@/lib/print/labelFace';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
-import { clampLabelCopies } from '@/lib/print/labelCopies';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 /**
@@ -67,11 +66,6 @@ export interface PrintLabelOptions {
    * the paired thermal printer.
    */
   face?: LabelFaceModel;
-  /**
-   * How many identical stickers this job should emit. USB uses TSPL `PRINT N,1`
-   * / ZPL `^PQN` in one send; the iframe fallback repeats the 2×1 page.
-   */
-  copies?: number;
 }
 
 function renderLabelWrap(opts: PrintLabelOptions): string {
@@ -116,7 +110,7 @@ window.onafterprint=function(){setTimeout(function(){window.close();},80);};
   @page{size:${opts.widthIn}in ${opts.heightIn}in;margin:0}
   *,*::before,*::after{box-sizing:border-box}
   html,body{width:${opts.widthIn}in;${copies > 1 ? '' : `height:${opts.heightIn}in;`}padding:0;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff${opts.preview ? ';overflow:hidden' : ''}}
-  .wrap{width:${opts.widthIn}in;height:${opts.heightIn}in;display:flex;align-items:stretch;gap:4px;${opts.preview ? 'padding:0;overflow:hidden' : 'padding:4px 5px'}${copies > 1 ? ';page-break-after:always;break-after:page' : ''}}
+  .wrap{width:${opts.widthIn}in;height:${opts.heightIn}in;display:flex;align-items:stretch;gap:${LABEL_FACE_SHELL.gapCssPx}px;${opts.preview ? 'padding:0;overflow:hidden' : `padding:${LABEL_FACE_SHELL.paddingYCssPx}px ${LABEL_FACE_SHELL.paddingXCssPx}px`}${copies > 1 ? ';page-break-after:always;break-after:page' : ''}}
   .wrap:last-of-type{page-break-after:auto;break-after:auto}
   .info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:${opts.infoAlign};height:100%;width:100%}
   .qrcol{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin-left:auto}
@@ -131,16 +125,21 @@ ${printScript}
 }
 
 /**
- * Build the full label HTML document. Exposed for tests/preview; most callers
- * want {@link printLabel}, which also drives the silent-print / popup pipeline.
+ * Build the full 2×1 label document — ONE sticker.
+ *
+ * Multiplicity is never a page-repeat or a printer repeat count here: a run of
+ * N stickers is N plates through {@link printLabelFacesJob}
+ * (`labelCopies.expandPlateRun`), because the paired CX418 prints one label for
+ * a raster job however many copies the command asks for.
+ *
+ * Exposed for tests/preview; most callers want {@link printLabel}, which also
+ * drives the silent-print / popup pipeline.
  */
 export function buildLabelHtml(opts: PrintLabelOptions): string {
-  const widthIn = opts.widthIn ?? 2;
-  const heightIn = opts.heightIn ?? 1;
-  const qrSize = opts.qrSize ?? '0.86in';
-  const copies = clampLabelCopies(opts.copies);
-  const wrap = renderLabelWrap(opts);
-  const pages = copies <= 1 ? wrap : Array.from({ length: copies }, () => wrap).join('');
+  const widthIn = opts.widthIn ?? LABEL_FACE_SHELL.widthIn;
+  const heightIn = opts.heightIn ?? LABEL_FACE_SHELL.heightIn;
+  const qrSize = opts.qrSize ?? `${LABEL_FACE_SHELL.matrixSizeIn}in`;
+  const pages = renderLabelWrap(opts);
   return assembleLabelDocument({
     widthIn,
     heightIn,
@@ -149,14 +148,14 @@ export function buildLabelHtml(opts: PrintLabelOptions): string {
     infoCss: opts.infoCss ?? '',
     title: escapeLabelHtml(opts.name ?? 'Label'),
     preview: opts.preview === true,
-    pageCount: copies,
+    pageCount: 1,
     pagesHtml: pages,
   });
 }
 
 /**
- * One 2×1 document with a distinct wrap per job (bulk unique barcodes).
- * Identical copies of one face still use {@link buildLabelHtml} `copies`.
+ * One 2×1 document with a distinct wrap per page — the multi-sticker run
+ * (unique faces and repeated plates alike).
  */
 export function buildMultiPageLabelHtml(pages: PrintLabelOptions[]): string {
   if (pages.length === 0) {
@@ -168,9 +167,9 @@ export function buildMultiPageLabelHtml(pages: PrintLabelOptions[]): string {
     });
   }
   const first = pages[0]!;
-  const widthIn = first.widthIn ?? 2;
-  const heightIn = first.heightIn ?? 1;
-  const qrSize = first.qrSize ?? '0.86in';
+  const widthIn = first.widthIn ?? LABEL_FACE_SHELL.widthIn;
+  const heightIn = first.heightIn ?? LABEL_FACE_SHELL.heightIn;
+  const qrSize = first.qrSize ?? `${LABEL_FACE_SHELL.matrixSizeIn}in`;
   const infoCss = [...new Set(pages.map((p) => p.infoCss ?? '').filter(Boolean))].join('\n');
   const wraps = pages.map((p) => renderLabelWrap(p)).join('');
   return assembleLabelDocument({

@@ -81,6 +81,18 @@ export function ActivityInboxButton({
         anchorRef={anchorRef}
         placement={placement}
         gap={0}
+        /**
+         * The panel reaches the SCREEN edge, not the button's.
+         *
+         * Operator 2026-09-22: *"the drop down for the inbox on click must have
+         * no spacing to the right of the screen."* The header pads its icon
+         * cluster (`HEADER_INSET_X`), so a trigger-aligned panel left that
+         * inset standing as a gutter down the panel's right side — a strip of
+         * page showing past a surface that is meant to hang off the corner.
+         * The inbox is the last control on the beam, so its edge is the
+         * screen's.
+         */
+        edgeAlign="viewport"
       >
         <ActivityInboxPopover onClose={() => setOpen(false)} />
       </AnchoredLayer>

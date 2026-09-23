@@ -106,7 +106,7 @@ test('spine phase: clamps deep windows to the paint limit; full keeps depth', as
     receivingLinesTableQuery(RECEIVING_MODES.history, ctx, 'full').queryFn,
   );
   assert.equal(new URLSearchParams(spineUrl.split('?')[1]).get('limit'), '150');
-  assert.equal(new URLSearchParams(fullUrl.split('?')[1]).get('limit'), '500');
+  assert.equal(new URLSearchParams(fullUrl.split('?')[1]).get('limit'), '3000');
 });
 
 test('spine phase: keys as a spine leaf under the SAME full key', () => {

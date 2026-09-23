@@ -42,7 +42,8 @@ export function FbaCombineWorkspace({
           <IconButton
             icon={<X className="h-4 w-4" />}
             onClick={handleClose}
-            className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-surface-sunken"
+            radius="flush"
+            className="flex h-7 w-7 items-center justify-center hover:bg-surface-sunken"
             ariaLabel="Close — back to board"
           />
         </HoverTooltip>

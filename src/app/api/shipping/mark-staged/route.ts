@@ -3,9 +3,19 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import {
   listDockStagingCandidateShipmentIds,
+  listDockStagingCandidates,
   markShipmentsDockStaged,
+  normalizeDockLocation,
   resolveStaffIdByName,
 } from '@/lib/outbound/dock-staging';
+
+export const GET = withAuth(async (_req: NextRequest, ctx) => {
+  const [pending, staged] = await Promise.all([
+    listDockStagingCandidates(ctx.organizationId, 'pending'),
+    listDockStagingCandidates(ctx.organizationId, 'staged'),
+  ]);
+  return NextResponse.json({ ok: true, pending, staged });
+}, { permission: 'shipping.view' });
 
 /**
  * POST /api/shipping/mark-staged — bulk-record DOCK_STAGED for packed packages
@@ -17,6 +27,9 @@ import {
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const staffName = String(body?.staffName ?? '').trim();
+  const requestedShipmentId = Number(body?.shipmentId);
+  const hasRequestedShipment = Number.isFinite(requestedShipmentId) && requestedShipmentId > 0;
+  const requestedLocation = normalizeDockLocation(body?.locationCode ?? body?.location);
   let staffId = Number(body?.staffId ?? ctx.staffId);
 
   if (!Number.isFinite(staffId) || staffId <= 0) {
@@ -30,8 +43,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'Valid staffId or staffName required' }, { status: 400 });
   }
 
-  const shipmentIds = await listDockStagingCandidateShipmentIds(ctx.organizationId);
-  const marked = await markShipmentsDockStaged(ctx.organizationId, staffId, shipmentIds);
+  if (hasRequestedShipment && !requestedLocation) {
+    return NextResponse.json({ error: 'Valid staging location required' }, { status: 400 });
+  }
+
+  const candidateIds = await listDockStagingCandidateShipmentIds(ctx.organizationId);
+  const shipmentIds = hasRequestedShipment
+    ? candidateIds.filter((id) => id === requestedShipmentId)
+    : candidateIds;
+  if (hasRequestedShipment && shipmentIds.length === 0) {
+    return NextResponse.json({ error: 'Packed shipment is not available to stage' }, { status: 409 });
+  }
+  const marked = await markShipmentsDockStaged(ctx.organizationId, staffId, shipmentIds, {
+    locationCode: requestedLocation,
+    source: hasRequestedShipment ? 'mobile.outbound.stage' : 'outbound.mark-staged',
+  });
 
   await invalidateAllOrdersApiCaches([], ctx.organizationId);
 
@@ -40,5 +66,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     marked,
     staffId,
     candidates: shipmentIds.length,
+    locationCode: requestedLocation,
   });
 }, { permission: 'shipping.mark_shipped' });

@@ -2,41 +2,39 @@
 
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { formatPhoneNumber } from '@/utils/phone';
+import { resolveRepairContact } from '@/lib/repair/contact-info';
 
-function getContactParts(contactInfo: string | null | undefined) {
-  if (!contactInfo) return [];
-  return contactInfo.split(',').map((part) => part.trim());
-}
-
-/** Read-only customer summary block for the repair overview tab. */
+/**
+ * Read-only customer summary block for the repair overview tab.
+ *
+ * Reads the shared buyer rule (`@/lib/repair/contact-info`) — the joined
+ * `customers` row first, `contact_info` only as an index-free fallback. The
+ * positional `parts[1]` / `parts[2]` this replaced rendered the EMAIL through
+ * `formatPhoneNumber` in the phone slot and left the email slot blank on any
+ * repair whose buyer had no phone.
+ */
 export function RepairCustomerSection({ repair }: { repair: RSRecord }) {
-  const parts = getContactParts(repair.contact_info);
-  const phone = parts[1] || '';
-  const email = parts[2] || '';
+  const { name, phone, email } = resolveRepairContact(repair);
 
   return (
     <section>
       <div className="space-y-3">
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Name</span>
-          <p className="font-semibold text-sm text-text-default">
-            {parts[0] || 'Not provided'}
-          </p>
+          <p className="font-semibold text-sm text-text-default">{name || 'Not provided'}</p>
         </div>
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Contact</span>
           <div className="space-y-1">
-            {!repair.contact_info ? (
+            {phone ? (
+              <p className="font-semibold text-sm text-text-default">{formatPhoneNumber(phone)}</p>
+            ) : null}
+            {email ? (
+              <p className="font-semibold text-sm text-text-default lowercase">{email}</p>
+            ) : null}
+            {!phone && !email ? (
               <p className="font-semibold text-sm text-text-default">Not provided</p>
-            ) : (
-              <>
-                {phone ? <p className="font-semibold text-sm text-text-default">{formatPhoneNumber(phone)}</p> : null}
-                {email ? <p className="font-semibold text-sm text-text-default lowercase">{email}</p> : null}
-                {!phone && !email ? (
-                  <p className="font-semibold text-sm text-text-default">{repair.contact_info}</p>
-                ) : null}
-              </>
-            )}
+            ) : null}
           </div>
         </div>
         <div>

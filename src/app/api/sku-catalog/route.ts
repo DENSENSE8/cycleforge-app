@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getSkuCatalogBySku,
   getSkuCatalogList,
+  setSkuCatalogHandlingFacts,
   upsertSkuCatalog,
   type SkuCatalogLinkFilter,
 } from '@/lib/neon/sku-catalog-queries';
@@ -125,11 +126,17 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       replenishTargetCents: parsed.replenishTargetCents ?? null,
       notes: parsed.packNotes ?? null,
     }, ctx.organizationId);
+    const catalogWithHandling = parsed.handlingFacts === undefined
+      ? catalog
+      : await setSkuCatalogHandlingFacts(catalog.id, parsed.handlingFacts, ctx.organizationId);
+    if (!catalogWithHandling) {
+      return NextResponse.json({ success: false, error: 'Could not save handling facts' }, { status: 500 });
+    }
 
     if (parsed.packTier !== undefined || parsed.estimatedPackMinutes !== undefined) {
       await upsertSkuPackProfileLink(
         {
-          skuCatalogId: catalog.id,
+          skuCatalogId: catalogWithHandling.id,
           packTier: parsed.packTier ?? null,
           estimatedMinutes: parsed.estimatedPackMinutes ?? null,
           source: 'manual',
@@ -142,12 +149,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       source: 'sku-catalog-api',
       action: AUDIT_ACTION.SKU_CATALOG_CREATE,
       entityType: AUDIT_ENTITY.SKU,
-      entityId: catalog.id,
+      entityId: catalogWithHandling.id,
       before: existing ? { ...existing } : null,
-      after: { ...catalog },
+      after: { ...catalogWithHandling },
     });
 
-    const responseBody = { success: true, catalog };
+    const responseBody = { success: true, catalog: catalogWithHandling };
     if (idemKey) {
       await saveApiIdempotencyResponse(pool, {
         orgId: ctx.organizationId,

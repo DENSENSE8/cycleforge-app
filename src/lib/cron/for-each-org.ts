@@ -20,7 +20,7 @@
 import type { PoolClient } from 'pg';
 import { adminPool } from '@/lib/db';
 import { withTenantConnection } from '@/lib/tenancy/db';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
 
@@ -93,18 +93,6 @@ async function listOrgsWithProvider(provider: IntegrationProvider): Promise<OrgI
   return rows.map((r) => r.organization_id as OrgId);
 }
 
-export interface ForEachProviderOptions {
-  /**
-   * Include the transitional USAV org even when it has no vault row. USAV's
-   * Zoho (and some other) credentials still come from env vars, so it has no
-   * organization_integrations row yet — without this it would silently drop out
-   * of provider-filtered sweeps and its sync would stop. Set true on crons that
-   * must keep serving USAV during the env→vault transition. Retire once USAV's
-   * credentials are migrated into the vault.
-   */
-  includeDogfoodTransitional?: boolean;
-}
-
 /**
  * Run `fn` once per org that has `provider` connected. Use for integration
  * crons so the sweep only touches orgs that actually connected the provider —
@@ -121,12 +109,8 @@ export interface ForEachProviderOptions {
 export async function forEachOrgWithProvider<T>(
   provider: IntegrationProvider,
   fn: (orgId: OrgId) => Promise<T>,
-  options: ForEachProviderOptions = {},
 ): Promise<OrgRunResult<T>[]> {
   const orgIds = await listOrgsWithProvider(provider);
-  if (options.includeDogfoodTransitional && !orgIds.includes(DOGFOOD_ORG_ID)) {
-    orgIds.push(DOGFOOD_ORG_ID);
-  }
   const results: OrgRunResult<T>[] = [];
   for (const orgId of orgIds) {
     try {

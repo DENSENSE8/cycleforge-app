@@ -106,6 +106,10 @@ function fakes(fixtures: VisitFixture[]): Fake {
       const f = bySessionId.get(sessionId);
       return f?.session?.lines ?? [];
     },
+    async findTransactionLines() {
+      calls.findLines += 1;
+      return [];
+    },
     async findSquareTransaction(_tx, orgId, counterTransactionId) {
       const f = byKey.get(`${orgId}:${counterTransactionId}`);
       return f?.squareTransaction ?? null;

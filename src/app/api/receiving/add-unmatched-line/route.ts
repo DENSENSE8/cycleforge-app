@@ -35,6 +35,7 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 import { upsertEcwidIncomingRepair } from '@/lib/neon/repair-service-queries';
+import { fetchEcwidOrderContact } from '@/lib/ecwid/client';
 import { withAuth } from '@/lib/auth/withAuth';
 import { after } from 'next/server';
 import {
@@ -545,13 +546,26 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   if (!result.cached && result.payload.success === true && repairUpsert) {
     const upsert = repairUpsert;
     try {
+      // The buyer. This route holds the Ecwid ORDER id but never fetched the
+      // person on it, so every ticket born here landed unlinked — all four
+      // remaining `customer_id IS NULL` repairs are this path, and each one
+      // printed paper with a blank name. Fetched AFTER the receiving tx has
+      // committed, so a vendor round-trip cannot hold a write lock, and
+      // null-on-failure so a vendor outage never fails the scan.
+      const contact = await fetchEcwidOrderContact(ctx.organizationId as OrgId, upsert.orderId);
       const ticket = await upsertEcwidIncomingRepair(
         {
           orderId: upsert.orderId,
           trackingNumber: upsert.tracking,
           sku: upsert.sku,
           productTitle: upsert.productTitle,
-          contactInfo: null,
+          // The joined legacy string AND the parts. `contactInfo` is what the
+          // paper falls back to for an unlinked row; `contact` is what links
+          // the ticket to the `customers` row the paper actually reads.
+          contactInfo: contact
+            ? [contact.name, contact.phone, contact.email].filter(Boolean).join(', ') || null
+            : null,
+          contact: contact ?? undefined,
           notes: `Linked from receiving carton #${receivingId}`,
         },
         ctx.organizationId as OrgId,

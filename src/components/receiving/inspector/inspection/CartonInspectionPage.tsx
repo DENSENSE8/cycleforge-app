@@ -78,7 +78,12 @@ import {
 } from '@/components/station/entity-context/station-identity-chrome';
 import { buildCartonReadCopyText } from '@/lib/receiving/carton-read-utilities';
 import { openInUnboxHref } from '@/lib/receiving/surface-path';
-import { sourcePlatformLabel } from '@/lib/source-platform';
+import {
+  platformMetaIconTone,
+  sourcePlatformLabel,
+  sourcePlatformMeta,
+} from '@/lib/source-platform';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   Dialog,
@@ -353,6 +358,13 @@ function DispositionBar({
   const title = identity ? cartonHeaderTitle(identity) : 'Loading…';
   const tracking = identity?.tracking ?? null;
   const poNumber = identity?.poNumber ?? null;
+  // `identity.platform` was extracted by carton-inspector-model and then only
+  // ever reached `cartonHeaderTitle`'s FALLBACK string — so a carton with a
+  // product title (i.e. most of them) showed no channel anywhere on the read
+  // surface. The mark is the same face the station bar and /m carton sheet
+  // paint, so one carton reads the same on all three.
+  const platformMeta = sourcePlatformMeta(identity?.platform ?? null);
+  const platformIconTone = platformMeta.value ? platformMetaIconTone(platformMeta) : null;
 
   return (
     <div className={cn(stationContextBarHostClass, 'px-2 sm:px-4')}>
@@ -369,9 +381,23 @@ function DispositionBar({
       >
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span className="truncate text-role-title text-text-default">{title}</span>
-          {tracking || poNumber ? (
+          {tracking || poNumber || platformMeta.value ? (
             <div className="flex min-w-0 flex-wrap items-center gap-2 border-l border-border-soft pl-3">
-              {poNumber ? <PoChip value={poNumber} display={getLast8(poNumber)} /> : null}
+              {platformMeta.value ? (
+                <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                    <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                  </span>
+                </HoverTooltip>
+              ) : null}
+              {poNumber ? (
+                <PoChip
+                  value={poNumber}
+                  platformLabel={platformMeta.value ? platformMeta.label : null}
+                  iconClass={platformIconTone?.className}
+                  iconStyle={platformIconTone?.style}
+                />
+              ) : null}
               {tracking ? <TrackingChip value={tracking} /> : null}
             </div>
           ) : null}

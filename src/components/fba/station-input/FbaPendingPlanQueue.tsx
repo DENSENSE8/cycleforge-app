@@ -72,15 +72,19 @@ export function FbaPendingPlanQueue({
       <div className="flex w-full min-w-0 items-center justify-between gap-3 bg-surface-card px-3 py-2.5">
         <Button
           variant="ghost"
+          size="sm"
+          radius="flush"
           type="button"
           disabled={isLoading}
           onClick={() => onCancel()}
-          className="h-auto shrink-0 rounded-none px-0 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft hover:bg-transparent hover:text-text-default"
+          className="shrink-0 px-0 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft hover:bg-transparent hover:text-text-default"
         >
           Cancel
         </Button>
         <Button
           variant="primary"
+          size="sm"
+          radius="flush"
           type="button"
           disabled={isLoading}
           onClick={() => {
@@ -93,7 +97,7 @@ export function FbaPendingPlanQueue({
             onCancel();
             onSubmit(submitRows);
           }}
-          className="h-auto shrink-0 rounded-md bg-purple-600 px-2.5 py-1 text-role-eyebrow uppercase tracking-[0.12em] text-white shadow-none hover:bg-purple-700"
+          className="shrink-0 text-role-eyebrow uppercase tracking-[0.12em]"
         >
           {touchesExistingLine ? 'Update plan' : 'Add to plan'}
         </Button>

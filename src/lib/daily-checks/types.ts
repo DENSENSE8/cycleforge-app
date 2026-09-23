@@ -17,12 +17,13 @@ export type DailyCheckItemKind = 'recurring' | 'once';
 export interface DailyCheckItem {
    id: number;
    title: string;
+  /** Optional context stored on the checklist item, never on one day's tick. */
+  description: string | null;
    sortOrder: number;
   kind: DailyCheckItemKind;
   /**
-   * Who a `once` item belongs to. Null = the whole shift, which stays correct
-   * for every recurring item. An owner is a hint about who should tick, never
-   * a permission — the mark route does not gate on it.
+   * Only a one-off may belong to one staffer. Recurring work is always owed by
+   * the whole shift; null keeps a one-off owned by the whole shift too.
    */
   assignedStaffId: number | null;
   /** Owner display name (LEFT JOIN on staff), null when unowned. */
@@ -43,6 +44,8 @@ export interface DailyCheckItem {
 /** The create-body the composer mounts share — one vocabulary, two mounts. */
 export interface DailyCheckCreateInput {
   title: string;
+  /** Optional item context, normalized to null when the form is blank. */
+  description?: string | null;
   kind?: DailyCheckItemKind;
   /** Only valid with `kind: 'once'`; the route refuses it otherwise. */
   assignedStaffId?: number | null;

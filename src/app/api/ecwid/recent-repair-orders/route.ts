@@ -33,6 +33,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
+// The `-RS` → `-W` storefront rule is shared with the counter tablet's History
+// face (operator 2026-09-23: "full reversibility … a link to the Ecwid website
+// via the SKU"). One rule, one module, two callers.
+import { repairStorefrontUrl } from '@/lib/repair/repair-storefront-url';
 
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const PAGE_LIMIT = 100;
@@ -82,34 +86,6 @@ interface RepairCandidate {
   is_repair_service: boolean;
 }
 
-const DEFAULT_STOREFRONT = 'https://usavshop.com';
-
-/**
- * Derive a search URL on the storefront for the linked repair-service item.
- *
- * For an item whose SKU ends in `-RS` (e.g. `00004-RS`), the URL points at
- * the storefront search for the corresponding "working" SKU (`00004-W`) —
- * that's the listing operators want to land on when reviewing the
- * repair-service link, so they can see the original product.
- *
- * Format: `${STOREFRONT}/products/search?keyword=${SKU}` where SKU has its
- * trailing `-RS` swapped for `-W`. Storefront base is overridable via
- * `NEXT_PUBLIC_ECWID_STOREFRONT_URL`.
- *
- * Returns null only when the item has no SKU (shouldn't happen — caller
- * filters by `isRepairServiceSku` which requires `-RS`).
- */
-function deriveProductUrl(item: EcwidOrderItem): string | null {
-  const sku = String(item.sku || '').trim();
-  if (!sku) return null;
-  const storefront = (
-    String(process.env.NEXT_PUBLIC_ECWID_STOREFRONT_URL || DEFAULT_STOREFRONT)
-      .trim()
-      .replace(/\/+$/, '')
-  );
-  const keyword = sku.replace(/-RS$/i, '-W');
-  return `${storefront}/products/search?keyword=${encodeURIComponent(keyword)}`;
-}
 
 function requiredEnv(primary: string, aliases: string[] = []): string {
   for (const key of [primary, ...aliases]) {
@@ -311,7 +287,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
           null,
         order_id: orderId,
         order_date: orderDate,
-        product_url: deriveProductUrl(item),
+        product_url: repairStorefrontUrl(item.sku),
       });
       if (bySku.size >= limit * 3) break; // soft cap: catalog join filters further
     }

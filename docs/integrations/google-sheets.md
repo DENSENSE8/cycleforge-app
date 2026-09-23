@@ -7,11 +7,11 @@ Sheets is removed** (everything now persists straight to Postgres). Service-acco
 
 ## Auth — `src/lib/google-auth.ts`
 
-`getGoogleAuth()` builds a JWT from a service account
-(`GOOGLE_CLIENT_EMAIL` + `GOOGLE_PRIVATE_KEY`). Scopes:
+`getGoogleAuth(credentials)` builds a JWT from the service account stored in the
+organization's encrypted `google_sheets` integration row. Scopes:
 `https://www.googleapis.com/auth/spreadsheets` and `.../auth/drive.readonly`.
-`connect: 'vault'` in the catalog (`admin.manage_features` to manage); the env fallback
-mirrors USAV's single service account.
+`connect: 'vault'` in the catalog (`admin.manage_features` to manage). Runtime
+jobs do not fall back to a global service account or spreadsheet.
 
 ## Routes
 
@@ -57,7 +57,7 @@ Shared helpers live in `src/lib/sync/sheet-sync-common.ts`
 (`getTrackingLast8`, `hasFbaFnsku`, `hasOrderByTracking`, `parseSheetDateTime`,
 `upsertOpenOrdersException`, …). The transfer-orders job is
 `src/lib/jobs/google-sheets-transfer-orders.ts`
-(`runGoogleSheetsTransferOrders(manualSheetName?, source?, emitFn?)`).
+(`runGoogleSheetsTransferOrders(orgId, manualSheetName?, source?, progress?)`).
 
 ## Cron (`vercel.json`)
 
@@ -67,20 +67,35 @@ Shared helpers live in `src/lib/sync/sheet-sync-common.ts`
 | `0 18 * * 1-5`  | `/api/cron/google-sheets/transfer-orders` (6:00pm weekdays) |
 | `0 22 * * 1-5`  | `/api/cron/google-sheets/transfer-orders` (10:00pm weekdays) |
 
-The cron route calls `runGoogleSheetsTransferOrders()` under `withCronRun()`.
+The cron route calls `runGoogleSheetsTransferOrders(orgId, ...)` under `withCronRun()`.
+
+## Vault migration
+
+The one-time migration command reads the legacy deployment variables and writes
+the encrypted service account plus spreadsheet id into `organization_integrations`:
+
+```sh
+pnpm google-sheets:connect
+pnpm google-sheets:connect -- --apply
+```
+
+The command verifies KMS configuration and reads the spreadsheet before writing.
+After one successful cron run, remove the legacy Google Sheets variables from the
+deployment; they are not read by runtime transfer or execute-script routes.
 
 ## Environment variables
 
 | Var | Purpose |
 |---|---|
-| `GOOGLE_CLIENT_EMAIL` | Service-account email. |
-| `GOOGLE_PRIVATE_KEY` | Service-account private key (escaped multiline). **Sensitive**. |
-| `SPREADSHEET_ID` | Target spreadsheet (a default is hardcoded in the job). |
+| `GOOGLE_CLIENT_EMAIL` | One-time migration input; not read by runtime jobs. |
+| `GOOGLE_PRIVATE_KEY` | One-time migration input; not read by runtime jobs. **Sensitive**. |
+| `SPREADSHEET_ID` | Required one-time migration input; stored in the vault after migration. |
 | `CRON_SECRET` | Bearer for the transfer-orders cron. |
 
 ## Status / direction
 
 This is a **migration-era** integration: it exists to drain the old spreadsheet workflow
-into the DB. New writes never go back to Sheets. As the v1 outbound tracker
+into the DB. New writes never go back to Sheets. Credentials are vault-backed and
+tenant-scoped. As the v1 outbound tracker
 (`docs/integrations/`/ memory `v1-tracker-tier-strategy`) takes over the orders sheet,
 these jobs become the backfill path, not the steady state.

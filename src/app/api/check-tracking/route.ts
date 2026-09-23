@@ -53,6 +53,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                    AND pl.shipment_id = o.shipment_id
                    AND pl.tracking_type = 'ORDERS'
                    AND pl.organization_id = o.organization_id
+                   AND pl.completion_state = 'COMPLETED'
                  ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC
                  LIMIT 1
              ) pl ON TRUE
@@ -65,7 +66,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         const packerLogsResult = await tenantQuery(
             orgId,
             `SELECT COALESCE(stn.tracking_number_raw, pl.scan_ref) AS shipping_tracking_number,
-                    pl.tracking_type, pl.created_at AS packed_at
+                    pl.tracking_type, pl.completion_state, pl.created_at AS packed_at
              FROM packer_logs pl
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = pl.shipment_id
              WHERE (stn.tracking_number_raw ILIKE $1

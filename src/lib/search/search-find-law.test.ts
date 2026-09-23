@@ -121,7 +121,7 @@ describe('search FIND law — Displays index stays off FIND (Phase 6–7)', () =
     const surface = code('src/components/search/SearchFindSurface.tsx');
     assert.match(surface, /SearchDetailWorkspace/);
     for (const page of ['src/app/search/page.tsx', 'src/app/m/(shell)/search/page.tsx']) {
-      assert.match(code(page), /from '@\/components\/search\/SearchFindSurface'/, `${page} must mount SearchFindSurface`);
+      assert.match(code(page), /from '@\/components\/ui\/search-find'/, `${page} must mount the shared FIND facade`);
     }
   });
 

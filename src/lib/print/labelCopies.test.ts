@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   clampLabelCopies,
+  expandPlateRun,
   parseLabelCopies,
   parseLabelCopiesWire,
   toteRunPlateCount,
@@ -37,4 +38,22 @@ test('parseLabelCopies reads the print-page count param', () => {
 test('toteRunPlateCount is totes × copies with no side doubling', () => {
   assert.equal(toteRunPlateCount(24, 4), 96);
   assert.equal(toteRunPlateCount(1, 4), 4);
+});
+
+test('expandPlateRun turns copies into plates, keeping a face together', () => {
+  // The whole point of the run axis: 2 totes × 3 copies is SIX jobs, because
+  // the printer prints one label per raster job whatever PRINT N,1 asks for.
+  assert.deepEqual(expandPlateRun(['H-1', 'H-2'], 3), [
+    'H-1',
+    'H-1',
+    'H-1',
+    'H-2',
+    'H-2',
+    'H-2',
+  ]);
+  assert.deepEqual(expandPlateRun(['H-1', 'H-2'], 1), ['H-1', 'H-2']);
+  assert.deepEqual(expandPlateRun(['H-1'], 0), ['H-1']);
+  assert.deepEqual(expandPlateRun(['H-1'], undefined), ['H-1']);
+  assert.equal(expandPlateRun(['A0101101'], 100).length, 99);
+  assert.deepEqual(expandPlateRun([], 4), []);
 });

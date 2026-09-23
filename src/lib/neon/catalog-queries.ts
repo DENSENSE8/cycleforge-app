@@ -90,6 +90,8 @@ const SEED_TYPES: Array<[slug: string, label: string, kind: string, isReturn: bo
   ['po', 'PO', 'both', false, 10],
   ['return', 'Return', 'receiving', true, 20],
   ['repair', 'Repair', 'receiving', false, 25],
+  ['repair_service', 'Repair Service', 'receiving', false, 26],
+  ['repair_return', 'Repair Return', 'receiving', true, 27],
   ['trade_in', 'Trade In', 'receiving', false, 30],
   ['pickup', 'Pick Up', 'receiving', false, 40],
 ];

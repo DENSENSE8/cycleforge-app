@@ -58,8 +58,8 @@ const ACCOUNT_MENU_MS = 0.15;
 /**
  * Spine footer — the phone's account bar, imported to the desk (2026-09-15).
  * The row is {@link MobileAccountFooter}'s display, verbatim: staff colour +
- * initials bubble flush left, name + signed-in email beside it, edge-to-edge
- * soft drop shadow — no hairline. ONE button, ONE door: the whole bar opens
+ * initials bubble flush left, name + signed-in email beside it, flush plane
+ * (no drop shadow — the open spine stays flat). ONE button, ONE door: the whole bar opens
  * the account panel. The trailing power square is retired — sign-out is the
  * panel's bottom row.
  *
@@ -73,9 +73,9 @@ const ACCOUNT_MENU_MS = 0.15;
  * every membership besides the current one; switch confirm → hard reload, via
  * the shared {@link useSwitchOrg}) → report an issue → desk→phone session
  * handoff ({@link PhoneHandoffQrDialog} — 4-char code + /m/claim) → clipboard
- * history (⌘⇧V) → open kiosk (`/kiosk/v2`) → change staff → Settings → Log
+ * history (⌘⇧V) → open kiosk (`/kiosk/v2`) → switch staff → Settings → Log
  * out (hairline above, danger wash). Deep-link-only "Open on your phone"
- * stays on Settings → Workstation ({@link PhoneSignInQrDialog}). Change staff
+ * stays on Settings → Workstation ({@link PhoneSignInQrDialog}). Switch staff
  * opens {@link SwitchStaffSheet}. Throw lives on {@link HeaderGoalChip}.
  * Kiosk is not on GlobalHeader.
  *
@@ -125,7 +125,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
         <PopoverAnchor asChild>
           <footer
             ref={rowRef}
-            className={cn('w-full shrink-0 bg-surface-card', elevationClass('raised', 'soft'))}
+            className={cn('w-full shrink-0 bg-surface-card', elevationClass('flat'))}
           >
             {/* shadcn ghost chrome (not an ops CTA — the DS Button law is
                 untouched), the phone's full-bleed-row pattern: the BUTTON is
@@ -324,7 +324,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                     >
                       <RefreshCw className="h-3.5 w-3.5 shrink-0 text-text-muted" />
                       <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
-                        Change staff
+                        Switch staff
                       </span>
                     </button>
                     <Link

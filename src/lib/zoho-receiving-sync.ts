@@ -20,6 +20,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 import { mergeEbayLinesIntoZohoPo } from '@/lib/inbound/merge-purchase-lines';
+import { claimPendingIdentifierCartons } from '@/lib/receiving/link-pending-identifier';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 // Provider fetches route through the org's InventoryProvider facade
 // (Integrations-as-SoT Wave B1); this module stays the inbound-sync
@@ -621,6 +622,29 @@ export async function importZohoPurchaseOrderToReceiving(
     // Merge is best-effort (must not fail the Zoho import), but schema/code faults
     // are logged at error severity so production monitoring catches them.
     console.error('[zoho-sync] mergeEbayLinesIntoZohoPo failed:', message);
+  }
+
+  // An operator may have linked this order's number to a carton BEFORE it
+  // existed here ("link any id", link-carton-identifier.ts) — that carton is
+  // sitting in Unfound with the id recorded and no items. Now that the order is
+  // imported, claim it and pull its SKUs/items on. Best-effort: a claim fault
+  // never fails the import that triggered it.
+  try {
+    const claim = await claimPendingIdentifierCartons(orgId, {
+      poId: result.purchaseorder_id,
+      poNumber: result.purchaseorder_number,
+      referenceNumber: result.reference_number,
+    });
+    if (claim.claimed > 0) {
+      console.info(
+        `[zoho-sync] claimed ${claim.claimed}/${claim.matched} pending-identifier carton(s) for po=${result.purchaseorder_id} (${claim.linesImported} line(s))`,
+      );
+    }
+  } catch (err) {
+    console.error(
+      '[zoho-sync] claimPendingIdentifierCartons failed:',
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
   return result;

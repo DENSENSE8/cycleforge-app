@@ -8,6 +8,8 @@
 // here rather than a re-typed string union because a row field that disagrees
 // with the resolver's own vocabulary is a lie the compiler cannot see.
 import type { PriceSource } from '@/lib/orders/price-resolve';
+import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
+import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
 
 export interface ShippedOrder {
   id: number;
@@ -44,6 +46,15 @@ export interface ShippedOrder {
   packer_id: number | null;
   packed_by: number | null;
   packed_at: string | null;        // packer_logs.created_at (scan timestamp)
+  /** `DOCK_STAGED` station event; physical dock proof, separate from packing. */
+  dock_staged_at?: string | null;
+  /** Live, allocated unit locations; never a guessed first-bin display value. */
+  storage_locations?: OutboundStorageLocation[] | null;
+  /** Server-derived allocation progress for the mobile Orders roster. */
+  allocated_unit_count?: number | null;
+  picked_unit_count?: number | null;
+  /** Catalog-owned physical handling requirements; unknown API input is normalized at the row boundary. */
+  catalog_handling_flags?: OutboundHandlingFact[] | null;
   pack_activity_at?: string | null;
   /** SHIP_CONFIRM station_activity_logs.created_at — when it was scanned out at the dock. */
   ship_confirmed_at?: string | null;

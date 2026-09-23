@@ -2,21 +2,22 @@
  * Tasks slot resolvers — row + fieldId → the resolved fact a slot cell paints.
  * Pure functions; no React, no hooks.
  *
- * Vocabularies are never declared here: the done/open face resolves through
- * `workStatusLabel` and the station through `STATION_LABEL`, the same SoTs the
- * compound state pill and note line already read.
+ * Vocabularies are never declared here: the lifecycle face resolves through
+ * `workStatusLabel` (the same SoT the compound state pill and the work-order
+ * chip read) and the record noun through `taskDeskRecordLabel`. A string
+ * literal in this file would be a second spelling of a word another surface
+ * already owns.
  *
- * Note what is NOT here: lateness. Whether a recurring task is behind depends
+ * Note what is NOT here: lateness. Whether a task is past its deadline depends
  * on the clock, and the surface passes ONE `nowMs` to every row for exactly
- * that reason — a per-row `Date.now()` would let two rows in one paint disagree
- * about what day it is. The compound state cell already reports it from that
- * shared clock, so a bound "overdue" column would be a second author of one
- * fact with a worse clock.
+ * that reason — a per-row `Date.now()` would let two rows in one paint
+ * disagree about what day it is. The compound state cell already reports it
+ * from that shared clock, so a bound "overdue" column would be a second author
+ * of one fact with a worse clock.
  */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
-import { STATION_LABEL, type StationKey } from '@/components/layout/goal-chip/goal-chip-shared';
-import type { StaffTaskRow } from '@/features/tasks/grid/staff-task-row';
+import { taskDeskRecordLabel, type TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { workStatusLabel } from '@/lib/work-orders/work-status-display';
 import { formatDateKeyShort } from '@/utils/date';
 
@@ -30,32 +31,40 @@ function dayText(ms: number | null): string | null {
  * dashes); the layout resolver has already dropped stale bindings.
  */
 export function resolveTasksSlotValue(
-  row: StaffTaskRow,
+  row: TaskDeskRow,
   fieldId: string,
 ): CompoundSlotValue | null {
   switch (fieldId) {
     case 'tasks.task':
       return { kind: 'value', text: `#${row.id}` };
     case 'tasks.status':
+      // `workStatusLabel` returns null for a label it does not know; every
+      // `assignment_status_enum` value is in its table, so the fallback is
+      // defensive rather than reachable.
+      return { kind: 'value', text: workStatusLabel(row.status) ?? row.status };
+    case 'tasks.priority':
+      return { kind: 'value', text: row.urgency === 'urgent' ? 'Urgent' : 'Normal' };
+    case 'tasks.assignee':
+      return { kind: 'value', text: row.assignee?.name ?? null };
+    case 'tasks.assignedBy':
+      // NULL on every row written before `assigned_by_staff_id` existed
+      // (2026-08-08d, deliberately never backfilled) — an honest dash.
+      return { kind: 'value', text: row.assignedBy?.name ?? null };
+    case 'tasks.start':
+      return { kind: 'value', text: dayText(row.startedAtMs) };
+    case 'tasks.deadline':
+      return { kind: 'value', text: dayText(row.deadlineAtMs) };
+    case 'tasks.completed':
+      return { kind: 'value', text: dayText(row.completedAtMs) };
+    case 'tasks.record':
+      return { kind: 'value', text: taskDeskRecordLabel(row) };
+    case 'tasks.ticket':
+      // Only the SUPPORT_TICKET arm has one. A task about an order reads a
+      // dash rather than borrowing its record handle as a ticket number.
       return {
         kind: 'value',
-        text: row.archived
-          ? 'Deleted'
-          : (workStatusLabel(row.done ? 'DONE' : 'OPEN') ?? (row.done ? 'Done' : 'Open')),
+        text: row.ticket ? (row.ticket.subject?.trim() || `#${row.ticket.id}`) : null,
       };
-    case 'tasks.kind':
-      return { kind: 'value', text: row.kind === 'recurring' ? 'Recurring' : 'General' };
-    case 'tasks.station': {
-      const raw = (row.station || '').trim();
-      if (!raw) return { kind: 'value', text: null };
-      return { kind: 'value', text: STATION_LABEL[raw as StationKey] ?? raw };
-    }
-    case 'tasks.resets':
-      // A general task has no cycle, so it has nothing to reset — a dash, not
-      // an invented date.
-      return { kind: 'value', text: dayText(row.resetsAtMs) };
-    case 'tasks.checked':
-      return { kind: 'value', text: dayText(row.checkedAtMs) };
     default:
       return null;
   }
@@ -67,7 +76,7 @@ export function resolveTasksSlotValue(
  * the cell with no change here.
  */
 export function tasksSlotValuesFor(
-  row: StaffTaskRow,
+  row: TaskDeskRow,
   columns: readonly { key: string; fieldId?: string }[],
 ): Readonly<Record<string, CompoundSlotValue>> | undefined {
   let slots: Record<string, CompoundSlotValue> | undefined;

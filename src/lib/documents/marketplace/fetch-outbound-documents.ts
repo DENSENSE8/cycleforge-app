@@ -12,6 +12,7 @@ import { generatedDocumentAdapter } from './generated-documents';
 import { amazonDocumentAdapter, walmartDocumentAdapter } from './platform-documents';
 import { ecwidDocumentAdapter } from './ecwid-documents';
 import type { MarketplaceDocumentAdapter } from './types';
+import { shouldFallbackToGeneratedPackingSlip } from './marketplace-fetch-policy';
 
 const ADAPTERS: MarketplaceDocumentAdapter[] = [
   ebayDocumentAdapter,
@@ -54,7 +55,7 @@ export async function runMarketplaceDocumentFetch(
   for (const type of types) {
     let outcome = await adapter.fetchDocument(order, type, orgId);
 
-    if (!outcome.ok && type === 'packing_slip' && adapter.platform !== 'generated') {
+    if (!outcome.ok && shouldFallbackToGeneratedPackingSlip(adapter.platform, type)) {
       outcome = await generatedDocumentAdapter.fetchDocument(order, type, orgId);
     }
 

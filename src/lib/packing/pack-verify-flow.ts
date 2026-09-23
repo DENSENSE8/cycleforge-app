@@ -9,6 +9,11 @@
  */
 
 import type { PackVerificationOutcome } from './pack-verification-outcomes';
+import type {
+  WmsExecutionCommand,
+  WmsExecutionCommandReceipt,
+} from '@/components/mobile/realtime/WmsRealtimeProvider';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /** The shape GET /api/orders/verify returns for a found order (subset we use). */
 interface OrdersVerifyResult {
@@ -17,8 +22,13 @@ interface OrdersVerifyResult {
   tracking?: string | null;
 }
 
+type PackCaptureOutcome = Extract<
+  PackVerificationOutcome,
+  'VERIFIED' | 'ERROR_MISSING_TRACKING' | 'ERROR_OCR_FAILED'
+>;
+
 interface ResolvedPackOutcome {
-  outcome: PackVerificationOutcome;
+  outcome: PackCaptureOutcome;
   detectedTracking: string | null;
   detectedOrderId: string | null;
 }
@@ -107,24 +117,29 @@ interface SubmitPackVerificationResult {
  */
 export async function submitPackVerification(
   args: SubmitPackVerificationArgs,
+  execute: (command: WmsExecutionCommand) => Promise<WmsExecutionCommandReceipt>,
+  identity: { organizationId: string; staffId: number },
 ): Promise<SubmitPackVerificationResult> {
   const tracking = (args.tracking ?? '').trim();
   const verify = tracking ? await fetchOrdersVerify(tracking) : null;
   const resolved = resolvePackVerifyOutcome({ tracking, verify });
 
-  const res = await fetch('/api/packing/verification', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const commandId = args.clientEventId ?? safeRandomUUID();
+  const receipt = await execute({
+    v: 1,
+    commandId,
+    organizationId: identity.organizationId,
+    staffId: identity.staffId,
+    issuedAt: new Date().toISOString(),
+    name: 'pack.verify',
+    input: {
       packerLogId: args.packerLogId,
       outcome: resolved.outcome,
       detectedTracking: resolved.detectedTracking,
       detectedOrderId: resolved.detectedOrderId,
       ocrConfidence: args.ocrConfidence ?? null,
-      clientEventId: args.clientEventId ?? null,
       meta: args.meta ?? null,
-    }),
+    },
   });
-  const body = await res.json().catch(() => null);
-  return { ok: res.ok, outcome: resolved.outcome, status: res.status, body };
+  return { ok: true, outcome: resolved.outcome, status: 200, body: receipt.data };
 }

@@ -4,62 +4,165 @@
  * `/m/work` to-ship card — a thin `WorkOrderRow` adapter over the shared
  * {@link ItemCardRow}.
  *
- * The card's anatomy (photo, title, ship-by corner, one-font meta, listing
- * inset, CTA) is the ONE item card both queues paint (operator 2026-09-15);
- * this module only decides what the to-ship feed maps onto it and what its
- * CTA commits: Ship, with swipe-to-commit enabled.
+ * The card's anatomy (photo, location-first context, SKU, ship-by, and pinned
+ * quantity) is the ONE item card both queues paint. This adapter only maps
+ * canonical outbound facts and closes typed triage/assignment commands. Its
+ * only secondary row control is the governed SKU-adjacent listing trigger;
+ * it cannot add a page-local Pick/Pack CTA.
  */
 
-import { useCallback } from 'react';
-import { Truck } from '@/components/Icons';
+import { memo } from 'react';
 import { ItemCardRow } from '@/components/mobile/redesign/ItemCardRow';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
+import { UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
+import { Button } from '@/design-system/primitives';
 import type { WorkOrderRow } from '@/components/work-orders/types';
-import { isToShipOutOfStock } from '@/lib/work-orders/to-ship-assignment';
+import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
+import { outboundHandlingFactFaces } from '@/lib/shipping/outbound-handling-facts';
+import { getExternalUrlByItemNumber, getPlatformLabelByItemNumber } from '@/hooks/useExternalItemUrl';
+import { resolveOutboundWorkflowFacts } from '@/lib/shipping/outbound-workflow-facts';
 import { toShipConditionParts, toShipExpectedQty, toShipPriceText } from './to-ship-faces';
+import {
+  resolveOutboundPriorityAction,
+  type OutboundPriorityAction,
+  type OutboundTriageActionId,
+} from '@/lib/shipping/outbound-workflow-actions';
 
-export function MobileToShipRow({
+export const MobileToShipRow = memo(function MobileToShipRow({
   row,
-  blocked = false,
   onOpen,
-  onProcess,
+  now,
+  active = false,
+  blocked = false,
+  onTriage,
+  onHold,
+  onPriorityAction,
+  onPassPick,
+  onOpenSheet,
 }: {
   row: WorkOrderRow;
   resolveName: (id: number) => string;
   blocked?: boolean;
   onOpen: (row: WorkOrderRow) => void;
-  onProcess: (row: WorkOrderRow) => void;
+  now?: number;
+  active?: boolean;
+  onTriage: (row: WorkOrderRow, action: OutboundTriageActionId) => void;
+  onHold: (row: WorkOrderRow) => void;
+  /** Closed priority command shared with the desktop selection plane. */
+  onPriorityAction: (row: WorkOrderRow, action: OutboundPriorityAction) => void;
+  /** Closed row command: reassign the next physical pick, never an admin-sheet action. */
+  onPassPick: (row: WorkOrderRow) => void;
+  /** Documentation is explicit secondary work; row tap only selects the task. */
+  onOpenSheet: (row: WorkOrderRow) => void;
 }) {
-  const isBlocked = blocked || isToShipOutOfStock(row);
-
-  const process = useCallback(() => {
-    if (isBlocked) return;
-    onProcess(row);
-  }, [isBlocked, onProcess, row]);
-
-  const openSheet = useCallback(() => onOpen(row), [onOpen, row]);
-
+  const storagePath = formatOutboundStoragePath(row.storageLocations);
+  const quantity = toShipExpectedQty(row);
+  const expectedUnits = Number(row.quantity ?? 0);
+  const progressTotal = row.allocatedUnitCount && row.allocatedUnitCount > 0
+    ? row.allocatedUnitCount
+    : Number.isFinite(expectedUnits) && expectedUnits > 0
+      ? expectedUnits
+      : null;
+  const progress = progressTotal != null
+    ? `PICKED ${row.pickedUnitCount ?? 0}/${progressTotal}`
+    : null;
+  const orderReference = row.orderId ?? row.recordLabel;
+  const listingItemKey = row.itemNumber || row.sku;
+  const marketplaceHref = getExternalUrlByItemNumber(listingItemKey);
+  const listing = marketplaceHref
+    ? {
+        href: marketplaceHref,
+        platform: row.accountSource?.trim() || getPlatformLabelByItemNumber(listingItemKey),
+      }
+    : null;
+  const orderContext = row.accountSource?.trim()
+    ? `${row.accountSource.trim()} · ${orderReference}`
+    : `Order · ${orderReference}`;
+  const workflow = resolveOutboundWorkflowFacts({
+    shipmentId: row.shipmentId,
+    hasTechScan: row.hasTechScan,
+    packedAt: row.packedAt,
+    dockStagedAt: row.dockStagedAt,
+    isOutOfStock: blocked || row.outOfStock,
+    deadlineAt: row.deadlineAt,
+  });
+  const managementAction = workflow.nextStep.label.replace(/^→\s*/, '');
+  const priorityAction = resolveOutboundPriorityAction(Boolean(row.isUrgent));
+  const handlingFacts = outboundHandlingFactFaces(row.handlingFacts);
+  const managementStatus = UNSHIPPED_STATE_META[workflow.stage].label;
+  const managementOwner = workflow.stage === 'PENDING' || workflow.stage === 'AWAITING_LABEL'
+    ? row.techName || 'Warehouse'
+    : workflow.stage === 'TESTED'
+      ? row.packerName || 'Packing'
+      : workflow.stage === 'PACKED_STAGED'
+        ? 'Shipping'
+        : 'Inventory';
   return (
-    <ItemCardRow
+    <>
+      <ItemCardRow
       title={row.title}
       imageUrl={row.imageUrl}
-      // No item number on the face (operator 2026-09-15 — identical to the
-      // pick card; the to-ship sheet carries it). It still resolves the
-      // listing href.
-      listingHref={getExternalUrlByItemNumber(row.itemNumber || row.sku)}
-      qty={toShipExpectedQty(row)}
+      orderContext={orderContext}
+      reference={row.sku || row.itemNumber || row.orderId}
+      listing={listing}
+      outboundOrderId={row.entityId}
+      qty={quantity}
       price={toShipPriceText(row)}
+      quantityStatus={progress}
+      managementStatus={managementStatus}
+      managementAction={managementAction}
+      managementOwner={managementOwner}
+      handlingFacts={handlingFacts}
+
       condition={toShipConditionParts(row)}
+      location={storagePath}
       deadlineAt={row.deadlineAt}
-      onOpen={openSheet}
+      now={now}
+      onOpen={() => onOpen(row)}
+      active={active}
+      stateRail={workflow.stateRail}
       ariaLabel={row.title}
-      primary={{
-        label: 'Ship',
-        icon: <Truck />,
-        disabled: isBlocked,
-        onCommit: process,
-      }}
-      swipe
-    />
+      primary={null}
+      triageActions={[
+        { id: 'out_of_stock', label: 'Out of stock', onCommit: () => onTriage(row, 'out_of_stock') },
+        { id: 'hold', label: workflow.blocked ? 'Clear hold' : 'Place hold', onCommit: () => onHold(row) },
+        { id: 'damaged', label: 'Damaged', onCommit: () => onTriage(row, 'damaged') },
+        { id: 'discrepancy', label: 'Discrepancy', onCommit: () => onTriage(row, 'discrepancy') },
+      ]}
+      />
+      {active ? (
+        <div
+          data-testid="to-ship-row-active-actions"
+          className="flex min-h-11 border-b border-border-hairline bg-surface-card"
+        >
+          <Button
+            variant="secondary"
+            size="sm"
+            radius="flush"
+            className="min-h-11 flex-1 border-r border-border-hairline"
+            onClick={() => onPassPick(row)}
+          >
+            Pass pick
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            radius="flush"
+            className="min-h-11 flex-1 border-r border-border-hairline"
+            onClick={() => onOpenSheet(row)}
+          >
+            Details
+          </Button>
+          <Button
+            variant={row.isUrgent ? 'warning' : 'secondary'}
+            size="sm"
+            radius="flush"
+            className="min-h-11 flex-1"
+            onClick={() => onPriorityAction(row, priorityAction)}
+          >
+            {priorityAction.label}
+          </Button>
+        </div>
+      ) : null}
+    </>
   );
-}
+});

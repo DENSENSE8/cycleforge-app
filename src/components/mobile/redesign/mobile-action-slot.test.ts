@@ -161,8 +161,9 @@ test('the page title stays on the left while the action sits on the right', () =
   const m = mountShell(h(PageWithAction, { label: 'Add order' }));
   const header = m.host.querySelector('header')!;
   const title = header.querySelector('h1')!;
-  // `/m/work` is Orders — the title map's answer, not a retyped string.
-  assert.equal(title.textContent, 'Orders');
+  // `/m/work` is the legacy path for Order management — use the title map's
+  // answer rather than pinning the retired short label.
+  assert.equal(title.textContent, 'Order management');
   const action = header.querySelector('button[aria-label="Add order"]')!;
   assert.ok(
     title.compareDocumentPosition(action) & dom.window.Node.DOCUMENT_POSITION_FOLLOWING,

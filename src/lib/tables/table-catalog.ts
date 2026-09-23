@@ -85,6 +85,7 @@ export const PRODUCT_TABLES: readonly ProductTable[] = [
    { tableId: 'report-dead-stock', label: 'Reports · Dead stock (90d+)' },
   { tableId: 'report-staff-day', label: 'Reports · Staff day' },
   { tableId: 'report-packer-day', label: 'Reports · Packer day' },
+  { tableId: 'report-tasks', label: 'Reports · Completed tasks' },
   { tableId: 'sku-bins', label: 'SKU · Bin distribution' },
   { tableId: 'sku-ledger', label: 'SKU · Stock ledger' },
   { tableId: 'sku-allocations', label: 'SKU · Open allocations' },

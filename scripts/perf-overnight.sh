@@ -9,8 +9,8 @@ export LH_BASE_URL="${LH_BASE_URL:-http://127.0.0.1:3100}"
 export PERF_OVERNIGHT_MAX_HOURS="${PERF_OVERNIGHT_MAX_HOURS:-12}"
 export PERF_OVERNIGHT_MAX_ROUNDS="${PERF_OVERNIGHT_MAX_ROUNDS:-48}"
 
-mkdir -p .cursor
-LOG=".cursor/perf-overnight.log"
+mkdir -p .garisek
+LOG=".garisek/perf-overnight.log"
 
 if ! curl -sf -o /dev/null --max-time 2 "$LH_BASE_URL/" && ! curl -sf -o /dev/null --max-time 2 "$LH_BASE_URL/signin"; then
   echo "No server at $LH_BASE_URL — start prod build first:" >&2

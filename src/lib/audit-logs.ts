@@ -78,6 +78,8 @@ async function createAuditLog(
 
 export const AUDIT_ENTITY = {
   COUNTER_SESSION: 'counter_session',
+  /** A submitted counter visit (counter_transactions) — the History face's subject. */
+  COUNTER_TRANSACTION: 'counter_transaction',
   PO: 'purchase_order',
   RECEIVING: 'receiving',
   RECEIVING_LINE: 'receiving_line',
@@ -194,6 +196,10 @@ export const AUDIT_ACTION = {
   KIOSK_TERMINAL_PAIRED: 'kiosk.terminal_paired', // a Square Terminal was paired to / cleared from a lane
   KIOSK_INTAKE:   'kiosk.intake',     // an intake was created from the kiosk device principal
   KIOSK_PICKUP_COLLECT: 'kiosk.pickup_collect', // customer collected a ready repair via order pickup
+  // History face on the tablet (PIN step-up). PRINT covers both papers the
+  // face can re-emit; the `kind` in metadata says which.
+  KIOSK_VISIT_PRINT: 'kiosk.visit_print',
+  KIOSK_VISIT_EDIT:  'kiosk.visit_edit',
   // Counter session (the shared desk↔tablet cart). Only the MONEY-moving edits
   // are audited: a serial correction is not an audit event, a price override is.
   COUNTER_LINE_PRICE_OVERRIDE: 'counter_session.line.price_override',
@@ -238,6 +244,13 @@ export const AUDIT_ACTION = {
    * (adopt expected lines) and the upgrade-only header update.
    */
   RECEIVING_RELINK:          'receiving.relink',
+  /** An operator linked ANY identifier (PO#, marketplace order#, RMA, supplier
+   *  ref) to a carton from Unbox. Either it resolved to a local purchase order
+   *  and its items were imported, or it was recorded as PENDING on a still-
+   *  unmatched carton for a later import to claim. Distinct from
+   *  RECEIVING_RELINK (operator picked a known PO) — here the id may not exist
+   *  in the system yet. */
+  RECEIVING_IDENTIFIER_LINKED: 'receiving.identifier.linked',
   /** A marketplace purchase (eBay buyer account, …) was imported onto the Incoming
    *  spine via the bridge/sync (Universal Incoming Phase 2). */
   RECEIVING_INBOUND_IMPORT:  'receiving.inbound.import',
@@ -379,6 +392,9 @@ export const AUDIT_ACTION = {
   // Distinct from OPS_PLAN_TASK_* (planning) and from the bench assignment
   // paths: this is the ad-hoc FOLLOW_UP handoff that replaced paper + texts.
   WORK_TASK_THROW:         'work_task.throw',
+  // Desk edit on a thrown task (status / priority / deadline / assignee).
+  // Separate from the throw so "who moved this deadline" is answerable.
+  WORK_TASK_UPDATE:        'work_task.update',
   // Agentic-loop master plan (plan-agent mutations via /api/forge/chat)
   MASTER_PLAN_TICKET_STATUS: 'master_plan.ticket_status',
   // In-app issue → fix → toast loop
@@ -410,6 +426,11 @@ export const AUDIT_ACTION = {
   SUPPORT_TICKET_UNLINKED: 'support.ticket.unlinked',
   // Station-generic ticket create (POST /api/support/tickets) via the helpdesk facade.
   SUPPORT_TICKET_CREATE:   'support.ticket.create',
+  // Minted the org's LOCAL mirror of a provider ticket (`support_tickets`) so a
+  // task could anchor to it. Distinct from SUPPORT_TICKET_CREATE: nothing was
+  // created at the helpdesk — the ticket already existed there and this is the
+  // registry row catching up.
+  SUPPORT_TICKET_REGISTER: 'support.ticket.register',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',

@@ -40,8 +40,7 @@ function LinkFace({ link }: { link: DailyCheckItemLink }) {
 
 /**
  * The facts the sheet answers. The Shift fraction uses the item's OWN
- * denominator — the owner alone, when the item is owned — because the report
- * drops non-responsible marks and a roster-wide fraction would misread.
+ * denominator: the roster, except for an assigned one-off.
  */
 function itemFacts(
   item: DailyCheckItem,
@@ -50,7 +49,7 @@ function itemFacts(
   const mineDone = report?.mine.doneItemIds.includes(item.id) ?? false;
   const roster = report?.staff ?? [];
   const teamDone = roster.filter((s) => s.doneItemIds.includes(item.id)).length;
-  const teamTotal = item.assignedStaffId != null ? 1 : roster.length;
+  const teamTotal = item.kind === 'once' && item.assignedStaffId != null ? 1 : roster.length;
   return [
     { label: 'Kind', value: item.kind === 'once' ? 'Just today' : 'Every day' },
     {
@@ -88,6 +87,15 @@ export function MobileDailyFacts({
 }) {
   return (
     <dl className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-1 pb-1 pt-3">
+      {item.description ? (
+        <div className="flex flex-col gap-1">
+          <dt className={FACT_LABEL}>Description</dt>
+          <dd className="whitespace-pre-wrap break-words text-role-caption text-text-default">
+            {item.description}
+          </dd>
+        </div>
+      ) : null}
+
       {itemFacts(item, report).map((fact) => (
         <div key={fact.label} className={FACT_ROW}>
           <dt className={FACT_LABEL}>{fact.label}</dt>

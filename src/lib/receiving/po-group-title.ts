@@ -48,10 +48,19 @@ export function getReceivingPoIdentityParts(
   const storedPlatform = (row.source_platform || inboundSource || '').trim();
   const isEcwidOrderIdentity =
     storedPlatform.toLowerCase() === 'ecwid' && !(row.zoho_purchaseorder_id || '').trim();
+  // An id an operator linked by hand (link-carton-identifier.ts) is the only
+  // identity a still-unfound carton has: `source_order_id` with no Zoho PO and
+  // — on a carton that has no line yet — no `inbound_source_type` either. It
+  // was invisible under the marketplace-only gate below, so the chip read "—"
+  // right after the operator linked it and the link looked like it failed.
+  const hasZohoIdentity = Boolean(
+    (row.zoho_purchaseorder_number || '').trim() || (row.zoho_purchaseorder_id || '').trim(),
+  );
+  const isOrderIdentity = !hasZohoIdentity && Boolean((row.source_order_id || '').trim());
   const poValue = (
     row.zoho_purchaseorder_number ||
     row.zoho_purchaseorder_id ||
-    (isMarketplacePurchase || isEcwidOrderIdentity ? row.source_order_id : '') ||
+    (isMarketplacePurchase || isEcwidOrderIdentity || isOrderIdentity ? row.source_order_id : '') ||
     ''
   ).trim();
   const platformRaw = storedOrInferredSourcePlatform(
@@ -62,7 +71,7 @@ export function getReceivingPoIdentityParts(
     row.source_order_id,
   );
   const idPrefix: 'PO' | 'Order' =
-    !row.zoho_purchaseorder_id && (isMarketplacePurchase || isEcwidOrderIdentity)
+    !row.zoho_purchaseorder_id && (isMarketplacePurchase || isEcwidOrderIdentity || isOrderIdentity)
       ? 'Order'
       : 'PO';
   const platformLabel = platformRaw ? resolvePlatformLabel(platformRaw) : '';

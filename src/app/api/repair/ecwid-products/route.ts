@@ -1,3 +1,17 @@
+/**
+ * GET /api/repair/ecwid-products — staff repair catalog.
+ *
+ * Walks the live Ecwid storefront (`fetchRepairRootProductsCached`), unlike the
+ * kiosk twin, which reads the local projection. The query grammar is therefore
+ * the smaller one: `?mode=all` · `?mode=favorites` · `?categoryId=`.
+ *
+ * `mode=favorites` narrows the cached root list to the repair workspace's
+ * curated SKUs, in `sort_order`, so the staff picker lands on the SAME list as
+ * the kiosk rail. The filter is in JS because this source has no SQL to filter;
+ * `selectFavoriteCatalogProducts` is shared with the kiosk path so the two can
+ * never disagree about order.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
@@ -5,6 +19,8 @@ import {
   resolveEcwidStoreCreds,
   fetchRepairRootProductsCached,
 } from '@/lib/repair/ecwid-repair-catalog';
+import { listFavoriteSkuKeys } from '@/lib/favorites/sku-favorites';
+import { selectFavoriteCatalogProducts } from '@/lib/favorites/favorite-sku-key';
 
 export type { EcwidProduct };
 
@@ -43,6 +59,24 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json(
         { success: true, products: page, total: filtered.length, limit, offset, hasMore },
         { headers: { 'Cache-Control': 'private, max-age=120' } }
+      );
+    }
+
+    if (mode === 'favorites') {
+      const [root, favoriteKeys] = await Promise.all([
+        fetchRepairRootProductsCached(storeId, token, ctx.organizationId),
+        listFavoriteSkuKeys('repair', ctx.organizationId),
+      ]);
+      const favorites = selectFavoriteCatalogProducts(root, favoriteKeys);
+
+      const page = favorites.slice(offset, offset + limit);
+      const hasMore = offset + page.length < favorites.length;
+
+      // No shared caching: a star on a tile must show on the next paint, and
+      // the list is small enough that the cached root walk is the only cost.
+      return NextResponse.json(
+        { success: true, products: page, total: favorites.length, limit, offset, hasMore },
+        { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }
 

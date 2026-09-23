@@ -20,7 +20,7 @@ import {
   SLOT_TABLE_ACTION_BAR_BANNED_IMPORTS,
   SLOT_TABLE_ACTION_BAR_FILES,
   SLOT_TABLE_ACTION_BAR_HEIGHT_PX,
-  SLOT_TABLE_ACTION_BAR_HOST,
+  SLOT_TABLE_ACTION_BAR_HOSTS,
   SLOT_TABLE_ACTION_BAR_LAW,
 } from '../src/lib/tables/slot-table-action-bar-law';
 
@@ -68,14 +68,14 @@ for (const file of SLOT_TABLE_ACTION_BAR_FILES) {
   }
 }
 
-const host = code(SLOT_TABLE_ACTION_BAR_HOST);
-if (!host.includes('SLOT_TABLE_ACTION_BAR_BAND_CLASS')) {
-  violations.push(`${SLOT_TABLE_ACTION_BAR_HOST} does not mount the band class.`);
-}
-if (!/useFixedBandHeight\(/.test(host)) {
-  violations.push(
-    `${SLOT_TABLE_ACTION_BAR_HOST} does not mount useFixedBandHeight — the law's runtime half.`,
-  );
+for (const path of SLOT_TABLE_ACTION_BAR_HOSTS) {
+  const host = code(path);
+  if (!host.includes('SLOT_TABLE_ACTION_BAR_BAND_CLASS')) {
+    violations.push(`${path} does not mount the band class.`);
+  }
+  if (!/useFixedBandHeight\(/.test(host)) {
+    violations.push(`${path} does not mount useFixedBandHeight — the law's runtime half.`);
+  }
 }
 
 const asJson = process.argv.includes('--json');
@@ -92,6 +92,7 @@ if (asJson) {
         bandClass: SLOT_TABLE_ACTION_BAR_BAND_CLASS,
         controlClass: 'h-8',
         bandFiles: SLOT_TABLE_ACTION_BAR_FILES,
+        bandHosts: SLOT_TABLE_ACTION_BAR_HOSTS,
         bannedImports: SLOT_TABLE_ACTION_BAR_BANNED_IMPORTS,
         bannedClasses: SLOT_TABLE_ACTION_BAR_BANNED_CLASSES,
         conditionalControlRule:

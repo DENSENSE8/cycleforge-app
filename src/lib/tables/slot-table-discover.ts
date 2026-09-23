@@ -531,11 +531,6 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       path: SLOT_TABLE_ENGINE.compoundCells,
       why: 'STATUS column. Editable delay mounts DateRangePickerField variant=compact.',
     },
-    {
-      id: 'engine:CART_COMPOUND_COLUMNS',
-      path: 'src/lib/kiosk/cart-grid-layout.ts',
-      why: 'Kiosk uses compoundColumnsFor (shared skeleton), not a field-key GRID. Keep until kiosk is in PRODUCT_TABLES — do not copy as “small tables skip slots”.',
-    },
   ];
 
   for (const hook of SLOT_TABLE_ENGINE_LAYOUT_HOOKS) {

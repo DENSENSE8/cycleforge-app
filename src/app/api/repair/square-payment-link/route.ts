@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getRepairById } from '@/lib/neon/repair-service-queries';
+import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { withAuth } from '@/lib/auth/withAuth';
 import { formatPSTTimestamp } from '@/utils/date';
@@ -114,22 +115,11 @@ function resolveRepairSku(
   return null;
 }
 
-function parseContactInfo(value: string | null | undefined): {
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-} {
-  const parts = String(value || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  const name = parts[0] || null;
-  const phone = parts[1] || null;
-  const email = parts.find((part) => part.includes('@')) || null;
-
-  return { name, phone, email };
-}
+// The buyer rule lives in `@/lib/repair/contact-info` — joined `customers` row
+// first, index-free legacy fallback second. It matters HERE specifically
+// because `parts[1]` shipped an email address into Square's
+// `pre_populated_data.phone_number.e164_phone_number` on any repair whose
+// buyer had no phone.
 
 function formatSquareErrors(errors: SquareError[] | undefined): string {
   if (!Array.isArray(errors) || errors.length === 0) return 'Square API request failed';
@@ -291,7 +281,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
     const fallbackAmount = amount ?? 0;
 
-    const { name, phone, email } = parseContactInfo(repair.contact_info);
+    const { name, phone, email } = resolveRepairContact(repair);
     const lineItemName = String(repair.product_title || '').trim() || `Repair #${repair.id}`;
     const paymentNoteParts = [
       repair.ticket_number ? `Ticket: ${repair.ticket_number}` : null,

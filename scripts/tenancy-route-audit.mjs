@@ -60,12 +60,74 @@ function routePath(file) {
   return '/api/' + rel.split('/').map((s) => s).join('/');
 }
 
+function stripComments(src) {
+  let out = '';
+  let quote = null;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    const next = src[i + 1];
+    if (quote) {
+      out += ch;
+      if (ch === quote && src[i - 1] !== '\\') quote = null;
+    } else if (ch === "'" || ch === '"' || ch === '`') {
+      quote = ch;
+      out += ch;
+    } else if (ch === '/' && next === '/') {
+      while (i < src.length && src[i] !== '\n') i++;
+      out += '\n';
+    } else if (ch === '/' && next === '*') {
+      i += 2;
+      while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
+      i++;
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+function resolveLibModule(specifier) {
+  if (!specifier.startsWith('@/lib/')) return null;
+  const base = join(repoRoot, 'src', specifier.slice(2));
+  for (const candidate of [`${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')]) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+const scopedModuleMemo = new Map();
+function moduleReachesTenantWrapper(file) {
+  if (scopedModuleMemo.has(file)) return scopedModuleMemo.get(file);
+  const src = readFileSync(file, 'utf8');
+  const scoped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
+  scopedModuleMemo.set(file, scoped);
+  return scoped;
+}
+
+function hasScopedHelperCall(src) {
+  for (const match of src.matchAll(/import\s+(?:type\s+)?\{([^}]+)\}\s+from\s+['"](@\/lib\/[^'"]+)['"]/gs)) {
+    const file = resolveLibModule(match[2]);
+    if (!file || !moduleReachesTenantWrapper(file)) continue;
+    const names = match[1].split(',').map((part) => {
+      const cleaned = part.trim().replace(/^type\s+/, '');
+      return (cleaned.split(/\s+as\s+/)[1] || cleaned.split(/\s+as\s+/)[0]).trim();
+    });
+    for (const name of names) {
+      if (!/^[$A-Z_a-z][$\w]*$/.test(name)) continue;
+      const call = new RegExp(`\\b${name}\\s*\\([\\s\\S]{0,500}?\\b(?:ctx\\.organizationId|gate\\.ctx\\.organizationId|organizationId|orgId)\\b`);
+      if (call.test(src)) return true;
+    }
+  }
+  return false;
+}
+
 const files = walk(apiRoot);
 const records = [];
 const reverse = new Map(); // table -> Set(routePath)
 
 for (const file of files) {
   const src = readFileSync(file, 'utf8');
+  const code = stripComments(src);
   const methods = [...src.matchAll(/export\s+(?:const|async\s+function)\s+(GET|POST|PUT|PATCH|DELETE)\b/g)].map((m) => m[1]);
   const uniqMethods = [...new Set(methods)];
   const withAuth = /withAuth\s*\(/.test(src);
@@ -77,7 +139,10 @@ for (const file of files) {
   // as tenant-scoped as one calling `tenantQuery`. NOTE: the cron fan-out helpers
   // (`forEachActiveOrg`/`forEachOrg`) are deliberately NOT here — they sweep ALL
   // orgs, so they are cross-org-by-design, not single-org GUC-wrapped.
-  const tenantWrapped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
+  const directlyTenantWrapped = /\b(tenantQuery|withTenantConnection|withTenantTransaction|withTenantDrizzle)\b/.test(src);
+  const inlineRawQuery = /\b(?:pool|db)\.query\s*\(/.test(src);
+  const delegatedTenantWrapped = !inlineRawQuery && hasScopedHelperCall(src);
+  const tenantWrapped = directlyTenantWrapped || delegatedTenantWrapped;
   const rawPool = /from\s+['"]@\/lib\/db['"]/.test(src);
   const drizzle = /from\s+['"]@\/lib\/drizzle|neon-http/.test(src);
   const transitional = /\b(DOGFOOD_ORG_ID|transitionalDogfoodOrgId)\b/.test(src);
@@ -89,7 +154,7 @@ for (const file of files) {
   const touched = [];
   for (const t of tableList) {
     const re = new RegExp(`\\b${t}\\b`);
-    if (re.test(src)) touched.push(t);
+    if (re.test(code)) touched.push(t);
   }
   const touchedSet = new Set(touched);
   for (const t of touchedSet) {
@@ -118,6 +183,7 @@ for (const file of files) {
     permission: permMatch ? permMatch[1] : null,
     orgIdRef,
     tenantWrapped,
+    delegatedTenantWrapped,
     rawPool,
     drizzle,
     transitional,
@@ -137,6 +203,7 @@ const summary = {
   total: records.length,
   withAuth: records.filter((r) => r.withAuth).length,
   tenantWrapped: records.filter((r) => r.tenantWrapped).length,
+  delegatedTenantWrapped: records.filter((r) => r.delegatedTenantWrapped).length,
   orgIdRef: records.filter((r) => r.orgIdRef).length,
   rawPool: records.filter((r) => r.rawPool).length,
   drizzle: records.filter((r) => r.drizzle).length,
@@ -166,6 +233,7 @@ L.push(`|---|---|`);
 L.push(`| total route files | ${summary.total} |`);
 L.push(`| withAuth | ${summary.withAuth} |`);
 L.push(`| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | ${summary.tenantWrapped} |`);
+L.push(`| tenant-wrapped through an org-threaded helper | ${summary.delegatedTenantWrapped} |`);
 L.push(`| references organizationId | ${summary.orgIdRef} |`);
 L.push(`| raw @/lib/db pool import | ${summary.rawPool} |`);
 L.push(`| drizzle / neon-http | ${summary.drizzle} |`);

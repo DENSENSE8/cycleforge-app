@@ -300,6 +300,11 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     zoho_purchase_receive_id: null,
     zoho_purchaseorder_id: null,
     zoho_purchaseorder_number: pkg.receiving_zoho_purchaseorder_number ?? null,
+    // An operator-linked id on a carton that has no line yet
+    // (link-carton-identifier.ts writes receiving_carton.source_order_id and
+    // leaves the carton unmatched). Without it the chip reads "—" straight
+    // after a successful link, which looks exactly like a failed one.
+    source_order_id: pkg.receiving_source_order_id ?? null,
     quantity_received: 0,
     quantity_expected: null,
     qa_status: 'PENDING',

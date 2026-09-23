@@ -72,20 +72,20 @@ export function FbaTrackingGroupDisplay({
     <div className="border-b border-border-hairline last:border-b-0">
       {/* Tracking header — same visual as editor (TrackingChip) */}
       <div
-        className={`flex items-center gap-2 border-b border-blue-50 bg-blue-50/30 px-3 py-1.5 ${
-          chipStripDraggingOver ? 'ring-2 ring-inset ring-blue-400 bg-blue-100/40' : ''
+        className={`flex items-center gap-2 border-b border-border-accent bg-surface-accent px-3 py-1.5 ${
+          chipStripDraggingOver ? 'ring-2 ring-inset ring-border-accent bg-surface-accent' : ''
         }`}
         {...(chipStripDragHandlers ?? {})}
       >
         {tracking ? (
           <TrackingChip value={tracking} display={getLast8(tracking)} />
         ) : (
-          <div className="flex items-center gap-1.5 text-blue-500">
+          <div className="flex items-center gap-1.5 text-text-accent">
             <MapPin className="h-3 w-3" />
             <span className="font-mono text-role-caption font-semibold">No tracking</span>
           </div>
         )}
-        <span className="ml-auto shrink-0 text-role-micro tabular-nums text-blue-400/80">
+        <span className="ml-auto shrink-0 text-role-micro tabular-nums text-text-muted">
           {items.length} SKU{items.length !== 1 ? 's' : ''} · {totalQty} units
         </span>
       </div>

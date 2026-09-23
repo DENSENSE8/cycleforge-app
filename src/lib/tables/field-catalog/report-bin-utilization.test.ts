@@ -338,7 +338,7 @@ describe('report-bin-utilization row view', () => {
     const view = reportBinUtilizationCompoundView(row());
     assert.equal(view.id, '4821');
     assert.equal(view.title, 'Main floor');
-    assert.equal(view.orderId, 'BIN-A123');
+    assert.equal(view.identityFace?.value, 'BIN-A123');
     assert.equal(view.stateLabel, '88%');
     assert.equal(view.stateTone, 'neutral');
     assert.equal(view.stateTip, '35 of 40');

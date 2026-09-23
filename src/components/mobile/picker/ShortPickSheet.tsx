@@ -22,8 +22,9 @@ import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { SHORT_PICK_REASONS, mergeShortPickReasons } from '@/lib/picking/short-pick-reasons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { motion } from '@/design-system/motion';
 
-
+const MotionButton = motion.create(Button);
 
 export type ShortPickReason =
   | 'NOT_FOUND_IN_BIN'
@@ -108,11 +109,12 @@ export function ShortPickSheet({
         {options.map((opt) => {
           const selected = reason === opt.code;
           return (
-            <button
+            <motion.button
               key={opt.code}
               type="button"
               onClick={() => setReason(opt.code as ShortPickReason)}
               aria-pressed={selected}
+              whileTap={{ scale: 0.96 }}
               className={`ds-raw-button flex w-full items-start gap-3 rounded-none border px-4 py-3 text-left transition-colors min-h-[56px] ${
                 selected
                   ? 'border-blue-500 bg-surface-sunken ring-2 ring-border-soft'
@@ -143,7 +145,7 @@ export function ShortPickSheet({
                 </span>
                 <span className="block text-xs text-text-soft">{opt.hint}</span>
               </span>
-            </button>
+            </motion.button>
           );
         })}
       </fieldset>
@@ -164,21 +166,23 @@ export function ShortPickSheet({
 
       {/* Actions */}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row-reverse sm:gap-3">
-        <Button
+        <MotionButton
           variant="primary"
           onClick={handleConfirm}
           disabled={!canSubmit}
+          whileTap={canSubmit ? { scale: 0.96 } : undefined}
           className="h-12 w-full rounded-none bg-gradient-to-br from-amber-500 to-amber-700 text-white shadow-md shadow-amber-500/30 sm:flex-1"
         >
           Confirm short pick
-        </Button>
-        <Button
+        </MotionButton>
+        <MotionButton
           variant="ghost"
           onClick={onClose}
+          whileTap={{ scale: 0.96 }}
           className="h-12 w-full rounded-none text-text-muted hover:bg-surface-sunken sm:flex-1"
         >
           Cancel
-        </Button>
+        </MotionButton>
       </div>
     </BottomSheet>
   );

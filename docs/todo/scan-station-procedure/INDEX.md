@@ -20,7 +20,7 @@ steps"*. Unbox has proved out. **This is that work — once the redirect below i
 > *undone* through the guards this plan asks every lane to add.
 >
 > **Active document:**
-> [`ACTIVE-step1-photo-capture.md`](./ACTIVE-step1-photo-capture.md). Everything below this
+> the LANE docs below. Everything below this
 > banner is preserved as-is — the shared decisions (S1–S8), the lane docs, the sequencing —
 > and resumes verbatim once the prototype settles the deck's real shape. A lane doc is not
 > wrong for having been written before the redirect; B-5 in particular already anticipated
@@ -55,7 +55,6 @@ it found it — that is a shipping requirement, not a nicety (§4).
 | [`LANE-C-scan-cues.md`](./LANE-C-scan-cues.md) | what a SCAN means at the active step; per-step classification, pass/fail cues, cadence, focus | after A-1 |
 | [`LANE-D-backend.md`](./LANE-D-backend.md) | gate columns, the wire normalizer, the waiver store, receipts, realtime, audit | **immediately** |
 | [`LANE-E-studio.md`](./LANE-E-studio.md) | procedure as an authored definition: lens, draft→publish, node types, per-org variation | after A-1 + D-2 |
-| [`LANE-F-design-system.md`](./LANE-F-design-system.md) | the DS primitives, the guards, the rule amendments — the ratchet itself | **immediately** |
 | [`LANE-G-dock.md`](./LANE-G-dock.md) | the bottom dock as a DECLARED region: zones, per-step control binding, per-station composition | after A-1 |
 
 Each lane doc carries its own phases, its file ownership, its Definition of Done, and its

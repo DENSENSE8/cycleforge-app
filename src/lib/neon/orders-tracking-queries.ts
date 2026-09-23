@@ -26,7 +26,7 @@ import { isCarrierSyncEnabled } from '@/lib/shipping/enabled-carriers';
 import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { linkShipment, unlinkShipment, setPrimaryShipmentLink } from '@/lib/shipping/shipment-links';
-import { healShipmentOrganizationId } from '@/lib/shipping/repository';
+import { healShipmentOrganizationId, healShipmentOrganizationIdByTracking } from '@/lib/shipping/repository';
 
 /** Minimal pg client surface the helpers need (a pool client mid-transaction). */
 type Tx = Pick<PoolClient, 'query'>;
@@ -232,8 +232,7 @@ export async function upsertOrderTracking(
       ]
     );
   } else {
-    const insertedShipment = await client.query(
-      `INSERT INTO shipping_tracking_numbers
+    const insertSql = `INSERT INTO shipping_tracking_numbers
          (
            tracking_number_raw,
            tracking_number_normalized,
@@ -279,20 +278,39 @@ export async function upsertOrderTracking(
              -- existing tenant's stamp.
              organization_id = COALESCE(shipping_tracking_numbers.organization_id, EXCLUDED.organization_id),
              updated_at = NOW()
-       RETURNING id`,
-      [
-        rawTracking,
-        normalizedTracking,
-        carrierForStorage,
-        isUnknownCarrier ? null : new Date(),
-        isUnknownCarrier ? 'UNKNOWN' : null,
-        isUnknownCarrier,
-        isUnknownCarrier ? 'UNKNOWN_CARRIER' : null,
-        isUnknownCarrier ? unknownCarrierMessage : null,
-        orgId,
-      ]
-    );
-    const insertedShipmentId = Number((insertedShipment.rows[0] as { id?: unknown } | undefined)?.id ?? 0);
+       RETURNING id`;
+    const insertParams = [
+      rawTracking,
+      normalizedTracking,
+      carrierForStorage,
+      isUnknownCarrier ? null : new Date(),
+      isUnknownCarrier ? 'UNKNOWN' : null,
+      isUnknownCarrier,
+      isUnknownCarrier ? 'UNKNOWN_CARRIER' : null,
+      isUnknownCarrier ? unknownCarrierMessage : null,
+      orgId,
+    ];
+    let insertedShipment;
+    await client.query('SAVEPOINT stn_upsert');
+    try {
+      insertedShipment = await client.query(insertSql, insertParams);
+    } catch (err) {
+      // Undo the failed statement so the surrounding transaction stays usable
+      // whether we retry or rethrow.
+      await client.query('ROLLBACK TO SAVEPOINT stn_upsert');
+      // 42501 here means the ON CONFLICT matched a legacy NULL-org row the
+      // visibility pre-check above could not see (FORCE RLS hides it from
+      // app_tenant), and the DO UPDATE branch then failed the policy check.
+      // Heal that invisible row to this org on the owner pool and retry once.
+      const rlsViolation =
+        typeof err === 'object' && err !== null && 'code' in err && err.code === '42501';
+      if (!rlsViolation) throw err;
+      const healedId = await healShipmentOrganizationIdByTracking(normalizedTracking, orgId);
+      if (healedId == null) throw err;
+      insertedShipment = await client.query(insertSql, insertParams);
+    }
+    const insertedRow: { id?: unknown } | undefined = insertedShipment.rows[0];
+    const insertedShipmentId = Number(insertedRow?.id ?? 0);
     shipmentId = insertedShipmentId > 0 ? insertedShipmentId : null;
   }
 

@@ -1,31 +1,34 @@
 /**
- * Desk→phone handoff human code (4 Crockford chars). Pure — client + server.
+ * Desk→phone handoff human code. Pure — client + server.
  *
  * GateGuard: SignInQrScanDialog, qr-login claim-by-code, /m/claim.
- * User: type the four characters from the desk — no CF- prefix.
+ * User: type the code from the desk — number pad, no Caps Lock, no keyboard
+ * switching.
+ *
+ * DIGITS ONLY, on purpose. The code used to be 4 Crockford base32 characters:
+ * that forces the phone keyboard into alpha mode, makes the operator hop
+ * between the letter and number planes, and needs Shift/Caps for a code that is
+ * uppercase by definition. Six digits carries the same entropy (10^6 ≈ 32^4)
+ * and lets the field raise a number pad — the whole code is one thumb sweep.
  */
 
-/** Crockford base32 without I/L/O/U — readable on a desk screen. */
-export const HANDOFF_SHORT_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+/** Six digits ≈ 20 bits — the same space the old 4-char base32 code covered. */
+export const HANDOFF_SHORT_CODE_LENGTH = 6;
 
-const SHORT_CODE_RE = new RegExp(
-  `^[${HANDOFF_SHORT_CODE_ALPHABET}]{4}$`,
-  'i',
-);
+const SHORT_CODE_RE = new RegExp(`^[0-9]{${HANDOFF_SHORT_CODE_LENGTH}}$`);
 
-/** Canonical display / wire form — uppercase 4-char code (no brand prefix). */
+/** Canonical display / wire form. */
 export function formatHandoffDisplayCode(shortCode: string): string {
-  return shortCode.toUpperCase();
+  return shortCode.trim();
 }
 
 /**
- * Normalize typed / pasted pairing input to the 4-char short code, or null.
- * Accepts: `7K4M`, `7k4m`, and legacy `CF-7K4M` / `cf 7k4m` pastes.
+ * Normalize typed / pasted pairing input to the short code, or null.
+ * Accepts `481902`, `481 902`, `481-902`, and legacy `CF-481902` pastes.
  */
 export function parseHandoffDisplayCode(raw: string): string | null {
   const cleaned = raw
     .trim()
-    .toUpperCase()
     .replace(/^CF[\s\-–—_]*/i, '')
     .replace(/[\s\-–—_]/g, '');
 
@@ -33,14 +36,10 @@ export function parseHandoffDisplayCode(raw: string): string | null {
   return cleaned;
 }
 
-/**
- * Live field formatter while typing — up to 4 Crockford chars, uppercase.
- * Does not inject a CF- prefix; the phone only needs the code on the desk.
- */
+/** Live field formatter while typing — digits only, capped at the code length. */
 export function formatHandoffCodeInput(raw: string): string {
   return raw
-    .toUpperCase()
     .replace(/^CF[\s\-–—_]*/i, '')
-    .replace(/[^0-9A-HJKMNP-TV-Z]/g, '')
-    .slice(0, 4);
+    .replace(/[^0-9]/g, '')
+    .slice(0, HANDOFF_SHORT_CODE_LENGTH);
 }

@@ -11,7 +11,7 @@ import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { PACKER_IDS } from '@/utils/staff';
-import type { StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 
 export interface ShippedPanelEditorDockProps {
   shipped: ShippedOrder;

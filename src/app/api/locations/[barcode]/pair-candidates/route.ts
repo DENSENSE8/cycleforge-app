@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { readSessionSid } from '@/lib/auth/session';
+import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getLocationByBarcode } from '@/lib/neon/location-queries';
 import {
   listRoomPairCandidates,
@@ -28,11 +27,9 @@ export async function GET(
   const { barcode } = await params;
   const code = decodeURIComponent(barcode).trim();
 
-  const user = await getCurrentUserBySid(readSessionSid(req.cookies));
-  const orgId = user?.organizationId;
-  if (!user || !orgId) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
+  const gate = await requireRoutePerm(req, 'sku_stock.view');
+  if (gate.denied) return gate.denied;
+  const orgId = gate.ctx.organizationId;
 
   const sku = new URL(req.url).searchParams.get('sku')?.trim();
   if (sku) {

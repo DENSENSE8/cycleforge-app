@@ -21,6 +21,7 @@ import {
 } from '@/lib/shipping/shipstation/config';
 import { downloadLabelBytes, ShipStationApiError, type LabelPurchaseOptions } from '@/lib/shipping/shipstation/client';
 import type { LabelPurchaseResult } from '@/lib/shipping/shipstation/types';
+import { resolveOrderShipTo, snapshotShipToOnShipment } from '@/lib/shipping/shipstation/order-ship-to';
 
 export const dynamic = 'force-dynamic';
 
@@ -165,6 +166,39 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       primaryShipmentId = trk.primaryShipmentId;
     } catch (e) {
       console.error('[buy-label] tracking register failed', e);
+    }
+    // The primaryTrackingNumber path returns primaryShipmentId only when it
+    // CREATED a link row; upsertOrderTracking instead writes orders.shipment_id
+    // directly — read it back so the snapshot below targets the real STN row.
+    if (primaryShipmentId == null) {
+      const refreshed = await tenantQuery<{ shipment_id: number | null }>(
+        orgId,
+        `SELECT shipment_id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        [orderId, orgId],
+      );
+      primaryShipmentId = refreshed.rows[0]?.shipment_id ?? null;
+    }
+
+    // 2b. Snapshot the AS-SHIPPED ship-to onto the STN row. The address a
+    // label was bought against otherwise exists only inside the PDF bytes —
+    // unrecoverable for a return/replacement label once the marketplace order
+    // ages out. Best-effort: a failed snapshot must not fail the purchase.
+    try {
+      const { shipTo } = await resolveOrderShipTo(orgId, order);
+      if (shipTo && primaryShipmentId != null) {
+        await snapshotShipToOnShipment(orgId, primaryShipmentId, {
+          shipTo,
+          customerId: order.customer_id,
+          orderRef,
+          labelId: label.labelId ?? null,
+          service: label.serviceCode ?? null,
+          cost: label.cost ?? null,
+          currency: label.currency ?? null,
+          purchasedBy: ctx.staffId ?? null,
+        });
+      }
+    } catch (e) {
+      console.warn('[buy-label] ship_to snapshot failed', e);
     }
 
     // 3a. Store the label bytes (best-effort; GCS-gated).

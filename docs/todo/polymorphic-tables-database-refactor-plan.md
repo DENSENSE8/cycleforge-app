@@ -98,7 +98,7 @@
 > contract, the existing-polymorphic-surface matrix (Appendix A), and the jsonb/discriminator inventories (Appendices
 > C/D) in the companion apply here unchanged — read them for the cross-table rationale.
 >
-> **Companion ops doc (operator semantics):** [`context/WORKFLOW-RECEIVING.md`](../../context/WORKFLOW-RECEIVING.md) —
+> **Companion ops doc (operator semantics):** [`docs/workflows/receiving.md`](../workflows/receiving.md) —
 > triage vs unbox surfaces, independent timestamps, photo intent, soft recommendations.
 >
 > **Two stance differences from the companion (deliberate):**
@@ -869,7 +869,7 @@ tenancy, idempotency) asserted unchanged.
   `2026-06-14_rls_enforcement_infra.sql` (`enforce_tenant_isolation`), `2026-06-28g_part_links.sql` (tenant-from-birth
   template), `src/lib/order-lifecycle.ts` (rules-as-data model).
 - Current-state spine: `src/lib/drizzle/schema.ts:1014` (`receiving`), `:1151` (`receiving_lines`), `:1256`
-  (`receiving_exceptions`); triage/unbox semantics `context/WORKFLOW-RECEIVING.md`; interim migration
+  (`receiving_exceptions`); triage/unbox semantics `docs/workflows/receiving.md`; interim migration
   `src/lib/migrations/2026-07-05_receiving_independent_mode_scans.sql`; scan writers `record-scan.ts`,
   `unbox-scan-opened.ts`, `complete-triage.ts`; the query monolith `src/app/api/receiving-lines/route.ts`; the lib in `src/lib/receiving/*`;
   the kept trigger `2026-06-25_receiving_line_coarse_status_trigger.sql`; the catalog FK `2026-06-14f_catalog_type_fk_accounts_seed.sql`.

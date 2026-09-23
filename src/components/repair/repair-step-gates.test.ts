@@ -5,12 +5,28 @@
  * defend is: a satisfied unit counts wherever the pointer is, and un-editing
  * a unit takes its segment back.
  *
+ * ## TWO ARMS since 2026-09-16
+ *
+ * Called WITHOUT a device list — the staff single-intake form — the form's own
+ * singular `serialNumber` + `price` are the device facts, byte-identical to
+ * before. Called WITH one — the kiosk, which holds one cart line per unit on
+ * the counter — every device answers for itself and the form's singular fields
+ * are not consulted at all. The old single check passed a four-device visit on
+ * the strength of device one's serial and wrote the other three blank; that is
+ * the defect this file now pins shut.
+ *
  *   npx tsx --test src/components/repair/repair-step-gates.test.ts
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildInitialFormData, repairStepGates } from './repair-intake-logic';
+import {
+  buildInitialFormData,
+  canSubmitRepairIntake,
+  getRepairSubmitBlockReason,
+  repairStepGates,
+  type RepairDeviceGateRow,
+} from './repair-intake-logic';
 
 function filled(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
   return buildInitialFormData({
@@ -21,6 +37,26 @@ function filled(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
     customer: { name: 'Ada', phone: '5551234567', email: '' },
     ...overrides,
   });
+}
+
+/**
+ * The KIOSK's form: satisfied on every VISIT fact and empty on both device
+ * fields, because on that surface the device facts live on the cart line that
+ * will be written. Anything these tests get right about it is only meaningful
+ * because the form itself carries no serial and no quote.
+ */
+function visitForm(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
+  return filled({
+    product: { type: '', model: '', sourceSku: null },
+    serialNumber: '',
+    price: '',
+    ...overrides,
+  });
+}
+
+/** One device as `repair-devices.ts` hands it over — serialised and quoted. */
+function device(overrides: Partial<RepairDeviceGateRow> = {}): RepairDeviceGateRow {
+  return { title: 'Wave Radio II', serialNumber: 'SN-1', price: '86.00', ...overrides };
 }
 
 test('an empty form has no satisfied units', () => {
@@ -44,7 +80,7 @@ test('notes alone satisfy the issue unit — the domain predicate, not just chip
  * that, one gate demanded a serial AND a phone, so a staffer who had the
  * device in hand but no customer details yet could not advance past either.
  */
-test('the device unit needs a serial and a price, and nothing about the customer', () => {
+test('the staff arm: the device unit needs a serial and a price, and nothing about the customer', () => {
   const noSerial = filled({ serialNumber: '' });
   const noPrice = filled({ price: '' });
   const noPhone = filled({ customer: { name: 'Ada', phone: '', email: '' } });
@@ -105,4 +141,75 @@ test('clearing an earlier unit takes its segment back', () => {
   // Issue drops AND authorization drops with it (submit needs the issue);
   // device and contact are untouched by it.
   assert.deepEqual(repairStepGates(issueCleared, true, true), [false, true, true, false]);
+});
+
+/**
+ * THE per-device arm. A customer can hand over several units and each one
+ * becomes its own `repair_service` row with its own serial and its own quote,
+ * so the gate has to ask all of them.
+ */
+test('the device unit asks EVERY device, never just the first', () => {
+  const form = visitForm();
+  const both = [device(), device({ title: 'Wave Radio III', serialNumber: 'SN-2' })];
+  const secondUnserialised = [device(), device({ title: 'Wave Radio III', serialNumber: '' })];
+  const secondUnquoted = [device(), device({ title: 'Wave Radio III', price: '' })];
+  assert.equal(repairStepGates(form, false, false, both)[1], true);
+  assert.equal(
+    repairStepGates(form, false, false, secondUnserialised)[1],
+    false,
+    "device one's serial is not device two's",
+  );
+  assert.equal(repairStepGates(form, false, false, secondUnquoted)[1], false);
+});
+
+/**
+ * An EMPTY list is a visit with no device on it, not "nothing to check". The
+ * permissive reading would let a signed agreement for zero devices submit.
+ */
+test('an empty device list refuses the device unit and the commit', () => {
+  const form = visitForm();
+  assert.equal(repairStepGates(form, true, true, [])[1], false);
+  assert.equal(canSubmitRepairIntake(form, true, []), false);
+  assert.equal(
+    getRepairSubmitBlockReason(form, true, []),
+    'Add the device being dropped off',
+  );
+});
+
+/**
+ * The kiosk form carries NO serial, NO price and NO product, because the cart
+ * owns all three per device. This is the regression that matters most: while
+ * `canSubmitRepairIntake` still asked `CONTACT_FIELDS`' legacy `extras` entry
+ * (the form's own singular serial + price) of a device-list caller, "Submit
+ * repair" was disabled forever with nothing on screen to fix.
+ */
+test('with devices, the form needs no serial, price or product of its own', () => {
+  const form = visitForm();
+  assert.equal(canSubmitRepairIntake(form, true, [device()]), true);
+  assert.equal(repairStepGates(form, true, true, [device()]).filter(Boolean).length, 4);
+  assert.equal(
+    getRepairSubmitBlockReason(form, true, [device()]),
+    undefined,
+    'nothing left to refuse',
+  );
+  assert.equal(
+    canSubmitRepairIntake(form, true),
+    false,
+    'the staff arm still demands the form fill them in',
+  );
+});
+
+test('the refusal names WHICH device is short once there is more than one', () => {
+  assert.equal(
+    getRepairSubmitBlockReason(visitForm(), true, [
+      device(),
+      device({ title: 'Acoustic Wave', price: '' }),
+    ]),
+    'Acoustic Wave still needs its price',
+  );
+  // One device on the counter: naming it would be noise beside the one card.
+  assert.equal(
+    getRepairSubmitBlockReason(visitForm(), true, [device({ serialNumber: '', price: '' })]),
+    'Serial number and price required to submit',
+  );
 });

@@ -56,6 +56,10 @@ import {
   resolveSaleAmountWrite,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
+import {
+  buyerIdentityKey,
+  resolveBuyerCustomers,
+} from '@/lib/orders/resolve-buyer-customers';
 import { normalizeItemNumber } from '@/lib/automations/listing-match';
 
 /** Tracking resolution is fanned out in batches of this size. */
@@ -659,6 +663,24 @@ export async function ingestCanonicalOrders(
     String(customer.orderId || '').trim(),
   );
 
+  // ─── Resolve buyers with real identity ──────────────────────────────
+  // The strong tier ABOVE the name resolution below: a source that carries a
+  // channel customer id / email / phone (ShipStation) resolves and creates
+  // `customers` rows with the full buyer record here — name-only sources
+  // never enter this path (their orders carry no `buyer`).
+  const customerIdByBuyer = await resolveBuyerCustomers(
+    {
+      orgId: effectiveOrgId,
+      buyers: canonicalOrders
+        .filter((order) => order.buyer && buyerIdentityKey(order.accountSource, order.buyer))
+        .map((order) => ({ accountSource: order.accountSource, buyer: order.buyer! })),
+    },
+    {
+      runQuery: (org, sql, params) =>
+        orgId ? tenantQuery(org, sql, params) : pool.query(sql, params),
+    },
+  );
+
   // ─── Resolve name-only buyers to real customers ─────────────────────
   // A source that carries a buyer NAME but no id/email/phone (a mapped CSV
   // column) still names a real person. Match the tenant's book first, create
@@ -667,9 +689,14 @@ export async function ingestCanonicalOrders(
   //
   // Batched on purpose: a CSV import is up to 10k rows, and a per-row
   // find-or-create would be 10k round trips against the same handful of names.
+  // Orders carrying a `buyer` block are excluded — they resolved above.
   const customerIdByName = await resolveCustomersByName(
     canonicalOrders
-      .filter((order) => !latestCustomerByOrderId.get(String(order.externalOrderId || '').trim()))
+      .filter(
+        (order) =>
+          !order.buyer &&
+          !latestCustomerByOrderId.get(String(order.externalOrderId || '').trim()),
+      )
       .map((order) => ({
         name: order.customerName,
         sourceOrderId: String(order.externalOrderId || '').trim(),
@@ -913,11 +940,14 @@ export async function ingestCanonicalOrders(
 
     const matchedCustomer = latestCustomerByOrderId.get(orderId);
     const matchedCustomerId = matchedCustomer ? Number(matchedCustomer.id) : Number.NaN;
-    // Per-order match first (a customer the source itself identified), then the
-    // name resolution above. Both produce a real `customers` row, so downstream
-    // reads cannot tell which path found it.
+    // Identity precedence: the source's own per-order customer link, then the
+    // strong buyer tier (channel id/email/phone), then the name-only tier.
+    // All produce a real `customers` row, so downstream reads cannot tell
+    // which path found it.
+    const buyerKey = order.buyer ? buyerIdentityKey(order.accountSource, order.buyer) : null;
     const customerId =
       (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
+      (buyerKey ? (customerIdByBuyer.get(buyerKey) ?? null) : null) ??
       customerIdByName.get(customerNameKey(order.customerName || '')) ??
       null;
     if (customerId) matchedCustomers++;

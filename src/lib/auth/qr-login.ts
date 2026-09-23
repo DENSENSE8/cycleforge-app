@@ -1,8 +1,8 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 import pool from '@/lib/db';
 import {
   formatHandoffDisplayCode,
-  HANDOFF_SHORT_CODE_ALPHABET,
+  HANDOFF_SHORT_CODE_LENGTH,
   parseHandoffDisplayCode,
 } from '@/lib/auth/qr-handoff-code';
 
@@ -48,15 +48,16 @@ export function generateQrToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
-/** Four-char human code shown on desk + typed on phone (no prefix). */
+/** Digit-only human code shown on the desk + typed on the phone (no prefix). */
 export function generateHandoffShortCode(): string {
-  const bytes = randomBytes(4);
   let out = '';
-  for (let i = 0; i < 4; i++) {
-    out += HANDOFF_SHORT_CODE_ALPHABET[bytes[i]! % HANDOFF_SHORT_CODE_ALPHABET.length]!;
+  for (let i = 0; i < HANDOFF_SHORT_CODE_LENGTH; i++) {
+    // randomInt is rejection-sampled — no modulo bias across the 10 digits.
+    out += String(randomInt(10));
   }
   return out;
 }
+
 /** Begins a new phone→desk QR sign-in handshake session. */
 export async function createQrLoginSession(opts: {
   ip?: string | null;

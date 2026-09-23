@@ -26,6 +26,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
@@ -73,6 +74,7 @@ import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { optimisticallyRemoveOrderRows } from '@/lib/queries/order-cache-optimistic';
 
 /**
  * Minimal shape the dashboard selection bar needs from a row — satisfied by
@@ -142,6 +144,7 @@ export interface DashboardBulkSelection {
 export function useDashboardBulkSelection(
   orderView: DashboardOrderView,
 ): DashboardBulkSelection {
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const domain = getDashboardDomainFromSearch(searchParams);
   const selectionEnabled = true;
@@ -631,6 +634,13 @@ export function useDashboardBulkSelection(
       );
       const failed = results.filter((r) => r.status === 'rejected').length;
       const ok = results.length - failed;
+      const succeededOrderIds = results
+        .filter((result): result is PromiseFulfilledResult<DashSelectableRow> => result.status === 'fulfilled')
+        .map((result) => Number(result.value.id))
+        .filter((id) => Number.isFinite(id) && id > 0);
+      if (succeededOrderIds.length > 0) {
+        optimisticallyRemoveOrderRows(queryClient, succeededOrderIds);
+      }
       if (ok > 0) {
         toast.success(
           direction === 'undo'
@@ -642,7 +652,7 @@ export function useDashboardBulkSelection(
       clearSelection();
       refreshDomain('orders.outbound');
     },
-    [clearSelection, confirmBulkWrite],
+    [clearSelection, confirmBulkWrite, queryClient],
   );
 
   /**

@@ -1,5 +1,5 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
+import { resolveOutboundWorkflowFacts } from '@/lib/shipping/outbound-workflow-facts';
 import { UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
 import {
@@ -210,18 +210,20 @@ export function resolveRowStatus(
   }
   // To-ship in-warehouse list: full pre-dock stage (incl. PACKED_STAGED), not
   // the three-lane fulfillment bucket that hid packed rows as "Tested".
-  const stage = resolveOrderLifecycleStage({
+  const workflow = resolveOutboundWorkflowFacts({
     shipmentId: record.shipment_id,
     hasTechScan: Boolean(record.has_tech_scan),
     packedAt:
       nonSentinelTimestamp(record.packed_at) ??
       nonSentinelTimestamp((record as QueueRowRecord).pack_activity_at),
+    dockStagedAt: nonSentinelTimestamp((record as QueueRowRecord).dock_staged_at),
     isOutOfStock: Boolean(
       (record as QueueRowRecord).is_out_of_stock
         ?? (record as QueueRowRecord).isOutOfStock,
     ),
+    deadlineAt: queueRowShipBySource(record),
   });
-  const meta = UNSHIPPED_STATE_META[stage];
+  const meta = UNSHIPPED_STATE_META[workflow.stage];
   return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
 }
 

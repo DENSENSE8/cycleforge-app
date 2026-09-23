@@ -1,7 +1,6 @@
 /**
- * Canonical Zoho webhook pipeline (Wave 3). Both the per-tenant route
- * (/api/zoho/webhooks/{token}) and the legacy tokenless route
- * (/api/zoho/webhooks) delegate here so the security ordering is identical:
+ * Canonical Zoho webhook pipeline for the per-tenant route
+ * (/api/zoho/webhooks/{token}):
  *
  *   resolve org (+ pick secret) → verify HMAC on raw body → parse → normalize
  *   → cross-check Zoho account → reserve (org-scoped dedupe) → dispatch.
@@ -44,8 +43,7 @@ export async function processZohoWebhook(
   }
   const { orgId } = resolved;
 
-  // 2. Authenticate the raw body against THIS org's secret (per-tenant) or the
-  //    global env secret (legacy USAV path).
+  // 2. Authenticate the raw body against THIS org's vault-backed secret.
   const verification = verifyZohoWebhookSignature(rawBody, request.headers, {
     secret: resolved.signingSecret,
   });

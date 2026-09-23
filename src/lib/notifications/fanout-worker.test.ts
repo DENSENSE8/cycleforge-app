@@ -21,9 +21,12 @@ function fakes(opts: {
   permissions?: Map<number, string[]>;
   /** Simulate an existing open row that absorbs the event. */
   collapseHits?: boolean;
+  /** Simulate the idempotent retry: the row already exists, so nothing new. */
+  insertConflicts?: boolean;
 }) {
   const ownerCalls: Call[] = [];
   const orgCalls: Call[] = [];
+  const pushes: { staffId: number; itemId: number; eventKey: string }[] = [];
 
   const deps: FanoutDeps = {
     ownerQuery: async <T extends QueryResultRow = QueryResultRow>(
@@ -50,14 +53,22 @@ function fakes(opts: {
         const n = opts.collapseHits ? 1 : 0;
         return { rows: [] as T[], rowCount: n } as QueryResult<T>;
       }
-      // INSERT INTO staff_inbox_items
-      return { rows: [] as T[], rowCount: 1 } as QueryResult<T>;
+      if (sql.includes('UPDATE staff_subscriptions')) {
+        return { rows: [] as T[], rowCount: 1 } as QueryResult<T>;
+      }
+      // INSERT INTO staff_inbox_items — RETURNING id, which is what the live
+      // push is keyed on. An empty RETURNING is the ON CONFLICT path.
+      const inserted = opts.insertConflicts ? [] : [{ id: 900 }];
+      return { rows: inserted as unknown as T[], rowCount: inserted.length } as QueryResult<T>;
     },
     loadPermissions: async () => opts.permissions ?? new Map(),
+    publishInboxItem: async (args) => {
+      pushes.push(args);
+    },
     now: () => new Date('2026-07-28T12:00:00Z'),
   };
 
-  return { deps, ownerCalls, orgCalls };
+  return { deps, ownerCalls, orgCalls, pushes };
 }
 
 function outboxRow(over: Partial<Record<string, unknown>> = {}) {
@@ -199,4 +210,150 @@ test('batch size is clamped to a sane range', async () => {
   const { deps, ownerCalls } = fakes({ outboxRows: [] });
   await drainNotificationOutbox({ batchSize: 9999 }, deps);
   assert.deepEqual(ownerCalls[0].params, [200]);
+});
+
+/*
+ * ── Rule-arm narrowing + pre-arrival watch lifecycle ────────────────────────
+ *
+ * The rule arm used to filter on the event key alone, so every SKU rule fired
+ * on every unbox event in the org. These pin the two halves of the fix: the
+ * worker must HAND the SQL the event's own match facts (a predicate it is
+ * never given cannot narrow), and a fulfilled tracking watch must retire.
+ */
+
+/** The narrowing facts the rule arm is asked to match, in bound-param order. */
+function ruleArmFacts(orgCalls: Call[]): { sku: unknown; tracking: unknown } {
+  const lookup = orgCalls.find((c) => c.sql.includes('FROM staff_subscriptions'));
+  assert.ok(lookup, 'expected a recipient lookup');
+  return { sku: lookup.params[4], tracking: lookup.params[5] };
+}
+
+test('the rule arm is narrowed by the event\'s own sku and tracking facts', async () => {
+  const { deps, orgCalls } = fakes({
+    outboxRows: [
+      outboxRow({
+        event_key: 'receiving.carton.arrived',
+        // Typed with spaces and in lower case, as a paste or a wedge scan
+        // arrives; a watch is stored canonical, so a raw compare would miss.
+        payload: { sku: 'LEN-T480-i5', trackingNumber: '1z 999aa1 0123 4567 84' },
+      }),
+    ],
+    recipients: [],
+  });
+  await drainNotificationOutbox({}, deps);
+
+  assert.deepEqual(ruleArmFacts(orgCalls), {
+    sku: 'LEN-T480-i5',
+    tracking: '1Z999AA10123456784',
+  });
+});
+
+test('an event carrying no tracking asks for no tracking rule', async () => {
+  const { deps, orgCalls } = fakes({
+    outboxRows: [outboxRow({ payload: {} })],
+    recipients: [],
+  });
+  await drainNotificationOutbox({}, deps);
+
+  // NULL is "don't care" on the SUBSCRIPTION side; on the EVENT side it must
+  // mean "matches only rules that did not ask", which is what the NULL param
+  // buys. A tracking watch firing on a carton with no number is the failure.
+  assert.deepEqual(ruleArmFacts(orgCalls), { sku: null, tracking: null });
+});
+
+test('a fulfilled pre-arrival watch retires itself on arrival', async () => {
+  const { deps, orgCalls } = fakes({
+    outboxRows: [
+      outboxRow({
+        event_key: 'receiving.carton.arrived',
+        payload: { trackingNumber: '1z 999aa1 0123 4567 84' },
+      }),
+    ],
+    recipients: [{ staff_id: 3, subscription_id: 55, reason: 'manual' }],
+    permissions: new Map([[3, ['receiving.view']]]),
+  });
+  const r = await drainNotificationOutbox({}, deps);
+
+  assert.equal(r.delivered, 1);
+  const retire = orgCalls.find((c) => c.sql.includes('UPDATE staff_subscriptions'));
+  assert.ok(retire, 'the number landed — the watch must not wait for it again');
+  assert.ok(retire.params.includes('1Z999AA10123456784'));
+  // Entity follows are a standing relationship; only the rule arm is a
+  // fulfilled prediction.
+  assert.ok(retire.sql.includes("subscription_kind = 'rule'"));
+});
+
+test('the watch also retires when the watcher scanned it themselves', async () => {
+  const { deps, orgCalls } = fakes({
+    outboxRows: [
+      outboxRow({
+        event_key: 'receiving.carton.arrived',
+        actor_staff_id: 3,
+        payload: { trackingNumber: '1Z999AA10123456784' },
+      }),
+    ],
+    // The only subscriber IS the actor, so nothing is delivered — but the
+    // package still arrived, and a watch left live fires on the next reuse of
+    // the number.
+    recipients: [{ staff_id: 3, subscription_id: 55, reason: 'manual' }],
+    permissions: new Map([[3, ['receiving.view']]]),
+  });
+  const r = await drainNotificationOutbox({}, deps);
+
+  assert.equal(r.delivered, 0);
+  assert.ok(orgCalls.some((c) => c.sql.includes('UPDATE staff_subscriptions')));
+});
+
+test('a non-arrival event never retires a watch', async () => {
+  const { deps, orgCalls } = fakes({
+    outboxRows: [
+      outboxRow({
+        event_key: 'receiving.carton.opened',
+        payload: { trackingNumber: '1Z999AA10123456784' },
+      }),
+    ],
+    recipients: [{ staff_id: 3, subscription_id: 55, reason: 'manual' }],
+    permissions: new Map([[3, ['receiving.view']]]),
+  });
+  await drainNotificationOutbox({}, deps);
+
+  assert.ok(
+    !orgCalls.some((c) => c.sql.includes('UPDATE staff_subscriptions')),
+    'only the arrival fulfils a pre-arrival watch',
+  );
+});
+
+test('a delivered row is pushed live to its recipient', async () => {
+  const { deps, pushes } = fakes({
+    outboxRows: [
+      outboxRow({
+        event_key: 'receiving.carton.arrived',
+        payload: { trackingNumber: '1Z999AA10123456784' },
+      }),
+    ],
+    recipients: [{ staff_id: 3, subscription_id: 55, reason: 'rule' }],
+    permissions: new Map([[3, ['receiving.view']]]),
+  });
+  await drainNotificationOutbox({}, deps);
+
+  // Without this leg the row is written and the operator learns about their
+  // package on the next window focus.
+  assert.equal(pushes.length, 1);
+  assert.equal(pushes[0].staffId, 3);
+  assert.equal(pushes[0].itemId, 900);
+  assert.equal(pushes[0].eventKey, 'receiving.carton.arrived');
+});
+
+test('a redelivered row is not pushed twice', async () => {
+  const { deps, pushes } = fakes({
+    outboxRows: [outboxRow()],
+    recipients: [{ staff_id: 3, subscription_id: 55, reason: 'manual' }],
+    permissions: new Map([[3, ['receiving.view']]]),
+    // ON CONFLICT DO NOTHING — the row was already delivered on an earlier
+    // attempt, so there is nothing new to announce.
+    insertConflicts: true,
+  });
+  await drainNotificationOutbox({}, deps);
+
+  assert.deepEqual(pushes, []);
 });

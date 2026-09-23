@@ -14,6 +14,12 @@
  * "just the bottom bar first" · "keep the staff color and initial bubble on
  * the most left and the button must be edge to edge no padding on the edges
  * for just the bottom".
+ * The bar is ONE door, not a toolbar: avatar + name + email, full-bleed, to
+ * `/m/settings`. It carried trailing Switch-staff / Log-out squares for a
+ * while; the operator pulled them (2026-09-23: *"it must display at the
+ * bottom of settings, not a logout button and a switch staff button at the
+ * bottom of the sidebar on mobile"*). Both shift-change verbs live at the
+ * foot of `/m/settings` (`MobileSettingsList`) — one place, not two.
  */
 
 import Link from 'next/link';
@@ -39,7 +45,11 @@ export function MobileAccountFooter({
 
   return (
     <footer
-      className={cn('w-full shrink-0 bg-surface-card', elevationClass('raised', 'soft'), className)}
+      className={cn(
+        'flex w-full shrink-0 items-center bg-surface-card',
+        elevationClass('raised', 'soft'),
+        className,
+      )}
     >
       {/* shadcn ghost chrome (not an ops CTA — the DS Button law is untouched);
           asChild merges the row onto the anchor so the whole bar is the door.
@@ -51,7 +61,7 @@ export function MobileAccountFooter({
         asChild
         variant="ghost"
         aria-label={`Settings, signed in as ${name}`}
-        className="h-auto min-h-11 w-full justify-start px-0 py-2.5 text-left text-text-default"
+        className="h-auto min-h-11 min-w-0 flex-1 justify-start px-0 py-2.5 text-left text-text-default"
       >
         <Link href="/m/settings" prefetch={false} onClick={onNavigate}>
           <span className="flex w-full items-center gap-2.5 px-3">

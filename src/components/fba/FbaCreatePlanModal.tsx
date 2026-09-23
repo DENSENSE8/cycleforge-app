@@ -122,7 +122,9 @@ export function FbaCreatePlanModal({ stationTheme = 'blue' }: { stationTheme?: S
             onClick={() => setOpen(false)}
             disabled={submitting}
             ariaLabel="Close create plan"
-            className="rounded-full border border-border-soft bg-surface-card p-2 hover:border-border-default hover:bg-surface-hover disabled:opacity-40"
+            size="md"
+            radius="flush"
+            className="border border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-hover"
           />
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto">

@@ -5,7 +5,7 @@
  * Probes (in order): CYCLEFORGE_MLX_BASE, Mac :8081, prometheus:8080, Mac :8080.
  * Prefer coder+27 model id; else Qwen3.8-27B-4bit / qwen/qwen3.8-27b; else first.
  *
- * Steps: models → PONG ping → display-contract prompt → dry-hook → MLX pipe.
+ * Steps: models → PONG ping → display-contract prompt → dry machine-gate → MLX pipe.
  * Unreachable Mac → clear fail (no Ollama fallback).
  */
 import { spawnSync } from "node:child_process";
@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const HOOK = path.join(ROOT, ".cursor/hooks/stop-eval-gate.sh");
+const GATE = path.join(ROOT, "tools/eval-ledger/machine-gate.mjs");
 
 const BASES = [
   process.env.CYCLEFORGE_MLX_BASE,
@@ -135,7 +135,7 @@ async function chat(base, model, user, timeoutMs = 180000, { system } = {}) {
   return String(content);
 }
 
-const CONTRACT_USER = `Machine eval failed. Stamp .cursor/eval-session.json. Snapshot docs/eval/cohorts/slot-table/snapshots/(fixture-tripwire). Make that contract green. Do not change paint. Do not fold Queue/Viewed/History into the funnel. Do not delete overlay visibility / zIndex.panel. Do not invent Operator verdict.
+const CONTRACT_USER = `Machine eval failed. Stamp .garisek/eval-session.json. Snapshot docs/eval/cohorts/slot-table/snapshots/(fixture-tripwire). Make that contract green. Do not change paint. Do not fold Queue/Viewed/History into the funnel. Do not delete overlay visibility / zIndex.panel. Do not invent Operator verdict.
 
 Allowed: fix SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows. Forbidden: FilterRefinementBar, hunt tiles, folding Unbox Queue/Viewed/History into the funnel, deleting overlay visibility, rewriting Operator verdict, screenshot baselines.
 
@@ -201,35 +201,20 @@ async function main() {
   }
   ok("contract prompt graded");
 
-  // Hook → MLX pipe
+  // machine-gate (dry) → MLX pipe
   const dry = spawnSync(
-    HOOK,
-    [],
-    {
-      cwd: ROOT,
-      env: { ...process.env, CYCLEFORGE_EVAL_STOP: "dry" },
-      input: JSON.stringify({ status: "completed", loop_count: 0 }),
-      encoding: "utf8",
-      timeout: 15000,
-    },
+    process.execPath,
+    [GATE, "--dry-fail"],
+    { cwd: ROOT, encoding: "utf8", timeout: 15000 },
   );
-  if (dry.status !== 0 && !dry.stdout) {
-    fail(`dry hook exited ${dry.status}: ${dry.stderr || dry.error}`);
-  }
-  let payload;
-  try {
-    payload = JSON.parse(dry.stdout || "{}");
-  } catch {
-    fail(`dry hook stdout not JSON: ${dry.stdout}`);
-  }
-  const followup = payload.followup_message;
+  const followup = (dry.stdout || "").trim();
   if (!followup) {
-    fail(`dry hook missing followup_message: ${dry.stdout}`);
+    fail(`dry machine-gate produced no brief (status=${dry.status}): ${dry.stderr || dry.error}`);
   }
   if (/All checks passed/.test(followup)) {
-    fail("dry hook followup must never say All checks passed");
+    fail("dry machine-gate brief must never say All checks passed");
   }
-  ok("dry hook produced followup_message");
+  ok("dry machine-gate produced repair brief");
 
   const piped = await chat(
     base,
@@ -240,15 +225,15 @@ async function main() {
     300000,
     { system: PLANNER_SYSTEM },
   );
-  console.log("[eval:mlx-smoke] hook-pipe reply:\n" + piped.slice(0, 800));
+  console.log("[eval:mlx-smoke] gate-pipe reply:\n" + piped.slice(0, 800));
   const g2 = gradeContract(piped);
   if (!g2.allowed) {
-    fail("hook-pipe reply named no allowed action");
+    fail("gate-pipe reply named no allowed action");
   }
   if (g2.recommendBad.length) {
-    fail(`hook-pipe recommended forbidden: ${g2.recommendBad.map(String).join(", ")}`);
+    fail(`gate-pipe recommended forbidden: ${g2.recommendBad.map(String).join(", ")}`);
   }
-  ok("hook → MLX pipe graded");
+  ok("machine-gate → MLX pipe graded");
 
   console.log("[eval:mlx-smoke] ALL PASS");
 }

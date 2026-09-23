@@ -28,7 +28,7 @@
  * We accept three mechanisms and override via env; confirm during sandbox test.
  */
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseUSPSTrackingPayload } from '@/lib/shipping/providers/usps';
 import { getShipmentByTracking, updateShipmentSummary, upsertShipment, upsertTrackingEvents } from '@/lib/shipping/repository';
@@ -37,6 +37,7 @@ import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-ch
 import { resolveWebhookOrgByTracking } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 
 // USPS may echo the shared secret in a header, or sign the body. Header names
 // aren't pinned down publicly; check known variants + an override.
@@ -45,15 +46,6 @@ const SECRET_HEADERS = [
   'x-usps-secret',
   'x-usps-credential',
 ].filter(Boolean) as string[];
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  // timingSafeEqual throws on length mismatch — guard so a wrong-length value
-  // returns false instead of 500-ing.
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
 
 /**
  * Verify the request against USPS_WEBHOOK_SECRET. Tries, in order: HMAC-SHA256
@@ -72,21 +64,22 @@ function isAuthorized(req: NextRequest, rawBody: string, parsed: any): boolean {
   // 1. HMAC-SHA256 signature over the raw body.
   const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   const sigHeader = req.headers.get(process.env.USPS_WEBHOOK_SIGNATURE_HEADER || 'x-usps-signature');
-  if (sigHeader && constantTimeEquals(sigHeader, expected)) return true;
+  if (sigHeader && safeStrEqual(sigHeader, expected)) return true;
 
   // 2. Shared-secret echo header.
   for (const header of SECRET_HEADERS) {
     const provided = req.headers.get(header);
-    if (provided && constantTimeEquals(provided, secret)) return true;
+    if (provided && safeStrEqual(provided, secret)) return true;
   }
 
   // 3. Shared secret echoed in the body (we send `sharedSecret` on subscribe).
-  if (parsed?.sharedSecret && constantTimeEquals(String(parsed.sharedSecret), secret)) return true;
+  if (parsed?.sharedSecret && safeStrEqual(String(parsed.sharedSecret), secret)) return true;
 
   // 4. Static bearer / header secret (manual replay & testing).
   const authHeader = req.headers.get('authorization');
-  if (authHeader === `Bearer ${secret}`) return true;
-  if (req.headers.get('x-webhook-secret') === secret) return true;
+  if (authHeader?.startsWith('Bearer ') && safeStrEqual(authHeader.slice(7), secret)) return true;
+  const replaySecret = req.headers.get('x-webhook-secret');
+  if (replaySecret && safeStrEqual(replaySecret, secret)) return true;
 
   return false;
 }

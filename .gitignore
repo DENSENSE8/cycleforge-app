@@ -15,7 +15,7 @@ node_modules/
 
 # misc
 .research/
-.cursor/debug*.log
+.cursor/
 /tmp/
 .DS_Store
 *.pem
@@ -124,20 +124,10 @@ vision/data/
 # The house-law corpus (rules, SoT manifest, design-law guards, Cursor tree)
 # was deleted on purpose. These paths must not silently return.
 #
-# `.cursor/mcp.json` is the one carve-out (2026-08-30): it is MCP *wiring*, not
-# house law, and Cursor reads only from `.cursor/`. Tracking it is what lets
-# `.mcp.json` be a symlink to it — one file, both clients. Operator 2026-08-31:
-# also track hooks + rules that enforce design-mcp (plugin load, session stamp,
-# UI write gate). Session receipts stay banned under the blanket `.cursor/*`.
-.cursor/*
-!.cursor/mcp.json
-!.cursor/hooks.json
-!.cursor/hooks/
-!.cursor/hooks/**
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/skills/
-!.cursor/skills/**
+# Cursor integration removed entirely 2026-09-22 (operator): no `.cursor/`
+# tree, no IDE-specific hooks, rules, skills or plugin path. `.mcp.json` is a
+# real file at the repo root and is the ONLY MCP wiring. `.cursor/` is ignored
+# outright so launching Cursor can never re-introduce a second rule surface.
 .claude/rules/
 .claude/agents/
 .claude/hooks/
@@ -149,3 +139,10 @@ sot-manifest.json
 # Playwright signed-in storage state for visual baselines — a REAL session.
 tests/visual/.auth.json
 tests/visual/**/*-snapshots/
+
+# Eval snapshots are regenerated write-only output; the LEDGER.md per cohort is the record.
+docs/eval/cohorts/*/snapshots/
+docs/eval/stations/*/snapshots/
+
+# Obsidian vault UI state
+.obsidian/

@@ -38,7 +38,7 @@ import {
 } from "./perf-target.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const LOG_DIR = path.join(ROOT, ".cursor");
+const LOG_DIR = path.join(ROOT, ".garisek");
 const LOG_FILE = path.join(LOG_DIR, "perf-overnight.log");
 const STATE_FILE = path.join(LOG_DIR, "perf-overnight-state.json");
 

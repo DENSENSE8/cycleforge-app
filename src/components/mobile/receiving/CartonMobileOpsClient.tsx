@@ -17,7 +17,6 @@ import { PlatformMark } from '@/components/ui/PlatformMark';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { ReceivingQaActionSheet } from '@/components/mobile/receiving/ReceivingQaActionSheet';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
 import { Panel, Button } from '@/design-system/primitives';
@@ -216,7 +215,6 @@ function CartonPageInner() {
           </div>
           <div className="flex flex-col items-end gap-1.5">
             <ScanAgainBar />
-            <NetworkChip compact />
             {carton?.source_platform ? (() => {
               const meta = sourcePlatformMeta(carton.source_platform);
               return (

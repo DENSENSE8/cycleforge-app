@@ -7,8 +7,9 @@
  * Operator rulings, all 2026-09-15:
  *   - Picks and to-ship render the SAME item card, so a picker and a packer
  *     recognize the item from either screen.
- *   - No item number on the pick face — "the listing link already has the
- *     item number". The hidden itemNumber/sku still resolves the listing href.
+ *   - No sale price or marketplace-link tile on the pick face. The picker
+ *     receives only physical verification facts; listing documentation stays
+ *     in the administrative order sheet.
  *   - LOCATION paints after the condition, as the EXACT bin barcode — the
  *     same code the bin label carries. **Text only**: the screen-scannable
  *     DataMatrix that briefly rendered beside it was removed the same day
@@ -32,7 +33,6 @@ import {
 } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { formatSalePrice } from '@/lib/dashboard/orders-queue-helpers';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import type { PickListRow } from '@/components/mobile/redesign/pick-list-payload';
 
 function pickConditionParts(row: PickListRow): { label: string; tone: string } | null {
@@ -51,19 +51,13 @@ export function PickQueueRow({
   /** Opens the tote-pair sheet for this row's order. */
   onPair: (row: PickListRow) => void;
 }) {
-  const price = formatSalePrice(row.saleAmount, row.currency) || null;
-  // Not displayed (operator 2026-09-15 — "the listing link already has the
-  // item number"): the listing button still needs a key to resolve the
-  // listing, so the hidden itemNumber/sku drives the href, not the face.
-  const listingHref = getExternalUrlByItemNumber(row.itemNumber || row.sku || '');
   return (
     <div data-testid="pick-queue-row">
       <ItemCardRow
         title={row.productTitle ?? row.serialNumber}
         imageUrl={row.imageUrl}
-        listingHref={listingHref}
         qty={row.qty}
-        price={price}
+        price={formatSalePrice(row.saleAmount, row.currency) || null}
         condition={pickConditionParts(row)}
         deadlineAt={row.deadlineAt}
         location={row.locationBarcode ?? row.location ?? 'No location'}

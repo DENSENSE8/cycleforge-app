@@ -125,8 +125,8 @@ export function gridColumnTrackRem(column: TrackLike): number {
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
   if (column.headerGlyphOnly) return false;
-  if (column.key === 'thumb' || column.type === 'image') return false;
   if (column.headerForceLabel) return true;
+  if (column.key === 'thumb' || column.type === 'image') return false;
   if (isFlexTrack(column)) return true;
   const trackRem = gridColumnTrackRem(column);
   if (trackRem < (column.labelFitRem ?? 4.5)) return false;

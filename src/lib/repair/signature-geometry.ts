@@ -39,7 +39,7 @@
  *
  * Callers: `src/components/repair/SignaturePad.tsx` (capture),
  * `src/lib/repair/repair-paper-html.ts` (print band),
- * `src/app/kiosk/kiosk-counter-surface.ts` (the kiosk-axis pad token).
+ * `src/components/repair/SignaturePad.tsx` (capture surface classes).
  * Affected API: none. Schemas: none (the stored `signatureDataUrl` gets
  * tighter, not differently shaped).
  */
@@ -70,6 +70,11 @@ export const REPAIR_PRINT_SIGNATURE_BAND = {
  * second height would be a second law for one piece of paper.
  */
 export const SIGNATURE_CAPTURE_ASPECT = 5;
+
+/** Capture box and ruled guide shared by every repair signature surface. */
+export const REPAIR_SIGNATURE_PAD_CLASS = 'aspect-[5/1] w-full max-h-full';
+export const REPAIR_SIGNATURE_GUIDE_CLASS =
+  'pointer-events-none absolute inset-x-6 bottom-[18%] border-b-2 border-dashed border-border-soft';
 
 /**
  * Guards on the cropped export.

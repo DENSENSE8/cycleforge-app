@@ -26,12 +26,20 @@ export const GET = withAuth(
       return NextResponse.json({ error: 'date must be YYYY-MM-DD' }, { status: 400 });
     }
     const dateKey = raw ?? getCurrentPSTDateKey();
+    const scope = request.nextUrl.searchParams.get('scope');
+    if (scope && scope !== 'mine' && scope !== 'all') {
+      return NextResponse.json({ error: 'scope must be mine or all' }, { status: 400 });
+    }
+    if (scope === 'all' && !ctx.permissions.has('operations.view')) {
+      return NextResponse.json({ error: 'The full staff report requires operations access' }, { status: 403 });
+    }
 
     try {
       const report = await loadDailyCheckReport({
         orgId: ctx.organizationId,
         dateKey,
         viewerStaffId: ctx.staffId,
+        onlyViewerItems: scope !== 'all',
       });
       return NextResponse.json(report);
     } catch (error: unknown) {

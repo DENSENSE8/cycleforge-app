@@ -91,6 +91,13 @@ test('the Inbound desk is rail-less by its own clause', () => {
   assert.equal(isRaillessSurface('/incoming/anything', params()), true);
 });
 
+test('the Repair desk is rail-less once favorites moved into the catalog picker', () => {
+  // Its left column had one tenant (the Favorites rail); the `?new=true` intake
+  // overlay it also hosted now mounts on the right pane via RepairIntakeHost.
+  assert.equal(isRaillessSurface('/repair', params()), true);
+  assert.equal(isRaillessSurface('/repair', params('tab=done')), true);
+});
+
 test('the dashboard is rail-less only in its outbound domain', () => {
   assert.equal(isRaillessSurface('/dashboard', params('mode=sales')), false);
 });

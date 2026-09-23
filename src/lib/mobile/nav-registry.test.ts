@@ -52,7 +52,15 @@ test('the Outbound lane activates on every route it claims', () => {
   const outbound = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'fulfillment');
   assert.equal(outbound?.kind, 'group');
   if (outbound?.kind !== 'group') return;
-  for (const p of ['/m/work', '/m/pick', '/m/pick/9', '/m/orders/12']) {
+  for (const p of [
+    '/m/work',
+    '/m/pick',
+    '/m/pick/9',
+    '/m/pack',
+    '/m/orders/12',
+    '/m/shipping/stage',
+    '/m/exceptions/7',
+  ]) {
     assert.equal(isGroupActive(p, outbound.matchPrefixes), true, p);
   }
   assert.equal(isGroupActive('/m/receiving', outbound.matchPrefixes), false);
@@ -168,15 +176,14 @@ test('lane faces come from the shared registry, with one ruled divergence', () =
   assert.notEqual(domainLane('inbound').icon, PackageOpen);
 });
 
-test('Outbound rows are the U2 survivors only — /m/work (KEPT) and /m/pick (LIVE)', () => {
+test('Outbound exposes canonical orders, picks, packing, shipping, and exceptions doors', () => {
   const outbound = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'fulfillment');
   assert.equal(outbound?.kind, 'group');
-  // `/m/work` was the mobile landing default with no drawer row at all.
-  // `/m/orders/new` is GATED by plan §1.7 — "the drawer may only row up LIVE
-  // and KEPT routes" — so it deliberately has no row until the operator rules.
+  // `/m/work` is compatibility-only. `/m/orders/new` stays deliberately
+  // unlisted.
   assert.deepEqual(
     outbound?.kind === 'group' ? outbound.children.map((c) => c.href) : [],
-    ['/m/work', '/m/pick'],
+    ['/m/orders', '/m/pick', '/m/pack', '/m/shipping', '/m/exceptions'],
   );
 });
 
@@ -187,6 +194,36 @@ test('Scan stays out of the drawer — it owns the permanent top-right seat', ()
     if (item.kind === 'group') hrefs.push(...item.children.map((c) => c.href));
   }
   assert.equal(hrefs.includes('/m/scan'), false);
+});
+
+test('Inbox is an L0 door at /m/inbox, gated on home.inbox.view', () => {
+  // The desk header inbox came back 2026-09-22 and SURFACE_LAW §1 refuses a
+  // desk-only surface, so this row IS the `/m` twin. Pinned by href AND
+  // permission: a row that reached the drawer without `home.inbox.view` would
+  // 404 at `GET /api/inbox`, which the registry rule calls worse than never
+  // offering it.
+  const inbox = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'inbox');
+  assert.equal(inbox?.kind, 'leaf');
+  assert.equal(inbox?.href, '/m/inbox');
+  assert.equal(inbox?.requires, 'home.inbox.view');
+});
+
+test('there is ONE task door on the phone — Daily; no separate /m/tasks row', () => {
+  // Operator 2026-09-23: *"there should just be only one task system"*. A daily
+  // check and a thrown task are two stores, but the phone shows one list at
+  // `/m/home` and ticks both there. A second drawer row pointing at the same
+  // work is the duplication this ruling removed.
+  assert.equal(
+    MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'tasks'),
+    undefined,
+  );
+  assert.equal(
+    MOBILE_NAV_DESTINATIONS.some((item) => item.kind === 'leaf' && item.href === '/m/tasks'),
+    false,
+  );
+  const daily = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'daily');
+  assert.equal(daily?.kind, 'leaf');
+  assert.equal(daily?.href, '/m/home');
 });
 
 // ─── Bottom-nav tab destinations ─────────────────────────────────────────────

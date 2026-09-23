@@ -33,13 +33,15 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate._
+| Date | Gate | Result | Snapshot |
+|------|------|--------|----------|
+| 2026-09-17 | verify:fast | pass | `docs/eval/stations/pack/snapshots/2026-09-17-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-01-critique-PackOrderWorkspace.txt`
+- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-17-critique-PackOrderWorkspace.txt`
 ```
 {
   "file": "src/components/packer/PackOrderWorkspace.tsx",
@@ -53,8 +55,8 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-01-impact-PackOrderWorkspace.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-17-impact-PackOrderWorkspace.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-17-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -66,5 +68,5 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T10:20:57.911Z · station `pack`_
+_Updated 2026-09-17T17:45:29.984Z · station `pack`_
 <!-- /eval-ledger:auto:last-run -->

@@ -24,6 +24,9 @@ import {
 } from '@/lib/vision/frame-quality';
 import { toast } from '@/lib/toast';
 
+const MotionButton = motion.create(Button);
+const MotionIconButton = motion.create(IconButton);
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface CapturedShot {
@@ -417,24 +420,26 @@ export function MobilePackerSpamCamera({
                 ? 'Enable camera access in your browser settings, then tap Try Again.'
                 : 'No camera detected, or the browser blocked access.'}
             </p>
-            <Button
+            <MotionButton
               type="button"
               variant="primary"
               onClick={attemptStart}
+              whileTap={{ scale: 0.96 }}
               className="h-11 px-5 rounded-none text-role-caption font-semibold uppercase tracking-wider"
             >
               Try Again
-            </Button>
+            </MotionButton>
 
             {showTestPhotoButton && (
-              <Button
+              <MotionButton
                 type="button"
                 variant="primary"
                 onClick={handleUseTestPhoto}
+                whileTap={{ scale: 0.96 }}
                 className="mt-3 h-11 px-5 rounded-none bg-amber-500 text-black text-role-caption font-semibold uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
               >
                 Use Test Photo · Dev
-              </Button>
+              </MotionButton>
             )}
           </div>
         )}
@@ -468,9 +473,10 @@ export function MobilePackerSpamCamera({
               </>
             )}
           </div>
-          <IconButton
+          <MotionIconButton
             type="button"
             onClick={handleCancel}
+            whileTap={{ scale: 0.96 }}
             ariaLabel="Close camera"
             className="h-11 w-11 flex-shrink-0 flex items-center justify-center rounded-full bg-scrim/40 backdrop-blur-sm active:bg-scrim/60 transition-colors"
             icon={<X className="h-5 w-5 text-white" />}
@@ -502,11 +508,12 @@ export function MobilePackerSpamCamera({
               thumbnail rather than a second shutter. Hidden until the first shot. */}
           <div className="flex justify-start">
             {/* ds-raw-button: image/photo thumbnail tile (last-shot gallery bubble) */}
-            <button
+            <motion.button
               type="button"
               onClick={openGallery}
               disabled={gallerySlides.length === 0}
               aria-label="View photos"
+              whileTap={{ scale: 0.96 }}
               className="relative h-12 w-12 rounded-full overflow-hidden ring-2 ring-glass/40 bg-scrim/40 shadow-lg active:scale-95 transition-transform disabled:opacity-0 disabled:pointer-events-none"
             >
               {lastSlide && (
@@ -517,30 +524,32 @@ export function MobilePackerSpamCamera({
                   className="w-full h-full object-cover"
                 />
               )}
-            </button>
+            </motion.button>
           </div>
 
           {/* Shutter */}
           <div className="flex justify-center">
             {/* ds-raw-button: camera shutter (bespoke ring-over-fill control) */}
-            <button
+            <motion.button
               type="button"
               onClick={shutter}
               disabled={atCap || !cameraLive}
               aria-label="Capture photo"
+              whileTap={atCap || !cameraLive ? undefined : { scale: 0.96 }}
               className="h-[72px] w-[72px] rounded-full border-4 border-white bg-transparent active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center"
             >
               <span className="block h-14 w-14 rounded-full bg-stage-contrast active:bg-stage-contrast/80 transition-colors" />
-            </button>
+            </motion.button>
           </div>
 
           {/* Done — checkmark only */}
           <div className="flex justify-end">
-            <IconButton
+            <MotionIconButton
               type="button"
               onClick={handleDone}
               disabled={shots.length === 0}
               ariaLabel="Done"
+              whileTap={shots.length === 0 ? undefined : { scale: 0.96 }}
               className="h-14 w-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg active:bg-emerald-600 active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100 disabled:active:bg-emerald-500"
               icon={<Check className="h-7 w-7 text-white" />}
             />

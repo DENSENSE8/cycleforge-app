@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   addPin,
+  DEFAULT_SETTINGS,
   getSettings,
   isPinned,
   QUICK_ACCESS_CHANGED_EVENT,
@@ -28,12 +29,17 @@ function emitChanged() {
  * (`<QuickAccessSync/>`).
  */
 export function useQuickAccess() {
-  const [settings, setSettingsState] = useState<QuickAccessSettings>(() => getSettings());
+  // Server rendering cannot see localStorage. Starting both SSR and the first
+  // client render from the same snapshot prevents pinned header controls from
+  // changing the element tree during hydration; the effect adopts the cached
+  // and server-synced pins immediately afterward.
+  const [settings, setSettingsState] = useState<QuickAccessSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
     const sync = () => {
       setSettingsState(getSettings());
     };
+    sync();
     window.addEventListener(QUICK_ACCESS_CHANGED_EVENT, sync);
     window.addEventListener('storage', sync);
     return () => {

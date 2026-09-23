@@ -39,6 +39,9 @@ import { ProvisionalCreateSheet } from '@/components/mobile/scan/ProvisionalCrea
 import { PairDetailSheet } from './PairDetailSheet';
 import { OnHoldBadge } from './OnHoldBadge';
 import type { PairCandidate } from '@/lib/neon/pair-candidates-queries';
+import { motion } from '@/design-system/motion';
+
+const MotionButton = motion.create(Button);
 
 function faceFor(code: string): string {
   const segs = parseLocationCodeFlat(code);
@@ -90,7 +93,7 @@ export function MobilePairLocation({ code }: { code: string }) {
    */
   const pair = useCallback(
     (sku: string) => {
-      router.push(`/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(sku)}`);
+      router.replace(`/m/pair/${encodeURIComponent(code)}/${encodeURIComponent(sku)}`);
     },
     [code, router],
   );
@@ -193,15 +196,16 @@ export function MobilePairLocation({ code }: { code: string }) {
         footer={
           query.trim() && !isFetching && hits.length === 0 ? (
             <div className="flex flex-col items-center gap-2 text-center">
-              <Button
+              <MotionButton
                 variant="secondary"
                 size="lg"
                 radius="flush"
                 className="w-full"
                 onClick={() => setCreating(true)}
+                whileTap={{ scale: 0.96 }}
               >
                 Create on-hold product
-              </Button>
+              </MotionButton>
               <span className="text-role-micro text-text-faint">
                 Counts stock now · not sellable until merged into a real SKU
               </span>

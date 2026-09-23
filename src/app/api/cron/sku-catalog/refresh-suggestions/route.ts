@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { refreshAllSuggestions } from '@/lib/neon/pairing-queries';
@@ -23,9 +23,7 @@ export const maxDuration = 300;
  * isolated — one bad tenant never aborts the sweep.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('sku_catalog.refresh_suggestions', () =>
       withCronRun('sku_catalog.refresh_suggestions', async () => {

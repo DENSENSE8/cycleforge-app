@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseFedExTrackingPayload } from '@/lib/shipping/providers/fedex';
 import { getShipmentByTracking, updateShipmentSummary, upsertShipment, upsertTrackingEvents } from '@/lib/shipping/repository';
@@ -6,6 +6,7 @@ import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-ch
 import { resolveWebhookOrgByTracking } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 
 // FedEx signs each push with an HMAC-SHA256 digest (base64) of the raw request
 // body keyed by the security token configured on the webhook project. The
@@ -17,15 +18,6 @@ const SIGNATURE_HEADERS = [
   'fdx-signature',
   'x-fedex-signature',
 ].filter(Boolean) as string[];
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  // timingSafeEqual throws on length mismatch — guard so a wrong-length
-  // signature returns false instead of 500-ing.
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
 
 /**
  * Verify the request against the webhook project's security token. Prefers
@@ -48,13 +40,14 @@ function isAuthorized(req: NextRequest, rawBody: string): boolean {
   const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   for (const header of SIGNATURE_HEADERS) {
     const provided = req.headers.get(header);
-    if (provided && constantTimeEquals(provided, expected)) return true;
+    if (provided && safeStrEqual(provided, expected)) return true;
   }
 
   // 2. Static bearer / header secret (manual replay & testing).
   const authHeader = req.headers.get('authorization');
-  if (authHeader === `Bearer ${secret}`) return true;
-  if (req.headers.get('x-webhook-secret') === secret) return true;
+  if (authHeader?.startsWith('Bearer ') && safeStrEqual(authHeader.slice(7), secret)) return true;
+  const replaySecret = req.headers.get('x-webhook-secret');
+  if (replaySecret && safeStrEqual(replaySecret, secret)) return true;
 
   return false;
 }

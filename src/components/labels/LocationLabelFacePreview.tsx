@@ -37,7 +37,7 @@ export function LocationLabelFacePreview({
 
   if (!face) {
     return (
-      <div className="flex min-h-[72px] w-full flex-col items-center justify-center gap-1 bg-white py-3 text-center ring-1 ring-border-soft/60">
+      <div className="flex min-h-[72px] w-full flex-col items-center justify-center gap-1 bg-surface-card py-3 text-center ring-1 ring-border-soft/60">
         {/* ds-allow-raw-neutral: empty sticker paper */}
         <Printer className="h-4 w-4 text-text-faint" />
         <p className="px-2 text-role-micro font-medium text-text-faint">

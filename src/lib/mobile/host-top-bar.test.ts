@@ -12,7 +12,7 @@ import test from 'node:test';
 import { mobileRouteOwnsTopBar } from './host-top-bar';
 
 test('a detail route owns its bar, and with it the scan seat', () => {
-  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55']) {
+  for (const path of ['/m/u/1', '/m/rs/RS-204', '/m/t/88', '/m/pick/9001', '/m/receiving/po/55', '/m/exceptions/42']) {
     assert.equal(mobileRouteOwnsTopBar(path), true, path);
   }
 });
@@ -23,6 +23,7 @@ test('a queue route keeps the host header — the trailing slash is the whole ru
   // header (and its only scan door, because a queue has no record bar).
   assert.equal(mobileRouteOwnsTopBar('/m/pick'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);
+  assert.equal(mobileRouteOwnsTopBar('/m/exceptions'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/scan'), false);
 });
 

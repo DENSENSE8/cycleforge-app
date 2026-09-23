@@ -41,6 +41,19 @@ export interface InboxItemDto {
    * a per-row GET would be a 50-request N+1 on every inbox open.
    */
   subscriptionState: SubscriptionState | null;
+  /**
+   * The tracking number the event carried, when it had one — the whole content
+   * of a watched arrival ("1Z… landed"), so the row does not make the reader
+   * open the carton to learn which package it is. Render hint, never a filter.
+   */
+  trackingNumber: string | null;
+  /**
+   * The PROVIDER ticket number on a `support_ticket` row — the `#48120` an
+   * operator quotes. `entityId` is the LOCAL registry id the row is anchored
+   * to; printing that as "the ticket number" is the two-numbers confusion.
+   * Render hint, never a filter.
+   */
+  ticketNumber: number | null;
 }
 
 export interface InboxFeedDto {

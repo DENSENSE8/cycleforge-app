@@ -33,7 +33,7 @@ function order(over: Partial<ShippedOrder> & Pick<ShippedOrder, 'id'>): ShippedO
 }
 
 describe('shippedOrderAsWorkRow', () => {
-  it('prefers ship-by date as the deadline and marketplace order id as the href key', () => {
+  it('prefers the exact SLA deadline over date-only ship-by fallback', () => {
     const row = shippedOrderAsWorkRow(
       order({
         id: 7,
@@ -43,7 +43,7 @@ describe('shippedOrderAsWorkRow', () => {
     );
     assert.equal(row.entityType, 'ORDER');
     assert.equal(row.entityId, 7);
-    assert.equal(row.deadlineAt, '2026-09-02');
+    assert.equal(row.deadlineAt, '2026-08-01');
     assert.equal(row.orderId, 'CF-1001');
     assert.equal(row.recordLabel, 'CF-1001');
     assert.equal(row.title, 'Trail bike');
@@ -56,6 +56,27 @@ describe('shippedOrderAsWorkRow', () => {
       order({ id: 4, catalog_image_url: 'https://cdn.example/bike.jpg' }),
     );
     assert.equal(row.imageUrl, 'https://cdn.example/bike.jpg');
+  });
+
+  it('maps server-derived allocation progress and every allocated location', () => {
+    const row = shippedOrderAsWorkRow(
+      order({
+        id: 41,
+        allocated_unit_count: 3,
+        picked_unit_count: 2,
+        storage_locations: [{ zoneLetter: 'B', rowLabel: '04', barcode: 'S4' }],
+      }),
+    );
+    assert.equal(row.allocatedUnitCount, 3);
+    assert.equal(row.pickedUnitCount, 2);
+    assert.deepEqual(row.storageLocations, [{ zoneLetter: 'B', rowLabel: '04', barcode: 'S4' }]);
+  });
+
+  it('normalizes catalog-owned handling facts onto the governed row', () => {
+    const row = shippedOrderAsWorkRow(
+      order({ id: 42, catalog_handling_flags: ['hazmat', 'two_person_lift'] }),
+    );
+    assert.deepEqual(row.handlingFacts, ['hazmat', 'two_person_lift']);
   });
 
   it('maps sale amount onto the work-row price face', () => {

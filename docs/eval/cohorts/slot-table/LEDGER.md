@@ -66,7 +66,7 @@ _Skipped verify (--skip-verify)._
 ## Tripwire result
 
 <!-- eval-ledger:auto:tripwire-result -->
-**pass** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-16-tripwire.log`
+**pass** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-22-tripwire.log`
 <!-- /eval-ledger:auto:tripwire-result -->
 
 ## Peer matrix (PRODUCT_TABLES × engine opt-in)
@@ -77,8 +77,8 @@ _Skipped verify (--skip-verify)._
 | receiving | yes | `src/components/station/receiving-grid/useReceivingTableLayout.ts` |
 | incoming | yes | `src/components/station/incoming-grid/useIncomingTableLayout.ts` |
 | orders | yes | `src/components/dashboard/orders-queue/useOrdersTableLayout.ts` |
-| daily | yes | `src/features/home/grid/useDailyTableLayout.ts` |
-| tasks | yes | `src/features/tasks/grid/useTasksTableLayout.ts` |
+| daily | yes | — |
+| tasks | yes | — |
 | catalog-link | yes | `src/features/review/catalog-link/grid/useCatalogLinkTableLayout.ts` |
 | import-exception | yes | `src/features/review/catalog-link/grid/useImportExceptionTableLayout.ts` |
 | inventory-units | yes | `src/components/inventory/units-grid/useUnitsTableLayout.ts` |
@@ -117,6 +117,7 @@ _Skipped verify (--skip-verify)._
 | report-dead-stock | yes | `src/components/reports/report-dead-stock-grid/useReportDeadStockTableLayout.ts` |
 | report-staff-day | yes | `src/components/reports/report-staff-day-grid/useReportStaffDayTableLayout.ts` |
 | report-packer-day | yes | `src/components/reports/report-packer-day-grid/useReportPackerDayTableLayout.ts` |
+| report-tasks | yes | `src/components/reports/report-tasks-grid/useReportTasksSpreadsheet.ts` |
 | sku-bins | yes | `src/components/inventory/sku-bins-grid/useSkuBinsSpreadsheet.ts` |
 | sku-ledger | yes | `src/components/inventory/sku-ledger-grid/useSkuLedgerTableLayout.ts` |
 | sku-allocations | yes | `src/components/inventory/sku-allocations-grid/useSkuAllocationsTableLayout.ts` |
@@ -195,12 +196,18 @@ _Skipped verify (--skip-verify)._
 | rowHoverGroupOnEveryPeer | `src/design-system/components/grid/LedgerGridLeafRow.tsx` | pass |
 <!-- /eval-ledger:auto:engine-contract -->
 
+## Industrial cohesion verdict
+
+<!-- eval-ledger:auto:industrial-cohesion -->
+**pass** — deterministic source verdict; snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-22-data-table-industrial.json`
+<!-- /eval-ledger:auto:industrial-cohesion -->
+
 ## Discover — next gap
 
 <!-- eval-ledger:auto:discover-next -->
 _No unblocked mechanical deletes._
 
-_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-16-discover.json`
+_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-22-discover.json`
 <!-- /eval-ledger:auto:discover-next -->
 
 ## Discover — DELETE (mechanical)
@@ -231,7 +238,6 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `engine:DateRangePickerField` | `src/design-system/components/DateRangePickerField.tsx` | STATUS ship-by / inline civil date. variant=compact in the cell (no X, no year, click commits). variant=range is the filter. Do not hand-roll type=date. |
 | `engine:CompoundRowDetailBand` | `src/components/tables/compound/CompoundRowDetailBand.tsx` | Leaf detail band under the 48px product row (serial / location / view unit). data-compound-row-detail. Never grow CompoundItem. Not FilterRefinementBar. |
 | `engine:CompoundState` | `src/components/tables/compound/CompoundCells.tsx` | STATUS column. Editable delay mounts DateRangePickerField variant=compact. |
-| `engine:CART_COMPOUND_COLUMNS` | `src/lib/kiosk/cart-grid-layout.ts` | Kiosk uses compoundColumnsFor (shared skeleton), not a field-key GRID. Keep until kiosk is in PRODUCT_TABLES — do not copy as “small tables skip slots”. |
 | `hook:orders` | `src/components/dashboard/orders-queue/useOrdersTableLayout.ts` | Engine opt-in for orders. Keep the hook; it is not a second Item cell. |
 | `hook:orders-import` | `src/components/outbound/orders/import-staging/useOrdersImportTableLayout.ts` | Engine opt-in for orders-import. Keep the hook; it is not a second Item cell. |
 | `hook:receiving` | `src/components/station/receiving-grid/useReceivingTableLayout.ts` | Engine opt-in for receiving. Keep the hook; it is not a second Item cell. |
@@ -249,8 +255,6 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `hook:warranty` | `src/components/warranty/grid/useWarrantyTableLayout.ts` | Engine opt-in for warranty. Keep the hook; it is not a second Item cell. |
 | `hook:tech-all` | `src/components/tech/all/useTechAllTableLayout.ts` | Engine opt-in for tech-all. Keep the hook; it is not a second Item cell. |
 | `hook:tracking-exceptions` | `src/components/tracking-exceptions/grid/useTrackingExceptionsTableLayout.ts` | Engine opt-in for tracking-exceptions. Keep the hook; it is not a second Item cell. |
-| `hook:tasks` | `src/features/tasks/grid/useTasksTableLayout.ts` | Engine opt-in for tasks. Keep the hook; it is not a second Item cell. |
-| `hook:daily` | `src/features/home/grid/useDailyTableLayout.ts` | Engine opt-in for daily. Keep the hook; it is not a second Item cell. |
 | `hook:my-day` | `src/features/my-day/grid/useMyDayTableLayout.ts` | Engine opt-in for my-day. Keep the hook; it is not a second Item cell. |
 | `hook:kiosk-devices` | `src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts` | Engine opt-in for kiosk-devices. Keep the hook; it is not a second Item cell. |
 | `hook:kiosk-slot-events` | `src/components/settings/kiosk-slot-events/useKioskSlotEventsTableLayout.ts` | Engine opt-in for kiosk-slot-events. Keep the hook; it is not a second Item cell. |
@@ -275,6 +279,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `hook:report-dead-stock` | `src/components/reports/report-dead-stock-grid/useReportDeadStockTableLayout.ts` | Engine opt-in for report-dead-stock. Keep the hook; it is not a second Item cell. |
 | `hook:report-staff-day` | `src/components/reports/report-staff-day-grid/useReportStaffDayTableLayout.ts` | Engine opt-in for report-staff-day. Keep the hook; it is not a second Item cell. |
 | `hook:report-packer-day` | `src/components/reports/report-packer-day-grid/useReportPackerDayTableLayout.ts` | Engine opt-in for report-packer-day. Keep the hook; it is not a second Item cell. |
+| `hook:report-tasks` | `src/components/reports/report-tasks-grid/useReportTasksSpreadsheet.ts` | Engine opt-in for report-tasks. Keep the hook; it is not a second Item cell. |
 | `hook:sku-bins` | `src/components/inventory/sku-bins-grid/useSkuBinsSpreadsheet.ts` | Engine opt-in for sku-bins. Keep the hook; it is not a second Item cell. |
 | `hook:location-stock` | `src/components/inventory/location-stock-grid/useLocationStockSpreadsheet.ts` | Engine opt-in for location-stock. Keep the hook; it is not a second Item cell. |
 | `hook:sku-ledger` | `src/components/inventory/sku-ledger-grid/useSkuLedgerTableLayout.ts` | Engine opt-in for sku-ledger. Keep the hook; it is not a second Item cell. |
@@ -323,6 +328,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `catalog:report-dead-stock` | `src/lib/tables/field-catalog` | Registered field catalog for report-dead-stock. Data only. |
 | `catalog:report-staff-day` | `src/lib/tables/field-catalog` | Registered field catalog for report-staff-day. Data only. |
 | `catalog:report-packer-day` | `src/lib/tables/field-catalog` | Registered field catalog for report-packer-day. Data only. |
+| `catalog:report-tasks` | `src/lib/tables/field-catalog` | Registered field catalog for report-tasks. Data only. |
 | `catalog:sku-bins` | `src/lib/tables/field-catalog` | Registered field catalog for sku-bins. Data only. |
 | `catalog:location-stock` | `src/lib/tables/field-catalog` | Registered field catalog for location-stock. Data only. |
 | `catalog:sku-ledger` | `src/lib/tables/field-catalog` | Registered field catalog for sku-ledger. Data only. |
@@ -352,6 +358,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `materialization:REPORT_DEAD_STOCK_COMPOUND_COLUMNS` | `src/components/reports/report-dead-stock-grid/report-dead-stock-grid-layout.ts` | REPORT_DEAD_STOCK_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:REPORT_PACKER_DAY_COMPOUND_COLUMNS` | `src/components/reports/report-packer-day-grid/report-packer-day-grid-layout.ts` | REPORT_PACKER_DAY_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:REPORT_STAFF_DAY_COMPOUND_COLUMNS` | `src/components/reports/report-staff-day-grid/report-staff-day-grid-layout.ts` | REPORT_STAFF_DAY_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
+| `materialization:REPORT_TASKS_COMPOUND_COLUMNS` | `src/components/reports/report-tasks-grid/report-tasks-table-definition.ts` | REPORT_TASKS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:REPORT_VELOCITY_COMPOUND_COLUMNS` | `src/components/reports/report-velocity-grid/report-velocity-grid-layout.ts` | REPORT_VELOCITY_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:SEARCH_HITS_COMPOUND_COLUMNS` | `src/components/search/hits-grid/search-hits-grid-layout.ts` | SEARCH_HITS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:AUDITLOG_COMPOUND_COLUMNS` | `src/components/settings/audit-log/audit-log-grid-layout.ts` | AUDITLOG_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
@@ -365,17 +372,16 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `materialization:WALKINSALES_COMPOUND_COLUMNS` | `src/components/walk-in/grid/walk-in-sales-grid-layout.ts` | WALKINSALES_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:BINS_SHEET_COLUMNS` | `src/components/warehouse/bins-grid/bins-grid-layout.ts` | BINS_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:WARRANTY_SHEET_COLUMNS` | `src/components/warranty/grid/warranty-grid-layout.ts` | WARRANTY_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
+| `materialization:DAILY_COMPOUND_COLUMNS` | `src/features/home/grid/daily-table-definition.ts` | DAILY_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:CATALOG_LINK_COMPOUND_COLUMNS` | `src/features/review/catalog-link/grid/catalog-link-grid-layout.ts` | CATALOG_LINK_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:IMPORT_EXCEPTION_COMPOUND_COLUMNS` | `src/features/review/catalog-link/grid/import-exception-grid-layout.ts` | IMPORT_EXCEPTION_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
-| `materialization:DAILY_COMPOUND_COLUMNS` | `src/lib/daily-checks/daily-grid-layout.ts` | DAILY_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
+| `materialization:TASKS_COMPOUND_COLUMNS` | `src/features/tasks/grid/tasks-table-definition.ts` | TASKS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:ORDERS_COMPOUND_COLUMNS` | `src/lib/dashboard-order-row-layout.ts` | ORDERS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
-| `materialization:CART_COMPOUND_COLUMNS` | `src/lib/kiosk/cart-grid-layout.ts` | CART_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:MY_DAY_SHEET_COLUMNS` | `src/lib/my-day/my-day-grid-layout.ts` | MY_DAY_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:CATALOG_SHEET_COLUMNS` | `src/lib/products/catalog-grid-layout.ts` | CATALOG_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:RECEIVING_COMPOUND_COLUMNS` | `src/lib/receiving/receiving-grid-layout.ts` | RECEIVING_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:INCOMING_COMPOUND_COLUMNS` | `src/lib/receiving/receiving-grid-layout.ts` | INCOMING_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:REPAIR_SHEET_COLUMNS` | `src/lib/repair/repair-grid-layout.ts` | REPAIR_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
-| `materialization:TASKS_COMPOUND_COLUMNS` | `src/lib/staff-todos/tasks-grid-layout.ts` | TASKS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:TECH_ALL_SHEET_COLUMNS` | `src/lib/tech/tech-all-grid-layout.ts` | TECH_ALL_SHEET_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 <!-- /eval-ledger:auto:discover-keep -->
 
@@ -393,51 +399,51 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-CompoundItem.json` |
-| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-CompoundState.json` |
-| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 58 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-useSlotTableLayout.json` |
-| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 81 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-materializeTracks.json` |
-| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 26 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-getExternalUrlByItemNumber.json` |
-| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 18 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-DateRangePickerField.json` |
-| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-useOptimisticMutation.json` |
-| DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 37 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-DataTableFilterMenu.json` |
-| queueSortForColumnKey | `function:src/utils/queue-display-sort.ts:queueSortForColumnKey` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-queueSortForColumnKey.json` |
-| LedgerGridColumnHeader | `component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader` | 35 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-LedgerGridColumnHeader.json` |
-| isSlotTableChromeTrack | `function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-isSlotTableChromeTrack.json` |
-| AssigneeCombobox | `component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox` | 3 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-AssigneeCombobox.json` |
-| ensureLineQtySubtitle | `function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ensureLineQtySubtitle.json` |
-| pinLineQtyFirst | `function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-pinLineQtyFirst.json` |
-| ensureLineMoneySubtitle | `function:src/lib/tables/slot-table-line-money.ts:ensureLineMoneySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ensureLineMoneySubtitle.json` |
-| pinLineMoneyAfterQty | `function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-pinLineMoneyAfterQty.json` |
-| ordersCompoundColumnsFor | `function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor` | 19 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ordersCompoundColumnsFor.json` |
-| COMPOUND_COLUMN_KEYS | `variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-COMPOUND_COLUMN_KEYS.json` |
-| MorphingRowActionMenu | `component:src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx:MorphingRowActionMenu` | 4 | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-MorphingRowActionMenu.json` |
-| StockStripInput | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-StockStripInput.json` |
-| useFixedBandHeight | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-useFixedBandHeight.json` |
-| SLOT_TABLE_ID_HEADER_WORD | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-SLOT_TABLE_ID_HEADER_WORD.json` |
-| SLOT_TABLE_IDENTITY_PURITY_LAW | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json` |
+| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundItem.json` |
+| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundState.json` |
+| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 58 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useSlotTableLayout.json` |
+| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 81 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-materializeTracks.json` |
+| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 26 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-getExternalUrlByItemNumber.json` |
+| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 18 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DateRangePickerField.json` |
+| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useOptimisticMutation.json` |
+| DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 37 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DataTableFilterMenu.json` |
+| queueSortForColumnKey | `function:src/utils/queue-display-sort.ts:queueSortForColumnKey` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-queueSortForColumnKey.json` |
+| LedgerGridColumnHeader | `component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader` | 35 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-LedgerGridColumnHeader.json` |
+| isSlotTableChromeTrack | `function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-isSlotTableChromeTrack.json` |
+| AssigneeCombobox | `component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox` | 3 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-AssigneeCombobox.json` |
+| ensureLineQtySubtitle | `function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineQtySubtitle.json` |
+| pinLineQtyFirst | `function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineQtyFirst.json` |
+| ensureLineMoneySubtitle | `function:src/lib/tables/slot-table-line-money.ts:ensureLineMoneySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineMoneySubtitle.json` |
+| pinLineMoneyAfterQty | `function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineMoneyAfterQty.json` |
+| ordersCompoundColumnsFor | `function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor` | 19 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ordersCompoundColumnsFor.json` |
+| COMPOUND_COLUMN_KEYS | `variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-COMPOUND_COLUMN_KEYS.json` |
+| MorphingRowActionMenu | `component:src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx:MorphingRowActionMenu` | 4 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-MorphingRowActionMenu.json` |
+| StockStripInput | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-StockStripInput.json` |
+| useFixedBandHeight | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-useFixedBandHeight.json` |
+| SLOT_TABLE_ID_HEADER_WORD | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_ID_HEADER_WORD.json` |
+| SLOT_TABLE_IDENTITY_PURITY_LAW | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundCells.txt`
+- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundCells.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundCells.tsx",
-  "summary": "2 problems, worst first: 3 arbitrary type size where the typography axis exists",
+  "summary": "1 problem, worst first: 3 arbitrary type size where the typography axis exists",
   "problems": [
     {
 ```
-- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundRow.txt`
+- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundRow.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundRow.tsx",
-  "summary": "2 problems, worst first: 1 inline style object where the token axis exists",
+  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
   "problems": [
     {
 ```
-- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-StageStaffAssignPopover.txt`
+- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-StageStaffAssignPopover.txt`
 ```
 {
   "file": "src/components/tables/compound/StageStaffAssignPopover.tsx",
@@ -445,7 +451,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/components/inventory/location-stock-grid/StockActionBar.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-StockActionBar.txt`
+- `src/components/inventory/location-stock-grid/StockActionBar.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-StockActionBar.txt`
 ```
 {
   "file": "src/components/inventory/location-stock-grid/StockActionBar.tsx",
@@ -453,7 +459,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-AssigneeCombobox.txt`
+- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-AssigneeCombobox.txt`
 ```
 {
   "file": "src/design-system/components/AssigneeCombobox.tsx",
@@ -461,7 +467,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundStaffRosterButton.txt`
+- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundStaffRosterButton.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundStaffRosterButton.tsx",
@@ -469,23 +475,23 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-DateRangePickerField.txt`
+- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-DateRangePickerField.txt`
 ```
 {
   "file": "src/design-system/components/DateRangePickerField.tsx",
-  "summary": "1 problem, worst first: 392 lines — past the point reviewers read",
-  "problems": [
-    {
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
 ```
-- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-useSlotTableLayout.txt`
+- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-useSlotTableLayout.txt`
 ```
 {
   "file": "src/components/tables/useSlotTableLayout.ts",
-  "summary": "1 problem, worst first: 388 lines — past the point reviewers read",
-  "problems": [
-    {
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
 ```
-- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-external-item-url.txt`
+- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-external-item-url.txt`
 ```
 {
   "file": "src/utils/external-item-url.ts",
@@ -493,23 +499,23 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [],
 ```
-- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-DataTable.txt`
+- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-DataTable.txt`
 ```
 {
   "file": "src/components/tables/DataTable.tsx",
-  "summary": "1 problem, worst first: 1849 lines — past the point reviewers read",
-  "problems": [
-    {
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
 ```
-- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-LedgerGridColumnHeader.txt`
+- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-LedgerGridColumnHeader.txt`
 ```
 {
   "file": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
-  "summary": "2 problems, worst first: 2 inline style object where the token axis exists",
+  "summary": "1 problem, worst first: 2 inline style object where the token axis exists",
   "problems": [
     {
 ```
-- `src/components/tables/compound/CompoundCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundCell.txt`
+- `src/components/tables/compound/CompoundCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundCell.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundCell.tsx",
@@ -517,15 +523,15 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [],
 ```
-- `src/components/tables/compound/CompoundGridCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundGridCell.txt`
+- `src/components/tables/compound/CompoundGridCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundGridCell.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundGridCell.tsx",
-  "summary": "1 problem, worst first: 529 lines — past the point reviewers read",
-  "problems": [
-    {
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
 ```
-- `src/components/tables/compound/CompoundRowDetailBand.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundRowDetailBand.txt`
+- `src/components/tables/compound/CompoundRowDetailBand.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundRowDetailBand.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundRowDetailBand.tsx",
@@ -533,15 +539,15 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/components/tables/compound/SlotTableGroupParentRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-SlotTableGroupParentRow.txt`
+- `src/components/tables/compound/SlotTableGroupParentRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-SlotTableGroupParentRow.txt`
 ```
 {
   "file": "src/components/tables/compound/SlotTableGroupParentRow.tsx",
-  "summary": "2 problems, worst first: 1 inline style object where the token axis exists",
+  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
   "problems": [
     {
 ```
-- `src/components/tables/compound/CompoundEdgeRail.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundEdgeRail.txt`
+- `src/components/tables/compound/CompoundEdgeRail.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundEdgeRail.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundEdgeRail.tsx",
@@ -549,7 +555,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/components/tables/compound/CompoundSelectStatusFace.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-CompoundSelectStatusFace.txt`
+- `src/components/tables/compound/CompoundSelectStatusFace.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundSelectStatusFace.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundSelectStatusFace.tsx",
@@ -557,50 +563,50 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [],
 ```
-- `src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-MorphingRowActionMenu.txt`
+- `src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-MorphingRowActionMenu.txt`
 ```
 {
   "file": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx",
-  "summary": "2 problems, worst first: a raw <input> where the system has TextField",
+  "summary": "1 problem, worst first: a raw <input> where the system has TextField",
   "problems": [
     {
 ```
-- `src/design-system/components/grid/LedgerGrid.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-16-critique-LedgerGrid.txt`
+- `src/design-system/components/grid/LedgerGrid.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-LedgerGrid.txt`
 ```
 {
   "file": "src/design-system/components/grid/LedgerGrid.tsx",
-  "summary": "1 problem, worst first: 572 lines — past the point reviewers read",
-  "problems": [
-    {
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [],
 ```
 <!-- /eval-ledger:auto:design-critique -->
 
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-CompoundItem.json`)
-- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-CompoundState.json`)
-- **useSlotTableLayout** — 58 files, 58 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-useSlotTableLayout.json`)
-- **materializeTracks** — 81 files, 111 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-materializeTracks.json`)
-- **getExternalUrlByItemNumber** — 26 files, 29 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-getExternalUrlByItemNumber.json`)
-- **DateRangePickerField** — 18 files, 22 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-DateRangePickerField.json`)
-- **useOptimisticMutation** — 12 files, 12 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-useOptimisticMutation.json`)
-- **DataTableFilterMenu** — 37 files, 37 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-DataTableFilterMenu.json`)
-- **queueSortForColumnKey** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-queueSortForColumnKey.json`)
-- **LedgerGridColumnHeader** — 35 files, 35 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-LedgerGridColumnHeader.json`)
-- **isSlotTableChromeTrack** — 27 files, 43 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-isSlotTableChromeTrack.json`)
-- **AssigneeCombobox** — 3 files, 3 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-AssigneeCombobox.json`)
-- **ensureLineQtySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ensureLineQtySubtitle.json`)
-- **pinLineQtyFirst** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-pinLineQtyFirst.json`)
-- **ensureLineMoneySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ensureLineMoneySubtitle.json`)
-- **pinLineMoneyAfterQty** — 9 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-pinLineMoneyAfterQty.json`)
-- **ordersCompoundColumnsFor** — 19 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-ordersCompoundColumnsFor.json`)
-- **COMPOUND_COLUMN_KEYS** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-COMPOUND_COLUMN_KEYS.json`)
-- **MorphingRowActionMenu** — 4 files, 6 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-impact-MorphingRowActionMenu.json`)
-- **StockStripInput** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-StockStripInput.json`)
-- **useFixedBandHeight** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-useFixedBandHeight.json`)
-- **SLOT_TABLE_ID_HEADER_WORD** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-SLOT_TABLE_ID_HEADER_WORD.json`)
-- **SLOT_TABLE_IDENTITY_PURITY_LAW** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-16-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json`)
+- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundItem.json`)
+- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundState.json`)
+- **useSlotTableLayout** — 58 files, 58 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useSlotTableLayout.json`)
+- **materializeTracks** — 81 files, 111 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-materializeTracks.json`)
+- **getExternalUrlByItemNumber** — 26 files, 29 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-getExternalUrlByItemNumber.json`)
+- **DateRangePickerField** — 18 files, 22 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DateRangePickerField.json`)
+- **useOptimisticMutation** — 12 files, 12 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useOptimisticMutation.json`)
+- **DataTableFilterMenu** — 37 files, 37 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DataTableFilterMenu.json`)
+- **queueSortForColumnKey** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-queueSortForColumnKey.json`)
+- **LedgerGridColumnHeader** — 35 files, 35 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-LedgerGridColumnHeader.json`)
+- **isSlotTableChromeTrack** — 27 files, 43 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-isSlotTableChromeTrack.json`)
+- **AssigneeCombobox** — 3 files, 3 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-AssigneeCombobox.json`)
+- **ensureLineQtySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineQtySubtitle.json`)
+- **pinLineQtyFirst** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineQtyFirst.json`)
+- **ensureLineMoneySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineMoneySubtitle.json`)
+- **pinLineMoneyAfterQty** — 9 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineMoneyAfterQty.json`)
+- **ordersCompoundColumnsFor** — 19 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ordersCompoundColumnsFor.json`)
+- **COMPOUND_COLUMN_KEYS** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-COMPOUND_COLUMN_KEYS.json`)
+- **MorphingRowActionMenu** — 4 files, 6 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-MorphingRowActionMenu.json`)
+- **StockStripInput** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-StockStripInput.json`)
+- **useFixedBandHeight** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-useFixedBandHeight.json`)
+- **SLOT_TABLE_ID_HEADER_WORD** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_ID_HEADER_WORD.json`)
+- **SLOT_TABLE_IDENTITY_PURITY_LAW** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -615,6 +621,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 - `src/components/tables/compound/compound-gutter-flush.test.ts`
 - `src/components/station/receiving-grid/cells/receiving-group-child-rail.test.tsx`
 - `src/lib/tables/table-engine-law.test.ts`
+- `src/lib/tables/data-table-industrial-law.test.ts`
 - `src/lib/tables/slot-table-identity-purity-law.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
@@ -625,11 +632,11 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 - status: `ready`
 - last_built_at: `2026-09-06T22:48:33.312Z`
 - nodes: 41038 · edges: 191462 · embedded: 41038
-- snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-16-graph-stats.json`
+- snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-22-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-16T15:47:29.957Z · cohort `slot-table` · run id `2026-09-16T15-45-35-842Z`_
+_Updated 2026-09-22T19:28:27.883Z · cohort `slot-table` · run id `2026-09-22T19-26-41-205Z`_
 <!-- /eval-ledger:auto:last-run -->

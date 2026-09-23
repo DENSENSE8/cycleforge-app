@@ -10,7 +10,12 @@ import {
 } from '@/lib/orders/orders-search';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { PICK_FACTS_LATERALS, PRICE_FACTS_LATERALS, SHIP_OUT_LATERAL } from '@/lib/neon/orders-queries';
+import {
+  DOCK_STAGING_LATERAL,
+  PICK_FACTS_LATERALS,
+  PRICE_FACTS_LATERALS,
+  SHIP_OUT_LATERAL,
+} from '@/lib/neon/orders-queries';
 import { resolveLinePrice } from '@/lib/orders/price-resolve';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
@@ -352,6 +357,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           pl.packed_by
         FROM packer_logs pl
         WHERE pl.shipment_id IS NOT NULL
+          AND pl.completion_state = 'COMPLETED'
         ORDER BY pl.shipment_id, pl.created_at DESC NULLS LAST, pl.id DESC
       ),
       pack_activity AS (
@@ -554,6 +560,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(pack_activity.staff_id, pl_latest.packed_by) AS packed_by,
         to_char(pack_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
         to_char(next_pack_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS next_pack_activity_at,
+        to_char(dock_stage.dock_staged_at, 'YYYY-MM-DD HH24:MI:SS') AS dock_staged_at,
+        allocation_facts.storage_locations,
+        allocation_facts.allocated_unit_count,
+        allocation_facts.picked_unit_count,
         pack_duration.duration AS pack_duration,
         test_activity.staff_id AS tested_by,
         to_char(test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
@@ -614,8 +624,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
         loc_pack.location_kind AS pack_location_kind,
         o.sku_catalog_id,
-        sc.image_url AS catalog_image_url,
+        COALESCE(NULLIF(BTRIM(sc.image_url), ''), ecwid_image.image_url) AS catalog_image_url,
         sc.category AS catalog_category,
+        /* to_jsonb lets the deploy read safely while the additive column is
+         * still rolling out: absent historical columns project NULL, then the
+         * same expression returns the typed array once the migration lands. */
+        to_jsonb(sc)->'handling_flags' AS catalog_handling_flags,
         /*
          * Price facts — the raw three, resolved in JS below into the five
          * price_* fields the desks read. They are selected UNCONDITIONALLY,
@@ -632,6 +646,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         unit_price.listing_price_cents   AS unit_listing_price_cents
       FROM orders o
       LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+      /* Marketplace-owned imagery is persisted on the Ecwid mirror. It is a
+       * fallback only: a catalog image (including a Zoho-owned image) remains
+       * authoritative when present. The lateral is org-scoped and single-row
+       * so an unpaired Ecwid SKU can still paint its saved thumbnail without
+       * duplicating the order row. */
+      LEFT JOIN LATERAL (
+        SELECT NULLIF(BTRIM(sp.image_url), '') AS image_url
+        FROM sku_platform_ids sp
+        WHERE sp.platform = 'ecwid'
+          AND sp.is_active = true
+          AND sp.organization_id = o.organization_id
+          AND NULLIF(BTRIM(sp.image_url), '') IS NOT NULL
+          AND (sp.sku_catalog_id = o.sku_catalog_id OR sp.platform_sku = o.sku)
+        ORDER BY sp.created_at DESC NULLS LAST, sp.id DESC
+        LIMIT 1
+      ) ecwid_image ON TRUE
       LEFT JOIN wa_deadline ON wa_deadline.entity_id = o.id
       LEFT JOIN wa_t ON wa_t.entity_id = o.id
       LEFT JOIN wa_p ON wa_p.entity_id = o.id
@@ -642,8 +672,50 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN order_pack_placements opp
         ON opp.order_id = o.id AND opp.organization_id = o.organization_id
       LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id
+      /*
+       * Tactical Orders facts. Allocation state is the progress source; the
+       * location list retains every live unit bin so a phone card never lies
+       * by selecting whichever allocation happened to sort first.
+       */
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*) FILTER (
+            WHERE allocation.state NOT IN ('RELEASED', 'RETURNED')
+          )::int AS allocated_unit_count,
+          COUNT(*) FILTER (
+            WHERE allocation.state IN ('PICKED', 'PACKED', 'SHIPPED')
+          )::int AS picked_unit_count,
+          COALESCE(
+            jsonb_agg(DISTINCT jsonb_build_object(
+              'barcode', location.barcode,
+              'name', location.name,
+              'room', COALESCE(location.room, room.name),
+              'zoneLetter', COALESCE(location.zone_letter, room.zone_letter),
+              'rowLabel', location.row_label,
+              'colLabel', location.col_label
+            )) FILTER (WHERE location.id IS NOT NULL),
+            '[]'::jsonb
+          ) AS storage_locations
+        FROM order_unit_allocations allocation
+        JOIN serial_units allocated_unit
+          ON allocated_unit.id = allocation.serial_unit_id
+         AND allocated_unit.organization_id = allocation.organization_id
+        LEFT JOIN locations location
+          ON location.organization_id = allocation.organization_id
+         AND (
+           location.id::text = allocated_unit.current_location
+           OR location.name = allocated_unit.current_location
+         )
+        LEFT JOIN locations room
+          ON room.id = location.parent_id
+         AND room.organization_id = location.organization_id
+        WHERE allocation.order_id = o.id
+          AND allocation.organization_id = o.organization_id
+          AND allocation.state NOT IN ('RELEASED', 'RETURNED')
+      ) allocation_facts ON TRUE
       ${PICK_FACTS_LATERALS}
       ${SHIP_OUT_LATERAL}
+      ${DOCK_STAGING_LATERAL}
       ${PRICE_FACTS_LATERALS}
       LEFT JOIN LATERAL (
         SELECT

@@ -143,10 +143,8 @@ export async function evalStationPass(manifest, { skipVerify, day, sharedVerify 
   let verifySnapshot = sharedVerify?.snapshot ?? null
 
   if (!skipVerify && sharedVerify == null) {
-    const evalCli = path.join(GARISEK_OS, 'tools/eval-engineering/cursor-eval.mjs')
-    if (!existsSync(evalCli)) throw new Error(`missing ${evalCli}`)
     console.error(`[eval-ledger] verify:fast (${manifest.id})…`)
-    const res = await run(`node ${JSON.stringify(evalCli)} --root ${JSON.stringify(REPO)} --fast`)
+    const res = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
     verifyOk = res.exitCode === 0
     verifySnapshot = path.join(manifest.snapshotsDir, `${day}-verify-fast.log`)
     writeFileSync(path.join(REPO, verifySnapshot), res.output)

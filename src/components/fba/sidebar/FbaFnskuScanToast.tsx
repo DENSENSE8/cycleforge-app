@@ -101,12 +101,12 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6 }}
           transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-          className="mx-3 mb-2 mt-1 overflow-hidden rounded-xl border border-purple-200 bg-purple-50 p-3 shadow-sm"
+          className="mx-3 mb-2 mt-1 overflow-hidden rounded-none border border-border-accent bg-surface-accent p-3 shadow-none"
         >
           <div className="flex items-start gap-2">
-            <Package className="mt-0.5 h-4 w-4 shrink-0 text-purple-600" />
+            <Package className="mt-0.5 h-4 w-4 shrink-0 text-text-accent" />
             <div className="min-w-0 flex-1">
-              <p className="text-role-micro uppercase tracking-[0.14em] text-purple-800">
+              <p className="text-role-micro uppercase tracking-[0.14em] text-text-accent">
                 Station Amazon SKU scan
               </p>
               <p className="mt-0.5 truncate font-mono text-role-caption font-semibold text-text-default">
@@ -117,7 +117,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
               ) : null}
 
               {addedMsg ? (
-                <p className="mt-1.5 text-role-micro text-emerald-700">{addedMsg}</p>
+                <p className="mt-1.5 text-role-micro text-text-success">{addedMsg}</p>
               ) : pendingPlans.length === 0 ? (
                 <p className="mt-1.5 text-role-micro text-text-soft">No open plans to add to.</p>
               ) : pendingPlans.length === 1 ? (
@@ -125,9 +125,10 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                   type="button"
                   variant="secondary"
                   size="sm"
+                  radius="flush"
                   onClick={handleAdd}
                   loading={adding}
-                  className={`mt-1.5 rounded-full border border-purple-300 bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-purple-700 ring-0 hover:bg-purple-100 ${chrome.cardFocusRing}`}
+                  className={`mt-1.5 border border-border-accent bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
                 >
                   Add to {pendingPlans[0].shipment_ref || 'plan'}
                 </Button>
@@ -136,7 +137,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                   <select
                     value={selectedPlanId}
                     onChange={(e) => setSelectedPlanId(e.target.value)}
-                    className={"rounded-lg border border-purple-200 bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-purple-400" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+                    className="rounded-none border border-border-accent bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-border-accent"
                   >
                     <option value="">Pick plan…</option>
                     {pendingPlans.map((p) => (
@@ -149,9 +150,10 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                     type="button"
                     variant="secondary"
                     size="sm"
+                    radius="flush"
                     onClick={handleAdd}
                     disabled={adding || !selectedPlanId}
-                    className={`rounded-full border border-purple-300 bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-purple-700 ring-0 hover:bg-purple-100 disabled:opacity-40 ${chrome.cardFocusRing}`}
+                    className={`border border-border-accent bg-surface-card px-2.5 text-role-eyebrow uppercase tracking-[0.14em] text-text-accent hover:bg-surface-accent ${chrome.cardFocusRing}`}
                   >
                     {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Add'}
                   </Button>
@@ -161,7 +163,9 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
             <IconButton
               type="button"
               onClick={dismiss}
-              className="shrink-0 rounded-full p-1 text-purple-400 hover:bg-purple-100 hover:text-purple-700"
+              size="xs"
+              radius="flush"
+              className="shrink-0 text-text-accent hover:bg-surface-accent hover:text-text-accent"
               ariaLabel="Dismiss"
               icon={<X className="h-3.5 w-3.5" />}
             />

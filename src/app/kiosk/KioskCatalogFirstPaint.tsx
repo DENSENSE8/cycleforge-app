@@ -133,7 +133,10 @@ export function KioskCatalogFirstPaint({
           <TrailWordGhost>Repair</TrailWordGhost>
           {/* Search glyph chip — the collapsed find-bar slot, second. */}
           <span className={cn(KIOSK_POS_TRAIL_ICON, 'shrink-0')} aria-hidden />
-          <TrailWordGhost>All products</TrailWordGhost>
+          {/* The live trail lands on Favorites (2026-09-16), so the ghost word
+              has to be that one — a skeleton that says All products and then
+              swaps to Favorites is a visible relabel on first paint. */}
+          <TrailWordGhost>Favorites</TrailWordGhost>
           <div className={cn(HEADER_ICON_CLUSTER, 'ml-auto')} aria-hidden>
             {/* stance · paperwork · cart — the live trail's trailing cluster. */}
             <span className={KIOSK_POS_TRAIL_ICON} />

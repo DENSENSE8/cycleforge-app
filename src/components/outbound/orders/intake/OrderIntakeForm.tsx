@@ -565,8 +565,8 @@ export function OrderIntakeForm({
                   </div>
 
                   {duplicate ? (
-                    <div className="flex items-center justify-between gap-2 border border-amber-200 bg-amber-50 px-3 py-2 sm:col-span-2">
-                      <p className="min-w-0 text-role-caption text-amber-800" role="status">
+                    <div className="flex items-center justify-between gap-2 border border-border-warning bg-surface-warning px-3 py-2 sm:col-span-2">
+                      <p className="min-w-0 text-role-caption text-text-warning" role="status">
                         This org already has order{' '}
                         <span className="font-mono font-semibold">{duplicate.orderNumber}</span>
                         {' '}— it will not be inserted twice.
@@ -648,7 +648,7 @@ export function OrderIntakeForm({
                   </div>
 
                   {paired ? (
-                    <p className="text-role-caption text-emerald-700 sm:col-span-2" role="status">
+                    <p className="text-role-caption text-text-success sm:col-span-2" role="status">
                       Paired to catalog: <span className="font-mono">{paired.sku}</span>
                       {paired.productTitle ? ` · ${paired.productTitle}` : ''}
                     </p>
@@ -725,11 +725,11 @@ export function OrderIntakeForm({
                     {triage.creating ? 'Starting…' : 'Start triage'}
                   </Button>
                   {duplicate ? (
-                    <p className="pt-2 text-role-caption text-amber-800">
+                    <p className="pt-2 text-role-caption text-text-warning">
                       That order already exists — open it above instead of creating a twin.
                     </p>
                   ) : platformState.requiresChoice && !draft.platformChosen.trim() ? (
-                    <p className="pt-2 text-role-caption text-rose-700">
+                    <p className="pt-2 text-role-caption text-text-danger">
                       Pick a platform — this order number&rsquo;s shape doesn&rsquo;t name one.
                     </p>
                   ) : (
@@ -875,7 +875,7 @@ export function OrderIntakeForm({
                   Buy label
                 </Button>
                 {buyBlockedReason ? (
-                  <p className="w-full text-role-caption text-amber-800" role="status">
+                  <p className="w-full text-role-caption text-text-warning" role="status">
                     {buyBlockedReason}
                   </p>
                 ) : null}
@@ -955,7 +955,7 @@ export function OrderIntakeForm({
                   </div>
                 </div>
                 {assignError ? (
-                  <p className="text-role-caption text-rose-700">{assignError}</p>
+                  <p className="text-role-caption text-text-danger">{assignError}</p>
                 ) : null}
                 {assignSaving ? (
                   <p className="text-role-micro text-text-faint">Saving…</p>
@@ -995,7 +995,7 @@ export function OrderIntakeForm({
                 </ul>
                 <div>
                   {released ? (
-                    <p className="text-role-body font-semibold text-emerald-700">
+                    <p className="text-role-body font-semibold text-text-success">
                       Released — this order is in the To-ship queue.
                     </p>
                   ) : (
@@ -1015,7 +1015,7 @@ export function OrderIntakeForm({
                         says WHICH, this says THAT.
                       */}
                       {!gates?.canRelease && gates ? (
-                        <p className="pt-2 text-role-caption text-rose-700" role="status">
+                        <p className="pt-2 text-role-caption text-text-danger" role="status">
                           Blocked by {gates.failing.map((gate) => gate.id).join(', ')}.
                         </p>
                       ) : null}

@@ -11,7 +11,7 @@
 import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { QueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { BootGate } from '@/components/boot/BootGate';
 import { BootSplash } from '@/components/boot/BootSplash';
 import { consumeBootSplash } from '@/lib/boot-flag';
@@ -56,6 +56,12 @@ import {
 } from '@/lib/shipping/orders-desk';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { getOpenShippedDetailsPayload } from '@/utils/events';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { toast } from '@/lib/toast';
+import {
+  insertUnshippedOrderIntoCache,
+  invalidateUnshippedCounts,
+} from '@/lib/queries/dashboard-cache-patch';
 
 // Support › Inquiries only. This host mounts behind TWO url params
 // (`?context=support` + `?openOrderId=`) and never on the default
@@ -127,11 +133,12 @@ function OutboundOrdersDeskContent({
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
   const sync = useOrdersSync();
   const demo = useOrdersSyncDemo();
+  const queryClient = useQueryClient();
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
 
   const openIntakeMethod = useCallback(
-    (method: OrderIntakeMethod) => {
+    async (method: OrderIntakeMethod) => {
       if (method === 'sync') {
         void sync.handleTransfer();
         return;
@@ -140,9 +147,46 @@ function OutboundOrdersDeskContent({
         demo.start();
         return;
       }
+      if (method === 'test') {
+        const idempotencyKey = safeRandomUUID();
+        const testToken = safeRandomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
+        const orderId = `CF-TEST-${Date.now()}-${testToken.slice(0, 6)}`;
+        // The To ship query is intentionally label-scoped: label-less orders
+        // belong to Labels. Give this disposable fixture a syntactically valid
+        // synthetic UPS tracking number, while the API's `syncCarrier: false`
+        // path keeps it out of carrier lookups and preserves the work queue.
+        const trackingNumber = `1Z999AA1${testToken}`;
+        const response = await fetch('/api/orders/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify({
+            orderId,
+            productTitle: 'CycleForge test order',
+            sku: 'CF-TEST',
+            accountSource: 'Manual',
+            condition: 'USED_A',
+            quantity: '1',
+            shippingTrackingNumber: trackingNumber,
+            idempotencyKey,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !result.success) {
+          toast.error(result.error || 'Could not add test order');
+          return;
+        }
+        if (result.order) insertUnshippedOrderIntoCache(queryClient, result.order);
+        invalidateUnshippedCounts(queryClient);
+        refreshDomain('orders.outbound');
+        toast.success(`Added test order ${orderId}`);
+        return;
+      }
       csv.open();
     },
-    [csv, demo, sync],
+    [csv, demo, queryClient, sync],
   );
 
   /**

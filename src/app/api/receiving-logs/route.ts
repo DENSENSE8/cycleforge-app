@@ -563,7 +563,28 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
         }
 
         await invalidateReceivingViews(ctx.organizationId);
-        await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-logs.patch' });
+        await publishReceivingLogChanged({
+            organizationId: ctx.organizationId,
+            action: 'update',
+            rowId: String(id),
+            // Priority facts ride the broadcast (cross-viewer urgency pill
+            // sync — useReceivingCartonRealtimeBridge). Only when this request
+            // touched them; other PATCH shapes keep the fieldless event.
+            // undefined values drop out of the JSON payload.
+            ...(hasPriorityTier || isPriorityRaw !== undefined
+                ? {
+                    row: {
+                        priority_tier: hasPriorityTier
+                            ? (priorityTierRaw == null ? null : Number(priorityTierRaw))
+                            : undefined,
+                        is_priority: hasPriorityTier && isPriorityRaw === undefined
+                            ? (priorityTierRaw == null ? false : Number(priorityTierRaw) === 0)
+                            : (isPriorityRaw == null ? undefined : !!isPriorityRaw),
+                    },
+                }
+                : {}),
+            source: 'receiving-logs.patch',
+        });
         return NextResponse.json({ success: true, id });
     } catch (error: any) {
         console.error('Error updating receiving log:', error);

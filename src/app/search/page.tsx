@@ -11,8 +11,7 @@
 import { Suspense } from 'react';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { SearchFindSurface } from '@/components/search/SearchFindSurface';
-import { SearchPrimaryPaintShell } from '@/components/search/SearchPrimaryPaintShell';
+import { SearchFindSurface, SearchPrimaryPaintShell } from '@/components/ui/search-find';
 
 export default function SearchPage() {
   return (

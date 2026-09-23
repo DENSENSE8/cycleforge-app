@@ -3,7 +3,6 @@ import pool from '@/lib/db';
 import {
   getBinContentsByBarcode,
   getLocationByBarcode,
-  adjustBinQty,
   upsertBinContent,
   upsertBinContentIfVersion,
   markBinCounted,
@@ -24,28 +23,10 @@ import {
 import { LocationsPatchBody } from '@/lib/schemas/locations';
 import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
-import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { readSessionSid } from '@/lib/auth/session';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { errorResponse } from '@/lib/api';
+import { executeWmsPutawayAdjust } from '@/lib/realtime/wms-putaway-adjust';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
-
-// This route uses Next's typed `{ params }` second arg, which conflicts with
-// the `withAuth` wrapper. We resolve the session manually and treat the ctx
-// as anonymous-style so the legacy callers (which still send body.staffId)
-// keep working until the route is migrated to a withAuth-friendly shape.
-async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
-  const sid = readSessionSid(req.cookies);
-  const user = await getCurrentUserBySid(sid);
-  // markAuditWritten is a no-op here — this route doesn't use the withAuth
-  // wrapper so there's no audit floor to opt out of. The shape matches
-  // AnonymousAuthContext for callsites that pass ctx into recordAudit().
-  const noopMark = () => {};
-  return user
-    ? { user, session: user.session, staffId: user.staffId, organizationId: user.organizationId, role: user.role, permissions: user.permissions, markAuditWritten: noopMark }
-    : { user: null, session: null, staffId: null, organizationId: null, role: null, permissions: new Set(), markAuditWritten: noopMark };
-}
 
 /**
  * GET /api/locations/[barcode]
@@ -55,6 +36,10 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },
 ) {
+  const gate = await requireRoutePerm(req, 'sku_stock.view');
+  if (gate.denied) return gate.denied;
+  const orgId = gate.ctx.organizationId;
+
   const { barcode } = await params;
   const code = decodeURIComponent(barcode).trim();
 
@@ -63,11 +48,6 @@ export async function GET(
   }
 
   try {
-    // Tenant-scope the lookup: a barcode collides across orgs, so resolve the
-    // session org and only return this tenant's bin. Anonymous callers fall
-    // back to the legacy un-scoped lookup (orgId undefined).
-    const ctx = await resolveCtx(req);
-    const orgId = ctx.organizationId ?? undefined;
     const result = await getBinContentsByBarcode(code, orgId);
 
     if (!result) {
@@ -114,8 +94,8 @@ export async function GET(
  * PATCH /api/locations/[barcode]
  * Actions: take, put, set, count
  *
- * take:  { action: "take",  sku, qty, staffId?, reason? }  — subtract from bin + sku_stock
- * put:   { action: "put",   sku, qty, staffId?, reason? }  — add to bin + sku_stock
+ * take:  { action: "take",  sku, qty, reason? }  — subtract from bin + sku_stock
+ * put:   { action: "put",   sku, qty, reason? }  — add to bin + sku_stock
  * set:   { action: "set",   sku, qty, minQty?, maxQty? }   — set absolute bin qty
  * count: { action: "count", sku }                           — mark bin as physically counted
  */
@@ -123,6 +103,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },
 ) {
+  const baseGate = await requireRoutePerm(request, 'sku_stock.view');
+  if (baseGate.denied) return baseGate.denied;
+  const ctx = baseGate.ctx;
+  const orgId = ctx.organizationId;
+  const idempotencyOrgId = orgId;
+
   const { barcode } = await params;
   const code = decodeURIComponent(barcode).trim();
 
@@ -137,37 +123,11 @@ export async function PATCH(
     const parsed = parseBody(LocationsPatchBody, body);
     if (parsed instanceof NextResponse) return parsed;
 
-    // Resolve session org up-front so the lookup + every write below is
-    // tenant-scoped. Anonymous callers (no session) fall back to legacy
-    // un-scoped behavior (orgId undefined).
-    const ctx = await resolveCtx(request);
-    const orgId = ctx.organizationId ?? undefined;
-    // The idempotency CACHE row (not data scoping — that uses `orgId` above,
-    // which is undefined for anon) requires a concrete tenant key. Anonymous
-    // legacy-QR callers fall back to the dogfood org for the cache NAMESPACE
-    // only; the actual location write remains unscoped for them. This is the
-    // one sanctioned dogfood fallback here (guard-allowlisted).
-    const idempotencyOrgId: OrgId = ctx.organizationId ?? DOGFOOD_ORG_ID;
-
-    // ─── Idempotency: replay cached responses for the same key ──────────────
     const idempotencyKey = readIdempotencyKey(request, body?.clientEventId ?? body?.idempotencyKey);
-    const idempotencyStaffId = Number(body?.staffId);
-    if (idempotencyKey) {
-      const cached = await getApiIdempotencyResponse(pool, idempotencyOrgId, idempotencyKey, ROUTE_LOCATION_PATCH);
-      if (cached) {
-        return NextResponse.json(cached.response_body, { status: cached.status_code });
-      }
-    }
-
-    const loc = await getLocationByBarcode(code, orgId);
-    if (!loc) {
-      return NextResponse.json({ error: 'Bin not found' }, { status: 404 });
-    }
     const {
       action,
       sku,
       qty,
-      staffId,
       reason,
       reasonCodeId,
       notes,
@@ -180,7 +140,6 @@ export async function PATCH(
       /** ISO timestamp from a prior GET — when set, `action=set` rejects stale writes. */
       expectedUpdatedAt?: string;
       qty?: number;
-      staffId?: number;
       /** Legacy free-text reason (still stored for back-compat). */
       reason?: string;
       /** Preferred — FK into reason_codes for categorized reporting. */
@@ -191,30 +150,8 @@ export async function PATCH(
       maxQty?: number;
     };
 
-    // Capture every response through this helper so idempotency-key replays
-    // get the same body byte-for-byte. 5xx errors intentionally do NOT cache —
-    // we want retries to actually retry.
-    const respond = async (payload: Record<string, unknown>, status = 200) => {
-      if (idempotencyKey && status < 500) {
-        await saveApiIdempotencyResponse(pool, {
-          orgId: idempotencyOrgId,
-          idempotencyKey,
-          route: ROUTE_LOCATION_PATCH,
-          staffId:
-            Number.isFinite(idempotencyStaffId) && idempotencyStaffId > 0
-              ? Math.floor(idempotencyStaffId)
-              : null,
-          statusCode: status,
-          responseBody: payload,
-        }).catch((err) => {
-          console.warn('locations PATCH: idempotency save failed (non-fatal)', err);
-        });
-      }
-      return NextResponse.json(payload, { status });
-    };
-
     if (!sku?.trim()) {
-      return respond({ error: 'SKU is required' }, 400);
+      return NextResponse.json({ error: 'SKU is required' }, { status: 400 });
     }
 
     // ─── Permission gate ───────────────────────────────────────────────────
@@ -228,89 +165,77 @@ export async function PATCH(
         : null;
     if (requiredPerm) {
       try {
-        await assertPermission(staffId ?? null, requiredPerm);
+        await assertPermission(ctx.staffId, requiredPerm);
       } catch (err) {
         if (err instanceof PermissionDeniedError) {
-          return respond(permissionDeniedResponse(err), 403);
+          return NextResponse.json(permissionDeniedResponse(err), { status: 403 });
         }
         throw err;
       }
     }
 
-    const effectiveStaffId = ctx.staffId ?? (staffId && staffId > 0 ? staffId : null);
-    const binCode = loc.barcode ?? code;
-    const binLabel = loc.name ?? null;
+    const effectiveStaffId = ctx.staffId;
     const trimmedSku = sku.trim();
 
-    if (action === 'take' && typeof qty === 'number' && qty > 0) {
-      const result = await adjustBinQty({
-        locationId: loc.id,
-        sku: trimmedSku,
-        delta: -qty,
-        staffId,
-        reason: reason || 'TAKEN',
-        reasonCodeId: reasonCodeId ?? null,
-        notes: notes ?? null,
-      }, idempotencyOrgId);
-      await recordAudit(pool, ctx, request, {
-        source: 'mobile-scanner',
-        action: AUDIT_ACTION.SKU_STOCK_ADJUST,
-        entityType: AUDIT_ENTITY.BIN,
-        entityId: loc.id,
-        before: { qty: Number(result.binContent.qty) + qty },
-        after: { qty: Number(result.binContent.qty) },
-        binCode,
-        locationCode: binLabel,
-        scanRef: code,
-        method: 'scan',
-        reasonCode: reason || 'TAKEN',
-        note: notes ?? null,
-        actorStaffIdOverride: effectiveStaffId,
-        extra: { sku: trimmedSku, delta: -qty, total_stock: result.newStockQty, ledger_id: result.ledgerId },
-      });
-      return respond({
-        success: true,
-        binQty: result.binContent.qty,
-        totalStock: result.newStockQty,
-        ledgerId: result.ledgerId,
-        binId: loc.id,
-      });
+    if ((action === 'take' || action === 'put') && typeof qty === 'number' && qty > 0) {
+      if (!idempotencyKey) {
+        return NextResponse.json({ error: 'Idempotency-Key is required' }, { status: 400 });
+      }
+      try {
+        const result = await executeWmsPutawayAdjust({
+          commandId: idempotencyKey,
+          organizationId: orgId,
+          staffId: effectiveStaffId,
+          barcode: code,
+          sku: trimmedSku,
+          direction: action,
+          qty,
+          reason: reason || (action === 'take' ? 'TAKEN' : 'RECEIVED'),
+          reasonCodeId: reasonCodeId ?? null,
+          notes: notes ?? null,
+        });
+        return NextResponse.json({
+          ...result.data,
+          cursor: result.data.ledgerId,
+          receipt: { commandId: idempotencyKey, replayed: result.replayed },
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Inventory adjustment failed.';
+        if (/not found/i.test(message)) {
+          return NextResponse.json({ error: 'NOT_FOUND', message }, { status: 404 });
+        }
+        if (/slot full|cannot take|already in progress/i.test(message)) {
+          return NextResponse.json({ error: 'CONFLICT', message }, { status: 409 });
+        }
+        throw err;
+      }
     }
 
-    if (action === 'put' && typeof qty === 'number' && qty > 0) {
-      const result = await adjustBinQty({
-        locationId: loc.id,
-        sku: trimmedSku,
-        delta: qty,
-        staffId,
-        reason: reason || 'RECEIVED',
-        reasonCodeId: reasonCodeId ?? null,
-        notes: notes ?? null,
-      }, idempotencyOrgId);
-      await recordAudit(pool, ctx, request, {
-        source: 'mobile-scanner',
-        action: AUDIT_ACTION.SKU_STOCK_ADJUST,
-        entityType: AUDIT_ENTITY.BIN,
-        entityId: loc.id,
-        before: { qty: Number(result.binContent.qty) - qty },
-        after: { qty: Number(result.binContent.qty) },
-        binCode,
-        locationCode: binLabel,
-        scanRef: code,
-        method: 'scan',
-        reasonCode: reason || 'RECEIVED',
-        note: notes ?? null,
-        actorStaffIdOverride: effectiveStaffId,
-        extra: { sku: trimmedSku, delta: qty, total_stock: result.newStockQty, ledger_id: result.ledgerId },
-      });
-      return respond({
-        success: true,
-        binQty: result.binContent.qty,
-        totalStock: result.newStockQty,
-        ledgerId: result.ledgerId,
-        binId: loc.id,
-      });
+    // Non-motion edits retain the generic route cache; physical movement uses
+    // the WMS command receipt above.
+    if (idempotencyKey) {
+      const cached = await getApiIdempotencyResponse(pool, idempotencyOrgId, idempotencyKey, ROUTE_LOCATION_PATCH);
+      if (cached) return NextResponse.json(cached.response_body, { status: cached.status_code });
     }
+    const loc = await getLocationByBarcode(code, orgId);
+    if (!loc) {
+      return NextResponse.json({ error: 'Bin not found' }, { status: 404 });
+    }
+    const binCode = loc.barcode ?? code;
+    const binLabel = loc.name ?? null;
+    const respond = async (payload: Record<string, unknown>, status = 200) => {
+      if (idempotencyKey && status < 500) {
+        await saveApiIdempotencyResponse(pool, {
+          orgId: idempotencyOrgId,
+          idempotencyKey,
+          route: ROUTE_LOCATION_PATCH,
+          staffId: ctx.staffId,
+          statusCode: status,
+          responseBody: payload,
+        });
+      }
+      return NextResponse.json(payload, { status });
+    };
 
     if (action === 'set' && typeof qty === 'number') {
       // Optimistic concurrency: when the caller supplies an expectedUpdatedAt
@@ -385,20 +310,16 @@ export async function PATCH(
     }
 
     return respond({ error: 'Invalid action' }, 400);
-  } catch (err: any) {
-    console.error('[PATCH /api/locations/[barcode]] error:', err);
-    return NextResponse.json(
-      { error: 'Failed to update bin', details: err?.message },
-      { status: 500 },
-    );
+  } catch (err) {
+    return errorResponse(err, 'PATCH /api/locations/[barcode]');
   }
 }
 
 /**
  * DELETE /api/locations/[barcode] — soft-delete a single bin (is_active=false).
  *
- * Uses session-derived auth (requireRoutePerm) rather than this file's legacy
- * body.staffId gate. Refuses to delete a bin that still holds stock (409) so
+ * Uses session-derived auth (requireRoutePerm). Refuses to delete a bin that
+ * still holds stock (409) so
  * inventory can't silently vanish; empty it or move it first.
  */
 export async function DELETE(

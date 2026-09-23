@@ -13,6 +13,7 @@ import {
 import { resolveOutboundNasTarget } from '@/lib/documents/resolve-nas-target';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
+import { getEcwidPackingSlipIngestState } from '@/lib/documents/ecwid-packing-slip-lifecycle';
 
 /**
  * Outbound documents (packing slips + shipping labels) for one order.
@@ -41,11 +42,27 @@ export async function GET(
 
   try {
     const orgId = gate.ctx.organizationId as OrgId;
-    const [documents, nasTarget] = await Promise.all([
+    const [documents, nasTarget, packingSlipIngest] = await Promise.all([
       listDocumentsForOrder(orgId, orderId),
       resolveOutboundNasTarget(orgId, gate.ctx.staffId),
+      getEcwidPackingSlipIngestState(orgId, orderId),
     ]);
-    return NextResponse.json({ success: true, documents, ...nasTarget });
+    const packingSlip = documents.find((document) => document.documentType === 'packing_slip');
+    return NextResponse.json({
+      success: true,
+      documents,
+      packingSlipIngest: packingSlip
+        ? {
+            status: 'available',
+            label: 'Available',
+            attemptCount: packingSlipIngest?.attemptCount ?? 0,
+            lastError: null,
+            nextAttemptAt: null,
+            documentId: packingSlip.id,
+          }
+        : packingSlipIngest,
+      ...nasTarget,
+    });
   } catch (error) {
     console.error('Error in GET /api/orders/[id]/documents:', error);
     return NextResponse.json({ error: 'Failed to load documents' }, { status: 500 });

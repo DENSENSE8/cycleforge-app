@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Loader2 } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import { useAuth } from '@/contexts/AuthContext';
+import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 import {
   MobilePackerSpamCamera,
   type CapturedShot,
@@ -39,6 +42,8 @@ export interface MobilePackerPhotoStudioProps {
   guided?: boolean;
   /** Guided entry step (from `?step=`); defaults to slip. */
   initialStep?: GuidedCaptureStep;
+  /** Complete a phone-started CAPTURING pack after evidence + verification. */
+  completePacking?: boolean;
 }
 
 /** Immersive pack photo capture — legacy spam mirror + the guided Review flow. */
@@ -50,9 +55,12 @@ export function MobilePackerPhotoStudio({
   maxPhotos = 10,
   guided = false,
   initialStep = 'slip',
+  completePacking = false,
 }: MobilePackerPhotoStudioProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { execute: executeWmsCommand } = useWmsRealtime();
   useClearPackerDoneOnUnmount();
 
   const scope = useMemo<PackerPhotoScope>(
@@ -124,6 +132,7 @@ export function MobilePackerPhotoStudio({
   const [submitting, setSubmitting] = useState(false);
   const [slipBlob, setSlipBlob] = useState<Blob | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const verificationCommandIdRef = useRef<string | null>(null);
 
   const onSlipDone = useCallback(
     (shots: CapturedShot[]) => {
@@ -176,15 +185,52 @@ export function MobilePackerPhotoStudio({
   );
 
   const onConfirm = useCallback(async () => {
+    if (!user) {
+      toast.error('Sign in again before finishing this pack.', { position: 'top-center' });
+      return;
+    }
     setSubmitting(true);
     try {
+      verificationCommandIdRef.current ??= safeRandomUUID();
+      if (completePacking) {
+        // Do not record a successful pack verification ahead of evidence that
+        // is still only in the browser's retry queue.
+        await packerPhotoUploadQueue.waitForScope(packerLogId);
+      }
       const result = await submitPackVerification({
         packerLogId,
         tracking: tracking.trim() || null,
-        clientEventId: safeRandomUUID(),
+        clientEventId: verificationCommandIdRef.current,
+      }, executeWmsCommand, {
+        organizationId: user.organizationId,
+        staffId: user.staffId,
       });
       if (result.outcome === 'VERIFIED') {
-        toast.success('Verified — sent to review', { position: 'top-center' });
+        if (completePacking) {
+          // The server recounts the already-durable evidence while it holds
+          // the draft row lock, then promotes it to the one completed fact.
+          const response = await fetch('/api/packing-logs/update', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': verificationCommandIdRef.current,
+            },
+            body: JSON.stringify({
+              shippingTrackingNumber: tracking.trim(),
+              trackingType: 'ORDERS',
+              orderId,
+              draftPackerLogId: packerLogId,
+              clientEventId: verificationCommandIdRef.current,
+            }),
+          });
+          const body = await response.json().catch(() => null) as { error?: string; details?: string } | null;
+          if (!response.ok) {
+            throw new Error(body?.details || body?.error || 'Could not finalize this pack.');
+          }
+          toast.success('Packed — ready for dock staging', { position: 'top-center' });
+        } else {
+          toast.success('Verified — sent to review', { position: 'top-center' });
+        }
       } else if (result.outcome === 'ERROR_MISSING_TRACKING') {
         toast.error('Tracking not matched — flagged for manager review', { position: 'top-center' });
       } else {
@@ -195,7 +241,7 @@ export function MobilePackerPhotoStudio({
       toast.error('Could not submit verification. Photos are still saved.', { position: 'top-center' });
       setSubmitting(false);
     }
-  }, [packerLogId, tracking, returnToPack]);
+  }, [completePacking, executeWmsCommand, orderId, packerLogId, returnToPack, tracking, user]);
 
   if (!guided) {
     return (
@@ -310,36 +356,39 @@ function PackVerifyConfirm({
           />
         </label>
         {canScan ? (
-          <button
+          <Button
             type="button"
+            variant="glass"
             onClick={onScanFromSlip}
             disabled={ocrBusy || submitting}
             className="flex w-full items-center justify-center gap-2 rounded-none border border-white/15 px-3 py-2.5 text-role-caption font-semibold text-white/80 disabled:opacity-60"
           >
             {ocrBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {ocrBusy ? 'Reading slip…' : 'Read tracking from slip'}
-          </button>
+          </Button>
         ) : null}
       </div>
 
       <div className="space-y-2 pt-6">
-        <button
+        <Button
           type="button"
+          variant="success"
           onClick={onConfirm}
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-none bg-emerald-500 px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-none px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {submitting ? 'Submitting…' : 'Verify & finish'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="glass"
           onClick={onBack}
           disabled={submitting}
           className="w-full rounded-none border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 disabled:opacity-60"
         >
           Back to box photos
-        </button>
+        </Button>
       </div>
     </div>
   );

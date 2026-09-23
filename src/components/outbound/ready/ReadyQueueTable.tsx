@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import {
   DataTable,
   type DataTableFilterOption,
@@ -161,7 +163,7 @@ export function ReadyQueueTable({
   if (isError) {
     return (
       <div className="flex min-h-[240px] items-center justify-center">
-        <div className="inset-empty rounded-xl border border-dashed border-border-danger bg-surface-danger text-center">
+        <div className={cn('inset-empty border border-dashed border-border-danger bg-surface-danger text-center', cornerClass('card'))}>
           <p className="text-role-caption font-semibold text-text-danger">
             Could not load recently-tested history
           </p>

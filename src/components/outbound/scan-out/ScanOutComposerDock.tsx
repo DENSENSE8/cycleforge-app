@@ -30,13 +30,13 @@ import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance'
 import { cn } from '@/utils/_cn';
 
 const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
-  ok: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  dup: 'bg-amber-50 text-amber-700 ring-amber-200',
-  exc: 'bg-amber-50 text-amber-700 ring-amber-200',
+  ok: 'bg-surface-success text-text-success ring-border-success',
+  dup: 'bg-surface-warning text-text-warning ring-border-warning',
+  exc: 'bg-surface-warning text-text-warning ring-border-warning',
   blk: 'bg-surface-danger text-text-danger ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-border-soft',
-  miss: 'bg-rose-50 text-rose-700 ring-rose-200',
-  err: 'bg-rose-50 text-rose-700 ring-rose-200',
+  miss: 'bg-surface-danger text-text-danger ring-border-danger',
+  err: 'bg-surface-danger text-text-danger ring-border-danger',
 };
 
 function ringProgressForStatus(status: ActiveScanOut['status'] | null): number {
@@ -187,7 +187,7 @@ export function ScanOutComposerDock({
               size="sm"
               onClick={station.undo}
               disabled={station.isUndoing}
-              className="h-auto shrink-0 px-0 text-xs text-emerald-700 underline-offset-2 hover:text-emerald-800 hover:underline"
+              className="h-auto shrink-0 px-0 text-xs text-text-success underline-offset-2 hover:text-text-success hover:underline"
             >
               {station.isUndoing ? 'Undoing…' : 'Undo'}
             </Button>

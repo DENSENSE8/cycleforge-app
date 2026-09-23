@@ -1,9 +1,16 @@
 'use client';
 
 import { ChevronDown } from '@/components/Icons';
+import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 export const FILTER_DROPDOWN_SELECT_CLASS =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn(
+    'h-9 w-full cursor-pointer appearance-none border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-border-emphasis',
+    cornerClass('field'),
+    focusRing('field', 'accent'),
+  );
 
 export const FILTER_DROPDOWN_LABEL_CLASS =
   'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';

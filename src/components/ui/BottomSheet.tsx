@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
+import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMediaQuery } from '@/hooks/_ui';
@@ -56,6 +57,14 @@ interface BottomSheetProps {
    */
   compact?: boolean;
   /**
+   * Sheet variant only (phones): the panel fills the viewport instead of
+   * hugging the bottom edge — a full-screen picker, not a peek. Rounded
+   * corners and the width clamp drop, the top safe area is padded, and a
+   * close button joins the drag handle because a full-bleed panel leaves no
+   * scrim to tap. The desktop dialog variant ignores this.
+   */
+  fullScreen?: boolean;
+  /**
    * Stacking level. 0 = base (z-index 200). Each level adds 10 so a
    * confirmation sheet can sit cleanly on top of an action sheet. The scrim
    * is also slightly darker per level so the parent sheet visibly recedes.
@@ -80,6 +89,7 @@ export function BottomSheet({
   forceVariant = 'auto',
   level = 0,
   compact = false,
+  fullScreen = false,
   children,
 }: BottomSheetProps) {
   const reduceMotion = useReducedMotion();
@@ -147,6 +157,7 @@ export function BottomSheet({
               fixedWidth={fixedWidth}
               scrollBody={scrollBody}
               scrollBodyMaxHeightClass={scrollBodyMaxHeightClass}
+              fullScreen={fullScreen}
               reduceMotion={!!reduceMotion}
               compact={compact}
               onClose={onClose}
@@ -183,6 +194,7 @@ interface SheetPanelProps {
   fixedWidth: boolean;
   scrollBody: boolean;
   scrollBodyMaxHeightClass: string;
+  fullScreen: boolean;
   reduceMotion: boolean;
   compact: boolean;
   onClose: () => void;
@@ -196,13 +208,14 @@ function SheetPanel({
   fixedWidth,
   scrollBody,
   scrollBodyMaxHeightClass,
+  fullScreen,
   reduceMotion,
   compact,
   onClose,
   children,
 }: SheetPanelProps) {
   return (
-    <div className="absolute inset-x-0 bottom-0 flex justify-center">
+    <div className={cn('absolute inset-x-0 bottom-0 flex justify-center', fullScreen && 'top-0')}>
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
@@ -219,12 +232,16 @@ function SheetPanel({
           if (info.offset.y > 100 || info.velocity.y > 600) onClose();
         }}
         className={cn(
-          'w-full overflow-hidden rounded-t-[28px] bg-surface-card shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.25)]',
-          scrollBody && cn('flex min-h-0 flex-col', scrollBodyMaxHeightClass),
+          'w-full overflow-hidden bg-surface-card',
+          fullScreen
+            ? 'flex h-full min-h-0 flex-col'
+            : 'rounded-t-[28px] shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.25)]',
+          !fullScreen && scrollBody && cn('flex min-h-0 flex-col', scrollBodyMaxHeightClass),
         )}
         style={{
-          maxWidth,
-          width: fixedWidth ? `min(${maxWidth}, 100%)` : undefined,
+          maxWidth: fullScreen ? undefined : maxWidth,
+          width: !fullScreen && fixedWidth ? `min(${maxWidth}, 100%)` : undefined,
+          paddingTop: fullScreen ? 'env(safe-area-inset-top, 0px)' : undefined,
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
@@ -234,7 +251,7 @@ function SheetPanel({
           </div>
         )}
         {title && (
-          <div className={cn('text-center', compact ? 'px-3 pt-1 pb-0.5' : 'px-6 pt-2 pb-1')}>
+          <div className={cn('relative text-center', compact ? 'px-3 pt-1 pb-0.5' : 'px-6 pt-2 pb-1')}>
             <h3
               className={cn(
                 'font-semibold tracking-tight text-text-default',
@@ -243,12 +260,24 @@ function SheetPanel({
             >
               {title}
             </h3>
+            {/* Full-screen leaves no scrim to tap — the drag handle alone is an
+                invisible affordance, so the dismiss is also a real control. */}
+            {fullScreen && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="ds-raw-button absolute right-2 top-0 flex h-11 w-11 items-center justify-center rounded-full text-text-soft active:bg-surface-sunken"
+              >
+                <X className="h-5 w-5" aria-hidden />
+              </button>
+            )}
           </div>
         )}
         <div
           className={cn(
             compact ? 'px-3 pb-3 pt-1' : 'px-6 pb-6 pt-2',
-            scrollBody && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+            (fullScreen || scrollBody) && 'flex min-h-0 flex-1 flex-col overflow-hidden',
           )}
         >
           {children}

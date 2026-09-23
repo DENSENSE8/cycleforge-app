@@ -13,6 +13,7 @@ import {
 import { Trash2, ChevronDown } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import {
   framerPresenceMobile,
@@ -43,6 +44,8 @@ export interface SwipePhotoSlide {
   id: string;
   previewUrl: string;
   deletable?: boolean;
+  /** Staff who captured this frame; renders as a StaffAvatar in the top chrome. */
+  uploadedBy?: number | null;
 }
 
 export type ViewerPresentation = 'overlay' | 'sheet';
@@ -444,8 +447,16 @@ export function MobileSwipePhotoViewer({
           >
             <div className="flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <span
-                className={`${GLASS_CHROME} flex h-11 items-center justify-center px-3 text-sm font-semibold tabular-nums tracking-wider text-white`}
+                className={`${GLASS_CHROME} flex h-11 items-center justify-center gap-2 px-3 text-sm font-semibold tabular-nums tracking-wider text-white`}
               >
+                {/* Who pressed the shutter. `StaffAvatar` resolves name, colour
+                    and photo from the staff identity cache by id alone, so the
+                    feed needs no staff join. Absent on pre-auth / imported
+                    rows, where `taken_by_staff_id` is null — the counter then
+                    renders exactly as it did before. */}
+                {active?.uploadedBy != null ? (
+                  <StaffAvatar staffId={active.uploadedBy} size="xs" ring={false} />
+                ) : null}
                 {index + 1} / {slides.length}
               </span>
               {canDelete ? (

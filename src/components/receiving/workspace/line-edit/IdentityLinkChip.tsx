@@ -405,30 +405,47 @@ export function IdentityLinkChip({
                   })),
                 ]
               : []),
-            menuFirstAction === 'open'
-              ? {
-                  id: '__open__',
-                  label: 'Open',
-                  icon: <ExternalLink className="h-3.5 w-3.5" />,
-                  tone: 'accent' as const,
-                  disabled: !openHref,
-                  ariaLabel: openHref ? openTitle : 'No link available',
-                  onSelect: () => {
-                    openExternal();
-                    hover.close();
+            /**
+             * An EMPTY identity has nothing to open, so the row is not rendered
+             * at all — not rendered disabled. Operator 2026-09-22: "don't even
+             * display the CTA open on the carton context on hover if the order
+             * id is empty." A greyed "Open" on an unfound carton is a promise
+             * the chip cannot keep and an extra row between the pointer and the
+             * only action that IS available there (Link Id).
+             *
+             * A chip that HAS a value but no href keeps the disabled row: that
+             * is the honest "no link available" state for a known identifier.
+             */
+            ...(menuFirstAction === 'open'
+              ? !normalizedValue && !openHref
+                ? []
+                : [
+                    {
+                      id: '__open__',
+                      label: 'Open',
+                      icon: <ExternalLink className="h-3.5 w-3.5" />,
+                      tone: 'accent' as const,
+                      disabled: !openHref,
+                      ariaLabel: openHref ? openTitle : 'No link available',
+                      onSelect: () => {
+                        openExternal();
+                        hover.close();
+                      },
+                    },
+                  ]
+              : [
+                  {
+                    id: '__copy__',
+                    label: 'Copy',
+                    icon: <Copy className="h-3.5 w-3.5" />,
+                    disabled: !canCopy,
+                    ariaLabel: `Copy ${display}`,
+                    onSelect: () => {
+                      copyValue();
+                      hover.close();
+                    },
                   },
-                }
-              : {
-                  id: '__copy__',
-                  label: 'Copy',
-                  icon: <Copy className="h-3.5 w-3.5" />,
-                  disabled: !canCopy,
-                  ariaLabel: `Copy ${display}`,
-                  onSelect: () => {
-                    copyValue();
-                    hover.close();
-                  },
-                },
+                ]),
             ...menuRows,
             ...(onEdit && editInMenu
               ? [

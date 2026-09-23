@@ -472,7 +472,7 @@ export function UnshippedTable({
         });
         return;
       }
-      dispatchOpenShippedDetails(record, 'queue');
+      dispatchOpenShippedDetails(record, 'queue', { force: true });
     },
     [cagedOnly, onOpenRecord, router, searchParams],
   );

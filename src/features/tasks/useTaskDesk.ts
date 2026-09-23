@@ -1,0 +1,103 @@
+'use client';
+
+/**
+ * Data + writes for the task desk — `work_assignments` rows handed to a person.
+ *
+ * ONE query key family (`['tasks','desk',…]`) so every writer on this surface
+ * invalidates every reader of it: the grid, the right-rail inspector and the
+ * composer's recent list are three views of one list, and a write that
+ * refreshed only the grid is how a rail comes to show a task the table no
+ * longer has.
+ *
+ * Replaced `useStaffTasks` (which read `staff_todos`) with the store swap —
+ * R-A, 2026-09-22. The clock tick survives the move for the same reason it
+ * existed: deadline lateness is a function of `now`, so the whole table is
+ * given ONE `nowMs` rather than letting each row call `Date.now()` and disagree
+ * about what day it is inside a single paint.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  sortTaskDeskRows,
+  taskDeskRowFromWire,
+  type TaskDeskLane,
+  type TaskDeskListPayload,
+  type TaskDeskRow,
+  type TaskDeskStatus,
+  type TaskDeskWireRow,
+} from '@/lib/tasks/task-desk-row';
+
+/** Lateness moves in minutes, not seconds — the old chip's cadence. */
+const CLOCK_TICK_MS = 30_000;
+
+/** The fields `PATCH /api/tasks/[id]` accepts. An unknown key is a 403 there. */
+export interface TaskDeskPatch {
+  status?: TaskDeskStatus;
+  priority?: number;
+  /** ISO string, or `null` to clear. */
+  deadlineAt?: string | null;
+  startedAt?: string | null;
+  assigneeStaffId?: number;
+}
+
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok || data.ok === false) {
+    throw new Error(String(data.error || `Request failed (${res.status})`));
+  }
+  return data;
+}
+
+export function useTaskDesk(lane: TaskDeskLane) {
+  const queryClient = useQueryClient();
+
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), CLOCK_TICK_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const query = useQuery({
+    queryKey: ['tasks', 'desk', lane],
+    queryFn: async (): Promise<TaskDeskWireRow[]> => {
+      const params = new URLSearchParams({ lane, assignee: 'me' });
+      const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
+      const data = (await readJson(res)) as unknown as TaskDeskListPayload;
+      return data.tasks ?? [];
+    },
+    staleTime: 0,
+  });
+
+  const rows: TaskDeskRow[] = useMemo(
+    () => sortTaskDeskRows((query.data ?? []).map(taskDeskRowFromWire)),
+    [query.data],
+  );
+
+  /** Every lane of this desk, wherever it is cached. */
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['tasks', 'desk'] });
+  }, [queryClient]);
+
+  const update = useMutation({
+    mutationFn: async ({ id, patch }: { id: number; patch: TaskDeskPatch }) => {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(patch),
+      });
+      return readJson(res);
+    },
+    onSettled: refresh,
+  });
+
+  return {
+    rows,
+    nowMs,
+    loading: query.isLoading,
+    error: query.isError ? ((query.error as Error)?.message ?? 'Could not load tasks.') : null,
+    refresh,
+    update,
+  };
+}

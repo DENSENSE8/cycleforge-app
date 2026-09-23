@@ -1,21 +1,19 @@
 import type { DateRange } from 'react-day-picker';
 import { ChevronDown } from '@/components/Icons';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { FilterDropdownSelect } from '@/design-system/components/FilterDropdownSelect';
+import {
+  FILTER_DROPDOWN_LABEL_CLASS,
+  FILTER_DROPDOWN_SELECT_CLASS,
+  FilterDropdownSelect,
+} from '@/design-system/components/FilterDropdownSelect';
 import { Button } from '@/design-system/primitives';
 import type { CarrierCode, ShipmentStatusCategory } from '@/components/shipping/ShipmentStatusBadge';
 import { SHIPPED_SEARCH_FIELDS, type ShippedSearchField } from '@/lib/shipped-search';
 import { CARRIERS, STATUS_CATEGORIES, TYPE_ITEMS, type ShippedTypeFilter } from './shipped-filter-constants';
 import { useShippedFilterRefinements } from './useShippedFilterRefinements';
 import { NeedsAttentionButton } from './ShippedFilterControls';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
-
-
-
-const selectClass =
-  cn('h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300', focusRing('field', 'accent'));
-const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
+const selectClass = FILTER_DROPDOWN_SELECT_CLASS;
+const labelClass = FILTER_DROPDOWN_LABEL_CLASS;
 
 export function ShippedFilterDropdown({
   onClose,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { forEachOrgWithProvider } from '@/lib/cron/for-each-org';
@@ -24,23 +24,19 @@ export const maxDuration = 300;
  * withTenantDrizzle / tenantQuery) and stamps organization_id explicitly (its
  * neon-http Drizzle client can't carry the GUC, so the stamp is required).
  *
- * Source sheet is per-org. USAV keeps its hardcoded sheet
- * (DOGFOOD_SOURCE_SPREADSHEET_ID) via includeDogfoodTransitional — it connects Google
- * with env service-account creds and has no google_sheets integration row, so
- * there is no per-org id to read for it; this is exactly the prior behavior.
- * Every OTHER org reads its OWN sheet id from its google_sheets integration
- * config (GoogleSheetsCredentials.defaultSpreadsheetId); an org with the provider
- * connected but NO configured sheet id is skipped — we never read another
- * tenant's sheet on its behalf.
+ * Every org reads its OWN sheet id and service-account credentials from its
+ * google_sheets integration config. An org with the provider connected but NO
+ * configured sheet id is skipped — we never read another tenant's sheet on its
+ * behalf.
  *
  * The cron runs 'sheets' mode only, so the Ecwid-API path (USAV-env-only creds in
  * fetchEcwidTransferRows) is not exercised here — it stays behind its own
  * /api/ecwid/transfer-orders route. Per-org failures are isolated by the fan-out.
  *
- * NOTE: Google API auth is still the shared service account (getGoogleAuth, env
- * GOOGLE_CLIENT_EMAIL/GOOGLE_PRIVATE_KEY). A non-USAV org's sheet must be shared
- * with that service account for its transfer to succeed; until each org connects
- * its own Google auth, in practice only USAV has a usable source here.
+ * Google API auth is loaded from each org's encrypted integration-vault row.
+ * The spreadsheet must be shared with that row's service account; missing vault
+ * credentials or a missing spreadsheet id skips that org without borrowing
+ * another tenant's source.
  */
 
 type OrgTransferOutcome =
@@ -49,9 +45,7 @@ type OrgTransferOutcome =
   | { jobError: Record<string, unknown> };
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('google_sheets.transfer_orders', () =>
       withCronRun('google_sheets.transfer_orders', async () => {
@@ -61,7 +55,7 @@ export async function GET(request: NextRequest) {
             const spreadsheetId = await resolveTransferSourceSpreadsheetId(orgId);
             if (!spreadsheetId) return { skipped: 'no_source_spreadsheet' };
             try {
-              return await runGoogleSheetsTransferOrders(undefined, 'sheets', undefined, orgId, spreadsheetId);
+              return await runGoogleSheetsTransferOrders(orgId, undefined, 'sheets', undefined, spreadsheetId);
             } catch (err) {
               // A job-level condition (no data in tab / missing headers) is NOT a
               // tenant failure — mirror the prior top-level handling that surfaced
@@ -73,7 +67,6 @@ export async function GET(request: NextRequest) {
               throw err;
             }
           },
-          { includeDogfoodTransitional: true },
         );
 
         const totals = {

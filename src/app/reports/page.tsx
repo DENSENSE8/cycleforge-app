@@ -62,8 +62,11 @@ import { addDaysToDateKey, formatDateKeyMedium, getCurrentPSTDateKey } from '@/u
 import { useReportStaffDaySpreadsheet } from '@/components/reports/report-staff-day-grid/useReportStaffDaySpreadsheet';
 import { useReportPackerDaySpreadsheet } from '@/components/reports/report-packer-day-grid/useReportPackerDaySpreadsheet';
 import type { PackingReportRow } from '@/lib/packing/packing-report-shared';
+import { useReportTasksSpreadsheet } from '@/components/reports/report-tasks-grid/useReportTasksSpreadsheet';
+import { parseTaskDeskReportRows } from '@/lib/reports/report-tasks-feed';
+import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
-type Tab = 'staff' | 'packer' | 'utilization' | 'velocity' | 'dead';
+type Tab = 'staff' | 'packer' | 'utilization' | 'velocity' | 'dead' | 'tasks';
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'staff', label: 'Staff day' },
@@ -76,14 +79,34 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'utilization', label: 'Bin Utilization' },
   { id: 'velocity', label: 'Velocity (30d)' },
   { id: 'dead', label: 'Dead Stock (90d+)' },
+  /*
+   * Completed tasks arrived 2026-09-22 with the `work_assignments` task desk.
+   * It sits last because it is the only tab that is not about stock or a
+   * shift: it is the record one staffer's finished follow-ups leave behind.
+   */
+  { id: 'tasks', label: 'Tasks' },
 ];
 
-/** Unchanged route + limit per tab — the two day-scoped tabs read below. */
-const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer'>, string>> = {
+/** Unchanged route + limit per tab — the day-scoped and task tabs read below. */
+const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks'>, string>> = {
   utilization: '/api/reports/bin-utilization?limit=500',
   velocity: '/api/reports/velocity?limit=200',
   dead: '/api/reports/dead-stock?limit=500',
 };
+
+/**
+ * The finished half of the task desk's own lane vocabulary — `lane=done` is
+ * `taskDeskLaneStatuses('done')` (status `DONE`; a withdrawn task shows only
+ * in `lane=all`), not a filter this page invented.
+ *
+ * `assignee=all` is EXPLICIT because the route defaults to the caller, and a
+ * report that silently showed only the reader's own finished work would be a
+ * personal record wearing a manager's page. Every other tab here is org-wide —
+ * Staff day reads `scope=all`, Packer day reads every packer — and this one
+ * answers the same kind of question: what did the floor finish, and was it
+ * finished by the day it was promised for.
+ */
+const TASKS_REPORT_URL = '/api/tasks?lane=done&assignee=all&limit=200';
 
 /**
  * One fetched report page, TAGGED with the tab that asked for it.
@@ -98,7 +121,8 @@ type ReportFeed =
   | { tab: 'packer'; rows: readonly PackingReportRow[]; dateKey: string }
   | { tab: 'utilization'; rows: readonly BinUtilizationReportRow[] }
   | { tab: 'velocity'; rows: readonly VelocityReportRow[] }
-  | { tab: 'dead'; rows: readonly DeadStockReportRow[] };
+  | { tab: 'dead'; rows: readonly DeadStockReportRow[] }
+  | { tab: 'tasks'; rows: readonly TaskDeskRow[] };
 
 /** Shared empty page — a fresh `[]` per render would rebuild every row memo. */
 const NO_ROWS: readonly never[] = [];
@@ -108,7 +132,7 @@ async function fetchReportFeed(tab: Tab, dateKey: string): Promise<ReportFeed> {
   // daily-check report the phone already reads, flattened by the projection
   // both surfaces share — one truth, two presentations.
   if (tab === 'staff') {
-    const res = await fetch(`/api/daily-checks?date=${encodeURIComponent(dateKey)}`, {
+    const res = await fetch(`/api/daily-checks?date=${encodeURIComponent(dateKey)}&scope=all`, {
       cache: 'no-store',
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -133,6 +157,20 @@ async function fetchReportFeed(tab: Tab, dateKey: string): Promise<ReportFeed> {
     const body = (await res.json()) as { ok?: boolean; rows?: PackingReportRow[]; error?: string };
     if (body.ok === false) throw new Error(body.error || 'packing report failed');
     return { tab, rows: body.rows ?? [], dateKey };
+  }
+  /*
+   * Completed tasks read the task desk's OWN route, not a `/api/reports/*`
+   * sibling: `work_assignments` already publishes the lane vocabulary the desk
+   * and `/m` filter by, so a fourth report endpoint would be a second query
+   * over the same rows that could disagree with them about what "done" is.
+   * The envelope is the task list's, so it is narrowed by the task feed parser
+   * rather than by `reportRouteFailure`.
+   */
+  if (tab === 'tasks') {
+    const res = await fetch(TASKS_REPORT_URL, { cache: 'no-store' });
+    const body: unknown = await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return { tab, rows: parseTaskDeskReportRows(body) };
   }
   const res = await fetch(REPORT_URLS[tab], { cache: 'no-store' });
   const payload: unknown = await res.json();
@@ -178,6 +216,46 @@ function DeadStockReportTable({
 }) {
   const sheet = useReportDeadStockSpreadsheet({ rows, loading });
   return <DataTable {...sheet} totalCount={rows.length} />;
+}
+
+/**
+ * Completed tasks — one row per finished follow-up, EVERY staffer's.
+ *
+ * A plain mount like the three SKU families, with one footnote: the scope. No
+ * day stepper — the window is the route's `limit`, not a calendar day.
+ *
+ * The footnote is load-bearing, not decoration. This page's other tabs are
+ * obviously org-wide (a whole shift, the whole warehouse), but a task carries
+ * an assignee, and the task DESK a staffer opens elsewhere is scoped to them.
+ * A short list here would otherwise read as a filter they forgot they set, so
+ * the line says whose record it is and what the pair of dates means.
+ */
+function TasksReportTable({
+  rows,
+  loading,
+}: {
+  rows: readonly TaskDeskRow[];
+  loading: boolean;
+}) {
+  const sheet = useReportTasksSpreadsheet({ rows, loading });
+  const late = rows.filter(
+    (r) => r.deadlineAtMs !== null && r.completedAtMs !== null && r.completedAtMs > r.deadlineAtMs,
+  ).length;
+  return (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DataTable {...sheet} totalCount={rows.length} />
+      </div>
+      {rows.length > 0 ? (
+        <p className="px-3 pt-2 text-role-micro text-text-soft">
+          Every staffer&apos;s finished tasks · {rows.length}{' '}
+          {rows.length === 1 ? 'task' : 'tasks'}
+          {late > 0 ? ` · ${late} landed after the deadline` : ''}. The date column reads when
+          the task landed over the day it was promised for.
+        </p>
+      ) : null}
+    </section>
+  );
 }
 
 /**
@@ -345,6 +423,14 @@ function ReportBody({
     return (
       <VelocityReportTable
         rows={feed?.tab === 'velocity' ? feed.rows : NO_ROWS}
+        loading={loading}
+      />
+    );
+  }
+  if (tab === 'tasks') {
+    return (
+      <TasksReportTable
+        rows={feed?.tab === 'tasks' ? feed.rows : NO_ROWS}
         loading={loading}
       />
     );

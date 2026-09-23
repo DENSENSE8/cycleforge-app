@@ -227,7 +227,7 @@ describe('report-velocity row view', () => {
     assert.equal(view.id, 'BOSE-901-TW');
     assert.equal(view.title, 'Bose 901 tweeter assembly');
     assert.equal(view.titleHref, '/inventory/health/sku/BOSE-901-TW');
-    assert.equal(view.orderId, 'BOSE-901-TW');
+    assert.equal(view.identityFace?.value, 'BOSE-901-TW');
     assert.equal(view.stateLabel, 'A');
     assert.equal(view.stateTip, 'Tier A — 64 out in the last 30 days');
     assert.equal(view.tracking, null);

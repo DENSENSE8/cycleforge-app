@@ -132,10 +132,13 @@ export function printHtmlInIframe(html: string, options: IframePrintOptions = {}
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.title = options.name ?? 'Print label';
-  // Keep it in the layout (display:none can suppress printing in some engines)
-  // but visually gone and zero-footprint.
+  // Do not use `display:none` OR `visibility:hidden`: Chromium is allowed to
+  // omit either from the print tree, which turns a valid `srcdoc` paperwork
+  // document into a blank page. Park the frame off-screen instead. It remains
+  // rendered long enough for its own HTML and styles to lay out, but never
+  // occupies or flashes on the kiosk surface.
   iframe.style.cssText =
-    'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    'position:fixed;left:-10000px;bottom:0;width:1px;height:1px;border:0;pointer-events:none;';
 
   let removed = false;
   const cleanup = () => {

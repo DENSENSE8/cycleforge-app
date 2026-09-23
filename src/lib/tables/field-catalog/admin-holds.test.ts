@@ -289,7 +289,7 @@ describe('admin-holds row view', () => {
     const view = adminHoldsCompoundView(row());
     assert.equal(view.id, '4821');
     assert.equal(view.title, 'IPH13-2026-000142');
-    assert.equal(view.orderId, '4821');
+    assert.equal(view.identityFace?.value, '4821');
     assert.equal(view.stateLabel, 'TRIAGED');
     assert.equal(view.stateTone, 'alert');
     // No carrier, no marketplace, no money, no photo on a held unit.

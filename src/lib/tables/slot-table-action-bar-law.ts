@@ -102,11 +102,20 @@ export const SLOT_TABLE_ACTION_BAR_FILES = [
 ] as const;
 
 /**
- * The band host — the file that must carry {@link SLOT_TABLE_ACTION_BAR_BAND_CLASS}
- * and mount the runtime guard.
+ * The band HOSTS — the files that must carry
+ * {@link SLOT_TABLE_ACTION_BAR_BAND_CLASS} and mount the runtime guard.
+ *
+ * A LIST since 2026-09-22. It was a single const while Stock was the only
+ * strip; the task desk briefly added a second, and when Daily consolidated
+ * into one agenda whose gutter is a TICK rather than a multi-select, that
+ * strip was deleted with the desk it belonged to. The list shape stays,
+ * because the docblock above has always promised it would grow again and a
+ * second host hard-coded beside the first is how the runtime half of this law
+ * quietly stops covering half the strips it governs.
  */
-export const SLOT_TABLE_ACTION_BAR_HOST =
-  'src/components/inventory/location-stock-grid/StockActionBar.tsx' as const;
+export const SLOT_TABLE_ACTION_BAR_HOSTS = [
+  'src/components/inventory/location-stock-grid/StockActionBar.tsx',
+] as const;
 
 /**
  * Primitives whose height is fixed ABOVE the control scale, so they cannot

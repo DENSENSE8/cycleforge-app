@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * GlobalHeader sidebar toggle — the ONE door onto the MasterNav spine while
- * the spine is closed. Open, {@link SpineNavChrome} paints the same glyph at
- * the same screen corner.
+ * Sidebar toggle. Closed: GlobalHeader. Open: SpineNavChrome.
+ * Same `HEADER_ICON_WRAP` + `HEADER_ICON_BTN_CLASS` in both mounts.
  */
 
 import { useCallback } from 'react';
@@ -12,11 +11,9 @@ import { IconButton } from '@/design-system/primitives';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 import {
   HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
-import { cn } from '@/utils/_cn';
 
 const SidebarGlyph = (
   <svg
@@ -58,19 +55,23 @@ export function SidebarCollapseControl({
   return (
     <div
       className={HEADER_ICON_WRAP}
-      data-testid="sidebar-collapse-control"
+      data-testid={navOpen ? undefined : 'sidebar-collapse-control'}
       onMouseLeave={onMouseLeave}
     >
       <HoverTooltip label={label} asChild disabled={peeking}>
         <IconButton
           size="md"
+          data-spine-nav-toggle={navOpen ? true : undefined}
           onClick={onToggleNav}
+          onPointerUp={(event) => {
+            if (event.pointerType === 'mouse') event.currentTarget.blur();
+          }}
           onPointerEnter={onPointerEnter}
           onFocus={onFocus}
           ariaLabel={label}
           aria-pressed={navOpen}
           aria-expanded={navOpen || peeking}
-          className={cn(HEADER_ICON_BTN_CLASS, (navOpen || peeking) && HEADER_ICON_BTN_OPEN_CLASS)}
+          className={HEADER_ICON_BTN_CLASS}
           icon={SidebarGlyph}
         />
       </HoverTooltip>

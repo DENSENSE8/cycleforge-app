@@ -2,6 +2,7 @@ import pool from '../db';
 import { formatPSTTimestamp, normalizePSTTimestamp } from '@/utils/date';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { resolveProviderCustomerId } from './customer-queries';
 
 export interface RepairStatusHistoryEntry {
   status: string;
@@ -815,12 +816,56 @@ function buildEcwidRepairNotes(params: {
   return `${prefix}\n\n${existing}`;
 }
 
+/**
+ * Attach the provider contact to a `customers` row and stamp it on the ticket.
+ *
+ * Only ever fills a NULL `customer_id`: a repair whose customer an operator has
+ * already corrected by hand must not be re-pointed by the next sync pass.
+ *
+ * Advisory — a failed link must never fail the SYNC. The repair row is the
+ * thing the shop needs; a missing customer link is recoverable on the next run,
+ * a thrown sync is not.
+ */
+async function attachRepairCustomer(
+  repairId: number,
+  contact: EcwidRepairContact | undefined,
+  orgId?: OrgId,
+): Promise<void> {
+  if (!orgId || !contact) return;
+  try {
+    const customerId = await resolveProviderCustomerId(orgId, contact);
+    if (customerId == null) return;
+    await tenantQuery(
+      orgId,
+      `UPDATE repair_service
+          SET customer_id = $1, updated_at = NOW()
+        WHERE id = $2 AND organization_id = $3 AND customer_id IS NULL`,
+      [customerId, repairId, orgId],
+    );
+  } catch (error) {
+    console.warn(`Could not attach a customer to repair ${repairId}:`, error);
+  }
+}
+
+/** The buyer as the provider payload carries them, before any parsing. */
+export interface EcwidRepairContact {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+}
+
 export async function upsertEcwidIncomingRepair(params: {
   orderId: string | null;
   trackingNumber: string | null;
   sku: string | null;
   productTitle: string | null;
   contactInfo: string | null;
+  /**
+   * The buyer in PARTS. `contactInfo` is the joined string the paper falls back
+   * to; this is what actually links the ticket to the `customers` table, which
+   * is where the receipt reads the name from.
+   */
+  contact?: EcwidRepairContact;
   orderDate?: string | null;
   notes?: string | null;
 }, orgId?: OrgId): Promise<RSRecord> {
@@ -941,11 +986,12 @@ export async function upsertEcwidIncomingRepair(params: {
           updateValues
         );
       }
+      await attachRepairCustomer(repairId, params.contact, orgId);
       const record = await getRepairById(repairId, orgId);
       return record!;
     }
 
-    return createRepair({
+    const created = await createRepair({
       createdAt: params.orderDate ?? undefined,
       ticketNumber: null,
       contactInfo: params.contactInfo || '',
@@ -964,6 +1010,8 @@ export async function upsertEcwidIncomingRepair(params: {
       receivedAt: null,
       intakeConfirmedAt: null,
     }, orgId);
+    await attachRepairCustomer(created.id, params.contact, orgId);
+    return (await getRepairById(created.id, orgId)) ?? created;
   } catch (error) {
     console.error('Error upserting Ecwid incoming repair:', error);
     throw new Error('Failed to upsert incoming repair');

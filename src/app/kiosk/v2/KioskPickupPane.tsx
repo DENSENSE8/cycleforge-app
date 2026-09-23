@@ -132,7 +132,11 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
             </span>
             <div className="space-y-1">
               <h2 className="text-2xl font-semibold tracking-tight">Ready to hand over</h2>
-              <p className="font-semibold text-text-soft">
+              {/* Title is either ONE product or a summary of several dropped-off
+                  devices; clamp so the hero cannot push the CTA off a tablet. No
+                  `truncate` — `whitespace-nowrap` cancels the clamp
+                  (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+              <p className="font-semibold text-text-soft line-clamp-2 break-words text-pretty">
                 {summary.productTitle?.trim() || `RS-${summary.repairId}`} is marked collected.
               </p>
             </div>
@@ -217,7 +221,7 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
           <h3 className={KIOSK_SECTION_LABEL_ROW}>Order ready</h3>
           <div className="space-y-3 px-4 py-4">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="font-semibold">
+              <span className="font-semibold line-clamp-2 break-words text-pretty">
                 {summary.productTitle?.trim() || 'Repair order'}
               </span>
               <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">

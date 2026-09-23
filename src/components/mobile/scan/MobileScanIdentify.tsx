@@ -35,6 +35,7 @@ import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat }
 import { landScanIdentify } from '@/lib/scan/identify-land';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
 import { cn } from '@/utils/_cn';
+import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
 import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileArrivalClassifyFlow';
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
 import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHistory';
@@ -145,6 +146,17 @@ function MobileScanIdentifyInner() {
   const onSettled = useCallback(
     (settled: SettledArrival) => {
       setTape((prev) => pushStationTape(prev, arrivalTapeEntry(settled)));
+      recordMobileSessionEntry({
+        id: `unbox-${settled.seq}`,
+        job: 'unbox',
+        title: settled.title,
+        identifier: settled.tracking ?? settled.scanned,
+        entityId: settled.receivingId == null ? null : String(settled.receivingId),
+        state: settled.status === 'arrived' || settled.status === 'known' ? 'done' : settled.status === 'refused' ? 'miss' : 'error',
+        href: settled.receivingId == null ? '/m/scan' : `/m/r/${settled.receivingId}`,
+        at: new Date().toISOString(),
+        dedupeKey: settled.receivingId == null ? null : `unbox:${settled.receivingId}`,
+      });
       if (settled.status === 'arrived') setArrived((n) => n + 1);
       const kind = settled.status === 'arrived' ? 'success' : 'reject';
       playScanFeedback(kind);
@@ -162,6 +174,17 @@ function MobileScanIdentifyInner() {
 
   const applyLocationTape = useCallback((entry: StationTapeEntry) => {
     setTape((prev) => pushStationTape(prev, entry));
+    recordMobileSessionEntry({
+      id: entry.id,
+      job: 'display',
+      title: entry.title,
+      identifier: entry.identifier,
+      entityId: null,
+      state: entry.tone === 'ok' ? 'done' : entry.tone === 'warn' ? 'blocked' : 'error',
+      href: '/m/scan',
+      at: entry.at,
+      dedupeKey: entry.dedupeKey ? `display:${entry.dedupeKey}` : null,
+    });
   }, []);
 
   const onBindChanged = useCallback(

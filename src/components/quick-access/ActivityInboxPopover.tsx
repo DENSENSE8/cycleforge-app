@@ -12,6 +12,7 @@
 
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Copy,
   Check,
@@ -25,6 +26,12 @@ import { copyToClipboard } from '@/utils/_dom';
 // a second href map is the drift the notification waist exists to prevent.
 import { notificationHref } from '@/lib/notifications/notification-href';
 import {
+  INBOX_ENTITY_NOUN,
+  isNotifiableEntityType,
+  type InboxEntityType,
+} from '@/lib/notifications/event-vocabulary';
+import type { InboxFeedDto, InboxItemDto } from '@/lib/notifications/types';
+import {
   useActivityInbox,
   type ActivityInboxItem,
   type ActivityInboxItemKind,
@@ -37,9 +44,11 @@ import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { TrackingChip, OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { Button, IconButton } from '@/design-system/primitives';
+import { SubscribeToggle } from '@/components/notifications/SubscribeToggle';
 import { cn } from '@/utils/_cn';
 import { InboxQueueLinks } from './InboxQueueLinks';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
+import { InboxTrackingWatchRow } from './InboxTrackingWatchRow';
 
 interface ActivityInboxPopoverProps {
   onClose: () => void;
@@ -172,10 +181,161 @@ function metaFactFor(
   return it.subtitle?.trim() || KIND_LABEL[it.kind];
 }
 
+/**
+ * The durable notification ledger (`staff_inbox_items` via `GET /api/inbox`).
+ *
+ * Deliberately NOT an {@link ActivityInboxItem} kind: those are session-scoped
+ * (undo TTL, `clear()` wipes them), while these rows outlive the tab and are
+ * triaged on the server. Same compact activity face, separate source.
+ */
+const DURABLE_INBOX_QUERY_KEY = ['api-inbox'] as const;
+
+/**
+ * The hue the receiving workflow already paints on ARRIVED / "Scanned"
+ * (`src/lib/receiving/workflow-stages.ts`) — a watched carton landing reads as
+ * the same moment here as it does on the carton itself.
+ */
+const DURABLE_DOT_CLASS = 'bg-sky-500';
+const DURABLE_SECTION_LABEL = 'Watching';
+
+async function fetchDurableInbox(): Promise<InboxItemDto[]> {
+  // 404 is the org running with the Home Inbox flag off — a silent empty
+  // section, never an error: this panel works without it.
+  const res = await fetch('/api/inbox?filter=unread', { cache: 'no-store' });
+  if (!res.ok) return [];
+  const feed = (await res.json()) as InboxFeedDto;
+  return feed.items ?? [];
+}
+
+function DurableInboxRow({
+  item,
+  onDismiss,
+  onNavigate,
+}: {
+  item: InboxItemDto;
+  onDismiss: (id: number) => void;
+  onNavigate: () => void;
+}) {
+  // Server-resolved throughout: the label, the deep link and the tracking
+  // number all ride on the DTO, so this face never re-derives a route or
+  // re-words an event.
+  const occurredMs = new Date(item.lastEventAt || item.occurredAt).getTime();
+  return (
+    <li className="group relative px-2 py-1 hover:bg-surface-hover">
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        aria-label={`${DURABLE_SECTION_LABEL}: ${item.eventLabel}`}
+        className="absolute inset-0 z-0"
+      />
+      <div className="pointer-events-none relative z-10">
+        <CompactActivityRow
+          leading={
+            <HoverTooltip label={DURABLE_SECTION_LABEL} focusable={false} asChild>
+              <span
+                className={cn('block h-2 w-2 shrink-0 rounded-full', DURABLE_DOT_CLASS)}
+                aria-label={DURABLE_SECTION_LABEL}
+              />
+            </HoverTooltip>
+          }
+          activityAt={Number.isFinite(occurredMs) ? occurredMs : Date.now()}
+          actions={
+            <>
+              {/*
+                The bell's own docblock says it is "mounted on the HOME INBOX
+                ROW only" — and until this row existed there WAS no home inbox
+                row, so the control sat written and unreachable. `knownState`
+                comes off the DTO the feed already resolved, so following or
+                muting a carton from here costs no extra request.
+
+                GATED on the notifiable vocabulary, because `entity_type` on an
+                inbox row is free text as far as this face knows:
+                `toggleEntitySubscription` answers `invalid_entity` for anything
+                outside that set, so an ungated bell would be a control that
+                errors on click.
+              */}
+              {isNotifiableEntityType(item.entityType) ? (
+                <span className="pointer-events-auto">
+                  <SubscribeToggle
+                    entityType={item.entityType}
+                    entityId={item.entityId}
+                    knownState={item.subscriptionState ?? undefined}
+                  />
+                </span>
+              ) : null}
+              <HoverTooltip label="Dismiss" asChild>
+                <IconButton
+                  ariaLabel="Dismiss"
+                  onClick={() => onDismiss(item.id)}
+                  className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded-none text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                  icon={<X className="h-3.5 w-3.5" />}
+                />
+              </HoverTooltip>
+            </>
+          }
+        >
+          <RailRowBody
+            vm={{
+              title: item.eventLabel,
+              titleAttr: item.eventLabel,
+              meta: (
+                <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
+                  {item.trackingNumber ? (
+                    // The tracking number IS the content of a watched arrival —
+                    // same chip + last-8 grammar as the rows above.
+                    <TrackingChip
+                      value={item.trackingNumber}
+                      display={getLast8(item.trackingNumber)}
+                      dense
+                    />
+                  ) : (
+                    // ONE noun map, and the number the operator quotes — a
+                    // durable row reading "support ticket 461" beside a desk
+                    // row reading "Ticket 10023" is the same handoff twice.
+                    `${INBOX_ENTITY_NOUN[item.entityType as InboxEntityType] ?? 'Record'} ${
+                      item.ticketNumber ?? item.entityId
+                    }`
+                  )}
+                </span>
+              ),
+            }}
+          />
+        </CompactActivityRow>
+      </div>
+    </li>
+  );
+}
+
 export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
   const { items, dismissItem, clear, undoItem, pendingUndoId } = useActivityInbox();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const resolvePlatformMeta = usePlatformMeta();
+  const queryClient = useQueryClient();
+  // The panel is unmounted while the bell is closed, so this fetch happens on
+  // open. The Ably `inbox_item` arm in ActivityInboxContext invalidates this
+  // same key, which is what makes a watched carton land without a reopen.
+  const { data: durableItems = [] } = useQuery({
+    queryKey: DURABLE_INBOX_QUERY_KEY,
+    queryFn: fetchDurableInbox,
+    staleTime: 15_000,
+  });
+
+  const dismissDurableItem = async (id: number) => {
+    // Optimistic, like the staff-message dismissal: the row leaves the panel
+    // now, and the PATCH is what keeps it gone on the next read.
+    queryClient.setQueryData<InboxItemDto[]>(DURABLE_INBOX_QUERY_KEY, (prev) =>
+      (prev ?? []).filter((x) => x.id !== id),
+    );
+    try {
+      await fetch(`/api/inbox/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'read' }),
+      });
+    } finally {
+      void queryClient.invalidateQueries({ queryKey: DURABLE_INBOX_QUERY_KEY });
+    }
+  };
 
   const handleCopyBack = async (body: string, id: string) => {
     const ok = await copyToClipboard(body);
@@ -192,6 +352,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       onClose={onClose}
       widthClass="w-[380px]"
       bodyClassName="px-0 py-0"
+      toolbar={<InboxTrackingWatchRow />}
       headerActions={
         items.length > 0 ? (
           <Button
@@ -220,7 +381,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           today going" instead of two clicks into the notification channel. */}
       <InboxQueueLinks onNavigate={onClose} />
 
-      {items.length === 0 ? (
+      {items.length === 0 && durableItems.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
           <Inbox className="h-5 w-5 text-text-faint" />
           {/* Scoped to the FEED, not to the day. "All caught up" sat directly
@@ -232,6 +393,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
           </p>
         </div>
       ) : (
+        <>
         <ul className="divide-y divide-border-hairline">
           {items.map((it) => {
             const href = hrefFor(it);
@@ -366,6 +528,27 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
             );
           })}
         </ul>
+        {durableItems.length > 0 ? (
+          // BELOW the session feed: "what just happened to me" stays on top,
+          // and the durable ledger — rows the server keeps until they are
+          // triaged — reads as its own standing section.
+          <section aria-label={DURABLE_SECTION_LABEL} className="border-t border-border-hairline">
+            <p className="px-3 pb-0.5 pt-2 text-role-eyebrow font-semibold uppercase tracking-widest leading-none text-text-faint">
+              {DURABLE_SECTION_LABEL}
+            </p>
+            <ul className="divide-y divide-border-hairline">
+              {durableItems.map((dto) => (
+                <DurableInboxRow
+                  key={dto.id}
+                  item={dto}
+                  onDismiss={(id) => void dismissDurableItem(id)}
+                  onNavigate={onClose}
+                />
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        </>
       )}
     </QuickAccessPanelShell>
   );

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { projectReceivingTriageMemberships } from '@/lib/receiving/feed-membership-projection';
@@ -23,9 +23,7 @@ const JOB = 'feed_memberships.projection';
  * `?windowDays=` overrides the arrival window (default 90, clamped 1–365).
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   const windowParam = Number(request.nextUrl.searchParams.get('windowDays'));
   const windowDays = Number.isFinite(windowParam) && windowParam > 0 ? windowParam : 90;
 

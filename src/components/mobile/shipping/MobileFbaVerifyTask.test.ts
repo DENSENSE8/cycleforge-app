@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict'; import { readFileSync } from 'node:fs'; import test from 'node:test';
+test('mobile FBA verification advances planned and tested lines through canonical writes', () => { const source = readFileSync('src/components/mobile/shipping/MobileFbaVerifyTask.tsx', 'utf8'); assert.match(source, /\/api\/fba\/items\/ready/); assert.match(source, /\/api\/fba\/items\/verify/); assert.match(source, /line.status === 'PLANNED'/); assert.match(source, /radius="flush"/); assert.doesNotMatch(source, /<TextField|<motion\.|whileTap/); });

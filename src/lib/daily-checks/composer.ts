@@ -11,12 +11,13 @@
  * shell before hydration.
  */
 
-import type { DailyCheckLinkInput, DailyCheckItemKind } from './types';
+import type { DailyCheckCreateInput, DailyCheckLinkInput, DailyCheckItemKind } from './types';
 
 /** The field order, shared. Progressive: only the subject field is required. */
 export const DAILY_COMPOSER_FIELD_ORDER = [
   'subject',
   'title',
+  'description',
   'cadence',
   'owner',
   'links',
@@ -112,6 +113,8 @@ export interface DailyComposerDraft {
    * ticket number HERE (one field, one focus) and the title derives on submit.
    */
   title: string;
+  /** Optional context for the item itself; a mark carries no daily note. */
+  description: string;
   /** The emoji character itself, or null. v1 never sets one. */
   glyph: string | null;
   kind: DailyCheckItemKind;
@@ -128,6 +131,7 @@ export function newDailyComposerDraft(): DailyComposerDraft {
   return {
     subject: 'task',
     title: '',
+    description: '',
     glyph: null,
     kind: 'recurring',
     ownerId: null,
@@ -221,15 +225,17 @@ export function applyTicketFastPath(draft: DailyComposerDraft): DailyComposerDra
   };
 }
 
-/** The POST /api/daily-checks/items body. Owner is stripped off recurring. */
+/** Normalize the transport body shared by the phone and desk composers. */
 export function dailyComposerCreateBody(
   rawDraft: DailyComposerDraft,
-): { title: string; kind: DailyCheckItemKind; assignedStaffId?: number | null; glyph?: string | null } {
+): DailyCheckCreateInput {
   const draft = applyTicketFastPath(rawDraft);
+  const description = draft.description.trim();
   return {
     title: draft.title.trim(),
+    description: description || null,
     kind: draft.kind,
-    assignedStaffId: draft.kind === 'once' ? draft.ownerId : null,
+    ...(draft.kind === 'once' ? { assignedStaffId: draft.ownerId } : {}),
     glyph: draft.glyph,
   };
 }
@@ -249,6 +255,10 @@ export function dailyComposerError(rawDraft: DailyComposerDraft): string | null 
     if (parseTicketFastPath(typed) == null) return 'That is not a ticket number';
   } else if (!draft.title.trim()) {
     return 'A title is required';
+  }
+
+  if (draft.description.length > 2000) {
+    return 'The description must be 2000 characters or fewer';
   }
 
   if (draft.glyph != null && (draft.glyph.length === 0 || draft.glyph.length > DAILY_GLYPH_MAX_CHARS)) {

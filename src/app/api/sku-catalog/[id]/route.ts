@@ -3,6 +3,7 @@ import {
   getSkuCatalogById,
   getSkuCatalogDetail,
   setSkuCatalogGtin,
+  setSkuCatalogHandlingFacts,
   softDeleteSkuCatalog,
   upsertSkuCatalog,
 } from '@/lib/neon/sku-catalog-queries';
@@ -117,7 +118,7 @@ export async function PATCH(
       }
     }
 
-    const updated = await upsertSkuCatalog({
+    let updated = await upsertSkuCatalog({
       sku: before.sku,
       productTitle: parsed.productTitle ?? before.product_title,
       category: parsed.category !== undefined ? parsed.category : before.category,
@@ -132,6 +133,12 @@ export async function PATCH(
       replenishTargetCents: parsed.replenishTargetCents !== undefined ? parsed.replenishTargetCents : before.replenish_target_cents,
       notes: parsed.packNotes !== undefined ? parsed.packNotes : before.notes,
     }, gate.ctx.organizationId);
+
+    if (parsed.handlingFacts !== undefined) {
+      const handlingUpdated = await setSkuCatalogHandlingFacts(id, parsed.handlingFacts, gate.ctx.organizationId);
+      if (!handlingUpdated) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+      updated = handlingUpdated;
+    }
 
     // Optional polymorphic packing KPI override linked to this SKU.
     // If both fields are explicitly null/empty, the helper deletes the link.

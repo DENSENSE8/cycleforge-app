@@ -1,35 +1,40 @@
 /**
- * Tasks catalog guards + resolver behaviour — wave 1.3's fourth family, and
- * Daily's sibling. The guard that matters most here is the one pinning that
- * they are two vocabularies: `staff_todos` is a staffer's own list,
- * `daily_check_items` is the org's shift checklist with a roster behind it.
+ * Tasks catalog guards + resolver behaviour — the `work_assignments` family.
+ *
+ * The guard that matters most here is the one pinning that Tasks and Daily are
+ * two vocabularies: `work_assignments` is work handed from one person to
+ * another with a deadline, `daily_check_items` is the org's shift checklist
+ * with a roster behind every row and a per-day mark. They look alike and are
+ * not the same question (R-A, 2026-09-22).
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import type { StaffTaskRow } from '@/features/tasks/grid/staff-task-row';
-import {
-  TASKS_COMPOUND_COLUMNS,
-  tasksCompoundColumnsFor,
-} from '@/lib/staff-todos/tasks-grid-layout';
+import { slotTableColumnsFor } from '@/components/tables/compound/slot-table-columns';
+import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
+import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 import { DAILY_FIELD_CATALOG } from './daily';
-import { TASKS_FIELD_CATALOG, TASKS_PRODUCT_LAYOUT } from './tasks';
+import { TASKS_FAMILY, TASKS_FIELD_CATALOG, TASKS_PRODUCT_LAYOUT } from './tasks';
 import { resolveTasksSlotValue, tasksSlotValuesFor } from './tasks-resolve';
 import { parseSlotLayout } from '../slot-layout';
 
-function row(overrides: Partial<StaffTaskRow> = {}): StaffTaskRow {
+function row(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
   return {
     id: 19,
-    text: 'Reconcile the returns shelf',
-    kind: 'recurring',
-    station: 'PACK',
-    done: false,
-    archived: false,
-    resetsAtMs: Date.parse('2026-09-01T00:00:00.000Z'),
-    intervalMs: 86_400_000,
-    checkedAtMs: Date.parse('2026-08-30T17:20:00.000Z'),
-    sortOrder: 3,
+    entityType: 'receiving',
+    entityId: 4412,
+    note: 'Reconcile the returns shelf',
+    status: 'OPEN',
+    priority: 100,
+    urgency: 'normal',
+    assignee: { id: 7, name: 'Dana Reyes' },
+    assignedBy: { id: 3, name: 'Sam Okafor' },
+    assignedAtMs: Date.parse('2026-09-01T17:00:00.000Z'),
+    startedAtMs: null,
+    deadlineAtMs: Date.parse('2026-09-05T17:00:00.000Z'),
+    completedAtMs: null,
+    ticket: null,
     ...overrides,
   };
 }
@@ -52,6 +57,17 @@ describe('tasks catalog', () => {
     }
   });
 
+  it('a person is never bindable into IDENTITY — the identity-purity law', () => {
+    for (const id of ['tasks.assignee', 'tasks.assignedBy']) {
+      const field = TASKS_FIELD_CATALOG.find((f) => f.id === id);
+      assert.ok(field, `${id} missing`);
+      assert.ok(
+        !field.slotKinds.includes('identity'),
+        `${id} may not occupy column one — it carries a person's name`,
+      );
+    }
+  });
+
   it('product default parses against the catalog — compound morph, NOTHING bound', () => {
     const parsed = parseSlotLayout(TASKS_PRODUCT_LAYOUT, TASKS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
@@ -65,27 +81,33 @@ describe('tasks catalog', () => {
     assert.ok(!ids.includes('tasks.overdue'));
     assert.ok(!ids.includes('tasks.late'));
   });
+
+  it('every chrome binding names a real catalog field', () => {
+    for (const [key, binding] of Object.entries(TASKS_FAMILY.chrome ?? {})) {
+      const fieldId = (binding as { field?: string }).field;
+      if (!fieldId) continue;
+      assert.ok(
+        TASKS_FIELD_CATALOG.some((f) => f.id === fieldId),
+        `chrome.${key} binds ${fieldId}, which the catalog does not declare`,
+      );
+    }
+  });
 });
 
-describe('tasksCompoundColumnsFor — the compound materialization', () => {
+describe('the engine materialization', () => {
   it('the product default IS the shared compound skeleton, in order', () => {
     assert.deepEqual(
       TASKS_COMPOUND_COLUMNS.map((c) => c.key),
       [...COMPOUND_COLUMN_KEYS],
     );
-    assert.ok(TASKS_COMPOUND_COLUMNS.every((c) => c.fieldId === undefined));
   });
 
-  it('binding Station opens the track the retired flat model spent a column on', () => {
-    const columns = tasksCompoundColumnsFor({
+  it('binding Assignee opens a status track after the state pill', () => {
+    const columns = slotTableColumnsFor(TASKS_FAMILY, {
       ...TASKS_PRODUCT_LAYOUT,
-      statusBindings: [{ fieldId: 'tasks.station' }, { fieldId: 'tasks.resets' }],
+      statusBindings: [{ fieldId: 'tasks.assignee' }, { fieldId: 'tasks.deadline' }],
     });
     const keys = columns.map((c) => c.key);
-    // `COMPOUND_COLUMN_KEYS` is the SoT for the surrounding order. This used to
-    // hand-list every track, which forked the skeleton and went stale the moment
-    // `amount`/`actions` left it — so it pins only what this test is about: the
-    // status band opening straight after the state pill.
     assert.deepEqual(
       keys.filter((k) => !k.startsWith('status:')),
       [...COMPOUND_COLUMN_KEYS],
@@ -100,34 +122,58 @@ describe('resolveTasksSlotValue', () => {
   it('resolves each catalog field off the view-model row', () => {
     const r = row();
     assert.deepEqual(resolveTasksSlotValue(r, 'tasks.task'), { kind: 'value', text: '#19' });
-    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.kind'), { kind: 'value', text: 'Recurring' });
-    assert.equal(resolveTasksSlotValue(r, 'tasks.status')?.kind, 'value');
-    assert.ok((resolveTasksSlotValue(r, 'tasks.station') as { text: string | null }).text);
-    assert.ok((resolveTasksSlotValue(r, 'tasks.resets') as { text: string | null }).text);
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.status'), { kind: 'value', text: 'Open' });
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.priority'), { kind: 'value', text: 'Normal' });
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.assignee'), {
+      kind: 'value',
+      text: 'Dana Reyes',
+    });
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.record'), {
+      kind: 'value',
+      text: 'Carton 4412',
+    });
+    assert.ok((resolveTasksSlotValue(r, 'tasks.deadline') as { text: string | null }).text);
   });
 
-  it('a general task has no cycle to reset — a dash, not an invented date', () => {
+  it('urgency reads off the stored int, through one threshold', () => {
+    assert.deepEqual(resolveTasksSlotValue(row({ urgency: 'urgent', priority: 10 }), 'tasks.priority'), {
+      kind: 'value',
+      text: 'Urgent',
+    });
+  });
+
+  it('an unbackfilled assigner is a dash, never the reader', () => {
+    assert.deepEqual(resolveTasksSlotValue(row({ assignedBy: null }), 'tasks.assignedBy'), {
+      kind: 'value',
+      text: null,
+    });
+  });
+
+  it('a task about an order has no ticket — a dash, not its record handle', () => {
     assert.deepEqual(
-      resolveTasksSlotValue(row({ kind: 'general', resetsAtMs: null }), 'tasks.resets'),
+      resolveTasksSlotValue(row({ entityType: 'order', entityId: 8101 }), 'tasks.ticket'),
       { kind: 'value', text: null },
     );
-    assert.deepEqual(resolveTasksSlotValue(row({ kind: 'general' }), 'tasks.kind'), {
-      kind: 'value',
-      text: 'General',
-    });
+    assert.deepEqual(
+      resolveTasksSlotValue(row({ entityType: 'order', entityId: 8101 }), 'tasks.record'),
+      { kind: 'value', text: 'Order 8101' },
+    );
   });
 
-  it('an archived row reads Deleted, not Open — history that reads open is a lie', () => {
-    assert.deepEqual(resolveTasksSlotValue(row({ archived: true }), 'tasks.status'), {
-      kind: 'value',
-      text: 'Deleted',
+  it('a ticket with no cached subject falls back to its handle, never blank', () => {
+    const r = row({
+      entityType: 'support_ticket',
+      entityId: 77,
+      ticket: { id: 77, provider: 'zendesk', subject: null, status: 'open', externalId: '9001' },
     });
+    assert.deepEqual(resolveTasksSlotValue(r, 'tasks.ticket'), { kind: 'value', text: '#77' });
   });
 
-  it('honest absence: no station and no check-off resolve to null', () => {
-    const bare = row({ station: '', checkedAtMs: null });
-    assert.deepEqual(resolveTasksSlotValue(bare, 'tasks.station'), { kind: 'value', text: null });
-    assert.deepEqual(resolveTasksSlotValue(bare, 'tasks.checked'), { kind: 'value', text: null });
+  it('a task nobody has started or finished resolves those dates to null', () => {
+    const bare = row({ startedAtMs: null, completedAtMs: null, deadlineAtMs: null });
+    assert.deepEqual(resolveTasksSlotValue(bare, 'tasks.start'), { kind: 'value', text: null });
+    assert.deepEqual(resolveTasksSlotValue(bare, 'tasks.completed'), { kind: 'value', text: null });
+    assert.deepEqual(resolveTasksSlotValue(bare, 'tasks.deadline'), { kind: 'value', text: null });
   });
 
   it('unknown field id resolves null, never throws', () => {
@@ -137,16 +183,21 @@ describe('resolveTasksSlotValue', () => {
 
 describe('tasksSlotValuesFor', () => {
   it('keys resolved values by TRACK key', () => {
-    const columns = tasksCompoundColumnsFor({
+    const columns = slotTableColumnsFor(TASKS_FAMILY, {
       ...TASKS_PRODUCT_LAYOUT,
-      statusBindings: [{ fieldId: 'tasks.kind' }],
+      statusBindings: [{ fieldId: 'tasks.priority' }],
     });
     assert.deepEqual(tasksSlotValuesFor(row(), columns), {
-      'status:1': { kind: 'value', text: 'Recurring' },
+      // The identity chrome track binds `tasks.task` through the family
+      // record, so it resolves on every mount — that IS the `Id` column.
+      fulfillment: { kind: 'value', text: '#19' },
+      'status:1': { kind: 'value', text: 'Normal' },
     });
   });
 
-  it('the product default resolves no slots at all', () => {
-    assert.equal(tasksSlotValuesFor(row(), TASKS_COMPOUND_COLUMNS), undefined);
+  it('the product default resolves the identity track and nothing else', () => {
+    assert.deepEqual(tasksSlotValuesFor(row(), TASKS_COMPOUND_COLUMNS), {
+      fulfillment: { kind: 'value', text: '#19' },
+    });
   });
 });

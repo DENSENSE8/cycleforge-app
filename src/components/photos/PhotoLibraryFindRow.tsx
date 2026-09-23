@@ -21,7 +21,7 @@ import { DATA_TABLE_TOOLBAR_CORNER, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER,
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { FilterMenu } from '@/components/ui/FilterMenu';
 import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
-import type { StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import type { MediaViewPayload } from '@/hooks/useMediaLibrarySavedViews';
 import {
   PHOTO_SEARCH_FIELDS,

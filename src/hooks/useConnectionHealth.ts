@@ -11,7 +11,7 @@
  * that says "online" while the station's realtime link is dead is worse than a
  * bench that says nothing.
  *
- * Visible chrome today: Operations TV wall pill + mobile `NetworkChip`. The
+ * Realtime is infrastructure, not an operator-facing connection badge. The
  * **answer** still must not fork per surface.
  *
  * Decision law lives in `@/lib/realtime/connection-health` (pure, unit-tested);

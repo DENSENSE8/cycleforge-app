@@ -6,10 +6,10 @@ import { framerPresence, framerTransition } from '@/design-system/foundations/mo
 import { MOBILE_GUTTER, MOBILE_GUTTER_X } from '@/components/mobile/redesign/DesignSystem';
 
 /**
- * Shared chrome for a {@link CaptureStack} row — the collapsed one-line pill vs.
- * the bottom-pinned expanded card, the tap overlay, and the one-shot "fresh
- * arrival" ring pulse. Domain rows render only their *content* as children; the
- * card owns the layout, borders, and animation.
+ * Shared chrome for a {@link CaptureStack} row — the collapsed one-line record
+ * vs. the bottom-pinned expanded record, the tap overlay, and the one-shot
+ * "fresh arrival" ring pulse. Domain rows render only their *content* as
+ * children; this primitive owns the flat row boundary and animation.
  *
  * Promoted verbatim from `components/mobile/feed/MobileRowCard` in
  * capture-stack Phase 1 (itself extracted from the byte-identical wrappers in
@@ -46,8 +46,8 @@ export function CaptureStackRow({
       {...dataProps}
       className={`relative max-w-full overflow-x-hidden transition-all ${
         isExpanded
-          ? `${MOBILE_GUTTER_X} mb-3 mt-2 rounded-2xl border border-blue-100 bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]`
-          : `flex w-full max-w-full flex-col border-b border-border-hairline bg-surface-card ${MOBILE_GUTTER} py-3 transition-colors active:bg-blue-50`
+          ? `${MOBILE_GUTTER_X} mb-3 mt-2 border border-border-emphasis bg-surface-card p-4`
+          : `flex w-full max-w-full flex-col border-b border-border-hairline bg-surface-card ${MOBILE_GUTTER} py-3 transition-colors active:bg-surface-sunken`
       }`}
     >
       {/* Tap target for the row sheet / action. ds-raw-button: full-bleed row tap target, not a Button shape */}
@@ -55,7 +55,7 @@ export function CaptureStackRow({
         <button
           type="button"
           onClick={onTap}
-          className="ds-raw-button absolute inset-0 z-0 h-full w-full active:bg-blue-50/30"
+          className="ds-raw-button absolute inset-0 z-0 h-full w-full active:bg-surface-sunken/70"
           aria-label="Open"
         />
       )}
@@ -70,7 +70,7 @@ export function CaptureStackRow({
           initial={framerPresence.captureStackFreshPulse.initial}
           animate={framerPresence.captureStackFreshPulse.animate}
           transition={framerTransition.captureStackFreshPulse}
-          className="pointer-events-none absolute inset-0 z-0 rounded-2xl ring-2 ring-blue-400/70"
+          className="pointer-events-none absolute inset-0 z-0 rounded-none ring-2 ring-border-accent/70"
         />
       )}
 

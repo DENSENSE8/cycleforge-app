@@ -44,7 +44,7 @@ export function OperationsChecksView() {
     [dateKey, router, searchParams, todayKey],
   );
 
-  const { data, isLoading, isError } = useDailyChecks(dateKey);
+  const { data, isLoading, isError } = useDailyChecks(dateKey, 'all');
 
   return (
     <MonitorPageShell>

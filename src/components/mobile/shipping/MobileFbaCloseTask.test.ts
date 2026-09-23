@@ -1,0 +1,2 @@
+import assert from 'node:assert/strict'; import { readFileSync } from 'node:fs'; import test from 'node:test';
+test('mobile FBA close keeps explicit confirmation and the canonical non-force close write', () => { const source = readFileSync('src/components/mobile/shipping/MobileFbaCloseTask.tsx', 'utf8'); assert.match(source, /\/api\/fba\/shipments\/close/); assert.match(source, /force: false/); assert.match(source, /I confirm this shipment has left the facility/); assert.match(source, /radius="flush"/); assert.doesNotMatch(source, /force: true|<motion\.|whileTap/); });

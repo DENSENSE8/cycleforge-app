@@ -242,7 +242,7 @@ describe('admin-returns resolver', () => {
 describe('admin-returns row view', () => {
   it('paints unit over return tracking, and the SKU as the linked title', () => {
     const view = adminReturnsCompoundView(row());
-    assert.equal(view.orderId, '31846');
+    assert.equal(view.identityFace?.value, '31846');
     assert.equal(view.tracking, '1Z999AA10123456784');
     assert.equal(view.title, '00106-BK');
     assert.equal(view.titleHref, '/inventory/health/sku/00106-BK');

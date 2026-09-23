@@ -154,11 +154,12 @@ export type GatedLaneId = DomainGroupId | 'monitor' | 'studio';
 export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStatus>> = {
   // Kept by name (operator 2026-09-14) — in daily desktop use, port next.
   inbound: 'desk-only',
-  fulfillment: 'desk-only',
+  fulfillment: 'ported',
   inventory: 'desk-only',
   catalog: 'desk-only',
-  // Hidden by name (operator 2026-09-14): not ported, not in the keep list.
-  sales: 'hidden',
+  // Operator 2026-09-16: restore the Sales desk door only; its phone route is
+  // still absent from the mobile registry, so this does not create a mobile row.
+  sales: 'desk-only',
   support: 'hidden',
   /*
    * PARKED 2026-09-16, operator ruling: *"Remove the monitor from displaying
@@ -176,7 +177,21 @@ export const LANE_MOBILE_FIRST: Readonly<Record<GatedLaneId, LaneMobileFirstStat
    * entry to `'desk-only'` to put the row back.
    */
   monitor: 'hidden',
-  studio: 'hidden',
+  /*
+   * UNPARKED 2026-09-23, operator ruling: *"The cron drop to assign tasks from
+   * designated tags should be included in the automations display in the
+   * sidebar as a first principles approach to automations."*
+   *
+   * The 09-16 parking was about TRUST, and it was the same complaint Monitor
+   * earned: the lane's only door opened on a read-only modelling canvas, which
+   * is not an operator answer. The lane now has one — `/studio/automations`
+   * (child **Rules**) names every automation, when it fires, what turns it on,
+   * and how it last went, joined to live `cron_runs` health. A lane whose row
+   * answers "what runs without me?" is a door worth keeping open.
+   *
+   * Monitor stays parked: nothing about its reads changed.
+   */
+  studio: 'desk-only',
 };
 
 /** False when this lane has no door on any surface (the mobile-first gate). */

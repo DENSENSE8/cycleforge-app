@@ -532,6 +532,45 @@ export async function publishPriorityUnbox(payload: PriorityUnboxPayload) {
   });
 }
 
+export type WatchedArrivalPayload = {
+  organizationId: string;
+  /** The operator who scanned it — this alert is only ever for them. */
+  staffId: number;
+  receivingId: number;
+  trackingNumber: string;
+  /** How many colleagues were waiting for this number. */
+  watcherCount: number;
+};
+
+/**
+ * Tell the SCANNER that the box in their hands was wanted.
+ *
+ * Every other notification in this pipeline goes to people who were not there:
+ * the fan-out worker excludes the actor by design, because you do not need to
+ * be told about your own scan. A watched arrival is the exception — the fact
+ * is not "a carton was scanned", it is "somebody has been waiting for THIS
+ * one, and it is now in your hands." That is news to the person holding it,
+ * and it has to reach them at the door, not in a queue they open later.
+ *
+ * Its own event name rather than reusing `priority_unbox`: that event means
+ * "this carton's SKUs match a pending order" and carries a `skus` array the
+ * subscriber renders. Folding a different sentence into it would make the
+ * existing row lie.
+ */
+export async function publishWatchedArrival(payload: WatchedArrivalPayload) {
+  const staffId = Number(payload.staffId);
+  if (!Number.isFinite(staffId) || staffId <= 0) return;
+
+  await publishEvent(getInboxChannelName(payload.organizationId, staffId), 'watched_arrival', {
+    type: 'watched_arrival',
+    staffId,
+    receivingId: payload.receivingId,
+    trackingNumber: payload.trackingNumber,
+    watcherCount: payload.watcherCount,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 export type StaffMessagePayload = {
   organizationId: string;
   /** Recipient inbox channel (inbox:{recipientId}). */
@@ -574,7 +613,12 @@ type InboxItemPayload = {
   entityType: string;
   entityId: number;
   eventKey: string;
-  actorStaffId: number;
+  /**
+   * Null for a machine-originated row. The first writer of this push was a
+   * thrown task, which always has a human sender; a subscription fan-out does
+   * not — a carton scanned by an unauthenticated door has no actor to name.
+   */
+  actorStaffId: number | null;
   actorName?: string | null;
   note?: string | null;
   urgent?: boolean;

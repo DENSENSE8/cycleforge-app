@@ -14,19 +14,62 @@ import type { StationTheme } from '@/utils/staff-colors';
 
 interface FbaItemRow {
   item_id: number;
-  fnsku: string;
-  display_title: string;
+  fnsku: unknown;
+  display_title: unknown;
+  asin?: unknown;
+  sku?: unknown;
   expected_qty: number;
   actual_qty: number;
   item_status: string;
   shipment_ref: string;
 }
 
+/**
+ * Board data has historically carried either a string title or a catalog
+ * identity object. A rail must never stringify the latter into `[object Object]`:
+ * the FNSKU is the honest scan identity when there is no usable human title.
+ */
+export function fbaRailScanIdentifier(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  return normalized && !/^\[object object\]$/i.test(normalized) ? normalized : null;
+}
+
+export function fbaRailDisplayTitle(value: unknown, fallback: string): string {
+  if (typeof value === 'string' && value.trim() && !/^\[object object\]$/i.test(value.trim())) return value.trim();
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    for (const key of ['display_title', 'product_title', 'title', 'name']) {
+      const candidate = record[key];
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+    }
+  }
+  return fallback;
+}
+
+/**
+ * The board endpoint is a boundary, not a trust boundary. A historic catalog
+ * import can leave both its title and FNSKU as a serialized object. Never turn
+ * that corruption into an operator instruction: use the typed scan key where
+ * possible, otherwise a stable item reference which makes the repair visible.
+ */
+export function fbaRailIdentity(row: Pick<FbaItemRow, 'item_id' | 'fnsku' | 'sku' | 'asin' | 'display_title'>) {
+  const scanIdentifier =
+    fbaRailScanIdentifier(row.fnsku) ??
+    fbaRailScanIdentifier(row.sku) ??
+    fbaRailScanIdentifier(row.asin);
+  const fallback = scanIdentifier ?? `FBA item #${row.item_id}`;
+  return {
+    scanIdentifier,
+    title: fbaRailDisplayTitle(row.display_title, fallback),
+  };
+}
+
 const ITEM_DOT: Record<string, string> = {
-  PLANNED: 'bg-amber-400',
-  TESTED: 'bg-emerald-500',
-  PACKED: 'bg-blue-500',
-  LABEL_ASSIGNED: 'bg-indigo-500',
+  PLANNED: 'bg-fill-warning',
+  TESTED: 'bg-fill-success',
+  PACKED: 'bg-fill-info',
+  LABEL_ASSIGNED: 'bg-fill-fulfillment',
 };
 
 function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTitle: string }) {
@@ -52,40 +95,51 @@ function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTi
       getId={(r) => r.item_id}
       getStatusDot={(r) =>
         selectedIds.has(r.item_id)
-          ? 'bg-blue-500 ring-2 ring-blue-300/70 animate-pulse'
+          ? 'bg-fill-info ring-2 ring-border-accent animate-pulse'
           : ITEM_DOT[String(r.item_status)] ?? 'bg-surface-strong'}
-      onSelect={(r) => window.dispatchEvent(new CustomEvent(FBA_BOARD_SELECT_BY_FNSKU, { detail: r.fnsku }))}
-      renderRowMain={(r) => (
-        <>
+      onSelect={(r) => {
+        const { scanIdentifier } = fbaRailIdentity(r);
+        if (scanIdentifier) {
+          window.dispatchEvent(new CustomEvent(FBA_BOARD_SELECT_BY_FNSKU, { detail: scanIdentifier }));
+        }
+      }}
+      renderRowMain={(r) => {
+        const { title } = fbaRailIdentity(r);
+        return (
+          <>
           {/* ds-allow-title: truncation-only fallback on a non-interactive clipped <p> */}
-          <p className="truncate text-role-caption font-semibold text-text-default" title={r.display_title}>
-            {r.display_title || r.fnsku}
+          <p className="truncate text-role-caption font-semibold text-text-default" title={title}>
+            {title}
           </p>
           <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {r.actual_qty}/{r.expected_qty} units · {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
           </p>
-        </>
-      )}
-      renderPopover={(r, { openWorkspace }) => (
-        <div className="space-y-2 p-3.5">
-          <p className="text-sm font-semibold leading-snug text-text-default">{r.display_title || r.fnsku}</p>
+          </>
+        );
+      }}
+      renderPopover={(r, { openWorkspace }) => {
+        const { title, scanIdentifier } = fbaRailIdentity(r);
+        return (
+          <div className="space-y-2 p-3.5">
+          <p className="text-sm font-semibold leading-snug text-text-default">{title}</p>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-purple-700">
+            <span className="rounded-none border border-border-accent bg-surface-accent px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-accent">
               {FBA_STATUS_LABEL[r.item_status] ?? r.item_status}
             </span>
-            <span className="rounded bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted tabular-nums">
+            <span className="rounded-none bg-surface-sunken px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted tabular-nums">
               {r.actual_qty}/{r.expected_qty} units
             </span>
           </div>
           <dl className="space-y-1 border-t border-border-hairline pt-2 text-role-caption">
-            <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">FNSKU</dt><dd className="font-mono font-semibold text-text-default">{r.fnsku}</dd></div>
+            <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">FNSKU</dt><dd className="font-mono font-semibold text-text-default">{scanIdentifier ?? `ITEM-${r.item_id}`}</dd></div>
             {r.shipment_ref ? <div className="flex justify-between gap-3"><dt className="font-semibold text-text-soft">Plan</dt><dd className="font-semibold text-text-default">{r.shipment_ref}</dd></div> : null}
           </dl>
           <Button variant="primary" size="sm" onClick={openWorkspace} className="w-full">
             Find on board →
           </Button>
-        </div>
-      )}
+          </div>
+        );
+      }}
     />
   );
 }
@@ -167,4 +221,3 @@ export function FbaCombineRailBody({
     <FbaItemRail statuses={['PACKED']} eyebrowTitle="Packed" />
   );
 }
-

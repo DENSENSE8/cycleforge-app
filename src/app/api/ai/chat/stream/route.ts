@@ -26,6 +26,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { AiStructuredAnswer } from '@/lib/ai/types';
 import { enrichAssistantTurn } from '@/lib/assistant/enrich-turn';
 import { withAuth } from '@/lib/auth/withAuth';
+import { createThinkStripper } from '@/lib/ai/think-stripper';
 
 export const runtime = 'nodejs';
 
@@ -62,48 +63,6 @@ function chatBody(model: string, userMessage: string) {
 const encoder = new TextEncoder();
 function sse(event: string, data: unknown): Uint8Array {
   return encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-}
-
-/**
- * Incremental `<think>…</think>` stripper. The model may interleave reasoning
- * blocks; we never want those in the visible answer. Handles tags split across
- * stream chunks by retaining a small tail when a partial tag is possible.
- */
-function createThinkStripper() {
-  let inside = false;
-  let carry = '';
-  const OPEN = '<think>';
-  const CLOSE = '</think>';
-  return (chunk: string): string => {
-    let buf = carry + chunk;
-    carry = '';
-    let out = '';
-    while (buf.length > 0) {
-      if (!inside) {
-        const open = buf.indexOf(OPEN);
-        if (open === -1) {
-          // keep a tail that could be the start of an OPEN tag split mid-chunk
-          const keep = Math.max(0, buf.length - (OPEN.length - 1));
-          out += buf.slice(0, keep);
-          carry = buf.slice(keep);
-          break;
-        }
-        out += buf.slice(0, open);
-        buf = buf.slice(open + OPEN.length);
-        inside = true;
-      } else {
-        const close = buf.indexOf(CLOSE);
-        if (close === -1) {
-          const keep = Math.max(0, buf.length - (CLOSE.length - 1));
-          carry = buf.slice(keep);
-          break;
-        }
-        buf = buf.slice(close + CLOSE.length);
-        inside = false;
-      }
-    }
-    return out;
-  };
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -291,13 +250,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               const json = JSON.parse(payload);
               const piece: string = json?.choices?.[0]?.delta?.content || '';
               if (!piece) continue;
-              const visible = strip(piece);
+              const visible = strip.push(piece);
               if (visible) {
                 assembled += visible;
                 send('delta', { text: visible });
               }
             } catch { /* ignore non-JSON keep-alives */ }
           }
+        }
+
+        const finalVisible = strip.flush();
+        if (finalVisible) {
+          assembled += finalVisible;
+          send('delta', { text: finalVisible });
         }
 
         const finalText = assembled.trim();

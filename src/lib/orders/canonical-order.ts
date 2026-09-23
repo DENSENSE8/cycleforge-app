@@ -59,6 +59,34 @@ export interface CanonicalOrderLine {
    * or already carries a matchable customer.
    */
   customerName: string;
+  /**
+   * Buyer IDENTITY + ship-to, when the source carries them (an API connector;
+   * a CSV cannot). The writer resolves it to a real `customers` row with the
+   * precedence channelCustomerId → email → phone → name and links
+   * `orders.customer_id`. `null`/omitted when the source has nothing beyond a
+   * name — that tier still flows through `customerName` above.
+   *
+   * Flat on purpose: these mirror the `customers` columns the writer stamps,
+   * so there is no second address shape to keep aligned with the engine's
+   * `ShipAddress` (adapters map theirs into this at the edge).
+   */
+  buyer?: {
+    /** The channel's own stable customer id (e.g. ShipStation `customerId`). */
+    channelCustomerId: string;
+    name: string;
+    email: string;
+    phone: string;
+    /** Ship-to as the source reported it; null when the order has none. */
+    shipTo: {
+      address1: string;
+      address2: string | null;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+      residential: boolean | null;
+    } | null;
+  } | null;
   /** Channel label → `orders.account_source`. */
   accountSource: string;
   /**

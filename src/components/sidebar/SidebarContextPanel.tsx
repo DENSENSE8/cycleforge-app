@@ -46,6 +46,8 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
 
   if (routeKey === 'operations') return <OperationsSidebarPanel />;
+  // `/studio/automations` never reaches here — it is rail-less (SoT:
+  // `isRaillessSurface`), so `ContextPanelLayout` mounts no panel at all.
   if (routeKey === 'studio') return <StudioSidebarPanel />;
   if (routeKey === 'support') return <SupportSidebarPanel />;
   if (routeKey === 'ai-chat') return <AiChatSidebarPanel />;

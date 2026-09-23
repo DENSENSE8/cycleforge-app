@@ -21,7 +21,7 @@ import { IconButton } from '@/design-system/primitives';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { ConsultStanceControls } from '@/components/kiosk/ConsultStanceControls';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
@@ -51,9 +51,17 @@ function commandMenuLabel(id: KioskServiceId): string {
 export function KioskCommandMenu({
   activeMode,
   onModeSwitch,
+  showStaffTools = true,
 }: {
   activeMode: KioskServiceId;
   onModeSwitch: (mode: KioskServiceId) => void;
+  /**
+   * Staff tools (History) are listed under the four commerce commands. The
+   * CUSTOMER face passes false: that surface is turned toward the person
+   * paying, and a door to every past customer's paperwork does not belong on
+   * it — not even a PIN-gated one, because the door itself is the leak.
+   */
+  showStaffTools?: boolean;
 }) {
   return (
     <IntakeCombobox
@@ -65,9 +73,11 @@ export function KioskCommandMenu({
       searchPlaceholder="Search commands"
       emptyMessage="No commands match"
       className={cn('shrink-0 font-medium text-text-default', KIOSK_POS_TRAIL_CONTROL, focusRing('control', 'neutral'))}
-      contentClassName={cn('min-w-56 overflow-hidden', HEADER_ICON_CORNER)}
+      contentClassName={cn('min-w-56 overflow-hidden', DROPDOWN_SHELL_CORNER)}
       optionTestId={(opt) => `kiosk-command-${opt.value}`}
-      options={KIOSK_SERVICES.filter((s) => s.status === 'live').map((s) => {
+      options={KIOSK_SERVICES.filter(
+        (s) => s.status === 'live' && (showStaffTools || s.kind === 'command'),
+      ).map((s) => {
         const Icon = s.icon;
         return {
           value: s.id,
@@ -114,6 +124,7 @@ export function KioskUtilityCluster({
   consultStance,
   onConsultStance,
   showCheckoutSlots = true,
+  showStance = true,
 }: {
   activeSlot: KioskUtilitySlotId | null;
   onSelect: (next: KioskUtilitySlotId | null) => void;
@@ -121,10 +132,21 @@ export function KioskUtilityCluster({
   consultStance: ConsultStance;
   onConsultStance: (stance: ConsultStance) => void;
   showCheckoutSlots?: boolean;
+  /**
+   * Work · Show · Verify. A CONSULT STANCE belongs to a running command —
+   * History is a staff tool over whichever command that is, and painting a
+   * mode control on it invites the operator to change the visit they are not
+   * looking at (operator 2026-09-22: *"the history tab should not display the
+   * cart paper work and different work modes since that would be specific to
+   * a mode"*).
+   */
+  showStance?: boolean;
 }) {
   return (
     <div className={cn(HEADER_ICON_CLUSTER, 'ml-auto shrink-0 items-center gap-2')} data-header-zone="kiosk-utilities">
-      <ConsultStanceControls layout="header" value={consultStance} onChange={onConsultStance} />
+      {showStance ? (
+        <ConsultStanceControls layout="header" value={consultStance} onChange={onConsultStance} />
+      ) : null}
       {showCheckoutSlots ? (
         <>
           {/*
@@ -190,6 +212,8 @@ export function KioskTopChrome({
   consultStance,
   onConsultStance,
   showCheckoutSlots = true,
+  showStance = true,
+  showStaffTools = true,
 }: {
   activeMode: KioskServiceId;
   onModeSwitch: (mode: KioskServiceId) => void;
@@ -200,17 +224,26 @@ export function KioskTopChrome({
   consultStance: ConsultStance;
   onConsultStance: (stance: ConsultStance) => void;
   showCheckoutSlots?: boolean;
+  /** Passed straight to {@link KioskUtilityCluster} — see its note. */
+  showStance?: boolean;
+  /** Passed straight to {@link KioskCommandMenu} — see its note. */
+  showStaffTools?: boolean;
 }) {
   return (
     <div className={cn(KIOSK_PANE_HEADER_BAND, 'gap-2 pl-2 pr-2')} data-testid="kiosk-catalog-trail">
-      {/* NO search glyph here, on purpose: the find-bar lives ONLY in the
-          catalog trail (ProductSelector kiosk-split) because only a catalog
-          has anything to search — its icon/field is the one input bound to
-          the shell-controlled searchQuery state. Mounting a second icon here
-          would fork that state and desync the two faces. The bracket this
-          band owns — command dropdown leads, utilities trail — is identical
-          on every pane. */}
-      <KioskCommandMenu activeMode={activeMode} onModeSwitch={onModeSwitch} />
+      {/* NO search glyph of its OWN here, on purpose: the catalog's find-bar
+          lives in the catalog trail (ProductSelector kiosk-split) because its
+          icon/field is the one input bound to the shell-controlled
+          searchQuery state, and a second icon here would fork that state.
+          A face whose find-bar is not the catalog's — History — seats its own
+          glyph in `center`, which is still ONE control in ONE band. The
+          bracket this band owns — command dropdown leads, utilities trail —
+          is identical on every pane. */}
+      <KioskCommandMenu
+        activeMode={activeMode}
+        onModeSwitch={onModeSwitch}
+        showStaffTools={showStaffTools}
+      />
       {center}
       <KioskUtilityCluster
         activeSlot={activeSlot}
@@ -219,6 +252,7 @@ export function KioskTopChrome({
         consultStance={consultStance}
         onConsultStance={onConsultStance}
         showCheckoutSlots={showCheckoutSlots}
+        showStance={showStance}
       />
     </div>
   );

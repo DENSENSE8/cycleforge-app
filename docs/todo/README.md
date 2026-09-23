@@ -1,15 +1,13 @@
 # TODO — open plans
 
-Forward index only. Detail lives in each plan; **portfolio SoT** owns lanes and review.
+Forward index only. Detail lives in each plan.
 
 | | |
 |--|--|
-| **Portfolio INDEX** | [docs/portfolio/INDEX.md](../portfolio/INDEX.md) |
-| **DOC catalog** | [docs/portfolio/DOC-CATALOG.md](../portfolio/DOC-CATALOG.md) |
 | **Connections** | [docs/master-connections-and-refactor/README.md](../master-connections-and-refactor/README.md) |
 | **Docs hub** | [docs/README.md](../README.md) |
 
-Refresh: `pnpm portfolio:sot`
+New plan → add a row below.
 
 ## By workstream ID (sorted)
 
@@ -39,4 +37,4 @@ Refresh: `pnpm portfolio:sot`
 | WS-VOICE | `nextiva-voice-support-mode-plan.md` |
 | WS-WH | `warehouse-map-react-flow-plan.md` |
 
-Every path is also in `DOC-CATALOG.md` with a **DOC-*** id. New plan → add row here + portfolio INDEX + `pnpm portfolio:sot`.
+New plan → add a row here.

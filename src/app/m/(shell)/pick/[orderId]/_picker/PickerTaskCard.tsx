@@ -36,7 +36,7 @@ export function PickerTaskCard({
         animate={framerPresenceMobile.mobileCard.animate}
         exit={framerPresenceMobile.mobileCard.exit}
         transition={framerTransitionMobile.mobileCardMount}
-        className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm"
+        className="rounded-none border border-border-soft bg-surface-card p-5"
       >
         {/* Bin chip — the thing the worker looks for. */}
         <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Pick from bin</p>
@@ -124,7 +124,7 @@ export function PickerTaskCard({
           {scanError && (
             <div
               role="alert"
-              className="mt-2 rounded-none border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
+              className="mt-2 rounded-none border border-border-danger bg-surface-danger px-3 py-2 text-xs font-semibold text-text-danger"
             >
               {scanError}
             </div>

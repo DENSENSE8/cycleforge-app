@@ -1,0 +1,123 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify and security gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Gitleaks
+        shell: bash
+        run: |
+          curl --fail --silent --show-error --location \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            --output /tmp/gitleaks.tar.gz
+          echo "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  /tmp/gitleaks.tar.gz" | sha256sum --check
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+
+      - name: Secret scan for introduced commits
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ -z "$BASE_SHA" || "$BASE_SHA" =~ ^0+$ ]]; then
+            BASE_SHA="${HEAD_SHA}^"
+          fi
+          /tmp/gitleaks git --redact --no-banner --log-opts="${BASE_SHA}..${HEAD_SHA}" .
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Repository verification
+        run: pnpm verify
+
+      - name: Route authentication coverage
+        run: pnpm audit-route-auth:enforce
+
+      - name: Route-permission manifest drift
+        run: pnpm audit-route-auth:check
+
+      - name: Static tenancy isolation
+        run: pnpm tenancy:guard:check -- --static-only
+
+      - name: Dropped-column schema drift
+        run: pnpm schema:drift-guard:check
+
+      - name: Production dependency high-severity audit
+        run: pnpm audit --prod --audit-level high
+
+
+  database-security:
+    name: Database security and migration gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      TENANT_APP_DATABASE_URL: ${{ secrets.CI_TENANT_DATABASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Require isolated CI database credentials
+        shell: bash
+        run: |
+          test -n "$DATABASE_URL" || { echo "CI_DATABASE_URL is required"; exit 1; }
+          test -n "$TENANT_APP_DATABASE_URL" || { echo "CI_TENANT_DATABASE_URL is required"; exit 1; }
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Live tenant-role invariant
+        run: pnpm tenancy:guard:check -- --live-only
+
+      - name: Cross-organization IDOR regressions
+        run: pnpm test:tenancy-idor
+
+      - name: Application model to live-schema parity
+        run: pnpm schema:model-parity:check
+
+      - name: Migration ledger dry run
+        run: pnpm db:migrate:dry

@@ -7,7 +7,7 @@ import { FILTER_DROPDOWN_LABEL_CLASS } from '@/design-system/components/FilterDr
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
 import { StaffAvatar } from '@/components/identity';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import { type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 interface MarkAsShippedFormProps {

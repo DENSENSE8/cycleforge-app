@@ -85,13 +85,6 @@ type CartonMatchTabSet = 'unbox' | 'arrival';
 /** Pairing avenues — Inventory Item is Unbox-only. */
 type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid';
 
-/** Short "what this avenue does" line for the bare-chrome combobox's option list. */
-const AVENUE_META: Record<MatchTab, string> = {
-  zoho_item: 'Match to an item already in inventory',
-  zoho_po: 'Attach to a Zoho purchase order',
-  ecwid: 'Search recent store orders',
-};
-
 type CartonMatchHubChrome = 'card' | 'bare';
 
 type CartonMatchAutoMatch = {
@@ -434,30 +427,47 @@ function MatchHubCard({
     router.push(openInUnboxHref(receivingId, row.id));
   };
 
+  // The PO avenue searches BOTH purchase orders and previous sales orders and
+  // links any id the operator types, so its name cannot say "Purchase order" —
+  // that told the operator a marketplace order number did not belong here.
+  //
+  // ONE DISPLAY, ONE DROPDOWN, ONE LIST. The Displays leaf was briefly cut to
+  // the Orders avenue alone (2026-09-23) on the reading that importing a SKU is
+  // a stock act, not an identity act. The operator reversed it the same day —
+  // *"seems like it would be best to have store and orders within one display
+  // in general and so it would just be one drop down with the list"* — because
+  // at the bench they are one question ("what is this box?") answered from
+  // whichever namespace happens to hold the answer. Every avenue therefore
+  // renders the SAME row: thumb · id · product title.
   const tabs: HorizontalSliderItem[] =
     tabSet === 'arrival'
       ? [
-          { id: 'zoho_po', label: 'Purchase order', icon: Link2 },
+          { id: 'zoho_po', label: 'Orders', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
         ]
       : [
           { id: 'zoho_item', label: 'Inventory Item', icon: Search },
-          { id: 'zoho_po', label: 'Purchase order', icon: Link2 },
+          { id: 'zoho_po', label: 'Orders', icon: Link2 },
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
         ];
+
+  /** Short "what this avenue does" line for the bare-chrome combobox's list. */
+  const avenueOptions = tabs.map((item) => ({
+    value: item.id,
+    label: item.label,
+    meta:
+      item.id === 'zoho_item'
+        ? 'Match to an item already in inventory'
+        : item.id === 'zoho_po'
+          ? 'Link a purchase order, a past order, or any id'
+          : 'Search recent store orders',
+    group: 'Pairing mode',
+  }));
 
   const selectAvenue = (id: MatchTab) => {
     setTab(id);
     if (id === 'ecwid') setForcePicker(true);
   };
-
-  // Options for the bare-chrome avenue combobox — see `avenueSwitcher` below.
-  const avenueOptions = tabs.map((item) => ({
-    value: item.id,
-    label: item.label,
-    meta: AVENUE_META[item.id as MatchTab],
-    group: 'Pairing mode',
-  }));
 
   const headerActions = (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -509,14 +519,11 @@ function MatchHubCard({
     ) : null;
 
   const avenueSwitcher = bareChrome ? (
-    // Pairing avenue — same flush combobox grammar as the ticket claim's
-    // Create|Link picker (ClaimModeSelect): keyboard-searchable, filters the
-    // option list as you type. This used to be a plain click-only
-    // DropdownMenu (no search, no keyboard filter) — the fork this replaces
-    // (2026-08-24). Flush select owns its own bottom hairline.
-    // No bottom margin — the search bar below sits flush under the combobox's
-    // own bottom hairline, same edge-to-edge contract as everything else in
-    // this panel (2026-08-24 fix).
+    // ONE dropdown over every avenue — the flush combobox grammar the ticket
+    // claim's Create|Link picker uses (keyboard-searchable, filters as you
+    // type). Flush select owns its own bottom hairline, and no bottom margin:
+    // the search header below sits flush under it, same edge-to-edge contract
+    // as the rest of this panel.
     <div ref={cardTopRef} data-testid="pairing-avenue-select">
       <SearchableSelectField
         appearance="flush"

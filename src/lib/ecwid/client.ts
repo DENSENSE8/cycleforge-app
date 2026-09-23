@@ -140,6 +140,70 @@ export async function confirmOrderNumberForPhone(args: {
 }
 
 /**
+ * The buyer on one Ecwid order, by public order number.
+ *
+ * Exists because the receiving link flow
+ * (`/api/receiving/add-unmatched-line`) creates a `repair_service` row from an
+ * Ecwid order id it holds but a buyer it never fetched, so every ticket born
+ * there landed with `customer_id IS NULL` and printed paper with no name on
+ * it. Shipping person wins over billing: that is who the unit goes back to.
+ *
+ * Lives HERE rather than in the route because this repo already carries five
+ * forked `GET /orders` fetchers; a sixth is how they keep drifting.
+ *
+ * Returns `null` on absent creds, a vendor error, or no order — a missing
+ * buyer link is recoverable on the next sync pass, a thrown receiving scan is
+ * not.
+ */
+export async function fetchEcwidOrderContact(
+  orgId: OrgId,
+  orderNumber: string,
+): Promise<{ name: string; phone: string; email: string } | null> {
+  const ref = orderNumber.trim().replace(/^#/, '');
+  if (!ref) return null;
+
+  const creds = await resolveEcwidCreds(orgId);
+  if (!creds) return null;
+
+  try {
+    const url =
+      `${ECWID_BASE_URL}/${encodeURIComponent(creds.storeId)}/orders` +
+      `?keywords=${encodeURIComponent(ref)}&limit=20`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${creds.apiToken}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+
+    const body = (await res.json()) as { items?: unknown[] };
+    for (const raw of body.items ?? []) {
+      const order = (raw ?? {}) as Record<string, unknown>;
+      // Exact order-number agreement only — a keyword hit is not a match.
+      const publicNumber = String(order.orderNumber ?? order.id ?? '')
+        .trim()
+        .replace(/^#/, '');
+      if (publicNumber !== ref && String(order.id ?? '').trim() !== ref) continue;
+
+      const billing = (order.billingPerson ?? {}) as Record<string, unknown>;
+      const shipping = (order.shippingPerson ?? {}) as Record<string, unknown>;
+      const text = (value: unknown) => String(value ?? '').trim();
+      const contact = {
+        name: text(shipping.name || billing.name),
+        phone: text(shipping.phone || billing.phone || order.phone),
+        email: text(order.email),
+      };
+      // A name with neither phone nor email is a LABEL, not an identity:
+      // `resolveProviderCustomerId` would refuse it anyway, and returning it
+      // would only write a contact_info string that no future pass can match.
+      return contact.phone || contact.email ? contact : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Fetch the Ecwid order invoice PDF (packing-slip / receipt stand-in).
  * `orderRef` is the public order number (e.g. `4787`) or Ecwid internal id.
  */

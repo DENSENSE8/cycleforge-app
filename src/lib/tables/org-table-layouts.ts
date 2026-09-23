@@ -90,6 +90,10 @@ import {
   REPORT_PACKER_DAY_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/report-packer-day';
 import {
+  REPORT_TASKS_FIELD_CATALOG,
+  REPORT_TASKS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/report-tasks';
+import {
   SKU_BINS_FIELD_CATALOG,
   SKU_BINS_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/sku-bins';
@@ -383,6 +387,15 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // which is how this omission was caught rather than shipped.
   [REPORT_PACKER_DAY_TABLE_LAYOUT_ID]: {
     catalog: REPORT_PACKER_DAY_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  // Reports › Completed tasks — COMPOUND only, its OWN document: hiding
+  // `Deadline` on the record of finished work must not densify the `tasks`
+  // desk a staffer works their open queue on. Without this line the org column
+  // layout 404s and the catalog reads as a false orphan
+  // (`layout-registry-gap:report-tasks`).
+  [REPORT_TASKS_TABLE_LAYOUT_ID]: {
+    catalog: REPORT_TASKS_FIELD_CATALOG,
     morphs: ['compound'],
   },
   // Admin › per-SKU bin distribution — COMPOUND only.

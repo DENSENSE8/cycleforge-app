@@ -41,26 +41,26 @@ const TOKENS: Record<FbaStatus, StatusToken> = {
   TESTED: {
     label: 'Tested',
     icon: Check,
-    pill: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    icon_tone: 'text-emerald-600',
+    pill: 'bg-surface-success text-text-success border-border-success',
+    icon_tone: 'text-text-success',
   },
   PACKED: {
     label: 'Packed',
     icon: PackageCheck,
-    pill: 'bg-amber-100 text-amber-700 border-amber-200',
-    icon_tone: 'text-amber-600',
+    pill: 'bg-surface-warning text-text-warning border-border-warning',
+    icon_tone: 'text-text-warning',
   },
   LABEL_ASSIGNED: {
     label: 'Combined',
     icon: Barcode,
-    pill: 'bg-blue-100 text-blue-700 border-blue-200',
-    icon_tone: 'text-blue-600',
+    pill: 'bg-surface-accent text-text-info border-border-accent',
+    icon_tone: 'text-text-info',
   },
   SHIPPED: {
     label: 'Shipped',
     icon: Truck,
-    pill: 'bg-purple-100 text-purple-700 border-purple-200',
-    icon_tone: 'text-purple-600',
+    pill: 'bg-surface-success text-text-success border-border-success',
+    icon_tone: 'text-text-success',
   },
   CLOSED: {
     label: 'Closed',
@@ -115,7 +115,7 @@ export function FbaStatusBadge({
   return (
     <span
       aria-label={token.label}
-      className={`inline-flex items-center gap-1 rounded-lg border font-semibold uppercase tracking-widest ${pad} ${text} ${token.pill} ${className ?? ''}`}
+      className={`inline-flex items-center gap-1 rounded-none border font-semibold uppercase tracking-widest ${pad} ${text} ${token.pill} ${className ?? ''}`}
     >
       <Icon className={`${iconSize} ${token.icon_tone}`} />
       {token.label}

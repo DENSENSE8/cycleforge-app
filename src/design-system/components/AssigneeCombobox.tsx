@@ -10,7 +10,13 @@
  * Assign: name-click. Roster: All staff trailing on CommandInput; each row
  * carries eligibility switches the host named (Picker, Packer, …).
  * Numbered assign (left-gutter picker/packer): heading + 1…n badges; empty
- * search + digit commits. Search auto-focuses.
+ * search + digit commits.
+ *
+ * The search does NOT take focus on mount (operator 2026-09-23). It used to
+ * `autoFocus`, which meant any surface that mounted this panel — including one
+ * opened as a side effect of opening a ticket — stole the caret and, on a
+ * phone, threw the keyboard over the screen the operator was trying to read.
+ * A panel earns the caret when the operator puts it there.
  */
 
 import { useId, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
@@ -65,7 +71,8 @@ export type AssigneeComboboxPanelProps = {
   heading?: string;
   /**
    * Trailing 1…n badges on assign rows. Empty search + digit commits that
-   * index (visible order). Search stays auto-focused.
+   * index (visible order). The digit path reads the LIST's keydown, so it
+   * works whether or not the search holds focus.
    */
   numbered?: boolean;
 };
@@ -123,7 +130,6 @@ export function AssigneeComboboxPanel({
         </p>
       ) : null}
       <CommandInput
-        autoFocus
         value={query}
         onValueChange={onQueryChange}
         placeholder="Search staff…"

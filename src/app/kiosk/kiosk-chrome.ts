@@ -86,8 +86,19 @@ export const KIOSK_BODY_INSET = 'px-4';
  */
 export const KIOSK_META = 'text-role-micro font-semibold text-text-soft';
 
-/** Product tile title — arm’s-length readable on iPad landscape. */
-export const KIOSK_TILE_TITLE = 'text-sm font-semibold leading-tight text-text-default';
+/**
+ * Product tile title — arm’s-length readable on iPad landscape.
+ *
+ * Clamped at two lines because a customer can drop off several devices, so a
+ * title is either ONE product or a summary of many — and the summary form is
+ * an unbounded concatenation a tablet tile cannot absorb. Two lines then an
+ * ellipsis keeps the grid on its rhythm. `line-clamp-2` brings its own
+ * `overflow-hidden` and needs normal wrapping; never add `truncate` here —
+ * its `whitespace-nowrap` would cancel the clamp
+ * (law: `src/components/search/search-result-faces.tsx:154-158`).
+ */
+export const KIOSK_TILE_TITLE =
+  'text-sm font-semibold leading-tight text-text-default line-clamp-2 break-words text-pretty';
 
 /**
  * Checkout section micro label (repair / sales panes).

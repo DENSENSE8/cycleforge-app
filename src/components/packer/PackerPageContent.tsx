@@ -54,8 +54,9 @@ export function PackerPageContent({ packerId }: PackerPageContentProps) {
           <IconButton
             icon={<Menu className="h-6 w-6" />}
             ariaLabel="Open navigation"
+            radius="flush"
             onClick={openDrawer}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-text-muted active:bg-surface-sunken"
+            className="flex h-11 w-11 items-center justify-center text-text-muted active:bg-surface-sunken"
           />
 
           <h1 className="flex-1 text-lg font-semibold tracking-tight text-text-default">

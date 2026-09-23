@@ -1,5 +1,0 @@
-When writing, modifying, or reviewing UI code, you MUST call `ds_contract`, `ds_tokens`, and `ds_critique` (the `design-mcp` server) before writing any implementation. Prefer native MCP tools; if the catalog is empty use `node tools/design-mcp/ds.mjs …`. Do not guess Tailwind classes, corner radii, or component paths. If you do not call the design tools first, your code will be rejected.
-
-"Omni Composer" / station mouth = StationComposerHost. Dumb stations: showModeFaces={false} (keep context ring). Clone Pack/Unbox for floor stations — no invented rails or second mouths.
-
-Mobile-first is repo-wide: every operator verb must be completable on `/m/*` first; desktop frames that SoT. Law: docs/mobile-first/SURFACE_LAW.md. Rule: .cursor/rules/mobile-first-surface.mdc.

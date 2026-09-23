@@ -20,6 +20,7 @@ import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorksp
 import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
 import { RepairTable } from '@/components/repair';
+import { RepairIntakeHost } from '@/components/repair/RepairIntakeHost';
 import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
@@ -220,6 +221,10 @@ export function ReceivingRightPane({
     return (
       <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <RepairTable filter={parseRepairTab(searchParams.get('tab'))} />
+        {/* `?new=true` intake lives here because the left rail that used to host
+            it is gone — favorites became a scope of the catalog picker, so the
+            repair desk is rail-less. Portal host: no in-flow DOM. */}
+        <RepairIntakeHost />
       </RightPaneOverlayHost>
     );
   }

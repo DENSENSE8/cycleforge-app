@@ -34,12 +34,12 @@ export interface ShipmentStatusBadgeProps {
 
 const CATEGORY_STYLE: Record<ShipmentStatusCategory, { cls: string; text: string; icon: React.FC<{ className?: string }>; label: string }> = {
   LABEL_CREATED:    { cls: 'bg-surface-sunken text-text-muted',       text: 'text-text-soft',    icon: Package,      label: 'label created' },
-  ACCEPTED:         { cls: 'bg-blue-50 text-blue-700',        text: 'text-blue-500',    icon: Truck,        label: 'accepted' },
-  IN_TRANSIT:       { cls: 'bg-blue-100 text-blue-800',       text: 'text-blue-600',    icon: Truck,        label: 'in transit' },
-  OUT_FOR_DELIVERY: { cls: 'bg-amber-100 text-amber-900',     text: 'text-amber-600',   icon: Truck,        label: 'out for delivery' },
-  DELIVERED:        { cls: 'bg-emerald-100 text-emerald-800', text: 'text-emerald-600', icon: PackageCheck, label: 'delivered' },
-  EXCEPTION:        { cls: 'bg-rose-100 text-rose-800',       text: 'text-rose-600',    icon: AlertTriangle, label: 'exception' },
-  RETURNED:         { cls: 'bg-purple-100 text-purple-800',   text: 'text-purple-600',  icon: RotateCcw,    label: 'returned' },
+  ACCEPTED:         { cls: 'bg-surface-accent text-text-accent',   text: 'text-text-info',    icon: Truck,        label: 'accepted' },
+  IN_TRANSIT:       { cls: 'bg-surface-accent text-text-accent',   text: 'text-text-info',    icon: Truck,        label: 'in transit' },
+  OUT_FOR_DELIVERY: { cls: 'bg-surface-warning text-text-warning', text: 'text-text-warning', icon: Truck,        label: 'out for delivery' },
+  DELIVERED:        { cls: 'bg-surface-success text-text-success', text: 'text-text-success', icon: PackageCheck, label: 'delivered' },
+  EXCEPTION:        { cls: 'bg-surface-danger text-text-danger',   text: 'text-text-danger',  icon: AlertTriangle, label: 'exception' },
+  RETURNED:         { cls: 'bg-surface-warning text-text-warning', text: 'text-text-warning', icon: RotateCcw,    label: 'returned' },
   UNKNOWN:          { cls: 'bg-surface-canvas text-text-soft',        text: 'text-text-faint',    icon: Clock,        label: 'unknown' },
 };
 
@@ -91,7 +91,7 @@ export function ShipmentStatusBadge({
     <div className={`inline-flex flex-wrap items-center gap-1.5 ${className ?? ''}`}>
       <HoverTooltip label={description ?? style.label} asChild>
         <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${style.cls}`}
+          className={`inline-flex items-center gap-1 rounded-none px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide ${style.cls}`}
         >
           <Icon className="h-3 w-3" />
           {carrierLabel ? `${carrierLabel} · ` : ''}
@@ -109,7 +109,7 @@ export function ShipmentStatusBadge({
           asChild
         >
           <span
-            className="inline-flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-white"
+            className="inline-flex items-center gap-1 rounded-none bg-fill-danger px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wide text-text-inverse"
           >
             <AlertTriangle className="h-3 w-3" />
             {exceptionShown ? 'Exception' : 'Stalled'}

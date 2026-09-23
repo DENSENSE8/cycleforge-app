@@ -41,8 +41,16 @@ export function getMobileAppTitle(
   // word on the phone.
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Daily';
   if (pathname === '/m/settings' || pathname.startsWith('/m/settings/')) return 'Settings';
-  if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Orders';
+  // `/m/tasks` retired 2026-09-23 — it redirects to Daily, which owns the one
+  // task list, so the bar has no second word for it.
+  if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Order management';
   if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'Add order';
+  if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
+  if (pathname === '/m/shipping/history' || pathname.startsWith('/m/shipping/history/')) return 'Shipped history';
+  if (pathname === '/m/shipping/stage' || pathname.startsWith('/m/shipping/stage/')) return 'Stage at rack';
+  if (pathname === '/m/shipping/scan-out' || pathname.startsWith('/m/shipping/scan-out/')) return 'Carrier scan-out';
+  if (pathname === '/m/shipping' || pathname.startsWith('/m/shipping/')) return 'Shipping & packing';
+  if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
   if (pathname === '/m/search' || pathname.startsWith('/m/search/')) return 'Find';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';

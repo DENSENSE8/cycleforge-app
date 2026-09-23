@@ -40,14 +40,14 @@ export function FbaWorkspaceSidebarFallback() {
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className={`${sidebarSubBandClass} ${SIDEBAR_GUTTER} py-2.5`}>
-          <SkeletonBase height="6rem" className="rounded-2xl bg-surface-sunken" />
+          <SkeletonBase height="6rem" className="rounded-none bg-surface-sunken" />
         </div>
         <div className={`min-h-0 flex-1 space-y-3 ${SIDEBAR_GUTTER} py-3 overflow-y-auto bg-surface-card`}>
           <SkeletonBase width="8rem" height="1rem" className="bg-surface-sunken" />
           <div className="space-y-2">
-            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
-            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
-            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
+            <SkeletonBase height="4rem" className="rounded-none bg-surface-canvas" />
+            <SkeletonBase height="4rem" className="rounded-none bg-surface-canvas" />
+            <SkeletonBase height="4rem" className="rounded-none bg-surface-canvas" />
           </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function FbaWorkspaceSidebar() {
         {/* Plans error banner */}
         {plansError && (
           <SidebarSection className="my-2">
-            <div className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
+            <div className="rounded-none border border-border-danger bg-surface-danger px-2.5 py-2 text-role-caption font-semibold text-text-danger">
               {plansError}
             </div>
           </SidebarSection>

@@ -95,6 +95,20 @@ test('attachTechSerial stamps CF-03 order_id when provided', async () => {
   equal(exec.calls[0].params[15], 42, 'order_id bound');
 });
 
+test('attachTechSerial preserves an explicit historical import timestamp', async () => {
+  const exec = captureExecutor();
+  await attachTechSerial(
+    {
+      serialNumber: 'historical',
+      organizationId: 'org-1',
+      createdAt: '2026-01-02T03:04:05.000Z',
+    },
+    exec as unknown as Exec,
+  );
+  ok(/created_at/.test(exec.calls[0].text), 'created_at column present');
+  equal(exec.calls[0].params.at(-1), '2026-01-02T03:04:05.000Z');
+});
+
 // ─── Source guards: the call sites use the helper, not a raw INSERT ──────────
 
 function read(rel: string): string {
@@ -111,8 +125,9 @@ const CALL_SITES = [
   '../../app/api/post-multi-sn/route.ts',
   // The legacy Google-Sheets tech importer (/api/sync-sheets) was also on this
   // list until it was DELETED 2026-07-29 — it had zero callers left after the
-  // order-ingest consolidation. Its sibling sheet syncs (execute-script /
-  // receiving/serials) stay raw by design; see the relational-reuse plan §2.3.
+  // order-ingest consolidation.
+  '../../app/api/receiving/serials/route.ts',
+  '../../app/api/google-sheets/execute-script/route.ts',
   // `../tech/insertTechSerialForTracking.ts` was DELETED 2026-08-07 — the
   // Unified Engine strangler write for tech serial inserts never got plugged
   // into the live tech-scan route (zero real callers besides its own test).

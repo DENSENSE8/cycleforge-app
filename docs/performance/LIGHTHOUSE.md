@@ -10,9 +10,9 @@ the committed floor is `lighthouse-baseline.json`.
 2026-09-01, raised from 92), **and ≥ 95 Accessibility / Best Practices**
 (Speed Insights / Core Web Vitals aligned — LCP ≤ 2.5 s). Host law lives in
 `tools/eval-ledger/perf-target.mjs`; every `machine-gate` pass stamps
-`.cursor/perf-session.json` with the gap to that north star. Live
+`.garisek/perf-session.json` with the gap to that north star. Live
 `lighthouse:check` is opt-in (`LOOP_PERF=check` / `MACHINE_GATE_PERF=check`)
-so Cursor stop never waits minutes for Chrome.
+so the gate never waits minutes for Chrome.
 
 | Category | Target | Status (see baseline) |
 |---|---|---|
@@ -31,7 +31,7 @@ that first payload server-side is the lever. Bundle weight was already cut
 
 ### Overnight grind (local Hermes)
 
-Host-owned loop — not Cursor Agent stop (avoids cloud billing / IDE wedges):
+Host-owned loop (avoids cloud billing / IDE wedges):
 
 ```bash
 pnpm run eval:perf-overnight -- --dry-run
@@ -40,7 +40,7 @@ pnpm run perf:overnight   # needs :3100 prod + LH_COOKIE; see docs/eval/README.m
 
 Loops worst Tier-1 gap → Hermes coder → machine-gate → single-route audit →
 ratchet floor **up** only → repeat until Tier-1 meets 95 or `--max-hours`.
-State: `.cursor/perf-overnight-state.json`.
+State: `.garisek/perf-overnight-state.json`.
 
 ### Form factor is a deployment claim, not a preference
 

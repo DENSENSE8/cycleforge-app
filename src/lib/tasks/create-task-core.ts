@@ -44,10 +44,16 @@ export interface InsertTaskArgs {
   entityType: TaskEntityType;
   entityId: number;
   assigneeStaffId: number;
-  /** Who threw it (2026-08-08d) — what makes a "sent" view writable. */
-  assignedByStaffId: number;
+  /**
+   * Who threw it (2026-08-08d) — what makes a "sent" view writable.
+   * NULL when the thrower is the SYSTEM (a cron ingesting a helpdesk tag), which
+   * is exactly the "not recorded" the column was born nullable for.
+   */
+  assignedByStaffId: number | null;
   priority: number;
   note: string | null;
+  /** ISO instant, or null for "no promised day". Stored in `deadline_at`. */
+  deadlineAt: string | null;
   status: typeof TASK_INITIAL_STATUS;
 }
 
@@ -56,7 +62,7 @@ export type PromoteOutcome = { ok: true; changed: boolean } | { ok: false; reaso
 
 export interface NotifyAssigneeArgs {
   task: TaskRow;
-  actorStaffId: number;
+  actorStaffId: number | null;
   urgent: boolean;
 }
 
@@ -74,8 +80,18 @@ export interface CreateTaskInput {
   /** Free text the thrower typed. Optional — the record is often the whole message. */
   note?: unknown;
   urgency?: TaskUrgency;
-  /** Who is throwing. Used to refuse a self-throw. */
-  actorStaffId: number;
+  /**
+   * Optional promised day, so the composer can capture assignee · priority ·
+   * deadline in ONE create. Without it the desk would POST then PATCH, which
+   * shows the assignee a half-made task and splits one act across two audit
+   * rows. ISO string, or null/absent for none.
+   */
+  deadlineAt?: unknown;
+  /**
+   * Who is throwing. Used to refuse a self-throw. NULL = thrown by the system,
+   * which nobody can self-throw at, so the refusal does not apply.
+   */
+  actorStaffId: number | null;
 }
 
 /**
@@ -93,8 +109,10 @@ export type CreateTaskResult =
       /**
        * Whether the recipient was told:
        *   • `sent`           — durable inbox row written and pushed
-       *   • `skipped_entity` — this record kind cannot be anchored in the inbox
-       *                        yet (support_ticket — `isInboxAnchorable`)
+       *   • `skipped_entity` — this record kind cannot be anchored in the
+       *                        inbox (`isInboxAnchorable`). No kind a task can
+       *                        point at is in that state today; the branch is
+       *                        for the next `work_entity_type_enum` value.
        *   • `failed`         — attempted and did not land
        *
        * `skipped_entity` is reported rather than hidden because a task nobody
@@ -105,7 +123,13 @@ export type CreateTaskResult =
     }
   | {
       ok: false;
-      reason: 'unsupported_entity' | 'invalid_entity_id' | 'invalid_assignee' | 'self_throw' | 'note_too_long';
+      reason:
+        | 'unsupported_entity'
+        | 'invalid_entity_id'
+        | 'invalid_assignee'
+        | 'self_throw'
+        | 'note_too_long'
+        | 'invalid_deadline';
     };
 
 /**
@@ -133,13 +157,25 @@ export async function createTaskCore(
   // Throwing at yourself is a no-op that costs the recipient an inbox row and
   // the thrower a notification of their own action. Refuse it explicitly rather
   // than letting it look like it worked.
-  if (assigneeStaffId === input.actorStaffId) return { ok: false, reason: 'self_throw' };
+  if (input.actorStaffId != null && assigneeStaffId === input.actorStaffId) {
+    return { ok: false, reason: 'self_throw' };
+  }
 
   const rawNote = typeof input.note === 'string' ? input.note.trim() : '';
   if (rawNote.length > TASK_NOTE_MAX) return { ok: false, reason: 'note_too_long' };
   const note = rawNote.length > 0 ? rawNote : null;
 
   const urgency: TaskUrgency = input.urgency ?? 'normal';
+
+  // An unparseable deadline is refused, never dropped: a composer that sent a
+  // day and got a task with no day back would be lying to the operator.
+  let deadlineAt: string | null = null;
+  if (input.deadlineAt != null) {
+    if (typeof input.deadlineAt !== 'string') return { ok: false, reason: 'invalid_deadline' };
+    const parsed = Date.parse(input.deadlineAt);
+    if (!Number.isFinite(parsed)) return { ok: false, reason: 'invalid_deadline' };
+    deadlineAt = new Date(parsed).toISOString();
+  }
 
   const task = await deps.insertTask({
     entityType,
@@ -148,6 +184,7 @@ export async function createTaskCore(
     assignedByStaffId: input.actorStaffId,
     priority: taskPriorityFor(urgency),
     note,
+    deadlineAt,
     status: TASK_INITIAL_STATUS,
   });
 

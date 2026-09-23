@@ -280,6 +280,7 @@ export async function getOrderPackChecklist(
            ON pl.shipment_id = o.shipment_id
           AND pl.organization_id = o.organization_id
           AND pl.tracking_type = 'ORDERS'
+          AND pl.completion_state = 'COMPLETED'
         WHERE o.organization_id = $2
           AND o.shipment_id IS NOT NULL
           AND ${orderIdKey ? 'o.order_id = $1' : 'o.id = $1'}`,

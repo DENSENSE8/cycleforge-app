@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # vision/ root, so relative data paths resolve regardless of CWD.
@@ -26,7 +27,9 @@ class Settings(BaseSettings):
     index_path: str = "data/index/index.npz"
 
     allowed_origins: str = "http://localhost:3000"
-    vision_token: str = ""
+    # Required at config load: mutation/image endpoints must never become
+    # anonymous because an environment file omitted the secret.
+    vision_token: str = Field(min_length=32)
 
     @property
     def reference_path(self) -> Path:

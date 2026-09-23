@@ -41,6 +41,8 @@ import {
   searchItemBySku,
 } from '@/lib/zoho';
 import { reconcileUnmatchedReceiving } from '@/lib/receiving/reconcile-unmatched';
+import { withZohoOrg } from '@/lib/zoho/tenant-context';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -59,6 +61,8 @@ const MODE: 'scan' | 'match' | 'receive' = has('--receive')
 const LIMIT = valOf('--limit', 0); // 0 = all
 const MAX_AGE_DAYS = valOf('--max-age-days', 365);
 const DELAY_MS = valOf('--delay-ms', 150);
+const orgArgIndex = argv.indexOf('--org-id');
+const ORG_ID = (orgArgIndex >= 0 ? argv[orgArgIndex + 1] : '') as OrgId;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const last8 = (t: string | null) => {
@@ -67,6 +71,7 @@ const last8 = (t: string | null) => {
 };
 
 async function main() {
+  if (!ORG_ID) throw new Error('--org-id is required');
   console.log(
     `\nMode: ${MODE.toUpperCase()}  |  max-age-days=${MAX_AGE_DAYS}  limit=${LIMIT || 'all'}  delay=${DELAY_MS}ms`,
   );
@@ -76,15 +81,20 @@ async function main() {
 
   const rows = (
     await pool.query<{ id: number; receiving_tracking_number: string | null }>(
-      `SELECT r.id, r.receiving_tracking_number
+      `SELECT r.id, stn.tracking_number_raw AS receiving_tracking_number
          FROM receiving_carton r
+         LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
         WHERE r.source = 'unmatched'
+          AND r.organization_id = $2
           AND COALESCE(r.zoho_purchaseorder_id, '') = ''
-          AND r.receiving_tracking_number IS NOT NULL
+          AND stn.tracking_number_raw IS NOT NULL
           AND COALESCE(r.received_at, r.created_at) > NOW() - ($1 || ' days')::interval
-          AND NOT EXISTS (SELECT 1 FROM receiving_line rl WHERE rl.receiving_id = r.id)
+          AND NOT EXISTS (
+            SELECT 1 FROM receiving_line rl
+             WHERE rl.receiving_id = r.id AND rl.organization_id = $2
+          )
         ORDER BY COALESCE(r.received_at, r.created_at) DESC`,
-      [String(MAX_AGE_DAYS)],
+      [String(MAX_AGE_DAYS), ORG_ID],
     )
   ).rows;
 
@@ -99,12 +109,12 @@ async function main() {
     if (!l8) { stat.noTracking++; continue; }
     try {
       // Same lookup chain reconcile/lookup-po use.
-      let pos = await searchPurchaseReceivesByTracking(l8)
+      let pos = await withZohoOrg(ORG_ID, () => searchPurchaseReceivesByTracking(l8))
         .then((rs) => rs.map((x) => String(x.purchaseorder_id || '')).filter(Boolean))
         .catch(() => [] as string[]);
       let foundVia = 'receive';
       if (pos.length === 0) {
-        const byTrack = await searchPurchaseOrdersByTracking(l8).catch(() => []);
+        const byTrack = await withZohoOrg(ORG_ID, () => searchPurchaseOrdersByTracking(l8)).catch(() => []);
         pos = byTrack.map((p) => String(p.purchaseorder_id || '')).filter(Boolean);
         foundVia = 'order';
         // Exact-vs-fuzzy: does any matched PO's reference_number actually carry the tracking?
@@ -125,7 +135,7 @@ async function main() {
 
       // --match / --receive: promote + import lines via the existing UI/cron path.
       if (uniq.length !== 1) { await sleep(DELAY_MS); continue; } // skip ambiguous/none for writes
-      const res = await reconcileUnmatchedReceiving(r.id);
+      const res = await reconcileUnmatchedReceiving(r.id, ORG_ID);
       if (!res.promoted) { await sleep(DELAY_MS); continue; }
       stat.promoted++;
       console.log(`  promoted rcv ${r.id} → PO ${res.zohoPurchaseorderId} (${res.linesImported ?? 0} lines)`);

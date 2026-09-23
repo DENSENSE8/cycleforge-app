@@ -7,28 +7,14 @@ import {
   getLowStockBins,
 } from '@/lib/neon/location-queries';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
-import { getCurrentUserBySid } from '@/lib/auth/current-user';
-import { readSessionSid } from '@/lib/auth/session';
-
-async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
-  const noopMark = () => {};
-  const sid = readSessionSid(req.cookies);
-  const user = await getCurrentUserBySid(sid);
-  return user
-    ? { user, session: user.session, staffId: user.staffId, organizationId: user.organizationId, role: user.role, permissions: user.permissions, markAuditWritten: noopMark }
-    : { user: null, session: null, staffId: null, organizationId: null, role: null, permissions: new Set(), markAuditWritten: noopMark };
-}
+import { withAuth } from '@/lib/auth/withAuth';
 
 /** GET /api/locations — list active locations. ?type=zones for zone-only, ?type=low-stock for alerts */
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const type = req.nextUrl.searchParams.get('type');
 
-    // Resolve the session org so reads are tenant-scoped. Anonymous callers
-    // (no session) get the legacy un-scoped behavior — orgId stays undefined.
-    const ctx = await resolveCtx(req);
-    const orgId = ctx.organizationId ?? undefined;
+    const orgId = ctx.organizationId;
 
     if (type === 'rooms') {
       const rooms = await getRooms(orgId);
@@ -61,10 +47,10 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+}, { permission: 'sku_stock.view' });
 
 /** POST /api/locations — create a new location */
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json();
     const { name, room, description, barcode, sortOrder, rowLabel, colLabel, binType, capacity, parentId } = body as {
@@ -84,10 +70,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
-    // Resolve session org up-front so the INSERT is tenant-stamped. Anonymous
-    // callers fall back to the legacy un-stamped path (orgId undefined).
-    const ctx = await resolveCtx(req);
-    const orgId = ctx.organizationId ?? undefined;
+    const orgId = ctx.organizationId;
 
     const location = await createLocation({
       name: name.trim(),
@@ -131,4 +114,4 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+}, { permission: 'sku_stock.manage' });

@@ -81,7 +81,7 @@ export const POST = withAuth(
 
       let since: Date | null = null;
       if (mode === 'delta' && !body.reference) {
-        const cursor = await getSyncCursor('zoho_fulfillment_sync');
+        const cursor = await getSyncCursor('zoho_fulfillment_sync', ctx.organizationId);
         since = cursor ?? new Date(Date.now() - config.bootstrapLookbackDays * 24 * 60 * 60 * 1000);
       }
 
@@ -91,19 +91,14 @@ export const POST = withAuth(
         force: body.force === true,
         limit: body.limit,
         referenceNumber: body.reference?.trim() || undefined,
+        orgId: ctx.organizationId,
       });
 
       // Record an audit entry for live (non-dry-run) runs — these create Zoho
       // sales orders / packages / invoices, so we capture who initiated them.
       if (!report.dryRun) {
-        // Scope the audit_logs INSERT under the tenant GUC so the row lands as
-        // RLS-subject once app_tenant is live. This route is authed (withAuth),
-        // so the real session tenant is available — use it directly rather than
-        // the transitionalDogfoodOrgId() service-org fallback the truly session-less
-        // crons in this folder rely on.
-        // TODO(multi-tenant): the heavy syncShippedOrdersToZoho() path still
-        // resolves its tenant via transitionalDogfoodOrgId() internally; thread
-        // ctx.organizationId into it once that module is org-aware.
+        // Scope the audit_logs INSERT under the same authenticated tenant used
+        // for the fulfillment read and provider writes.
         const orgId: OrgId = ctx.organizationId;
         await withTenantTransaction(orgId, (client) =>
           recordAudit(client, ctx, request, {

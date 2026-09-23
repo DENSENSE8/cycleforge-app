@@ -15,7 +15,6 @@
  */
 import { sheets as googleSheets } from '@googleapis/sheets';
 import { getGoogleAuth } from '@/lib/google-auth';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   getIntegrationCredentials,
@@ -50,28 +49,8 @@ import { enqueueImportExceptionsForImport } from '@/lib/inventory/order-import-e
 
 export type { TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
 
-/**
- * USAV's hardcoded source sheet — the transitional default used when no per-org
- * spreadsheet id is supplied. USAV connects Google via env service-account creds
- * (GOOGLE_CLIENT_EMAIL/GOOGLE_PRIVATE_KEY) and has no organization_integrations
- * `google_sheets` row to read an id from, so this stays its source. Exported so
- * the cron fan-out can use it as USAV's includeDogfoodTransitional source while
- * every OTHER org supplies its OWN id from its google_sheets integration config.
- * A non-USAV caller MUST pass an explicit id — never default another tenant onto
- * USAV's sheet.
- */
-export const DOGFOOD_SOURCE_SPREADSHEET_ID = '1b8uvgk4q7jJPjGvFM2TQs3vMES1o9MiAfbEJ7P1TW9w';
-
-/**
- * The transfer source sheet for `orgId`, or null to skip the org.
- *
- * USAV keeps its hardcoded sheet (env service-account creds, no per-org row).
- * Every OTHER org must supply its OWN id via its google_sheets integration
- * config; an org with the provider connected but NO configured sheet id returns
- * null and is skipped — we never default a tenant onto USAV's sheet.
- */
+/** The transfer source sheet for `orgId`, or null when it is not configured. */
 export async function resolveTransferSourceSpreadsheetId(orgId: OrgId): Promise<string | null> {
-  if (orgId === transitionalDogfoodOrgId()) return DOGFOOD_SOURCE_SPREADSHEET_ID;
   const creds = await getIntegrationCredentials<GoogleSheetsCredentials>(orgId, 'google_sheets');
   const id = creds?.defaultSpreadsheetId?.trim();
   return id || null;
@@ -104,6 +83,8 @@ export interface GoogleSheetsTransferOrdersJobResult {
   rowCount: number;
   processedRows: number;
   insertedOrders: number;
+  /** Database ids inserted by this run; used for immediate post-ingest work. */
+  insertedOrderIds: number[];
   updatedOrdersTracking: number;
   updatedOrdersFields: number;
   /** Rows whose source tracking value failed carrier detection (not linked). */
@@ -266,9 +247,10 @@ async function fetchSheetLines(
   manualSheetName: string | undefined,
   progress: SyncProgress,
   orgId: OrgId,
+  credentials: GoogleSheetsCredentials,
 ): Promise<SheetFetchResult> {
   progress({ type: 'phase', phase: 'fetching_sheet' });
-  const sheets = googleSheets({ version: 'v4', auth: getGoogleAuth() });
+  const sheets = googleSheets({ version: 'v4', auth: getGoogleAuth(credentials) });
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: sourceSpreadsheetId });
   const tabTitles = (spreadsheet.data.sheets || []).map((sheet) => sheet.properties?.title || '');
   const tabName = pickTargetTab(tabTitles, manualSheetName);
@@ -398,17 +380,24 @@ async function fetchEcwidLines(effectiveOrgId: OrgId, progress: SyncProgress): P
 }
 
 export async function runGoogleSheetsTransferOrders(
+  orgId: OrgId,
   manualSheetName?: string,
   source: TransferOrdersSource = 'all',
   progress: SyncProgress = noopProgress,
-  orgId?: OrgId,
-  // Which Google Sheet to read. Defaults to USAV's hardcoded sheet so existing
-  // (USAV-context) callers are byte-identical. The per-org cron fan-out passes
-  // each org's OWN sheet id so a tenant is never read from another tenant's sheet.
-  sourceSpreadsheetId: string = DOGFOOD_SOURCE_SPREADSHEET_ID,
+  sourceSpreadsheetId?: string,
 ): Promise<GoogleSheetsTransferOrdersJobResult> {
   const startedAt = Date.now();
-  const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
+  const sheetCredentials =
+    source === 'ecwid'
+      ? null
+      : await getIntegrationCredentials<GoogleSheetsCredentials>(orgId, 'google_sheets');
+
+  if (source !== 'ecwid' && !sheetCredentials) {
+    fail(503, 'Google Sheets credentials are not configured for this organization.');
+  }
+  if (source !== 'ecwid' && !sourceSpreadsheetId) {
+    fail(400, 'Google Sheets source spreadsheet is not configured for this organization.');
+  }
 
   progress({ type: 'phase', phase: 'starting' });
 
@@ -416,8 +405,8 @@ export async function runGoogleSheetsTransferOrders(
     const sheet =
       source === 'ecwid'
         ? null
-        : await fetchSheetLines(sourceSpreadsheetId, manualSheetName, progress, effectiveOrgId);
-    const ecwidLines = source === 'sheets' ? [] : await fetchEcwidLines(effectiveOrgId, progress);
+        : await fetchSheetLines(sourceSpreadsheetId!, manualSheetName, progress, orgId, sheetCredentials!);
+    const ecwidLines = source === 'sheets' ? [] : await fetchEcwidLines(orgId, progress);
 
     const tabName = sheet?.tabName ?? '(ecwid-api)';
     const skips = sheet?.skips ?? emptyTransferSheetSkipCounts();
@@ -430,6 +419,7 @@ export async function runGoogleSheetsTransferOrders(
         rowCount: 0,
         processedRows: 0,
         insertedOrders: 0,
+        insertedOrderIds: [],
         updatedOrdersTracking: 0,
         updatedOrdersFields: 0,
         unresolvedTrackingCount: 0,
@@ -467,7 +457,7 @@ export async function runGoogleSheetsTransferOrders(
     // sheet rows are already written and must never be re-imported because a
     // bin lookup failed.
     await autoAllocateAfterIngest(result.insertedOrderIds, {
-      orgId: effectiveOrgId,
+      orgId,
       source: 'google-sheets-transfer-orders',
     });
     progress({ type: 'phase', phase: 'done' });
@@ -481,6 +471,7 @@ export async function runGoogleSheetsTransferOrders(
       rowCount: sheet?.totalRows ?? 0,
       processedRows: result.processedOrders,
       insertedOrders: result.insertedOrders,
+      insertedOrderIds: result.insertedOrderIds,
       updatedOrdersTracking: result.updatedOrdersTracking,
       updatedOrdersFields: result.updatedOrdersFields,
       unresolvedTrackingCount: result.unresolvedTrackingCount,

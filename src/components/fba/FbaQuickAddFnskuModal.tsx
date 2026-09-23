@@ -92,7 +92,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
           setOpen(false);
         }}
       />
-      <Panel radius="2xl" padding="none" elevation="md" className="relative z-panelPopover w-full max-w-lg overflow-hidden shadow-zinc-900/15">
+      <Panel radius="none" padding="none" elevation="none" className="relative z-panelPopover w-full max-w-lg overflow-hidden">
         <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
           <div>
             <p className={`text-role-micro uppercase tracking-[0.16em] ${chrome.sectionLabel}`}>Quick add</p>
@@ -104,7 +104,9 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             disabled={saving}
             ariaLabel="Close quick add Amazon SKU popup"
             icon={<X className="h-4 w-4" />}
-            className="rounded-full border border-border-soft bg-surface-card p-2 text-text-soft hover:border-border-default hover:bg-surface-hover hover:text-text-default disabled:opacity-40"
+            size="md"
+            radius="flush"
+            className="border border-border-soft bg-surface-card text-text-soft hover:border-border-default hover:bg-surface-hover hover:text-text-default disabled:opacity-40"
           />
         </div>
 
@@ -157,7 +159,7 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             mono
           />
 
-          {error ? <p className="text-xs font-semibold text-red-600">{error}</p> : null}
+          {error ? <p className="text-xs font-semibold text-text-danger">{error}</p> : null}
         </div>
 
         <div className="flex items-center justify-end gap-2 border-t border-border-soft px-4 py-4">

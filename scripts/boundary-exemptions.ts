@@ -14,8 +14,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/app/m/(shell)/rs/[id]/page.tsx => src/components/repair/mobile/RepairActionTimeline.tsx",
   "src/app/receiving/lines/[id]/page.tsx => src/components/mobile/receiving/ScanAgainBar.tsx",
   "src/app/serial/[id]/page.tsx => src/components/mobile/receiving/ScanAgainBar.tsx",
-  "src/app/warehouse/replenishment/page.tsx => src/components/mobile/NetworkChip.tsx",
-  "src/app/warehouse/rma/page.tsx => src/components/mobile/NetworkChip.tsx",
   "src/components/auth/SignInQrScanDialog.tsx => src/components/mobile/ScanSurface.tsx",
   "src/components/layout/MobileRouteShell.tsx => src/components/mobile/receiving/ReceivingPhoneBridgeMount.tsx",
   "src/components/mobile/identify/useMobileIdentify.ts => src/components/receiving/label-identify/useLabelIdentify.ts",
@@ -67,7 +65,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   // faces were extracted out of MobileToShipRow (2026-09-15).
   "src/components/mobile/redesign/to-ship-faces.tsx => src/components/work-orders/types.ts",
   "src/components/mobile/redesign/MobileToShipRow.tsx => src/components/work-orders/types.ts",
-  "src/components/mobile/redesign/MobileToShipSheet.tsx => src/components/outbound/orders/oos/OosProductCombobox.tsx",
   "src/components/mobile/redesign/MobileToShipSheet.tsx => src/components/work-orders/types.ts",
   "src/components/mobile/redesign/MyWork.tsx => src/components/work-orders/types.ts",
   "src/components/mobile/redesign/ScanInput.tsx => src/components/station/scan-bar/index.ts",

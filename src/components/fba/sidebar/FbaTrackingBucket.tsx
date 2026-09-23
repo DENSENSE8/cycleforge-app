@@ -81,9 +81,9 @@ export function FbaTrackingBucket({
       ref={setNodeRef}
       className={`rounded-none border transition-colors ${
         isOver
-          ? 'border-dashed border-blue-400 bg-blue-50/40'
+          ? 'border-dashed border-border-accent bg-surface-accent'
           : bucket.allocations.length > 0
-            ? 'border-blue-200 bg-blue-50/20'
+            ? 'border-border-accent bg-surface-accent'
             : 'border-border-soft bg-surface-card'
       }`}
     >
@@ -94,7 +94,8 @@ export function FbaTrackingBucket({
           icon={bucket.collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
           ariaLabel={bucket.collapsed ? 'Expand box' : 'Collapse box'}
           onClick={() => onToggleCollapse(bucket.bucketId)}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:text-text-muted"
+          radius="flush"
+          className="flex h-5 w-5 shrink-0 items-center justify-center text-text-faint hover:text-text-muted"
         />
 
         <input
@@ -116,7 +117,8 @@ export function FbaTrackingBucket({
             icon={<Trash2 className="h-3 w-3" />}
             ariaLabel="Delete this UPS box"
             onClick={() => onDelete(bucket.bucketId)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:bg-red-50 hover:text-red-500"
+            radius="flush"
+            className="flex h-5 w-5 shrink-0 items-center justify-center text-text-faint hover:bg-surface-danger hover:text-text-danger"
           />
         </HoverTooltip>
       </div>

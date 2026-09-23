@@ -1,33 +1,33 @@
 /**
  * GET /api/kiosk/visit/{id}/receipt — device-authed print of a completed visit.
  *
- * Callers: KioskCartLedger print buttons.
+ * Callers: KioskCartLedger print buttons, KioskHistoryPane reprint.
  * Affected API: GET /api/kiosk/visit/[id]/receipt (device cookie).
  * Data schemas: VisitReceipt HTML from buildVisitReceipt + renderVisitReceiptHtml.
  * User: "print out a receipt including everything no matter repair service sales order" and "give internal staff as an internal record"
+ *
+ * Every render is audited. A reprint from the History face carries
+ * `?reprint=1`, so the trail separates "the receipt this visit printed at
+ * checkout" from "someone reprinted it later" — the fact the operator is
+ * actually asking about when a customer turns up with a paper dispute.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';
 import { loadCounterVisit } from '@/lib/counter/read-visit';
+import { visitIdFromPath } from '@/lib/counter/visit-route-path';
 import { buildVisitReceipt } from '@/lib/counter/visit-receipt';
 import { renderVisitReceiptHtml } from '@/lib/counter/visit-receipt-html';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getOrgLetterhead } from '@/lib/branding/letterhead';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
+import { recordKioskVisitAudit } from '@/lib/counter/kiosk-visit-audit';
+import { AUDIT_ACTION } from '@/lib/audit-logs';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const runtime = 'nodejs';
 
 const NO_STORE = { 'cache-control': 'no-store' } as const;
-
-function visitIdFromPath(pathname: string): number | null {
-  const segments = pathname.split('/').filter(Boolean);
-  const at = segments.lastIndexOf('visit');
-  if (at === -1) return null;
-  const id = Number(segments[at + 1]);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
 
 export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
   const visitId = visitIdFromPath(req.nextUrl.pathname);
@@ -54,6 +54,13 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
   const autoPrint = req.nextUrl.searchParams.get('print') === '1';
   const copy = req.nextUrl.searchParams.get('copy') === 'staff' ? 'staff' : 'customer';
   const html = renderVisitReceiptHtml(receipt, { autoPrint, copy });
+
+  const reprint = req.nextUrl.searchParams.get('reprint') === '1';
+  await recordKioskVisitAudit(req, ctx, {
+    action: AUDIT_ACTION.KIOSK_VISIT_PRINT,
+    entityId: visitId,
+    extra: { kind: 'receipt', copy, reprint },
+  });
 
   return new NextResponse(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', ...NO_STORE },

@@ -98,7 +98,12 @@ export async function listPackingTrackings(
 ): Promise<PackingTrackingSummary[]> {
   const { filters, search } = opts;
   const params: unknown[] = [];
-  const where: string[] = ['pl.shipment_id IS NOT NULL'];
+  // A CAPTURING log owns in-progress evidence only. It is not a completed pack
+  // and must never enter the operational/audit history stream.
+  const where: string[] = [
+    'pl.shipment_id IS NOT NULL',
+    "pl.completion_state = 'COMPLETED'",
+  ];
 
   // Tenant scope: packer_logs carries organization_id. The LEFT-JOINed
   // shipping_tracking_numbers (stn) has no organization_id column (NEEDS-COL),
@@ -233,7 +238,8 @@ export async function getPackingTrackingDetail(
             pl.tracking_type
        FROM packer_logs pl
        LEFT JOIN staff s ON s.id = pl.packed_by
-       WHERE pl.shipment_id = $1${orgId ? ' AND pl.organization_id = $2::uuid' : ''}
+       WHERE pl.shipment_id = $1
+         AND pl.completion_state = 'COMPLETED'${orgId ? ' AND pl.organization_id = $2::uuid' : ''}
        ORDER BY pl.created_at DESC NULLS LAST, pl.id DESC`,
     orgId ? [shipmentId, orgId] : [shipmentId],
   );

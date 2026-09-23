@@ -266,6 +266,15 @@ const TABLE_ENTITY_FAMILIES = [
    */
   'report-packer-day',
   /**
+   * Reports › Tasks — one row = one FINISHED `work_assignments` follow-up
+   * (`work_type = 'FOLLOW_UP'`, lane `done`). Read-only: reopening a task is a
+   * verb of the task desk, where the row is still work. NOT `tasks` — that
+   * family is the working checklist, and one layout document over both would
+   * mean hiding a column on the record densified the queue. Catalog:
+   * field-catalog/report-tasks.ts.
+   */
+  'report-tasks',
+  /**
    * Admin › per-SKU bin distribution — one row = one location holding this
    * SKU. Read-only. Catalog: field-catalog/sku-bins.ts. NOT `bins` — that
    * family's row is the warehouse-wide bin with its own count stamps and

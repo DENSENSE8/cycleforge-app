@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import {
@@ -19,9 +19,7 @@ export const maxDuration = 120;
  * Processes pending photo_jobs (job_type=analyze). Enqueued on GCS upload.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
 
   const limit = Number(new URL(request.url).searchParams.get('limit') || 10);
 
@@ -68,9 +66,7 @@ export async function GET(request: NextRequest) {
 
 /** POST — enqueue analyze jobs for explicit photo ids (staff/cron repair). */
 export async function POST(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   const body = (await request.json().catch(() => null)) as {
     photoIds?: number[];
     organizationId?: string;

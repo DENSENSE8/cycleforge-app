@@ -142,14 +142,12 @@ Update `docs/eval/README.md`: overlay = stations; **slot-table = all product tab
 
 **Agent law:** before editing compound/slot layout, impact **engine** symbols—not `OrdersQueueTableRow` alone.
 
-Update:
+Update (agent-agnostic sources only — the Cursor code-graph / eval-engineering
+rule and skill folders were deleted 2026-09-19; never re-add a harness copy):
 
-- `.cursor/skills/code-graph/SKILL.md`
-- `.cursor/rules/code-graph.mdc`
-- `.cursor/skills/eval-engineering/SKILL.md`
-- `.cursor/rules/eval-engineering.mdc`
-- `.cursor/hooks/session-start-garisek-engineering.sh`
-- `AGENTS.md` / `CLAUDE.md` — one paragraph each
+- `AGENTS.md` § Code graph and § Eval engineering (the one map every harness reads)
+- `docs/eval/README.md` (cohort/ledger operational detail)
+- `.cursor/hooks/session-start-garisek-engineering.sh` (harness mechanics only)
 
 ---
 

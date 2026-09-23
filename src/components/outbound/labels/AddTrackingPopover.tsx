@@ -15,6 +15,8 @@ import { useAddTrackingNav } from '@/components/outbound/labels/add-tracking-con
 import { orderRowConditionLabel } from '@/lib/conditions';
 import { platformMetaIconTone, sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 
 
@@ -175,21 +177,21 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') { e.preventDefault(); void handleSave(); }
           }}
-          className={cn("z-dropdown w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5", focusRing('field', 'accent'))}
+          className={cn('z-dropdown w-80 max-w-[calc(100vw-1.5rem)] border border-border-soft bg-surface-card p-3 ring-1 ring-border-soft', DROPDOWN_SHELL_CORNER, elevationClass('overlay'), focusRing('field', 'accent'))}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
-            <span className={`${sectionLabel} text-violet-700`}>Add Tracking</span>
+            <span className={`${sectionLabel} text-text-accent`}>Add Tracking</span>
             <div className="flex items-center gap-1">
               {pos && pos.total > 0 ? (
                 <span className="text-role-eyebrow tabular-nums text-text-faint">{pos.index} / {pos.total}</span>
               ) : null}
-              <Popover.Close className="rounded p-0.5 text-text-faint hover:bg-surface-sunken hover:text-text-muted" aria-label="Close">
+              <Popover.Close className={cn(cornerClass('chip'), 'p-0.5 text-text-faint hover:bg-surface-sunken hover:text-text-muted')} aria-label="Close">
                 <X className="h-3.5 w-3.5" />
               </Popover.Close>
             </div>
           </div>
 
-          <div className="mb-3 rounded-xl bg-surface-canvas px-3 py-2">
+          <div className={cn('mb-3 bg-surface-canvas px-3 py-2', cornerClass('field'))}>
             <p className="truncate text-role-caption font-semibold text-text-default">{record.product_title || 'Unknown product'}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-wide text-text-faint">
               {platformMeta.value ? (
@@ -220,14 +222,14 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
               value={tracking}
               onChange={(e) => setTracking(e.target.value)}
               placeholder="Paste or scan tracking…"
-              className={"min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+              className={cn('min-w-0 flex-1 border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent', cornerClass('field')) /* ds-allow-focus: identity/one-off hue or ring-0 */}
             />
             <HoverTooltip label="Paste from clipboard" asChild>
               <IconButton
                 icon={<Clipboard className="h-4 w-4" />}
                 onClick={handlePaste}
                 ariaLabel="Paste from clipboard"
-                className="shrink-0 rounded-xl border border-border-soft p-2 text-text-soft hover:bg-surface-hover hover:text-violet-600"
+                className={cn('shrink-0 border border-border-soft p-2 text-text-soft hover:bg-surface-hover hover:text-text-accent', cornerClass('control'))}
               />
             </HoverTooltip>
           </div>
@@ -237,18 +239,18 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             placeholder="SKU"
-            className={"mb-1 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+            className={cn('mb-1 w-full border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent', cornerClass('field')) /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
           {sku.trim() && sku.trim() !== initialSku ? (
             <p className="mb-2 flex items-center gap-1 text-role-eyebrow font-semibold">
               {resolving ? (
                 <span className="text-text-faint">Looking up…</span>
               ) : resolution?.skuCatalogId != null ? (
-                <span className="inline-flex items-center gap-1 text-emerald-600">
+                <span className="inline-flex items-center gap-1 text-text-success">
                   <Check className="h-3 w-3" /> Linked: {resolution.title || 'catalog match'}
                 </span>
               ) : (
-                <span className="text-amber-600">No catalog match — will save the SKU text only</span>
+                <span className="text-text-warning">No catalog match — will save the SKU text only</span>
               )}
             </p>
           ) : null}
@@ -258,11 +260,11 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
             value={itemNumber}
             onChange={(e) => setItemNumber(e.target.value)}
             placeholder="Item number"
-            className={"mb-3 w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-violet-500" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+            className={cn('mb-3 w-full border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent', cornerClass('field')) /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
 
           {status === 'error' ? (
-            <p className="mb-2 text-role-eyebrow text-red-600">Save failed — try again.</p>
+            <p className="mb-2 text-role-eyebrow text-text-danger">Save failed — try again.</p>
           ) : null}
 
           <div className="flex items-center gap-1.5">
@@ -272,7 +274,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
                 onClick={() => nav?.prev(orderId)}
                 disabled={!nav?.hasPrev(orderId)}
                 ariaLabel="Previous order"
-                className="rounded-xl border border-border-soft p-2 text-text-soft hover:bg-surface-hover disabled:opacity-30"
+                className={cn('border border-border-soft p-2 text-text-soft hover:bg-surface-hover disabled:opacity-30', cornerClass('control'))}
               />
             </HoverTooltip>
             <Button
@@ -280,7 +282,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
               onClick={handleSave}
               disabled={!canSave}
               icon={status === 'saving' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-              className="flex-1 bg-violet-600 text-white shadow-violet-600/25 hover:bg-violet-700 active:scale-95"
+              className="flex-1 bg-accent-bg text-text-inverse hover:bg-accent-hover active:scale-95"
             >
               {nav?.hasNext(orderId) ? 'Save & Next' : 'Save'}
             </Button>
@@ -290,7 +292,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
                 onClick={() => nav?.next(orderId)}
                 disabled={!nav?.hasNext(orderId)}
                 ariaLabel="Next order"
-                className="rounded-xl border border-border-soft p-2 text-text-soft hover:bg-surface-hover disabled:opacity-30"
+                className={cn('border border-border-soft p-2 text-text-soft hover:bg-surface-hover disabled:opacity-30', cornerClass('control'))}
               />
             </HoverTooltip>
           </div>
@@ -302,7 +304,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
                 {nav.recentlyAdded.slice(0, 5).map((e) => (
                   <li key={e.orderId} className="flex items-center justify-between gap-2 text-role-eyebrow">
                     <span className="truncate text-text-muted">{e.title}</span>
-                    <span className="shrink-0 font-mono font-semibold text-emerald-600">…{e.tracking.slice(-6)}</span>
+                    <span className="shrink-0 font-mono font-semibold text-text-success">…{e.tracking.slice(-6)}</span>
                   </li>
                 ))}
               </ul>

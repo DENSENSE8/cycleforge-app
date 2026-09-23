@@ -3,11 +3,13 @@
  *
  * Lifted out of the old src/lib/qstash.ts when QStash was removed. Every cron
  * route guards with {@link isAuthorizedCronRequest}; Vercel injects
- * `Authorization: Bearer ${CRON_SECRET}` (and `x-vercel-cron: 1`) on each
- * scheduled invocation.
+ * `Authorization: Bearer ${CRON_SECRET}` on each scheduled invocation.
  */
 
+import { NextResponse } from 'next/server';
+
 import { resolvePublicAppUrl } from '@/lib/env-utils';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 
 /**
  * Resolve the app's public base URL (no trailing slash). Used by jobs that
@@ -22,24 +24,23 @@ export function getAppBaseUrl(): string {
 }
 
 /**
- * Vercel cron requests carry `Authorization: Bearer ${CRON_SECRET}` and an
- * `x-vercel-cron: 1` header. Either signal is sufficient.
+ * Vercel cron requests carry `Authorization: Bearer ${CRON_SECRET}`.
+ * `x-vercel-cron` is metadata, not authentication: callers can forge it.
  *
  * NOTE: an empty/unset CRON_SECRET makes the Bearer path fail closed — set it
  * in the Vercel project env and redeploy (env changes only apply on redeploy).
  */
-export function isVercelCronOrigin(headers: Headers): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (secret && headers.get('authorization') === `Bearer ${secret}`) return true;
-  if (headers.get('x-vercel-cron') === '1' && process.env.VERCEL === '1') return true;
-  return false;
+export function isAuthorizedCronRequest(headers: Headers): boolean {
+  const secret = process.env.CRON_SECRET?.trim();
+  if (!secret) return false;
+
+  const authorization = headers.get('authorization');
+  if (!authorization?.startsWith('Bearer ')) return false;
+
+  const suppliedSecret = authorization.slice('Bearer '.length);
+  return safeStrEqual(suppliedSecret, secret);
 }
 
-/**
- * True if a request is an authorized cron trigger. Kept as a distinct name from
- * {@link isVercelCronOrigin} so call sites read intent-first and so a future
- * additional trigger source has one place to land.
- */
-export function isAuthorizedCronRequest(headers: Headers): boolean {
-  return isVercelCronOrigin(headers);
+export function unauthorizedCronResponse(): NextResponse {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 }

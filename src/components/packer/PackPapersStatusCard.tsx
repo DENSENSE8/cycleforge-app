@@ -88,10 +88,10 @@ export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null
           transition={transition}
           className={
             printBundleUi.status === 'failed' || printBundleUi.status === 'missing'
-              ? 'rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5'
+              ? 'rounded-none border border-border-warning bg-surface-warning px-3 py-2.5'
               : printBundleUi.status === 'printing'
                 ? 'rounded-none border border-border-soft bg-surface-card px-3 py-2.5'
-                : 'rounded-none border border-emerald-200 bg-emerald-50 px-3 py-2.5'
+                : 'rounded-none border border-border-success bg-surface-success px-3 py-2.5'
           }
         >
           <div className="flex items-start justify-between gap-2">

@@ -29,23 +29,6 @@ import { test } from 'node:test';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
-// Shrink-only. LOWER as the deliberate remainder gains tokens; never raise.
-// 2026-07-04: 1151, down from ~12,100 before the Wave-3 codemod. The bulk of
-// the remainder is alpha washes (bg-white/10, bg-gray-50/60), deliberate dark
-// chrome (bg-gray-900, text-gray-300 on it), and 300-step decorative fills.
-// 2026-07-04b: 454 after the inverse-chrome sweep.
-// 2026-07-04c: ZERO. Alpha washes now token-ized (function colors + color-mix),
-// media chrome moved to the fixed stage/scrim/glass vocabulary, mid-dark fills
-// to the surface-inverse ladder, and every deliberately-literal site (print
-// ink, identity hues, photo overlays) carries an explicit ds-allow-raw-neutral
-// marker. Every NEW raw neutral must be a token or carry a justified marker.
-// 2026-07-10: re-armed 0 → 41 at the actual count after merging upstream dev
-// product code that shipped over the old budget (top offenders: text-gray-500,
-// border-gray-200, ring-gray-200, bg-gray-100, bg-white), then 41 → 43 after
-// carrying over the in-flight capability-relabel WIP snapshot from the same
-// upstream repo. Shrink-only from here — tokenize these back toward zero.
-const RAW_NEUTRAL_BASELINE = 0;
-
 const ESCAPE_MARKER = 'ds-allow-raw-neutral';
 const RAW_NEUTRAL_RE =
   /(?<![\w/-])(?:[\w-]+:)*(?:bg|text|border(?:-[tbrlxyse])?|divide|ring)-(?:white|black|(?:gray|slate|zinc|stone|neutral)-\d{2,3})(?:\/\d{1,3})?(?![\w-])/g;

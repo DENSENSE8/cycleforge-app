@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { RepairActionTimeline } from '@/components/repair/mobile/RepairActionTimeline';
 import { AddRepairActionSheet } from '@/components/repair/mobile/AddRepairActionSheet';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
 import { repairStatusBadgeClass } from '@/lib/repair-status';
@@ -113,7 +112,6 @@ function RepairMobilePageInner() {
         meta={repair ? `${customerFirstName} · ${repair.product_title || 'Bose Repair'}` : undefined}
         right={
           <>
-            <NetworkChip compact />
             {repair?.status && (
               <span
                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ${repairStatusBadgeClass(

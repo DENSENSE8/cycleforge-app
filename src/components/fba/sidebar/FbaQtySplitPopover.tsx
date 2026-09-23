@@ -38,7 +38,7 @@ export function FbaQtySplitPopover({
       animate={framerPresence.dropdownPanel.animate}
       exit={framerPresence.dropdownPanel.exit}
       transition={framerTransition.dropdownOpen}
-      className="absolute inset-x-0 top-0 z-dropdown mx-2 rounded-lg border border-blue-200 bg-surface-card p-3 shadow-lg"
+      className="absolute inset-x-0 top-0 z-dropdown mx-2 rounded-none border border-border-accent bg-surface-card p-3 shadow-none"
     >
       <p className={`${microBadge} mb-2 tracking-wider text-text-muted`}>
         Move how many? <span className="font-mono text-text-default">{fnsku}</span>
@@ -50,7 +50,7 @@ export function FbaQtySplitPopover({
           min={1}
           max={maxQty}
           onChange={setMoveQty}
-          className="h-8 w-16 rounded-md border border-border-soft bg-surface-card text-center text-sm font-semibold tabular-nums outline-none"
+          className="h-8 w-16 rounded-none border border-border-soft bg-surface-card text-center text-sm font-semibold tabular-nums outline-none focus:border-border-accent"
         />
         <span className={`${microBadge} text-text-faint`}>of {maxQty}</span>
       </div>
@@ -59,16 +59,18 @@ export function FbaQtySplitPopover({
         <Button
           variant="primary"
           size="sm"
+          radius="flush"
           onClick={() => onConfirm(moveQty)}
-          className="h-7 flex-1 text-role-micro uppercase tracking-wider"
+          className="flex-1 text-role-micro uppercase tracking-wider"
         >
           Move
         </Button>
         <Button
           variant="secondary"
           size="sm"
+          radius="flush"
           onClick={onCancel}
-          className="h-7 flex-1 text-role-micro uppercase tracking-wider text-text-muted"
+          className="flex-1 text-role-micro uppercase tracking-wider text-text-muted"
         >
           Cancel
         </Button>

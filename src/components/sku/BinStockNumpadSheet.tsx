@@ -171,6 +171,7 @@ export function BinStockNumpadSheet({
       const idempotencyKey = randomId();
       const res = await queueOrFetch({
         url: `/api/locations/${encodeURIComponent(binBarcode)}`,
+        aggregateKey: `location:${binBarcode}:sku:${row.sku}`,
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

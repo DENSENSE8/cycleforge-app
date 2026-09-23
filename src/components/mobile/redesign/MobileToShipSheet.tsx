@@ -2,59 +2,45 @@
 
 /**
  * Phone to-ship order sheet — product header, LN/SKU/BY facts, picker/packer
- * cards, OOS as a critical block, 2-up operations. Ship is a small CTA.
+ * cards, OOS as a critical block, 2-up operations. The shared workflow facts
+ * own whether hold and exception-triage controls are available. Pick/Pack
+ * execution is deliberately absent: it belongs to the `/m/pick` workflow.
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useRef, useState, type ReactNode } from 'react';
 import {
-  AlertTriangle,
-  Calendar,
   ClipboardList,
   ExternalLink,
   FileText,
   Printer,
-  Truck,
-  User,
+  Upload,
 } from '@/components/Icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import {
-  CopyChip,
-  EmptySkuChipFace,
-  OrderIdChip,
-  SkuScanRefChip,
-  getLast8,
-} from '@/components/ui/CopyChip';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { Button, Inset, Stack } from '@/design-system/primitives';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import {
-  isToShipOutOfStock,
   toShipOrderId,
   toShipPackerLabel,
   toShipPickerLabel,
 } from '@/lib/work-orders/to-ship-assignment';
 import type { WorkOrderRow } from '@/components/work-orders/types';
-import type { OutboundDocument } from '@/lib/documents/types';
-import { formatDatePST, getDaysLateNullable, getDaysLateTone } from '@/utils/date';
+import type { OutboundDocumentsResponse, PackingSlipIngestState } from '@/lib/documents/types';
 import { cn } from '@/utils/_cn';
-import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
-import { ToShipQtyFace } from '@/components/mobile/redesign/to-ship-faces';
-import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
-import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { MobileOrderDocumentsSheet } from '@/components/mobile/redesign/MobileOrderDocumentsSheet';
 
-async function fetchOrderDocuments(entityId: number): Promise<OutboundDocument[]> {
+async function fetchOrderDocuments(entityId: number): Promise<OutboundDocumentsResponse> {
   const res = await fetch(`/api/orders/${entityId}/documents`, { cache: 'no-store' });
-  if (!res.ok) return [];
-  const data: unknown = await res.json();
-  if (!data || typeof data !== 'object' || !('documents' in data)) return [];
-  const documents = (data as { documents: unknown }).documents;
-  return Array.isArray(documents) ? (documents as OutboundDocument[]) : [];
+  if (!res.ok) throw new Error('Could not load order documents');
+  return (await res.json()) as OutboundDocumentsResponse;
 }
 
-function documentUrl(doc: OutboundDocument | undefined): string | null {
-  const url = doc?.data?.url?.trim();
-  return url || null;
+function packingSlipStatusClass(status: PackingSlipIngestState['status']): string {
+  if (status === 'available') return 'text-text-success';
+  if (status === 'failed') return 'text-text-danger';
+  return 'text-text-warning';
 }
 
 function ClaimTicks({ filled }: { filled: number }) {
@@ -64,7 +50,8 @@ function ClaimTicks({ filled }: { filled: number }) {
         <span
           key={i}
           className={cn(
-            'h-1 flex-1 rounded-full',
+            'h-1 flex-1',
+            cornerClass('pill'),
             i < filled ? 'bg-text-default' : 'bg-border-soft',
           )}
         />
@@ -87,7 +74,7 @@ function PersonCard({
   filled: number;
 }) {
   return (
-    <div className="min-w-0 flex-1 rounded-2xl border border-border-soft bg-surface-card p-3">
+    <div className={cn('min-w-0 flex-1 border border-border-soft bg-surface-card p-3', cornerClass('card'))}>
       <div className="flex items-center gap-2">
         <StaffAvatar
           staffId={staffId}
@@ -132,7 +119,7 @@ function OpButton({
       disabled={disabled}
       loading={loading}
       aria-label={accessibleName ?? label}
-      className="h-auto min-h-11 w-full items-start justify-center rounded-none px-3 py-2 text-left text-role-caption font-semibold"
+      className={cn('h-auto min-h-11 w-full items-start justify-center px-3 py-2 text-left text-role-caption font-semibold', cornerClass('flush'))}
       onClick={onClick}
     >
       {label}
@@ -144,47 +131,79 @@ export function MobileToShipSheet({
   row,
   open,
   onClose,
-  onProcess,
-  onOutOfStock,
   onOpenDetail,
-  onPassPicker,
   resolveName,
-  blocked = false,
 }: {
   row: WorkOrderRow | null;
   open: boolean;
   onClose: () => void;
-  onProcess: (row: WorkOrderRow) => void;
-  onOutOfStock: (row: WorkOrderRow, identity?: OrderShortageIdentity) => void;
   onOpenDetail: (row: WorkOrderRow) => void;
-  onPassPicker: (row: WorkOrderRow, staff: { id: number; name: string }) => void;
   resolveName: (id: number) => string;
-  blocked?: boolean;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [oosPickOpen, setOosPickOpen] = useState(false);
+  const [documentsOpen, setDocumentsOpen] = useState(false);
+  const [activeDocumentType, setActiveDocumentType] = useState<'shipping_label' | 'packing_slip'>('shipping_label');
+  const shippingLabelInputRef = useRef<HTMLInputElement | null>(null);
   const entityId = row?.entityId ?? null;
-  const { data: documents = [], isPending } = useQuery({
+  const documentsQuery = useQuery({
     queryKey: ['order-documents', entityId],
     queryFn: () => fetchOrderDocuments(entityId as number),
     enabled: open && entityId != null,
+    refetchInterval: (query) =>
+      query.state.data?.packingSlipIngest?.status === 'processing' ? 2_000 : false,
+  });
+  const documents = documentsQuery.data?.documents ?? [];
+
+  const uploadShippingLabel = useMutation({
+    mutationFn: async (file: File) => {
+      if (entityId == null) throw new Error('Order is unavailable');
+      const form = new FormData();
+      form.set('file', file);
+      form.set('documentType', 'shipping_label');
+      form.set('orderRef', row ? toShipOrderId(row) : String(entityId));
+      const response = await fetch(`/api/orders/${entityId}/documents/upload`, {
+        method: 'POST',
+        body: form,
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || 'Could not upload shipping label');
+      }
+    },
+    onSuccess: async () => {
+      await documentsQuery.refetch();
+      setActiveDocumentType('shipping_label');
+      setDocumentsOpen(true);
+    },
   });
 
   if (!row) return null;
 
-  const isBlocked = blocked || isToShipOutOfStock(row);
   const listingHref = getExternalUrlByItemNumber(row.itemNumber || row.sku);
   const label = documents.find((doc) => doc.documentType === 'shipping_label');
   const slip = documents.find((doc) => doc.documentType === 'packing_slip');
-  const labelHref = documentUrl(label);
-  const slipHref = documentUrl(slip);
+  const isEcwid = row.accountSource?.toLowerCase().includes('ecwid') ?? false;
+  const packingSlipIngest: PackingSlipIngestState | null = slip
+    ? {
+        status: 'available',
+        label: 'Available',
+        attemptCount: documentsQuery.data?.packingSlipIngest?.attemptCount ?? 0,
+        lastError: null,
+        nextAttemptAt: null,
+        documentId: slip.id,
+      }
+    : documentsQuery.data?.packingSlipIngest ??
+      (isEcwid
+        ? {
+            status: 'processing',
+            label: 'Processing',
+            attemptCount: 0,
+            lastError: null,
+            nextAttemptAt: null,
+            documentId: null,
+          }
+        : null);
   const picker = toShipPickerLabel(row, resolveName);
   const packer = toShipPackerLabel(row, resolveName);
-  const daysLate = getDaysLateNullable(row.deadlineAt);
-  const itemNumber = row.itemNumber?.trim() || '';
-  const orderId = toShipOrderId(row);
-  const sku = row.sku?.trim() || '';
-  const shipBy = formatDatePST(row.deadlineAt, { shortYear: true });
   const pickFilled = row.techId != null || picker ? (row.hasTechScan ? 3 : 2) : 0;
   const packFilled = row.packerId != null || packer ? 2 : 0;
 
@@ -192,12 +211,16 @@ export function MobileToShipSheet({
     window.open(href, '_blank', 'noopener,noreferrer');
   };
 
+  const openDocument = (type: 'shipping_label' | 'packing_slip') => {
+    setActiveDocumentType(type);
+    setDocumentsOpen(true);
+  };
+
   return (
     <>
       <BottomSheet
         open={open}
         onClose={() => {
-          setPickerOpen(false);
           onClose();
         }}
         forceVariant="sheet"
@@ -207,36 +230,6 @@ export function MobileToShipSheet({
         <div data-testid="to-ship-sheet">
           <Inset space="field">
             <Stack space="row" className="flex flex-col">
-              <div className="flex justify-start">
-                <ToShipQtyFace row={row} />
-              </div>
-
-              <div className="flex min-w-0 flex-wrap items-center gap-1">
-                <OrderIdChip
-                  value={itemNumber || orderId}
-                  display={getLast8(itemNumber || orderId)}
-                  displayWidth="last8"
-                  dense
-                  truncateDisplay={false}
-                />
-                {sku ? (
-                  <SkuScanRefChip value={sku} display={sku} dense />
-                ) : (
-                  <EmptySkuChipFace dense />
-                )}
-                {row.deadlineAt ? (
-                  <CopyChip
-                    value={row.deadlineAt}
-                    display={shipBy}
-                    tone="id"
-                    icon={<Calendar className="h-3.5 w-3.5" />}
-                    dense
-                    truncateDisplay={false}
-                    fitDisplayWidth
-                  />
-                ) : null}
-              </div>
-
               <div
                 data-testid="to-ship-sheet-assignees"
                 className="flex gap-2"
@@ -257,26 +250,11 @@ export function MobileToShipSheet({
                 />
               </div>
 
-              {isBlocked ? (
-                <div className="rounded-2xl bg-rose-50 px-3 py-2 text-role-caption text-rose-800">
-                  <p className="flex items-center gap-1.5 font-semibold">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
-                    Critical Block: Out of stock
-                  </p>
-                  <p className="mt-0.5 pl-5 text-rose-700">Inventory mismatch for current unit</p>
-                </div>
-              ) : null}
-
-              <div className="overflow-hidden rounded-2xl border border-border-soft">
+              <div className={cn('overflow-hidden border border-border-soft', cornerClass('card'))}>
                 <p className="px-3 pt-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                   Operations
                 </p>
-                <div className="grid grid-cols-2">
-                  <OpButton
-                    icon={<User className="h-4 w-4" />}
-                    label="Pass pick"
-                    onClick={() => setPickerOpen(true)}
-                  />
+                <div className="grid grid-cols-1">
                   <OpButton
                     icon={<ExternalLink className="h-4 w-4" />}
                     label="List Item"
@@ -291,28 +269,68 @@ export function MobileToShipSheet({
                 <div className="grid grid-cols-2">
                   <div>
                     <OpButton
-                      icon={<FileText className="h-4 w-4" />}
-                      label="Label"
-                      accessibleName="Shipping label"
-                      disabled={!labelHref}
-                      loading={isPending}
-                      onClick={() => labelHref && openHref(labelHref)}
+                      icon={label ? <FileText className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+                      label={label ? 'View label' : 'Upload label'}
+                      accessibleName={label ? 'View shipping label' : 'Upload shipping label'}
+                      loading={documentsQuery.isPending || uploadShippingLabel.isPending}
+                      onClick={() => {
+                        if (label) openDocument('shipping_label');
+                        else shippingLabelInputRef.current?.click();
+                      }}
                     />
-                    {!labelHref ? (
+                    <input
+                      ref={shippingLabelInputRef}
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf"
+                      className="hidden"
+                      data-testid="mobile-shipping-label-input"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) uploadShippingLabel.mutate(file);
+                        event.target.value = '';
+                      }}
+                    />
+                    {!label ? (
                       <p className="px-3 pb-2 text-role-eyebrow text-text-faint">
-                        Prerequisites Pending
+                        No imported label
                       </p>
                     ) : null}
                   </div>
-                  <OpButton
-                    icon={<Printer className="h-4 w-4" />}
-                    label="Inter Docs"
-                    accessibleName="Internal documents"
-                    disabled={!slipHref}
-                    loading={isPending}
-                    onClick={() => slipHref && openHref(slipHref)}
-                  />
+                  <div>
+                    <OpButton
+                      icon={<Printer className="h-4 w-4" />}
+                      label={slip ? 'View slip' : 'Packing slip'}
+                      accessibleName={
+                        slip
+                          ? 'View packing slip'
+                          : packingSlipIngest?.status === 'failed'
+                            ? 'Packing slip import failed'
+                            : 'Packing slip processing'
+                      }
+                      disabled={!slip}
+                      loading={documentsQuery.isPending}
+                      onClick={() => {
+                        if (slip) openDocument('packing_slip');
+                      }}
+                    />
+                    {packingSlipIngest ? (
+                      <p
+                        className={cn(
+                          'px-3 pb-2 text-role-eyebrow font-semibold',
+                          packingSlipStatusClass(packingSlipIngest.status),
+                        )}
+                        title={packingSlipIngest.lastError ?? undefined}
+                      >
+                        {packingSlipIngest.label}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
+                {uploadShippingLabel.error ? (
+                  <p role="alert" className="border-t border-border-hairline px-3 py-2 text-role-caption text-text-danger">
+                    {uploadShippingLabel.error.message}
+                  </p>
+                ) : null}
                 <p className="px-3 pt-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                   Details
                 </p>
@@ -324,67 +342,16 @@ export function MobileToShipSheet({
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2">
-                <Button
-                  variant="ghost"
-                  radius="pill"
-                  icon={<AlertTriangle />}
-                  disabled={isBlocked}
-                  className="text-role-caption"
-                  onClick={() => setOosPickOpen(true)}
-                >
-                  Out of stock
-                </Button>
-                <Button
-                  variant="primary"
-                  radius="pill"
-                  size="sm"
-                  icon={<Truck />}
-                  disabled={isBlocked}
-                  className="min-w-16 px-3"
-                  onClick={() => {
-                    if (isBlocked) return;
-                    onClose();
-                    onProcess(row);
-                  }}
-                >
-                  Ship
-                </Button>
-              </div>
-              <p className={`text-role-eyebrow ${getDaysLateTone(daysLate)}`}>
-                Ship by {formatDatePST(row.deadlineAt, { shortYear: true })}
-              </p>
-              {oosPickOpen && !isBlocked ? (
-                <div className="pt-2" data-testid="mobile-oos-product-picker">
-                  <OosProductCombobox
-                    lines={[
-                      {
-                        id: row.entityId,
-                        sku: row.sku,
-                        product_title: row.title,
-                        quantity: row.quantity,
-                        catalog_image_url: row.imageUrl,
-                      },
-                    ]}
-                    onPick={(_orderRowId, identity) => {
-                      onOutOfStock(row, identity);
-                      setOosPickOpen(false);
-                    }}
-                  />
-                </div>
-              ) : null}
             </Stack>
           </Inset>
         </div>
       </BottomSheet>
-      <MobileToShipPickerSheet
-        row={row}
-        open={open && pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onPass={(staff) => {
-          onPassPicker(row, staff);
-          setPickerOpen(false);
-        }}
+      <MobileOrderDocumentsSheet
+        open={documentsOpen}
+        onClose={() => setDocumentsOpen(false)}
+        documents={documents}
+        activeType={activeDocumentType}
+        onActiveTypeChange={setActiveDocumentType}
       />
     </>
   );

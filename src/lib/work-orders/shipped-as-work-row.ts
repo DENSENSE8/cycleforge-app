@@ -1,5 +1,6 @@
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { ShippedOrder } from '@/types/orders';
+import { normalizeOutboundHandlingFacts } from '@/lib/shipping/outbound-handling-facts';
 import { isOutOfStock } from '@/utils/order-out-of-stock';
 
 function asStaffColorHex(raw: string | null | undefined): string | null {
@@ -13,6 +14,10 @@ function asStaffColorHex(raw: string | null | undefined): string | null {
  * keeps its spreadsheet; this is the empty-assigned "all orders" list.
  */
 export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
+  const projected = row as ShippedOrder & {
+    has_tech_scan?: boolean | null;
+    pack_activity_at?: string | null;
+  };
   const orderId = String(row.order_id || '').trim();
   const assigned = row.tester_id != null || row.packer_id != null;
   return {
@@ -33,7 +38,9 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     packerColorHex: asStaffColorHex(row.packer_color_hex),
     status: assigned ? 'ASSIGNED' : 'OPEN',
     priority: 100,
-    deadlineAt: row.ship_by_date || row.deadline_at || null,
+    // Exact assignment time wins. `ship_by_date` is a date-only fallback and
+    // must never masquerade as an SLA countdown on a phone.
+    deadlineAt: row.deadline_at || row.ship_by_date || null,
     notes: row.notes ?? null,
     assignedAt: null,
     updatedAt: null,
@@ -50,7 +57,15 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     saleAmount: row.sale_amount ?? null,
     currency: row.currency ?? null,
     imageUrl: String(row.catalog_image_url || '').trim() || null,
+    hasTechScan: Boolean(projected.has_tech_scan),
+    packedAt: row.packed_at ?? projected.pack_activity_at ?? null,
+    dockStagedAt: row.dock_staged_at ?? null,
+    storageLocations: row.storage_locations ?? null,
+    allocatedUnitCount: row.allocated_unit_count ?? null,
+    pickedUnitCount: row.picked_unit_count ?? null,
+    handlingFacts: normalizeOutboundHandlingFacts(row.catalog_handling_flags),
     outOfStock: isOutOfStock(row) ? 'Out of stock' : null,
+    isUrgent: Boolean(row.is_urgent),
   };
 }
 

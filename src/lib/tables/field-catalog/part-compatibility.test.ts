@@ -319,7 +319,7 @@ describe('partCompatibilityCompoundView', () => {
   it('puts the PART on the title and its SKU on identity', () => {
     const view = partCompatibilityCompoundView(row());
     assert.equal(view.title, 'SoundLink Mini II replacement battery');
-    assert.equal(view.orderId, 'BOSE-BAT-404600');
+    assert.equal(view.identityFace?.value, 'BOSE-BAT-404600');
     assert.equal(view.id, '412');
     assert.equal(view.titleHref, '/inventory/health/sku/BOSE-BAT-404600');
   });

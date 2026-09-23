@@ -47,6 +47,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [linkingIdentifier, setLinkingIdentifier] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [listingUrl, setListingUrl] = useState('');
@@ -116,6 +117,62 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
       toast.error(err instanceof Error ? err.message : 'Link failed');
     } finally {
       setLinkingId(null);
+    }
+  };
+
+  /**
+   * The typed id matches no mirrored PO — link it anyway through the ONE
+   * chokepoint (`/api/receiving/link-id`), which imports the order's items if
+   * it resolves anywhere in the system and otherwise records it as pending for
+   * the import to claim. This panel used to dead-end on "No purchase orders
+   * match", which left the id on the box unrecorded.
+   */
+  const linkTypedIdentifier = async () => {
+    const receivingId = data.receiving?.id ?? null;
+    if (!trimmed || linkingIdentifier) return;
+    if (!receivingId) {
+      toast.error('No carton on this row to link an id to');
+      return;
+    }
+    setLinkingIdentifier(true);
+    try {
+      const res = await fetch('/api/receiving/link-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiving_id: receivingId,
+          line_id: inbound.receiving_line_id,
+          identifier: trimmed,
+        }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        outcome?: 'linked' | 'pending';
+        zoho_purchaseorder_number?: string | null;
+        lines_imported?: number;
+      };
+      if (!res.ok || !body.success) {
+        toast.error(body.error || `Link failed (${res.status})`);
+        return;
+      }
+      const imported = body.lines_imported ?? 0;
+      toast.success(
+        body.outcome === 'linked'
+          ? imported > 0
+            ? `Linked ${body.zoho_purchaseorder_number || trimmed} · ${imported} item${imported === 1 ? '' : 's'} imported`
+            : `Linked ${body.zoho_purchaseorder_number || trimmed}`
+          : `Linked ${trimmed} — not imported yet`,
+      );
+      queryClient.invalidateQueries({ queryKey: ['incoming-details'] });
+      queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
+      void queryClient.invalidateQueries({ queryKey: ['po-search'] });
+      invalidateReceivingFeeds(queryClient);
+      setQuery('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Link failed');
+    } finally {
+      setLinkingIdentifier(false);
     }
   };
 
@@ -247,9 +304,26 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 Couldn’t load purchase orders.
               </p>
             ) : candidates.length === 0 ? (
-              <p className="rounded-none border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
-                {trimmed ? `No purchase orders match “${trimmed}”.` : 'Search to link this order to its purchase order.'}
-              </p>
+              trimmed ? (
+                <div className="flex items-center gap-2 rounded-none border border-border-soft bg-surface-card inset-field">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-role-caption font-semibold text-text-default">{trimmed}</p>
+                    <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                      Not in the system yet · links now, imports when the order arrives
+                    </p>
+                  </div>
+                  <PairingLinkButton
+                    loading={linkingIdentifier}
+                    disabled={linkingId !== null}
+                    onClick={() => void linkTypedIdentifier()}
+                    label="Link Id"
+                  />
+                </div>
+              ) : (
+                <p className="rounded-none border border-dashed border-border-soft bg-surface-canvas px-4 py-4 text-center text-xs text-text-soft">
+                  Search to link this order to its purchase order.
+                </p>
+              )
             ) : (
               <div className="space-y-1.5">
                 {candidates.map((po) => (

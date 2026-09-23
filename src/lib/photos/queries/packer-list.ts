@@ -1,4 +1,5 @@
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
  * Packer-photo read helpers — the packing mirror of `receiving-list.ts`.
@@ -30,12 +31,13 @@ interface DbRow {
 
 /** List every photo linked to one packer_log, oldest first. */
 export async function listPackerPhotos(input: {
-  organizationId: string;
+  organizationId: OrgId;
   packerLogId: number;
   contentUrl?: (id: number) => string;
 }): Promise<PackerPhotoListRow[]> {
   const toUrl = input.contentUrl ?? ((id: number) => `/api/photos/${id}/content`);
-  const res = await pool.query<DbRow>(
+  const res = await tenantQuery<DbRow>(
+    input.organizationId,
     `SELECT DISTINCT ON (p.id)
        p.id,
        p.photo_type AS caption,
@@ -60,10 +62,11 @@ export async function listPackerPhotos(input: {
 
 /** Count photos linked to one packer_log (for the live `total_photo_count`). */
 export async function countPackerPhotos(
-  organizationId: string,
+  organizationId: OrgId,
   packerLogId: number,
 ): Promise<number> {
-  const res = await pool.query<{ c: string }>(
+  const res = await tenantQuery<{ c: string }>(
+    organizationId,
     `SELECT COUNT(DISTINCT p.id) AS c
        FROM photos p
        ${LINK_JOINS}
@@ -78,9 +81,10 @@ export async function countPackerPhotos(
 /** Resolve which packer_log a photo belongs to (for delete → publish). */
 export async function getPackerPhotoLogId(
   photoId: number,
-  organizationId: string,
+  organizationId: OrgId,
 ): Promise<number | null> {
-  const res = await pool.query<{ entity_id: string }>(
+  const res = await tenantQuery<{ entity_id: string }>(
+    organizationId,
     `SELECT l.entity_id
        FROM photos p
        ${LINK_JOINS}
@@ -108,12 +112,13 @@ export async function getPackerPhotoLogId(
  * but nobody captured anything".
  */
 export async function countPackerPhotosByTracking(input: {
-  organizationId: string;
+  organizationId: OrgId;
   trackingKeys: string[];
 }): Promise<Record<string, number>> {
   const keys = [...new Set(input.trackingKeys.filter((k) => k.length > 0))];
   if (keys.length === 0) return {};
-  const res = await pool.query<{ tn: string; c: string }>(
+  const res = await tenantQuery<{ tn: string; c: string }>(
+    input.organizationId,
     `SELECT stn.tracking_number_normalized AS tn,
             COUNT(DISTINCT p.id) AS c
        FROM shipping_tracking_numbers stn

@@ -15,11 +15,12 @@ import {
   TOKENS,
   BentoItem,
   SectionHeader,
-  GlassButton,
 } from '@/components/mobile/redesign/DesignSystem';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
-import { IconButton } from '@/design-system/primitives';
+import { Button, IconButton } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { useRouter } from 'next/navigation';
@@ -155,7 +156,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
   if (state === 'loading') {
     return (
       <div className={`min-h-screen ${TOKENS.colors.background} flex items-center justify-center`}>
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-soft border-t-blue-600" />
+        <div className={cn('h-8 w-8 animate-spin border-2 border-border-soft border-t-border-accent', cornerClass('pill'))} />
       </div>
     );
   }
@@ -168,7 +169,9 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
             icon={<X className="h-5 w-5 text-text-faint" />}
             onClick={() => router.back()}
             ariaLabel="Go back"
-            className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
+            size="touch"
+            radius="flush"
+            className="border border-border-soft bg-surface-card"
           />
         </div>
         <MobileCard className="mt-10 py-12 text-center">
@@ -190,11 +193,13 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
           icon={<X className="h-5 w-5 text-text-faint" />}
           onClick={() => router.back()}
           ariaLabel="Go back"
-          className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
+          size="touch"
+          radius="flush"
+          className="border border-border-soft bg-surface-card"
         />
         <div className="flex items-center gap-2">
           {order.status && (
-            <div className="bg-surface-sunken text-text-default px-3 py-1.5 rounded-full text-role-eyebrow uppercase tracking-[0.1em] border border-border-soft shadow-sm">
+            <div className="border border-border-soft bg-surface-sunken px-3 py-1.5 text-role-eyebrow uppercase tracking-[0.1em] text-text-default">
               {order.status}
             </div>
           )}
@@ -202,7 +207,9 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
             icon={<Copy className="h-5 w-5 text-text-muted" />}
             onClick={copyId}
             ariaLabel="Copy order number"
-            className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
+            size="touch"
+            radius="flush"
+            className="border border-border-soft bg-surface-card"
           />
         </div>
       </div>
@@ -250,7 +257,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
                 {order.sku}
               </span>
             )}
-            <span className="text-role-micro uppercase tracking-wider bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-none border border-emerald-100">
+            <span className="border border-border-success bg-surface-success px-2.5 py-1 text-role-micro uppercase tracking-wider text-text-success">
               {order.quantity} Unit{order.quantity === 1 ? '' : 's'}
             </span>
             {order.serials.length > 0 && (
@@ -277,8 +284,8 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
                       <div className="absolute left-[10px] top-6 bottom-[-24px] w-px bg-surface-sunken" />
                     )}
                     <div className="relative mt-1 shrink-0">
-                      <div className={`h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-surface-sunken'} z-10 relative`} />
-                      {i === 0 && <div className="absolute -inset-1.5 bg-blue-400/20 rounded-full animate-ping" />}
+                      <div className={cn('relative z-10 h-2.5 w-2.5', cornerClass('pill'), i === 0 ? 'bg-fill-info' : 'bg-surface-sunken')} />
+                      {i === 0 && <div className={cn('absolute -inset-1.5 animate-ping bg-surface-accent/20', cornerClass('pill'))} />}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-text-default uppercase tracking-tight">
@@ -300,24 +307,27 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
 
       {/* Sticky Bottom Actions — nav moved to the left drawer, so these sit on the
           bottom edge (just clearing the home-indicator safe area). */}
-      <div className="fixed inset-x-0 bottom-[env(safe-area-inset-bottom)] z-sticky px-6 pb-3 pt-16 bg-gradient-to-t from-slate-50 via-slate-50/95 to-transparent pointer-events-none">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[env(safe-area-inset-bottom)] z-sticky border-t border-border-hairline bg-surface-card px-6 pb-3 pt-3">
         <div className="flex gap-3 pointer-events-auto">
-          <GlassButton
+          <Button
             variant="secondary"
-            className="w-14 px-0 shadow-lg border-border-soft"
+            size="lg"
+            radius="flush"
+            className="h-14 w-14 px-0"
             onClick={copyId}
-            icon={Clipboard}
-          >
-            {null}
-          </GlassButton>
-          <GlassButton
+            icon={<Clipboard className="h-5 w-5" />}
+            ariaLabel="Copy order number"
+          />
+          <Button
             variant="primary"
-            className="flex-1 shadow-2xl shadow-blue-600/20"
+            size="lg"
+            radius="flush"
+            className="h-14 flex-1"
             onClick={() => router.back()}
-            icon={Check}
+            icon={<Check className="h-5 w-5" />}
           >
             Done
-          </GlassButton>
+          </Button>
         </div>
       </div>
     </div>

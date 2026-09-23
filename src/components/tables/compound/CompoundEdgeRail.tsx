@@ -29,7 +29,7 @@ function SyncedTraveler({ tickClass }: { tickClass?: string }) {
   return (
     <motion.span className="absolute inset-x-0 top-0 h-px" style={{ y }}>
       <span className="pointer-events-none absolute inset-x-0 -top-2.5 h-6 bg-gradient-to-b from-transparent via-white/70 to-transparent" />
-      <span className={cn('absolute inset-x-0 top-0 h-px', tickClass ?? 'bg-white/90')} />
+      <span className={cn('absolute inset-x-0 top-0 h-px', tickClass ?? 'bg-surface-card/90')} />
     </motion.span>
   );
 }

@@ -37,6 +37,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         WHERE pl2.shipment_id IS NOT NULL
           AND pl2.shipment_id = o.shipment_id
           AND pl2.tracking_type = 'ORDERS'
+          AND pl2.completion_state = 'COMPLETED'
           AND pl2.organization_id = o.organization_id
         ORDER BY created_at DESC NULLS LAST, id DESC
         LIMIT 1

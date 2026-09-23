@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 
 /**
  * Structured API error with HTTP status code.
@@ -57,10 +58,18 @@ export function errorResponse(err: unknown, context?: string): NextResponse {
     );
   }
 
-  const message = err instanceof Error ? err.message : 'Unknown error';
-  if (context) console.error(`[${context}]`, message);
+  const requestId = safeRandomUUID();
+  console.error(`[${context ?? 'api'}:${requestId}]`, err);
+  const body: Record<string, unknown> = {
+    error: 'INTERNAL',
+    message: 'Something went wrong — try again',
+    requestId,
+  };
+  if (process.env.NODE_ENV !== 'production') {
+    body.details = err instanceof Error ? err.message : String(err);
+  }
   return NextResponse.json(
-    { error: 'Internal server error', details: message },
-    { status: 500 },
+    body,
+    { status: 500, headers: { 'x-request-id': requestId } },
   );
 }

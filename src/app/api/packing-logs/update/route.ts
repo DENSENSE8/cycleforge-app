@@ -9,11 +9,14 @@ import { recordAudit, AUDIT_ACTION } from '@/lib/audit-logs';
 import { publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
-import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
+import { mirrorLegacyPackingToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import pool from '@/lib/db';
+import { createPackerLog, finalizePackerLogCapture } from '@/lib/packing/packer-log-writer';
+
+class PackFinalizeRequestError extends Error {}
 
 /**
  * The signed-in actor's staff id — a positive integer, never aliased.
@@ -61,7 +64,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       trackingType,
       packDateTime,
       packerPhotosUrl,
-      orderId
+      orderId,
+      draftPackerLogId: rawDraftPackerLogId,
     } = body;
     // Server-trusted actor.
     const packedBy = ctx.staffId;
@@ -73,7 +77,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!trackingType) {
       return NextResponse.json({ error: 'trackingType is required' }, { status: 400 });
     }
-    if (!Array.isArray(packerPhotosUrl) || packerPhotosUrl.length === 0) {
+    const draftPackerLogId = Number(rawDraftPackerLogId);
+    const isDraftFinalization = rawDraftPackerLogId != null;
+    if (isDraftFinalization && (!Number.isSafeInteger(draftPackerLogId) || draftPackerLogId <= 0)) {
+      return NextResponse.json({ error: 'draftPackerLogId must be a positive integer' }, { status: 400 });
+    }
+    if (!isDraftFinalization && (!Array.isArray(packerPhotosUrl) || packerPhotosUrl.length === 0)) {
       return NextResponse.json({ error: 'packerPhotosUrl must be a non-empty array' }, { status: 400 });
     }
 
@@ -100,12 +109,78 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           packerLogId: number | undefined;
           ledgerRows: Array<{ id: number; sku: string; delta: number }>;
           updatedRows: Array<{ id: number; order_id: string | number | null }>;
+          photosCount: number;
         };
 
     const txResult = await withTenantTransaction<TxResult>(ctx.organizationId, async (client) => {
-      // 1. Resolve shipment_id, then insert into packer_logs
+      // 1. Resolve shipment_id, then write through the canonical packer-log boundary.
       const { shipmentId: resolvedShipmentId, scanRef: resolvedScanRef } =
         await resolveShipmentId(shippingTrackingNumber, ctx.organizationId);
+
+      let packerLogId: number | undefined;
+      let photosCount = photoUrlList.length;
+
+      if (isDraftFinalization) {
+        // A CAPTURING record is photo-evidence storage, not a packed fact. Lock
+        // it before looking at its photo links so two Finish taps cannot turn
+        // one capture into two completion ledger events.
+        const draft = await client.query<{
+          id: number;
+          shipment_id: number | null;
+          tracking_type: string;
+          completion_state: string;
+        }>(
+          `SELECT id, shipment_id, tracking_type, completion_state
+             FROM packer_logs
+            WHERE id = $1 AND organization_id = $2
+            FOR UPDATE`,
+          [draftPackerLogId, ctx.organizationId],
+        );
+        const row = draft.rows[0];
+        if (!row) throw new PackFinalizeRequestError('Packing session was not found. Start packing again.');
+        if (row.tracking_type !== 'ORDERS') {
+          throw new PackFinalizeRequestError('Only an order packing session can be finalized here.');
+        }
+        if (row.shipment_id == null || resolvedShipmentId == null || Number(row.shipment_id) !== Number(resolvedShipmentId)) {
+          throw new PackFinalizeRequestError('The scanned tracking number does not match this packing session.');
+        }
+        if (row.completion_state === 'COMPLETED') {
+          return { deduplicated: true, existingId: row.id };
+        }
+        if (row.completion_state !== 'CAPTURING') {
+          throw new PackFinalizeRequestError('This packing session is no longer available to finish.');
+        }
+
+        const photoCount = await client.query<{ count: string }>(
+          `SELECT COUNT(DISTINCT p.id)::text AS count
+             FROM photos p
+             INNER JOIN photo_entity_links l
+               ON l.photo_id = p.id
+              AND l.organization_id = p.organization_id
+            WHERE l.entity_type = 'PACKER_LOG'
+              AND l.entity_id = $1
+              AND l.link_role = 'primary'
+              AND p.organization_id = $2`,
+          [row.id, ctx.organizationId],
+        );
+        photosCount = Number(photoCount.rows[0]?.count ?? 0);
+        if (photosCount < 1) {
+          throw new PackFinalizeRequestError('Capture at least one packing photo before finishing.');
+        }
+
+        const finalized = await finalizePackerLogCapture(client, {
+          organizationId: ctx.organizationId,
+          packerLogId: row.id,
+          packedBy: staffId,
+          shipmentId: row.shipment_id,
+          scanRef: resolvedScanRef,
+          source: PACKING_LOGS_UPDATE_ROUTE,
+        });
+        if (!finalized) {
+          throw new PackFinalizeRequestError('This packing session changed while it was being finished. Try again.');
+        }
+        packerLogId = finalized.id;
+      }
 
       // Idempotency: the mobile flow auto-finalizes when uploads complete AND
       // tapping "Done" calls this endpoint. If both reach the server, the
@@ -120,12 +195,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // with entity_type='PACKER_LOG' pointing back at the packer_log. We
       // use that EXISTS as the "this row is a completion" check, scoped to
       // (scan_ref, packed_by, tracking_type) inside a 5-minute window.
-      const dupCheck = await client.query<{ id: number }>(
+      const dupCheck = isDraftFinalization ? { rows: [] as Array<{ id: number }> } : await client.query<{ id: number }>(
         `SELECT pl.id
            FROM packer_logs pl
           WHERE pl.scan_ref = $1
             AND pl.packed_by = $2
             AND pl.tracking_type = $3
+            AND pl.completion_state = 'COMPLETED'
             AND pl.created_at > NOW() - INTERVAL '5 minutes'
             AND pl.organization_id = $4
             AND EXISTS (
@@ -150,23 +226,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         return { deduplicated: true, existingId };
       }
 
-      // organization_id is stamped from the app.current_org GUC default.
-      const insertResult = await client.query(`
-        INSERT INTO packer_logs (
-          shipment_id,
-          scan_ref,
-          tracking_type,
-          created_at,
-          packed_by,
-          organization_id
-        ) VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id
-      `, [resolvedShipmentId, resolvedScanRef, trackingType, canonicalPackDate, staffId, ctx.organizationId]);
+      const insertedLog = packerLogId == null
+        ? await createPackerLog(client, {
+            organizationId: ctx.organizationId,
+            shipmentId: resolvedShipmentId,
+            scanRef: resolvedScanRef,
+            trackingType,
+            createdAt: canonicalPackDate,
+            packedBy: staffId,
+            source: PACKING_LOGS_UPDATE_ROUTE,
+          })
+        : null;
 
-      const packerLogId = insertResult.rows[0]?.id;
+      packerLogId ??= insertedLog?.id;
 
       if (packerLogId) {
-        await mirrorLegacyPackToAllocations({
+        await mirrorLegacyPackingToAllocations({
           packerLogId,
           shipmentId: resolvedShipmentId ?? null,
           actorStaffId: staffId,
@@ -185,7 +260,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         metadata: {
           source: 'packing-logs.update',
           tracking_type: trackingType,
-          photos_count: photoUrlList.length,
+          photos_count: photosCount,
         },
         createdAt: canonicalPackDate,
       });
@@ -200,13 +275,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         method: 'scan',
         extra: {
           tracking_type: trackingType,
-          photos_count: photoUrlList.length,
+          photos_count: photosCount,
           order_id: orderId ?? null,
         },
       });
 
       // 2. Insert photo URLs into the unified photos table
-      if (packerLogId && photoUrlList.length > 0) {
+      if (!isDraftFinalization && packerLogId && photoUrlList.length > 0) {
         for (const url of photoUrlList) {
           await attachPhotoWithLegacyUrl({
             organizationId: ctx.organizationId,
@@ -220,13 +295,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
       }
 
-      // 3. Update orders table — mark status only; shipped state derived from stn carrier status
+      // 3. Packing is not carrier handoff. The final SHIPPED status is written
+      // only by the dock scan-out path after the carton physically leaves.
       const updateResult = await client.query<{ id: number; order_id: string | number | null }>(`
         UPDATE orders
-        SET status = 'shipped'
+        SET status = 'packed'
         WHERE shipment_id = $1
           AND shipment_id IS NOT NULL
-          AND (status IS NULL OR status != 'shipped')
+          AND (status IS NULL OR status != 'packed')
           AND organization_id = $2
         RETURNING id, order_id
       `, [resolvedShipmentId, ctx.organizationId]);
@@ -235,12 +311,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // Fallback: match via shipping_tracking_numbers join for legacy unlinked rows
         const fallbackUpdate = await client.query<{ id: number; order_id: string | number | null }>(`
           UPDATE orders o
-          SET status = 'shipped'
+          SET status = 'packed'
           FROM shipping_tracking_numbers stn
           WHERE o.shipment_id = stn.id
             AND RIGHT(regexp_replace(UPPER(stn.tracking_number_normalized), '[^A-Z0-9]', '', 'g'), 8)
                 = RIGHT(regexp_replace(UPPER($1), '[^A-Z0-9]', '', 'g'), 8)
-            AND (o.status IS NULL OR o.status != 'shipped')
+            AND (o.status IS NULL OR o.status != 'packed')
             AND o.organization_id = $2
           RETURNING o.id, o.order_id
         `, [shippingTrackingNumber, ctx.organizationId]);
@@ -261,7 +337,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             WHERE work_assignments.organization_id = $1
           `, [ctx.organizationId, targetOrderId, staffId]);
         }
-        return { deduplicated: false, packerLogId, ledgerRows: [], updatedRows: fallbackUpdate.rows };
+        return { deduplicated: false, packerLogId, ledgerRows: [], updatedRows: fallbackUpdate.rows, photosCount };
       } else {
         const targetOrderId = updateResult.rows[0].id;
         await client.query(`
@@ -320,7 +396,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ledgerRows.push(...ledgerResult.rows);
       }
 
-      return { deduplicated: false, packerLogId, ledgerRows, updatedRows: updateResult.rows };
+      return { deduplicated: false, packerLogId, ledgerRows, updatedRows: updateResult.rows, photosCount };
     });
 
     if (txResult.deduplicated) {
@@ -336,7 +412,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
-    const { packerLogId, ledgerRows, updatedRows } = txResult;
+    const { packerLogId, ledgerRows, updatedRows, photosCount } = txResult;
 
     // Publish one Ably event per ledger row so ActivityFeed updates live.
     for (const row of ledgerRows) {
@@ -356,7 +432,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    await invalidateCacheTags(['packing-logs', 'orders', 'orders-next', 'shipped']);
+    await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders', 'orders-next', 'shipped']);
 
     // Build packer-log row for live surgical insert on all subscribed web sessions.
     const shippedOrderId = updatedRows[0]?.id ?? null;  // may be null for unlinked rows
@@ -386,12 +462,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     return NextResponse.json({
       success: true,
-      message: 'Packer logs updated and order marked as shipped',
+      message: 'Packer logs updated and order marked as packed',
       packerLogId,
       ordersUpdated: updatedRows.length,
       trackingNumber: shippingTrackingNumber,
       trackingType,
-      photosCount: photoUrlList.length
+      photosCount
     });
 
   } catch (error: any) {
@@ -399,7 +475,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({
       error: 'Failed to update packer_logs',
       details: error.message
-    }, { status: 500 });
+    }, { status: error instanceof PackFinalizeRequestError ? 400 : 500 });
   }
     })();
     return {

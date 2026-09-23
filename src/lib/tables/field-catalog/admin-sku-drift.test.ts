@@ -279,7 +279,7 @@ describe('admin-sku-drift row view', () => {
   it('spells the DIRECTION into the title and the pill, never into a colour', () => {
     const view = adminSkuDriftCompoundView(row());
     assert.equal(view.id, 'DELL-7050-I5');
-    assert.equal(view.orderId, 'DELL-7050-I5');
+    assert.equal(view.identityFace?.value, 'DELL-7050-I5');
     // Warehouse is out by two the other way; boxed reconciles.
     assert.equal(view.title, 'Warehouse -2');
     assert.equal(view.stateLabel, 'Boxed in sync');

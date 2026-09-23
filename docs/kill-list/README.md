@@ -44,7 +44,6 @@ This directory **extends**, it does not replace:
 - [`docs/todo/slot-based-metadata-table-PLAN.md`](../todo/slot-based-metadata-table-PLAN.md) — slot engine; [`07`](07-slot-table-hand-models.md) is the per-`tableId` kill list (hand column models, not the desks).
 - [`docs/partial/DEAD_CODE_CLEANUP_PLAN.md`](../partial/DEAD_CODE_CLEANUP_PLAN.md) — 78% done, Phase 3 knip waves are the living backlog this feeds.
 - [`docs/todo/dead-exports-cleanup-HANDOFF.md`](../todo/dead-exports-cleanup-HANDOFF.md) — 15 batches landed; tier 2 here is the next tier.
-- [`docs/todo/pending-grid-dead-code-cleanup-PROMPT.md`](../todo/pending-grid-dead-code-cleanup-PROMPT.md) — grid-specific kill list, still valid.
 
 ## Execution order
 

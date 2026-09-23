@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { parseUPSTrackingPayload } from '@/lib/shipping/providers/ups';
 import { getShipmentByTracking, updateShipmentSummary, upsertShipment, upsertTrackingEvents } from '@/lib/shipping/repository';
@@ -6,6 +6,7 @@ import { publishShipmentStatusChange } from '@/lib/shipping/publish-on-status-ch
 import { resolveWebhookOrgByTracking } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 
 // UPS authenticates callbacks via the credential we registered on the
 // subscription, echoed back in a header. Header name has varied; check the
@@ -16,13 +17,6 @@ const CREDENTIAL_HEADERS = [
   'credential',
   'x-ups-credential',
 ].filter(Boolean) as string[];
-
-function constantTimeEquals(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
-}
 
 function isAuthorized(req: NextRequest, rawBody: string): boolean {
   const secret =
@@ -38,18 +32,19 @@ function isAuthorized(req: NextRequest, rawBody: string): boolean {
   // 1. Credential echo (UPS's documented callback auth).
   for (const header of CREDENTIAL_HEADERS) {
     const provided = req.headers.get(header);
-    if (provided && constantTimeEquals(provided, secret)) return true;
+    if (provided && safeStrEqual(provided, secret)) return true;
   }
 
   // 2. HMAC-SHA256 signature over the raw body (parity with FedEx).
   const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
   const sig = req.headers.get('x-ups-signature');
-  if (sig && constantTimeEquals(sig, expected)) return true;
+  if (sig && safeStrEqual(sig, expected)) return true;
 
   // 3. Static bearer / header secret (manual replay & testing).
   const authHeader = req.headers.get('authorization');
-  if (authHeader === `Bearer ${secret}`) return true;
-  if (req.headers.get('x-webhook-secret') === secret) return true;
+  if (authHeader?.startsWith('Bearer ') && safeStrEqual(authHeader.slice(7), secret)) return true;
+  const replaySecret = req.headers.get('x-webhook-secret');
+  if (replaySecret && safeStrEqual(replaySecret, secret)) return true;
 
   return false;
 }

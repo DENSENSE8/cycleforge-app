@@ -22,7 +22,7 @@ import type { PhotoAnalysisSettings } from '@/lib/tenancy/settings';
 export interface LocalVisionConfig {
   /** Base URL of the vision box, server-reachable, no trailing slash. */
   baseUrl: string;
-  /** Shared secret sent as `x-vision-token` (empty when the box has no token set). */
+  /** Required shared secret sent as `x-vision-token`. */
   token: string;
 }
 
@@ -38,8 +38,9 @@ function stripTrailingSlash(u: string): string {
 }
 
 /**
- * Resolve the box URL + token for an org. Returns null when no base URL is
- * configured anywhere (so the caller can skip the provider cleanly).
+ * Resolve the box URL + token for an org. Returns null unless both are
+ * configured, so the caller skips an incomplete provider instead of making an
+ * anonymous request to a fail-closed service.
  */
 export function resolveLocalVisionConfig(
   settings: PhotoAnalysisSettings | undefined,
@@ -49,8 +50,9 @@ export function resolveLocalVisionConfig(
     stripTrailingSlash(settings?.localVisionBaseUrl || '') ||
     stripTrailingSlash(env.VISION_ANALYZE_BASE_URL || '') ||
     stripTrailingSlash(env.NEXT_PUBLIC_VISION_BASE_URL || '');
-  if (!baseUrl) return null;
-  return { baseUrl, token: (env.VISION_TOKEN || '').trim() };
+  const token = (env.VISION_TOKEN || '').trim();
+  if (!baseUrl || !token) return null;
+  return { baseUrl, token };
 }
 
 /** The raw JSON the box's /analyze returns (defensive — every field optional). */
@@ -111,13 +113,12 @@ export async function analyzeWithLocalVision(
   filename = 'photo.jpg',
   deps: LocalVisionDeps = defaultDeps,
 ): Promise<PhotoAnalysisMetadata | null> {
-  if (!config?.baseUrl) return null;
+  if (!config?.baseUrl || !config.token) return null;
 
   const form = new FormData();
   form.append('file', new Blob([new Uint8Array(buffer)]), filename);
 
-  const headers: Record<string, string> = {};
-  if (config.token) headers['x-vision-token'] = config.token;
+  const headers: Record<string, string> = { 'x-vision-token': config.token };
 
   let res: Response;
   try {

@@ -1,27 +1,28 @@
 # design-mcp — CycleForge
 
-Serves this repo's design system to any MCP-capable agent. Cursor reads
-`.cursor/mcp.json`; Claude Code reads `.mcp.json`, which is a symlink to the
-same file. A new agent session must show `design-mcp` green in Settings → MCP
-and must have `ds_contract` / `ds_tokens` / `ds_critique` in its tool catalog.
+Serves this repo's design system to any MCP-capable agent via `.mcp.json` at
+the repo root (a real file; the old `.cursor/mcp.json` symlink is gone). A new
+agent session must show `design-mcp` in its MCP list and must have
+`ds_contract` / `ds_tokens` / `ds_critique` in its tool catalog.
 
 | Question | Wrong answer it reaches for | Tool |
 |---|---|---|
 | What already exists for this job? | writes a new primitive | `ds_contract` |
 | What values may I use on **one** axis? | `#1a1a1d`, `text-[13px]`, `axis: "all"` | `ds_tokens` (`axis` required) |
+| Is the canonical table still one industrial instrument? | split by line count, add a page toolbar slot | `ds_data_table` |
+| How does the pasted industrial brief enter this system? | copy its palette, component or spring literals | `ds_industrial_translation` |
 | Why is this component bad? | rewrites it from scratch | `ds_critique` |
 
 ## When the agent catalog is empty
 
-Cursor sometimes leases project MCP servers but never surfaces their tools to
-the agent (only marketplace `plugin-*` namespaces appear). Close that gap with:
+Some harnesses lease project MCP servers without surfacing their tools. The CLI
+runs the same handlers:
 
-1. **CLI (same handlers):** `node tools/design-mcp/ds.mjs contract|tokens|critique …`
-2. **Cursor plugin path:** `tools/design-mcp/cursor-plugin/` — loaded via
-   `.cursor/hooks` `workspaceOpen` (`pluginPaths`) and symlinked under
-   `~/.cursor/plugins/local/cycleforge-design-mcp`
-3. **Hooks:** `sessionStart` injects the dumb-station mouth recipe; `preToolUse`
-   denies UI writes without a fresh `.cursor/design-mcp-session.json` stamp
+`node tools/design-mcp/ds.mjs contract|tokens|critique …`
+
+design-mcp is an opt-in lookup, not a write gate. The session-stamp receipt and
+every hook that enforced it were removed 2026-09-22 along with the `.cursor`
+tree.
 
 ## Naming (pinned)
 
@@ -86,6 +87,8 @@ it manufactures confidence. **ESLint is the gate here.** When a shared
 adjudicator exists, `server.mjs` is where it plugs in.
 
 Everything `ds_critique` reports is heuristic text matching, not AST proof.
+`ds_data_table` is the exception: it returns the versioned verdict from the
+shared TypeScript-AST adjudicator used by the guard, tests, and eval cohort.
 
 ## Verify
 

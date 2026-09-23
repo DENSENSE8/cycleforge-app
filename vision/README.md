@@ -63,6 +63,11 @@ python scripts/enroll_folder.py data/reference/BOSE-901-VI
 uvicorn vision.app.server:app --host 0.0.0.0 --port 8700
 ```
 
+`VISION_TOKEN` is mandatory and must contain at least 32 characters. The
+service refuses to start without it; every image/mutation endpoint requires the
+same value in `X-Vision-Token`. Keep the service loopback- or tailnet-bound and
+put any wider access behind an authenticated proxy.
+
 - `GET  /health`   → model + index status
 - `POST /identify` (multipart `file=@photo.jpg`) → `{ candidates: [{ sku, score }] }`
 - `POST /identify-label` (multipart `file=@label.jpg`) → `{ model, raw_text, ... }`

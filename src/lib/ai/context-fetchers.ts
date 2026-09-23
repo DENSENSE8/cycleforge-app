@@ -216,6 +216,7 @@ async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<st
         SELECT packed_by AS sid, COUNT(*)::int AS today_pack
         FROM packer_logs
         WHERE packed_by IS NOT NULL
+          AND completion_state = 'COMPLETED'
           AND created_at::date = CURRENT_DATE
         GROUP BY packed_by
       ),
@@ -223,6 +224,7 @@ async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<st
         SELECT packed_by AS sid, COUNT(*)::int AS week_pack
         FROM packer_logs
         WHERE packed_by IS NOT NULL
+          AND completion_state = 'COMPLETED'
           AND created_at::date >= CURRENT_DATE - INTERVAL '6 day'
         GROUP BY packed_by
       )

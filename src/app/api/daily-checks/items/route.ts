@@ -16,18 +16,20 @@ export const runtime = 'nodejs';
 const CreateBody = z
   .object({
     title: z.string().trim().min(1).max(200),
+    /** Context belongs to the item; this route adds no per-mark note. */
+    description: z.string().trim().max(2000).nullish(),
     /** Cadence, not subject: `once` also writes the one-day window below. */
     kind: z.enum(['recurring', 'once']).default('recurring'),
     assignedStaffId: z.number().int().positive().nullish(),
     /** The emoji character itself, ≤8 chars (ZWJ sequences run long). */
     glyph: z.string().min(1).max(8).nullish(),
   })
-  .superRefine((body, ctx) => {
-    if (body.kind === 'recurring' && body.assignedStaffId != null) {
+  .superRefine(({ kind, assignedStaffId }, ctx) => {
+    if (kind === 'recurring' && assignedStaffId != null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['assignedStaffId'],
-        message: 'an owner is only valid on a Just-today item',
+        message: 'Only a just-today task can be assigned to one staff member',
       });
     }
   });
@@ -54,7 +56,8 @@ export const POST = withAuth(
         { status: 400 },
       );
     }
-    const { title, kind, assignedStaffId, glyph } = parsed.data;
+    const { title, description, kind, glyph } = parsed.data;
+    const assignedStaffId = parsed.data.assignedStaffId ?? null;
 
     // A stale client can name an owner who no longer exists; the FK would 500,
     // and an operator-facing 400 is the answer they can act on.
@@ -72,6 +75,7 @@ export const POST = withAuth(
       const item = await createDailyCheckItem({
         orgId: ctx.organizationId,
         title,
+        description: description?.trim() || null,
         effectiveFrom: getCurrentPSTDateKey(),
         kind,
         assignedStaffId: assignedStaffId ?? null,
@@ -85,6 +89,7 @@ export const POST = withAuth(
         entityId: String(item.id),
         after: {
           title: item.title,
+          description: item.description,
           sortOrder: item.sortOrder,
           kind: item.kind,
           assignedStaffId: item.assignedStaffId,

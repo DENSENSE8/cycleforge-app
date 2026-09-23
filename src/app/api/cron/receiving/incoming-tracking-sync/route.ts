@@ -19,7 +19,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { selectIncomingShipmentIds } from '@/lib/receiving/incoming-shipments';
@@ -32,9 +32,7 @@ export const maxDuration = 120;
 const BATCH_CAP = 250;
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedCronRequest(req.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('receiving.incoming_tracking', () =>
       withCronRun('receiving.incoming_tracking', async () => {

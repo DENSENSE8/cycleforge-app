@@ -126,19 +126,23 @@ export function taskEntityFromEnum(enumLabel: unknown): TaskEntityType | null {
 /**
  * Kinds the inbox ledger can currently anchor.
  *
- * `staff_inbox_items.entity_type` CHECK allows receiving · receiving_line ·
- * serial_unit · order · fba_shipment · repair · warranty_claim — it does **not**
- * include `support_ticket`. So a ticket task is representable as a
- * work_assignment today but NOT yet as an inbox row; widening that CHECK (with
- * its delete trigger, per polymorphic-tables.md) is phase 3's job.
+ * `staff_inbox_items.entity_type` carries its own CHECK, so an unanchorable
+ * kind is a constraint violation rather than a silent miss — the create path
+ * asks this FIRST and reports `notified: 'skipped_entity'` instead of throwing
+ * at an operator who threw a perfectly legal task.
  *
- * The predicate is the API so the fan-out can refuse honestly instead of
- * throwing a constraint violation at an operator who threw a perfectly legal
- * ticket task. The list itself stays private — phase 3 can export it if it
- * turns out to need one, rather than shipping a second name for the same fact
- * ahead of any consumer.
+ * `support_ticket` joined the CHECK in migration `2026-09-22a`, with the
+ * parent-delete trigger that arm needs (polymorphic-tables.md). Every kind a
+ * task can point at is now anchorable. The predicate stays: the next
+ * `work_entity_type_enum` value will land here unanchored, and answering that
+ * honestly is what keeps a handoff from failing on a constraint the operator
+ * cannot see.
  */
-const TASK_ENTITY_TYPES_INBOX_READY: readonly TaskEntityType[] = ['order', 'receiving'];
+const TASK_ENTITY_TYPES_INBOX_READY: readonly TaskEntityType[] = [
+  'order',
+  'receiving',
+  'support_ticket',
+];
 
 export function isInboxAnchorable(entityType: TaskEntityType): boolean {
   return TASK_ENTITY_TYPES_INBOX_READY.includes(entityType);

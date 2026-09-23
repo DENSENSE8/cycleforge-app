@@ -6,6 +6,7 @@ import { syncTsnToSerialUnit } from '@/lib/neon/serial-units-queries';
 import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { attachTechSerial } from '@/lib/inventory/tech-serial';
 
 type SerialRow = {
   id: number;
@@ -108,18 +109,30 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           return { lineReceivingId: null, inserted: null, notFound: true };
         }
 
+        const attached = await attachTechSerial({
+          serialNumber,
+          serialType,
+          testedBy,
+          stationSource: 'RECEIVING',
+          receivingLineId,
+          organizationId: ctx.organizationId,
+        }, client, ctx.organizationId);
+        if (attached.id == null) {
+          const duplicate = new Error('Serial already exists for this receiving line') as Error & { code?: string };
+          duplicate.code = '23505';
+          throw duplicate;
+        }
         const insertedRes = await client.query<SerialRow>(
-          `INSERT INTO tech_serial_numbers
-             (serial_number, serial_type, tested_by, station_source, receiving_line_id, shipment_id, scan_ref, organization_id)
-           VALUES ($1, $2, $3, 'RECEIVING', $4, NULL, NULL, $5::uuid)
-           RETURNING id, serial_number, serial_type, tested_by, station_source, receiving_line_id,
-                     created_at::text, updated_at::text`,
-          [serialNumber, serialType, testedBy, receivingLineId, ctx.organizationId],
+          `SELECT id, serial_number, serial_type, tested_by, station_source, receiving_line_id,
+                  created_at::text, updated_at::text
+             FROM tech_serial_numbers
+            WHERE id = $1 AND organization_id = $2::uuid`,
+          [attached.id, ctx.organizationId],
         );
 
         return {
           lineReceivingId: lineRes.rows[0]?.receiving_id ?? null,
-          inserted: insertedRes,
+          inserted: insertedRes.rows[0] ?? null,
           notFound: false,
         };
       },
@@ -145,7 +158,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Register the new TSN row in the serial_units master and stamp the
     // FK back. Background — the TSN insert has already committed and the
     // response doesn't need to wait.
-    const tsnRow = inserted.rows[0];
+    const tsnRow = inserted;
     // Synchronous sync so the next GET (include=serials) always sees a
     // serial_units row — operators were racing the old `after()` job and
     // getting empty chip lists right after logging a supplemental SN.
@@ -161,7 +174,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
 
     return NextResponse.json(
-      { success: true, serial: normalizeRow(inserted.rows[0]) },
+      { success: true, serial: normalizeRow(inserted) },
       { status: 201 },
     );
   } catch (error: any) {

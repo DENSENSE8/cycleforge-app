@@ -178,7 +178,11 @@ export async function printHandlingUnitLabelRun(input: {
   mint?: (count: number) => Promise<readonly HandlingUnitLabelPayload[]>;
   /** Reprint — skip mint and print these identities. */
   boxes?: readonly HandlingUnitLabelPayload[];
-  /** Identical stickers per tote identity (the Copies field). */
+  /**
+   * Identical stickers per tote identity (the Copies field). Printed as extra
+   * PLATES in the run — never a printer repeat count (see
+   * `labelCopies.expandPlateRun`).
+   */
   copies?: number;
   onProgress?: PrintLabelRunProgress;
 }): Promise<PrintLabelRunResult> {

@@ -173,6 +173,31 @@ export interface UseCompoundSpreadsheetOptions<
     /** Receives the click's modifier state, so a family can offer a range walk. */
     onToggle: (row: Row, event: { shiftKey: boolean }) => void;
   };
+  /**
+   * Which BAND a row belongs to — the key {@link sectionHeaders} captions.
+   *
+   * Omitted ⇒ `singleBand`, exactly as before. That default is the whole point:
+   * ~40 mounts already pass through this hook, and a banding rule the engine
+   * invented for them would re-shape every one of those tables at once — a
+   * silent behaviour change across the product is the failure mode, so banding
+   * is something a family OPTS INTO.
+   *
+   * Band ORDER is the order band keys are first encountered in the ALREADY
+   * SORTED row list, so a family controls it through its own sort (and the
+   * operator's header click keeps meaning what it says) rather than through a
+   * second ordering knob here that could disagree with the visible sort.
+   *
+   * The group model does not change: inside a band every row is still its own
+   * singleton group, so no band grows a chevron it cannot fold.
+   */
+  bandBy?: (row: Row) => string;
+  /**
+   * Band key → section caption, forwarded straight onto the feed so
+   * `<DataTable {...sheet} />` carries it with no call-site plumbing. A band
+   * with no entry renders unlabelled — the caption is optional per band, not
+   * all-or-nothing.
+   */
+  sectionHeaders?: Record<string, string>;
 }
 
 /**
@@ -199,6 +224,40 @@ function factText<Row>(
   // A stage step's searchable text is who did it and where — the parts the
   // operator can actually read off the cell.
   return [value.who, value.at, value.station].filter(Boolean).join(' ');
+}
+
+/**
+ * Lift an already-sorted row list into the grouped render order, banded.
+ *
+ * Pure and exported so the banding rule is testable without mounting React —
+ * the hook around it is only memoization.
+ *
+ * With no `bandBy` this IS {@link singleBand}, by call and not by imitation:
+ * the ~40 tables that never asked for bands must keep byte-identical order.
+ * With one, bands come out in the order their keys are FIRST ENCOUNTERED in
+ * `rows`, so the visible sort decides band order and nothing here can disagree
+ * with the header the operator clicked. Row indices stay global, so a fold key
+ * is unique across bands as well as within one, and a single band reduces to
+ * `singleBand`'s own `#index` keys.
+ */
+export function bandCompoundRows<Row>(
+  rows: readonly Row[],
+  bandBy?: (row: Row) => string,
+): [string, RowGroup<Row>[]][] {
+  if (!bandBy) return singleBand(rows) as [string, RowGroup<Row>[]][];
+  const order: string[] = [];
+  const byBand = new Map<string, RowGroup<Row>[]>();
+  rows.forEach((row, index) => {
+    const bandKey = bandBy(row);
+    let groups = byBand.get(bandKey);
+    if (!groups) {
+      groups = [];
+      byBand.set(bandKey, groups);
+      order.push(bandKey);
+    }
+    groups.push({ key: `#${index}`, rows: [row] });
+  });
+  return order.map((bandKey) => [bandKey, byBand.get(bandKey) as RowGroup<Row>[]]);
 }
 
 export function useCompoundSpreadsheet<
@@ -230,6 +289,8 @@ export function useCompoundSpreadsheet<
   rowActions,
   selectionScope,
   selection,
+  bandBy,
+  sectionHeaders,
 }: UseCompoundSpreadsheetOptions<Row, K, C>): CompoundSpreadsheetFeed<Row, K, C> {
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -297,10 +358,7 @@ export function useCompoundSpreadsheet<
     );
   }, [filtered, sort, dir, sortFactByKey, columns, resolve]);
 
-  const groups = useMemo(
-    () => singleBand(sorted) as [string, RowGroup<Row>[]][],
-    [sorted],
-  );
+  const groups = useMemo(() => bandCompoundRows(sorted, bandBy), [sorted, bandBy]);
 
   /**
    * One row, on the shared {@link CompoundRow}. There is no family row
@@ -387,6 +445,7 @@ export function useCompoundSpreadsheet<
     rows: sorted,
     getRowId,
     orderGroupsByDate: groups,
+    sectionHeaders,
     loading,
     emptyMessage,
     search,

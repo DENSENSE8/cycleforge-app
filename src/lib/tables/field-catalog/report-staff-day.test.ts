@@ -58,13 +58,13 @@ describe('report-staff-day catalog', () => {
     }
   });
 
-  it('product default parses, and the staffer is the identity', () => {
+  it('product default parses with machine identity and staff attribution', () => {
     const parsed = parseSlotLayout(REPORT_STAFF_DAY_PRODUCT_LAYOUT, REPORT_STAFF_DAY_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
-    assert.equal(parsed.identityFieldId, 'report-staff-day.staff');
+    assert.equal(parsed.identityFieldId, 'report-staff-day.ticket');
     assert.deepEqual(
       parsed.statusBindings.map((b) => b.fieldId),
-      ['report-staff-day.kind', 'report-staff-day.ticket'],
+      ['report-staff-day.staff', 'report-staff-day.kind'],
     );
     assert.deepEqual(parsed.subtitleBindings, []);
     assert.equal(parsed.amountFieldId ?? null, null, 'no money on a checklist');

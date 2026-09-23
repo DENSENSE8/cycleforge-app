@@ -61,6 +61,7 @@ import {
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
 import { platformMetaIconTone } from '@/lib/source-platform';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { cn } from '@/utils/_cn';
 import {
   STATION_CONTEXT_EXIT_PILL_CLASS,
@@ -599,7 +600,18 @@ export function CartonContextCard({
         options={platformOptions}
         value={platformValue}
         onSelect={onPlatformSelect}
-        collapsedFace="dot"
+        // The channel is a WORD, not a colour. This pill was pinned to
+        // `collapsedFace="dot"`, so every carton — Amazon, eBay, Unfound alike —
+        // painted a bare dot and the platform name existed only in the
+        // aria-label. Urgency and Type next to it already use `classifyFace`
+        // (label, collapsing to a dot only when the bar runs out of room); the
+        // platform now reads the same way.
+        collapsedFace={classifyFace}
+        collapsedLabel={
+          classifyCompact
+            ? (platformOptions.find((o) => o.value === platformValue)?.shortLabel)
+            : undefined
+        }
         presentation="menu"
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu('platform', o)}
@@ -627,7 +639,14 @@ export function CartonContextCard({
 
 
   /**
-   * PO# / order# — ONE face for every scan station.
+   * Order id — ONE face for every scan station.
+   *
+   * The link verb is "Link Id", not "Link PO". An unbox operator holds a
+   * carton with SOME identifier on it — a Zoho PO number, a marketplace order
+   * number, an RMA, a supplier reference — and often the system has never seen
+   * it (the order has not been imported yet). Naming the action after one of
+   * those sources told the operator the other four were not allowed here, so
+   * unfound cartons were left unlinked until an import caught up.
    *
    * There is no read-only twin. This used to branch on `onEditPo`: hosts that
    * wired an editor got {@link IdentityLinkChip}, everyone else got a bare
@@ -635,13 +654,32 @@ export function CartonContextCard({
    * (Arrival) drifts silently — which is exactly what happened to the tracking
    * cell below. Whether the menu carries an Edit row is a PROP, not a second
    * component.
+   *
+   * EMPTY IS A CTA, NOT A PLACEHOLDER. With no order id the face used to be
+   * `—`, which reads as "this carton has no order and there is nothing to do".
+   * The click already opened Package Pairing (`emptyEditActivate` in
+   * `IdentityLinkChip`), so the affordance existed and was invisible. On a host
+   * that wires `onEditPo` the face now says **Pair** and the tooltip names the
+   * destination: tapping the order cell opens the pairing display on the right.
+   * Read-only stations (no `onEditPo`) keep the quiet dash — there, nothing
+   * would happen on click.
    */
+  const orderPairCta = !effectiveOrder && !!onEditPo;
   const orderChip = showOrderIdentity ? (
     <IdentityLinkChip
-      openHref={orderCopyOnly ? undefined : poOpenHref}
+      // No order id ⇒ nothing to open. The href is dropped here (and
+      // IdentityLinkChip then omits the row entirely) so an unfound carton's
+      // hover menu offers Link Id alone, not a dead "Open".
+      openHref={!effectiveOrder || orderCopyOnly ? undefined : poOpenHref}
       openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
       value={effectiveOrder}
-      display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
+      display={
+        effectiveOrder
+          ? getLast8(effectiveOrder)
+          : orderPairCta
+            ? 'Pair'
+            : resolveChipDisplay('')
+      }
       tone="id"
       lockLast8Width
       iconClass={platformIconTone?.className}
@@ -655,11 +693,35 @@ export function CartonContextCard({
           ? 'Hide package pairing'
           : effectiveOrder
             ? 'Edit order'
-            : 'Link PO'
+            : 'Pair package'
       }
       actionsInMenu
     />
   ) : null;
+
+  /**
+   * Platform mark — the channel fact for a bar with NO classify cluster.
+   *
+   * {@link classifyCluster} is null whenever `showClassifyControls={false}`
+   * (the pack bench), and it carried the only platform face on the bar. What
+   * remained was a TINT on the order `#` glyph and a word inside its hover
+   * label — neither is a fact an operator can read at a glance, which is what
+   * "the platform must display on the carton" asks for.
+   *
+   * Rendered ONLY when the cluster is absent, so a station that already shows
+   * the classify platform pill never paints the same channel twice.
+   */
+  const platformFace =
+    !classifyCluster && platformValue && platformMeta.value ? (
+      <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+        <span
+          className={cn(STATION_CHROME_CELL_CLASS, STATION_CHROME_CELL_PAD)}
+          aria-label={platformMeta.label}
+        >
+          <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+        </span>
+      </HoverTooltip>
+    ) : null;
 
   /**
    * Tracking# — ONE face for every scan station; Unbox is the SoT.
@@ -944,6 +1006,7 @@ export function CartonContextCard({
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
+          {platformFace}
           {/* Order # is a copy/menu target, so it gets the same cell box as
               every other interactive cell. The chip itself is `inline-flex` and
               centred — without this h-full wrapper its hover box would be

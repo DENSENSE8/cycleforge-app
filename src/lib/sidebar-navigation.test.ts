@@ -37,12 +37,16 @@ test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by def
   // function because it is the funnel the spine, ⌘K, nav-destinations, the
   // 2026-09-16: `operations` (Monitor) and `studio` (Automations) were PARKED
   // on an operator ruling — *"remove the monitor from displaying in the
-  // sidebar, park it — park automations as well"* — so both rejoin the hidden
-  // set. Monitor had briefly shipped (Track R1/R2, /m/reports being its phone
-  // face); what changed is trust, not portability. Sales and Support remain
-  // gated until their ports. One PAGE per parked lane, verified against
-  // `spineSectionIdForPage`.
-  const hidden = new Set(['operations', 'sales', 'studio', 'support']);
+  // sidebar, park it — park automations as well"*.
+  //
+  // 2026-09-23 SUPERSEDES that for `studio` only: *"The cron drop to assign
+  // tasks from designated tags should be included in the automations display
+  // in the sidebar as a first principles approach to automations."* The lane
+  // now has a door worth opening — `/studio/automations` (child **Rules**) —
+  // so it is `desk-only` and SHIPS. Monitor stays parked: nothing about its
+  // reads changed. Sales is desk-only and therefore visible; Support remains
+  // hidden. One PAGE per parked lane, verified against `spineSectionIdForPage`.
+  const hidden = new Set(['operations', 'support']);
   assert.deepEqual(
     getSidebarNavItems(),
     APP_SIDEBAR_NAV.filter((item) => !hidden.has(item.id)),
@@ -65,6 +69,11 @@ test('Home is top-pinned; Reports joined the tops; Operations in Monitor; Plans 
   // chevron, to a parent-level row. It reads LAST here because the registry
   // declares it beside its former Operations sibling; the MAP order is the
   // assertion that matters and it is pinned separately below.
+  //
+  // `tasks` is deliberately ABSENT: the assigned-work desk is a TAB on Daily
+  // (`/?mode=tasks`), not a sibling destination (operator 2026-09-22 —
+  // *"focus on daily only"*). It briefly shipped as a `spineBand: false` pin
+  // here; if it reappears, the tab has been forked into a second door.
   assert.deepEqual(topIds, [
     'home',
     'search',
@@ -121,10 +130,13 @@ test('Home is top-pinned; Reports joined the tops; Operations in Monitor; Plans 
   const studioRow = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
   assert.ok(studioRow, 'studio must stay in the registry');
   assert.equal(studioRow.kind === 'main' ? studioRow.mainGroup : null, 'studio');
+  // UNPARKED 2026-09-23: *"the cron drop to assign tasks from designated tags
+  // should be included in the automations display in the sidebar"*. The lane is
+  // the door that display hangs from, so it ships again — Monitor above does not.
   assert.equal(
     items.some((item) => item.id === 'studio'),
-    false,
-    'Automations is parked — no door on any surface',
+    true,
+    'the Automations lane carries a door again (2026-09-23 ruling)',
   );
 
   // Admin is DISSOLVED: no map row — /admin is a redirect table and permission
@@ -226,10 +238,11 @@ test('prod nav ships every unparked page; parked lanes and redirect surfaces sta
   assert.equal(navIds.has('plans-live'), true, 'plans-live stays in the nav registry');
   assert.equal(navIds.has('ai-chat'), true, 'ai-chat stays in the nav registry');
   assert.equal(navIds.has('fba'), true, 'fba is the Outbound lane’s second row');
-  // Studio (Automations) is PARKED 2026-09-16 on an operator ruling — the map
-  // row is withdrawn while `/studio` keeps resolving. Settings is parked in the
-  // account ⋯ menu. Admin is dissolved.
-  assert.equal(navIds.has('studio'), false, 'Automations is parked — no nav page');
+  // Studio (Automations) was PARKED 2026-09-16 and UNPARKED 2026-09-23 on the
+  // ruling that the designated-tag cron *"should be included in the automations
+  // display in the sidebar"* — impossible without the row. Settings stays parked
+  // in the account ⋯ menu. Admin is dissolved.
+  assert.equal(navIds.has('studio'), true, 'Automations ships the row its display hangs from');
   assert.equal(navIds.has('admin'), false, 'admin is dissolved — no nav page');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
@@ -244,6 +257,21 @@ test('prod nav ships every unparked page; parked lanes and redirect surfaces sta
     getSidebarPageNav('studio')?.children?.some((m) => m.id === 'catalog'),
     true,
     'studio/catalog survives as an L2 mode (⌘K + header Mode + URL)',
+  );
+  // Rules (2026-09-23 ruling) — the automations display the operator asked for.
+  // Its NAME matters as much as its existence: the nav name-collision law
+  // forbids a child wearing its parent's "Automations".
+  const studioRules = getSidebarPageNav('studio')?.children?.find((m) => m.id === 'rules');
+  assert.ok(studioRules, 'studio carries a Rules L2 child');
+  assert.equal(studioRules.label, 'Rules');
+  assert.equal(studioRules.to().pathname, '/studio/automations');
+  assert.equal(
+    getSidebarPageNav('studio')?.resolveChild?.({
+      pathname: '/studio/automations',
+      params: new URLSearchParams(),
+    }),
+    'rules',
+    '/studio/automations resolves to the Rules child',
   );
   // Stations + shipping + inventory + warehouse stay visible (receiving family
   // promoted to L1: Arrival / Unbox / Pickup / Repair + Incoming on Desk).
@@ -271,14 +299,14 @@ test('prod nav ships every unparked page; parked lanes and redirect surfaces sta
   for (const id of ['dashboard', 'print-labels', 'print-documents']) {
     assert.equal(navIds.has(id), false, `${id} must not own a spine row`);
   }
-  // Sales is still its own root section (D4) in the REGISTRY — the mobile-first
-  // gate hides its door until the lane is ported, it does not re-home the row.
+  // Sales is still its own root section (D4) and is desk-only: the desktop
+  // door remains visible while the mobile registry continues to omit it.
   assert.equal(
     APP_SIDEBAR_NAV.some((item) => item.id === 'sales'),
     true,
     'Sales is its own root section (D4)',
   );
-  assert.equal(navIds.has('sales'), false, 'Sales is gated out until its /m port');
+  assert.equal(navIds.has('sales'), true, 'Sales remains visible as a desk-only lane');
   assert.equal(navIds.has('counter'), false, 'Counter is a Sales child, not an L1 spine row');
   assert.equal(
     getSidebarPageNav('sales')?.children?.some((m) => m.id === 'counter'),
@@ -1033,7 +1061,9 @@ test('every desk lane is expandable: 2+ pages, or one page that declares childre
     if (lane.pages.length > 1) continue; // header + page rows
 
     const page = lane.pages[0]!;
-    if (page.spineFlat) continue; // declared opt-out (Automations)
+    // `spineFlat` is the declared opt-out. Nothing claims it since 2026-09-23,
+    // when Automations dropped it to paint its Rules child as a spine row.
+    if (page.spineFlat) continue;
 
     assert.ok(
       (page.children?.length ?? 0) > 0,

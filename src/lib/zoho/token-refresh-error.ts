@@ -62,15 +62,3 @@ export function formatZohoTokenRefreshBodyError(data: Record<string, unknown>): 
   }
   return `Zoho token refresh error: ${error}`;
 }
-
-/**
- * True when a vault row exists but is not usable — USAV must NOT fall through
- * to `ZOHO_REFRESH_TOKEN` env (that would mask Needs attention).
- * `null` / missing row → env bootstrap still allowed.
- */
-export function zohoVaultBlocksEnvFallback(
-  vaultStatus: string | null | undefined,
-): boolean {
-  if (vaultStatus == null || vaultStatus === '') return false;
-  return vaultStatus !== 'active';
-}

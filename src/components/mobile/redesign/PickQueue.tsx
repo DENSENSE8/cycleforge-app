@@ -49,9 +49,9 @@ import { PickQueueRow } from '@/components/mobile/redesign/PickQueueRow';
 import { usePickList, useAllocationSweep } from '@/components/mobile/redesign/usePickList';
 import { PickPairToteSheet, type PairToteUnit } from '@/components/mobile/picker/PickPairToteSheet';
 import { ItemCardRow } from '@/components/mobile/redesign/ItemCardRow';
-import { useToShipOrders } from '@/components/mobile/redesign/useToShipOrders';
+import { toShipPriceText } from '@/components/mobile/redesign/to-ship-faces';
 import { formatSalePrice } from '@/lib/dashboard/orders-queue-helpers';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
+import { useToShipOrders } from '@/components/mobile/redesign/useToShipOrders';
 import {
   parsePickListScope,
   type PickListBlocker,
@@ -116,7 +116,7 @@ function ScopeTabs({
             onClick={() => onSelect(tab.id)}
             className={cn(
               'ds-raw-button flex items-center gap-1.5 px-3 text-role-caption font-semibold',
-              cornerClass('pill'),
+              cornerClass('control'),
               TAP_MIN_H_CLASS,
               TAP_POINTER_CLASS,
               focusRing('control'),
@@ -222,15 +222,14 @@ function PickQueueScreen() {
             orderRows.length === 0 ? (
               <p className="text-role-caption text-text-muted">No orders in the feed.</p>
             ) : (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col">
                 {orderRows.map((row) => (
                   <li key={row.entityId}>
                     <ItemCardRow
                       title={row.title}
                       imageUrl={row.imageUrl}
-                      listingHref={getExternalUrlByItemNumber(row.itemNumber || row.sku)}
                       qty={row.quantity}
-                      price={formatSalePrice(row.saleAmount, row.currency) || null}
+                      price={toShipPriceText(row)}
                       deadlineAt={row.deadlineAt}
                       onOpen={() =>
                         router.push(`/m/pick/${encodeURIComponent(String(row.orderId ?? row.entityId))}`)
@@ -265,7 +264,7 @@ function PickQueueScreen() {
                         : (group.staffName ?? `Staff ${group.staffId}`)}
                     </h2>
                   ) : null}
-                  <ul className="flex flex-col gap-2">
+                  <ul className="flex flex-col">
                     {group.rows.map((row) => (
                       <li key={row.allocationId}>
                         <PickQueueRow row={row} onOpen={openRow} onPair={setPairOrder} />
@@ -360,7 +359,7 @@ function ShortfallBand({
           {sweepError}
         </p>
       ) : null}
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col">
         {rows.map((row) => (
           <li key={row.orderId}>
             <ItemCardRow
@@ -372,7 +371,6 @@ function ShortfallBand({
               qty={row.qty}
               price={formatSalePrice(row.saleAmount, row.currency) || null}
               deadlineAt={row.deadlineAt}
-              listingHref={getExternalUrlByItemNumber(row.itemNumber || row.sku || '')}
               onOpen={() => onOpen(row)}
               ariaLabel={`${row.orderNumber} — ${BLOCKER_LABEL[row.blocker]}`}
               primary={null}

@@ -27,6 +27,7 @@ export const GET = withAuth(async (_req, ctx) => {
             WHERE o.organization_id = $1
               AND o.shipment_id IS NOT NULL
               AND pl.tracking_type = 'ORDERS'
+              AND pl.completion_state = 'COMPLETED'
         `, [orgId]);
 
         // Sample shipped orders (derived from stn)
@@ -48,6 +49,7 @@ export const GET = withAuth(async (_req, ctx) => {
                 FROM packer_logs
                 WHERE shipment_id = o.shipment_id
                   AND tracking_type = 'ORDERS'
+                  AND completion_state = 'COMPLETED'
                 ORDER BY created_at DESC NULLS LAST, id DESC
                 LIMIT 1
             ) pl ON true
@@ -64,6 +66,7 @@ export const GET = withAuth(async (_req, ctx) => {
             FROM orders o
             INNER JOIN packer_logs pl ON pl.shipment_id = o.shipment_id
               AND pl.tracking_type = 'ORDERS'
+              AND pl.completion_state = 'COMPLETED'
             LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
             WHERE o.organization_id = $1
               AND NOT COALESCE(stn.is_carrier_accepted OR stn.is_in_transit

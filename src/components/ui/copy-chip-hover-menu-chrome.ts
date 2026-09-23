@@ -28,9 +28,32 @@ export const CHIP_HOVER_MENU_PANEL_CLASS = cn(
  * No `uppercase`: labels render in the case the catalog authored them
  * (`eBay` keeps its lowercase e). Tone still steps muted → default on hover via
  * {@link CHIP_HOVER_MENU_ITEM_TONE}, which matches the inactive-pill ink.
+ *
+ * `leading-snug` OVERRIDES the preset's `leading-none`, and it is load-bearing.
+ * {@link chipLabel} ships `leading-none` (line-height: 1) because a pill face is
+ * a single centred line that may paint its descenders outside the line box —
+ * nothing clips it. This row is different: its label span is `truncate`
+ * (`overflow: hidden`) and is sized BY that line box, so at 12px the box is 12px
+ * while Inter needs ~14.5px for ascender+descender (hhea 0.969 + 0.241 em).
+ * Everything past 12px was cut, which sheared the tails off g/p/y/j — measured
+ * on "Hide package pairing": clientHeight 12, scrollHeight 13. 1.375 × 12 =
+ * 16.5px clears the descender with room.
+ *
+ * THE LAW, so this does not recur: `leading-none` and an overflow-clipped text
+ * box are incompatible. Any face that composes a tight-leading preset AND
+ * clips (`truncate`, `overflow-hidden`, a fixed `h-*` on the text box) must
+ * restate a leading that contains the descender. Tight leading alone is safe;
+ * clipping alone is safe; together they eat the bottom of the glyphs.
  */
-export const CHIP_HOVER_MENU_ITEM_CLASS =
-  `relative flex w-full cursor-default select-none items-center gap-1.5 rounded-none px-1.5 py-1.5 text-left ${chipLabel} outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40 data-[disabled]:pointer-events-none data-[disabled]:opacity-50`;
+export const CHIP_HOVER_MENU_ITEM_CLASS = cn(
+  'relative flex w-full cursor-default select-none items-center gap-1.5 rounded-none px-1.5 py-1.5 text-left',
+  chipLabel,
+  // Through `cn` (tailwind-merge), so this deterministically REPLACES the
+  // preset's `leading-none` instead of racing it in stylesheet order — two
+  // live `leading-*` classes would let the emitted CSS order decide silently.
+  'leading-snug',
+  'outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40 data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+);
 
 export const CHIP_HOVER_MENU_ITEM_SEAM_CLASS = 'border-t border-border-hairline';
 

@@ -23,6 +23,7 @@ export * from './OmnichannelComposerDock';
 export * from './IconButton';
 export * from './KeyboardKey';
 export * from './Layer';
+export * from './OneTimeCodeInput';
 export * from './Panel';
 export * from './PanelRow';
 export * from './Popover';

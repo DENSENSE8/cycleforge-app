@@ -83,6 +83,8 @@ import { REPORT_BIN_UTILIZATION_TABLE_BINDING } from '@/components/reports/repor
 import { REPORT_VELOCITY_TABLE_BINDING } from '@/components/reports/report-velocity-grid/report-velocity-table-definition';
 import { REPORT_DEAD_STOCK_TABLE_BINDING } from '@/components/reports/report-dead-stock-grid/report-dead-stock-table-definition';
 import { REPORT_STAFF_DAY_TABLE_BINDING } from '@/components/reports/report-staff-day-grid/report-staff-day-table-definition';
+import { REPORT_PACKER_DAY_TABLE_BINDING } from '@/components/reports/report-packer-day-grid/report-packer-day-table-definition';
+import { REPORT_TASKS_TABLE_BINDING } from '@/components/reports/report-tasks-grid/report-tasks-table-definition';
 import { SKU_BINS_TABLE_BINDING } from '@/components/inventory/sku-bins-grid/sku-bins-table-definition';
 import { LOCATION_STOCK_TABLE_BINDING } from '@/components/inventory/location-stock-grid/location-stock-table-definition';
 import { SKU_LEDGER_TABLE_BINDING } from '@/components/inventory/sku-ledger-grid/sku-ledger-table-definition';
@@ -217,6 +219,12 @@ export const REGISTERED_BINDINGS = [
   // the row is a projection of the daily-check report, and the interactive
   // per-person view is /m/reports over the same buildStaffDay projection.
   REPORT_STAFF_DAY_TABLE_BINDING,
+  REPORT_PACKER_DAY_TABLE_BINDING,
+  // Reports › Completed tasks — the record of finished `work_assignments`
+  // follow-ups. Sibling of `tasks`, never a merge with it: the desk is the
+  // queue a staffer works and this is what it leaves behind, so the verbs, the
+  // capabilities and the layout document all differ.
+  REPORT_TASKS_TABLE_BINDING,
   // Admin › per-SKU bin distribution and stock ledger — the last two
   // AdminTable sections of /inventory/health/sku/[sku] (wave D). Read-only.
   SKU_BINS_TABLE_BINDING,

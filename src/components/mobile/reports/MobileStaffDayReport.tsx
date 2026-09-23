@@ -15,9 +15,17 @@
  * `BottomSheet` detail, never a `DataTable` (SURFACE_LAW §5). **No primary
  * CTA** — this surface commits nothing, and inventing one would be a fake job.
  *
- * READ-ONLY, and structurally so: it renders `buildStaffDay`, a pure projection
- * of the day report, and holds no mutation. The desk Staff family (R4) will
- * consume the SAME projection, so the two faces cannot disagree about a shift.
+ * READ-ONLY, and structurally so: it renders `buildStaffDayAgendas`, a pure
+ * merge of the day report and the assigned-task list, and holds no mutation.
+ * The desk Staff family (R4) will consume the SAME projection, so the two
+ * faces cannot disagree about a shift.
+ *
+ * TWO STORES, ONE LIST (operator 2026-09-23): a checklist tick and a task
+ * handed to that person are both "what they did today", so the sheet reads
+ * them as one timeline and the card prints one fraction. The task half is
+ * ADDITIVE — a manager may hold `operations.view` without `work_orders.claim`,
+ * `GET /api/tasks` 403s for them, and the report then shows the checks it can
+ * see rather than an error where a day used to be.
  *
  * Day selection is NOT owned here any more: `MobileReportsView` holds the
  * `dateKey` and mounts `MobileReportDayStepper`, because the Packing tab reads
@@ -30,20 +38,50 @@
  */
 
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { TicketChip } from '@/components/ui/CopyChip';
 import { MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useDailyChecks } from '@/lib/daily-checks/use-daily-checks';
-import { buildStaffDay, buildStaffDays, type StaffDay } from '@/lib/daily-checks/staff-day';
+import { buildStaffDay, buildStaffDays } from '@/lib/daily-checks/staff-day';
+import {
+  buildStaffDayAgenda,
+  buildStaffDayAgendas,
+  type StaffDayAgenda,
+  type StaffDayEntry,
+} from '@/lib/daily/staff-day-agenda';
+import {
+  taskDeskRowFromWire,
+  type TaskDeskListPayload,
+  type TaskDeskRow,
+} from '@/lib/tasks/task-desk-row';
 import { formatStageClockTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 
 const FACT = 'text-role-micro text-text-muted';
 
-/** One staffer's card — who, how far through, when they last touched the list. */
-function RosterCard({ day, onOpen }: { day: StaffDay; onOpen: () => void }) {
+/** Cookie session; never a cached answer for a day the operator just stepped to. */
+const FRESH: RequestInit = { credentials: 'include', cache: 'no-store' };
+
+const NO_TASKS: readonly TaskDeskRow[] = [];
+
+/**
+ * Every live handoff, not just this viewer's — the report reads a PEER's day,
+ * so `assignee=all`. `lane=all` because a canceled row must be visible to the
+ * membership rule that drops it; filtering server-side would make "withdrawn"
+ * indistinguishable from "never existed".
+ */
+async function fetchDayTasks(): Promise<TaskDeskRow[]> {
+  const res = await fetch('/api/tasks?lane=all&assignee=all&limit=200', FRESH);
+  if (!res.ok) throw new Error(`Could not load tasks (${res.status})`);
+  const payload = (await res.json()) as TaskDeskListPayload;
+  return (payload.tasks ?? []).map(taskDeskRowFromWire);
+}
+
+/** One staffer's card — who, how far through, when they last touched the day. */
+function RosterCard({ day, onOpen }: { day: StaffDayAgenda; onOpen: () => void }) {
   const complete = day.total > 0 && day.doneCount >= day.total;
   return (
     <li>
@@ -52,7 +90,7 @@ function RosterCard({ day, onOpen }: { day: StaffDay; onOpen: () => void }) {
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`${day.name}, ${day.doneCount} of ${day.total} checked`}
+        aria-label={`${day.name}, ${day.doneCount} of ${day.total} done`}
         className={cn(
           'ds-raw-button flex min-h-14 w-full items-center gap-3 border border-border-hairline bg-surface-card px-3 py-2 text-left',
           MOBILE_ROW_CORNER,
@@ -66,11 +104,15 @@ function RosterCard({ day, onOpen }: { day: StaffDay; onOpen: () => void }) {
            * ONE meta cluster under the name, never independent chips: the
            * fraction and the last touch answer the same question ("how far in
            * are they?") and split chips make a 390px row read as two facts
-           * competing for the same glance.
+           * competing for the same glance. The fraction is COMBINED — a
+           * checks-only number beside a list that also shows tasks is the
+           * two-task-systems bug wearing a smaller hat.
            */}
           <span className={cn('mt-0.5 block truncate', FACT)}>
-            {day.doneCount} of {day.total} checked
-            {day.lastMarkedAt ? ` · last ${formatStageClockTimePST(day.lastMarkedAt)}` : ' · nothing yet'}
+            {day.doneCount} of {day.total} done
+            {day.lastActivityAt
+              ? ` · last ${formatStageClockTimePST(day.lastActivityAt)}`
+              : ' · nothing yet'}
           </span>
         </span>
         {/*
@@ -90,8 +132,53 @@ function RosterCard({ day, onOpen }: { day: StaffDay; onOpen: () => void }) {
   );
 }
 
-/** That staffer's day, task by task — the sentence the whole feature serves. */
-function StaffDaySheet({ day, onClose }: { day: StaffDay | null; onClose: () => void }) {
+/** One line of the day — either store, told apart by its tag, not by its shape. */
+function EntryRow({ entry }: { entry: StaffDayEntry }) {
+  return (
+    <li className="flex items-baseline justify-between gap-3 border-b border-border-hairline pb-2 last:border-b-0">
+      <span className="min-w-0 flex-1">
+        <span className="block text-role-caption text-text-default">{entry.title}</span>
+        {/*
+         * The SOURCE tag stays even though both stores render identically: a
+         * lead asking "did they do their checks?" gets a different answer from
+         * "did they clear what I threw at them?", and an untagged merged list
+         * cannot be read for either.
+         */}
+        <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+          <span className="text-role-micro uppercase tracking-wide text-text-faint">
+            {entry.source === 'check' ? 'Check' : 'Task'}
+          </span>
+          {entry.recordLabel ? <span className={FACT}>{entry.recordLabel}</span> : null}
+          {entry.ticketId != null ? (
+            <TicketChip value={String(entry.ticketId)} display={`#${entry.ticketId}`} dense />
+          ) : null}
+        </span>
+      </span>
+      {/*
+       * The TIME is the point. An unfinished row keeps its place and says so in
+       * words — a blank cell reads as a rendering bug, and the miss is the most
+       * actionable thing on this screen.
+       */}
+      <span
+        className={cn(
+          'shrink-0 tabular-nums',
+          entry.doneAt
+            ? 'text-role-caption text-text-default'
+            : 'text-role-micro uppercase tracking-wide text-text-faint',
+        )}
+      >
+        {entry.doneAt
+          ? formatStageClockTimePST(entry.doneAt)
+          : entry.source === 'check'
+            ? 'Not checked'
+            : 'Not done'}
+      </span>
+    </li>
+  );
+}
+
+/** That staffer's day, row by row — the sentence the whole feature serves. */
+function StaffDaySheet({ day, onClose }: { day: StaffDayAgenda | null; onClose: () => void }) {
   return (
     <BottomSheet
       open={day !== null}
@@ -112,37 +199,10 @@ function StaffDaySheet({ day, onClose }: { day: StaffDay | null; onClose: () => 
             </span>
           </div>
           <ul className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-1 pb-2">
-            {day.tasks.map((task) => (
-              <li
-                key={task.itemId}
-                className="flex items-baseline justify-between gap-3 border-b border-border-hairline pb-2 last:border-b-0"
-              >
-                <span className="min-w-0 flex-1">
-                  <span className="block text-role-caption text-text-default">{task.title}</span>
-                  {task.ticketId != null ? (
-                    <span className="mt-0.5 flex">
-                      <TicketChip value={String(task.ticketId)} display={`#${task.ticketId}`} dense />
-                    </span>
-                  ) : null}
-                </span>
-                {/*
-                 * The TIME is the point. An unchecked task keeps its row and
-                 * says so in words — a blank cell reads as a rendering bug, and
-                 * a missed check is the most actionable thing on this screen.
-                 */}
-                <span
-                  className={cn(
-                    'shrink-0 tabular-nums',
-                    task.checkedAt
-                      ? 'text-role-caption text-text-default'
-                      : 'text-role-micro uppercase tracking-wide text-text-faint',
-                  )}
-                >
-                  {task.checkedAt ? formatStageClockTimePST(task.checkedAt) : 'Not checked'}
-                </span>
-              </li>
+            {day.entries.map((entry) => (
+              <EntryRow key={entry.key} entry={entry} />
             ))}
-            {day.tasks.length === 0 ? (
+            {day.entries.length === 0 ? (
               <li className="text-role-caption text-text-muted">
                 Nothing was on this person&apos;s list that day.
               </li>
@@ -159,11 +219,30 @@ export function MobileStaffDayReport({ dateKey }: { dateKey: string }) {
 
   const { data, isLoading, isError } = useDailyChecks(dateKey);
 
-  const days = useMemo(() => (data ? buildStaffDays(data) : []), [data]);
-  const openDay = useMemo(
-    () => (data && openStaffId != null ? buildStaffDay(data, openStaffId) : null),
-    [data, openStaffId],
+  /*
+   * `retry: false` because the failure this query actually has is a 403, and
+   * retrying a refusal three times only delays the checks-only report the
+   * manager can still read.
+   */
+  const taskQuery = useQuery({
+    queryKey: ['tasks', 'staff-day', 'all'] as const,
+    queryFn: fetchDayTasks,
+    retry: false,
+    staleTime: 30_000,
+  });
+  // ONE frozen empty array, so a 403 (or the first paint) does not hand the
+  // memos a fresh identity every render and rebuild the whole roster.
+  const tasks = taskQuery.data ?? NO_TASKS;
+
+  const days = useMemo(
+    () => (data ? buildStaffDayAgendas(buildStaffDays(data), tasks) : []),
+    [data, tasks],
   );
+  const openDay = useMemo(() => {
+    if (!data || openStaffId == null) return null;
+    const day = buildStaffDay(data, openStaffId);
+    return day ? buildStaffDayAgenda(day, tasks) : null;
+  }, [data, openStaffId, tasks]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

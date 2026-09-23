@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { runIdempotencyCleanup } from '@/lib/jobs/idempotency-cleanup';
@@ -25,9 +25,7 @@ const SEARCH_OUTBOX_RETENTION_DAYS = 7;
  * once on the privileged owner pool — never a per-org sweep (Phase D category B).
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('cleanup', () =>
       withCronRun('cleanup', async () => {

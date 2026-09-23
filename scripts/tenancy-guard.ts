@@ -125,14 +125,12 @@ if (runStatic) {
     console.log(exemptLines.sort().join('\n'));
   }
 
-  // Stale-exemption hygiene (non-fatal): an allowlisted route that no longer
-  // matches a live violation — e.g. it was since GUC-wrapped, deleted, or its
-  // table un-FORCEd — can be pruned from the allowlist.
+  // Stale exemptions are gate failures: the allowlist must shrink as routes
+  // become scoped, disappear, or stop touching tenant data.
   const stale = Object.keys(ROUTE_TENANCY_EXEMPTIONS).filter((rt) => !matchedExemptions.has(rt));
   if (stale.length) {
-    console.warn(
-      `Tenancy guard (A): ${stale.length} exemption(s) no longer match a live violation (safe to prune): ` +
-        `${stale.slice(0, 10).join(', ')}${stale.length > 10 ? ' …' : ''}`,
+    violations.push(
+      `${stale.length} stale tenancy exemption(s) must be removed: ${stale.join(', ')}`,
     );
   }
 }

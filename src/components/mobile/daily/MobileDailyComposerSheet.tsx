@@ -29,7 +29,7 @@
  * shell (state, disclosure, submit).
  */
 
-import { Button } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
@@ -39,7 +39,7 @@ import {
   type DailyComposerDraft,
   type DailyComposerSubject,
 } from '@/lib/daily-checks/composer';
-import { TITLE_INPUT_CLASS } from './MobileDailyComposerFields';
+import { OwnerStep, TITLE_INPUT_CLASS } from './MobileDailyComposerFields';
 import { MobileDailyTicketSlider } from './MobileDailyTicketSlider';
 
 const SUBJECT_TABS = DAILY_COMPOSER_SUBJECT.map(({ id, label }) => ({ id, label }));
@@ -117,14 +117,36 @@ export function MobileDailyComposerSheet({
           className={TITLE_INPUT_CLASS}
         />
 
+        <TextField
+          label="Description (optional)"
+          multiline
+          rows={3}
+          value={draft.description}
+          onChange={(description) => patch({ description })}
+          maxLength={2000}
+        />
+
+        {draft.kind === 'once' ? (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-role-micro uppercase tracking-wide text-text-faint">Assign to</p>
+            <OwnerStep
+              selectedStaffId={draft.ownerId}
+              onPick={(member) =>
+                patch({
+                  ownerId: member?.id ?? null,
+                  ownerName: member?.name ?? null,
+                })
+              }
+            />
+          </div>
+        ) : null}
+
         {/*
-         * NOTHING ELSE (operator 2026-09-15: *"remove the cadence owner and
-         * links from the bottom sheet — this scope just needs to be about
-         * ticket numbers itself"*). Cadence is implied by the face (Task →
-         * every day, Ticket → just today), the owner defaults to the whole
-         * shift, and the WO/tracking inputs left with the disclosure. The live
-         * hint went too: the CTA already reads disabled until the draft
-         * commits, so a line of prose repeating that was noise.
+         * Description belongs to the item and follows its title, so it is
+         * available to the next shift without adding a note to a single day's
+         * attestation. One-offs can additionally name a staffer; recurring
+         * work remains shift-wide. Non-ticket links remain out of this compact
+         * phone capture: Task → every day, Ticket → just today.
          *
          * A SERVER failure still speaks — that is news the operator cannot
          * infer from a disabled button.

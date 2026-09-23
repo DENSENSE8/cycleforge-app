@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { PoolClient } from 'pg';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { forEachActiveOrg } from '@/lib/cron/for-each-org';
@@ -17,9 +17,7 @@ export const maxDuration = 60;
  * (idempotent via idx_stock_alerts_open) and resolves cleared ones.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('inventory.drift_check', () =>
       withCronRun('inventory.drift_check', runDriftCheck),

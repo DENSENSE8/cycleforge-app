@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAiChat } from '@/components/ai/useAiChat';
 import AiChatConversation from '@/components/ai/AiChatConversation';
+import { AiChatArtifactPane } from '@/components/ai/AiChatArtifactPane';
 import { AI_CHAT_PROMPT_EVENT, AI_CHAT_NEW_EVENT } from '@/components/ai/ai-chat-events';
 
 /**
- * Full-page chat surface for /ai-chat. The streaming assistant is docked here
- * (the main/right pane); the capabilities + example prompts live in the
- * contextual sidebar (AiChatSidebarPanel). Example clicks and "New chat" in the
- * sidebar reach this hook through window events — see `ai-chat-events`.
+ * Full-page assistant surface for /ai-chat. Conversation is the left work
+ * plane; model-created tables and structured live-data answers are promoted
+ * into the read-only artifact plane on the right. Both consume the same chat
+ * state, so the export is a projection of the answer rather than a second data
+ * fetch or a workflow-specific screen.
  */
 export default function AiChatWorkspace() {
   const { has, isLoaded } = useAuth();
   const chat = useAiChat();
   const { send, reset } = chat;
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => setReady(true), []);
 
   useEffect(() => {
     const onPrompt = (e: Event) => {
@@ -40,8 +45,17 @@ export default function AiChatWorkspace() {
   }
 
   return (
-    <div className="h-full min-h-0">
-      <AiChatConversation variant="full" chat={chat} />
+    <div
+      className="flex h-full min-h-0 flex-col lg:flex-row"
+      data-ai-chat-surface
+      data-chat-ready={ready ? 'true' : 'false'}
+    >
+      <div className="flex min-h-0 min-w-0 flex-1 border-b border-border-hairline lg:border-b-0 lg:border-r" aria-label="Assistant chat">
+        <AiChatConversation variant="full" chat={chat} />
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1">
+        <AiChatArtifactPane messages={chat.messages} />
+      </div>
     </div>
   );
 }

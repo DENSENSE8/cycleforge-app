@@ -20,7 +20,7 @@ import type { OpsEntityType } from '@/lib/ops-event-types';
 import type { PermissionString } from '@/lib/auth/permissions';
 
 /**
- * Entity types a subscription / inbox item may anchor on.
+ * Ops-event parents a SUBSCRIPTION may anchor on.
  *
  * Deliberate gaps vs `OPS_EVENT_ENTITY_TYPES` (documented, not accidental —
  * polymorphic-tables.md rule 5 requires naming the skip):
@@ -28,6 +28,9 @@ import type { PermissionString } from '@/lib/auth/permissions';
  *     parent table (`shipment_links` is a link table). No delete trigger is
  *     possible, so it cannot join the CHECK.
  *   • 'other'    — has no parent by definition.
+ *
+ * Pinned to `staff_subscriptions_entity_type_chk`. This is NOT the inbox's
+ * list — see {@link INBOX_ENTITY_TYPES}.
  */
 export const NOTIFIABLE_ENTITY_TYPES = [
   'receiving',
@@ -49,13 +52,54 @@ export function isNotifiableEntityType(v: unknown): v is NotifiableEntityType {
 }
 
 /**
+ * Entity types an INBOX ROW may anchor on — a strict superset of the
+ * subscribable parents, pinned to `staff_inbox_items_entity_type_chk`.
+ *
+ * The two lists differ because the inbox has TWO writers and only one derives
+ * its recipients. `support_ticket` is reachable ONLY through the
+ * directly-addressed path (`assign-inbox-item.ts`): a colleague throws a task
+ * about a helpdesk thread and names the person. No `NOTIFIABLE_EVENTS` entry
+ * emits a ticket event and `staff_subscriptions` still refuses the value, so
+ * nothing can fan a ticket out to derived recipients — which is exactly why
+ * widening the subscribable list would have been the wrong fix, and why the
+ * inbox row carries no Subscribe toggle. Migration `2026-09-22a`.
+ */
+export const INBOX_ENTITY_TYPES = [...NOTIFIABLE_ENTITY_TYPES, 'support_ticket'] as const;
+
+export type InboxEntityType = (typeof INBOX_ENTITY_TYPES)[number];
+
+export function isInboxEntityType(v: unknown): v is InboxEntityType {
+  return typeof v === 'string' && (INBOX_ENTITY_TYPES as readonly string[]).includes(v);
+}
+
+/**
+ * What an inbox row CALLS the record it points at.
+ *
+ * One declaration, because the fact is printed on three faces — the live
+ * session row, the durable ledger row, and the task desk — and the fourth
+ * spelling is always the one that reads wrong. Before this, the durable row
+ * rendered `entityType.replace(/_/g, ' ')` and printed *"support ticket 461"*
+ * beside a desk that said *"Ticket 10023"* for the same handoff.
+ */
+export const INBOX_ENTITY_NOUN: Readonly<Record<InboxEntityType, string>> = {
+  receiving: 'Carton',
+  receiving_line: 'Line',
+  serial_unit: 'Unit',
+  order: 'Order',
+  fba_shipment: 'FBA shipment',
+  repair: 'Repair',
+  warranty_claim: 'Claim',
+  support_ticket: 'Ticket',
+};
+
+/**
  * Read-gate per entity type. A staffer must never be told about a record they
  * cannot open. Applied TWICE by design: the worker uses it as a cheap
  * write-time prefilter, and `GET /api/inbox` re-applies it as the authoritative
  * gate — otherwise a permission revoked AFTER delivery would leave the row
  * visible forever (the leak GitHub avoids by filtering at render).
  */
-export const ENTITY_VIEW_PERMISSION: Record<NotifiableEntityType, PermissionString> = {
+export const ENTITY_VIEW_PERMISSION: Record<InboxEntityType, PermissionString> = {
   receiving: 'receiving.view',
   receiving_line: 'receiving.view',
   serial_unit: 'tech.view',
@@ -63,6 +107,22 @@ export const ENTITY_VIEW_PERMISSION: Record<NotifiableEntityType, PermissionStri
   fba_shipment: 'fba.view',
   repair: 'repair.view',
   warranty_claim: 'warranty.view',
+  /**
+   * `work_orders.claim`, NOT `integrations.zendesk` — and the difference is the
+   * whole point of the row.
+   *
+   * `integrations.zendesk` is ADMIN_ONLY (`scripts/seed-roles.mjs`), so gating
+   * here on it would hide every ticket handoff from exactly the floor roles a
+   * ticket task is thrown AT. The row is an ASSIGNMENT notice — "Michael handed
+   * you Ticket 461" — and `GET /api/tasks`, already gated on `work_orders.claim`,
+   * discloses the same handle and subject_cache to the same people. So this
+   * grants nothing the task desk did not.
+   *
+   * The CONVERSATION stays gated: `/m/t/[ticketId]` and every `/api/zendesk/*`
+   * route check `integrations.zendesk` themselves and answer in words. Being
+   * told you were handed a ticket is not being shown the customer's thread.
+   */
+  support_ticket: 'work_orders.claim',
 };
 
 /**

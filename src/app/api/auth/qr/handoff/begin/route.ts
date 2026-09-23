@@ -9,14 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { createDeskToPhoneHandoff } from '@/lib/auth/qr-login';
+import { oauthOrigin } from '@/lib/auth/oauth-origin';
 import { audit } from '@/lib/auth/audit';
 
 export const runtime = 'nodejs';
 
-function origin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-}
 
 export async function POST(req: NextRequest) {
   const me = await getCurrentUser();
@@ -46,7 +43,11 @@ export async function POST(req: NextRequest) {
       persistent,
     });
 
-    const claimUrl = `${origin(req).replace(/\/$/, '')}/m/claim?token=${encodeURIComponent(handoff.token)}`;
+    // The QR must point at the host the DESK is on. `NEXT_PUBLIC_APP_URL` is a
+    // deployment's canonical address (pinned to one host), so using it here
+    // sent every lane / localhost desk's phone to a different server: the
+    // phone's session cookie landed on that host and the desk never paired.
+    const claimUrl = `${oauthOrigin(req).replace(/\/$/, '')}/m/claim?token=${encodeURIComponent(handoff.token)}`;
 
     await audit({
       staffId: me.staffId,

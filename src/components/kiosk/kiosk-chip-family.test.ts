@@ -188,10 +188,14 @@ test('every kiosk FORM is one white full-bleed centre surface', () => {
   assert.doesNotMatch(chrome, /KIOSK_CENTRE_SURFACE[\s\S]{0,120}max-w/, 'the plane is not measured');
 
   // One skeleton, propagated: every centre pane mounts the same plane.
+  //
+  // A FLOOR, not an exact count. The number was `3` and a fourth pane that
+  // correctly mounts the shared plane failed this line — the test punished the
+  // law being obeyed more widely. What the law actually forbids is a pane that
+  // hand-rolls its own white column, and the assertion below pins exactly that.
   const shell = read('src/app/kiosk/KioskShell.tsx');
-  assert.equal(
-    (shell.match(/className=\{KIOSK_CENTRE_SURFACE\}/g) ?? []).length,
-    3,
+  assert.ok(
+    (shell.match(/className=\{KIOSK_CENTRE_SURFACE\}/g) ?? []).length >= 3,
     'repair stage, buyback and pickup each mount the shared plane',
   );
   assert.doesNotMatch(

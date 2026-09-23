@@ -95,7 +95,7 @@ one workspace URL.
 - **Backend skeleton:** `withAuth` → Zod → domain helper (`Deps`) → 404/409/200 → `recordAudit`
   (`AUDIT_ACTION`/`AUDIT_ENTITY` constants; never rename) → `after()` side-effects.
   `orgId` from `ctx` / session, **never** from body. Prefer fail-closed over `?? USAV_ORG_ID`.
-- **Never commit `.env`.** New env vars → blank entries in `.env.example` + `context/ENV-VARS.md`.
+- **Never commit `.env`.** New env vars → blank entries in `.env.example` + `docs/ENV-VARS.md`.
 - **Tenant isolation:** use `withTenantTransaction` / `tenantQuery`; set `app.current_org`.
   New code must not import `USAV_ORG_ID` as a silent default — use `DOGFOOD_ORG_ID` only for
   explicit dogfood exemptions (billing gates), never for request scoping.
@@ -331,7 +331,7 @@ local `.env`. You stub:
 
 - `.env.example`: `GOOGLE_OAUTH_CLIENT_ID=`, `GOOGLE_OAUTH_CLIENT_SECRET=`,
   `GOOGLE_OAUTH_REDIRECT_URI=` (and Microsoft equivalents when built)
-- `context/ENV-VARS.md` entries
+- `docs/ENV-VARS.md` entries
 
 Implement:
 
@@ -582,7 +582,7 @@ to `AuthContext` CLIENT_PUBLIC_PATHS (`/offline` was already there).
 - **Green:** touched files typecheck + lint clean. (One pre-existing tsc error in the UNTRACKED
   `src/lib/studio/template-package.ts` from separate template-platform WIP — not this run's code.)
 - **Env added:** `DEFAULT_TENANT_SLUG`, documented `AUTH_PINLESS_SIGNIN`/`AUTH_V2_ENABLED`/
-  `AUTH_DUAL_WRITE_LEGACY_SID` in `context/ENV-VARS.md`.
+  `AUTH_DUAL_WRITE_LEGACY_SID` in `docs/ENV-VARS.md`.
   **HUMAN TODO:** the `.env.example` edit is blocked by a repo hook — manually add a blank
   `DEFAULT_TENANT_SLUG=` (+ `AUTH_DUAL_WRITE_LEGACY_SID=`) line under the `AUTH_PINLESS_SIGNIN=` entry.
 
@@ -662,7 +662,7 @@ DB-seed for now).
   `GOOGLE_OAUTH_CLIENT_ID/SECRET` (+ `MICROSOFT_OAUTH_*`) in Vercel/.env. Redirect URI (if not set) is
   `{origin}/api/auth/oauth/google/callback`. Until set, the button is hidden and `/start` fails closed.
   **HUMAN TODO:** add the blank `GOOGLE_OAUTH_*` / `MICROSOFT_OAUTH_*` lines to `.env.example` (hook-blocked);
-  documented in `context/ENV-VARS.md`.
+  documented in `docs/ENV-VARS.md`.
 - **Tests:** `src/lib/auth/platform-oauth.test.ts` (3, DB-free: state round-trip, tamper rejection, env-gated
   config + scope + derived redirect). Pass.
 - **Green:** my files typecheck + lint clean. (Two pre-existing tsc errors remain in UNTRACKED template-platform
@@ -738,7 +738,7 @@ a `console.warn` on every call. Both routes share `admin.manage_staff`, so the s
 - The role migration already exists as `src/lib/migrations/2026-06-21_app_tenant_role.sql.template` (gated,
   unapplied) + `2026-06-28_app_tenant_grants_reaffirm.sql`; `TENANT_APP_DATABASE_URL` is already wired in
   `src/lib/db.ts` and the cross-org harness/isolation test.
-- **Documented** `TENANT_APP_DATABASE_URL` in `context/ENV-VARS.md` (Database section) with the Phase-E flip note.
+- **Documented** `TENANT_APP_DATABASE_URL` in `docs/ENV-VARS.md` (Database section) with the Phase-E flip note.
 - **Authored** `src/lib/migrations/2026-07-11c_sync_cursors_per_org_key.sql` (UNAPPLIED) — re-keys `sync_cursors`
   from the global `resource` PK to the per-org composite `(organization_id, resource)` so tenants don't collide
   on a shared resource cursor. Header documents the required matching `sync-cursors.ts` caller change
@@ -776,7 +776,7 @@ auth/tenancy/identity test sweep 126 pass / 0 fail. No commits made (none reques
 
 **HUMAN TODO (hook-blocked `.env.example`):** add blank lines for `DEFAULT_TENANT_SLUG`,
 `AUTH_DUAL_WRITE_LEGACY_SID`, `GOOGLE_OAUTH_CLIENT_ID/SECRET/REDIRECT_URI`, `MICROSOFT_OAUTH_*`,
-`TENANT_APP_DATABASE_URL` (all documented in `context/ENV-VARS.md`).
+`TENANT_APP_DATABASE_URL` (all documented in `docs/ENV-VARS.md`).
 
 **Authored-but-UNAPPLIED migrations:** `2026-07-11b_password_reset_tokens.sql`,
 `2026-07-11c_sync_cursors_per_org_key.sql`.

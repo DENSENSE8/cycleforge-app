@@ -6,7 +6,7 @@ below the line into a fresh session pointed at this worktree.
 ---
 
 You are continuing the **UX/UI design of the Cycle Forge Warehouse OS shell** in
-`/home/michaelgarisek/Projects/cycleforge-app/.claude/worktrees/warehouse-os-refactor-8f2dc3`.
+`~/Projects/cycleforge-lanes/warehouse-os`.
 
 ## Read these first, in this order
 

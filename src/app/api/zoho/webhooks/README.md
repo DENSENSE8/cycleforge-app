@@ -4,46 +4,37 @@ Single endpoint that ingests Zoho Inventory webhook deliveries, verifies the HMA
 
 Once this is wired up, `/api/receiving/lookup-po` (the per-scan path) should rarely need to hit Zoho — most scans become a pure local DB query.
 
-## What you do once, per environment
+## What you do once, per organization
 
-### 1. Pick a shared secret
+### 1. Connect Zoho through OAuth
 
-Any high-entropy string — 32+ bytes hex is plenty:
+Complete `/api/zoho/oauth/authorize` for the organization. The callback stores
+the Zoho credentials in the encrypted integration vault and returns a one-time
+webhook bundle:
 
-```bash
-openssl rand -hex 32
+```json
+{
+  "webhook": {
+    "url": "https://<your-domain>/api/zoho/webhooks/<opaque-token>",
+    "signing_secret": "<per-org-secret>",
+    "signature_header": "x-zoho-webhook-signature"
+  }
+}
 ```
 
-### 2. Set env vars
-
-```bash
-# REQUIRED. Same secret you'll paste into Zoho.
-ZOHO_WEBHOOK_SECRET=<the value from step 1>
-
-# OPTIONAL — defaults shown.
-# Header name Zoho uses to send the signature. Inventory + Books default to
-# `X-Zoho-Webhook-Signature`. Marketplace-style integrations use `X-ZOH-Hmac`.
-ZOHO_WEBHOOK_SIGNATURE_HEADER=x-zoho-webhook-signature
-
-# OPTIONAL — `hex` (default) or `base64`. Pick whichever Zoho is sending.
-ZOHO_WEBHOOK_SIGNATURE_ENCODING=hex
-```
-
-Add via `vercel env add ZOHO_WEBHOOK_SECRET production` (and `preview` / `development` as needed), or your usual `.env.local` for local dev.
-
-### 3. Run the dedupe migration
+### 2. Run the dedupe migration
 
 ```bash
 psql $DATABASE_URL -f src/lib/migrations/2026-05-14_create_zoho_webhook_events.sql
 ```
 
-### 4. Register the webhook in Zoho
+### 3. Register the webhook in Zoho
 
 Zoho Inventory exposes outbound webhooks via **Workflow Rules**. Wire one rule per event type:
 
 | Module          | Event           | Action      | URL                                                  |
 | --------------- | --------------- | ----------- | ---------------------------------------------------- |
-| Purchase Orders | Create / Edit   | Webhook     | `https://<your-domain>/api/zoho/webhooks`            |
+| Purchase Orders | Create / Edit   | Webhook     | The tokenized URL returned by OAuth                   |
 | Purchase Orders | Delete          | Webhook     | same                                                 |
 | Purchase Receives | Create        | Webhook     | same                                                 |
 | Purchase Receives | Delete        | Webhook     | same                                                 |
@@ -56,19 +47,19 @@ Steps in Zoho's UI:
 4. Trigger condition: leave broad (e.g., *All Purchase Orders*) unless you want to narrow.
 5. **Action → Add Webhook.**
 6. Webhook configuration:
-   - **URL**: `https://<your-domain>/api/zoho/webhooks`
+   - **URL**: the returned `/api/zoho/webhooks/<opaque-token>` URL
    - **Method**: POST
    - **Module fields to include**: select all (we only read fields we care about; extras are ignored).
    - **Custom headers**: leave default — Zoho will add the signature header automatically once you set the secret below.
    - **Custom parameters**: leave empty.
-7. **Save.** Zoho will prompt for a *Authentication Type*. Choose **Webhook with Secret** and paste your `ZOHO_WEBHOOK_SECRET`.
+7. **Save.** Zoho will prompt for an *Authentication Type*. Choose **Webhook with Secret** and paste the returned per-organization signing secret.
 8. Repeat for each rule (Create, Edit, Delete on each module).
 
-### 5. Smoke-test
+### 4. Smoke-test
 
 ```bash
-# Should show signature header name + that the secret is loaded
-curl https://<your-domain>/api/zoho/webhooks
+# Discovery only; token validity is deliberately opaque.
+curl https://<your-domain>/api/zoho/webhooks/<opaque-token>
 ```
 
 Then from Zoho's *Workflow Rule* page click **Test webhook**. Look at the rule's history pane — a `200 OK` response means the receiver verified the signature and stored the event. The first real PO edit will fire a real delivery.
@@ -112,5 +103,5 @@ LIMIT 20;
 ## Operational tips
 
 - Keep at least one of the Workflow Rules in *Test mode* in Zoho until you've seen a successful real delivery — Zoho's test payloads are easier to debug than live ones.
-- If you ever rotate `ZOHO_WEBHOOK_SECRET`, update Zoho *first*, deploy *second*. Zoho's signature won't match during the gap, so deliveries will go to retry queue — usually fine for a few minutes.
+- If you rotate a tenant's webhook secret, update that tenant's Zoho workflow first and the encrypted vault row second. Deliveries retry while the values differ.
 - The `zoho_webhook_events` table grows ~1 row per event. Prune anything older than, say, 90 days with a small nightly job if needed.

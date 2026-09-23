@@ -372,6 +372,18 @@ export default function SignInPage() {
     else router.replace(target);
   }, [router, next]);
 
+  const signOutMobileSession = useCallback(async () => {
+    try {
+      await fetch('/api/auth/signout', { method: 'POST', credentials: 'include' });
+    } finally {
+      // Even if the network drops while revoking, leave this recovery face so
+      // the operator can choose a different account instead of being trapped
+      // behind the restored-session card.
+      setMobileSession(null);
+      router.replace('/m/signin');
+    }
+  }, [router]);
+
   // Google/Apple on a shared-account org mint the umbrella session then
   // bounce here with ?choose_staff=1 — same name picker as email+password.
   useEffect(() => {
@@ -804,7 +816,15 @@ export default function SignInPage() {
   }
 
   if (isMobileSigninPath && mobileSession) {
-    return <MobileSigninWelcome name={mobileSession.name} />;
+    return (
+      <MobileSigninWelcome
+        name={mobileSession.name}
+        onContinue={() =>
+          finish(mobileSession.staffId, mobileSession.role, null, null)
+        }
+        onSignOut={() => void signOutMobileSession()}
+      />
+    );
   }
 
   // ── Station mode (picked → PIN pad) ───────────────────────────────────────
@@ -1420,7 +1440,15 @@ function MobileSigninSessionCheck() {
   );
 }
 
-function MobileSigninWelcome({ name }: { name: string }) {
+function MobileSigninWelcome({
+  name,
+  onContinue,
+  onSignOut,
+}: {
+  name: string;
+  onContinue: () => void;
+  onSignOut: () => void;
+}) {
   return (
     <Shell>
       <Panel padding="lg" radius="2xl" className="w-full max-w-sm space-y-4 text-center">
@@ -1430,6 +1458,14 @@ function MobileSigninWelcome({ name }: { name: string }) {
           <p className="text-role-body text-text-soft">
             Signed in as <span className="font-semibold text-text-default">{name}</span>
           </p>
+        </div>
+        <div className="flex flex-col gap-2 pt-2">
+          <Button size="lg" onClick={onContinue}>
+            Continue
+          </Button>
+          <Button variant="ghost" size="md" onClick={onSignOut}>
+            Sign out
+          </Button>
         </div>
       </Panel>
     </Shell>

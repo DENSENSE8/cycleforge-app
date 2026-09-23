@@ -173,7 +173,15 @@ export function SupportTicketFocus({
             bodyClassName="flex min-h-0 flex-1 flex-col p-0"
           >
             <SupportTicketDetail
-              ticketId={ticketId}
+              // The PROVIDER id, not the `?ticket=` value. `SupportTicketDetail`
+              // reads `/api/zendesk/tickets/[id]` (and the composer posts there),
+              // which proxies the helpdesk verbatim — while `?ticket=` is
+              // documented as `support_tickets.id` and `resolveSupportContext`
+              // probes the PK first. A local id reaching the bundle read is the
+              // two-numbers bug: it renders cleanly and shows another ticket.
+              // The workspace already resolved this once; the dock below has
+              // always taken it.
+              ticketId={providerTicketId}
               onBack={onClose}
               embedded
               hideExternalLink

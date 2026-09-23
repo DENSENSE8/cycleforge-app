@@ -36,30 +36,12 @@ test('tampered body fails even with the right secret', () => {
   assert.equal(res.ok, false);
 });
 
-test('falls back to ZOHO_WEBHOOK_SECRET when no per-org secret supplied', () => {
-  const prev = process.env.ZOHO_WEBHOOK_SECRET;
-  process.env.ZOHO_WEBHOOK_SECRET = 'global-legacy-secret';
-  try {
-    const body = '{"event_type":"purchaseorder.updated"}';
-    const res = verifyZohoWebhookSignature(body, headersWith(sign(body, 'global-legacy-secret')));
-    assert.equal(res.ok, true);
-  } finally {
-    process.env.ZOHO_WEBHOOK_SECRET = prev;
-  }
-});
-
 test('missing signature header → fail (not throw)', () => {
   const res = verifyZohoWebhookSignature('{}', new Headers(), { secret: 's' });
   assert.equal(res.ok, false);
 });
 
-test('no secret available at all → fail closed', () => {
-  const prev = process.env.ZOHO_WEBHOOK_SECRET;
-  delete process.env.ZOHO_WEBHOOK_SECRET;
-  try {
-    const res = verifyZohoWebhookSignature('{}', headersWith('deadbeef'));
-    assert.equal(res.ok, false);
-  } finally {
-    if (prev !== undefined) process.env.ZOHO_WEBHOOK_SECRET = prev;
-  }
+test('empty per-org secret → fail closed', () => {
+  const res = verifyZohoWebhookSignature('{}', headersWith('deadbeef'), { secret: '' });
+  assert.equal(res.ok, false);
 });

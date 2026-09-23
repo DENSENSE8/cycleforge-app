@@ -9,11 +9,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { orderSyncService, type ChannelOrder } from '@/services/OrderSyncService';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -29,9 +28,7 @@ interface QueueRow {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorizedCronRequest(req.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('zoho.orders_ingest_drain', () =>
       withCronRun('zoho.orders_ingest_drain', async () => {
@@ -53,9 +50,11 @@ export async function GET(req: NextRequest) {
       let done = 0;
       let failed = 0;
       for (const row of rows) {
-        const orgId = row.organization_id ?? transitionalDogfoodOrgId();
         try {
-          await orderSyncService.ingestExternalOrder(orgId, row.payload);
+          if (!row.organization_id) {
+            throw new Error(`queue row ${row.id} is missing organization_id`);
+          }
+          await orderSyncService.ingestExternalOrder(row.organization_id, row.payload);
           await pool.query(
             `UPDATE order_ingest_queue
                 SET status = 'done', processed_at = NOW(), last_error = NULL

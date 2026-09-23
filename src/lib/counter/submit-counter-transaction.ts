@@ -674,6 +674,12 @@ export async function submitCounterTransaction(
         ticketNumber: result.zendeskTicketNumber,
         documentId: result.documentId,
         signatureUrl: result.signatureUrl,
+        // The device's own facts, straight off the line that was written — the
+        // success screen reads these back to the customer per unit, and the
+        // money is `serviceLineCents`, the same integer the header total used.
+        productTitle: service.productModel,
+        serialNumber: service.serialNumber,
+        priceCents: serviceLineCents(service),
       });
       // Same function the header total is built from (`serviceLineCents`) —
       // the staged charge and the quote can never disagree about what this

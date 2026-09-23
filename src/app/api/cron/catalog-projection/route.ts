@@ -17,25 +17,21 @@
  * `projectEcwidCatalog` returns a soft error for the rest rather than throwing,
  * so one unconnected tenant never fails the run for the others.
  *
- * Auth: Vercel cron origin or CRON_SECRET bearer — the same gate as the other
+ * Auth: CRON_SECRET bearer — the same gate as the other
  * /api/cron routes, which are session-less by design.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
-import { isVercelCronOrigin } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
+import { clampInt } from '@/lib/cron/params';
 import { withCronLock } from '@/lib/cron/lock';
+import { withCronRun } from '@/lib/cron/run-log';
 import { projectEcwidCatalog } from '@/lib/ecwid-square/sync';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-
-function clampInt(raw: string | null, fallback: number, min: number, max: number): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(Math.max(Math.floor(n), min), max);
-}
 
 /**
  * Orgs with an Ecwid connection in the credential vault.
@@ -56,30 +52,31 @@ async function listOrgsWithCatalogProvider(limit: number): Promise<OrgId[]> {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isVercelCronOrigin(req.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   const maxOrgs = clampInt(req.nextUrl.searchParams.get('maxOrgs'), 10, 1, 50);
   const results: Array<Record<string, unknown>> = [];
 
   try {
-    const locked = await withCronLock('catalog-projection', async () => {
-      const orgs = await listOrgsWithCatalogProvider(maxOrgs);
-      for (const orgId of orgs) {
-        const r = await projectEcwidCatalog(orgId);
-        results.push({
-          orgId: r.orgId,
-          ok: r.ok,
-          listings: r.listingsUpserted,
-          categories: r.categoriesUpserted,
-          deactivated: r.listingsDeactivated + r.categoriesDeactivated,
-          fetchMs: r.fetchMs,
-          writeMs: r.writeMs,
-          ...(r.error ? { error: r.error } : {}),
-        });
-      }
-    });
+    const locked = await withCronLock('catalog-projection', () =>
+      withCronRun('catalog-projection', async () => {
+        const orgs = await listOrgsWithCatalogProvider(maxOrgs);
+        for (const orgId of orgs) {
+          const r = await projectEcwidCatalog(orgId);
+          results.push({
+            orgId: r.orgId,
+            ok: r.ok,
+            listings: r.listingsUpserted,
+            categories: r.categoriesUpserted,
+            deactivated: r.listingsDeactivated + r.categoriesDeactivated,
+            fetchMs: r.fetchMs,
+            writeMs: r.writeMs,
+            ...(r.error ? { error: r.error } : {}),
+          });
+        }
+        return { orgs: results.length, results };
+      }),
+    );
     if (!locked.ran) {
       return NextResponse.json({ ok: true, skipped: 'locked' });
     }

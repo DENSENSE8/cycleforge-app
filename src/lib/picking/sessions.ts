@@ -491,6 +491,31 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
   // threaded into the shared transition() helper running on the same client.
   if (orgId) {
     return withTenantTransaction<ConfirmPickResult>(orgId, async (client) => {
+      if (input.clientEventId) {
+        const replayQ = await client.query<{
+          serial_unit_id: number | null;
+          occurred_at: string;
+          tote_code: string | null;
+        }>(
+          `SELECT serial_unit_id,
+                  occurred_at::text,
+                  NULLIF(payload->>'toteCode', '') AS tote_code
+             FROM inventory_events
+            WHERE organization_id = $1
+              AND client_event_id = $2
+            LIMIT 1`,
+          [orgId, input.clientEventId],
+        );
+        const replay = replayQ.rows[0];
+        if (replay?.serial_unit_id) {
+          return {
+            ok: true,
+            serialUnitId: replay.serial_unit_id,
+            pickedAt: replay.occurred_at,
+            toteCode: replay.tote_code,
+          };
+        }
+      }
       const allocQ = await client.query<{
         id: number;
         serial_unit_id: number;
@@ -663,6 +688,19 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
   // threaded into the shared transition() helper running on the same client.
   if (orgId) {
     return withTenantTransaction<RecordShortPickResult>(orgId, async (client) => {
+      if (input.clientEventId) {
+        const replayQ = await client.query<{ serial_unit_id: number | null }>(
+          `SELECT serial_unit_id
+             FROM inventory_events
+            WHERE organization_id = $1
+              AND client_event_id = $2
+            LIMIT 1`,
+          [orgId, input.clientEventId],
+        );
+        if (replayQ.rows[0]) {
+          return { ok: true, releasedUnitId: replayQ.rows[0].serial_unit_id };
+        }
+      }
       const allocQ = await client.query<{
         id: number;
         serial_unit_id: number;
@@ -815,7 +853,33 @@ export async function completeSession(
         [input.sessionId, orgId],
       );
       if (result.rowCount === 0) {
-        return { ok: false, status: 404, error: `session ${input.sessionId} not found or already closed` };
+        // A reconnect may replay the command after the original response was
+        // lost. A closed, tenant-owned session is success; return its current
+        // staged tote projection instead of inventing a second close event.
+        const replayQ = await client.query<{ order_id: number }>(
+          `SELECT ps.order_id
+             FROM picking_sessions ps
+             JOIN orders o ON o.id = ps.order_id
+            WHERE ps.id = $1
+              AND ps.ended_at IS NOT NULL
+              AND o.organization_id = $2
+            LIMIT 1`,
+          [input.sessionId, orgId],
+        );
+        const replay = replayQ.rows[0];
+        if (!replay) {
+          return { ok: false, status: 404, error: `session ${input.sessionId} not found` };
+        }
+        const totesQ = await client.query<{ code: string }>(
+          `SELECT code
+             FROM handling_units
+            WHERE organization_id = $1
+              AND paired_order_id = $2
+              AND status = 'STAGED'
+            ORDER BY id`,
+          [orgId, replay.order_id],
+        );
+        return { ok: true, stagedTotes: totesQ.rows.map((row) => row.code) };
       }
       const orderId = result.rows[0].order_id;
 

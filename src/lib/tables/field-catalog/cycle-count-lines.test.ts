@@ -423,7 +423,7 @@ describe('cycle-count-lines row view', () => {
     const view = cycleCountLinesCompoundView(row());
     assert.equal(view.id, '4412');
     assert.equal(view.title, 'QC35-EARCUP-BLK');
-    assert.equal(view.orderId, 'A-12-3');
+    assert.equal(view.identityFace?.value, 'A-12-3');
     // The retired SKU cell was a <Link>; a compound row takes a title href.
     assert.equal(view.titleHref, '/inventory/health/sku/QC35-EARCUP-BLK');
     // No photo, no carrier, no marketplace, no money on a count line.

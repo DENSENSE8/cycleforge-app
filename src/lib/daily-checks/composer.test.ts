@@ -82,6 +82,32 @@ test('Task face: a number stays a literal title — intent is declared, never gu
   assert.deepEqual(links.links, [], 'a Task-face row carries no ticket link');
 });
 
+test('a recurring task keeps its item description but never carries a personal owner', () => {
+  const body = dailyComposerCreateBody(
+    draftWith({
+      title: 'Sweep the loading bay',
+      description: 'Clear loose labels before the carrier pickup.',
+      ownerId: 20,
+      ownerName: 'Sam',
+    }),
+  );
+
+  assert.equal(body.description, 'Clear loose labels before the carrier pickup.');
+  assert.equal(body.assignedStaffId, undefined, 'recurring work belongs to the whole shift');
+});
+
+test('an item description is capped at 2000 characters', () => {
+  assert.equal(
+    dailyComposerError(draftWith({ title: 'Sweep the loading bay', description: 'x'.repeat(2000) })),
+    null,
+  );
+  assert.equal(
+    dailyComposerError(draftWith({ title: 'Sweep the loading bay', description: 'x'.repeat(2001) })),
+    'The description must be 2000 characters or fewer',
+  );
+});
+
+
 test('a chip tapped in the slider outranks the typed text', () => {
   const draft = applyTicketFastPath(ticketDraft({ title: '999', ticketId: '4242' }));
   assert.equal(draft.ticketId, '4242');

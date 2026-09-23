@@ -115,6 +115,11 @@ export function SwitchStaffSheet() {
       maxWidth="28rem"
       fixedWidth
       scrollBody
+      // Phones get the whole viewport: the roster is the task, and a
+      // bottom-anchored peek showed four rows with the rest behind a scroll
+      // nobody finds mid-shift. Desktop keeps the centred 28rem dialog —
+      // `fullScreen` is sheet-variant only.
+      fullScreen
     >
       <div className="flex min-h-0 flex-1 flex-col">
         <p className="shrink-0 text-center text-role-caption text-text-soft">{statusLabel}</p>

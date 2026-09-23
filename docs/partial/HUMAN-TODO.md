@@ -33,7 +33,7 @@ lives in each source plan doc's "Remaining work — handoff" section; this file 
   Tess Tester, Sam Shipper, Val Viewer (+ hidden QA Owner shell) — each role wired; catalog + default workflow
   seeded. `tsc` 0 errors; 24 auth/tenancy tests pass. **Never set `staffLoginModel:'shared'` on a real
   multi-tenant customer** unless they deliberately want the shared-login model.
-- **`.env.example` blanks hook-blocked** — agent documented vars in `context/ENV-VARS.md` but could not write
+- **`.env.example` blanks hook-blocked** — agent documented vars in `docs/ENV-VARS.md` but could not write
   `.env.example`; you must paste the blank lines (listed in §J1).
 
 **Older scan notes (2026-07-03, still relevant):**
@@ -448,7 +448,7 @@ cutover. Do not apply deploy-coupled migrations early.
 ### J1 — Add blank env stubs (agent hook-blocked)  ·  🔑 / file edit
 
 `.env.example` could not be updated by the agent (repo hook). Values are already documented in
-`context/ENV-VARS.md`. **You** add blank lines under the existing `AUTH_PINLESS_SIGNIN=` entry (and Database
+`docs/ENV-VARS.md`. **You** add blank lines under the existing `AUTH_PINLESS_SIGNIN=` entry (and Database
 section for the tenant URL):
 
 ```bash

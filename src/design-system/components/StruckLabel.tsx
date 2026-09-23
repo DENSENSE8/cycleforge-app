@@ -13,17 +13,30 @@
  * A caller that never mounts it renders exactly as before — that is what keeps
  * this out of Orders' and Receiving's paint.
  *
- * The line is a sibling span laid across the title, animated by Motion
- * (`@/design-system/motion` — the one import site for the engine) ease-in-out
- * in BOTH directions, per operator ruling 2026-09-14. `initial={false}` so a
- * row that arrives already done paints struck instead of animating on mount,
- * which would make a scroll look like a hundred items being completed.
+ * The strike is the TEXT's own decoration, not a rule drawn across the row.
+ * It used to be an absolutely positioned 1px span pinned at `top-1/2` of the
+ * wrapper, which is only correct while the title is exactly one line: a title
+ * that wraps to two got one line through the GAP between them (operator
+ * 2026-09-23 — *"it's displaying a strike through within the middle … should
+ * be scoped to the text, not to the row"*). `line-through` is per-line by
+ * definition and stops at the last glyph, so a wrapped title strikes twice and
+ * neither line runs past its own words.
  *
- * `bg-current` + `transition-colors` on the wrapper: the line and the text
- * mute together on ONE transition rather than two that can disagree.
+ * The animation survives the change: Motion interpolates
+ * `textDecorationThickness` from `0px`, so the strike still grows in and out
+ * ease-in-out in BOTH directions (operator ruling 2026-09-14) instead of
+ * snapping. `initial={false}` so a row that arrives already done paints struck
+ * instead of animating on mount, which would make a scroll look like a hundred
+ * items being completed.
  *
- * `min-w-0` is load-bearing — without it the wrapper refuses to shrink and
- * the label inside it stops truncating.
+ * NOT a flex container: `text-decoration` does not propagate into flex items,
+ * so an `inline-flex` wrapper would leave the caller's title unstruck. It is
+ * an `inline-block`, which both keeps the decoration on the text inside it and
+ * lets `min-w-0` still let a truncating child shrink.
+ *
+ * `transition-colors` on the wrapper: the line inherits `currentColor`, so the
+ * text and its strike mute together on ONE transition rather than two that can
+ * disagree.
  */
 
 import type { ReactNode } from 'react';
@@ -41,21 +54,17 @@ export function StruckLabel({
   children: ReactNode;
 }) {
   return (
-    <span
+    <motion.span
       data-struck={struck ? 'true' : 'false'}
       className={cn(
-        'relative inline-flex min-w-0 items-center transition-colors duration-200',
-        struck && 'text-text-muted',
+        'inline-block min-w-0 max-w-full align-middle transition-colors duration-200 [text-decoration-line:line-through]',
+        struck ? 'text-text-muted' : 'decoration-transparent',
       )}
+      initial={false}
+      animate={{ textDecorationThickness: struck ? '1px' : '0px' }}
+      transition={STRIKE_TRANSITION}
     >
       {children}
-      <motion.span
-        aria-hidden
-        className="pointer-events-none absolute left-0 top-1/2 h-px bg-current"
-        initial={false}
-        animate={{ width: struck ? '100%' : '0%' }}
-        transition={STRIKE_TRANSITION}
-      />
-    </span>
+    </motion.span>
   );
 }

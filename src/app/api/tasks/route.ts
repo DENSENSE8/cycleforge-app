@@ -8,6 +8,9 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { createTask } from '@/lib/tasks/create-task';
 import { TASK_NOTE_MAX } from '@/lib/tasks/create-task-core';
+import { listTaskDeskRows } from '@/lib/tasks/list-tasks';
+import { taskDeskDbDeps } from '@/lib/tasks/list-tasks-db';
+import { parseTaskDeskLane, type TaskDeskListPayload } from '@/lib/tasks/task-desk-row';
 import { urgencyEntityTypes } from '@/lib/urgency/urgency-targets';
 
 export const dynamic = 'force-dynamic';
@@ -39,6 +42,11 @@ const BodySchema = z.object({
   assigneeStaffId: z.number().int().positive(),
   note: z.string().max(TASK_NOTE_MAX).optional(),
   urgency: z.enum(['urgent', 'normal']).optional(),
+  /**
+   * Optional promised day. Present so the desk composer captures assignee ·
+   * priority · deadline in ONE audited create instead of POST-then-PATCH.
+   */
+  deadlineAt: z.string().datetime().nullish(),
   /** Accepted in-body as well as via the Idempotency-Key header. */
   idempotencyKey: z.string().min(1).max(255).optional(),
 });
@@ -50,6 +58,7 @@ const REFUSAL_STATUS: Record<string, number> = {
   invalid_assignee: 400,
   note_too_long: 400,
   self_throw: 409,
+  invalid_deadline: 400,
 };
 
 export const POST = withAuth(
@@ -86,6 +95,7 @@ export const POST = withAuth(
             assigneeStaffId: body.assigneeStaffId,
             note: body.note,
             urgency: body.urgency,
+            deadlineAt: body.deadlineAt ?? null,
             actorStaffId: ctx.staffId,
           });
 
@@ -130,6 +140,62 @@ export const POST = withAuth(
       return NextResponse.json(out.body, { status: out.status });
     } catch (error) {
       return errorResponse(error, 'POST /api/tasks');
+    }
+  },
+  { permission: 'work_orders.claim' },
+);
+
+/**
+ * GET /api/tasks — the task desk's read.
+ *
+ * Defaults are the working list: `lane=open`, `assignee=me`. `assignee=all`
+ * is the explicit team read (the reports tab's done-lane roll-up) — it is
+ * opt-in rather than the default because the desk an operator opens is THEIR
+ * desk, and a screen that opens on everyone's work is a screen nobody acts on.
+ *
+ * No `recordAudit`: reads are covered by the route-level access log, and an
+ * audit row per desk refresh would bury the writes it exists to surface.
+ */
+const QuerySchema = z.object({
+  lane: z.enum(['open', 'done', 'all']).optional(),
+  assignee: z.union([z.literal('me'), z.literal('all'), z.string().regex(/^\d+$/)]).optional(),
+  priority: z.enum(['urgent', 'normal']).optional(),
+  limit: z.string().regex(/^\d+$/).optional(),
+});
+
+export const GET = withAuth(
+  async (req: NextRequest, ctx) => {
+    try {
+      const parsed = QuerySchema.safeParse(Object.fromEntries(req.nextUrl.searchParams));
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: 'Invalid query', details: parsed.error.flatten() },
+          { status: 400 },
+        );
+      }
+      const query = parsed.data;
+
+      // The tenant and the staffer both come from the auth context. A caller
+      // cannot read another org's desk, and `me` cannot be spoofed.
+      const assignee = query.assignee ?? 'me';
+      const assigneeStaffId =
+        assignee === 'all' ? null : assignee === 'me' ? ctx.staffId : Number(assignee);
+
+      const tasks = await listTaskDeskRows(
+        ctx.organizationId,
+        {
+          lane: parseTaskDeskLane(query.lane),
+          assigneeStaffId,
+          urgency: query.priority ?? null,
+          limit: query.limit ? Number(query.limit) : undefined,
+        },
+        taskDeskDbDeps,
+      );
+
+      const payload: TaskDeskListPayload = { ok: true, count: tasks.length, tasks };
+      return NextResponse.json(payload);
+    } catch (error) {
+      return errorResponse(error, 'GET /api/tasks');
     }
   },
   { permission: 'work_orders.claim' },

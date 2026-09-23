@@ -5,6 +5,7 @@ import {
   clearStructuredPhotoFilters,
   countActivePhotoLibraryFilters,
   defaultPhotoLibraryMediaTypePatch,
+  entityTypeForSourceScope,
   fieldForFinderKind,
   finderKindForField,
   formatPhotoLibraryDateRange,

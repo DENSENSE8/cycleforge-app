@@ -17,6 +17,17 @@ export type OutboundDocumentType = 'shipping_label' | 'packing_slip';
 
 export type DocumentLinkRole = 'primary' | 'secondary';
 
+export type PackingSlipIngestStatus = 'available' | 'processing' | 'failed';
+
+export interface PackingSlipIngestState {
+  status: PackingSlipIngestStatus;
+  label: 'Available' | 'Processing' | 'Import failed';
+  attemptCount: number;
+  lastError: string | null;
+  nextAttemptAt: string | null;
+  documentId: number | null;
+}
+
 /** `documents.document_data` JSONB shape for shipping_label / packing_slip rows. */
 export interface OutboundDocumentData {
   /** Resolved storage URL (NAS, GCS, or signed proxy path). */
@@ -80,6 +91,7 @@ export function isOutboundDocumentType(value: unknown): value is OutboundDocumen
 export interface OutboundDocumentsResponse {
   success: boolean;
   documents: OutboundDocument[];
+  packingSlipIngest: PackingSlipIngestState | null;
   nasBaseUrl: string;
   nasFolder: string;
 }

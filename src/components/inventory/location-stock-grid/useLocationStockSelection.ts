@@ -25,14 +25,12 @@
  *   `publishSlotTableVisibleIds`), and two emitters on one channel is a race
  *   whose loser makes the header checkbox lie.
  *
- * ## Shift-click is a plain toggle here, on purpose
+ * ## Shift-click uses the engine's published page order
  *
  * A range walk means "every row between the anchor and this one, in the order
- * on screen". DISPLAY order lives inside the engine (search → sort → page), and
- * this hook sits above it with the unsorted feed, so a range resolved here
- * would tick rows the operator cannot see. Select-all reads the engine's
- * published page instead, which is the same question answered by the component
- * that knows the answer.
+ * on screen". The table publishes that search → sort → page order through
+ * `slotTableVisibleIds`, so Shift-click never selects filtered-out rows or rows
+ * on another page.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -45,6 +43,7 @@ import {
   locationStockRowId,
   type LocationStockTableRow,
 } from '@/lib/inventory/location-stock-row';
+import { extendTo, toggleAt, type SelectionAnchorState } from '@/lib/selection/selection-anchor';
 
 /** The one scope string, shared by the grid, the header select-all and the strip. */
 export const LOCATION_STOCK_SELECTION_SCOPE = 'location-stock' as const;
@@ -53,7 +52,7 @@ export interface LocationStockSelection {
   /** The picked rows, in feed order — the strip's input. */
   rows: readonly LocationStockTableRow[];
   isSelected: (row: LocationStockTableRow) => boolean;
-  toggle: (row: LocationStockTableRow) => void;
+  toggle: (row: LocationStockTableRow, event?: { shiftKey: boolean }) => void;
   clear: () => void;
 }
 
@@ -66,6 +65,7 @@ export function useLocationStockSelection(
   // the feed is a fresh array on every room toggle and search keystroke.
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
+  const anchorRef = useRef<string | null>(null);
 
   /**
    * Drop ids whose row left the feed (a moved pair, a zeroed count, a room
@@ -87,6 +87,7 @@ export function useLocationStockSelection(
   useEffect(() => {
     return onToggleAll(LOCATION_STOCK_SELECTION_SCOPE, (mode) => {
       if (mode === 'none') {
+        anchorRef.current = null;
         setIds(new Set());
         return;
       }
@@ -97,6 +98,7 @@ export function useLocationStockSelection(
         LOCATION_STOCK_SELECTION_SCOPE,
         rowsRef.current.map((row) => locationStockRowId(row)),
       );
+      anchorRef.current = null;
       setIds(new Set(page.map((id) => String(id))));
     });
   }, []);
@@ -106,17 +108,26 @@ export function useLocationStockSelection(
     [ids],
   );
 
-  const toggle = useCallback((row: LocationStockTableRow) => {
+  const toggle = useCallback((row: LocationStockTableRow, event?: { shiftKey: boolean }) => {
     const id = locationStockRowId(row);
     setIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+      const pageIds = slotTableSelectableIds(
+        LOCATION_STOCK_SELECTION_SCOPE,
+        rowsRef.current.map((candidate) => locationStockRowId(candidate)),
+      ).map(String);
+      const state: SelectionAnchorState<string> = {
+        ids: pageIds,
+        selected: prev,
+        anchorId: anchorRef.current,
+      };
+      const result = event?.shiftKey ? extendTo(state, id) : toggleAt(state, id);
+      anchorRef.current = result.anchorId;
+      return result.changed ? new Set(result.selected) : prev;
     });
   }, []);
 
   const clear = useCallback(() => {
+    anchorRef.current = null;
     setIds((prev) => (prev.size > 0 ? new Set<string>() : prev));
   }, []);
 

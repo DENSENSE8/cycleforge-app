@@ -18,19 +18,23 @@ import {
   wrapZplGraphicJob,
 } from '@/lib/print/labelCommands';
 import { clampLabelCopies } from '@/lib/print/labelCopies';
-import type { LabelFaceModel } from '@/lib/print/labelFace';
+import {
+  LABEL_FACE_SHELL,
+  LPN_LABEL_FACE_LAYOUT,
+  type LabelFaceModel,
+} from '@/lib/print/labelFace';
 
 export type PrintLabelRawSource = {
   face?: LabelFaceModel;
   name?: string;
   hri?: string;
   dataMatrix: LabelFaceModel['matrix'];
-  /** Page count for this job. Overrides the printer-profile copies. */
-  copies?: number;
 };
 
 const DPI = 203;
+const CSS_PX_PER_IN = 96;
 const LABEL_FACE_FONT_SIZE = Math.round((9 * DPI) / 96);
+const cssPxToDots = (value: number) => Math.round((value * DPI) / CSS_PX_PER_IN);
 
 export function printLabelOptionsToFace(opts: PrintLabelRawSource): LabelFaceModel {
   if (opts.face) return opts.face;
@@ -104,10 +108,13 @@ function rasterFace(
   context.fillStyle = '#000';
   context.textBaseline = 'top';
 
-  const padding = 10;
-  const matrixSize = Math.min(height - 32, 164);
-  const matrixX = width - matrixSize - padding;
-  const infoWidth = matrixX - padding - 8;
+  const paddingX = cssPxToDots(LABEL_FACE_SHELL.paddingXCssPx);
+  const paddingY = cssPxToDots(LABEL_FACE_SHELL.paddingYCssPx);
+  const gap = cssPxToDots(LABEL_FACE_SHELL.gapCssPx);
+  const matrixSize = Math.min(height - paddingY * 2, Math.round(LABEL_FACE_SHELL.matrixSizeIn * DPI));
+  const matrixX = width - matrixSize - paddingX;
+  const matrixY = Math.round((height - matrixSize) / 2);
+  const infoWidth = matrixX - paddingX - gap;
 
   if (face.kind === 'location') {
     const locSize = Math.round((16 * DPI) / 96);
@@ -115,24 +122,43 @@ function rasterFace(
     drawFittedText(
       context,
       face.center,
-      padding,
+      paddingX,
       Math.round(height / 2),
       infoWidth,
       locSize,
       800,
     );
     context.textBaseline = 'top';
+  } else if (face.kind === 'lpn') {
+    // Match the print-HTML LPN face: a small kicker at the top and the tote
+    // identity filling the remaining left column. The generic face puts the
+    // centre string in a tiny three-line note band, which made `H-100` appear
+    // clipped on silent-print inventory labels.
+    const kickerSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.kickerFontCssPx);
+    const codeSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.codeFontCssPx);
+    drawFittedText(context, face.topLeft, paddingX, paddingY, infoWidth, kickerSize, 800);
+    const codeAreaTop = paddingY + kickerSize;
+    const codeAreaHeight = height - paddingY - codeAreaTop;
+    drawFittedText(
+      context,
+      face.center,
+      paddingX,
+      codeAreaTop + Math.round((codeAreaHeight - codeSize) / 2),
+      infoWidth,
+      codeSize,
+      900,
+    );
   } else if (face.kind === 'product') {
     const titleLines = wrapLines(face.topLeft, 28, 2);
     let y = 8;
     for (const line of titleLines) {
-      drawFittedText(context, line, padding, y, infoWidth, LABEL_FACE_FONT_SIZE, 700);
+      drawFittedText(context, line, paddingX, y, infoWidth, LABEL_FACE_FONT_SIZE, 700);
       y += 22;
     }
     drawFittedText(
       context,
       face.bottomLeft,
-      padding,
+      paddingX,
       height - 31,
       Math.floor(infoWidth * 0.58),
       LABEL_FACE_FONT_SIZE,
@@ -150,19 +176,19 @@ function rasterFace(
     );
     context.textAlign = 'left';
   } else {
-    drawFittedText(context, face.topLeft, padding, 8, infoWidth - 76, LABEL_FACE_FONT_SIZE, 700);
+    drawFittedText(context, face.topLeft, paddingX, 8, infoWidth - 76, LABEL_FACE_FONT_SIZE, 700);
     context.textAlign = 'right';
     drawFittedText(context, face.topRight, matrixX - 8, 8, 76, LABEL_FACE_FONT_SIZE, 700);
     context.textAlign = 'left';
     let noteY = 51;
     for (const line of wrapLines(face.center, 22, 3)) {
-      drawFittedText(context, line, padding, noteY, infoWidth, Math.round((7.5 * DPI) / 96), 600);
+      drawFittedText(context, line, paddingX, noteY, infoWidth, Math.round((7.5 * DPI) / 96), 600);
       noteY += 22;
     }
     drawFittedText(
       context,
       face.bottomLeft,
-      padding,
+      paddingX,
       height - 31,
       Math.floor(infoWidth * 0.58),
       LABEL_FACE_FONT_SIZE,
@@ -195,7 +221,7 @@ function rasterFace(
       barcolor: '000000',
     });
     context.imageSmoothingEnabled = false;
-    context.drawImage(matrix, matrixX, 7, matrixSize, matrixSize);
+    context.drawImage(matrix, matrixX, matrixY, matrixSize, matrixSize);
     const hri = (face.hri ?? '').trim();
     if (hri) {
       context.textAlign = 'center';
@@ -268,7 +294,11 @@ export function buildPrintLabelRawCommands(
 ): string | Uint8Array {
   const face = printLabelOptionsToFace(opts);
   const raster = rasterFace(face, paper);
-  const copies = clampLabelCopies(opts.copies ?? profile.copies ?? 1);
+  // Per-job multiplicity is NOT a printer repeat count — a run of N stickers is
+  // N plates (`labelCopies.expandPlateRun`), because this hardware answers
+  // `PRINT N,1` / `^PQN` on a raster job with a single label. What survives here
+  // is the printer profile's own Copies setting.
+  const copies = clampLabelCopies(profile.copies ?? 1);
   const language: LabelLanguage = profile.language;
   if (language === 'zpl') {
     return wrapZplGraphicJob(raster.zplPacked, raster.width, raster.height, copies);

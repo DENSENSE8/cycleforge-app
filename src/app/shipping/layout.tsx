@@ -42,7 +42,7 @@ export default function ShippingLayout({ children }: { children: ReactNode }) {
     <Suspense
       fallback={(
         <div className="flex h-full w-full items-center justify-center bg-surface-card">
-          <LoadingSpinner size="lg" className="text-violet-600" />
+          <LoadingSpinner size="lg" className="text-text-accent" />
         </div>
       )}
     >

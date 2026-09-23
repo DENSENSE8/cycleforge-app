@@ -136,8 +136,9 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
       const payload = getOpenShippedDetailsPayload(e.detail);
       if (!payload?.order) return;
       const behavior = readDetailsOpenBehaviorPreference();
-      // In side-panel mode, suppress automatic queue-click expansion.
-      if (behavior === 'side_panel' && payload.context === 'queue') return;
+      // In side-panel mode, suppress automatic queue expansion. An explicit
+      // operator open (row tap / keyboard activation) still owns the intent.
+      if (!payload.force && behavior === 'side_panel' && payload.context === 'queue') return;
       applySelectedOrder(payload.order, payload.context);
     };
     // Sync URL so openOrderId does not immediately re-resolve and re-open the panel

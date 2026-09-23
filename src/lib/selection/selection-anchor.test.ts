@@ -40,6 +40,15 @@ describe('toggleAt', () => {
 });
 
 describe('extendTo', () => {
+  it('supports string row ids used by junction slot tables', () => {
+    const out = extendTo<string>({
+      ids: ['loc-a|sku-1', 'loc-b|sku-2', 'loc-c|sku-3'],
+      selected: new Set(['loc-a|sku-1']),
+      anchorId: 'loc-a|sku-1',
+    }, 'loc-c|sku-3');
+    assert.deepEqual([...out.selected], ['loc-a|sku-1', 'loc-b|sku-2', 'loc-c|sku-3']);
+  });
+
   it('fills the span between the anchor and the target', () => {
     const out = extendTo(state([20], 20), 40);
     assert.deepEqual(sorted(out), [20, 30, 40]);

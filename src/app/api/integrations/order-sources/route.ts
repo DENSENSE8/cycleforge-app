@@ -8,17 +8,15 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
-import { listOrderSyncMenuSources } from '@/lib/integrations/order-sync-menu';
-import { orderSyncMenuDeps } from '@/lib/integrations/order-sync-menu-load';
+import { loadOrderSyncMenuSources } from '@/lib/integrations/order-sync-menu-load';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (_req, ctx) => {
   try {
-    const sources = await listOrderSyncMenuSources(
+    const sources = await loadOrderSyncMenuSources(
       ctx.organizationId,
       (perm) => ctx.permissions.has(perm),
-      orderSyncMenuDeps,
     );
     return NextResponse.json({ success: true, sources });
   } catch (err) {

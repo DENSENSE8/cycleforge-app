@@ -21,13 +21,12 @@ describe('resolveSignInQrPayload', () => {
     );
   });
 
-  it('accepts bare 4-char pairing codes', () => {
-    assert.equal(resolveSignInQrPayload('7K4M', ORIGIN), '/m/claim?code=7K4M');
-    assert.equal(resolveSignInQrPayload('7k4m', ORIGIN), '/m/claim?code=7K4M');
+  it('accepts bare pairing codes', () => {
+    assert.equal(resolveSignInQrPayload('481902', ORIGIN), '/m/claim?code=481902');
   });
 
   it('still accepts legacy CF- prefixed pastes', () => {
-    assert.equal(resolveSignInQrPayload('CF-7K4M', ORIGIN), '/m/claim?code=7K4M');
+    assert.equal(resolveSignInQrPayload('CF-481902', ORIGIN), '/m/claim?code=481902');
   });
 
   it('accepts desk pairing URLs', () => {
@@ -51,22 +50,23 @@ describe('resolveSignInQrPayload', () => {
 });
 
 describe('handoff code formatting', () => {
-  it('display is bare uppercase — no CF- prefix', () => {
-    assert.equal(formatHandoffDisplayCode('7k4m'), '7K4M');
+  it('display is the bare code — no CF- prefix', () => {
+    assert.equal(formatHandoffDisplayCode('481902'), '481902');
   });
 
-  it('input formatter never injects CF-', () => {
+  it('the field takes digits only, so the phone keeps its number pad', () => {
     assert.equal(formatHandoffCodeInput(''), '');
-    assert.equal(formatHandoffCodeInput('7'), '7');
-    assert.equal(formatHandoffCodeInput('7k4m'), '7K4M');
-    assert.equal(formatHandoffCodeInput('cf-7k4m'), '7K4M');
-    assert.equal(formatHandoffCodeInput('7K4MEXTRA'), '7K4M');
+    assert.equal(formatHandoffCodeInput('4'), '4');
+    assert.equal(formatHandoffCodeInput('cf-481902'), '481902');
+    assert.equal(formatHandoffCodeInput('4a8b1c9d0e2f'), '481902');
+    assert.equal(formatHandoffCodeInput('4819021234'), '481902');
   });
 
-  it('parse accepts bare and legacy CF- forms', () => {
-    assert.equal(parseHandoffDisplayCode('7K4M'), '7K4M');
-    assert.equal(parseHandoffDisplayCode('CF-7K4M'), '7K4M');
-    assert.equal(parseHandoffDisplayCode('cf 7k4m'), '7K4M');
-    assert.equal(parseHandoffDisplayCode('ABC'), null);
+  it('parse accepts spaced, dashed and legacy CF- forms', () => {
+    assert.equal(parseHandoffDisplayCode('481902'), '481902');
+    assert.equal(parseHandoffDisplayCode('CF-481902'), '481902');
+    assert.equal(parseHandoffDisplayCode('481 902'), '481902');
+    assert.equal(parseHandoffDisplayCode('48190'), null, 'short code is not a code');
+    assert.equal(parseHandoffDisplayCode('7K4M'), null, 'the old base32 shape is gone');
   });
 });

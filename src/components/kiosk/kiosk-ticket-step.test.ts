@@ -33,6 +33,7 @@ const STEP = 'src/components/kiosk/KioskTicketStep.tsx';
 const HOOK = 'src/components/kiosk/useKioskTicketSearch.ts';
 const PANE = 'src/app/kiosk/v2/KioskRepairPane.tsx';
 const CART = 'src/app/kiosk/v2/KioskCartLedger.tsx';
+const SUBMIT = 'src/lib/kiosk/submit-kiosk-visit.ts';
 const read = (p: string) => readFileSync(p, 'utf8');
 
 /**
@@ -128,36 +129,17 @@ test('the question is revealed by the signature, inside the review step', () => 
   assert.doesNotMatch(pane, /REVIEW_STEP/, 'review is lastStep again');
   // Gated on ink, not mounted flat.
   assert.match(pane, /\{signatureData \? \(\s*\n\s*<KioskTicketStep/);
-  // The commit key cannot fire on an undecided visit.
-  assert.match(pane, /canSubmitRepairIntake\(formData, !!signatureData\) && ticketSettled/);
-});
-
-/**
- * The print affordance is a LABELLED CTA on the heading's own row.
- *
- * Operator 2026-09-15, twice: *"button should not display in a second row, it
- * should display in the same row as review and sign"*, then *"ensure the print
- * icon on the most right displays as a text print and a print icon, just like
- * the shipping CTA, primary CTA on the top right. Should not be a boxy print
- * button."* So: one row, right-aligned, `Button` with icon AND word at the
- * primitive's own corner — never an `IconButton` tile and never a strip of its
- * own. It is BODY content; the pane owns one header, the step band.
- */
-test('print is a labelled CTA on the step heading row', () => {
-  const pane = code(PANE);
+  // The commit key cannot fire on an undecided visit — and it reads the CART's
+  // devices, not the form's retired singular serial + price.
   assert.match(
     pane,
-    /<div className="flex items-center justify-between gap-3 px-4 pb-3 pt-5">\s*\n\s*<h2[\s\S]{0,200}STEP_HEADERS\[step\][\s\S]{0,700}data-testid="kiosk-repair-print"[\s\S]{0,80}>\s*\n\s*Print\s*\n\s*<\/Button>/,
-    'the heading, the glyph and the WORD are one row',
+    /canSubmitRepairIntake\(formData, !!signatureData, devices\) && ticketSettled/,
   );
-  assert.match(pane, /icon=\{<Printer \/>\}/, 'glyph plus label, not a glyph alone');
-  assert.doesNotMatch(pane, /IconButton/, 'the boxy icon tile is gone');
-  assert.doesNotMatch(
-    pane,
-    /<div className="flex items-center justify-end">/,
-    'the second print row stays deleted',
-  );
-  assert.doesNotMatch(pane, /KIOSK_PANE_HEADER_BAND|KIOSK_PANE_HEADER_TITLE/);
+});
+
+test('review contains no kiosk print control', () => {
+  const pane = code(PANE);
+  assert.doesNotMatch(pane, /kiosk-repair-print|kiosk-repair-success-print|printDomNode/);
 });
 
 /**
@@ -169,14 +151,45 @@ test('print is a labelled CTA on the step heading row', () => {
  * ink the repair command wears in the mode selector. A `className` hue
  * override would be painting over the primitive, which `AGENTS.md` bans, and
  * `KIOSK_POS_CTA` must stay on it so the key still casts nothing.
+ *
+ * ## What it SUBMITS changed on 2026-09-16
+ *
+ * It used to `fetch` a device-authed endpoint of its own that wrote one bare
+ * `repair_service` row — no counter header, no visit, no payment — while the
+ * cart posted `/api/kiosk/intake`. Two write paths for one counter visit, and
+ * whichever key the staffer pressed decided which happened. Now both keys call
+ * `submitKioskVisit`, so this pane must hold NO fetch of its own, and the one
+ * success document is `KioskCartDoneFace` rather than a second terminal hero
+ * that could only state the single row the retired endpoint wrote.
  */
-test('the review floor commits with ONE orange submit key', () => {
+test('the review floor submits with ONE orange submit key', () => {
   const pane = code(PANE);
   assert.match(
     pane,
-    /<Button\s*\n\s*variant="warning"[\s\S]{0,400}Repair submitted' : 'Submit repair'/,
+    /<Button\s*\n\s*variant="warning"[\s\S]{0,400}Submitting…' : 'Submit repair'/,
   );
   assert.match(pane, /variant="warning"[\s\S]{0,200}className=\{KIOSK_POS_CTA\}/);
+  assert.match(pane, /await submitKioskVisit\(/, 'the CTA submits the VISIT');
+  assert.doesNotMatch(
+    pane,
+    /fetch\(/,
+    'a second write path is what submitKioskVisit exists to remove',
+  );
+  assert.match(
+    pane,
+    /<KioskCartDoneFace\s*\n\s*result=\{transaction\}/,
+    'the visit success page is the one success page',
+  );
+  assert.match(
+    pane,
+    /data-testid="kiosk-repair-success"/,
+    'a submitted visit still answers to its own anchor',
+  );
+  assert.doesNotMatch(
+    pane,
+    /rsNumber/,
+    'the pane no longer renders a terminal record of its own',
+  );
   assert.doesNotMatch(pane, /Save to cart|Saved to cart/, 'the mechanism label is retired');
   assert.doesNotMatch(
     pane,
@@ -186,14 +199,33 @@ test('the review floor commits with ONE orange submit key', () => {
 });
 
 /**
+ * The idempotency key belongs to the SUBMIT, not to the press: the counter
+ * dedupes on it, so a fresh key on the second press of a timed-out submit is
+ * how one drop-off gets recorded twice. `??=` mints it once and keeps it.
+ */
+test('a retry reuses the first press key', () => {
+  const pane = code(PANE);
+  assert.match(pane, /submissionKey = useRef<string \| null>\(null\)/);
+  assert.match(pane, /submissionKey\.current \?\?= safeRandomUUID\(\)/);
+  assert.match(pane, /idempotencyKey: submissionKey\.current/);
+});
+
+/**
  * The decision is a VISIT fact. `ticketWork` is transaction-level on
  * `CounterTransactionInput` and fans out to one outbox row per repair, so a
  * per-LINE choice would be a shape the write path cannot honour.
+ *
+ * The MAPPING moved into `submitKioskVisit` on 2026-09-16, because both keys
+ * submit through it now. So both callers hand over the raw session choice and
+ * exactly ONE place turns it into `ticketWork` — which is the property that
+ * matters: two mappings is how the pane and the cart come to file a drop-off
+ * differently.
  */
 test('the decision lives on the session root and reaches the submit', () => {
   const pane = read(PANE);
   assert.match(pane, /session\.ticketChoice/);
   assert.match(pane, /actions\.setTicketChoice/);
+  assert.match(pane, /ticketChoice: session\.ticketChoice/, 'the pane hands over the choice');
   assert.doesNotMatch(
     read('src/lib/kiosk/repair-line-payload.ts'),
     /ticket/i,
@@ -201,9 +233,19 @@ test('the decision lives on the session root and reaches the submit', () => {
   );
 
   const cart = read(CART);
-  assert.match(cart, /ticketWork: kioskTicketWork\(session\.ticketChoice/);
+  assert.match(cart, /ticketChoice: session\.ticketChoice/, 'so does the cart');
+
+  const submit = read(SUBMIT);
+  assert.match(submit, /ticketWork: kioskTicketWork\(session\.ticketChoice/);
+  for (const caller of [pane, cart]) {
+    assert.doesNotMatch(
+      caller,
+      /ticketWork:/,
+      'ONE mapping, in submitKioskVisit — a caller that builds its own can drift',
+    );
+  }
   assert.doesNotMatch(
-    cart,
+    submit,
     /ticketWork:\s*services\.length > 0 \? \{ mode: 'create' \}/,
     'the hardcoded create is what left the attach arm with no caller',
   );

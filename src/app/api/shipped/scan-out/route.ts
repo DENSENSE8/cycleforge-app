@@ -22,6 +22,7 @@ import {
   scanOutMaxBackdateMs,
 } from '@/lib/outbound/scan-out-desk-stamp';
 import { productImageUrl } from '@/lib/photos/product-image-url';
+import { publishOrderChanged } from '@/lib/realtime/publish';
 
 /**
  * Order states that must never leave the building.
@@ -401,7 +402,14 @@ export const POST = withAuth(
     }
 
     // Bust the shipped/packer-logs cache so the two tables reflect the move.
-    await invalidateCacheTags(['packing-logs', 'shipped']).catch(() => {});
+    await invalidateCacheTags(orgId, ['packing-logs', 'shipped']).catch(() => {});
+    if (ctxRow?.order_row_id != null) {
+      await publishOrderChanged({
+        organizationId: orgId,
+        orderIds: [Number(ctxRow.order_row_id)],
+        source: 'shipping.scan-out',
+      }).catch(() => {});
+    }
 
     const json = {
       ok: true,
@@ -647,19 +655,23 @@ export const DELETE = withAuth(
     // and the refusal can say which rule stopped it.
     const candidate = await tenantQuery<{
       id: number;
+      order_row_id: number | null;
       staff_id: number | null;
       created_at: string;
       age_minutes: number;
     }>(
       orgId,
-      `SELECT id, staff_id,
-              to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
-              EXTRACT(EPOCH FROM (now() - created_at)) / 60 AS age_minutes
-         FROM station_activity_logs
-        WHERE activity_type = 'SHIP_CONFIRM'
-          AND shipment_id = $1
-          AND organization_id = $2
-        ORDER BY created_at DESC
+      `SELECT sal.id,
+              o.id AS order_row_id,
+              sal.staff_id,
+              to_char(sal.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+              EXTRACT(EPOCH FROM (now() - sal.created_at)) / 60 AS age_minutes
+         FROM station_activity_logs sal
+         LEFT JOIN orders o ON o.shipment_id = sal.shipment_id
+        WHERE sal.activity_type = 'SHIP_CONFIRM'
+          AND sal.shipment_id = $1
+          AND sal.organization_id = $2
+        ORDER BY sal.created_at DESC
         LIMIT 1`,
       [shipmentId, orgId],
     )
@@ -707,7 +719,14 @@ export const DELETE = withAuth(
       [shipmentId, orgId, candidate.id],
     );
 
-    await invalidateCacheTags(['packing-logs', 'shipped']).catch(() => {});
+    await invalidateCacheTags(orgId, ['packing-logs', 'shipped']).catch(() => {});
+    if (candidate.order_row_id != null) {
+      await publishOrderChanged({
+        organizationId: orgId,
+        orderIds: [Number(candidate.order_row_id)],
+        source: 'shipping.scan-out',
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ ok: true, undone: deleted.rowCount ?? 0, shipmentId });
   },

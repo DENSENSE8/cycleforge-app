@@ -5,11 +5,15 @@
  *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs slot-table [--skip-verify]
  *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs shortcuts [--skip-verify]
  *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs sku-identity [--skip-verify]
+ *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs industrial-translation [--skip-verify]
+ *   node --import tsx tools/eval-ledger/run-cohort-eval.mjs outbound-workflow [--skip-verify]
  *
  * slot-table   — DataTable engine + PRODUCT_TABLES peers (the only DISPLAY SoT)
  * shortcuts    — staff `?` paints letters on the CTAs (not a sheet)
  * sku-identity — the ZOHO item governs one title / one SKU / one photo across
  *                every reader AND writer; not a display cohort, an IDENTITY one
+ * industrial-translation — external industrial brief → house semantic contracts
+ * outbound-workflow — one versioned outbound verdict across every harness
  *
  * Overlay is not a display cohort. Station mouth/domain: `eval:station <id>`.
  */
@@ -56,6 +60,18 @@ import {
   skuIdentityEvalManifest,
 } from '../../src/lib/sku/sku-identity-cohort.ts'
 import {
+  INDUSTRIAL_POLICY,
+  INDUSTRIAL_TRANSLATION_LEDGER,
+  INDUSTRIAL_TRANSLATION_SNAPSHOTS,
+  INDUSTRIAL_TRANSLATION_TRIPWIRE,
+} from '../../src/lib/design-system/industrial-translation-law.ts'
+import {
+  OUTBOUND_WORKFLOW_COHORT_LEDGER,
+  OUTBOUND_WORKFLOW_COHORT_SNAPSHOTS,
+  OUTBOUND_WORKFLOW_COHORT_TRIPWIRE,
+  OUTBOUND_WORKFLOW_COHORT_VERSION,
+} from '../../src/lib/shipping/outbound-workflow-cohort.ts'
+import {
   GARISEK_OS,
   REPO,
   evalStationPass,
@@ -68,9 +84,213 @@ import {
 
 function usage(code = 1) {
   console.error(
-    `usage: node --import tsx tools/eval-ledger/run-cohort-eval.mjs <slot-table|shortcuts|sku-identity> [--skip-verify]`,
+    `usage: node --import tsx tools/eval-ledger/run-cohort-eval.mjs <slot-table|shortcuts|sku-identity|industrial-translation|outbound-workflow> [--skip-verify]`,
   )
   process.exit(code)
+}
+
+function industrialTranslationLedgerSeed() {
+  return `# Industrial translation cohort — eval ledger
+
+**SoT:** \`src/lib/design-system/industrial-translation-law.ts\`
+
+Run: \`pnpm run eval:cohort industrial-translation\`
+
+This is a policy cohort, not a display cohort. It proves that every concept in
+the pasted Terminal Operations brief resolves through the existing CycleForge
+token, component, motion, region and mobile contracts.
+
+## Ratified policies
+
+<!-- eval-ledger:auto:policies -->
+_Not run yet._
+<!-- /eval-ledger:auto:policies -->
+
+## Machine gates
+
+<!-- eval-ledger:auto:machine-gates -->
+_Not run yet._
+<!-- /eval-ledger:auto:machine-gates -->
+
+## Coverage verdict
+
+<!-- eval-ledger:auto:coverage -->
+_Not run yet._
+<!-- /eval-ledger:auto:coverage -->
+
+<!-- eval-ledger:auto:last-run -->
+_Seeded — run \`pnpm run eval:cohort industrial-translation\`._
+<!-- /eval-ledger:auto:last-run -->
+`
+}
+
+async function runIndustrialTranslation(skipVerify) {
+  const { day, ts } = stamp()
+  ensureLedgerSeed(INDUSTRIAL_TRANSLATION_LEDGER, industrialTranslationLedgerSeed())
+  mkdirSync(path.join(REPO, INDUSTRIAL_TRANSLATION_SNAPSHOTS), { recursive: true })
+
+  console.error('[eval-cohort] industrial translation tripwire…')
+  const trip = await run(`node --import tsx --test ${JSON.stringify(INDUSTRIAL_TRANSLATION_TRIPWIRE)}`)
+  const tripSnap = path.join(INDUSTRIAL_TRANSLATION_SNAPSHOTS, `${day}-tripwire.log`)
+  writeFileSync(path.join(REPO, tripSnap), trip.output)
+  const tripOk = trip.exitCode === 0
+
+  console.error('[eval-cohort] industrial translation verdict…')
+  const guard = await run('node_modules/.bin/tsx scripts/industrial-translation-guard.ts --json')
+  const guardSnap = path.join(INDUSTRIAL_TRANSLATION_SNAPSHOTS, `${day}-verdict.json`)
+  writeFileSync(path.join(REPO, guardSnap), guard.output)
+  const guardOk = guard.exitCode === 0
+  let verdict = null
+  try { verdict = JSON.parse(guard.output) } catch { /* surfaced below */ }
+
+  let verifyOk = null
+  let verifySnap = null
+  if (!skipVerify) {
+    console.error('[eval-cohort] verify:fast…')
+    const verify = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
+    verifyOk = verify.exitCode === 0
+    verifySnap = path.join(INDUSTRIAL_TRANSLATION_SNAPSHOTS, `${day}-verify-fast.log`)
+    writeFileSync(path.join(REPO, verifySnap), verify.output)
+  }
+
+  const policies = Object.entries(INDUSTRIAL_POLICY)
+    .map(([name, value]) => `- **${name}** — ${value}`)
+    .join('\n')
+  const machineGates = [
+    `| ${day} | tripwire | ${tripOk ? 'pass' : '**FAIL**'} | \`${tripSnap}\` |`,
+    `| ${day} | industrial-translation-guard | ${guardOk ? 'pass' : '**FAIL**'} | \`${guardSnap}\` |`,
+    skipVerify
+      ? `| ${day} | verify:fast | skipped | — |`
+      : `| ${day} | verify:fast | ${verifyOk ? 'pass' : '**FAIL**'} | \`${verifySnap}\` |`,
+  ].join('\n')
+  const coverage = verdict
+    ? `- schema: \`${verdict.schemaVersion}\`\n- mapped: **${verdict.mappedConceptCount}/${verdict.sourceConceptCount}**\n- rows: **${verdict.rows}**\n- violations: **${verdict.violations.length}**\n- snapshot: \`${guardSnap}\``
+    : `**FAIL** — guard emitted invalid JSON\n\n\`\`\`\n${guard.output.slice(0, 1200)}\n\`\`\``
+
+  patchLedger(path.join(REPO, INDUSTRIAL_TRANSLATION_LEDGER), {
+    policies,
+    'machine-gates': machineGates,
+    coverage,
+    'last-run': `_Updated ${new Date().toISOString()} · cohort \`industrial-translation\` · run id \`${ts}\`_`,
+  })
+
+  const ok = tripOk && guardOk && verifyOk !== false
+  console.log(JSON.stringify({
+    ok,
+    cohort: 'industrial-translation',
+    tripwire: tripOk,
+    guard: guardOk,
+    verify: verifyOk,
+    sourceConcepts: verdict?.sourceConceptCount ?? null,
+    mappedConcepts: verdict?.mappedConceptCount ?? null,
+    violations: verdict?.violations?.length ?? null,
+    ledger: INDUSTRIAL_TRANSLATION_LEDGER,
+    runId: ts,
+  }, null, 2))
+  process.exit(ok ? 0 : 1)
+}
+
+function outboundWorkflowLedgerSeed() {
+  return `# Outbound workflow cohort — eval ledger
+
+**SoT:** \`src/lib/shipping/outbound-workflow-cohort.ts\` — one pure,
+versioned source verdict for the CLI guard, Design MCP, this cohort, and every
+external agent harness.
+
+Run: \`pnpm run eval:cohort outbound-workflow\`
+
+Scope: mobile Orders state vocabulary and its no-execution boundary; exact SLA,
+allocated storage path and pick-progress projections; physical dock staging;
+and semantic-token integrity. Station and slot-table visuals keep their own
+cohorts; this evaluator verifies their shared workflow law.
+
+## Machine gates
+
+<!-- eval-ledger:auto:machine-gates -->
+_Not run yet._
+<!-- /eval-ledger:auto:machine-gates -->
+
+## Tripwire result
+
+<!-- eval-ledger:auto:tripwire-result -->
+_Not run yet._
+<!-- /eval-ledger:auto:tripwire-result -->
+
+## Versioned verdict
+
+<!-- eval-ledger:auto:verdict -->
+_Not run yet._
+<!-- /eval-ledger:auto:verdict -->
+
+<!-- eval-ledger:auto:last-run -->
+_Seeded — run \`pnpm run eval:cohort outbound-workflow\`._
+<!-- /eval-ledger:auto:last-run -->
+`
+}
+
+async function runOutboundWorkflow(skipVerify) {
+  const { day, ts } = stamp()
+  ensureLedgerSeed(OUTBOUND_WORKFLOW_COHORT_LEDGER, outboundWorkflowLedgerSeed())
+  mkdirSync(path.join(REPO, OUTBOUND_WORKFLOW_COHORT_SNAPSHOTS), { recursive: true })
+
+  console.error('[eval-cohort] outbound workflow tripwire…')
+  const trip = await run(`node --import tsx --test ${JSON.stringify(OUTBOUND_WORKFLOW_COHORT_TRIPWIRE)}`)
+  const tripSnap = path.join(OUTBOUND_WORKFLOW_COHORT_SNAPSHOTS, `${day}-tripwire.log`)
+  writeFileSync(path.join(REPO, tripSnap), trip.output)
+  const tripOk = trip.exitCode === 0
+
+  console.error('[eval-cohort] outbound workflow verdict…')
+  const guard = await run('node_modules/.bin/tsx scripts/outbound-workflow-guard.ts --json')
+  const guardSnap = path.join(OUTBOUND_WORKFLOW_COHORT_SNAPSHOTS, `${day}-verdict.json`)
+  writeFileSync(path.join(REPO, guardSnap), guard.output)
+  const guardOk = guard.exitCode === 0
+  let verdict = null
+  try { verdict = JSON.parse(guard.output) } catch { /* ledger records malformed output */ }
+
+  let verifyOk = null
+  let verifySnap = null
+  if (!skipVerify) {
+    console.error('[eval-cohort] verify:fast…')
+    const verify = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
+    verifyOk = verify.exitCode === 0
+    verifySnap = path.join(OUTBOUND_WORKFLOW_COHORT_SNAPSHOTS, `${day}-verify-fast.log`)
+    writeFileSync(path.join(REPO, verifySnap), verify.output)
+  }
+
+  const machineGates = [
+    '| Date | Gate | Result | Snapshot |',
+    '|------|------|--------|----------|',
+    `| ${day} | tripwire | ${tripOk ? 'pass' : '**FAIL**'} | \`${tripSnap}\` |`,
+    `| ${day} | outbound-workflow-guard | ${guardOk ? 'pass' : '**FAIL**'} | \`${guardSnap}\` |`,
+    skipVerify
+      ? `| ${day} | verify:fast | skipped | — |`
+      : `| ${day} | verify:fast | ${verifyOk ? 'pass' : '**FAIL**'} | \`${verifySnap}\` |`,
+  ].join('\n')
+  const verdictBlock = verdict
+    ? `- schema: \`${verdict.schemaVersion}\`\n- analysis: \`${verdict.analysis}\`\n- violations: **${verdict.violations.length}**\n- snapshot: \`${guardSnap}\``
+    : `**FAIL** — guard emitted invalid JSON\n\n\`\`\`\n${guard.output.slice(0, 1200)}\n\`\`\``
+
+  patchLedger(path.join(REPO, OUTBOUND_WORKFLOW_COHORT_LEDGER), {
+    'machine-gates': machineGates,
+    'tripwire-result': tripOk
+      ? `**pass** — snapshot \`${tripSnap}\``
+      : `**FAIL** — snapshot \`${tripSnap}\`\n\`\`\`\n${trip.output.slice(0, 1200)}\n\`\`\``,
+    verdict: verdictBlock,
+    'last-run': `_Updated ${new Date().toISOString()} · cohort \`outbound-workflow\` · run id \`${ts}\` · law v${OUTBOUND_WORKFLOW_COHORT_VERSION}_`,
+  })
+
+  const ok = tripOk && guardOk && verifyOk !== false
+  console.log(JSON.stringify({
+    ok,
+    cohort: 'outbound-workflow',
+    tripwire: tripOk,
+    guard: guardOk,
+    verify: verifyOk,
+    violations: verdict?.violations?.length ?? null,
+    ledger: OUTBOUND_WORKFLOW_COHORT_LEDGER,
+    runId: ts,
+  }, null, 2))
+  process.exit(ok ? 0 : 1)
 }
 
 /** Every `src/**` TS file — the scan surface the identity cohort audits. */
@@ -158,6 +378,12 @@ _Not run yet._
 <!-- eval-ledger:auto:engine-contract -->
 _Not run yet._
 <!-- /eval-ledger:auto:engine-contract -->
+
+## Industrial cohesion verdict
+
+<!-- eval-ledger:auto:industrial-cohesion -->
+_Not run yet._
+<!-- /eval-ledger:auto:industrial-cohesion -->
 
 ## Discover — next gap
 
@@ -252,13 +478,20 @@ async function runSlotTable(skipVerify) {
   writeFileSync(path.join(REPO, tripSnap), trip.output)
   const tripOk = trip.exitCode === 0
 
+  console.error(`[eval-cohort] data-table industrial cohesion…`)
+  const industrial = await run(`node_modules/.bin/tsx scripts/data-table-industrial-guard.ts --json`)
+  const industrialSnapshot = path.join(
+    SLOT_TABLE_COHORT_SNAPSHOTS,
+    `${day}-data-table-industrial.json`,
+  )
+  writeFileSync(path.join(REPO, industrialSnapshot), industrial.output)
+  const industrialOk = industrial.exitCode === 0
+
   let verifyOk = null
   let verifySnapshot = null
   if (!skipVerify) {
-    const evalCli = path.join(GARISEK_OS, 'tools/eval-engineering/cursor-eval.mjs')
-    if (!existsSync(evalCli)) throw new Error(`missing ${evalCli}`)
     console.error(`[eval-cohort] verify:fast (once)…`)
-    const res = await run(`node ${JSON.stringify(evalCli)} --root ${JSON.stringify(REPO)} --fast`)
+    const res = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
     verifyOk = res.exitCode === 0
     verifySnapshot = path.join(SLOT_TABLE_COHORT_SNAPSHOTS, `${day}-verify-fast.log`)
     writeFileSync(path.join(REPO, verifySnapshot), res.output)
@@ -370,6 +603,9 @@ async function runSlotTable(skipVerify) {
     'peer-matrix': peerMatrix,
     'paint-law': paintLaw,
     'engine-contract': engineContract,
+    'industrial-cohesion': industrialOk
+      ? `**pass** — deterministic source verdict; snapshot \`${industrialSnapshot}\``
+      : `**FAIL** — snapshot \`${industrialSnapshot}\`\n\`\`\`json\n${industrial.output.slice(0, 1600)}\n\`\`\``,
     'discover-next': `${discoverMd.next}\n\n_Snapshot:_ \`${discoverSnap}\``,
     'discover-delete': discoverMd.delete,
     'discover-keep': discoverMd.keep,
@@ -379,13 +615,14 @@ async function runSlotTable(skipVerify) {
     'graph-stats': statsBlock,
   })
 
-  const ok = tripOk && verifyOk !== false
+  const ok = tripOk && industrialOk && verifyOk !== false
   console.log(
     JSON.stringify(
       {
         ok,
         cohort: 'slot-table',
         tripwire: tripOk,
+        industrialCohesion: industrialOk,
         verify: verifyOk,
         peers: slotTablePeerIds().length,
         enginePeers: slotTableEnginePeerIds().length,
@@ -528,10 +765,8 @@ async function runShortcuts(skipVerify) {
   let verifyOk = null
   let verifySnapshot = null
   if (!skipVerify) {
-    const evalCli = path.join(GARISEK_OS, 'tools/eval-engineering/cursor-eval.mjs')
-    if (!existsSync(evalCli)) throw new Error(`missing ${evalCli}`)
     console.error(`[eval-cohort] verify:fast (once)…`)
-    const res = await run(`node ${JSON.stringify(evalCli)} --root ${JSON.stringify(REPO)} --fast`)
+    const res = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
     verifyOk = res.exitCode === 0
     verifySnapshot = path.join(manifest.snapshotsDir, `${day}-verify-fast.log`)
     writeFileSync(path.join(REPO, verifySnapshot), res.output)
@@ -786,10 +1021,8 @@ async function runSkuIdentity(skipVerify) {
   let verifyOk = null
   let verifySnapshot = null
   if (!skipVerify) {
-    const evalCli = path.join(GARISEK_OS, 'tools/eval-engineering/cursor-eval.mjs')
-    if (!existsSync(evalCli)) throw new Error(`missing ${evalCli}`)
     console.error(`[eval-cohort] verify:fast (once)…`)
-    const res = await run(`node ${JSON.stringify(evalCli)} --root ${JSON.stringify(REPO)} --fast`)
+    const res = await run('pnpm --config.verify-deps-before-run=false run verify:fast')
     verifyOk = res.exitCode === 0
     verifySnapshot = path.join(manifest.snapshotsDir, `${day}-verify-fast.log`)
     writeFileSync(path.join(REPO, verifySnapshot), res.output)
@@ -934,6 +1167,8 @@ async function main() {
   if (name === 'slot-table') return runSlotTable(skipVerify)
   if (name === 'shortcuts') return runShortcuts(skipVerify)
   if (name === 'sku-identity') return runSkuIdentity(skipVerify)
+  if (name === 'industrial-translation') return runIndustrialTranslation(skipVerify)
+  if (name === 'outbound-workflow') return runOutboundWorkflow(skipVerify)
   usage()
 }
 

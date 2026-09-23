@@ -28,7 +28,7 @@
  * because you are holding stock.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, X } from '@/components/Icons';
@@ -38,17 +38,19 @@ import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTop
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePicker';
 import { useAuth } from '@/contexts/AuthContext';
-import { queueOrFetch } from '@/lib/offline/write-queue';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { OnHoldBadge } from './OnHoldBadge';
+import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
+import { motion } from '@/design-system/motion';
 
 type Mode = 'minus' | 'plus';
 
 const KEYS: ReadonlyArray<string | number> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'];
+const MotionButton = motion.create(Button);
 
 interface LocationContents {
   sku: string;
@@ -60,7 +62,8 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const staffId = user?.staffId ?? 0;
+  const { execute: executeWmsCommand } = useWmsRealtime();
+  const pendingCommandId = useRef<string | null>(null);
 
   const [mode, setMode] = useState<Mode>('plus');
   const [draft, setDraft] = useState('');
@@ -136,33 +139,31 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
     setBusy(true);
     setError(null);
     try {
-      const idempotencyKey = safeRandomUUID();
-      const res = await queueOrFetch({
-        url: `/api/locations/${encodeURIComponent(code)}`,
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Idempotency-Key': idempotencyKey,
-        },
-        body: JSON.stringify({
-          action: mode === 'minus' ? 'take' : 'put',
+      if (!user) throw new Error('Sign in before changing location stock.');
+      const commandId = pendingCommandId.current ?? safeRandomUUID();
+      pendingCommandId.current = commandId;
+      await executeWmsCommand({
+        v: 1,
+        commandId,
+        organizationId: user.organizationId,
+        staffId: user.staffId,
+        issuedAt: new Date().toISOString(),
+        name: 'putaway.adjust',
+        input: {
+          barcode: code,
           sku,
+          direction: mode === 'minus' ? 'take' : 'put',
           qty: numericDraft,
-          staffId: staffId > 0 ? staffId : undefined,
           reason: reason?.code ?? (mode === 'minus' ? 'BIN_PULL' : 'BIN_ADD'),
           reasonCodeId: reason?.id ?? null,
           notes: noteDraft.trim() || null,
-          clientEventId: idempotencyKey,
-        }),
+        },
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || `HTTP ${res.status}`);
-      }
+      pendingCommandId.current = null;
       await queryClient.invalidateQueries({ queryKey: invalidateKey });
       // Straight back to the scan loop: the job that brought you here is done,
       // and the next thing an operator does is scan the next label.
-      router.push('/m/scan');
+      router.replace('/m/scan');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
       setBusy(false);
@@ -178,7 +179,8 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
     reason,
     router,
     sku,
-    staffId,
+    user,
+    executeWmsCommand,
   ]);
 
   return (
@@ -214,30 +216,32 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
             cornerClass('control'),
           )}
         >
-          <Button
+          <MotionButton
             variant="ghost"
             radius="flush"
             aria-pressed={mode === 'minus'}
             onClick={() => setMode('minus')}
+            whileTap={{ scale: 0.96 }}
             className={cn(
               'h-auto w-full justify-center py-3 text-base',
               mode === 'minus' ? 'bg-rose-600 text-white' : 'bg-surface-card text-text-muted',
             )}
           >
             − TAKE
-          </Button>
-          <Button
+          </MotionButton>
+          <MotionButton
             variant="ghost"
             radius="flush"
             aria-pressed={mode === 'plus'}
             onClick={() => setMode('plus')}
+            whileTap={{ scale: 0.96 }}
             className={cn(
               'h-auto w-full justify-center py-3 text-base',
               mode === 'plus' ? 'bg-emerald-600 text-white' : 'bg-surface-card text-text-muted',
             )}
           >
             + PUT
-          </Button>
+          </MotionButton>
         </div>
 
         <Panel radius="lg" padding="none" className="grid grid-cols-3 items-center gap-2 px-4 py-4">
@@ -281,12 +285,13 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
 
         <div className="grid grid-cols-3 gap-2">
           {KEYS.map((key) => (
-            <Button
+            <MotionButton
               key={String(key)}
               variant="ghost"
               radius="flush"
               ariaLabel={typeof key === 'string' ? key : `digit ${key}`}
               onClick={() => pressKey(key)}
+              whileTap={{ scale: 0.96 }}
               className={cn(
                 'h-14 w-full justify-center text-2xl',
                 cornerClass('control'),
@@ -296,7 +301,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
               )}
             >
               {key === 'clear' ? <X className="h-5 w-5" /> : key === 'back' ? '⌫' : String(key)}
-            </Button>
+            </MotionButton>
           ))}
         </div>
 
@@ -304,7 +309,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
       </main>
 
       <footer className="sticky bottom-0 border-t border-border-soft bg-surface-card px-4 py-3">
-        <Button
+        <MotionButton
           variant={mode === 'minus' ? 'danger' : 'success'}
           size="lg"
           radius="flush"
@@ -312,10 +317,11 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
           disabled={busy || numericDraft <= 0}
           icon={busy ? <Loader2 className="animate-spin" /> : <Check />}
           onClick={() => void confirm()}
+          whileTap={busy || numericDraft <= 0 ? undefined : { scale: 0.96 }}
         >
           {mode === 'minus' ? `Take ${numericDraft || 0}` : `Add ${numericDraft || 0}`} · after{' '}
           {projected}
-        </Button>
+        </MotionButton>
       </footer>
     </div>
   );

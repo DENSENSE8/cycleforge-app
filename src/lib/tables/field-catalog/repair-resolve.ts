@@ -15,22 +15,26 @@
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { formatPhoneNumber } from '@/utils/phone';
+import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { formatDateKeyShort } from '@/utils/date';
 
-function contactSegment(contactInfo: string | null | undefined, index: number): string {
-  if (!contactInfo) return '';
-  const parts = contactInfo.split(',').map((p) => p.trim());
-  return parts[index] || '';
-}
+/**
+ * The buyer, through the shared rule (`@/lib/repair/contact-info`): joined
+ * `customers` columns first, index-free legacy `contact_info` second.
+ *
+ * The positional `contactSegment(contact_info, 1)` this replaced read an EMAIL
+ * as the phone whenever a buyer had no phone number, and `repairPhoneDisplay`
+ * then ran that address through `formatPhoneNumber` into the grid.
+ */
 
-/** Customer name — normalized column, else the first contact_info segment. */
+/** Customer name — normalized column, else the legacy string's name part. */
 export function repairCustomerName(repair: RSRecord): string {
-  return (repair.customer_name || '').trim() || contactSegment(repair.contact_info, 0);
+  return resolveRepairContact(repair).name ?? '';
 }
 
-/** Raw customer phone — normalized column, else the second contact_info segment. */
+/** Raw customer phone — normalized column, else the legacy string's phone part. */
 export function repairCustomerPhone(repair: RSRecord): string {
-  return (repair.customer_phone || '').trim() || contactSegment(repair.contact_info, 1);
+  return resolveRepairContact(repair).phone ?? '';
 }
 
 /** Formatted phone for display (000-000-0000). */

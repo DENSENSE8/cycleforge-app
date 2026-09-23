@@ -25,6 +25,25 @@ export const ORDER_EXCEPTION_BLOCKER_LABEL: Record<OrderExceptionBlocker, string
 
 export type OrderExceptionScope = 'actionable' | 'all';
 
+/**
+ * Typed management contract for exceptions currently admitted to this queue.
+ * New exception sources must add an explicit mapping here; renderers never
+ * infer a category, action, or owner from a free-text blocker label.
+ */
+export interface OrderExceptionRouting {
+  category: 'SKU mapping';
+  actionRequired: 'Add item number' | 'Pair SKU';
+  owner: 'Inventory';
+}
+
+export function resolveOrderExceptionRouting(
+  blockers: readonly OrderExceptionBlocker[],
+): OrderExceptionRouting {
+  return blockers.includes('no_item_number')
+    ? { category: 'SKU mapping', actionRequired: 'Add item number', owner: 'Inventory' }
+    : { category: 'SKU mapping', actionRequired: 'Pair SKU', owner: 'Inventory' };
+}
+
 export interface OrderExceptionRow {
   id: number;
   orderNumber: string | null;
@@ -44,6 +63,8 @@ export interface OrderExceptionRow {
   /** Other UNPAIRED orders carrying this same item number. Pairing clears them too. */
   siblingUnpairedCount: number;
   blockers: OrderExceptionBlocker[];
+  /** Typed category, required action, and accountable team. */
+  routing: OrderExceptionRouting;
   /** The release contract, unchanged — rendered, never re-derived. */
   gates: EvaluatedReleaseGates;
 }
@@ -116,4 +137,40 @@ export function sortExceptionQueueRows<T extends Pick<OrderExceptionRow, 'id' | 
   rows: readonly T[],
 ): T[] {
   return [...rows].sort(compareExceptionQueueRows);
+}
+
+function exceptionItemKey(itemNumber: string | null | undefined): string {
+  return (itemNumber ?? '').trim().toLowerCase();
+}
+
+/**
+ * Recents rail grain: one row per item number. Pairing is pair-once, so five
+ * orders of B0D6X2MFSZ are one walk item. Orders with no item number stay
+ * uncollapsed — each is its own pairing problem. When `selectedId` is a
+ * sibling of a kept row, that sibling is the representative so the rail
+ * highlight stays on the open record.
+ */
+export function collapseExceptionRailByItem<
+  T extends Pick<OrderExceptionRow, 'id' | 'itemNumber' | 'blockers' | 'siblingUnpairedCount'>,
+>(rows: readonly T[], selectedId: number | null = null): T[] {
+  const sorted = sortExceptionQueueRows(rows);
+  const preferred = new Map<string, T>();
+  if (selectedId != null) {
+    const selected = sorted.find((row) => row.id === selectedId);
+    const key = selected ? exceptionItemKey(selected.itemNumber) : '';
+    if (selected && key) preferred.set(key, selected);
+  }
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of sorted) {
+    const key = exceptionItemKey(row.itemNumber);
+    if (!key) {
+      out.push(row);
+      continue;
+    }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(preferred.get(key) ?? row);
+  }
+  return out;
 }

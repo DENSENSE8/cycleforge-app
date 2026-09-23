@@ -2,10 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   knownReturnClassification,
-  replaceClaimSubjectClaimTypeSegment,
-  replaceClaimSubjectIdentitySegment,
   resolveClaimSubjectIdentity,
 } from '@/lib/zendesk-claim-subject-identity';
+import { buildClaimSubject } from '@/lib/zendesk-claim-subject';
 import { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
 import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 
@@ -123,57 +122,60 @@ test('returnPlatformForSource maps FBA / Amazon / eBay for return cartons', () =
   assert.equal(returnPlatformForSource('other'), null);
 });
 
-test('replaceClaimSubjectIdentitySegment patches only the first // segment', () => {
+test('buildClaimSubject renders PO, Order and no-handle titles from one composer', () => {
   assert.equal(
-    replaceClaimSubjectIdentitySegment(
-      'eBay - Purchase order // Damage // PO 123 // TRK#1Z',
-      'Amazon - Return',
-    ),
-    'Amazon - Return // Damage // PO 123 // TRK#1Z',
+    buildClaimSubject({
+      identity: 'eBay - Purchase order',
+      claimTypeLabel: 'Damage',
+      poNumber: '123',
+      tracking: '1Z',
+    }),
+    'eBay - Purchase order // Damage // PO 123 // TRK#1Z',
   );
-  assert.equal(replaceClaimSubjectIdentitySegment('', 'FBA'), 'FBA');
-});
-
-test('replaceClaimSubjectClaimTypeSegment patches only the claim-type // segment', () => {
+  // An operator-linked order id is titled as an Order, never as a PO.
   assert.equal(
-    replaceClaimSubjectClaimTypeSegment(
-      'Unfound - Purchase order // Unfound — no PO match // TRK#1Z730376306',
-      'Damage',
-    ),
-    'Unfound - Purchase order // Damage // TRK#1Z730376306',
+    buildClaimSubject({
+      identity: 'Amazon Return',
+      claimTypeLabel: 'Damage',
+      orderId: '111-8911758-3549041',
+      tracking: '1Z',
+    }),
+    'Amazon Return // Damage // Order 111-8911758-3549041 // TRK#1Z',
   );
+  // A resolved PO outranks a leftover pending id.
   assert.equal(
-    replaceClaimSubjectClaimTypeSegment(
-      'Return // Unfound — no PO match // TRK#1Z',
-      'Damage',
-    ),
-    'Return // Damage // TRK#1Z',
-    'identity stays put — claim flip must not invent a new identity',
-  );
-  assert.equal(
-    replaceClaimSubjectClaimTypeSegment(
-      'eBay - Purchase order // Damage // PO 123 // TRK#1Z',
-      'Missing item',
-    ),
-    'eBay - Purchase order // Missing item // PO 123 // TRK#1Z',
+    buildClaimSubject({
+      identity: 'Amazon Return',
+      claimTypeLabel: 'Damage',
+      poNumber: 'PO-6001',
+      orderId: '111-8911758-3549041',
+      tracking: null,
+    }),
+    'Amazon Return // Damage // PO PO-6001 // TRK#n/a',
   );
   assert.equal(
-    replaceClaimSubjectClaimTypeSegment('free typed subject', 'Damage'),
-    'free typed subject',
+    buildClaimSubject({ identity: 'Unfound - Purchase order', claimTypeLabel: 'Damage' }),
+    'Unfound - Purchase order // Damage // TRK#n/a',
   );
 });
 
-test('claim flip through every CLAIM_TYPE_LABEL keeps Unfound identity (incl. Return)', () => {
-  const identity = 'Unfound - Purchase order';
-  const tail = 'TRK#1Z730376306';
-  const seed = `${identity} // Unfound — no PO match // ${tail}`;
+test('reclassifying re-renders the whole title and cannot drift the other parts', () => {
+  const parts = {
+    claimTypeLabel: 'Damage',
+    orderId: '111-8911758-3549041',
+    tracking: '1Z730376306',
+  };
+  const before = buildClaimSubject({ ...parts, identity: 'Unfound - Purchase order' });
+  const after = buildClaimSubject({ ...parts, identity: 'Amazon Return' });
+  assert.equal(before, 'Unfound - Purchase order // Damage // Order 111-8911758-3549041 // TRK#1Z730376306');
+  assert.equal(after, 'Amazon Return // Damage // Order 111-8911758-3549041 // TRK#1Z730376306');
+  // Every claim label keeps identity and the handle exactly where they were.
   for (const label of Object.values(CLAIM_TYPE_LABEL)) {
-    const next = replaceClaimSubjectClaimTypeSegment(seed, label);
-    const [first, claim, ...rest] = next.split(' // ');
-    assert.equal(first, identity, `identity stable for claim "${label}"`);
+    const next = buildClaimSubject({ ...parts, claimTypeLabel: label, identity: 'Amazon Return' });
+    const [identity, claim, handle, trk] = next.split(' // ');
+    assert.equal(identity, 'Amazon Return');
     assert.equal(claim, label);
-    assert.equal(rest.join(' // '), tail);
-    assert.notEqual(first, 'Amazon', `claim "${label}" must not invent Amazon identity`);
-    assert.notEqual(first, 'Return', `claim "${label}" must not paint Return identity`);
+    assert.equal(handle, 'Order 111-8911758-3549041');
+    assert.equal(trk, 'TRK#1Z730376306');
   }
 });

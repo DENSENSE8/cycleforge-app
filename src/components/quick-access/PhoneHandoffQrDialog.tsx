@@ -21,7 +21,7 @@ import {
   motion,
   useReducedMotion,
 } from '@/design-system/motion';
-import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { COMPOSER_SHELL_CORNER, MOBILE_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -167,19 +167,29 @@ export function PhoneHandoffQrDialog({
                 </Panel>
 
                 {displayCode ? (
-                  <div className="flex flex-col items-center gap-1.5">
+                  <div className="flex flex-col items-center gap-2">
                     <p className="text-role-micro uppercase tracking-widest text-text-soft">
-                      Pairing code
+                      Or type this code on your phone
                     </p>
-                    <p className="font-mono text-2xl font-semibold tracking-[0.2em] text-text-default">
-                      {displayCode}
-                    </p>
+                    {/* One tile per digit — the desk reads exactly like the
+                        phone's OneTimeCodeInput boxes. */}
+                    <div className="flex justify-center gap-1.5" aria-label={`Pairing code ${displayCode}`}>
+                      {displayCode.split('').map((char, index) => (
+                        <span
+                          key={index}
+                          aria-hidden
+                          className={cn(
+                            'flex h-12 w-10 items-center justify-center border border-border-soft bg-surface-canvas',
+                            'font-mono text-xl font-semibold text-text-default',
+                            MOBILE_CONTROL_CORNER,
+                          )}
+                        >
+                          {char}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
-
-                <p className="w-full break-all rounded-lg bg-surface-canvas px-3 py-2.5 text-center text-role-micro font-mono text-text-soft">
-                  {url || ' '}
-                </p>
 
                 {state === 'active' ? (
                   <Button

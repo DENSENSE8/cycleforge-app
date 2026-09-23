@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Loader2, X, Camera } from '../Icons';
 import { SignaturePad, type SignatureData } from './SignaturePad';
+import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { getSidebarIntakeSubmitButtonClass } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { useBodyScrollLock } from '@/design-system/hooks';
@@ -22,9 +23,14 @@ type Step = 'sign' | 'receipt';
 const PICKUP_TERMS =
   'I confirm I am picking up this repaired item and acknowledge the 30-day warranty on the repair.';
 
-function firstNameOf(contactInfo: string | null | undefined): string {
-  const raw = (contactInfo || '').split(',')[0]?.trim() || '';
-  return raw.split(/\s+/)[0] || 'Customer';
+/**
+ * The signer's first name. Reads the shared buyer rule rather than
+ * `contact_info.split(',')[0]`, which truncated a name containing a comma
+ * ("Doe, Jane" → "Doe") and showed a phone number as the name on any ticket
+ * whose intake string had no name in it.
+ */
+function firstNameOf(name: string | null): string {
+  return (name ?? '').trim().split(/\s+/)[0] || 'Customer';
 }
 
 export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlowProps) {
@@ -37,11 +43,8 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
   const [isDeclining, setIsDeclining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const customerName = useMemo(
-    () => (repair.contact_info || '').split(',')[0]?.trim() || '',
-    [repair.contact_info],
-  );
-  const firstName = useMemo(() => firstNameOf(repair.contact_info), [repair.contact_info]);
+  const customerName = useMemo(() => resolveRepairContact(repair).name ?? '', [repair]);
+  const firstName = useMemo(() => firstNameOf(customerName), [customerName]);
   const rsCode = `RS-${repair.id}`;
   const orangeSubmit = getSidebarIntakeSubmitButtonClass('orange');
 

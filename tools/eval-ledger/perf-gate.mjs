@@ -51,7 +51,7 @@ function pathEnv() {
 }
 
 function stamp(extra) {
-  const dir = path.join(ROOT, ".cursor");
+  const dir = path.join(ROOT, ".garisek");
   mkdirSync(dir, { recursive: true });
   const body = {
     ...extra,

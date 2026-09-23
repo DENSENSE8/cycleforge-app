@@ -31,9 +31,9 @@ export function FbaQtyStepper({
   const isWarn = warnAbove !== undefined && value > warnAbove;
 
   const inputBorder = isWarn
-    ? 'border-amber-300 text-amber-700'
+    ? 'border-border-warning text-text-warning'
     : isDanger
-      ? 'border-red-300 text-red-500'
+      ? 'border-border-danger text-text-danger'
       : 'border-border-soft text-text-default';
 
   return (
@@ -42,7 +42,8 @@ export function FbaQtyStepper({
         icon={<Plus className="h-3 w-3" />}
         onClick={(e) => { e.stopPropagation(); onChange(value + 1); }}
         ariaLabel={fnsku ? `Increase ${fnsku} quantity` : 'Increase quantity'}
-        className="flex h-6 w-10 items-center justify-center rounded-t-md border border-border-soft hover:bg-surface-hover"
+        radius="flush"
+        className="flex h-6 w-10 items-center justify-center border border-border-soft hover:bg-surface-hover"
       />
       <DeferredQtyInput
         value={value}
@@ -52,13 +53,14 @@ export function FbaQtyStepper({
         className={`h-7 w-10 border-x bg-surface-card text-center text-role-caption font-semibold tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${inputBorder}`}
       />
       <IconButton
-        icon={<Minus className={`h-3 w-3 ${value <= 1 ? 'text-red-500' : 'text-text-soft'}`} />}
+        icon={<Minus className={`h-3 w-3 ${value <= 1 ? 'text-text-danger' : 'text-text-soft'}`} />}
         onClick={(e) => { e.stopPropagation(); onChange(value - 1); }}
         disabled={value <= 0}
         ariaLabel={fnsku ? `Decrease ${fnsku} quantity` : 'Decrease quantity'}
-        className={`flex h-6 w-10 items-center justify-center rounded-b-md border disabled:opacity-40 ${
+        radius="flush"
+        className={`flex h-6 w-10 items-center justify-center border disabled:opacity-40 ${
           value <= 1
-            ? 'border-red-300 hover:bg-red-50'
+            ? 'border-border-danger hover:bg-surface-danger'
             : 'border-border-soft hover:bg-surface-hover'
         }`}
       />

@@ -22,6 +22,7 @@ import { GridCellDash, GridDateTimeCellValue, GridStatusCellValue } from '@/comp
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import {
   ALLOCATION_REASON_LABELS,
   CHANNEL_DISPOSITION_LABELS,
@@ -49,20 +50,22 @@ import {
 } from '../ready-grid-layout';
 
 /** Secondary categorical chips (reasons / velocity) — not lifecycle status. */
-const CHIP =
-  'min-w-0 truncate rounded px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset';
+const CHIP = cn(
+  'min-w-0 truncate px-1.5 py-0.5 text-role-micro uppercase tracking-widest ring-1 ring-inset',
+  cornerClass('chip'),
+);
 
 /** Tone maps for house {@link GridStatusCellValue} — bg + text only; ring from the cell. */
 const DISPOSITION_CLASS: Record<ChannelDisposition, string> = {
-  FBA: 'bg-violet-50 text-violet-700',
-  PREBOX_STOCK: 'bg-emerald-50 text-emerald-700',
-  HOLD: 'bg-amber-50 text-amber-800',
+  FBA: 'bg-surface-accent text-text-accent',
+  PREBOX_STOCK: 'bg-surface-success text-text-success',
+  HOLD: 'bg-surface-warning text-text-warning',
 };
 
 function verdictClass(verdict: string | null): string {
-  if (verdict === 'PASS') return 'bg-emerald-50 text-emerald-700';
-  if (verdict === 'TESTING_FAILED') return 'bg-rose-50 text-rose-700';
-  return 'bg-amber-50 text-amber-800';
+  if (verdict === 'PASS') return 'bg-surface-success text-text-success';
+  if (verdict === 'TESTING_FAILED') return 'bg-surface-danger text-text-danger';
+  return 'bg-surface-warning text-text-warning';
 }
 
 /** Identifier trail tokens under the title (SKU · serial · FNSKU · ASIN). */
@@ -127,7 +130,7 @@ function renderReadySlotBody(fieldId: string | undefined, ctx: ReadyGridCellCtx)
       ) : (
         <span className="inline-flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
           <span
-            className={cn('h-2 w-2 shrink-0 rounded-full', serialStatusDot(hit.unitStatus))}
+            className={cn('h-2 w-2 shrink-0', cornerClass('pill'), serialStatusDot(hit.unitStatus))}
             aria-hidden
           />
           <span className="min-w-0 truncate">{readyFallbackStateLabel(hit)}</span>
@@ -257,7 +260,8 @@ export function renderReadyGridCell(
             <Link
               href={fbaOutboundHref()}
               className={cn(
-                'inline-flex h-7 items-center rounded-lg px-2 text-role-caption font-semibold text-text-fulfillment hover:bg-surface-hover',
+                'inline-flex h-7 items-center px-2 text-role-caption font-semibold text-text-fulfillment hover:bg-surface-hover',
+                cornerClass('control'),
                 focusRing('control', 'accent'),
               )}
             >

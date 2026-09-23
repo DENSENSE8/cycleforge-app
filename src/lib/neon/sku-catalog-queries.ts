@@ -4,6 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
 import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
+import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -24,6 +25,8 @@ export interface SkuCatalogRow {
   replenish_target_cents: number | null;
   /** Per-SKU pack/handling guidance shown to the packer (P1-PCK-02). */
   notes: string | null;
+  /** Closed product-level warehouse warnings; never inferred from `notes`. */
+  handling_flags: OutboundHandlingFact[];
   /**
    * External inventory-provider item id (`items.zoho_item_id` while Zoho is the
    * adapter). NULL = unlinked hub row. Never join identity on SKU string.
@@ -224,6 +227,29 @@ export async function setSkuCatalogGtin(
     if (!row) return { ok: false, reason: 'not-found' };
     return { ok: true, row };
   });
+}
+
+/**
+ * Replace a catalog product's structured handling facts.
+ *
+ * This is intentionally a dedicated writer instead of an `upsertSkuCatalog`
+ * parameter: sync upserts preserve product metadata by default, whereas an
+ * operator's explicit empty list is a real, auditable safety instruction.
+ */
+export async function setSkuCatalogHandlingFacts(
+  id: number,
+  handlingFacts: readonly OutboundHandlingFact[],
+  orgId: OrgId,
+): Promise<SkuCatalogRow | null> {
+  const result = await tenantQuery<SkuCatalogRow>(
+    orgId,
+    `UPDATE sku_catalog
+        SET handling_flags = $1::text[], updated_at = NOW()
+      WHERE id = $2 AND organization_id = $3
+      RETURNING *`,
+    [[...handlingFacts], id, orgId],
+  );
+  return result.rows[0] ?? null;
 }
 
 export async function upsertSkuCatalog(params: {

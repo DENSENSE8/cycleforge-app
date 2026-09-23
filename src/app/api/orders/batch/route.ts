@@ -83,6 +83,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         SELECT packed_by FROM packer_logs
         WHERE shipment_id = o.shipment_id AND packed_by IS NOT NULL
           AND organization_id = $2
+          AND completion_state = 'COMPLETED'
         ORDER BY created_at DESC LIMIT 1
       ) pp ON TRUE
       LEFT JOIN staff ps ON ps.id = pp.packed_by

@@ -228,22 +228,24 @@ test('a mark by a non-owner on an owned item is dropped, not counted', () => {
   assert.equal(report.totalDone, 1);
 });
 
-test('a recurring item is unaffected by an owner being set', () => {
+test('a stale recurring owner is ignored so every shift member still owes the work', () => {
   const report = buildDailyCheckReport({
     dateKey: '2026-08-19',
-    // An owner on a recurring item is meaningless data (the API only writes it
-    // for `once`), and the denominator rule must ignore it just the same.
+    // The database rejects this after the migration, but old rows must still
+    // observe the new rule when a historical report is read.
     items: ITEMS.map((item, i) => (i === 0 ? { ...item, assignedStaffId: 20 } : item)),
     marks: [mark(1, 10, '2026-08-19T15:00:00.000Z')],
     roster: ROSTER,
     viewerStaffId: 10,
   });
 
-  for (const row of report.staff) {
-    assert.equal(row.total, 3, 'recurring owes everyone regardless of owner drift');
-  }
-  const ana = report.staff.find((r) => r.staffId === 10)!;
-  assert.equal(ana.doneCount, 1, 'a non-"owner" still gets credit on recurring');
+  assert.equal(report.staff.find((row) => row.staffId === 10)!.total, 3);
+  assert.equal(report.staff.find((row) => row.staffId === 20)!.total, 3);
+  assert.equal(
+    report.staff.find((row) => row.staffId === 10)!.doneCount,
+    1,
+    'a shift member can complete recurring work regardless of an invalid legacy owner',
+  );
 });
 
 test('the report keeps WHEN each task was checked, per staffer', () => {

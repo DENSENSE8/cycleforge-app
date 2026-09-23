@@ -5,10 +5,9 @@
  *
  * Resolution order:
  *   1. organization_integrations row for (orgId, provider)
- *   2. Env-var fallback — ONLY when orgId === DOGFOOD_ORG_ID. Lets us migrate
- *      USAV's existing single-tenant env-based config without breaking
- *      anything. Any other tenant that lacks a row gets `null` (not an
- *      env-var leak across tenants).
+ *   2. Provider-specific env fallback — only for explicitly transitional
+ *      providers when orgId === DOGFOOD_ORG_ID. Zoho and Google Sheets are
+ *      vault-only. Any other tenant that lacks a row gets `null`.
  *
  * Decrypted credentials are cached in-process for 5 minutes. Cache is
  * invalidated explicitly via invalidateCredentialCache() — the admin UI
@@ -23,7 +22,6 @@ import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
 import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import { getValidatedAblyApiKey } from '@/lib/realtime/ably-key';
 import { captureError } from '@/lib/observability/errors';
-import { zohoVaultBlocksEnvFallback } from '@/lib/zoho/token-refresh-error';
 
 // ─── Provider payload shapes ───────────────────────────────────────────────
 // One discriminated union so callers get type-checked credentials back.
@@ -325,14 +323,6 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       };
       return cred;
     }
-    case 'zoho': {
-      const clientId = process.env.ZOHO_CLIENT_ID, clientSecret = process.env.ZOHO_CLIENT_SECRET,
-            refreshToken = process.env.ZOHO_REFRESH_TOKEN,
-            zohoOrg = process.env.ZOHO_ORG_ID || process.env.ZOHO_ORGANIZATION_ID;
-      if (!clientId || !clientSecret || !refreshToken || !zohoOrg) return null;
-      const cred: ZohoCredentials = { clientId, clientSecret, refreshToken, orgId: zohoOrg, domain: process.env.ZOHO_DOMAIN };
-      return cred;
-    }
     case 'ups': {
       const clientId = process.env.UPS_CLIENT_ID, clientSecret = process.env.UPS_CLIENT_SECRET;
       if (!clientId || !clientSecret) return null;
@@ -363,15 +353,6 @@ function envFallback(provider: IntegrationProvider): unknown | null {
             apiToken = process.env.ZENDESK_API_TOKEN;
       if (!subdomain || !email || !apiToken) return null;
       const cred: ZendeskCredentials = { subdomain, email, apiToken };
-      return cred;
-    }
-    case 'google_sheets': {
-      const clientEmail = process.env.GOOGLE_CLIENT_EMAIL, privateKey = process.env.GOOGLE_PRIVATE_KEY;
-      if (!clientEmail || !privateKey) return null;
-      const cred: GoogleSheetsCredentials = {
-        clientEmail, privateKey,
-        defaultSpreadsheetId: process.env.SPREADSHEET_ID,
-      };
       return cred;
     }
     case 'ably': {
@@ -434,6 +415,7 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       };
       return cred;
     }
+    case 'zoho':
     case 'google_drive':
       // OAuth-only, connected per-tenant via Sign in with Google. No env bridge —
       // there is no single-tenant Drive backup to mirror from env.
@@ -449,29 +431,6 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       // Shopify store to mirror from env, so there is no env bridge.
       return null;
   }
-}
-
-// ─── Legacy env bridge (USAV Zoho only, transitional) ───────────────────────
-// USAV may still resolve Zoho from ZOHO_* env vars when the vault row is absent.
-// Refresh token: ZOHO_REFRESH_TOKEN env only — ebay_accounts.ZOHO_MAIN token
-// columns were removed in the eBay vault migration (INT-002).
-async function readLegacyZohoRefreshToken(): Promise<string> {
-  return (process.env.ZOHO_REFRESH_TOKEN ?? '').trim();
-}
-
-async function legacyZohoFromEnv(): Promise<ZohoCredentials | null> {
-  const clientId = (process.env.ZOHO_CLIENT_ID ?? '').trim();
-  const clientSecret = (process.env.ZOHO_CLIENT_SECRET ?? '').trim();
-  const zohoOrgId = (process.env.ZOHO_ORG_ID || process.env.ZOHO_ORGANIZATION_ID || '').trim();
-  const domain = (process.env.ZOHO_DOMAIN ?? '').trim() || 'accounts.zoho.com';
-  const refreshToken = await readLegacyZohoRefreshToken();
-  if (!clientId || !clientSecret || !zohoOrgId || !refreshToken) return null;
-  return { clientId, clientSecret, refreshToken, orgId: zohoOrgId, domain };
-}
-
-/** USAV transitional Zoho creds from env + legacy ZOHO_MAIN row (no vault). */
-async function resolveUsavLegacyZohoCredentials(): Promise<ZohoCredentials | null> {
-  return legacyZohoFromEnv();
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────
@@ -516,51 +475,17 @@ export async function getIntegrationCredentials<T = unknown>(
       return value;
     }
   } catch (err) {
-    // Decryption or DB errors are loud but non-fatal — fall through to env.
+    // Decryption or DB errors are loud but non-fatal. Legacy env bridges may
+    // still serve providers that explicitly define one; Google Sheets does not.
     console.warn(`[integrations] credentials lookup failed for ${orgId}/${provider}:`, err instanceof Error ? err.message : err);
   }
 
-  // Zoho: if a vault row exists but is error/revoked, do NOT fall through to
-  // ZOHO_REFRESH_TOKEN env — that would mask Integrations "Needs attention".
-  // Env bootstrap remains only when no vault row exists.
-  if (provider === 'zoho' && orgId === DOGFOOD_ORG_ID && !includeInactive) {
-    try {
-      const statusRow = await pool.query<{ status: string }>(
-        `SELECT status
-           FROM organization_integrations
-          WHERE organization_id = $1
-            AND provider = 'zoho'
-            AND COALESCE(scope, '') = COALESCE($2, '')
-          LIMIT 1`,
-        [orgId, scope],
-      );
-      const vaultStatus = statusRow.rows[0]?.status ?? null;
-      if (zohoVaultBlocksEnvFallback(vaultStatus)) {
-        credCache.set(key, { value: null, expiresAt: Date.now() + CACHE_TTL_MS });
-        return null;
-      }
-    } catch (err) {
-      console.warn(
-        `[integrations] zoho vault-status probe failed for ${orgId}:`,
-        err instanceof Error ? err.message : err,
-      );
-    }
-  }
-
   // Transitional env-var fallback, USAV only.
-  if (orgId === DOGFOOD_ORG_ID) {
+  if (provider !== 'google_sheets' && provider !== 'zoho' && orgId === DOGFOOD_ORG_ID) {
     const fallback = envFallback(provider) as T | null;
     if (fallback) {
       credCache.set(key, { value: fallback, expiresAt: Date.now() + CACHE_TTL_MS });
       return fallback;
-    }
-    // Zoho env bridge for USAV when vault row is absent (refresh token in env).
-    if (provider === 'zoho') {
-      const legacy = (await resolveUsavLegacyZohoCredentials()) as T | null;
-      if (legacy) {
-        credCache.set(key, { value: legacy, expiresAt: Date.now() + CACHE_TTL_MS });
-        return legacy;
-      }
     }
   }
 

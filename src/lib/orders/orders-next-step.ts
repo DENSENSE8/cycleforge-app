@@ -100,6 +100,21 @@ const NEXT_BY_STAGE: Readonly<
 };
 
 /**
+ * Map an already-resolved pre-dock stage onto its next operator step.
+ * Consumers that need the whole workflow verdict call the lifecycle resolver
+ * once, then reuse this mapping; they must not re-derive shipment/test/pack
+ * precedence locally.
+ */
+export function nextStepForLifecycleStage(stage: OrderLifecycleStage): CompoundNextStep {
+  const next = NEXT_BY_STAGE[stage];
+  return {
+    label: `${HEADED} ${next.label}`,
+    tip: next.tip,
+    ...(next.blocked ? { blocked: true } : null),
+  };
+}
+
+/**
  * Where this order is headed, as a face for the STATUS cell's second line.
  *
  * Post-dock wins: once a package has left the building the pre-dock stage is
@@ -138,18 +153,12 @@ export function ordersNextStep(
     return NEXT_BY_CARRIER.LABEL_CREATED;
   }
 
-  const next = NEXT_BY_STAGE[
+  return nextStepForLifecycleStage(
     resolveOrderLifecycleStage({
       shipmentId: record.shipment_id ?? null,
       hasTechScan: record.has_tech_scan ?? null,
       packedAt: record.packed_at ?? record.pack_activity_at ?? null,
       isOutOfStock: record.is_out_of_stock ?? null,
-    })
-  ];
-
-  return {
-    label: `${HEADED} ${next.label}`,
-    tip: next.tip,
-    ...(next.blocked ? { blocked: true } : null),
-  };
+    }),
+  );
 }

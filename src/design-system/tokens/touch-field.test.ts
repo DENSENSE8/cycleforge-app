@@ -33,7 +33,7 @@ const SMALL_TYPE = [
 ];
 
 /** A file-input is never focused for text entry, so it cannot trigger the zoom. */
-const EXEMPT_LINE = /type="file"|sr-only/;
+const EXEMPT_CONTROL = /type="file"|sr-only/;
 
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -49,25 +49,14 @@ function walk(dir: string): string[] {
 }
 
 /**
- * The className expression attached to each text control. Scans forward from
- * the element tag — the attribute may sit several lines below it.
+ * The complete opening tag for each text control. Tag-level scanning avoids
+ * treating an unrelated caption on the same minified source line as the
+ * input's own class.
  */
-function controlClassLines(source: string): string[] {
-  const lines = source.split('\n');
-  const found: string[] = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    if (!/<(input|textarea|select)\b/.test(lines[i]!)) continue;
-    for (let j = i; j < Math.min(i + 10, lines.length); j += 1) {
-      const line = lines[j]!;
-      if (EXEMPT_LINE.test(line)) break;
-      if (/className/.test(line)) {
-        found.push(line);
-        break;
-      }
-      if (/\/>|>\s*$/.test(line) && j > i) break;
-    }
-  }
-  return found;
+function controlClassTags(source: string): string[] {
+  return [...source.matchAll(/<(?:input|textarea|select)\b[^>]*>/g)]
+    .map((match) => match[0])
+    .filter((tag) => !EXEMPT_CONTROL.test(tag) && /className/.test(tag));
 }
 
 test('no mobile text control wears a sub-16px type class (iOS focus zoom)', () => {
@@ -76,8 +65,8 @@ test('no mobile text control wears a sub-16px type class (iOS focus zoom)', () =
   for (const root of MOBILE_ROOTS) {
     for (const file of walk(root)) {
       const source = readFileSync(file, 'utf8');
-      for (const line of controlClassLines(source)) {
-        const hit = SMALL_TYPE.find((cls) => new RegExp(`\\b${cls}\\b`).test(line));
+      for (const tag of controlClassTags(source)) {
+        const hit = SMALL_TYPE.find((cls) => new RegExp(`\\b${cls}\\b`).test(tag));
         if (hit) offenders.push(`${file}: ${hit}`);
       }
     }

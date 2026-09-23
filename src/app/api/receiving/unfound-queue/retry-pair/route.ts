@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { tenantQuery } from '@/lib/tenancy/db';
 import { reconcileUnmatchedReceiving } from '@/lib/receiving/reconcile-unmatched';
-import { withZohoOrg } from '@/lib/zoho/tenant-context';
 
 /**
  * POST /api/receiving/unfound-queue/retry-pair — on-demand pairing retry
@@ -16,10 +14,8 @@ import { withZohoOrg } from '@/lib/zoho/tenant-context';
  *
  * Body: { receiving_id }
  *
- * `reconcileUnmatchedReceiving` takes no org filter internally (it loads the
- * row by id alone), so this route verifies org ownership itself before
- * calling it — otherwise any authenticated caller could reconcile-by-id a
- * carton belonging to another tenant.
+ * The reconciliation helper scopes both the carton and Zoho credentials to
+ * the authenticated organization.
  */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);
@@ -31,20 +27,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
-  const owned = await tenantQuery(
-    ctx.organizationId,
-    `SELECT 1 FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-    [receivingId, ctx.organizationId],
-  );
-  if (owned.rows.length === 0) {
-    return NextResponse.json({ success: false, error: 'carton not found' }, { status: 404 });
-  }
-
-  // Bind the authenticated tenant so the Zoho tracking search inside the
-  // reconcile runs against THIS org's credentials.
-  const result = await withZohoOrg(ctx.organizationId, () =>
-    reconcileUnmatchedReceiving(receivingId),
-  );
+  const result = await reconcileUnmatchedReceiving(receivingId, ctx.organizationId);
 
   if (result.code === 'ZOHO_RATE_LIMITED') {
     return NextResponse.json(

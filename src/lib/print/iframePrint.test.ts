@@ -85,3 +85,41 @@ test('uses a popup reserved during the button gesture after label HTML loads', (
     globalThis.document = previousDocument;
   }
 });
+
+test('routes supplied paperwork HTML through a rendered off-screen iframe', () => {
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const html = '<!doctype html><html><body>repair paperwork</body></html>';
+  let appended: {
+    srcdoc?: string;
+    style: { cssText: string };
+    setAttribute(): void;
+  } | null = null;
+
+  globalThis.window = {
+    setTimeout() { return 1; },
+  } as unknown as Window & typeof globalThis;
+  globalThis.document = {
+    body: {
+      appendChild(node: typeof appended) { appended = node; },
+    },
+    createElement() {
+      return {
+        srcdoc: '',
+        setAttribute() {},
+        style: { cssText: '' },
+        remove() {},
+      };
+    },
+  } as unknown as Document;
+
+  try {
+    assert.equal(printHtmlInIframe(html, { name: 'Repair paperwork' }), true);
+    assert.equal(appended?.srcdoc, html);
+    assert.match(appended?.style.cssText ?? '', /left:-10000px/);
+    assert.doesNotMatch(appended?.style.cssText ?? '', /visibility:hidden|display:none/);
+  } finally {
+    globalThis.window = previousWindow;
+    globalThis.document = previousDocument;
+  }
+});

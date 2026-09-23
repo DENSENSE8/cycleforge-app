@@ -270,7 +270,12 @@ export function KioskCounterPane({
               <ul className="divide-y divide-border-hairline bg-surface-card">
                 {draft.service && (
                   <li className="flex items-baseline justify-between gap-3 px-4 py-4">
-                    <span className="min-w-0 font-semibold">
+                    {/* A customer can drop off several devices, so a line title is either
+                        ONE product or a summary of many — the cart list must not stretch on
+                        one string. `min-w-0` stays for the flex row; no `truncate`, its
+                        `whitespace-nowrap` would cancel the clamp
+                        (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+                    <span className="min-w-0 font-semibold line-clamp-2 break-words text-pretty">
                       {draft.service.productModel}
                       <span className={cn('ml-2 uppercase tracking-widest', KIOSK_META)}>
                         Service
@@ -288,7 +293,7 @@ export function KioskCounterPane({
                     key={line.variationId ?? line.productTitle}
                     className="flex items-baseline justify-between gap-3 px-4 py-4"
                   >
-                    <span className="min-w-0 font-semibold">
+                    <span className="min-w-0 font-semibold line-clamp-2 break-words text-pretty">
                       {line.productTitle}
                       {line.quantity > 1 && (
                         <span className="ml-2 text-text-soft">×{line.quantity}</span>

@@ -165,6 +165,13 @@ export function OverviewLeaf({
   return (
     <ScrollLeaf testId="daily-check-leaf-overview">
       <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
+        {item.description ? (
+          <Field label="Description">
+            <p className="whitespace-pre-wrap break-words text-role-caption text-text-default">
+              {item.description}
+            </p>
+          </Field>
+        ) : null}
         <Field label="Your mark">
           <LedgerValue value={mineDone ? 'Done' : 'Open'} />
         </Field>

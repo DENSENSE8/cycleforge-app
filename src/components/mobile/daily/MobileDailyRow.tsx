@@ -27,7 +27,7 @@
  * compound cell paints — one animation for both surfaces.
  */
 
-import { Pencil, Ticket } from '@/components/Icons';
+import { ChevronRight, Pencil, Ticket } from '@/components/Icons';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { StruckLabel } from '@/design-system/components/StruckLabel';
@@ -42,24 +42,48 @@ export interface MobileDailyRowOwner {
 
 export function MobileDailyRow({
   itemId,
+  rowKey,
   title,
   done,
   once = false,
   owner = null,
+  subtitle = null,
+  subtitleTone = 'muted',
   ticketId = null,
+  detail = 'edit',
   onToggle,
   onOpenDetail,
   onOpenTicket,
 }: {
   itemId: number;
+  /**
+   * DOM identity. Two stores number their rows independently — daily check 7
+   * and task 7 are different rows — so the checkbox id is keyed on this, not
+   * on the bare number. Defaults to the check namespace.
+   */
+  rowKey?: string;
   title: string;
   done: boolean;
   /** Paints the "Today only" caption — the exception marker. */
   once?: boolean;
   /** The one-off's owner; null on recurring and unowned rows. */
   owner?: MobileDailyRowOwner | null;
+  /**
+   * The one caption line a work row earns: `Due today · Carton 4471`. The
+   * checklist half uses {@link once} for the same slot, so a row never grows a
+   * second sub-line whichever store it came from.
+   */
+  subtitle?: string | null;
+  /** `danger` is the overdue register — the only tone a caption may raise. */
+  subtitleTone?: 'muted' | 'danger';
   /** Linked Zendesk ticket — paints the rightmost orange door. Null = plain task. */
   ticketId?: number | null;
+  /**
+   * What the hard-right door promises. `edit` opens the item's own sheet
+   * (pencil); `record` walks to the order/carton/thread the task points at
+   * (chevron). A task has no editable list entry, so it never wears a pencil.
+   */
+  detail?: 'edit' | 'record';
   onToggle: (next: boolean) => void;
   onOpenDetail: () => void;
   /**
@@ -70,7 +94,8 @@ export function MobileDailyRow({
    */
   onOpenTicket?: () => void;
 }) {
-  const checkboxId = `m-daily-${itemId}`;
+  const checkboxId = `m-daily-${rowKey ?? `check-${itemId}`}`;
+  const caption = once || subtitle != null;
   return (
     <li
       data-daily-item-id={itemId}
@@ -81,7 +106,7 @@ export function MobileDailyRow({
         // Touch floor: the row is taller than the 44px minimum because the
         // label inside it is the tick target, not the 20px box. A caption adds
         // its own line, so the floor only binds on caption-less rows.
-        once ? 'flex items-start gap-3 py-2' : 'flex items-center gap-3 min-h-14',
+        caption ? 'flex items-start gap-3 py-2' : 'flex items-center gap-3 min-h-14',
         MOBILE_ROW_CORNER,
       )}
     >
@@ -89,15 +114,20 @@ export function MobileDailyRow({
         id={checkboxId}
         checked={done}
         onCheckedChange={(next) => onToggle(next === true)}
-        className={once ? 'mt-0.5 size-5' : 'size-5'}
+        className={caption ? 'mt-0.5 size-5' : 'size-5'}
       />
       <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer select-none">
         <StruckLabel struck={done}>
           <span className="block text-role-data text-text-default">{title}</span>
         </StruckLabel>
-        {once ? (
-          <span className="mt-0.5 flex items-center gap-1.5 text-role-micro text-text-muted">
-            Today only
+        {caption ? (
+          <span
+            className={cn(
+              'mt-0.5 flex items-center gap-1.5 text-role-micro',
+              subtitleTone === 'danger' ? 'text-text-danger' : 'text-text-muted',
+            )}
+          >
+            {subtitle ?? 'Today only'}
             {owner ? (
               <span className="flex min-w-0 items-center gap-1">
                 <StaffAvatar staffId={owner.staffId} name={owner.name} size="xs" alt="" />
@@ -164,9 +194,15 @@ export function MobileDailyRow({
        */}
       <IconButton
         onClick={onOpenDetail}
-        ariaLabel={`Edit ${title}`}
+        ariaLabel={detail === 'record' ? `Open ${title}` : `Edit ${title}`}
         size="touch"
-        icon={<Pencil aria-hidden className="h-5 w-5" />}
+        icon={
+          detail === 'record' ? (
+            <ChevronRight aria-hidden className="h-5 w-5" />
+          ) : (
+            <Pencil aria-hidden className="h-5 w-5" />
+          )
+        }
         className="shrink-0"
       />
     </li>

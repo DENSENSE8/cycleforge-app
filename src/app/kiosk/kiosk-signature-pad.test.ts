@@ -22,26 +22,29 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { COUNTER_SIGNATURE_GUIDE, COUNTER_SIGNATURE_PAD } from './kiosk-counter-surface';
-import { SIGNATURE_CAPTURE_ASPECT } from '@/lib/repair/signature-geometry';
+import {
+  REPAIR_SIGNATURE_GUIDE_CLASS,
+  REPAIR_SIGNATURE_PAD_CLASS,
+  SIGNATURE_CAPTURE_ASPECT,
+} from '@/lib/repair/signature-geometry';
 
 const PAD = 'src/components/repair/SignaturePad.tsx';
 const CANVAS = 'src/components/repair/signature-canvas.ts';
 const read = (p: string) => readFileSync(p, 'utf8');
 
 test('the aspect class is exactly the geometry law it mirrors', () => {
-  const match = /aspect-\[(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\]/.exec(COUNTER_SIGNATURE_PAD);
-  assert.ok(match, `${COUNTER_SIGNATURE_PAD} carries no aspect literal`);
+  const match = /aspect-\[(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\]/.exec(REPAIR_SIGNATURE_PAD_CLASS);
+  assert.ok(match, `${REPAIR_SIGNATURE_PAD_CLASS} carries no aspect literal`);
   assert.equal(Number(match[1]) / Number(match[2]), SIGNATURE_CAPTURE_ASPECT);
   // Wider than tall is the operator's words, and the whole point.
   assert.ok(SIGNATURE_CAPTURE_ASPECT > 1);
   // A ceiling only — it may flatten the pad, never make it taller than wide.
-  assert.match(COUNTER_SIGNATURE_PAD, /max-h-full/);
-  assert.doesNotMatch(COUNTER_SIGNATURE_PAD, /\bh-\d/, 'a fixed height is the defect');
+  assert.match(REPAIR_SIGNATURE_PAD_CLASS, /max-h-full/);
+  assert.doesNotMatch(REPAIR_SIGNATURE_PAD_CLASS, /\bh-\d/, 'a fixed height is the defect');
 });
 
 test('the signable band is most of the pad at every measure', () => {
-  const guide = /bottom-\[(\d+)%\]/.exec(COUNTER_SIGNATURE_GUIDE);
+  const guide = /bottom-\[(\d+)%\]/.exec(REPAIR_SIGNATURE_GUIDE_CLASS);
   assert.ok(guide, 'the ruled guide must sit at a PERCENTAGE, not a px step');
   // `bottom-10` (40px) was a fifth of a 200px pad and nearly half of the fixed
   // one — the customer would have been signing in a third of the box.
@@ -56,8 +59,8 @@ test('the pad owns no height of its own, and exports the ink', () => {
     /style=\{fill \? undefined : \{ height/,
     'an inline pad height is the 2026-09-15 defect',
   );
-  assert.match(src, /COUNTER_SIGNATURE_PAD/, 'the pad box is the kiosk-axis token');
-  assert.match(src, /COUNTER_SIGNATURE_GUIDE/, 'the ruled guide is the kiosk-axis token');
+  assert.match(src, /REPAIR_SIGNATURE_PAD_CLASS/, 'the pad box comes from the repair geometry law');
+  assert.match(src, /REPAIR_SIGNATURE_GUIDE_CLASS/, 'the ruled guide comes from the repair geometry law');
   // The export is the crop, not the canvas — `toDataURL` survives only as the
   // no-ink fallback passed into it, and the crop bounds are the geometry law.
   assert.match(src, /exportSignaturePng\(canvas, data/);

@@ -28,6 +28,7 @@ export const ORDER_ROW_FLAG_IDS = [
   'priority',
   'hold',
   'damaged',
+  'discrepancy',
   'awaiting_customer',
   'ready',
 ] as const;
@@ -80,6 +81,14 @@ const FLAGS: Record<OrderRowFlagId, OrderRowFlag> = {
     rowClass: 'bg-rose-50',
     dotClass: 'bg-rose-500',
     chipClass: 'bg-rose-50 text-rose-700 ring-rose-200',
+  },
+  discrepancy: {
+    id: 'discrepancy',
+    label: 'Discrepancy',
+    hint: 'Order, label, or physical item does not agree — resolve before it ships.',
+    rowClass: 'bg-fuchsia-50',
+    dotClass: 'bg-fuchsia-500',
+    chipClass: 'bg-fuchsia-50 text-fuchsia-700 ring-fuchsia-200',
   },
   awaiting_customer: {
     id: 'awaiting_customer',

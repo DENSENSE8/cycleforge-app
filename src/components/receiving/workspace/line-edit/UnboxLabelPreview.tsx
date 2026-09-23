@@ -73,8 +73,18 @@ export function UnboxLabelPreview({
       cornerMode: (c.labelDraftDefaults?.cornerMode ?? 'order') as LabelCornerMode,
     },
     {
-      onPlatformChange: ({ label }) => {
+      onPlatformChange: ({ label, slug }) => {
+        // Print face follows the pick, and so does the RECORD: the label slot
+        // is a classify surface, not a print-only override. Slug-less picks
+        // (a platform the catalog has never seen) stay print-only rather than
+        // writing a value the PATCH validator would reject.
         patchOverride?.({ platform: label });
+        if (slug != null && slug !== '') {
+          c.setSourcePlatform?.(slug);
+          void c.savePlatform?.(slug, {
+            isReturn: String(c.receivingType ?? '').trim().toUpperCase() === 'RETURN',
+          });
+        }
       },
       onTypeChange: (slug) => {
         c.setReceivingType?.(slug);

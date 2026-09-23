@@ -10,8 +10,6 @@ import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
 
 export const dynamic = 'force-dynamic';
 
-const TTL = Number(process.env.PHOTOS_SIGNED_URL_TTL_SECONDS || 3600);
-
 function parseId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
@@ -19,6 +17,11 @@ function parseId(raw: string): number | null {
 
 function isSameOriginPath(url: string): boolean {
   return url.startsWith('/') && !url.startsWith('//');
+}
+
+function contentDisposition(filename: string, download: boolean): string {
+  const safeFilename = filename.replace(/[\r\n"]/g, '_');
+  return `${download ? 'attachment' : 'inline'}; filename="${safeFilename}"`;
 }
 
 export async function GET(
@@ -54,26 +57,21 @@ export async function GET(
     if (data.storageProvider === 'gcs' && data.bucket && data.objectKey) {
       try {
         const adapter = getStorageAdapter('gcs');
-        if (download) {
-          const bytes = await adapter.getObjectBytes({
-            bucket: data.bucket,
-            objectKey: data.objectKey,
-          });
-          return new NextResponse(Buffer.from(bytes), {
-            headers: {
-              'content-type': mimeType,
-              'content-disposition': `attachment; filename="${filename}"`,
-              'cache-control': 'private, max-age=300',
-            },
-          });
-        }
-        const signed = await adapter.getSignedReadUrl({
+        const bytes = await adapter.getObjectBytes({
           bucket: data.bucket,
           objectKey: data.objectKey,
-          ttlSeconds: TTL,
         });
-        return NextResponse.redirect(signed, { status: 302 });
-      } catch {
+        return new NextResponse(Buffer.from(bytes), {
+          headers: {
+            'content-type': mimeType,
+            'content-length': String(bytes.byteLength),
+            'content-disposition': contentDisposition(filename, download),
+            'cache-control': 'private, max-age=300',
+            'x-content-type-options': 'nosniff',
+          },
+        });
+      } catch (error) {
+        console.error(`Failed to read stored document ${documentId}:`, error);
         /* fall through to legacy URL */
       }
     }

@@ -80,7 +80,7 @@ import { useToShipPlatformSyncMenu } from '@/components/outbound/orders/useToShi
  * the same run surface as the real one, so the feedback can be reviewed and
  * demoed without touching the production Google Sheet (operator 2026-09-15).
  */
-export type OrderIntakeMethod = 'file' | 'sync' | 'demo';
+export type OrderIntakeMethod = 'file' | 'sync' | 'demo' | 'test';
 
 export function OrdersDeskAddAction({
   onAdd,
@@ -163,6 +163,12 @@ export function OrdersDeskAddAction({
             label: 'Add one order (review first)',
             icon: <Plus aria-hidden className="h-3.5 w-3.5" />,
             onClick: onAdd,
+            separatorBefore: true,
+          },
+          {
+            label: 'Add test order',
+            icon: <Plus aria-hidden className="h-3.5 w-3.5" />,
+            onClick: () => onMethod('test'),
             separatorBefore: true,
           },
           {

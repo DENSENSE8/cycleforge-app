@@ -3,6 +3,7 @@
 /**
  * Mobile sign-in — type the desk pairing code (primary); optional collapsed QR camera.
  * GateGuard: /signin + /m/signin. User: no paste-link copy; camera collapses to code entry.
+ * The code is digits only so the phone raises a number pad (no keyboard hopping).
  */
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
@@ -16,18 +17,19 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { Button } from '@/design-system/primitives/Button';
-import { TextField } from '@/design-system/primitives/TextField';
+import { OneTimeCodeInput } from '@/design-system/primitives/OneTimeCodeInput';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import {
   formatHandoffCodeInput,
+  HANDOFF_SHORT_CODE_LENGTH,
   parseHandoffDisplayCode,
 } from '@/lib/auth/qr-handoff-code';
 import { cn } from '@/utils/_cn';
 
 /**
  * Map a scanned / typed payload to an in-app path, or null if it is not ours.
- * Four-char Crockford (and legacy CF-XXXX paste) → `/m/claim?code=XXXX`.
+ * Bare 6-digit code (and legacy CF-prefixed paste) → `/m/claim?code=NNNNNN`.
  */
 export function resolveSignInQrPayload(raw: string, origin: string): string | null {
   const trimmed = raw.trim();
@@ -127,22 +129,19 @@ export function SignInQrScanDialog({
     [go, scanner],
   );
 
-  const submitPairingCode = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
-      const shortCode = parseHandoffDisplayCode(pairingInput);
+  const submitCode = useCallback(
+    (raw: string) => {
+      const shortCode = parseHandoffDisplayCode(raw);
       if (!shortCode) {
-        setScanError('Enter the four characters shown on your computer.');
+        setScanError(`Enter the ${HANDOFF_SHORT_CODE_LENGTH} digits shown on your computer.`);
         return;
       }
       setSubmittingCode(true);
       setScanError(null);
       go(`/m/claim?code=${encodeURIComponent(shortCode)}`);
     },
-    [go, pairingInput],
+    [go],
   );
-
-  const parsedLive = parseHandoffDisplayCode(pairingInput);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -161,42 +160,35 @@ export function SignInQrScanDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={submitPairingCode} className="space-y-2">
-          <TextField
-            label="Pairing code"
+        <form
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            submitCode(pairingInput);
+          }}
+          className="space-y-2.5"
+        >
+          <OneTimeCodeInput
             value={pairingInput}
             onChange={(next) => {
-              setPairingInput(formatHandoffCodeInput(next));
+              setPairingInput(next);
               setScanError(null);
             }}
-            mono
-            autoCapitalize="characters"
-            autoCorrect="off"
-            spellCheck={false}
-            autoComplete="one-time-code"
-            inputMode="text"
-            maxLength={8}
-            aria-label="Pairing code from your computer"
-            inputClassName="text-center text-lg font-semibold tracking-[0.28em]"
+            // OTP behaviour: the last digit IS the submit.
+            onComplete={submitCode}
+            length={HANDOFF_SHORT_CODE_LENGTH}
+            inputMode="numeric"
+            label="Pairing code from your computer"
+            transform={formatHandoffCodeInput}
+            invalid={Boolean(scanError)}
+            disabled={submittingCode}
+            autoFocus
           />
-          {parsedLive ? (
-            <p className="text-center text-role-caption text-text-soft">
-              Ready:{' '}
-              <span className="font-mono font-semibold tracking-[0.2em] text-text-default">
-                {parsedLive}
-              </span>
-            </p>
-          ) : (
-            <p className="text-center text-role-caption text-text-soft">
-              Four characters under the QR on the desk — not a link.
-            </p>
-          )}
           <Button
             type="submit"
             variant="brand"
             size="sm"
             className="w-full"
-            disabled={!parsedLive || submittingCode}
+            disabled={pairingInput.length < HANDOFF_SHORT_CODE_LENGTH || submittingCode}
           >
             {submittingCode ? 'Signing in…' : 'Sign in with code'}
           </Button>
@@ -241,10 +233,6 @@ export function SignInQrScanDialog({
         {scanError ? (
           <p className="text-center text-role-caption text-text-danger">{scanError}</p>
         ) : null}
-
-        <Button variant="secondary" size="sm" className="w-full" onClick={() => onOpenChange(false)}>
-          Cancel
-        </Button>
       </DialogContent>
     </Dialog>
   );

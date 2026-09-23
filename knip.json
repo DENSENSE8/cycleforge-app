@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "scripts/wms-domain-adapter.ts",
+    "scripts/wms-execution-shell-guard.ts",
+    "scripts/verify-wms-reroute-live.ts",
+    "src/lib/packing/wms-slot-context.ts"
+  ]
+}

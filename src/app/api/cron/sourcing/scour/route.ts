@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { logger } from '@/lib/observability/logger';
@@ -23,21 +23,17 @@ export const maxDuration = 300;
  * getIntegrationCredentials(orgId,'ebay')), and marks the run under its own org.
  * Orgs without eBay connected are never iterated (nothing to scour with), so the
  * old cross-tenant risk — a non-USAV org scouring on USAV's creds — is gone.
- * includeDogfoodTransitional keeps USAV in the sweep while its eBay creds still come
- * from env (envFallback is USAV-only), preserving USAV's exact behavior. Per-org
- * failures are isolated by forEachOrgWithProvider.
+ * Every active eBay account is now vault-backed, so the provider query is the
+ * complete sweep. Per-org failures are isolated by forEachOrgWithProvider.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
     const locked = await withCronLock('sourcing.scour', () =>
       withCronRun('sourcing.scour', async () => {
         const perOrg = await forEachOrgWithProvider(
           'ebay',
           (orgId) => runScourWatch(orgId),
-          { includeDogfoodTransitional: true },
         );
 
         const totals = { checked: 0, withHits: 0, candidatesSaved: 0 };

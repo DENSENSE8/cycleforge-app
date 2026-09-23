@@ -1,3 +1,6 @@
+import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
+import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
+
 export type QueueKey =
   | 'all'
   | 'done'
@@ -51,6 +54,8 @@ export interface WorkOrderRow {
   currency?: string | null;
   /** Catalog listing image — phone to-ship thumb. Absent = package placeholder. */
   imageUrl?: string | null;
+  /** Catalog-owned warehouse handling facts, never synthesized from row notes. */
+  handlingFacts?: OutboundHandlingFact[] | null;
   /** Assigned picker `staff.color_hex` — phone Pick mark fill. */
   techColorHex?: string | null;
   /** Assigned packer `staff.color_hex` — phone Packed mark fill. */
@@ -58,7 +63,17 @@ export interface WorkOrderRow {
   createdAt?: string | null;
   stockLevel?: number | null;
   hasTechScan?: boolean;
+  /** Completed pack event; shared mobile/desk workflow stage signal. */
+  packedAt?: string | null;
+  /** Physical dock-stage scan; distinct from packing and required for scan-out. */
+  dockStagedAt?: string | null;
+  /** All live allocation locations; formatted once by the outbound storage law. */
+  storageLocations?: OutboundStorageLocation[] | null;
+  allocatedUnitCount?: number | null;
+  pickedUnitCount?: number | null;
   outOfStock?: string | null;
+  /** Explicit operator expedited flag; independent from the ship-by deadline. */
+  isUrgent?: boolean;
 }
 
 export interface QueueCounts {

@@ -65,7 +65,7 @@ export function FbaUnallocatedBucket({
       ref={setNodeRef}
       className={`rounded-none border transition-colors ${
         isOver
-          ? 'border-dashed border-emerald-400 bg-emerald-50/40'
+          ? 'border-dashed border-border-success bg-surface-success'
           : 'border-border-soft bg-surface-canvas/30'
       }`}
     >

@@ -14,6 +14,7 @@ import {
   selectOnlyAt,
   setMany,
   toggleAt,
+  type SelectionAnchorResult,
   type SelectionAnchorState,
 } from '@/lib/selection/selection-anchor';
 
@@ -108,7 +109,7 @@ export function useTableSelectMode<T>({
    * selection (the ping-pong this hook's docblock warns about).
    */
   const applyAnchor = useCallback(
-    (run: (state: SelectionAnchorState) => ReturnType<typeof toggleAt>) => {
+    (run: (state: SelectionAnchorState) => SelectionAnchorResult<number>) => {
       setSelectedIds((prev) => {
         const result = run(anchorStateFor(prev));
         anchorRef.current = result.anchorId;

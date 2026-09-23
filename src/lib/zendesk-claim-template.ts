@@ -4,6 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrgPlatforms, getOrgTypes } from '@/lib/catalog/org-catalog';
 import { resolveClaimSubjectIdentity } from '@/lib/zendesk-claim-subject-identity';
+import { buildClaimSubject, type ClaimSubjectParts } from '@/lib/zendesk-claim-subject';
 import {
   CLAIM_TYPE_LABEL,
   type ClaimSeverity,
@@ -15,6 +16,7 @@ export type {
   ClaimSeverity,
 } from '@/lib/receiving-claim-type';
 export { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
+export { buildClaimSubject, type ClaimSubjectParts } from '@/lib/zendesk-claim-subject';
 
 export const CLAIM_SEVERITY_LABEL: Record<ClaimSeverity, string> = {
   low: 'Low',
@@ -46,6 +48,11 @@ export interface ClaimTemplateInput {
 export interface ClaimTemplateResult {
   subject: string;
   description: string;
+  /**
+   * The parts `subject` was composed from. The claim modal keeps these and
+   * re-renders the title on every reclassify — one composer, no drift.
+   */
+  subjectParts: ClaimSubjectParts;
   /** Real PO# when present (in the title), else null. Drives ticket filenames. */
   poNumber: string | null;
   /** Raw tracking number for the carton, or null. */
@@ -96,6 +103,7 @@ export async function buildReceivingClaimTemplate(
             s.tracking_number_raw AS tracking_number,
             COALESCE(rz.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
             COALESCE(rz.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
+            COALESCE(rl.source_order_id, r.source_order_id) AS source_order_id,
             rl.receiving_type
      FROM receiving_carton r
      LEFT JOIN receiving_unbox ru
@@ -124,6 +132,7 @@ export async function buildReceivingClaimTemplate(
             s.tracking_number_raw AS tracking_number,
             COALESCE(rz.zoho_purchaseorder_number, r.zoho_purchaseorder_number) AS zoho_purchaseorder_number,
             COALESCE(rz.zoho_purchaseorder_id, r.zoho_purchaseorder_id) AS zoho_purchaseorder_id,
+            COALESCE(rl.source_order_id, r.source_order_id) AS source_order_id,
             rl.receiving_type
      FROM receiving_carton r
      LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id
@@ -151,6 +160,7 @@ export async function buildReceivingClaimTemplate(
         tracking_number: string | null;
         zoho_purchaseorder_number: string | null;
         zoho_purchaseorder_id: string | null;
+        source_order_id: string | null;
         receiving_type: string | null;
       }
     | undefined;
@@ -258,10 +268,16 @@ export async function buildReceivingClaimTemplate(
   // Unfound flow: collapse subject + body to a single short token ("Unfound
   // PO") and stop pretending the receiving_id IS a PO# — operators were
   // getting confused by "PO #4232" where 4232 was just the internal row id.
-  const hasPo = !!(carton.zoho_purchaseorder_number || carton.zoho_purchaseorder_id);
-  const poRef = hasPo
-    ? (carton.zoho_purchaseorder_number || carton.zoho_purchaseorder_id) as string
-    : 'Unfound PO';
+  //
+  // An operator-linked ORDER id (link-carton-identifier.ts) counts as the
+  // handle too: a carton paired to `111-8911758-3549041` is not "Unfound PO" to
+  // the agent reading the ticket, it is that order. It reads as "Order <id>"
+  // because it is not a purchase order.
+  const poNumber = carton.zoho_purchaseorder_number || carton.zoho_purchaseorder_id;
+  const orderId = (carton.source_order_id || '').trim();
+  const hasPo = !!poNumber;
+  const hasOrderId = !hasPo && orderId.length > 0;
+  const poRef = hasPo ? (poNumber as string) : hasOrderId ? orderId : 'Unfound PO';
   const trackingRef = carton.tracking_number || 'n/a';
   // Not routed through effectiveIntakeKind (the line-vs-carton-default SoT,
   // src/lib/receiving/kinds/registry.ts): this carton shape carries no
@@ -293,13 +309,18 @@ export async function buildReceivingClaimTemplate(
     catalogPlatformLabel,
     catalogTypeLabel,
   });
-  // Include the PO# in the title when one is present (it's the operator's
-  // primary handle); omit it for unfound cartons where there is no real PO.
-  // No leading "Claim // " segment — the modal header ("File a claim") and
-  // the Zendesk ticket type already say this is a claim, so restating it here
-  // just doubles up the same word in the Subject field.
-  const poSegment = hasPo ? ` // PO ${poRef}` : '';
-  const subject = `${subjectPlatform} // ${CLAIM_TYPE_LABEL[claimType]}${poSegment} // TRK#${trackingRef}`;
+  // The title is composed by `buildClaimSubject` and NOWHERE else — the modal
+  // re-renders it from these same parts when the operator reclassifies, so a
+  // Platform / Type / claim-type change moves the title in real time without a
+  // second composer to drift against.
+  const subjectParts: ClaimSubjectParts = {
+    identity: subjectPlatform,
+    claimTypeLabel: CLAIM_TYPE_LABEL[claimType],
+    poNumber: hasPo ? poRef : null,
+    orderId: hasOrderId ? poRef : null,
+    tracking: carton.tracking_number || null,
+  };
+  const subject = buildClaimSubject(subjectParts);
 
   const unboxedByName = String(carton.unboxed_by_name ?? '').trim();
   const unboxedAtText = formatUnboxedAt(carton.unboxed_at);
@@ -310,7 +331,7 @@ export async function buildReceivingClaimTemplate(
   // still note the missing PO so the agent sees it.
   const descriptionLines: string[] = [
     `Issue: ${CLAIM_TYPE_LABEL[claimType]}`,
-    ...(hasPo ? [] : [`Purchase Order: ${poRef}`]),
+    ...(hasPo || hasOrderId ? [] : [`Purchase Order: ${poRef}`]),
     ...(lineSummary ? [lineSummary] : hasPo ? [`Scope: package-wide (no specific item)`] : []),
   ];
   if (serials.length) {
@@ -336,6 +357,7 @@ export async function buildReceivingClaimTemplate(
 
   return {
     subject,
+    subjectParts,
     description: descriptionLines.join('\n'),
     poNumber: hasPo ? poRef : null,
     tracking: carton.tracking_number || null,

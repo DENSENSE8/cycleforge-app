@@ -17,14 +17,15 @@
  * 2026-07-09b_workflow_tap_outbox migration is applied and the flag is on.
  * NOT added to vercel.json: scheduling this cron is an owner decision.
  *
- * Auth: Vercel cron origin or CRON_SECRET bearer (same gate as the other
+ * Auth: CRON_SECRET bearer (same gate as the other
  * /api/cron routes). Cron routes are session-less by design — no staff
  * session wrapper (see docs/security/route-permissions.json exemption
  * pattern for /api/cron/*).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isVercelCronOrigin } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
+import { clampInt } from '@/lib/cron/params';
 import { withCronLock } from '@/lib/cron/lock';
 import { isWorkflowTapOutboxEnabled } from '@/lib/feature-flags';
 import {
@@ -44,12 +45,6 @@ export const maxDuration = 300;
 
 /** After this many claims a PENDING row is flipped FAILED for human triage. */
 const MAX_ATTEMPTS = 5;
-
-function clampInt(raw: string | null, fallback: number, min: number, max: number): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(Math.max(Math.floor(n), min), max);
-}
 
 /**
  * Re-drive deps: identical to production except recordIntent resolves to the
@@ -86,9 +81,7 @@ function toTapArgs(row: StaleTapIntent) {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isVercelCronOrigin(req.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   if (!isWorkflowTapOutboxEnabled()) {
     return NextResponse.json({ ok: true, skipped: 'flag_off' });

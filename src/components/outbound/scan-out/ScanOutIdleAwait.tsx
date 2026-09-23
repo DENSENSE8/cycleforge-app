@@ -116,7 +116,7 @@ export function ScanOutIdleAwait({
                   <div className="flex max-w-sm flex-col items-center gap-3">
                     <div
                       className={cn(
-                        'flex h-12 w-12 items-center justify-center bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200',
+                        'flex h-12 w-12 items-center justify-center bg-surface-success text-text-success ring-1 ring-inset ring-border-success',
                         cornerClass('surface'),
                       )}
                     >

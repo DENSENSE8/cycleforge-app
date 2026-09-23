@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import io
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 
 from .config import settings
+from .auth import vision_token_matches
 from .engine import get_engine
 
 app = FastAPI(title="USAV Vision", version="0.1.0")
@@ -49,7 +50,7 @@ app.add_middleware(
 
 
 def _check_token(x_vision_token: str | None) -> None:
-    if settings.vision_token and x_vision_token != settings.vision_token:
+    if not vision_token_matches(x_vision_token, settings.vision_token):
         raise HTTPException(status_code=401, detail="invalid vision token")
 
 

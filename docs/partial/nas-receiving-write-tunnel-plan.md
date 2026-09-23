@@ -13,7 +13,7 @@ The fix is office infrastructure, not app code.
 on the office Mac. Keep the public tunnel browse root **read-only**; route all
 writes (PUT/DELETE) through the token-guarded agent at `/_agent/*`.
 
-See also: `deploy/nas-media-agent/README.md`, `context/ENV-VARS.md`.
+See also: `deploy/nas-media-agent/README.md`, `docs/ENV-VARS.md`.
 
 ---
 

@@ -52,7 +52,7 @@ function csvImportStagingMissingLabel(row: OrderImportRowView): string | null {
 }
 
 /** Rose wash for the one cell whose value is why the row cannot be imported. */
-const MISSING_CELL_CLASS = 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200';
+const MISSING_CELL_CLASS = 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger';
 
 interface CsvImportStagingGridRowProps {
   row: OrderImportRowView;
@@ -107,10 +107,10 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
             label={row.status === 'ready' ? 'Ready' : 'Action required'}
             toneClass={
               row.status === 'ready'
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-800'
+                ? 'bg-surface-success text-text-success'
+                : 'bg-surface-warning text-text-warning'
             }
-            dotClass={row.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500'}
+            dotClass={row.status === 'ready' ? 'bg-fill-success' : 'bg-fill-warning'}
             tooltip={missingLabel}
           />
         );

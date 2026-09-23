@@ -72,10 +72,10 @@ export async function googleSheetsSync(
   }
   try {
     const r = await runGoogleSheetsTransferOrders(
+      orgId,
       opts?.manualSheetName,
       'sheets',
       opts?.onProgress,
-      orgId,
       spreadsheetId,
     );
     return toOutcome(r);
@@ -88,12 +88,33 @@ export async function googleSheetsSync(
 export async function ecwidSync(orgId: OrgId, opts?: SyncOpts): Promise<SyncOutcome> {
   try {
     const r = await runGoogleSheetsTransferOrders(
+      orgId,
       undefined,
       'ecwid',
       opts?.onProgress,
-      orgId,
     );
-    return toOutcome(r);
+    const { runEcwidPackingSlipLifecycle } = await import(
+      '@/lib/documents/ecwid-packing-slip-lifecycle'
+    );
+    // Scan every ECWID order missing a slip, not only rows inserted by this
+    // run. This is both sync-time acquisition and the one-time legacy backfill.
+    const documentResult = await runEcwidPackingSlipLifecycle(orgId);
+    if (documentResult.failed > 0) {
+      console.warn('[ecwid-sync] packing-slip acquisition incomplete', {
+        orgId,
+        ...documentResult,
+      });
+    }
+
+    const outcome = toOutcome(r);
+    outcome.stats = {
+      ...outcome.stats,
+      packingSlipsEnqueued: documentResult.enqueued,
+      packingSlipsAttempted: documentResult.attempted,
+      packingSlipsFetched: documentResult.available,
+      packingSlipsFailed: documentResult.failed,
+    };
+    return outcome;
   } catch (e) {
     return toError(e);
   }

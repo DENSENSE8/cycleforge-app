@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Spine top band — toggle + labelled Search. Same screen corner as the
- * closed-spine GlobalHeader cluster. No New chat / session title.
+ * Spine top band — toggle + labelled Search.
+ * Toggle is SidebarCollapseControl (same box as the closed header).
  */
 
 import { useEffect, useState } from 'react';
@@ -16,9 +16,10 @@ import {
 } from '@/components/sidebar/sidebar-spine';
 import { SPINE_ACCENT } from '@/lib/nav/spine-section-accent';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
-import { TOP_CHROME_BAND_CLASS } from '@/components/layout/header-shell';
-import { IconButton } from '@/design-system/primitives';
+import { SidebarCollapseControl } from '@/components/layout/SidebarCollapseControl';
+import {
+  TOP_CHROME_BAND_CLASS,
+} from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 const SEARCH_ROW_CLASS = cn(
@@ -27,24 +28,6 @@ const SEARCH_ROW_CLASS = cn(
   SPINE_ACCENT.idlePage,
   focusRing('control', 'accent'),
 );
-
-function PanelLeftGlyph() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)}
-      aria-hidden
-    >
-      <rect width="18" height="18" x="3" y="3" rx="2" />
-      <path d="M9 3v18" />
-    </svg>
-  );
-}
 
 export function SpineNavChrome() {
   const [apple, setApple] = useState(true);
@@ -59,16 +42,11 @@ export function SpineNavChrome() {
   return (
     <div
       data-spine-head-chrome
-      className={cn(TOP_CHROME_BAND_CLASS, 'flex items-center gap-1 px-2')}
+      className={cn(TOP_CHROME_BAND_CLASS, 'pr-2')}
     >
-      <IconButton
-        size="sm"
-        data-spine-nav-toggle
-        onClick={() => window.dispatchEvent(new Event(MASTER_NAV_TOGGLE_EVENT))}
-        ariaLabel="Hide navigation"
-        aria-pressed
-        className={cn('shrink-0', HEADER_ICON_CORNER, SPINE_ACCENT.idlePage)}
-        icon={<PanelLeftGlyph />}
+      <SidebarCollapseControl
+        navOpen
+        onToggleNav={() => window.dispatchEvent(new Event(MASTER_NAV_TOGGLE_EVENT))}
       />
       <button
         type="button"

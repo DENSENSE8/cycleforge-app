@@ -21,12 +21,15 @@ import { LANE_MOBILE_FIRST, isLaneVisible } from './lanes';
 import { migrateSpineSlots, resolveSpineMapEntries } from './spine-slots';
 
 // Read from the ledger everywhere EXCEPT this constant, which names the set
-// for readable failure messages. Monitor left it 2026-09-15 (/m/reports gave
-// the lane a phone face) and REJOINED it 2026-09-16 together with `studio`,
-// on the operator's ruling to park both doors. The deepEqual below is the
-// guard that catches an accidental un-hide, so it — not this comment — is the
-// truth.
-const HIDDEN_LANE_IDS = ['monitor', 'sales', 'studio', 'support'] as const;
+// for readable failure messages. Sales returned to the desktop spine
+// 2026-09-16; its absent mobile-registry entry keeps it off the phone.
+// `studio` LEFT this set 2026-09-23: the ruling *"the cron drop to assign
+// tasks from designated tags should be included in the automations display in
+// the sidebar"* gave the lane a desk door. It is `desk-only`, not `ported` —
+// `MOBILE_RESTRICTED_SIDEBAR_IDS` still refuses it on a phone, which the
+// mobile-drawer assertions below enforce. The deepEqual is the guard that
+// catches an accidental un-hide, so it — not this comment — is the truth.
+const HIDDEN_LANE_IDS = ['monitor', 'support'] as const;
 
 /** The registry row behind a palette / spine id, for lane attribution. */
 function laneOf(id: string): string | null {
@@ -74,18 +77,19 @@ test('the hidden lanes have no door on any surface', () => {
   }
 });
 
-test('the four KEPT lanes still display — the gate sequences the port, it does not eat it', () => {
+test('the desktop lanes still display after a mobile port — the gate does not eat them', () => {
   const sections = DESK_SPINE_SECTIONS.map((s) => s.id);
-  // Operator's keep list, by name. `desk-only` means "in daily desktop use and
-  // awaiting its port"; it must NOT cost the lane its row.
-  for (const id of ['inbound', 'fulfillment', 'inventory', 'catalog']) {
-    assert.equal(LANE_MOBILE_FIRST[id as keyof typeof LANE_MOBILE_FIRST], 'desk-only');
+  // A lane keeps its desktop row whether it is awaiting its phone port or has
+  // completed one. Fulfillment is now the latter.
+  const expectedStatus = { inbound: 'desk-only', fulfillment: 'ported', inventory: 'desk-only', catalog: 'desk-only', sales: 'desk-only' } as const;
+  for (const id of Object.keys(expectedStatus)) {
+    assert.equal(LANE_MOBILE_FIRST[id as keyof typeof LANE_MOBILE_FIRST], expectedStatus[id as keyof typeof expectedStatus]);
     assert.ok(sections.includes(id as (typeof sections)[number]), `kept lane "${id}" vanished`);
   }
   const navLanes = new Set(
     getSidebarNavItems().map((item) => spineSectionIdForPage(item)),
   );
-  for (const id of ['inbound', 'fulfillment', 'inventory', 'catalog']) {
+  for (const id of Object.keys(expectedStatus)) {
     assert.ok(navLanes.has(id as never), `kept lane "${id}" lost its rows`);
   }
 });

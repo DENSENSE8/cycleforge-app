@@ -65,6 +65,7 @@ import {
   summarizeAvailability,
   type CatalogAvailability,
 } from './catalog-search-pure';
+import type { FavoriteWorkspaceKey } from '@/lib/favorites/favorite-sku-key';
 
 /** The one platform the projection serves today (mirrors catalog-projection). */
 const PROJECTION_PLATFORM = 'ecwid';
@@ -78,6 +79,17 @@ const REPAIR_SKU_PATTERN = '(-RS|-RS-[0-9]+)$';
 
 /** Fuzzy name matching below this query length matches most of the catalog. */
 const FUZZY_MIN_QUERY_CHARS = 4;
+
+/**
+ * The SQL twin of `normalizeFavoriteSku` (`favorite-sku-key.ts`) — case-folded,
+ * separator-stripped SKU, i.e. exactly what `favorite_skus.sku_normalized`
+ * holds. Stripping is case-insensitive over `[A-Za-z0-9]`, so strip-then-lower
+ * here and lower-then-strip in TypeScript cannot disagree.
+ * `favorite-sku-key.test.ts` pins that folding: fold the case and drop every
+ * separator, or a starred SKU stops matching its own tile.
+ */
+export const FAVORITE_SKU_KEY_SQL =
+  "LOWER(REGEXP_REPLACE(COALESCE(pl.merchant_sku, ''), '[^A-Za-z0-9]+', '', 'g'))";
 
 /**
  * Which half of the catalog to search.
@@ -97,6 +109,16 @@ export interface KioskCatalogSearchOptions {
   categoryId?: string | null;
   /** Scanned barcode — exact identity, bypasses text ranking entirely. */
   barcode?: string | null;
+  /**
+   * Narrow the browse to this workspace's curated favorites, in `sort_order`.
+   *
+   * The favorites list is a SCOPE of the same catalog, not a second data
+   * source: the tiles carry the same photo, price, stock and bin as any other
+   * browse page because they ARE the same rows. Discarded by a `barcode` or a
+   * `query` for the same reason `categoryId` is — a walk-in asking for a
+   * product does not care what the counter pinned.
+   */
+  favoritesWorkspace?: FavoriteWorkspaceKey | null;
   limit: number;
   offset: number;
 }
@@ -164,8 +186,9 @@ const AVAILABILITY_LATERAL = `
  * Precedence: a `barcode` is an identity lookup and wins over everything; a
  * `query` searches the whole segment and ignores `categoryId` (a walk-in asking
  * for a product does not care which category the staffer happens to be in —
- * that was the defect behind the 100-row client pool); otherwise it is a
- * category or all-products browse ordered by name.
+ * that was the defect behind the 100-row client pool); then a
+ * `favoritesWorkspace` browse (curated order); otherwise a category or
+ * all-products browse ordered by name.
  */
 export async function searchKioskCatalog(
   orgId: OrgId,
@@ -249,6 +272,26 @@ export async function searchKioskCatalog(
     const ranked = buildRankedSearchSql(variants);
     filters.push(`(${ranked.whereClause})`);
     rankClause = ranked.rankClause;
+  } else if (options.favoritesWorkspace) {
+    // Curated list — membership in this workspace, painted in its `sort_order`.
+    //
+    // The order rides `rank` rather than a second ORDER BY branch: the page CTE
+    // already sorts `rank DESC, listed_name`, so `1000 - sort_order` puts the
+    // first pinned favorite first and keeps the rest ascending, while every
+    // other scope leaves rank at 0 and sorts by name exactly as before.
+    const workspaceParam = push(options.favoritesWorkspace);
+    const membership = `
+           FROM favorite_skus f
+           INNER JOIN favorite_sku_workspaces w
+             ON w.favorite_id = f.id
+            AND w.organization_id = f.organization_id
+          WHERE f.organization_id = $1
+            AND w.workspace_key = ${workspaceParam}
+            AND w.is_active
+            AND f.sku_normalized <> ''
+            AND f.sku_normalized = ${FAVORITE_SKU_KEY_SQL}`;
+    filters.push(`EXISTS (SELECT 1${membership})`);
+    rankClause = `COALESCE((SELECT 1000 - w.sort_order${membership} LIMIT 1), 0)`;
   } else if (options.categoryId) {
     // GIN-indexed array overlap (category_external_ids), not a JSONB probe.
     filters.push(`pl.category_external_ids && ARRAY[${push(options.categoryId)}]::text[]`);

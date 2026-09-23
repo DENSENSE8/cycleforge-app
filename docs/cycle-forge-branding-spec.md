@@ -186,7 +186,7 @@ Add blanks to `.env.example`; never commit real secrets.
 | File | Current | Target |
 |------|---------|--------|
 | `src/lib/repair/repair-paper-html.ts` | Hardcoded USAV Solutions + address | `getOrgLetterhead()` |
-| `src/app/api/repair-service/print/[id]/route.tsx` | Uses `repairPaperLetterheadHtml()` | Pass org context into letterhead helper |
+| `src/lib/repair/render-repair-paper.ts` | Uses `repairPaperLetterheadHtml()` (shared by the staff print route and the kiosk paperwork route) | Pass org context into letterhead helper |
 | `src/components/repair/RepairServiceForm.tsx` | Hardcoded header | Org name + letterhead from session/API |
 | `src/components/repair/RepairAgreement.tsx` | Hardcoded header | Same |
 | `src/app/api/walk-in/receipt/[id]/route.tsx` | Hardcoded footer | Org name + letterhead |

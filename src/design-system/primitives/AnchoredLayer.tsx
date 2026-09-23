@@ -63,6 +63,22 @@ export type AnchoredPlacement =
   | 'left-end'
   | 'left-center';
 
+/**
+ * Which edge the panel's horizontal alignment is measured from.
+ *
+ * `anchor` (default) aligns to the TRIGGER — the normal dropdown behaviour.
+ * `viewport` aligns to the SCREEN, so a panel opened from a trigger that sits
+ * inside a padded bar still reaches the edge. The header's inset would
+ * otherwise become a visible gutter down the side of the open panel.
+ *
+ * Operator 2026-09-22: *"the drop down for the inbox on click must have no
+ * spacing to the right of the screen when clicked."*
+ *
+ * Vertical-edge placements only (`top-*` / `bottom-*`, excluding `-stretch`
+ * and `-center`, which are already defined against the trigger's box).
+ */
+export type AnchoredEdgeAlign = 'anchor' | 'viewport';
+
 export interface AnchoredLayerProps {
   open: boolean;
   onClose: () => void;
@@ -84,6 +100,11 @@ export interface AnchoredLayerProps {
    * placements; opt-in for the others.
    */
   matchWidth?: boolean;
+  /**
+   * Measure horizontal alignment from the viewport edge instead of the
+   * trigger's. Default `'anchor'`. See {@link AnchoredEdgeAlign}.
+   */
+  edgeAlign?: AnchoredEdgeAlign;
   /** Close on Escape. Default true. */
   closeOnEscape?: boolean;
   /**
@@ -111,9 +132,13 @@ function intendedPanelLeft(
   rect: DOMRect,
   placement: AnchoredPlacement,
   panelWidth: number,
+  edgeAlign: AnchoredEdgeAlign,
 ): number | null {
   if (!(placement.startsWith('top-') || placement.startsWith('bottom-'))) return null;
   if (placement.endsWith('-stretch')) return null;
+  // A viewport-aligned panel is AT the edge on purpose — clamping it back to
+  // `VIEWPORT_GUTTER_PX` would reinstate the gap it exists to remove.
+  if (edgeAlign === 'viewport') return null;
   if (placement.endsWith('-center')) return rect.left + rect.width / 2 - panelWidth / 2;
   if (placement.endsWith('-end')) return rect.right - panelWidth;
   return rect.left; // -start
@@ -125,6 +150,7 @@ function computeStyle(
   gap: number,
   matchWidth: boolean,
   level: ZIndexToken,
+  edgeAlign: AnchoredEdgeAlign,
 ): CSSProperties {
   const stretch = placement.endsWith('-stretch');
   const isRight = placement.startsWith('right-');
@@ -168,10 +194,10 @@ function computeStyle(
     base.left = rect.left + rect.width / 2;
     base.transform = 'translateX(-50%)';
   } else if (placement.endsWith('-end')) {
-    base.right = Math.max(0, window.innerWidth - rect.right);
+    base.right = edgeAlign === 'viewport' ? 0 : Math.max(0, window.innerWidth - rect.right);
     if (matchWidth) base.width = rect.width;
   } else {
-    base.left = rect.left;
+    base.left = edgeAlign === 'viewport' ? 0 : rect.left;
     if (matchWidth) base.width = rect.width;
   }
 
@@ -187,6 +213,7 @@ export function AnchoredLayer({
   gap = 4,
   avoidCollisions = true,
   matchWidth = false,
+  edgeAlign = 'anchor',
   closeOnEscape = true,
   ignoreClickSelector,
   className,
@@ -247,7 +274,7 @@ export function AnchoredLayer({
       return;
     }
     const width = panel.getBoundingClientRect().width;
-    const intended = intendedPanelLeft(rect, placement, width);
+    const intended = intendedPanelLeft(rect, placement, width, edgeAlign);
     if (!avoidCollisions || intended == null) {
       setClampLeft(null);
       return;
@@ -259,7 +286,7 @@ export function AnchoredLayer({
     const clamped = Math.min(Math.max(intended, VIEWPORT_GUTTER_PX), maxLeft);
     // Only override when we actually moved it — sub-pixel jitter is not overflow.
     setClampLeft(Math.abs(clamped - intended) > 0.5 ? clamped : null);
-  }, [open, rect, placement, gap, avoidCollisions]);
+  }, [open, rect, placement, gap, avoidCollisions, edgeAlign]);
 
   // Outside-click that accounts for the (portaled) panel AND the anchor, so a
   // click inside either is not treated as "outside". Replaces each caller's
@@ -286,7 +313,7 @@ export function AnchoredLayer({
   if (!open || !target || !rect) return null;
 
   const stretch = placement.endsWith('-stretch');
-  const positioned = computeStyle(rect, placement, gap, matchWidth || stretch, level);
+  const positioned = computeStyle(rect, placement, gap, matchWidth || stretch, level, edgeAlign);
   if (clampLeft != null) {
     // Replace whatever horizontal anchoring the placement chose with a concrete
     // clamped left, dropping the `right` / translateX(-50%) it may have used.

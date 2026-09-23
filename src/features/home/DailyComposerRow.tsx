@@ -24,7 +24,7 @@ import { useMemo, useRef, useState, type Ref } from 'react';
 import { ChevronDown, Plus } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
 import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import { Button } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -235,11 +235,20 @@ export function DailyComposerRow({
           aria-hidden
           className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')}
         />
-        {expanded ? 'Fewer options' : 'Glyph, cadence, owner & links'}
+        {expanded ? 'Fewer options' : 'Details, glyph, cadence, owner & links'}
       </button>
 
       {expanded ? (
         <div className="flex flex-col gap-3 px-3 pb-3">
+          <TextField
+            label="Description (optional)"
+            multiline
+            rows={3}
+            value={draft.description}
+            onChange={(description) => patch({ description })}
+            maxLength={2000}
+          />
+
           <div className="flex flex-col gap-1.5">
             <p className="text-role-micro uppercase tracking-wide text-text-faint">Glyph</p>
             <GlyphGrid

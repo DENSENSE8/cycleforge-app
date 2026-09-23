@@ -17,12 +17,13 @@ import {
   outboundDocumentMimeHint,
 } from '@/lib/documents/outbound-document-display';
 import type {
-  FetchOutboundDocumentsResponse,
   OutboundDocument,
   OutboundDocumentsResponse,
   OutboundDocumentType,
+  PackingSlipIngestState,
 } from '@/lib/documents/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { cn } from '@/utils/_cn';
 
 function displayName(doc: OutboundDocument): string {
   if (doc.data.filename) return doc.data.filename;
@@ -44,7 +45,9 @@ interface DocumentTypeGroupProps {
   readOnly: boolean;
   isLoading: boolean;
   onChange: () => void;
+  onPreview?: (documentType: OutboundDocumentType) => void;
   flush?: boolean;
+  ingestState?: PackingSlipIngestState | null;
 }
 
 function DocumentTypeGroup({
@@ -58,13 +61,14 @@ function DocumentTypeGroup({
   readOnly,
   isLoading,
   onChange,
+  onPreview,
   flush = false,
+  ingestState = null,
 }: DocumentTypeGroupProps) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const replaceFileRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<OutboundDocument | null>(null);
 
   const kindPrefix = documentType === 'shipping_label' ? 'LABEL' : 'SLIP';
@@ -148,24 +152,6 @@ function DocumentTypeGroup({
     onError: (e: Error) => setError(e.message),
   });
 
-  const fetchMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}/documents/fetch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ types: [documentType] }),
-      });
-      if (!res.ok) throw new Error('Failed to fetch documents');
-      return (await res.json()) as FetchOutboundDocumentsResponse;
-    },
-    onSuccess: (result) => {
-      const failure = result.failed.find((f) => f.type === documentType);
-      setFetchError(failure?.error ?? null);
-      if (result.fetched.length > 0) onChange();
-    },
-    onError: (e: Error) => setFetchError(e.message),
-  });
-
   const onFiles = (files: FileList | null) => {
     const file = files?.[0];
     if (file) uploadMutation.mutate(file);
@@ -183,23 +169,20 @@ function DocumentTypeGroup({
     <div data-testid={`order-doc-${documentType.replace(/_/g, '-')}`}>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-role-eyebrow uppercase tracking-wider text-text-soft">{title}</h3>
-        {!readOnly ? (
-          <HoverTooltip label="Fetch from the marketplace" focusable={false}>
-            {/* ds-raw-button */}
-            <button
-              type="button"
-              onClick={() => fetchMutation.mutate()}
-              disabled={fetchMutation.isPending}
-              className="-my-0.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-faint hover:bg-surface-hover hover:text-blue-600 disabled:opacity-40"
-            >
-              {fetchMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3 w-3" />
-              )}
-              Fetch
-            </button>
-          </HoverTooltip>
+        {documentType === 'packing_slip' && ingestState ? (
+          <span
+            className={cn(
+              'text-role-eyebrow font-semibold uppercase tracking-widest',
+              ingestState.status === 'available'
+                ? 'text-text-success'
+                : ingestState.status === 'failed'
+                  ? 'text-text-danger'
+                  : 'text-text-warning',
+            )}
+            title={ingestState.lastError ?? undefined}
+          >
+            {ingestState.label}
+          </span>
         ) : null}
       </div>
 
@@ -244,25 +227,16 @@ function DocumentTypeGroup({
       ) : null}
 
       {error ? <p className="mt-2 text-role-eyebrow text-text-danger">{error}</p> : null}
-      {fetchError ? (
-        <div className={`mt-2 flex items-center justify-between gap-2 border border-dashed border-amber-200 bg-amber-50 px-3 py-2 ${flush ? 'rounded-none' : 'rounded-lg'}`}>
-          <p className="text-role-caption text-text-warning">{fetchError}</p>
-          <button
-            type="button"
-            onClick={() => fetchMutation.mutate()}
-            className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-warning hover:underline"
-          >
-            Retry
-          </button>
-        </div>
-      ) : null}
-
       <div className="mt-3 space-y-1.5">
         {isLoading ? (
           <p className="text-role-caption text-text-faint">Loading…</p>
         ) : documents.length === 0 ? (
           <p className="text-role-caption text-text-faint">
-            {readOnly ? `No ${title.toLowerCase()} attached.` : `No ${title.toLowerCase()} attached yet.`}
+            {documentType === 'packing_slip' && ingestState
+              ? ingestState.label
+              : readOnly
+                ? `No ${title.toLowerCase()} attached.`
+                : `No ${title.toLowerCase()} attached yet.`}
           </p>
         ) : (
           documents.map((doc) => {
@@ -272,16 +246,30 @@ function DocumentTypeGroup({
                 key={doc.id}
                 className={`flex items-center justify-between gap-2 border border-border-soft px-3 py-2 ${flush ? 'rounded-none' : 'rounded-lg'}`}
               >
-                <a
-                  href={`/api/documents/${doc.id}/content`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex min-w-0 items-center gap-2 text-role-caption font-semibold text-text-muted hover:text-blue-600"
-                >
-                  <FileText className="h-4 w-4 shrink-0 text-text-faint" />
-                  <span className="truncate">{displayName(doc)}</span>
-                  <ExternalLink className="h-3 w-3 shrink-0 text-text-faint" />
-                </a>
+                {onPreview ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    radius="flush"
+                    onClick={() => onPreview(documentType)}
+                    icon={<FileText className="h-4 w-4 text-text-faint" />}
+                    className="min-w-0 justify-start px-0 text-text-muted hover:text-blue-600"
+                    data-testid={`view-${documentType.replace(/_/g, '-')}`}
+                  >
+                    <span className="truncate">{displayName(doc)}</span>
+                  </Button>
+                ) : (
+                  <a
+                    href={`/api/documents/${doc.id}/content`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-w-0 items-center gap-2 text-role-caption font-semibold text-text-muted hover:text-blue-600"
+                  >
+                    <FileText className="h-4 w-4 shrink-0 text-text-faint" />
+                    <span className="truncate">{displayName(doc)}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-text-faint" />
+                  </a>
+                )}
                 <div className="flex shrink-0 items-center gap-2">
                   {shipmentLink ? (
                     <span className="rounded bg-blue-50 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700 ring-1 ring-inset ring-blue-200">
@@ -391,6 +379,8 @@ export function OrderDocumentsSection({
     },
     enabled: Number.isFinite(orderId) && orderId > 0,
     staleTime: 30_000,
+    refetchInterval: (query) =>
+      query.state.data?.packingSlipIngest?.status === 'processing' ? 2_000 : false,
   });
 
   const documents = data?.documents ?? [];
@@ -419,7 +409,7 @@ export function OrderDocumentsSection({
         mimeHint: outboundDocumentMimeHint(slip),
         count: slip ? slips.length : undefined,
         loading: isLoading,
-        emptyHint: 'Fetch one from the Labels station',
+        emptyHint: 'The ECWID import worker is acquiring this packing slip',
       },
     ];
   }, [labels, slips, isLoading]);
@@ -502,6 +492,10 @@ export function OrderDocumentsSection({
           readOnly={readOnly}
           isLoading={isLoading}
           onChange={onChange}
+          onPreview={showPreview ? (type) => {
+            setPreviewActiveId(type);
+            setPreviewOpen(true);
+          } : undefined}
           flush={flush}
         />
       </div>
@@ -517,7 +511,12 @@ export function OrderDocumentsSection({
           readOnly={readOnly}
           isLoading={isLoading}
           onChange={onChange}
+          onPreview={showPreview ? (type) => {
+            setPreviewActiveId(type);
+            setPreviewOpen(true);
+          } : undefined}
           flush={flush}
+          ingestState={data?.packingSlipIngest ?? null}
         />
       </div>
       {showPreview ? (

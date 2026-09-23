@@ -139,6 +139,16 @@ export type PoLineSummary = {
   quantity_received: number;
   zoho_purchaseorder_id: string | null;
   zoho_purchaseorder_number: string | null;
+  /**
+   * The marketplace order this line was purchased under (eBay `11-15183-54752`,
+   * Amazon `112-…`). NOT a convenience field: on a carton with no Zoho PO this
+   * IS the carton's order identity, and it is the only value that carries the
+   * dashes. Without it the station bar falls back to the internal numeric order
+   * id and the operator copies a string that matches nothing on the platform.
+   */
+  source_order_id: string | null;
+  /** 'zoho' | 'ebay' | … — picks the Order-vs-PO ladder in `getReceivingPoIdentityParts`. */
+  inbound_source_type: string | null;
   receiving_type: string | null;
   condition_grade: string | null;
 };
@@ -223,6 +233,8 @@ export function mapApiLineToPoSummary(l: {
   quantity_received: number;
   zoho_purchaseorder_id?: string | null;
   zoho_purchaseorder_number?: string | null;
+  source_order_id?: string | null;
+  inbound_source_type?: string | null;
   receiving_type?: string | null;
   condition_grade?: string | null;
 }): PoLineSummary {
@@ -235,6 +247,8 @@ export function mapApiLineToPoSummary(l: {
     quantity_received: l.quantity_received,
     zoho_purchaseorder_id: l.zoho_purchaseorder_id ?? null,
     zoho_purchaseorder_number: l.zoho_purchaseorder_number ?? null,
+    source_order_id: l.source_order_id ?? null,
+    inbound_source_type: l.inbound_source_type ?? null,
     receiving_type: l.receiving_type ?? 'PO',
     condition_grade: l.condition_grade ?? 'USED_A',
   };
@@ -649,11 +663,21 @@ export function buildUnboxRailUnmatchedRow(
  * Carries the REAL line id (positive) so the hydration reconcile targets the same
  * line, and `receiving_source` is null (NOT 'unmatched') so the matched UI — not
  * the unfound UI — renders during the brief pre-hydration window.
+ *
+ * ORDER IDENTITY IS SEEDED HERE. `source_order_id` / `inbound_source_type` ride
+ * the same lookup-po response that opened the pane, so
+ * `getReceivingPoIdentityParts` resolves the DASHED marketplace order on the
+ * first frame. They were absent until the `include=serials` hydration landed,
+ * and in that window the station bar fell back to the internal numeric order id
+ * — a dashless string that finds nothing when the operator pastes it into eBay.
+ * `sourcePlatform` comes off the scan's `receiving_package` for the same reason:
+ * it picks the platform ladder and the chip's brand tint.
  */
 export function buildMatchedStubRow(
   receivingId: number,
   trackingNumber: string,
   line: PoLineSummary,
+  sourcePlatform: string | null = null,
 ): ReceivingLineRow {
   return {
     id: line.id,
@@ -665,6 +689,8 @@ export function buildMatchedStubRow(
     zoho_purchase_receive_id: null,
     zoho_purchaseorder_id: line.zoho_purchaseorder_id,
     zoho_purchaseorder_number: line.zoho_purchaseorder_number,
+    source_order_id: line.source_order_id,
+    inbound_source_type: line.inbound_source_type,
     item_name: line.item_name,
     sku: line.sku,
     quantity_received: line.quantity_received,
@@ -686,7 +712,7 @@ export function buildMatchedStubRow(
     notes: null,
     created_at: null,
     image_url: line.image_url,
-    source_platform: null,
+    source_platform: sourcePlatform,
     receiving_source: null,
   };
 }

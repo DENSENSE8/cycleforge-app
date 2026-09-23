@@ -52,10 +52,6 @@ describe('slot-table discover (delete vs keep)', () => {
       report.keep.some((k) => k.id === 'materialization:ORDERS_COMPOUND_COLUMNS'),
       'ORDERS_COMPOUND_COLUMNS is the replacement, not a kill',
     );
-    assert.ok(
-      report.keep.some((k) => k.id === 'engine:CART_COMPOUND_COLUMNS'),
-      'kiosk cart is keep-until-opt-in, not a GRID kill',
-    );
   });
 
   it('does not list KEEP symbols as DELETE', () => {

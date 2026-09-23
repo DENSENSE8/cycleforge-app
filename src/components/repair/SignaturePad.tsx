@@ -12,9 +12,9 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Maximize2, X } from '@/components/Icons';
 import {
-  COUNTER_SIGNATURE_GUIDE,
-  COUNTER_SIGNATURE_PAD,
-} from '@/app/kiosk/kiosk-counter-surface';
+  REPAIR_SIGNATURE_GUIDE_CLASS,
+  REPAIR_SIGNATURE_PAD_CLASS,
+} from '@/lib/repair/signature-geometry';
 import { exportSignaturePng, scaleSignatureCanvas } from './signature-canvas';
 import { cn } from '@/utils/_cn';
 
@@ -28,7 +28,7 @@ interface SignaturePadProps {
   label?: string;
   /**
    * Legacy STAFF fill: the pad's box takes its parent's height instead of its
-   * own aspect ({@link COUNTER_SIGNATURE_PAD}). Kept for the two staff mounts
+   * own aspect ({@link REPAIR_SIGNATURE_PAD_CLASS}). Kept for the two staff mounts
    * that size the pad from a fixed-height wrapper (`RepairIntakeForm`,
    * `RepairPickupFlow`) so the 2026-09-15 kiosk geometry change does not
    * relayout surfaces it was not about.
@@ -56,18 +56,51 @@ export function SignaturePad({
   variant = 'default',
   allowFullscreen = false,
 }: SignaturePadProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const padRef = useRef<SignaturePadLib | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   /** Survives fullscreen remount (Dialog portal) so strokes restore after expand/collapse. */
   const strokesRef = useRef<PointGroup[]>([]);
   const [signed, setSigned] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  // Initialize signature_pad + ResizeObserver (re-binds when Dialog mounts the canvas).
+  /**
+   * The pad binds to the CANVAS NODE, not to `expanded`.
+   *
+   * `expanded` is only a proxy for "a canvas exists", and in the fullscreen
+   * branch it is a WRONG one: `@radix-ui/react-portal` renders `null` on its
+   * first render and mounts its children from a layout effect
+   * (`useLayoutEffect(() => setMounted(true), [])`). So the commit that flips
+   * `expanded` unmounts the inline canvas and mounts nothing — an effect keyed
+   * on `[expanded]` runs against a null ref, bails, and never runs again
+   * because `expanded` does not change when the portal's second commit finally
+   * attaches the canvas. The result was a fullscreen pad with no `signature_pad`
+   * bound to it: no ink, a dead Clear, and no stroke restore.
+   *
+   * Element state + stable callback refs fire exactly on attach/detach, so the
+   * pad follows the canvas across both commits and across either branch.
+   * `useCallback` identity is load-bearing — an inline `ref={(n) => …}` is a
+   * new function every render, which detaches and re-attaches on every render
+   * and would tear the pad down mid-signature.
+   */
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
+  const canvasRef = useCallback((node: HTMLCanvasElement | null) => setCanvasEl(node), []);
+  const containerRef = useCallback((node: HTMLDivElement | null) => setContainerEl(node), []);
+
+  /**
+   * The live callback, so the pad effect never has to list it as a dependency
+   * — a caller passing an inline arrow would otherwise rebuild the pad on
+   * every parent render and drop the strokes in progress.
+   */
+  const onChangeRef = useRef(onSignatureChange);
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
+    onChangeRef.current = onSignatureChange;
+  });
+
+  // Initialize signature_pad + ResizeObserver. Keyed on the NODES, so this runs
+  // on whichever commit actually attaches the canvas — inline or portal.
+  useEffect(() => {
+    const canvas = canvasEl;
+    const container = containerEl;
     if (!canvas || !container) return;
 
     let pad: SignaturePadLib | null = null;
@@ -79,14 +112,14 @@ export function SignaturePad({
       if (data.length >= 1 && totalPoints >= 5) {
         strokesRef.current = data;
         setSigned(true);
-        onSignatureChange({
+        onChangeRef.current({
           strokes: data,
           dataUrl: exportSignaturePng(canvas, data, () => next.toDataURL('image/png')),
         });
       } else {
         strokesRef.current = [];
         setSigned(false);
-        onSignatureChange(null);
+        onChangeRef.current(null);
       }
     };
 
@@ -142,18 +175,20 @@ export function SignaturePad({
     return () => {
       clearTimeout(resizeTimer);
       ro.disconnect();
+      // The strokes themselves live in `strokesRef` (written on every
+      // `endStroke`), so tearing the pad down to follow the canvas into the
+      // Dialog never loses ink — `initPad` restores it on the other side.
       if (pad) pad.off();
       padRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded]);
+  }, [canvasEl, containerEl]);
 
   const handleClear = useCallback(() => {
     padRef.current?.clear();
     strokesRef.current = [];
     setSigned(false);
-    onSignatureChange(null);
-  }, [onSignatureChange]);
+    onChangeRef.current(null);
+  }, []);
 
   const isDropoff = variant === 'dropoff';
   /**
@@ -224,7 +259,7 @@ export function SignaturePad({
 
   /**
    * The pad box. On the kiosk its geometry is a RATIO on the kiosk axis
-   * ({@link COUNTER_SIGNATURE_PAD}), never a fixed height: it is mounted at
+   * ({@link REPAIR_SIGNATURE_PAD_CLASS}), never a fixed height: it is mounted at
    * four measures and a height means a different aspect at each one. The
    * `fill` branch is the staff wrappers' own height (see {@link fill}); the
    * border follows it because a filled pad is already inside a bordered box.
@@ -234,14 +269,14 @@ export function SignaturePad({
       ref={containerRef}
       className={cn(
         'relative overflow-hidden bg-surface-card',
-        fill ? 'min-h-0 flex-1' : cn('border border-border-default', COUNTER_SIGNATURE_PAD),
+        fill ? 'min-h-0 flex-1' : cn('border border-border-default', REPAIR_SIGNATURE_PAD_CLASS),
       )}
     >
       {/* `touch-none` is load-bearing, not styling: without it a finger drag
           scrolls the pane instead of drawing. `select-none` emits the
           -webkit- prefix iOS needs. */}
       <canvas ref={canvasRef} className="h-full w-full touch-none select-none" />
-      <div className={COUNTER_SIGNATURE_GUIDE} />
+      <div className={REPAIR_SIGNATURE_GUIDE_CLASS} />
       {!signed && (
         <span className="pointer-events-none absolute right-3 top-3 text-role-micro uppercase tracking-wide text-text-faint">
           Touch to sign

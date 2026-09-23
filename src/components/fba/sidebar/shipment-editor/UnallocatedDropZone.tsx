@@ -40,7 +40,7 @@ export function UnallocatedDropZone({
       ref={setNodeRef}
       className={`rounded-none border transition-colors ${
         isOver
-          ? 'border-dashed border-amber-400 bg-amber-50/40'
+          ? 'border-dashed border-border-warning bg-surface-warning'
           : 'border-border-soft bg-surface-canvas/30'
       }`}
     >
@@ -57,7 +57,7 @@ export function UnallocatedDropZone({
             />
           ) : null}
         </div>
-        <p className="text-role-micro uppercase tracking-wider text-amber-700">
+        <p className="text-role-micro uppercase tracking-wider text-text-warning">
           Unallocated
         </p>
         {items.length > 0 && (
@@ -96,9 +96,10 @@ export function UnallocatedDropZone({
                         <Button
                           variant="secondary"
                           size="sm"
+                          radius="flush"
                           icon={<RotateCcw className="h-2.5 w-2.5" />}
                           onClick={() => onRestoreToBundle(item.item_id)}
-                          className="h-5 gap-0.5 rounded-md border border-amber-200 bg-amber-50 px-1.5 text-role-micro uppercase tracking-wider text-amber-700 hover:border-amber-300 hover:bg-amber-100"
+                          className="h-5 gap-0.5 border border-border-warning bg-surface-warning px-1.5 text-role-micro uppercase tracking-wider text-text-warning hover:bg-surface-hover"
                           ariaLabel="Undo move — return to previous box"
                         >
                           Undo

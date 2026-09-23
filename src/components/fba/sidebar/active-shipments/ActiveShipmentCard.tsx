@@ -84,7 +84,7 @@ export function ActiveShipmentCard({
         className="flex w-full cursor-pointer items-center justify-between gap-2 bg-surface-card px-3 py-2.5 text-left transition-colors hover:bg-surface-hover"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <Package className="h-4 w-4 shrink-0 text-purple-500" />
+          <Package className="h-4 w-4 shrink-0 text-text-accent" />
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex min-w-0 items-baseline gap-1.5">
               <span className="inline-flex min-w-0 max-w-full items-center gap-0.5 leading-none">
@@ -101,7 +101,9 @@ export function ActiveShipmentCard({
                       }}
                       ariaLabel="Edit shipment"
                       icon={<Pencil className="pointer-events-none h-2 w-2 shrink-0" />}
-                      className="inline-flex size-3 shrink-0 items-center justify-center rounded-sm text-purple-400 hover:bg-purple-100/80 hover:text-purple-700"
+                      size="xs"
+                      radius="flush"
+                      className="text-text-accent hover:bg-surface-accent hover:text-text-accent"
                     />
                   </HoverTooltip>
                 )}
@@ -124,14 +126,14 @@ export function ActiveShipmentCard({
                   : `${carrier ? `${carrier} · ` : ''}${primaryTracking}`}
               </p>
               {isShipped && shippedDateLabel ? (
-                <span className="shrink-0 rounded bg-emerald-100 px-1.5 py-0.5 text-role-eyebrow text-emerald-700">
+                <span className="shrink-0 rounded-none border border-border-success bg-surface-success px-1.5 py-0.5 text-role-eyebrow text-text-success">
                   {shippedDateLabel}
                 </span>
               ) : null}
             </div>
           </div>
         </div>
-        <ChevronToggle isExpanded={isExpanded} tone="purple" />
+        <ChevronToggle isExpanded={isExpanded} tone="gray" />
       </div>
 
       {/* ── Expanded: Tracking Groups + Items ── */}
@@ -146,7 +148,7 @@ export function ActiveShipmentCard({
             style={{ willChange: 'height, opacity' }}
             className="overflow-hidden"
           >
-            <div className="border-t border-purple-100">
+            <div className="border-t border-border-hairline">
               {(() => {
                 const hasBundles = (shipment.bundles?.length ?? 0) > 0;
                 // Compute unallocated items: items not in any tracking bundle

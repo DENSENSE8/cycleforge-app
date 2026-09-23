@@ -56,7 +56,7 @@ test('every spine section with pages emits a band whose label + icon come from t
   }
 });
 
-test('pin contains Home Search Media Plans Chat Settings Reports; Studio and Monitor are parked, Admin is dissolved', () => {
+test('pin contains Home Search Media Plans Chat Settings Reports; Monitor is parked, Studio is back, Admin is dissolved', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
@@ -66,21 +66,32 @@ test('pin contains Home Search Media Plans Chat Settings Reports; Studio and Mon
   // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to
   // a parent-level spine row; the palette pin follows the registry's `top`
   // set, so it lands here too rather than under a Monitor band.
+  //
+  // `tasks` is NOT a pin row: the assigned-work desk is a tab on Daily
+  // (`/?mode=tasks`), reached by opening Daily — the page an operator already
+  // opens at the start of a shift — or by the ⌘⇧U chord from anywhere.
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
     ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings', 'reports'],
   );
-  // Studio (Automations) and Monitor (Operations) were PARKED 2026-09-16 on an
-  // operator ruling — the door is withdrawn on every surface, so the palette
-  // emits no band for either. Same mechanism as Sales / Support: an empty group
-  // is omitted, so the palette cannot offer a withdrawn door.
-  for (const parked of ['studio', 'monitor'] as const) {
-    assert.equal(
-      groups.some((g) => g.id === parked),
-      false,
-      `parked lane "${parked}" must not emit a ⌘K band`,
-    );
-  }
+  // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on
+  // every surface, so the palette emits no band. Same mechanism as Sales /
+  // Support: an empty group is omitted, so the palette cannot offer a
+  // withdrawn door.
+  assert.equal(
+    groups.some((g) => g.id === 'monitor'),
+    false,
+    'parked lane "monitor" must not emit a ⌘K band',
+  );
+  // Studio (Automations) was UNPARKED 2026-09-23 — *"the cron drop to assign
+  // tasks from designated tags should be included in the automations display
+  // in the sidebar"*. A lane with a door emits its band, and the palette is the
+  // same funnel as the spine, so this is the ⌘K half of that ruling.
+  assert.equal(
+    groups.some((g) => g.id === 'studio'),
+    true,
+    'the Automations lane emits its ⌘K band again',
+  );
   // Admin is DISSOLVED — `/admin` is a redirect table and permission is
   // `requires` on rows, not a destination. Same fact as
   // `sidebar-navigation.test.ts` ("admin ships no nav row"): with no admin page

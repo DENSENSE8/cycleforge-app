@@ -57,13 +57,13 @@ type ScanOutDisplayTab = 'timeline' | 'listings';
 type ScanOutDisplayNav = typeof STATION_DISPLAY_INDEX | ScanOutDisplayTab;
 
 const STATUS_TONE: Record<ScanOutActivePane['status'], string> = {
-  ok: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200',
-  dup: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
-  exc: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
+  ok: 'bg-surface-success text-text-success ring-1 ring-inset ring-border-success',
+  dup: 'bg-surface-warning text-text-warning ring-1 ring-inset ring-border-warning',
+  exc: 'bg-surface-warning text-text-warning ring-1 ring-inset ring-border-warning',
   blk: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft',
-  miss: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
-  err: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
+  miss: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
+  err: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
 };
 
 function statusLabel(pane: ScanOutActivePane): string {
@@ -319,7 +319,7 @@ export function ScanOutActivePanel({
                         size="sm"
                         onClick={onUndo}
                         disabled={isUndoing}
-                        className="h-auto shrink-0 px-1 text-role-micro text-emerald-800 underline-offset-2 hover:underline"
+                        className="h-auto shrink-0 px-1 text-role-micro text-text-success underline-offset-2 hover:underline"
                       >
                         {isUndoing ? 'Undoing…' : 'Undo'}
                       </Button>

@@ -81,7 +81,7 @@ When showing mobile SoT on a large viewport:
 | Primary commit | Sticky `Button` / sticky bar | Buried under long lists |
 | Secondary / wipe (Reset, Change) | Outlined `Button secondary` (or danger) | Ghost next to mode switch |
 | Recents | Compact recent rows / strip | Full context rail on phone SoT |
-| Lists on phone | Cards + `BottomSheet` detail | Full `DataTable` as SoT |
+| Lists on phone | Flat hairline work rows + task-local detail | Rounded/elevated islands; full `DataTable` as SoT |
 
 Call `ds_contract` / `ds_tokens` / `ds_critique` before UI writes. Prefer existing
 `/m` redesign primitives (`MobileShell`, item-record mobile, `BottomSheet`,
@@ -139,7 +139,7 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 |---|---|
 | Pick queue (line-grained, location-directed) | `/m/pick` |
 | Pick session | `/m/pick/[orderId]` · claim `/m/id/pick/[orderId]` |
-| Orders / to-ship | `/m/work` |
+| Orders / to-ship | `/m/orders` (canonical) · `/m/work` (compatibility alias; never a second nav door) |
 | Unbox / receive / location scan | `/m/unbox`, `/m/receive`, `/m/receiving`, `/m/scan` |
 | Identification kernel (QC-done, claim, scan-out) | `/m/id/*` — `/m/id/methods`, `/m/id/[job]/[entityId]`, `/m/id/scan-out/[orderId]` |
 | Packing | **`/m/p/[id]/photos`** — the photo feed reached from the desk `scan_ready` bridge. There is **no `/m/pack` queue**: deleted 2026-09-14 by operator ruling. Do not recreate it. |
@@ -155,6 +155,21 @@ inspect → QC test → ID kernel marks QC done → place at location → **pre-
 makes outbound a lookup instead of a computation.
 
 Machine checklist: `src/lib/mobile/mobile-first-surface.ts`.
+
+### Outbound projection rule
+
+`OUTBOUND_WORKFLOW_SURFACES` and `OUTBOUND_WORKFLOW_STAGES` in the machine
+checklist are the root contract for Shipping / Outbound. Mobile owns the job
+sequence and completion paths. Desktop consumes the same workflow facts but
+renders a dense `DataTable`; it does **not** import mobile work rows. Stations
+consume the same stage/action contract through their station host. A legacy
+route may mount the canonical mobile component, but may not gain a second nav
+door or a second status/filter implementation.
+
+Entering a task may navigate from its queue to the task route. Once the active
+task starts, exception correction, quantity changes, barcode input, and retry
+stay in that task surface (inline or in a task-local sheet); they must not send
+the operator through a second page tree.
 
 ---
 

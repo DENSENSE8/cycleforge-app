@@ -62,7 +62,7 @@ export function PaperworkRecentRail({
         getId={(row) => row.id}
         onSelect={select}
         getStatusDot={(row) =>
-          trackingOf(row) ? 'bg-emerald-500' : 'bg-amber-400'
+          trackingOf(row) ? 'bg-fill-success' : 'bg-fill-warning'
         }
         getStatusDotLabel={(row) =>
           trackingOf(row) ? 'Tracking linked' : 'Needs a label'
@@ -93,7 +93,7 @@ export function PaperworkRecentRail({
           <RailPeekCard
             title={titleOf(row)}
             statusLabel={trackingOf(row) ? 'Tracking linked' : 'Needs a label'}
-            statusDotClass={trackingOf(row) ? 'bg-emerald-500' : 'bg-amber-400'}
+            statusDotClass={trackingOf(row) ? 'bg-fill-success' : 'bg-fill-warning'}
             facts={paperworkFacts(row)}
             onOpen={() => {
               openWorkspace();

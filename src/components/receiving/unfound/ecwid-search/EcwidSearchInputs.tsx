@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { SearchField } from '@/design-system/primitives/SearchField';
+import { StationDisplaySearchHeader } from '@/components/station/displays/StationDisplaySearchHeader';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import {
@@ -20,7 +21,10 @@ export function EcwidSearchInputs({
   flush?: boolean;
 }) {
   const { popoverMode, manualTitleMode } = c;
-  const pad = flush ? 'pt-0' : 'px-2 pt-1';
+  // Flush = Displays leaf. `pt-0` gave these branches NO inset at all, so they
+  // jammed to the column edge; `inset-field` is the same 8/12 rule the result
+  // rows and {@link StationDisplaySearchHeader} use.
+  const pad = flush ? 'inset-field' : 'px-2 pt-1';
 
   // TechRailSearchBar has no `autoFocus` prop (it is a rail/chrome footer
   // SoT, not a form field) — focus it imperatively via `inputRef` instead,
@@ -33,8 +37,43 @@ export function EcwidSearchInputs({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- focus-once on mode entry, not every keystroke
   }, [popoverMode]);
 
+  const notAddedYet = (
+    <HoverTooltip label="Product not added yet?" asChild>
+      <button
+        type="button"
+        onClick={() => {
+          c.setManualTitleMode(true);
+          c.setManualTitle('');
+          c.setQuery('');
+          c.setItems([]);
+          c.setError(null);
+          c.abortRef.current?.abort();
+          c.setIsLoading(false);
+        }}
+        aria-label="Product not added yet?"
+        className="ds-raw-button max-w-[9.5rem] shrink truncate rounded-md border border-blue-200 bg-blue-50/80 inset-chip text-left text-role-micro font-semibold leading-tight text-blue-800 hover:bg-blue-100 sm:max-w-[12rem]"
+      >
+        Product not added yet?
+      </button>
+    </HoverTooltip>
+  );
+
   if (popoverMode === 'search' && !manualTitleMode) {
-    return (
+    // `flush` IS the Displays leaf. There the field carried `hideUnderline`
+    // (no chrome of its own) inside a `pt-0` wrapper (no inset of its own), so
+    // it sat on the column edge with no top/bottom air while the result rows
+    // below it are inset — the same defect `PoLinkTab` had. Both now wear the
+    // one header. Card hosts keep their nested-card pad.
+    return flush ? (
+      <StationDisplaySearchHeader
+        value={c.query}
+        onChange={c.setQuery}
+        placeholder={c.placeholder}
+        isSearching={c.isLoading}
+        autoFocus={autoFocusSearch}
+        rightElement={notAddedYet}
+      />
+    ) : (
       <div className={pad}>
         <SearchBar
           value={c.query}
@@ -45,26 +84,7 @@ export function EcwidSearchInputs({
           variant="blue"
           size="compact"
           hideUnderline
-          rightElement={
-            <HoverTooltip label="Product not added yet?" asChild>
-              <button
-                type="button"
-                onClick={() => {
-                  c.setManualTitleMode(true);
-                  c.setManualTitle('');
-                  c.setQuery('');
-                  c.setItems([]);
-                  c.setError(null);
-                  c.abortRef.current?.abort();
-                  c.setIsLoading(false);
-                }}
-                aria-label="Product not added yet?"
-                className="ds-raw-button max-w-[9.5rem] shrink truncate rounded-md border border-blue-200 bg-blue-50/80 inset-chip text-left text-role-micro font-semibold leading-tight text-blue-800 hover:bg-blue-100 sm:max-w-[12rem]"
-              >
-                Product not added yet?
-              </button>
-            </HoverTooltip>
-          }
+          rightElement={notAddedYet}
         />
       </div>
     );
@@ -101,15 +121,25 @@ export function EcwidSearchInputs({
   }
 
   if (popoverMode === 'repair_service') {
-    return (
+    // Flush = Displays leaf: one header component, same inset + hairline as the
+    // order search above and as the result rows below, with the scope chip as
+    // its trailing control. Card hosts keep `SearchField`'s chrome face, which
+    // is what that variant was built for (2026-08-24).
+    return flush ? (
+      <StationDisplaySearchHeader
+        value={c.repairFilter}
+        onChange={c.setRepairFilter}
+        placeholder="Filter by order #, title, or SKU…"
+        inputRef={repairSearchInputRef}
+        trailing={<EcwidOrderScopeHotChip c={c} />}
+      />
+    ) : (
       <div className={`flex items-center gap-1.5 ${pad}`}>
         {/* Same SoT search bar as every rail footer AND workbench chrome
             header (TechRailSearchBar — "Filter queue…" on Unbox, "Filter
             lines…" on the recent rails, etc.) — never a raw SearchBar hand-
             rolled with its own border/variant. `variant="chrome"` is the
-            flush-sunken face this component is built for; `flush` drops its
-            last horizontal pad so it sits edge-to-edge with the chrome
-            (2026-08-24 fix). */}
+            flush-sunken face this component is built for. */}
         <SearchField
           value={c.repairFilter}
           onChange={c.setRepairFilter}

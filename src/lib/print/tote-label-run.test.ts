@@ -94,7 +94,7 @@ describe('tote plate face', () => {
     assert.match(infoHtml, /class="hu-code">H-412</);
     assert.doesNotMatch(infoHtml, /hu-date|hu-count|hu-loc|units/i);
     // Left-aligned, vertically centred, and the biggest thing on the paper.
-    assert.match(infoCss, /\.hu-code\{[^}]*font-size:38px/);
+    assert.match(infoCss, /\.hu-code\{[^}]*font-size:30px/);
     assert.match(infoCss, /\.hu-code\{[^}]*justify-content:flex-start/);
     assert.match(infoCss, /\.hu-code\{[^}]*align-items:center/);
   });

@@ -94,8 +94,32 @@ const blobCache = new Map<string, Blob>();
 const persistedDataUrls = new Map<string, string>();
 let rehydrated = false;
 
+interface ScopeWaiter {
+  packerLogId: number;
+  resolve: () => void;
+  reject: (reason: Error) => void;
+}
+const scopeWaiters = new Set<ScopeWaiter>();
+
+function settleScopeWaiters() {
+  for (const waiter of scopeWaiters) {
+    const entries = state.entries.filter((entry) => entry.scope.packerLogId === waiter.packerLogId);
+    const failed = entries.find((entry) => entry.state === 'failed');
+    if (failed) {
+      scopeWaiters.delete(waiter);
+      waiter.reject(new Error(failed.error || 'A packing photo did not upload.'));
+      continue;
+    }
+    if (entries.every((entry) => entry.state === 'done')) {
+      scopeWaiters.delete(waiter);
+      waiter.resolve();
+    }
+  }
+}
+
 function emit() {
   listeners.forEach((fn) => fn());
+  settleScopeWaiters();
 }
 
 function patch(id: string, partial: Partial<UploadEntry>) {
@@ -300,6 +324,23 @@ export const packerPhotoUploadQueue = {
     if (typeof window !== 'undefined') {
       try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
     }
+  },
+  /**
+   * Finish is a server-side evidence gate, but the phone waits for its queued
+   * shots before it asks the server to finalize. Failed uploads reject instead
+   * of racing a premature completion request; the operator can retry the shot.
+   */
+  waitForScope(packerLogId: number): Promise<void> {
+    if (!Number.isSafeInteger(packerLogId) || packerLogId <= 0) {
+      return Promise.reject(new Error('Invalid packing photo scope.'));
+    }
+    const entries = state.entries.filter((entry) => entry.scope.packerLogId === packerLogId);
+    const failed = entries.find((entry) => entry.state === 'failed');
+    if (failed) return Promise.reject(new Error(failed.error || 'A packing photo did not upload.'));
+    if (entries.every((entry) => entry.state === 'done')) return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      scopeWaiters.add({ packerLogId, resolve, reject });
+    });
   },
   subscribe(fn: () => void) {
     rehydrate();

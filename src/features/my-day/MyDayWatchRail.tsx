@@ -40,7 +40,16 @@ type WatchKind = 'ticket' | 'tracking';
 type WatchListResponse = {
   ok: boolean;
   tickets: Array<{ ticketId: number; subject: string | null; updatedAtMs: number }>;
-  tracking: Array<{ receivingId: number; tracking: string | null; updatedAtMs: number }>;
+  /**
+   * Two arms. `preArrival` rows are watches on a number that has not landed
+   * yet, so they carry no carton to point at — the number IS the row.
+   */
+  tracking: Array<{
+    receivingId: number | null;
+    tracking: string | null;
+    preArrival: boolean;
+    updatedAtMs: number;
+  }>;
 };
 
 export function MyDayWatchRail({
@@ -161,24 +170,42 @@ function MyDayWatchRailBody({
             <WatchKindDisplay
               kind="tracking"
               rows={tracking.map((t) => ({
-                id: String(t.receivingId),
-                title: t.tracking ?? `Carton #${t.receivingId}`,
+                // The number is the stable key on BOTH arms; only a carton
+                // whose STN never linked falls back to its id.
+                id: t.tracking ? `t:${t.tracking}` : `c:${t.receivingId}`,
+                title: t.preArrival
+                  ? 'Waiting to arrive'
+                  : (t.tracking ?? `Carton #${t.receivingId}`),
                 identity: t.tracking ?? `Carton #${t.receivingId}`,
               }))}
               loading={listQuery.isLoading}
               onWatched={invalidateLists}
               onStop={async (id) => {
-                const receivingId = Number(id);
-                const res = await fetch('/api/subscriptions/toggle', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({
-                    entityType: 'receiving',
-                    entityId: receivingId,
-                    desired: 'muted',
-                  }),
-                });
+                // A number stops through the watch route, which drops BOTH
+                // arms for it — the operator says "stop watching this number",
+                // not "mute subscription 41". Only the STN-less carton row
+                // still needs the entity toggle, because it has no number.
+                const res = id.startsWith('t:')
+                  ? await fetch('/api/my-day/watch', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        kind: 'tracking',
+                        value: id.slice(2),
+                        desired: 'muted',
+                      }),
+                    })
+                  : await fetch('/api/subscriptions/toggle', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        entityType: 'receiving',
+                        entityId: Number(id.slice(2)),
+                        desired: 'muted',
+                      }),
+                    });
                 if (!res.ok) {
                   const body = (await res.json().catch(() => null)) as { error?: string } | null;
                   throw new Error(body?.error || `Could not stop watching (${res.status})`);

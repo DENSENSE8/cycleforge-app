@@ -240,7 +240,7 @@ This can only remove. **Always diff the before/after and assert `added === 0`** 
 
 | Where | Why |
 |---|---|
-| `src/lib/pipeline/config.ts` (5) | `scripts/jetson/trainer.py` + `setup.sh` read the same env vars; `.env.example` and `context/PIPELINE*.md` document them. TS side of a cross-language contract. |
+| `src/lib/pipeline/config.ts` (5) | `scripts/jetson/trainer.py` + `setup.sh` read the same env vars; `.env.example` and `docs/pipeline/PIPELINE*.md` document them. TS side of a cross-language contract. |
 | `src/lib/station/table-url-params.ts` (5) | `route-params.ts` **and** `param-ownership.guard.test.ts` both cite `SCOPE_PARAM`/`parseScope` *being baselined dead* as the precondition for a routing-safety argument, and the file's `*_PARAM` consts feed that guard's source regex. |
 | `src/lib/settings/accessors.ts` (9) | All 9 have registry UI. **5 have zero readers anywhere** (`autoTicket`, `autoPrintLabel`, the 3 `vision.*`) — admin knobs that do nothing. Deleting the accessor hides a product bug instead of fixing it. |
 | `src/lib/shipping/repository.ts` (5) | Carrier **webhook subscription** helpers. Migration `2026-06-02_carrier_webhook_subscription.sql` ships the `webhook_subscription_status` column they read, but no route or cron calls them — an unplugged feature, not dead code. Deleting strands the column. |

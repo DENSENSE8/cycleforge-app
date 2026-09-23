@@ -62,15 +62,19 @@ test('the throwable set is the urgency set — one list, not two copies', () => 
 });
 
 /**
- * The live gap this constant exists to make honest: `staff_inbox_items`'
- * entity_type CHECK has no `support_ticket`, so a ticket task is a legal
- * work_assignment but cannot yet become an inbox row. Phase 3 widens the CHECK
- * (with its delete trigger); until then the fan-out must refuse honestly rather
- * than throw a constraint violation at an operator.
+ * The predicate exists so the fan-out can refuse HONESTLY — a kind the
+ * `staff_inbox_items` CHECK does not carry must come back
+ * `notified: 'skipped_entity'`, never as a constraint violation thrown at an
+ * operator who threw a perfectly legal task. Every kind is anchorable today;
+ * this pins that the two lists agree, so the next `work_entity_type_enum`
+ * value cannot quietly ship un-notified.
  */
-test('support_ticket is throwable but NOT yet inbox-anchorable', () => {
+test('every throwable record kind can anchor an inbox row', () => {
   assert.equal(isTaskEntityType('support_ticket'), true);
-  assert.equal(isInboxAnchorable('support_ticket'), false);
+  // Anchorable since migration 2026-09-22a widened the inbox CHECK and gave
+  // `support_tickets` its parent-delete trigger — a ticket handoff now raises
+  // a badge instead of coming back `notified: 'skipped_entity'`.
+  assert.equal(isInboxAnchorable('support_ticket'), true);
   assert.equal(isInboxAnchorable('order'), true);
   assert.equal(isInboxAnchorable('receiving'), true);
 });

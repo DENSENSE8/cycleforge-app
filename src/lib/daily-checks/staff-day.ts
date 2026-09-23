@@ -75,10 +75,8 @@ export interface StaffDay {
 }
 
 /**
- * Only the items this staffer was ON THE HOOK for — the same rule the report's
- * denominator uses (`countsFor`). A one-off owned by someone else was never
- * this staffer's task, and listing it as an unchecked row would accuse them of
- * missing work that was never theirs.
+ * The same obligation rule as the report: recurring work is shift-wide; only
+ * a one-off can be private to one staffer.
  */
 function owedBy(
   item: DailyCheckReport['items'][number],

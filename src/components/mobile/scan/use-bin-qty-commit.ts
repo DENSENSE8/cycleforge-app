@@ -161,6 +161,7 @@ export function useBinQtyCommit({
         try {
           const res = await queueOrFetch({
             url: `/api/locations/${encodeURIComponent(burstBarcodeRef.current)}`,
+            aggregateKey: `location:${burstBarcodeRef.current}:sku:${sku}`,
             method: 'PATCH',
             headers: {
               'Content-Type': 'application/json',

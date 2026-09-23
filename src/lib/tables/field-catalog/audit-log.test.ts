@@ -251,7 +251,7 @@ describe('audit-log row view', () => {
     const view = auditLogCompoundView(row());
     assert.equal(view.id, '90211');
     assert.equal(view.title, 'mark_received');
-    assert.equal(view.orderId, '48123');
+    assert.equal(view.identityFace?.value, '48123');
     assert.equal(view.stateLabel, 'receiving_line');
     assert.equal(view.stateTone, 'neutral');
     // No carrier, no marketplace, no money, no photo on an audit row.

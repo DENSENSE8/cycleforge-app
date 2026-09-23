@@ -119,7 +119,12 @@ export function PairingCandidateRow({
         </div>
       </div>
     ) : (
-      <div className="flex w-full min-w-0 items-center gap-2.5 px-2.5 py-2">
+      // No second inset. The shell already carries `inset-field`; this row used
+      // to add `px-2.5 py-2` on top of it, so a media-less candidate sat 22px
+      // off the display edge with 16px of stacked vertical air — the exact
+      // stacking the media branch above was fixed for in 2026-08-24. Padding
+      // belongs to the shell, spacing between rows to the list.
+      <div className="flex w-full min-w-0 items-center gap-2.5">
         {content}
         {action != null ? <div className="shrink-0">{action}</div> : null}
       </div>

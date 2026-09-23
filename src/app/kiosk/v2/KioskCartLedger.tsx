@@ -24,7 +24,7 @@ import {
   useKioskSession,
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
-import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
+import { submitKioskVisit } from '@/lib/kiosk/submit-kiosk-visit';
 import { firstKioskBlocker, type KioskTriageSession } from '@/lib/kiosk/visit-triage';
 import {
   KIOSK_CART_STEPS,
@@ -34,9 +34,6 @@ import {
   type KioskCartStep,
 } from '@/lib/kiosk/cart-step-gates';
 import { cartMoneySplit } from '@/lib/kiosk/cart-money';
-import { kioskTicketWork } from '@/lib/kiosk/repair-ticket-choice';
-import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
-import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import {
   KioskPaymentStepUpSheet,
@@ -140,62 +137,27 @@ export function KioskCartLedger({ focus, onClose }: { focus?: KioskCartFocus | n
   const stepCanContinue = cartStepGates(triage)[step];
   const stepBlockReason = cartStepBlockReason(triage, step);
 
+  /**
+   * Submit the visit. The pane's "Submit repair" key runs the SAME function
+   * (`submitKioskVisit`) — one endpoint, one idempotency contract, one success
+   * document. The local mapping/fetch that used to live here is gone with it.
+   */
   const postIntake = useCallback(
     async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
       if (!idemKey.current) idemKey.current = safeRandomUUID();
-      const { retailLines, services } = mapKioskCartToCounterParts(session.lines);
-      const res = await kioskFetchHealed('/api/kiosk/intake', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'Idempotency-Key': idemKey.current,
+      const tx = await submitKioskVisit(
+        {
+          lines: session.lines,
+          customerPhone: session.customerPhone,
+          customerName: session.customerName,
+          customerEmail: session.customerEmail,
+          customerAddress: session.customerAddress,
+          ticketChoice: session.ticketChoice,
         },
-        body: JSON.stringify(
-          buildKioskSalesIntakeBodyFromInput(
-            {
-              customer: {
-                phone: session.customerPhone,
-                name: session.customerName || null,
-                email: session.customerEmail || null,
-                address: session.customerAddress || null,
-              },
-              retailLines,
-              services,
-              priorOrder: null,
-              /*
-               * The VISIT's decision, not a hardcoded create.
-               *
-               * This line read `services.length > 0 ? { mode: 'create' } : …`,
-               * so the `attach` arm of the route's `ticketWork` union — and
-               * the `ATTACH_TICKET` outbox work type behind it — had no
-               * caller at all. The repair flow's last step now answers the
-               * question (`KioskTicketStep`), and `kioskTicketWork` maps that
-               * answer, falling back to `create` so a service visit nobody
-               * asked still files a ticket exactly as before.
-               */
-              ticketWork: kioskTicketWork(session.ticketChoice, services.length > 0),
-            },
-            opts,
-          ),
-        ),
-      });
-
-      const body = (await res.json().catch(() => ({}))) as {
-        transaction?: CounterTransactionResult;
-        error?: string;
-      };
-
-      if (res.status === 403 && body.error === 'STEPUP_FAILED') {
-        throw new Error('PIN incorrect. Try again.');
-      }
-      if (res.status === 403 && body.error?.includes('STEPUP')) {
-        throw new Error('A manager needs to authorize payment on this tablet.');
-      }
-      if (!res.ok || !body.transaction) {
-        throw new Error(body.error?.trim() || 'Transaction failed');
-      }
+        { idempotencyKey: idemKey.current, ...opts },
+      );
       idemKey.current = null;
-      return body.transaction;
+      return tx;
     },
     [session],
   );

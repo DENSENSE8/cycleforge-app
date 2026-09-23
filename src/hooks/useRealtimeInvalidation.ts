@@ -19,6 +19,8 @@ import {
   invalidateUnshippedCounts,
   patchUnshippedOrderTested,
 } from '@/lib/queries/dashboard-cache-patch';
+import { optimisticallyRemoveOrderRows } from '@/lib/queries/order-cache-optimistic';
+import { publishOutboundRealtimePaintReceipt } from '@/lib/shipping/outbound-realtime-paint';
 
 function invalidateOutboundQueues(queryClient: QueryClient) {
   for (const queryKey of OUTBOUND_QUERY_PREFIXES) {
@@ -116,13 +118,21 @@ export function useRealtimeInvalidation({
     ordersChannel,
     'order.changed',
     (message: unknown) => {
-      // `orders.add` fires right after the POST that created the row, and that
-      // POST already hands the new order back to the desk that added it. Every
-      // other open desk only needs the cheap counts key, so short-circuit
-      // before the full invalidate below queues an /api/orders refetch per add.
-      // Restored 2026-09-14 — without this branch a bulk add storms the feed.
-      if (readEventSource(message) === 'orders.add') {
-        invalidateUnshippedCounts(queryClient);
+      const data = readEventData(message);
+      const source = readEventSource(message);
+      const orderIds = Array.isArray(data.orderIds)
+        ? data.orderIds.map(Number).filter((id) => Number.isFinite(id) && id > 0)
+        : [];
+      if (source === 'orders.delete' || source === 'shipping.scan-out') {
+        optimisticallyRemoveOrderRows(queryClient, orderIds);
+      }
+      // `orders.add` fires after the durable write. The originating desk also
+      // patches its own cache from the POST response, but every other browser
+      // must refetch its active queue or it will only see the badge/count move.
+      // Import batches publish one event for the whole batch, so this is one
+      // refresh per commit rather than one request per order.
+      if (source === 'orders.add') {
+        invalidateOrderDashboards(queryClient);
         return;
       }
       // Everything else (pack scans, `pick.scan`, tracking edits…) repaints the
@@ -194,6 +204,9 @@ export function useRealtimeInvalidation({
     'order.tested',
     (message: unknown) => {
       const data = readEventData(message);
+      // Invisible measurement seam: browser harnesses time this receipt to the
+      // patched row's next paint. It never renders connection-health chrome.
+      publishOutboundRealtimePaintReceipt(data.orderId);
       patchUnshippedOrderTested(queryClient, {
         orderId: data.orderId,
         testedBy: data.testedBy,

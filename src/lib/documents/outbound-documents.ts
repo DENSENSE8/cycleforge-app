@@ -17,6 +17,7 @@
  * correctness dependency.
  */
 
+import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -488,6 +489,31 @@ async function findOutboundDocumentBySourceHash(
   });
 }
 
+async function findOutboundDocumentByContentHash(
+  orgId: OrgId,
+  orderId: number,
+  documentType: OutboundDocumentType,
+  sha256Hex: string,
+  deps: OutboundDocumentDeps = defaultDeps,
+): Promise<OutboundDocument | null> {
+  return deps.withTenantTransaction(orgId, async (client) => {
+    const res = await client.query<RawDocumentRow>(
+      `SELECT id, entity_type, entity_id, document_type, document_data, created_at, updated_at
+         FROM documents
+        WHERE organization_id = $1
+          AND entity_type = 'ORDER'
+          AND entity_id = $2
+          AND document_type = $3
+          AND document_data->>'sha256Hex' = $4
+        LIMIT 1`,
+      [orgId, orderId, documentType, sha256Hex],
+    );
+    if (res.rowCount === 0) return null;
+    const [doc] = await attachLinksToDocuments(client, orgId, res.rows);
+    return doc ?? null;
+  });
+}
+
 async function wireOutboundDocumentLinks(
   orgId: OrgId,
   client: Client,
@@ -556,9 +582,21 @@ export async function storeOutboundDocumentFromBytes(
       documentType: input.documentType,
     });
 
+  const sha256Hex = createHash('sha256').update(input.buffer).digest('hex');
+
   const existing = await findOutboundDocumentBySourceHash(orgId, input.documentType, sourceHash, deps);
   if (existing) {
     return { document: existing, isFirstLabel: false, created: false };
+  }
+  const contentDuplicate = await findOutboundDocumentByContentHash(
+    orgId,
+    input.orderId,
+    input.documentType,
+    sha256Hex,
+    deps,
+  );
+  if (contentDuplicate) {
+    return { document: contentDuplicate, isFirstLabel: false, created: false };
   }
 
   let shipmentId: number | null = null;
@@ -620,6 +658,7 @@ export async function storeOutboundDocumentFromBytes(
             platform: input.platform,
             source: input.source,
             sourceHash,
+            sha256Hex,
             mimeType: input.contentType,
             carrier: input.carrier ?? null,
             tracking: input.tracking ?? null,
@@ -698,7 +737,7 @@ export async function storeOutboundDocumentFromBytes(
       storageProvider: 'gcs',
       bucket: uploaded.bucket,
       objectKey: uploaded.objectKey,
-      sha256Hex: uploaded.sha256Hex,
+      sha256Hex,
       fileSizeBytes: uploaded.fileSizeBytes,
       fetchedAt: new Date().toISOString(),
     };

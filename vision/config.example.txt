@@ -24,5 +24,6 @@ INDEX_PATH=data/index/index.npz
 # CORS — the origin(s) of the Next.js app that POSTs frames here. Comma-separated.
 ALLOWED_ORIGINS=http://localhost:3000
 
-# Optional shared secret. If set, callers must send  X-Vision-Token: <token>.
-VISION_TOKEN=
+# Required shared secret (minimum 32 characters). The service refuses to start
+# without it. Callers must send X-Vision-Token: <token>.
+VISION_TOKEN=replace-with-a-random-32-character-or-longer-secret

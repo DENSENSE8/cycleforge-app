@@ -6,8 +6,10 @@
  * shipment phase — with Amazon FBA IDs pairing 1..N UPS tracking numbers —
  * is added later via FbaShipmentEditorForm.
  */
-import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Package, Plus, Trash2 } from '@/components/Icons';
+import { StaffAvatar } from '@/components/identity';
+import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { Button, DeferredQtyInput, IconButton, TextField } from '@/design-system/primitives';
 import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import type { StationTheme } from '@/utils/staff-colors';
@@ -16,7 +18,9 @@ import {
   FormField,
   SidebarIntakeFormShell,
 } from '@/design-system/components';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 
 export interface FbaCreateShipmentFormState {
   shipment_ref: string;
@@ -62,6 +66,14 @@ export function FbaCreateShipmentForm({
   stationTheme = 'blue',
 }: FbaCreateShipmentFormProps) {
   const chrome = fbaSidebarThemeChrome[stationTheme];
+  const techAnchorRef = useRef<HTMLButtonElement>(null);
+  const packerAnchorRef = useRef<HTMLButtonElement>(null);
+  const [techPickerOpen, setTechPickerOpen] = useState(false);
+  const [packerPickerOpen, setPackerPickerOpen] = useState(false);
+  const selectedTechId = Number(form.assigned_tech_id) || null;
+  const selectedPackerId = Number(form.assigned_packer_id) || null;
+  const selectedTech = staff.find((member) => member.id === selectedTechId) ?? null;
+  const selectedPacker = staff.find((member) => member.id === selectedPackerId) ?? null;
 
   // Auto-derive plan ref from due_date using buildFbaPlanRefFromIsoDate.
   // Tracks the last auto-derived value so user overrides are preserved.
@@ -130,7 +142,7 @@ export function FbaCreateShipmentForm({
         />
         <div className="space-y-1">
           {derivedRef && derivedRef !== 'FBA-00/00/00' ? (
-            <p className="font-mono text-role-micro text-emerald-700">
+            <p className="font-mono text-role-micro text-text-success">
               Auto: {derivedRef}
             </p>
           ) : null}
@@ -138,7 +150,7 @@ export function FbaCreateShipmentForm({
             /* ds-raw-button: inline micro underlined text-link inside a hint stack, not a CTA */
             <button
               type="button"
-              className="text-role-micro text-blue-600 underline"
+              className="text-role-micro text-text-accent underline"
               onClick={() => {
                 if (!derivedRef || derivedRef === 'FBA-00/00/00') return;
                 lastAutoRefRef.current = derivedRef;
@@ -149,7 +161,7 @@ export function FbaCreateShipmentForm({
             </button>
           ) : null}
           {refIsInvalid ? (
-            <p className="text-role-micro text-amber-600">
+            <p className="text-role-micro text-text-warning">
               Invalid plan ref. Set a valid due date or type a custom ref.
             </p>
           ) : null}
@@ -166,42 +178,79 @@ export function FbaCreateShipmentForm({
       />
 
       <FormField label="Due date">
-        <input
-          type="date"
-          value={form.due_date}
-          onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-          className={chrome.input}
+        <DateRangePickerField
+          variant="compact"
+          ariaLabel="FBA plan due date"
+          value={dateKeyToLocalDate(form.due_date)}
+          onChange={(day: Date) => {
+            const dueDate = localDateToDateKey(day);
+            if (dueDate) setForm((f) => ({ ...f, due_date: dueDate }));
+          }}
         />
       </FormField>
 
       <FormField label="Tech (created by)" required>
-        <select
-          value={form.assigned_tech_id}
-          onChange={(e) => setForm((f) => ({ ...f, assigned_tech_id: e.target.value }))}
-          className={chrome.input}
+        <Button
+          ref={techAnchorRef}
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="w-full justify-start"
+          aria-haspopup="listbox"
+          aria-expanded={techPickerOpen}
+          ariaLabel="Select FBA plan technician"
+          onClick={() => setTechPickerOpen(true)}
         >
-          <option value="">Select</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+          {selectedTech ? (
+            <span className="flex min-w-0 items-center gap-2">
+              <StaffAvatar staffId={selectedTech.id} name={selectedTech.name} size="sm" colorRing alt="" />
+              <span className="truncate">{selectedTech.name}</span>
+            </span>
+          ) : (
+            'Select technician…'
+          )}
+        </Button>
+        <StageStaffAssignPopover
+          open={techPickerOpen}
+          onClose={() => setTechPickerOpen(false)}
+          anchorRef={techAnchorRef}
+          label="Select FBA plan technician"
+          role="technician"
+          selectedStaffId={selectedTechId}
+          onCommit={(staffId) => setForm((f) => ({ ...f, assigned_tech_id: staffId == null ? '' : String(staffId) }))}
+        />
       </FormField>
 
       <FormField label="Packer" optionalHint="optional">
-        <select
-          value={form.assigned_packer_id}
-          onChange={(e) => setForm((f) => ({ ...f, assigned_packer_id: e.target.value }))}
-          className={chrome.input}
+        <Button
+          ref={packerAnchorRef}
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="w-full justify-start"
+          aria-haspopup="listbox"
+          aria-expanded={packerPickerOpen}
+          ariaLabel="Select FBA plan packer"
+          onClick={() => setPackerPickerOpen(true)}
         >
-          <option value="">Select</option>
-          {staff.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+          {selectedPacker ? (
+            <span className="flex min-w-0 items-center gap-2">
+              <StaffAvatar staffId={selectedPacker.id} name={selectedPacker.name} size="sm" colorRing alt="" />
+              <span className="truncate">{selectedPacker.name}</span>
+            </span>
+          ) : (
+            'Select packer…'
+          )}
+        </Button>
+        <StageStaffAssignPopover
+          open={packerPickerOpen}
+          onClose={() => setPackerPickerOpen(false)}
+          anchorRef={packerAnchorRef}
+          label="Select FBA plan packer"
+          role="packer"
+          selectedStaffId={selectedPackerId}
+          onCommit={(staffId) => setForm((f) => ({ ...f, assigned_packer_id: staffId == null ? '' : String(staffId) }))}
+        />
       </FormField>
 
       <TextField
@@ -236,7 +285,9 @@ export function FbaCreateShipmentForm({
                     onClick={() => removeItem(i)}
                     ariaLabel="Remove line"
                     icon={<Trash2 className="h-4 w-4" />}
-                    className="rounded-lg p-1.5 hover:bg-surface-strong"
+                    size="sm"
+                    radius="flush"
+                    className="hover:bg-surface-strong"
                   />
                 </HoverTooltip>
               ) : null}
@@ -265,7 +316,7 @@ export function FbaCreateShipmentForm({
         ))}
       </div>
 
-      {submitError ? <p className="text-sm font-semibold text-red-600">{submitError}</p> : null}
+      {submitError ? <p className="text-sm font-semibold text-text-danger">{submitError}</p> : null}
     </SidebarIntakeFormShell>
   );
 }

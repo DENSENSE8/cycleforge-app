@@ -10,9 +10,8 @@
  * (`getDashboardDomainFromSearch` → `sales`).
  *
  * Counter intake stays on `/pickup` + `/repair`; Repairs is the history door
- * onto the shared RepairTable. Sales/Pickup sidebars use
- * {@link WalkInHistorySidebar}; Repairs uses {@link RepairSidebarPanel}
- * (same favorites rail as the station door — never the Sales hand-off rail).
+ * onto the shared RepairTable. Sales/Pickup use `WalkInHistorySidebar`; Repair
+ * Service is table-only and has no Favorites sidebar.
  */
 
 import { Suspense, useEffect } from 'react';

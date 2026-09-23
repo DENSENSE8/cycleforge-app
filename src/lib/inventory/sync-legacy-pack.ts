@@ -4,14 +4,14 @@
  * Phase 3 deliverable #2 — inverse dual-write.
  *
  * When one of the legacy packer_logs INSERT sites runs, this helper mirrors the
- * SHIPPED state into the v2 system for any order whose units have
+ * PACKED state into the v2 system for any order whose units have
  * open allocations:
  *
  *   1. Find every orders.id linked to the packer_log's shipment_id.
  *   2. For each linked order, find allocations in any open state
  *      (ALLOCATED, PICKING, PICKED, PACKED, LABELED, STAGED).
- *   3. For each open allocation: transition serial_units → SHIPPED,
- *      flip order_unit_allocations.state = 'SHIPPED', emit a SHIPPED
+ *   3. For each open allocation: transition serial_units → PACKED,
+ *      flip order_unit_allocations.state = 'PACKED', emit a PACKED
  *      inventory_event tagged with the legacy packer_log id.
  *
  * Properties:
@@ -26,8 +26,8 @@
  *       - shipmentId is null
  *       - no linked orders have open allocations
  *
- * Companion: reconciliation script `scripts/reconcile-packer-logs.mjs`
- * verifies drift before/after a packer_logs INSERT.
+ * Carrier scan-out uses the separate terminal wrapper at the end of this file;
+ * that is the only legacy mirror allowed to transition to SHIPPED.
  */
 
 import pool from '@/lib/db';
@@ -48,6 +48,8 @@ export type MirrorResult =
   | { ok: true; mirrored: number; skipped?: string }
   | { ok: false; error: string; mirrored: number };
 
+type LegacyMirrorStage = 'PACKED' | 'SHIPPED';
+
 /**
  * Mirrors SHIPPED state from a legacy packer_logs row into the v2
  * allocation system. See file header for full semantics.
@@ -67,7 +69,7 @@ export type MirrorResult =
  *   inventory_events) are tenant-owned (carry organization_id) per
  *   docs/tenancy/org-id-coverage.generated.md.
  */
-export async function mirrorLegacyPackToAllocations(
+async function mirrorLegacyShipmentToAllocations(
   input: MirrorInput,
   /**
    * Tenant scope — REQUIRED, un-defaulted. `transition()` requires it, and a
@@ -75,6 +77,7 @@ export async function mirrorLegacyPackToAllocations(
    * migrated to remove.
    */
   orgId: OrgId,
+  target: LegacyMirrorStage,
 ): Promise<MirrorResult> {
   if (input.shipmentId == null || input.shipmentId === '') {
     return { ok: true, mirrored: 0, skipped: 'no-shipment-id' };
@@ -163,14 +166,14 @@ export async function mirrorLegacyPackToAllocations(
         const txResult = await transition(
           {
             unitId: alloc.serial_unit_id,
-            to: 'SHIPPED',
-            eventType: 'SHIPPED',
+            to: target,
+            eventType: target,
             actorStaffId: input.actorStaffId ?? null,
             station: 'SYSTEM',
             clientEventId,
             notes: `legacy-pack mirror from packer_logs #${input.packerLogId}`,
             payload: {
-              source: 'legacy_pack_mirror',
+              source: target === 'PACKED' ? 'legacy_pack_completion' : 'legacy_ship_scanout',
               packer_log_id: input.packerLogId,
               shipment_id: shipIdNum,
               allocation_id: Number(alloc.id),
@@ -186,9 +189,8 @@ export async function mirrorLegacyPackToAllocations(
           orgId,
         );
         if (!txResult.ok) {
-          // Idempotent retries land here when the unit is already SHIPPED.
-          // 409 with from=SHIPPED is success; everything else propagates.
-          if (txResult.status === 409 && txResult.from === 'SHIPPED') {
+          // Idempotent retries land here when the unit is already at the target.
+          if (txResult.status === 409 && txResult.from === target) {
             await client.query('ROLLBACK');
             mirrored++;
             continue;
@@ -206,9 +208,9 @@ export async function mirrorLegacyPackToAllocations(
         // org-scoped result from step 2, but this keeps the write self-guarding).
         await client.query(
           orgId
-            ? `UPDATE order_unit_allocations SET state = 'SHIPPED' WHERE id = $1 AND organization_id = $2`
-            : `UPDATE order_unit_allocations SET state = 'SHIPPED' WHERE id = $1`,
-          orgId ? [alloc.id, orgId] : [alloc.id],
+            ? `UPDATE order_unit_allocations SET state = $2 WHERE id = $1 AND organization_id = $3`
+            : `UPDATE order_unit_allocations SET state = $2 WHERE id = $1`,
+          orgId ? [alloc.id, target, orgId] : [alloc.id, target],
         );
         await client.query('COMMIT');
         mirrored++;
@@ -232,4 +234,14 @@ export async function mirrorLegacyPackToAllocations(
       error: err instanceof Error ? err.message : 'legacy-pack-mirror failed',
     };
   }
+}
+
+/** Pack completion is an inventory state, not evidence of carrier handoff. */
+export function mirrorLegacyPackingToAllocations(input: MirrorInput, orgId: OrgId): Promise<MirrorResult> {
+  return mirrorLegacyShipmentToAllocations(input, orgId, 'PACKED');
+}
+
+/** Only dock scan-out may use the terminal SHIPPED mirror. */
+export function mirrorLegacyPackToAllocations(input: MirrorInput, orgId: OrgId): Promise<MirrorResult> {
+  return mirrorLegacyShipmentToAllocations(input, orgId, 'SHIPPED');
 }

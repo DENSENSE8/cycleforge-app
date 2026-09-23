@@ -60,6 +60,8 @@ export interface AttachTechSerialInput {
    * (e.g. tech tracking) that carry an explicit org and don't set the session GUC.
    */
   organizationId?: string;
+  /** Historical import timestamp. Omit for live scans so the DB clock owns it. */
+  createdAt?: string | null;
 }
 
 /**
@@ -126,6 +128,10 @@ export async function attachTechSerial(
   if (effectiveOrgId !== undefined) {
     cols.push('organization_id');
     vals.push(effectiveOrgId);
+  }
+  if (input.createdAt !== undefined) {
+    cols.push('created_at');
+    vals.push(input.createdAt ?? null);
   }
 
   const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');

@@ -51,10 +51,23 @@ interface AssignInboxItemArgs {
   entityType: string;
   entityId: number;
   workAssignmentId: number;
-  actorStaffId: number;
+  /** NULL when the system assigned it (cron ingest) — the table and the inbox
+   *  read model (`InboxItemDto.actorStaffId`) both already carry that state. */
+  actorStaffId: number | null;
   /** Render hints only — never filtered on (the table's own contract). */
   note: string | null;
   urgent: boolean;
+  /**
+   * The PROVIDER ticket number, on a `support_ticket` row only.
+   *
+   * `entity_id` is the LOCAL `support_tickets.id` — what the row is anchored to
+   * and what `?ticket=` resolves against. It is NOT the number an operator
+   * quotes, and an inbox row reading `Ticket 461` next to a desk row reading
+   * `Ticket 10023` is the two-numbers confusion in its most visible form. A
+   * render hint, so the anchor stays the id the CHECK and the delete trigger
+   * know about.
+   */
+  ticketNumber?: number | null;
 }
 
 /** The one statement, exposed so a test can assert what is bound to it. */
@@ -85,6 +98,10 @@ export function assignInboxItemParams(
       workAssignmentId: args.workAssignmentId,
       note: args.note,
       urgent: args.urgent,
+      // Omitted rather than null on every non-ticket row — the payload is read
+      // by `toItemDto`, and a key present on every row implies it means
+      // something on every row.
+      ...(args.ticketNumber != null ? { ticketNumber: args.ticketNumber } : {}),
     }),
     dedupKey,
     collapseKey,

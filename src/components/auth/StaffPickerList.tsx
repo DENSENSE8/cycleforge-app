@@ -1,14 +1,27 @@
 'use client';
 
 /**
- * Row-layout staff picker shared between /signin and the FAB SwitchStaffSheet.
+ * Row-layout staff picker — the ONE "pick a person" face.
+ *
+ * Mounted by `/signin` (station sign-in), the FAB `SwitchStaffSheet` (desktop
+ * staff switching) and `KioskPaymentStepUpSheet` (counter tablet PIN step-up).
  *
  * Visual identity:
  *   • Avatar circle filled with the staff's theme color
  *   • Name + role in muted UPPERCASE
- *   • "No PIN" amber pill when the staff hasn't enrolled
  *   • "RECENT" group on top, "ALL STAFF" below (drives by `recent` prop)
- *   • Per-staff theme accents on hover (background tint + ring + chevron color)
+ *
+ * ## Two principals, one list
+ *
+ * The roster ENDPOINT is a prop because the caller's principal decides which
+ * roster is legal to read: a staff/anonymous browser reads
+ * `/api/auth/staff-picker`, while a kiosk tablet reads its device-authed
+ * `/api/kiosk/staff-for-stepup` (org resolved from the device row, PIN-holders
+ * only) through `kioskFetchHealed`, which re-binds a dropped device cookie.
+ * Both answer the same `{ staff: StaffRow[] }` shape, so everything below —
+ * grouping, search, the degraded state, the row anatomy — is shared rather
+ * than forked per surface. Operator 2026-09-22: *"for the staff id for history
+ * reuse the same component for the switching staff on desktop."*
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -57,6 +70,18 @@ interface StaffPickerListProps {
   flat?: boolean;
   /** Hide the signed-in staff — the switch sheet lists who you could BECOME. */
   excludeStaffId?: number;
+  /** Roster source. Defaults to the sign-in roster; see the module note. */
+  endpoint?: string;
+  /**
+   * Transport for {@link endpoint}. The kiosk passes `kioskFetchHealed` so a
+   * tablet that lost its device cookie re-binds and retries instead of
+   * rendering "couldn't load the staff list" for the rest of the shift.
+   */
+  fetcher?: (input: string, init?: RequestInit) => Promise<Response>;
+  /** Copy for an EMPTY (but successfully read) roster — not the degraded state. */
+  emptyMessage?: string;
+  /** Verb in each row's accessible name: "<verb> <name>, <role>". */
+  pickVerb?: string;
 }
 
 function staffMatchesQuery(staff: StaffRow, query: string): boolean {
@@ -66,7 +91,20 @@ function staffMatchesQuery(staff: StaffRow, query: string): boolean {
   return staff.name.toLowerCase().includes(q) || role.includes(q);
 }
 
-export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy, query = '', flat = false, excludeStaffId }: StaffPickerListProps) {
+export function StaffPickerList({
+  recent = [],
+  recentReady = true,
+  onPick,
+  onMessage,
+  onPolicy,
+  query = '',
+  flat = false,
+  excludeStaffId,
+  endpoint = '/api/auth/staff-picker',
+  fetcher,
+  emptyMessage = 'No active staff. Ask an admin to add you.',
+  pickVerb = 'Sign in as',
+}: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   // "The roster is empty" and "we could not load the roster" are DIFFERENT
@@ -88,11 +126,18 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   // Bumped by the degraded state's Retry so the load effect re-runs.
   const [reloadKey, setReloadKey] = useState(0);
 
+  // The transport is held in a ref for the same reason `onPolicy` is: callers
+  // pass it inline, and putting a fresh function in the dep array re-fetches
+  // the roster on every parent render.
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
+
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch('/api/auth/staff-picker', { cache: 'no-store' });
+        const load = fetcherRef.current ?? fetch;
+        const r = await load(endpoint, { cache: 'no-store' });
         const data = (await r.json().catch(() => null)) as
           | { staff?: StaffRow[]; pinless?: boolean; degraded?: boolean }
           | null;
@@ -115,7 +160,7 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
       }
     })();
     return () => { cancelled = true; };
-  }, [reloadKey]);
+  }, [reloadKey, endpoint]);
 
   const { recentRows, otherRows } = useMemo(() => {
     const visible = staff.filter((s) => s.id !== excludeStaffId && staffMatchesQuery(s, query));
@@ -158,7 +203,7 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   if (staff.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border-default px-6 py-10 text-center text-sm text-text-soft">
-        No active staff. Ask an admin to add you.
+        {emptyMessage}
       </div>
     );
   }
@@ -182,14 +227,14 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
       {hasRecent && (
         <Group label="Recent" flat={flat}>
           {recentRows.map((s) => (
-            <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} isRecent />
+            <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} pickVerb={pickVerb} isRecent />
           ))}
         </Group>
       )}
       {showOthers && otherRows.length > 0 && (
         <Group label={hasRecent ? 'All staff' : undefined} flat={flat}>
           {otherRows.map((s) => (
-            <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} />
+            <Row key={s.id} staff={s} onPick={onPick} onMessage={onMessage} pickVerb={pickVerb} />
           ))}
         </Group>
       )}
@@ -241,9 +286,11 @@ interface RowProps {
   onPick: (s: StaffRow) => void;
   onMessage?: (msg: string | null) => void;
   isRecent?: boolean;
+  /** "<verb> <name>, <role>" — the act this pick performs on THIS surface. */
+  pickVerb: string;
 }
 
-function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
+function Row({ staff: s, onPick, onMessage, isRecent, pickVerb }: RowProps) {
   return (
     // ONE staff row on the auth surface: the shared StaffChoiceRowButton
     // (email-flow display, operator 2026-09-08). The old per-staff
@@ -257,7 +304,7 @@ function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
       colorHex={s.color_hex}
       avatarPhotoId={s.avatar_photo_id ?? null}
       isRecent={isRecent}
-      ariaLabel={`Sign in as ${s.name}, ${s.role}`}
+      ariaLabel={`${pickVerb} ${s.name}, ${s.role}`}
       onPick={() => {
         onMessage?.(null);
         onPick(s);

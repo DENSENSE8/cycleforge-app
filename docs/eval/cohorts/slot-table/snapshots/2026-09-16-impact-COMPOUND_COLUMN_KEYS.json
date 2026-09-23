@@ -1,7 +1,0 @@
-{
-  "project": "cycleforge-app",
-  "target": "variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS",
-  "files_affected": 0,
-  "total_symbols": 0,
-  "files": []
-}

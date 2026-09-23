@@ -13,13 +13,15 @@
  * invocation. A row whose org has no helpdesk connected is released without
  * burning an attempt, so an unconnected tenant's queue never dead-letters itself.
  *
- * Auth: Vercel cron origin or CRON_SECRET bearer — the same gate as the other
+ * Auth: CRON_SECRET bearer — the same gate as the other
  * /api/cron routes, which are session-less by design.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isVercelCronOrigin } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
+import { clampInt } from '@/lib/cron/params';
 import { withCronLock } from '@/lib/cron/lock';
+import { withCronRun } from '@/lib/cron/run-log';
 import {
   drainTicketWorkOutbox,
   type DrainTicketWorkResult,
@@ -28,16 +30,8 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-function clampInt(raw: string | null, fallback: number, min: number, max: number): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(Math.max(Math.floor(n), min), max);
-}
-
 export async function GET(req: NextRequest) {
-  if (!isVercelCronOrigin(req.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   const batchSize = clampInt(req.nextUrl.searchParams.get('batch'), 25, 1, 200);
   const maxBatches = clampInt(req.nextUrl.searchParams.get('maxBatches'), 10, 1, 50);
@@ -52,18 +46,21 @@ export async function GET(req: NextRequest) {
   let batches = 0;
 
   try {
-    const locked = await withCronLock('ticket-outbox', async () => {
-      for (let i = 0; i < maxBatches; i++) {
-        const r = await drainTicketWorkOutbox({ batchSize });
-        batches += 1;
-        totals.claimed += r.claimed;
-        totals.created += r.created;
-        totals.attached += r.attached;
-        totals.replied += r.replied;
-        totals.failed += r.failed;
-        if (r.claimed < batchSize) break; // queue drained
-      }
-    });
+    const locked = await withCronLock('ticket-outbox', () =>
+      withCronRun('ticket-outbox', async () => {
+        for (let i = 0; i < maxBatches; i++) {
+          const r = await drainTicketWorkOutbox({ batchSize });
+          batches += 1;
+          totals.claimed += r.claimed;
+          totals.created += r.created;
+          totals.attached += r.attached;
+          totals.replied += r.replied;
+          totals.failed += r.failed;
+          if (r.claimed < batchSize) break; // queue drained
+        }
+        return { batches, ...totals };
+      }),
+    );
     if (!locked.ran) {
       return NextResponse.json({ ok: true, skipped: 'locked' });
     }

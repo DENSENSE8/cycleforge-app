@@ -46,6 +46,52 @@ function repairLabelCornerDisplay(payload: RepairLabelPayload): string {
 }
 
 /**
+ * Upper bound of the "3–10 working days" SLA the intake receipt promises. The
+ * label's bottom-left date is that promise in the customer's hand, so the two
+ * must be derived from one constant.
+ */
+export const REPAIR_LABEL_SLA_DAYS = 10;
+
+/** 2-digit US date — the only date format the 2×1 face has room for. */
+function labelDate(d: Date): string {
+  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+}
+
+/**
+ * The label payload for a repair, from the facts every surface already has.
+ *
+ * Two call sites print this label — the desk details panel and the kiosk
+ * History face — and they must agree on the FIRST NAME (the label is read
+ * across a counter, so it carries a first name, never the stored
+ * `"name, phone, email"` blob) and on the due date. Building it twice is how
+ * the two faces start promising different turnarounds.
+ */
+export function buildRepairLabelPayload(args: {
+  repairId: number;
+  /** Either the raw `contact_info` blob or an already-clean customer name. */
+  customerName?: string | null;
+  ticketNumber?: string | null;
+  /** When the device was taken in; the due date counts from here. */
+  intakeAt?: string | Date | null;
+}): RepairLabelPayload {
+  const fullName = (args.customerName ?? '').split(',')[0]?.trim() ?? '';
+  const firstName = fullName.split(/\s+/)[0] || 'Repair';
+  const intakeSource = args.intakeAt ? new Date(args.intakeAt) : new Date();
+  const intake = Number.isNaN(intakeSource.getTime()) ? new Date() : intakeSource;
+  const due = new Date(intake.getTime());
+  due.setDate(due.getDate() + REPAIR_LABEL_SLA_DAYS);
+
+  return {
+    repairId: args.repairId,
+    rsCode: `RS-${args.repairId}`,
+    firstName,
+    ticketNumber: args.ticketNumber?.trim() || '',
+    date: labelDate(new Date()),
+    dueDate: labelDate(due),
+  };
+}
+
+/**
  * Generate a 2×1" repair label with info on the left and a pre-rendered QR SVG
  * on the right. The QR encodes the walk-in repair deep link so a scanner / phone
  * opens RepairDetailsPanel for this repair without needing the app installed.

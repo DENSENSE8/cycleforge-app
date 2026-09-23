@@ -24,7 +24,8 @@
  * not offer them.
  *
  * Query: `?q=` (whole-catalog search) · `?barcode=` (wedge identity) ·
- *        `?mode=all` | `?categoryId=…` (browse), plus `limit` / `offset`.
+ *        `?mode=all` | `?mode=favorites` | `?categoryId=…` (browse), plus
+ *        `limit` / `offset`.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +38,9 @@ export const runtime = 'nodejs';
 
 export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
   try {
-    const parsed = readKioskCatalogQuery(req.nextUrl.searchParams);
+    const parsed = readKioskCatalogQuery(req.nextUrl.searchParams, {
+      favoritesWorkspace: 'repair',
+    });
     if (!parsed.ok) {
       return NextResponse.json({ success: false, error: parsed.error }, { status: 400 });
     }

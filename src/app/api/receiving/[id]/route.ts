@@ -888,6 +888,15 @@ export async function PATCH(
       organizationId: ctx.organizationId,
       action: 'update',
       rowId: String(id),
+      // Classification facts ride the broadcast so every viewer's platform /
+      // type pills (and the claim-composer identity seed) update in realtime —
+      // see useReceivingCartonRealtimeBridge. Post-UPDATE truth from RETURNING.
+      row: {
+        source_platform: receivingRow.source_platform ?? null,
+        intake_type: receivingRow.intake_type ?? null,
+        is_return: !!receivingRow.is_return,
+        return_platform: receivingRow.return_platform ?? null,
+      },
       source: 'receiving.patch',
     });
 

@@ -1,5 +1,5 @@
 /**
- * Batched 2×1" print for N *distinct* faces — the channel every bulk label run
+ * Batched 2×1" print for a RUN OF PLATES — the channel every bulk label run
  * shares.
  *
  * This is the engine that used to live inside `printLocationLabelsJob`, lifted
@@ -11,23 +11,29 @@
  * Two channels, in preference order:
  *
  *   1. **USB sequential** — when silent print is on and a raw (TSPL/ZPL/ESC-POS)
- *      label profile is paired. One `printLabelJob` per face, awaited, so the
+ *      label profile is paired. One `printLabelJob` per PLATE, awaited, so the
  *      caller can tick `Printing 12/47`. Bails to the iframe on the first
  *      non-USB result rather than half-printing down two channels.
- *   2. **One multi-page iframe** — a single document with one page per face.
+ *   2. **One multi-page iframe** — a single document with one page per plate.
  *
  * Why one job and not a loop of `printLabel` calls: each popup print reserves a
  * window synchronously (`reserveLegacyPrintPopup`). Looping that over 40 totes
  * asks the browser for 40 popups and gets one, then a block. The batch reserves
  * exactly one.
  *
- * Identical copies of ONE face are a different axis — that is `copies` on
- * {@link printLabelJob} (TSPL `PRINT N,1` / ZPL `^PQN`), not N entries here.
+ * **`copies` is the same axis as a longer face list, not a printer command.**
+ * It used to ride TSPL `PRINT N,1` / ZPL `^PQN` on ONE raster job, which the
+ * paired CX418 answers with a single label — so a 40-bin location run printed
+ * 40 stickers while `Copies 4` on one tote printed 1. Copies are now expanded
+ * into plates by {@link expandPlateRun} before a channel is chosen, so every
+ * family prints multiplicity the one way this hardware honors: one job per
+ * sticker (see `labelCopies.expandPlateRun`).
  *
- * Callers: printLocationLabel (bin / rack), printLabelRun (tote runs).
+ * Callers: printLocationLabel (bin / rack), printLabelRun (tote runs),
+ * printSpecialBinLabel (flat-barcode bin tags).
  */
 
-import { clampLabelCopies } from '@/lib/print/labelCopies';
+import { expandPlateRun } from '@/lib/print/labelCopies';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 
 export type LabelFacesJobChannel = 'usb' | 'iframe' | 'skipped';
@@ -60,19 +66,21 @@ export async function printLabelFacesJob(input: {
    */
   faceName?: (face: LabelFaceModel) => string;
   /**
-   * Identical stickers of EACH face (tote Copies field).
-   * USB uses TSPL `PRINT N,1`; the iframe repeats the page.
+   * Identical stickers of EACH face (the tote / special-bin Copies field).
+   * Expanded into extra PLATES in this run — one awaited job per sticker on
+   * USB, one page per sticker on the iframe. Never a printer repeat count.
    */
   copies?: number;
   onProgress?: LabelFacesJobProgress;
 }): Promise<LabelFacesJobChannel> {
   if (typeof window === 'undefined') return 'skipped';
   const { faces } = input;
-  const copies = clampLabelCopies(input.copies);
   const nameFor = (face: LabelFaceModel) => input.faceName?.(face) ?? input.name;
   // An empty run and a face with no symbol both print nothing: a blank 2×1 is
   // worse than no label, because it looks like stock that jammed.
   if (faces.length === 0 || !faces.every((f) => f.matrix.value.trim())) return 'skipped';
+  // Copies become paper here, once, for every family and both channels.
+  const plates = expandPlateRun(faces, input.copies);
 
   // Deliberately dynamic, not static: `printLabel` pulls in the bwip-js
   // barcode engine and `browserPrint` touches WebUSB / Web Serial. Both are
@@ -82,10 +90,9 @@ export async function printLabelFacesJob(input: {
   const { reserveLegacyPrintPopup, printHtmlInIframe } = await import('@/lib/print/iframePrint');
   const { isSilentPrintEnabled } = await import('@/lib/print/printMode');
 
-  if (faces.length === 1) {
+  if (plates.length === 1) {
     return printLabelJob({
-      ...faceToPrintOpts(faces[0]!, nameFor(faces[0]!)),
-      copies,
+      ...faceToPrintOpts(plates[0]!, nameFor(plates[0]!)),
       legacyPopup: reserveLegacyPrintPopup(),
     });
   }
@@ -94,26 +101,20 @@ export async function printLabelFacesJob(input: {
     const { getProfileForRole } = await import('@/lib/print/browserPrint');
     const labelProfile = getProfileForRole('label');
     if (labelProfile && labelProfile.kind !== 'os' && labelProfile.language !== 'none') {
-      const total = faces.length;
+      const total = plates.length;
       input.onProgress?.(0, total);
       let usb = 0;
-      for (const face of faces) {
-        const result = await printLabelJob({
-          ...faceToPrintOpts(face, nameFor(face)),
-          copies,
-        });
+      for (const plate of plates) {
+        const result = await printLabelJob(faceToPrintOpts(plate, nameFor(plate)));
         if (result !== 'usb') break;
         usb += 1;
         input.onProgress?.(usb, total);
       }
-      if (usb === faces.length) return 'usb';
+      if (usb === total) return 'usb';
     }
   }
 
-  const pages = faces.flatMap((face) =>
-    Array.from({ length: copies }, () => faceToPrintOpts(face, nameFor(face))),
-  );
-  const html = buildMultiPageLabelHtml(pages);
+  const html = buildMultiPageLabelHtml(plates.map((plate) => faceToPrintOpts(plate, nameFor(plate))));
   printHtmlInIframe(html, {
     name: input.name,
     legacyPopup: reserveLegacyPrintPopup(),

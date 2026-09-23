@@ -31,33 +31,33 @@ const TONE: Record<
   { box: string; ink: string; chip: string; icon: (p: { className?: string }) => JSX.Element }
 > = {
   matched: {
-    box: 'border-emerald-300 bg-emerald-50',
-    ink: 'text-emerald-900',
-    chip: 'bg-emerald-600 text-white',
+    box: 'border-border-success bg-surface-success',
+    ink: 'text-text-success',
+    chip: 'bg-fill-success text-text-inverse',
     icon: Check,
   },
   expedited: {
-    box: 'border-amber-300 bg-amber-50',
-    ink: 'text-amber-900',
-    chip: 'bg-amber-600 text-white',
+    box: 'border-border-warning bg-surface-warning',
+    ink: 'text-text-warning',
+    chip: 'bg-fill-warning text-text-inverse',
     icon: Zap,
   },
   unfound: {
-    box: 'border-amber-300 bg-amber-50',
-    ink: 'text-amber-900',
-    chip: 'bg-amber-600 text-white',
+    box: 'border-border-warning bg-surface-warning',
+    ink: 'text-text-warning',
+    chip: 'bg-fill-warning text-text-inverse',
     icon: AlertTriangle,
   },
   miss: {
-    box: 'border-rose-300 bg-rose-50',
-    ink: 'text-rose-900',
-    chip: 'bg-rose-600 text-white',
+    box: 'border-border-danger bg-surface-danger',
+    ink: 'text-text-danger',
+    chip: 'bg-fill-danger text-text-inverse',
     icon: X,
   },
   error: {
-    box: 'border-rose-300 bg-rose-50',
-    ink: 'text-rose-900',
-    chip: 'bg-rose-600 text-white',
+    box: 'border-border-danger bg-surface-danger',
+    ink: 'text-text-danger',
+    chip: 'bg-fill-danger text-text-inverse',
     icon: AlertTriangle,
   },
 };

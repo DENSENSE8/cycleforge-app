@@ -20,6 +20,13 @@ describe('SIDEBAR_SPINE_PEEK_INSET_PX', () => {
     );
   });
 
+  it('does not glow — peek is a bordered card, not overlay elevation', () => {
+    const host = readFileSync(new URL('./SidebarNavColumn.tsx', import.meta.url), 'utf8');
+    assert.match(host, /elevationClass\('flat'\)/);
+    assert.doesNotMatch(host, /elevationClass\('overlay'\)/);
+    assert.doesNotMatch(host, /shadow-elev-overlay/);
+  });
+
   it('stacks the peek above station panel overlays', () => {
     assert.ok(zIndex.navPeek > zIndex.panelOverlay);
     assert.ok(zIndex.navPeek > zIndex.detailStack);
@@ -37,10 +44,8 @@ describe('the closed spine', () => {
     assert.match(host, /\{ width: open \? width : 0, transformOrigin/);
   });
 
-  it('leaves the open spine inert while closed, and the reopen door outside it', () => {
+  it('leaves the closed spine inert on the rows, with no edge reopen strip', () => {
     assert.match(host, /inert=\{!navVisible && !peekFace\}/);
-    const asideEnd = host.indexOf('</motion.aside>');
-    const doorMount = host.indexOf('data-testid="sidebar-spine-open-strip"');
-    assert.ok(asideEnd > 0 && doorMount > asideEnd);
+    assert.doesNotMatch(host, /sidebar-spine-open-strip/);
   });
 });

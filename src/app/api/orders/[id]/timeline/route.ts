@@ -247,6 +247,7 @@ export async function GET(
                  LEFT JOIN staff s ON s.id = pl.packed_by
                 WHERE pl.organization_id = $2
                   AND pl.shipment_id = $1
+                  AND pl.completion_state = 'COMPLETED'
                 ORDER BY pl.created_at DESC, pl.id DESC
                 LIMIT 50`,
               [shipmentId, orgId],

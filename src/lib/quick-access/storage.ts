@@ -3,7 +3,7 @@
  * Key: `cf.quickAccess` — settings + pinned pages.
  *
  * Pins are also durable in `staff_preferences.prefs.quickAccess` (cross-device).
- * localStorage stays the flash-free cache; {@link setPinsPersister} /
+ * localStorage stays the immediate client cache; {@link setPinsPersister} /
  * {@link hydratePinned} bridge to the server via `<QuickAccessSync/>`.
  */
 

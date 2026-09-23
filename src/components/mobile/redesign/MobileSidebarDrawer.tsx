@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, X } from '@/components/Icons';
+import { ChevronDown } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
-import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { SPINE_ACCENT, spineRailLineClass } from '@/lib/nav/spine-section-accent';
 import {
@@ -324,25 +323,16 @@ export const MobileSidebarDrawer = ({
               // depth here is the border + the scrim behind it, per the accent
               // module's "no ring, no shadow, no bevel".
               'fixed inset-y-0 left-0 z-panel flex h-[100dvh] max-w-[86vw] flex-col border-r border-border-soft md:hidden',
+              'pt-[env(safe-area-inset-top)]',
               SIDEBAR_SPINE_WIDTH,
               appChromeClass,
               cornerClass('flush'),
             )}
           >
-            {/* Header */}
-            <div className="flex h-10 shrink-0 items-center justify-end border-b border-border-hairline px-2 mt-[env(safe-area-inset-top)]">
-              <IconButton
-                icon={<X className={SPINE_ROW_ICON_CLASS} />}
-                onClick={onClose}
-                ariaLabel="Close menu"
-                size="md"
-                className={cn(
-                  'flex items-center justify-center text-text-soft transition-colors hover:bg-surface-hover',
-                  cornerClass('flush'),
-                )}
-              />
-            </div>
-
+            {/* No close button: the scrim and the left swipe (drag handler
+                above) already dismiss this drawer, and the X cost a whole
+                header strip at the top of a phone screen. Safe-area inset moves
+                to the panel itself now that nothing sits above the nav. */}
             {navigation}
 
             <MobileAccountFooter onNavigate={onClose} />

@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
   try {
     let orgId = await resolveOrgIdFromRequest(req);
     // Apex / unknown slug: anonymous callers stay empty (no tenant leak).
-    // Signed-in callers (Change staff on localhost / apex) use their session org.
+    // Signed-in callers (Switch staff on localhost / apex) use their session org.
     if (orgId === NIL_ORG_ID) {
       const cookieStore = req.cookies;
       const sid = cookieStore ? readSessionSid(cookieStore) : null;

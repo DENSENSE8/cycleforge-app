@@ -178,6 +178,13 @@ export type TableId =
    * different questions and share no facts.
    */
   | 'report-packer-day'
+  /**
+   * Reports › Tasks, one row per FINISHED follow-up (slot-materialized;
+   * read-only). Its OWN bucket, never `tasks`: the working checklist and the
+   * record of finished work are read for different facts, and hiding
+   * `Deadline` on the record must not densify the queue.
+   */
+  | 'report-tasks'
   /** Admin › per-SKU bin distribution (slot-materialized; read-only). */
   | 'sku-bins'
   /** Admin › per-SKU stock ledger (slot-materialized; read-only). */
@@ -574,6 +581,11 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * for the `TableId` union.
    */
   'report-packer-day': [],
+  /**
+   * Completed tasks — **deliberately empty**, slot-born. Same rule. The KEY
+   * stays for the `TableId` union.
+   */
+  'report-tasks': [],
   /**
    * Per-SKU bin distribution — **deliberately empty**, slot-born. Hiding a bin
    * fact is unbinding it from a slot. The KEY stays for the `TableId` union.

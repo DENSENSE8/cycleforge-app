@@ -128,7 +128,7 @@ export function auditGroundTokens(): GroundPinResult[] {
  * Ground fills that are NOT the phone's white sheet.
  *
  * `bg-surface-canvas` is the desk's plane; the raw grey families are a second
- * language on top of that (`bg-slate-50` et al. predate the token). Wells and
+ * language on top of that (raw grey utilities predate the token). Wells and
  * washes (`bg-surface-sunken`, `bg-surface-hover`) are deliberately absent —
  * a sunken input slot and a row hover are not page grounds.
  */
@@ -208,7 +208,7 @@ export function findMobileGrayGrounds(): MobileGrayGround[] {
  * by what you removed, and add the file to {@link MOBILE_GRAY_GROUND_ZERO} so
  * it can never regress. Raising it is the one edit this module exists to stop.
  */
-export const MOBILE_GRAY_GROUND_BASELINE = 48;
+export const MOBILE_GRAY_GROUND_BASELINE = 45;
 
 export function formatMobileGrayGround(hit: MobileGrayGround): string {
   return `${hit.file}:${hit.line} — ${hit.match}`;

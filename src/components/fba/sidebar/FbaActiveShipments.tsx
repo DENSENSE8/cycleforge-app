@@ -11,11 +11,21 @@ import { LayoutGroup } from '@/design-system/motion';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { FbaShipmentEditorForm } from '@/components/fba/sidebar/FbaShipmentEditorForm';
 import { sectionLabel, SkeletonList } from '@/design-system';
+import { EmptyState } from '@/design-system/primitives';
 import type { StationTheme } from '@/utils/staff-colors';
 import { useFbaActiveShipments } from './active-shipments/useFbaActiveShipments';
 import { ActiveShipmentCard } from './active-shipments/ActiveShipmentCard';
 
-export function FbaActiveShipments({ stationTheme = 'green' }: { stationTheme?: StationTheme }) {
+export type FbaShipmentRailScope = 'all' | 'active' | 'shipped';
+
+export function FbaActiveShipments({
+  stationTheme = 'green',
+  scope = 'all',
+}: {
+  stationTheme?: StationTheme;
+  /** `shipped` is the desktop History projection; it shares this controller and card face. */
+  scope?: FbaShipmentRailScope;
+}) {
   const {
     shipments, recentShipped, loading,
     expandedIds, toggleExpand,
@@ -32,7 +42,19 @@ export function FbaActiveShipments({ stationTheme = 'green' }: { stationTheme?: 
     );
   }
 
-  if (shipments.length === 0 && recentShipped.length === 0 && !editingShipment) return null;
+  const visibleActive = scope === 'shipped' ? [] : shipments;
+  const visibleShipped = scope === 'active' ? [] : recentShipped;
+
+  if (visibleActive.length === 0 && visibleShipped.length === 0 && !editingShipment) {
+    return (
+      <EmptyState
+        title={scope === 'shipped' ? 'No shipped FBA plans' : 'No active FBA plans'}
+        description={scope === 'shipped'
+          ? 'Completed plans with carrier tracking will appear here.'
+          : 'Plans with tracking will appear here as work advances.'}
+      />
+    );
+  }
 
   // ── Editor form (replaces the card list while active) ──
   if (editingShipment) {
@@ -52,7 +74,7 @@ export function FbaActiveShipments({ stationTheme = 'green' }: { stationTheme?: 
   return (
     <div className="pb-4">
       <LayoutGroup id="fba-active-shipments">
-        {shipments.map((shipment) => (
+        {visibleActive.map((shipment) => (
           <ActiveShipmentCard
             key={shipment.id}
             shipment={shipment}
@@ -64,10 +86,12 @@ export function FbaActiveShipments({ stationTheme = 'green' }: { stationTheme?: 
           />
         ))}
 
-        {recentShipped.length > 0 && (
+        {visibleShipped.length > 0 && (
           <div className="mt-6">
-            <p className={`mb-3 px-4 ${sectionLabel} text-text-soft`}>Recent shipments</p>
-            {recentShipped.map((shipment) => (
+            <p className={`mb-3 px-4 ${sectionLabel} text-text-soft`}>
+              {scope === 'shipped' ? 'Shipped FBA plans' : 'Recent shipments'}
+            </p>
+            {visibleShipped.map((shipment) => (
               <ActiveShipmentCard
                 key={shipment.id}
                 shipment={shipment}

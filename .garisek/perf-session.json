@@ -1,0 +1,180 @@
+{
+  "ok": true,
+  "mode": "debt",
+  "tier1Gaps": 18,
+  "gaps": [
+    {
+      "route": "/m/home",
+      "tier": 1,
+      "key": "lcpMs",
+      "floor": 11930,
+      "measured": 11930,
+      "target": 2500,
+      "gap": 9430
+    },
+    {
+      "route": "/m/scan",
+      "tier": 1,
+      "key": "lcpMs",
+      "floor": 6964,
+      "measured": 6964,
+      "target": 2500,
+      "gap": 4464
+    },
+    {
+      "route": "/m/receive",
+      "tier": 1,
+      "key": "lcpMs",
+      "floor": 6361,
+      "measured": 6361,
+      "target": 2500,
+      "gap": 3861
+    },
+    {
+      "route": "/signin",
+      "tier": 1,
+      "key": "lcpMs",
+      "floor": 4967,
+      "measured": 4967,
+      "target": 2500,
+      "gap": 2467
+    },
+    {
+      "route": "/m/home",
+      "tier": 1,
+      "key": "performance",
+      "floor": 71,
+      "measured": 71,
+      "target": 95,
+      "gap": 24
+    },
+    {
+      "route": "/signin",
+      "tier": 1,
+      "key": "performance",
+      "floor": 72,
+      "measured": 74,
+      "target": 95,
+      "gap": 23
+    },
+    {
+      "route": "/m/scan",
+      "tier": 1,
+      "key": "performance",
+      "floor": 76,
+      "measured": 76,
+      "target": 95,
+      "gap": 19
+    },
+    {
+      "route": "/m/receive",
+      "tier": 1,
+      "key": "performance",
+      "floor": 77,
+      "measured": 77,
+      "target": 95,
+      "gap": 18
+    },
+    {
+      "route": "/test",
+      "tier": 1,
+      "key": "performance",
+      "floor": 89,
+      "measured": 84,
+      "target": 95,
+      "gap": 6
+    },
+    {
+      "route": "/shipping/orders",
+      "tier": 1,
+      "key": "performance",
+      "floor": 90,
+      "measured": 90,
+      "target": 95,
+      "gap": 5
+    },
+    {
+      "route": "/pack",
+      "tier": 1,
+      "key": "performance",
+      "floor": 91,
+      "measured": 91,
+      "target": 95,
+      "gap": 4
+    },
+    {
+      "route": "/signin",
+      "tier": 1,
+      "key": "seo",
+      "floor": 91,
+      "measured": 91,
+      "target": 95,
+      "gap": 4
+    },
+    {
+      "route": "/search",
+      "tier": 1,
+      "key": "performance",
+      "floor": 92,
+      "measured": 92,
+      "target": 95,
+      "gap": 3
+    },
+    {
+      "route": "/triage",
+      "tier": 1,
+      "key": "performance",
+      "floor": 92,
+      "measured": 92,
+      "target": 95,
+      "gap": 3
+    },
+    {
+      "route": "/m/receive",
+      "tier": 1,
+      "key": "accessibility",
+      "floor": 93,
+      "measured": 93,
+      "target": 95,
+      "gap": 2
+    },
+    {
+      "route": "/m/home",
+      "tier": 1,
+      "key": "accessibility",
+      "floor": 94,
+      "measured": 94,
+      "target": 95,
+      "gap": 1
+    },
+    {
+      "route": "/shipping/orders",
+      "tier": 1,
+      "key": "accessibility",
+      "floor": 94,
+      "measured": 94,
+      "target": 95,
+      "gap": 1
+    },
+    {
+      "route": "/triage",
+      "tier": 1,
+      "key": "accessibility",
+      "floor": 94,
+      "measured": 94,
+      "target": 95,
+      "gap": 1
+    }
+  ],
+  "target": {
+    "performance": 95,
+    "accessibility": 95,
+    "bestPractices": 95,
+    "seo": 95,
+    "lcpMs": 2500,
+    "tbtMs": 200,
+    "cls": 0.1
+  },
+  "updatedAt": "2026-09-23T00:47:38.831Z",
+  "updatedMs": 1790124458831
+}

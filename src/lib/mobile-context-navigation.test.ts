@@ -33,7 +33,15 @@ test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () =>
   // "Checklists".
   assert.equal(getMobileAppTitle('/m/home'), 'Daily');
   assert.equal(getMobileAppTitle('/m/settings'), 'Settings');
-  assert.equal(getMobileAppTitle('/m/work'), 'Orders');
+  assert.equal(getMobileAppTitle('/m/work'), 'Order management');
+  assert.equal(getMobileAppTitle('/m/orders'), 'Order management');
+  assert.equal(getMobileAppTitle('/m/orders/42'), 'Order management');
+  assert.equal(getMobileAppTitle('/m/shipping'), 'Shipping & packing');
+  assert.equal(getMobileAppTitle('/m/shipping/history'), 'Shipped history');
+  assert.equal(getMobileAppTitle('/m/shipping/stage/42'), 'Stage at rack');
+  assert.equal(getMobileAppTitle('/m/shipping/scan-out'), 'Carrier scan-out');
+  assert.equal(getMobileAppTitle('/m/exceptions'), 'Exceptions');
+  assert.equal(getMobileAppTitle('/m/exceptions/42'), 'Exceptions');
   assert.equal(getMobileAppTitle('/m/search'), 'Find');
   assert.equal(getMobileAppTitle('/m/pick'), 'Picks');
   assert.equal(getMobileAppTitle('/m/pack'), 'Packing');

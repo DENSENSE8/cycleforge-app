@@ -12,6 +12,7 @@ staff member.
 
 | Doc | What it answers |
 |---|---|
+| [`HANDOFF-continue.md`](HANDOFF-continue.md) | **Start here in a fresh session.** State of play, working method, open questions |
 | [`01-repo-map.md`](01-repo-map.md) | What is actually in the repo today, measured — what survives, what dies, where the seams are |
 | [`02-target-architecture.md`](02-target-architecture.md) | The Warehouse OS spec: shell, rails, sessions, tools, canvas, data model |
 | [`03-decisions.md`](03-decisions.md) | **10 decisions that block coding.** Answer these first |
@@ -19,7 +20,6 @@ staff member.
 | [`05-data-model.md`](05-data-model.md) | **The tables.** Why polymorphism belongs on the event log and not the session, and the 31-table census |
 | [`06-work-order-migration-path.md`](06-work-order-migration-path.md) | **Ruled.** The work order session — a titled wrapper around N assignments. Expand → code → contract, with the dangerous steps isolated |
 | [`07-configurability.md`](07-configurability.md) | **The configurability brief, fought** (2026-08-23) — modes vs tree states, "Spacesuit" snap grids settled by arithmetic, spacing, the beam configure button, rail mirroring, the shipped 15-verb AI contract, and the two prefs keys that finish it |
-| [`HANDOFF-continue.md`](HANDOFF-continue.md) | **Start here in a fresh session.** State of play, working method, open questions, the concurrent-session divergence |
 | [`LAWS.md`](LAWS.md) | **The design and architecture laws**, numbered and referenceable. Each carries its enforcement status — `DB` / `TYPE` / `TOOLING` / `PROTO` / `PROSE` |
 | [`HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | The visual layer, and the argument behind every law |
 | [`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md) | **The current rewrite prompt** (2026-08-23). The AI pinned centre as a SUNKEN feed — no tile, no backdrop — blocks of time instead of pages, the support-call scenario as the acceptance spec, draft blocks with a morphing commit, AI-proposed keybinds. Supersedes the FRAMING of HANDOFF-ai-first; its Phase 1 is done and stands |

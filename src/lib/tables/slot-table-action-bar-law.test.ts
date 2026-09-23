@@ -20,7 +20,7 @@ import {
   SLOT_TABLE_ACTION_BAR_FILES,
   SLOT_TABLE_ACTION_BAR_HEIGHT_CLASS,
   SLOT_TABLE_ACTION_BAR_HEIGHT_PX,
-  SLOT_TABLE_ACTION_BAR_HOST,
+  SLOT_TABLE_ACTION_BAR_HOSTS,
 } from './slot-table-action-bar-law';
 
 function source(path: string): string {
@@ -60,12 +60,14 @@ describe('slot-table action bar — the band declares its own height', () => {
     assert.equal(SLOT_TABLE_ACTION_BAR_CONTROL_CLASS, 'h-8');
   });
 
-  it('the host mounts the band class and the runtime guard', () => {
-    const host = code(SLOT_TABLE_ACTION_BAR_HOST);
-    assert.match(host, /SLOT_TABLE_ACTION_BAR_BAND_CLASS/);
-    assert.match(host, /useFixedBandHeight\(/);
-    // A guard with no element to observe is decoration.
-    assert.match(host, /ref=\{bandRef\}/);
+  it('every host mounts the band class and the runtime guard', () => {
+    for (const path of SLOT_TABLE_ACTION_BAR_HOSTS) {
+      const host = code(path);
+      assert.match(host, /SLOT_TABLE_ACTION_BAR_BAND_CLASS/, path);
+      assert.match(host, /useFixedBandHeight\(/, path);
+      // A guard with no element to observe is decoration.
+      assert.match(host, /ref=\{bandRef\}/, path);
+    }
   });
 
   it('no file in the band imports a primitive taller than the control scale', () => {

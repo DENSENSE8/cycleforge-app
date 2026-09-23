@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   clearDailyCheckMarks,
+  dailyCheckItemBelongsToStaff,
   markDailyCheck,
   unmarkDailyCheck,
 } from '@/lib/daily-checks/queries';
@@ -49,6 +50,13 @@ export const POST = withAuth(
     const dateKey = date ?? getCurrentPSTDateKey();
 
     try {
+      if (!(await dailyCheckItemBelongsToStaff({
+        orgId: ctx.organizationId,
+        itemId,
+        staffId: ctx.staffId,
+      }))) {
+        return NextResponse.json({ error: 'That task belongs to another staff member' }, { status: 403 });
+      }
       const changed = checked
         ? await markDailyCheck({
             orgId: ctx.organizationId,

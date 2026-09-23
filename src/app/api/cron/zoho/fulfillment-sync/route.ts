@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { forEachOrgWithProvider } from '@/lib/cron/for-each-org';
 import { syncShippedOrdersToZoho, type SyncRunReport } from '@/lib/zoho/fulfillment-sync';
 import { getFulfillmentSyncConfig } from '@/lib/zoho/fulfillment-config';
@@ -30,12 +31,6 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 const CURSOR_KEY = 'zoho_fulfillment_sync';
-
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get('authorization') === `Bearer ${secret}`;
-}
 
 function parseDryRun(value: string | null): boolean | undefined {
   if (value == null) return undefined;
@@ -46,9 +41,7 @@ function parseDryRun(value: string | null): boolean | undefined {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   const startedAt = Date.now();
   const url = new URL(req.url);
@@ -65,8 +58,8 @@ export async function GET(req: NextRequest) {
     // tenant freezes every tenant's window (the zoho_po_mirror freeze).
 
     // Distributed lock so an overlapping tick / manual trigger / Vercel retry
-    // can't double-push. Fan out per Zoho-connected org (plus USAV while it uses
-    // env creds): each org pushes its OWN shipped orders under its OWN Zoho
+    // can't double-push. Fan out per Zoho-connected org: each org pushes its
+    // OWN shipped orders under its OWN Zoho
     // credential (syncShippedOrdersToZoho org-scopes the order load + binds
     // withZohoCredential). Per-org failures are isolated.
     const locked = await withCronLock('zoho.fulfillment_sync', () =>
@@ -93,7 +86,6 @@ export async function GET(req: NextRequest) {
             }
             return report;
           },
-          { includeDogfoodTransitional: true },
         );
 
         const totals = { scanned: 0, completed: 0, skipped: 0, errored: 0 };

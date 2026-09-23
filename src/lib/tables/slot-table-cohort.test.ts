@@ -19,8 +19,11 @@ import {
   isIncomingGridSortable,
   isReceivingGridSortable,
 } from '@/lib/receiving/receiving-grid-layout';
-import { DAILY_COMPOUND_COLUMNS, isDailyGridSortable } from '@/lib/daily-checks/daily-grid-layout';
-import { TASKS_COMPOUND_COLUMNS, isTasksGridSortable } from '@/lib/staff-todos/tasks-grid-layout';
+import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
+import { DAILY_FAMILY } from '@/lib/tables/field-catalog/daily';
+import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
+import { TASKS_FAMILY } from '@/lib/tables/field-catalog/tasks';
+import { isSlotTableColumnSortable } from '@/components/tables/compound/slot-table-columns';
 import {
   CATALOG_LINK_COMPOUND_COLUMNS,
   isCatalogLinkGridSortable,
@@ -689,8 +692,16 @@ describe('slot-table header-sort law on compound PRODUCT_TABLES peers', () => {
       ['orders', ORDERS_COMPOUND_COLUMNS, isQueueSortableColumnKey],
       ['receiving', RECEIVING_COMPOUND_COLUMNS, isReceivingGridSortable],
       ['incoming', INCOMING_COMPOUND_COLUMNS, isIncomingGridSortable],
-      ['tasks', TASKS_COMPOUND_COLUMNS, (key) => isTasksGridSortable(TASKS_COMPOUND_COLUMNS, key)],
-      ['daily', DAILY_COMPOUND_COLUMNS, (key) => isDailyGridSortable(DAILY_COMPOUND_COLUMNS, key)],
+      [
+        'tasks',
+        TASKS_COMPOUND_COLUMNS,
+        (key) => isSlotTableColumnSortable(TASKS_FAMILY, TASKS_COMPOUND_COLUMNS, key),
+      ],
+      [
+        'daily',
+        DAILY_COMPOUND_COLUMNS,
+        (key) => isSlotTableColumnSortable(DAILY_FAMILY, DAILY_COMPOUND_COLUMNS, key),
+      ],
     ];
     for (const [family, columns, isSortable] of families) {
       assert.ok(

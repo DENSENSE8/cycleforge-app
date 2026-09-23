@@ -57,12 +57,8 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
   const itemById = new Map(items.map((item) => [item.id, item]));
 
   /**
-   * The PER-STAFF denominator — the rule that makes an owner mean anything.
-   * An item counts toward staffer S's `total` when it is recurring (the shift
-   * attestation everyone owes), unowned (the whole shift owes it), or owned by
-   * S. Without this, an owned one-off sits in all five staffers' denominators
-   * and reads "1 of 5 done" forever — exactly what `assigned_staff_id` exists
-   * to prevent.
+   * Recurring work always belongs to the shift. One-offs are shift-wide when
+   * unowned and personal only when explicitly assigned.
    */
   const countsFor = (item: DailyCheckItem, staffId: number): boolean =>
     item.kind === 'recurring' || item.assignedStaffId == null || item.assignedStaffId === staffId;

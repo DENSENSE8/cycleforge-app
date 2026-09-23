@@ -48,21 +48,37 @@ test('unchecked row paints the title unstruck and prints no id', () => {
   assert.doesNotMatch(html, />7</, 'the id left the phone row — it lives in the sheet');
   assert.doesNotMatch(html, /#7/);
   assert.match(html, /data-struck="false"/);
-  assert.match(html, /aria-hidden="true"[^>]*style="[^"]*width:0%/);
+  assert.match(html, /text-decoration-thickness:0px/);
   assert.doesNotMatch(html, /text-text-muted/);
 });
 
-test('checked row strikes the title at full width', () => {
+test('the strike is the TITLE text decoration, not a rule across the row', () => {
+  // A wrapped title must strike per LINE and stop at its last glyph. A line
+  // pinned at the wrapper's mid-height put one rule through the gap between
+  // two lines (operator 2026-09-23).
   const html = paint(true);
   assert.match(html, /data-struck="true"/);
-  assert.match(html, /aria-hidden="true"[^>]*style="[^"]*width:100%/);
+  assert.match(html, /\[text-decoration-line:line-through\]/);
+  assert.match(html, /text-decoration-thickness:1px/);
   assert.match(html, /text-text-muted/);
+  assert.doesNotMatch(html, /absolute[^"]*top-1\/2/, 'no row-height rule survives');
 });
 
 test('the whole title is the tick target — label/for matches the checkbox id', () => {
   const html = paint(false);
-  assert.match(html, /for="m-daily-7"/);
-  assert.match(html, /id="m-daily-7"/);
+  assert.match(html, /for="m-daily-check-7"/);
+  assert.match(html, /id="m-daily-check-7"/);
+});
+
+test('a task row and a check row with the same number get different checkbox ids', () => {
+  // Two stores number their rows independently: `daily_check_items.id = 7` and
+  // `work_assignments.id = 7` land on the same list, and one shared DOM id
+  // would make the task's label tick the check.
+  const check = paint(false);
+  const task = paint(false, { rowKey: 'task-7', detail: 'record' });
+  assert.match(check, /id="m-daily-check-7"/);
+  assert.match(task, /id="m-daily-task-7"/);
+  assert.match(task, /aria-label="Open Front door locked"/, 'a task walks to its record');
 });
 
 test('the row clears the 44px touch floor and the pencil is the edit door', () => {

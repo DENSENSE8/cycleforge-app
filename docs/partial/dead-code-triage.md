@@ -259,3 +259,99 @@ Verified all 26 current knip "unused files" candidates (read-only: static + dyna
 
 - **[CODE]** Triage the un-triaged knip "Unused Files" backlog (`src/components/mobile/**`, `src/components/fba/table/**`, `src/components/manuals/**`, `src/components/admin/connections/**`). Next step: per-file reference + mobile-route (`src/app/m/**`) reachability check before any deletion. **[DEAD-CODE-RISKY]** — high false-positive rate (dynamic imports, admin tab routing, mobile-only loads).
 - **[DESIGN-DECISION]** The 21 design-system token/theme types in `src/design-system/**` (kept for [[design-2026-component-adoption]]) — revisit and delete only if that initiative stalls.
+
+### 2026-09-19 — duplicate-module deletion wave
+
+Deleted 34 clean, zero-import files (3,716 lines): 24 byte-identical copies of active component/feature/hook modules, one unused re-export, and the closed obsolete `src/lib/station` hook chain. Knip JSON, repository-wide path search, and code-graph impact (zero consumers outside that closed chain) agreed; TypeScript passed after deletion. The active copies remain under `src/components`, `src/features`, and `src/hooks`.
+
+### 2026-09-19 — stale-law and superseded-adapter wave
+
+Deleted seven proven-dead files (1,002 lines): the orphaned assistant turn-determinism law and test, the retired morph-cursor skin and test, and the obsolete kiosk cart compound-table adapter, layout, and test. Repository-wide references and code-graph impact showed no live consumers; the kiosk cart remains on its intended card presentation. The full verification profile passed afterward (19 gates, 9,740 tests passing, zero failures). The completed FIND mobile-first handoff was also removed from `docs/todo`; `/m/search` now mounts the shared FIND surface at compact density through the mobile-safe facade.
+
+### 2026-09-19 — retired sidebar-surface wave (accounting correction)
+
+The two waves above account for 41 files / 4,718 lines. The working tree deletes
+**53 source files / 6,329 lines**. This entry records the remaining **12 files /
+1,611 lines**, which had no triage entry until now. They are one coherent
+removal: the retired *favorites sidebar workspace surface* plus its repair-panel
+sibling and the two API routes only those surfaces called.
+
+| lines | file | why dead |
+|---|---|---|
+| 279 | `src/components/sidebar/favorites/FavoritesDefaultView.tsx` | sidebar favorites workspace — zero importers |
+| 282 | `src/components/sidebar/favorites/useFavoritesWorkspace.ts` | same surface's hook — zero importers |
+| 146 | `src/components/sidebar/favorites/FavoriteForm.tsx` | same surface — zero importers |
+| 146 | `src/components/sidebar/favorites/FavoritesQuickPickView.tsx` | same surface — zero importers |
+| 131 | `src/components/sidebar/favorites/favorites-search.ts` | same surface — zero importers |
+| 46 | `src/components/sidebar/favorites/favorites-api.ts` | same surface's client — zero importers |
+| 18 | `src/components/sidebar/FavoritesWorkspaceSection.tsx` | the deleted surface's only mount point |
+| 235 | `src/components/sidebar/RepairSidebarPanel.tsx` | repair sibling of the same retired panel — zero importers |
+| 89 | `src/components/repair/repair-favorite-intake.ts` | intake helper reachable only from that panel |
+| 60 | `src/components/mobile/NetworkChip.tsx` | the outbound-workflow law **forbids** it (see below) |
+| 106 | `src/app/api/receiving-tasks/route.ts` | API route — zero callers in `src`, `tests`, `scripts` |
+| 73 | `src/app/api/kiosk/repair/submit/route.ts` | API route — zero callers in `src`, `tests`, `scripts` |
+
+Evidence, and the two grep hits that are **not** live consumers:
+
+- The only surviving `NetworkChip` reference is a *negative* assertion —
+  `src/lib/shipping/outbound-workflow-cohort.ts:491` fails the cohort when the
+  queue source contains `<NetworkChip`. Deleting the component satisfies that
+  law rather than violating it.
+- The only surviving `FavoriteForm` references are `FavoriteFormState`, a local
+  interface inside the still-live `src/components/admin/FavoritesManagementTab.tsx`.
+  Different symbol, different file.
+
+**The favorites feature itself is not removed** — only the sidebar surface. The
+live path is `/inventory/favorites` → `FavoritesManagementTab` → `/api/favorites`
+(+ `/api/favorites/[id]`), all intact.
+
+**Route-surface note.** Two of the twelve are API routes, so this wave changes
+the public route surface. `pnpm audit-route-auth:enforce` passes at 1,030 routes
+*after* manifest regeneration — the guard cannot flag a deleted route, so the
+zero-caller search above is the evidence, not the route gate. After the wave:
+`pnpm verify` 19/19 gates, 9,740 tests passing / 0 failing, `tsc --noEmit` 0
+errors, `cron-contract-guard` OK (39/39).
+
+### DO NOT DELETE — cross-repo entrypoints knip reports as unused
+
+A file whose only caller lives in **another repository** is reported unused
+every run: grep, knip and `impact_analysis` all index this repo only, so they
+all agree it is dead. Deleting one takes production down.
+
+**This is now gated, not remembered** (a rule with no gate is folklore):
+
+- `knip.json` `ignore` exempts them, so no sweep lists them as candidates.
+- `src/lib/realtime/wms-execution-command.test.ts` carries a tripwire that
+  fails if `scripts/wms-domain-adapter.ts` stops existing or stops reaching
+  `executeWmsExecutionCommand` / `z.literal('command.execute')`. It runs in the
+  `Unit tests` gate of `pnpm verify`. Verified to trip: moving the adapter aside
+  turns the suite red (`pass 5 / fail 1`), restoring it turns it green.
+
+| file | real caller | proof it is live |
+|---|---|---|
+| `scripts/wms-domain-adapter.ts` | `Garisek-OS/scripts/wms-gateway.ts` (`pnpm wms:gateway`) spawns it via `Garisek-OS/src/lib/langgraph/wms/cycleforge-adapter-client.ts:37` | `curl :3050/__wms/health` → `{"status":"ok","protocol":"cycleforge.wms.v1"}` with `x-switch-role: wms-gateway` |
+
+That adapter is the **only** production caller of
+`executeWmsExecutionCommand` (`src/lib/realtime/wms-execution-command.ts`), so
+an in-repo grep makes the WMS command kernel look wired to nothing. It is not.
+The live chain is:
+
+```
+mobile socket  →  wms-gateway (uWebSockets, out of repo)
+               →  cycleforge-adapter-client  →  spawn scripts/wms-domain-adapter.ts
+               →  executeWmsExecutionCommand  →  executeWmsPutawayAdjust
+REST /api/locations/[barcode]  ─────────────────→  executeWmsPutawayAdjust
+```
+
+Both paths land on the same domain mutation. `wms-putaway-socket-migration.test.ts`
+pins exactly that: the mobile surface must use `executeWmsCommand` (never
+`queueOrFetch` or a `PATCH`), and the REST route must stay "a thin adapter over
+the same WMS command" (`executeWmsPutawayAdjust`, never `adjustBinQty`).
+
+The same three files are reachable only from that out-of-repo gateway or a
+verify script, and are exempted in `knip.json` for the same reason:
+`scripts/wms-execution-shell-guard.ts` (run by
+`scripts/verify-wms-stream-phase.mjs`), `src/lib/packing/wms-slot-context.ts`
+(called by the adapter's `context.resolve`), `scripts/verify-wms-reroute-live.ts`.
+Adding `knip.json` changed nothing else: unused-file count went 461 → 457, and
+the diff is exactly those four paths.

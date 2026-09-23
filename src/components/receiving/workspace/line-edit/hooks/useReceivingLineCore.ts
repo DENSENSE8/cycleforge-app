@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { useResourceMutation } from '@/hooks';
+import { useEventBridge, useResourceMutation } from '@/hooks';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';
@@ -34,6 +34,7 @@ import { useSourcePlatform } from './useSourcePlatform';
 import { useReceivingType } from './useReceivingType';
 import { useReceivingPackageSync } from './useReceivingPackageSync';
 import { useZohoSync } from './useZohoSync';
+import { useReceivingCartonRealtimeBridge } from './useReceivingCartonRealtime';
 
 /**
  * Mode-AGNOSTIC controller for a single receiving line's carton-level concerns —
@@ -373,11 +374,26 @@ export function useReceivingLineCore(
       toast.error('Could not update priority');
     }
   }, [row.receiving_id, row.id, row.notes, priorityTier]);
+  // Cross-viewer classify sync: another operator's platform/type/priority edit
+  // on this carton re-dispatches `receiving-package-updated` from the Ably
+  // station channel (see useReceivingCartonRealtimeBridge); the platform/type
+  // hooks mirror their own fields — the priority tier mirrors here.
+  useReceivingCartonRealtimeBridge(row.receiving_id ?? null);
+  useEventBridge({
+    'receiving-package-updated': (e) => {
+      if (row.receiving_id == null) return;
+      const detail = (
+        e as CustomEvent<{ receiving_id?: number; priority_tier?: number | null }>
+      ).detail;
+      if (!detail || detail.receiving_id !== row.receiving_id) return;
+      if (detail.priority_tier === undefined) return;
+      setPriorityTier(detail.priority_tier);
+    },
+  });
 
   // Persist listing_url to the carton (debounced) + mirror listing/platform
   // changes on other surfaces for this carton.
   useReceivingPackageSync({ row, listingLink, setListingLink, setSourcePlatform });
-
   const patchMut = useResourceMutation(async (fields: Record<string, unknown>) => {
     const res = await fetch('/api/receiving-lines', {
       method: 'PATCH',

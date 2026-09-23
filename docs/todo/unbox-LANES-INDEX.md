@@ -6,17 +6,7 @@ Four lanes. A, C, and the capture-stack foundation run in parallel; **B is the r
 
 | Lane | Scope | Plan | Prompt |
 |---|---|---|---|
-| **Foundation** | `CaptureStack` primitive (P0 dead-tail, P1 promote) | [capture-stack](./unbox-capture-stack-PLAN.md) | [P0+P1](./unbox-capture-stack-P0-P1-EXECUTION-PROMPT.md) |
-| **A** | Two-row station identity header | [A](./unbox-A-identity-density-PLAN.md) | [A](./unbox-A-identity-density-EXECUTION-PROMPT.md) |
-| **C** | Per-PO / per-item labels + notes | [C](./unbox-C-label-note-grain-PLAN.md) | [C](./unbox-C-label-note-grain-EXECUTION-PROMPT.md) |
-| **B** | Step procedure + Playwright — **vocabulary SHIPPED as the Checklist display; restructure REJECTED.** Plan superseded in part; the prompt now carries the two remaining slices | [B](./unbox-B-step-procedure-PLAN.md) | [B](./unbox-B-step-procedure-EXECUTION-PROMPT.md) |
-| **D** | Canvas Procedure lens (`/studio`) | [D](./unbox-D-canvas-procedure-PLAN.md) | [D](./unbox-D-canvas-procedure-EXECUTION-PROMPT.md) |
-| **E** | Tab strip → right details panel — **SHIPPED** `7d014d37a` | [E](./unbox-E-tabs-to-right-rail-PLAN.md) | [E](./unbox-E-tabs-to-right-rail-EXECUTION-PROMPT.md) |
-| **E2** | Displays column follow-through — URL state, entry, grammar collision | — | [E2 handoff](./unbox-E2-displays-column-HANDOFF.md) |
-| **F** | DS primitive motion bridge — *mostly superseded by G; the `ExpandableSection` deletion still stands* | [F](./unbox-F-motion-bridge-PLAN.md) | [F](./unbox-F-motion-bridge-EXECUTION-PROMPT.md) |
-| **G** | `MotionConfig` reduced-motion floor — **do this before F** | [G](./unbox-G-motionconfig-PLAN.md) | [G](./unbox-G-motionconfig-EXECUTION-PROMPT.md) |
 
-Costing behind F vs G: [`motion-reduce-strategy-COSTING.md`](./motion-reduce-strategy-COSTING.md).
 
 Sibling-pattern survey (what else shares these defects): [`unbox-SIBLING-PATTERNS.md`](./unbox-SIBLING-PATTERNS.md).
 
@@ -47,7 +37,6 @@ C ──────────────────┘
 
 A and C are additive and can land in any order. B Phase 3 moves capture out of the accordion and restructures the panel — anything landing after it rebases onto a moving target.
 
-**Lane E was the exception: it shares `LineEditPanel.tsx` with B, so E and B could never run at once.** E ran first as planned and **shipped** (`7d014d37a`) — the tab strip is gone, the centre is the carton, and B rebased onto the simplified panel. Its follow-through is [E2](./unbox-E2-displays-column-HANDOFF.md), which owns the Displays column and **must not run at the same time as B** for the same reason.
 
 ```
 Foundation P0 → P1 ─┐

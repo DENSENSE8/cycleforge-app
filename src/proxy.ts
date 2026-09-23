@@ -191,8 +191,10 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   ['/pickup/', '/m/receiving'],
   ['/receiving/history', '/m/receiving'],
   ['/receiving/history/', '/m/receiving'],
-  // Packing is desktop-only (2026-09-14 mobile ruling): no /m/pack exists, so
-  // phones deliberately get the desktop /pack page.
+  // Packing has a dedicated phone history and capture-evidence face. It stays
+  // a partial completion path until mobile pack confirmation is implemented.
+  ['/pack', '/m/pack'],
+  ['/pack/', '/m/pack'],
   ['/signin', '/m/signin'],
   ['/signin/', '/m/signin'],
 ]);

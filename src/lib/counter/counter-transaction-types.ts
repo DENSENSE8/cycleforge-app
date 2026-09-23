@@ -160,6 +160,16 @@ export function isCounterTransactionStatus(value: string): value is CounterTrans
   return (COUNTER_TRANSACTION_STATUSES as readonly string[]).includes(value);
 }
 
+/**
+ * One device checked in.
+ *
+ * It carries the device FACTS (title, serial, money) and not just the RS
+ * number because the success screen is the receipt the customer is read back:
+ * "RS-1042 · Wave Radio II · serial 0483221 · $168.00". Zipping the outcomes
+ * against the cart the client happened to submit — by array index — is the
+ * version of this that breaks the first time a device fails mid-visit and the
+ * outcome list is shorter than the cart.
+ */
 export interface CounterRepairOutcome {
   id: number;
   rsNumber: string;
@@ -167,6 +177,11 @@ export interface CounterRepairOutcome {
   ticketNumber: string | null;
   documentId: number | null;
   signatureUrl: string | null;
+  /** The ONE product this row is for — never a joined list of a visit's units. */
+  productTitle: string;
+  serialNumber: string;
+  /** Same integer the header total was built from (`serviceLineCents`). */
+  priceCents: number;
 }
 
 /**

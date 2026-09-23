@@ -15,6 +15,8 @@ import { FbaCreatePlanModal } from '@/components/fba/FbaCreatePlanModal';
 import { FbaBoardDetailPanel } from '@/components/fba/FbaBoardDetailPanel';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
+import { FbaActiveShipments } from '@/components/fba/sidebar/FbaActiveShipments';
+import { FbaCombineRailBody, FbaPlanRailBody } from '@/components/fba/sidebar/FbaSidebarRails';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
 import { Button, SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
@@ -170,6 +172,25 @@ export function FbaOutboundWorkspace() {
             <FBAManagementTab searchTerm={searchParams.get('q') ?? ''} />
           ) : error ? (
             <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
+          ) : activeMode === 'plan' ? (
+            /*
+             * The former board table was removed with its unsafe table
+             * implementation. The existing Plan rail already owns the live
+             * FBA board query, selection event, and row identity, so it is the
+             * canonical interim main-pane projection — not a copied table or
+             * another scan input.
+             */
+            <FbaPlanRailBody view="planned" />
+          ) : activeMode === 'combine' ? (
+            /* The combine queue is the same selected-shipment source used by
+                the context rail. The overlay replaces this only once a user
+                starts the typed combine flow. */
+            <FbaCombineRailBody view="recent" stationTheme={stationTheme} />
+          ) : activeMode === 'shipped' ? (
+            /* Shipped history is a projection of the existing shipment
+                controller and card face. It must not revive the retired table
+                or create a route-local data model. */
+            <FbaActiveShipments stationTheme={stationTheme} scope="shipped" />
           ) : (
             <div className="min-h-0 flex-1" />
           )}

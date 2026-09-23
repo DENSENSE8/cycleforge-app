@@ -22,8 +22,11 @@
  * completes on a physical terminal or behind a step-up. No card data is accepted
  * here under any framing.
  *
- * `/api/kiosk/repair/submit` is still live and still the client's path until the
- * kiosk UI is repointed — retiring it is the last step of phase 05, not this one.
+ * THE kiosk write path, as of 2026-09-16. The device-authed single-repair
+ * endpoint the pane used to post is deleted; `KioskRepairPane`'s "Submit
+ * repair" and `KioskCartLedger`'s Save/Pay both reach this route through
+ * `submitKioskVisit`, so one visit is one transaction however many devices
+ * and items it carries.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -43,6 +46,9 @@ import type {
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 
 export const runtime = 'nodejs';
+
+/** RFC 4122 shape — what `client_event_id` (uuid) will accept. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const RetailLineSchema = z.object({
   variationId: z.string().trim().min(1).nullable(),
@@ -182,6 +188,13 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
       // mint one server-side — a server-minted key is different on every retry,
       // which is the same as having none.
       return NextResponse.json({ error: 'IDEMPOTENCY_KEY_REQUIRED' }, { status: 400 });
+    }
+    // The key lands in `counter_transactions.client_event_id`, a UUID column,
+    // so a readable key ("retry-3") used to reach Postgres and come back as a
+    // 500 cast error — a client mistake reported as a server fault. Name it
+    // here instead; every real client mints `safeRandomUUID()`.
+    if (!UUID_RE.test(idempotencyKey)) {
+      return NextResponse.json({ error: 'IDEMPOTENCY_KEY_INVALID' }, { status: 400 });
     }
     const input: CounterTransactionInput = {
       customer: {

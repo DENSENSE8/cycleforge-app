@@ -163,6 +163,26 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
   },
 );
 
+/**
+ * A BAND caption inside the menu — the same word the desk paints over the same
+ * run of rows.
+ *
+ * Daily's preview carries three stores' worth of work (checklist · task ·
+ * ticket) and a flat list of them asserts they are one kind of thing. The
+ * caption is `role="presentation"` because a menu's children are its items;
+ * the rows under it already say what they are in their accessible names.
+ */
+export function HeaderChromeMenuLabel({ children }: { children: ReactNode }) {
+  return (
+    <p
+      role="presentation"
+      className="border-b border-border-hairline bg-surface-sunken px-3 py-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+    >
+      {children}
+    </p>
+  );
+}
+
 export function HeaderChromeMenuEmpty({ children }: { children: ReactNode }) {
   return <p className="px-3 py-2.5 text-role-caption text-text-faint">{children}</p>;
 }

@@ -1,14 +1,8 @@
 'use client';
 
 import { Check } from '@/components/Icons';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { cn } from '@/utils/_cn';
-
-export interface StaffRecipient {
-  id: number;
-  name: string;
-  role: string;
-  color_hex: string;
-}
 
 interface StaffRecipientListProps {
   staff: ReadonlyArray<StaffRecipient>;

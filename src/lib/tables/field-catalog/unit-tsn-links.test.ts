@@ -231,7 +231,7 @@ describe('unitTsnLinksCompoundView', () => {
   it('puts the TSN id on identity and the station on the title', () => {
     const view = unitTsnLinksCompoundView(row());
     assert.equal(view.id, '55123');
-    assert.equal(view.orderId, '55123');
+    assert.equal(view.identityFace?.value, '55123');
     assert.equal(view.title, 'TECH');
   });
 

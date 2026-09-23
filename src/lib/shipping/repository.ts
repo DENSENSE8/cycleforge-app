@@ -110,6 +110,31 @@ export async function healShipmentOrganizationId(
   );
 }
 
+/**
+ * Heal-by-tracking for the ON CONFLICT collision case: a tenant-role INSERT
+ * whose unique key collides with a legacy NULL-org row that the pre-check
+ * SELECT could not see (FORCE RLS) fails the DO UPDATE branch with 42501.
+ * Resolves + stamps the invisible row on the owner pool (BYPASSRLS) in one
+ * statement. Returns the healed row id, or null when no invisible row holds
+ * this tracking (the 42501 then means something else — rethrow).
+ */
+export async function healShipmentOrganizationIdByTracking(
+  trackingNormalized: string,
+  orgId: OrgId,
+): Promise<number | null> {
+  const result = await pool.query<{ id: string }>(
+    `UPDATE shipping_tracking_numbers
+        SET organization_id = $2::uuid,
+            updated_at = now()
+      WHERE tracking_number_normalized = $1
+        AND organization_id IS NULL
+      RETURNING id`,
+    [trackingNormalized, orgId],
+  );
+  const id = result.rows[0]?.id;
+  return id != null ? Number(id) : null;
+}
+
 // ─── Lookups ──────────────────────────────────────────────────────────────────
 
 export async function getShipmentById(id: number, orgId?: OrgId): Promise<ShipmentRow | null> {

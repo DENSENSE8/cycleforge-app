@@ -175,8 +175,14 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   { tableId: 'warranty', path: 'src/components/warranty/grid/useWarrantyTableLayout.ts' },
   { tableId: 'tech-all', path: 'src/components/tech/all/useTechAllTableLayout.ts' },
   { tableId: 'tracking-exceptions', path: 'src/components/tracking-exceptions/grid/useTrackingExceptionsTableLayout.ts' },
-  { tableId: 'tasks', path: 'src/features/tasks/grid/useTasksTableLayout.ts' },
-  { tableId: 'daily', path: 'src/features/home/grid/useDailyTableLayout.ts' },
+  // `tasks` ported to a `SlotTableFamily` record 2026-09-22 (`TASKS_FAMILY`),
+  // so it owns neither a layout wrapper nor a column module. Mounted straight
+  // from `useTasksSpreadsheet`.
+  //
+  // `daily` followed the same day when Home's two tabs consolidated into one
+  // banded agenda (`DAILY_FAMILY`): the surface calls
+  // `useSlotTableLayout(DAILY_FAMILY)` directly, so there is no
+  // `useDailyTableLayout.ts` left to name here.
   { tableId: 'my-day', path: 'src/features/my-day/grid/useMyDayTableLayout.ts' },
   {
     tableId: 'kiosk-devices',
@@ -269,6 +275,14 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   {
     tableId: 'report-packer-day',
     path: 'src/components/reports/report-packer-day-grid/useReportPackerDayTableLayout.ts',
+  },
+  /**
+   * No wrapper module: the family RECORD is the registration, mounted straight
+   * from the spreadsheet hook (`location-stock` / `sku-bins` precedent).
+   */
+  {
+    tableId: 'report-tasks',
+    path: 'src/components/reports/report-tasks-grid/useReportTasksSpreadsheet.ts',
   },
   {
     tableId: 'sku-bins',
@@ -371,18 +385,20 @@ export const SLOT_TABLE_COLUMN_MODULE_DEBT = [
   'src/components/warranty/grid/warranty-grid-layout.ts',
   'src/features/review/catalog-link/grid/catalog-link-grid-layout.ts',
   'src/features/review/catalog-link/grid/import-exception-grid-layout.ts',
-  'src/lib/daily-checks/daily-grid-layout.ts',
-  'src/lib/kiosk/cart-grid-layout.ts',
   'src/lib/my-day/my-day-grid-layout.ts',
   'src/lib/products/catalog-grid-layout.ts',
   'src/lib/receiving/receiving-grid-layout.ts',
   'src/lib/repair/repair-grid-layout.ts',
-  'src/lib/staff-todos/tasks-grid-layout.ts',
   'src/lib/tech/tech-all-grid-layout.ts',
 ] as const;
 
 /** Families that own NO column module — the engine paints them from a record. */
-export const SLOT_TABLE_COLUMN_ENGINE_FAMILIES = ['location-stock', 'sku-bins'] as const;
+export const SLOT_TABLE_COLUMN_ENGINE_FAMILIES = [
+  'location-stock',
+  'sku-bins',
+  'tasks',
+  'daily',
+] as const;
 
 /** Every product table id — derived, never hand-copied. */
 export function slotTablePeerIds(): string[] {
@@ -391,7 +407,17 @@ export function slotTablePeerIds(): string[] {
 
 /** Peers that already mount the shared layout engine. */
 export function slotTableEnginePeerIds(): string[] {
-  return [...new Set(SLOT_TABLE_ENGINE_LAYOUT_HOOKS.map((h) => h.tableId))];
+  // Two shapes mount the engine: the older `use{Family}TableLayout.ts` wrapper
+  // and the newer `SlotTableFamily` record. A record family owns NO wrapper by
+  // design, so deriving from the hook list alone reported it as "not on the
+  // engine" — the opposite of the truth, and it would have pushed the next
+  // agent to re-add the very module the record replaced.
+  return [
+    ...new Set([
+      ...SLOT_TABLE_ENGINE_LAYOUT_HOOKS.map((h) => h.tableId),
+      ...SLOT_TABLE_COLUMN_ENGINE_FAMILIES,
+    ]),
+  ];
 }
 
 /**
@@ -645,6 +671,9 @@ export function slotTableEvalManifest(): SlotTableEvalManifest {
       // the descriptor has grown a behaviour hook. Same cohort because it is
       // the same SoT: a forked action plane forks the table a page later.
       'src/lib/tables/table-engine-law.test.ts',
+      // Industrial cohesion: line count is a metric, while owned chrome/data
+      // seams are the actual contract. CLI/MCP/eval share this pure verdict.
+      'src/lib/tables/data-table-industrial-law.test.ts',
       // Identity purity: the ID column is strictly for machine handles, never staff names.
       'src/lib/tables/slot-table-identity-purity-law.test.ts',
     ],

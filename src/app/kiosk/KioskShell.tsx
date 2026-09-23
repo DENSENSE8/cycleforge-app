@@ -14,15 +14,17 @@
  * into the top header, the cart, the paperwork, the work, show, verify, etc."
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   ProductSelector,
   type ProductSelection,
   type SelectedItem,
 } from '@/components/repair/ProductSelector';
+import type { FavoriteWorkspaceKey } from '@/lib/favorites/favorite-sku-key';
 import {
   KIOSK_SERVICES,
   commandToServiceId,
+  isKioskCommandServiceId,
   serviceIdToCommand,
   type KioskServiceId,
 } from '@/lib/kiosk/services';
@@ -31,7 +33,8 @@ import {
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
 import type { KioskCommandId } from '@/lib/kiosk/commands';
-import { cartIsEmpty } from '@/lib/kiosk/cart-line';
+import { cartIsEmpty, isRepairPayload } from '@/lib/kiosk/cart-line';
+import { summarizeProductTitles } from '@/lib/kiosk/repair-devices';
 import { classifyKioskScan } from '@/lib/kiosk/scan-classify';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { toast } from '@/lib/toast';
@@ -45,6 +48,7 @@ import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
 import { KioskBuybackPane } from './v2/KioskBuybackPane';
 import { KioskCartLedger, type KioskCartFocus } from './v2/KioskCartLedger';
+import { KioskHistoryPane } from './v2/KioskHistoryPane';
 import { KioskPaperworkPanel } from './v2/KioskPaperworkPanel';
 import {
   KioskUtilityCluster,
@@ -62,6 +66,18 @@ function catalogBasePath(command: KioskCommandId): string {
   return command === 'retail' ? '/api/kiosk/sales' : '/api/kiosk/repair';
 }
 
+/**
+ * Favorites list per command — the curated tiles this rail lands on.
+ *
+ * One list per rail, named by the SURFACE and not by the client: the route
+ * behind `catalogBasePath` enforces it (`/api/kiosk/sales/favorites` can only
+ * ever be the `sales` list). Buyback and pickup are not catalog browses, so
+ * they never reach this.
+ */
+function catalogFavoritesWorkspace(command: KioskCommandId): FavoriteWorkspaceKey {
+  return command === 'retail' ? 'sales' : 'repair';
+}
+
 type CatalogPhase = 'browse' | 'checkout';
 
 function orientationIsCustomerFacing(): boolean {
@@ -73,35 +89,82 @@ function orientationIsCustomerFacing(): boolean {
   return normalized === 180;
 }
 
+/**
+ * Identity of a repair DEVICE for the picker → cart sync: its SKU and its own
+ * single product title. Two of the same radio are two devices (two serials,
+ * two rows); the SAME tile tapped twice is one, so re-tapping — or a
+ * re-render — must not grow a twin.
+ */
+function repairDeviceKey(sku: string | null | undefined, title: string): string {
+  return `${sku ?? ''}::${title}`;
+}
+
 export function KioskShell() {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
 
   const liveModes = useMemo(() => KIOSK_SERVICES.filter((s) => s.status === 'live'), []);
-  const activeServiceId: KioskServiceId = commandToServiceId(session.activeCommand);
+  const commandServiceId: KioskServiceId = commandToServiceId(session.activeCommand);
 
   const [catalogPhase, setCatalogPhase] = useState<CatalogPhase>('browse');
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  /**
+   * The picker's selection, mirrored into a ref as well as state.
+   *
+   * `onSelectProduct` fires from ProductSelector's own effect in the SAME
+   * commit as this setter, so a closure over `selectedItems` there reads the
+   * PREVIOUS selection — which is how the presentation title would lag one tap
+   * behind the tile the staffer just pressed. The ref is written
+   * synchronously, so the summary always names what is selected now.
+   */
+  const selectedItemsRef = useRef<SelectedItem[]>([]);
   const [servicePrice, setServicePrice] = useState('');
   const [utilitySlot, setUtilitySlot] = useState<KioskUtilitySlotId | null>(null);
+  /**
+   * History is a STAFF TOOL over the running command, not a fifth command: it
+   * owns no cart and never touches `session.activeCommand`, so closing it
+   * returns the operator to the visit they were mid-way through.
+   */
+  const [historyOpen, setHistoryOpen] = useState(false);
+  /**
+   * What the top-left menu SHOWS as selected. History sets no
+   * `active_command` — but the operator's model is "the dropdown says where I
+   * am" (2026-09-22: *"the top left must select history as well"*), so while
+   * the tool is open the trigger reads History and the session underneath is
+   * untouched: closing it returns the trigger to the running command.
+   */
+  const activeServiceId: KioskServiceId = historyOpen ? 'history' : commandServiceId;
   const [cartFocus] = useState<KioskCartFocus | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');
 
   const resetBrowseState = useCallback(() => {
     setSelectedProduct(null);
     setSelectedItems([]);
+    selectedItemsRef.current = [];
     setServicePrice('');
     setCatalogPhase('browse');
     setCatalogSearch('');
   }, []);
 
+  const onSelectedItemsChange = useCallback((items: SelectedItem[]) => {
+    selectedItemsRef.current = items;
+    setSelectedItems(items);
+  }, []);
+
   const handleCommandSwitch = (mode: KioskServiceId) => {
-    const command = serviceIdToCommand(mode);
     const tile = liveModes.find((s) => s.id === mode);
     if (!tile) return;
     // Choosing a command (even the current one) means work, not a parked panel.
     setUtilitySlot(null);
+    if (!isKioskCommandServiceId(mode)) {
+      setHistoryOpen(true);
+      return;
+    }
+    // Picking ANY command is also the way out of History — including the one
+    // already running, which is why this closes before the no-op return below.
+    setHistoryOpen(false);
+    const command = serviceIdToCommand(mode);
     if (command === session.activeCommand) return;
     // Command switch never clears the cart — only resets browse chrome.
     resetBrowseState();
@@ -204,7 +267,23 @@ export function KioskShell() {
   const onSelectProduct = useCallback((product: ProductSelection | null) => {
     setSelectedProduct(product);
     if (!product) return;
-    const title = [product.type, product.model].filter(Boolean).join(' ').trim();
+    /*
+     * A VISIT TITLE, never a join. `product.model` is the picker's `', '`-joined
+     * list of every ticked item, and THIS string is what the customer display
+     * paints at display scale — four names leave the viewport, and `A, B, C, D`
+     * is not a title, it is four titles in a trench coat.
+     * `summarizeProductTitles` says "Wave Radio II + 2 more" instead.
+     *
+     * The CART is untouched by this: every line keeps its own single product
+     * title, because every line is its own `repair_service` row. Summarizing
+     * is a chrome concern, not a record one.
+     */
+    const names = selectedItemsRef.current.map((item) => item.name);
+    const title = summarizeProductTitles(
+      names.length > 0
+        ? names
+        : [[product.type, product.model].filter(Boolean).join(' ')],
+    );
     if (!title) return;
     const dollars = Number.parseFloat(servicePrice);
     const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
@@ -263,12 +342,53 @@ export function KioskShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- picker selection only
   }, [selectedItems]);
 
+  /*
+   * Sync ProductSelector selectedItems → session REPAIR lines, ONE PER DEVICE.
+   *
+   * The retail twin above is the same shape; this is the repair half that was
+   * missing, and its absence is the whole flattening bug: a two-radio drop-off
+   * reached the pane as ONE line with a joined title, one serial field and a
+   * summed quote, so the serial that was recorded belonged to neither unit.
+   * `repair_service` has always been one row per device.
+   *
+   * DESELECTING REMOVES NOTHING. By the time a staffer unticks a tile they may
+   * already have read that device's serial off its chassis and typed it, and a
+   * picker tap is not how a serialised device is thrown away — the device
+   * card's own trash verb is (`KioskRepairPane`, step 1).
+   */
+  useEffect(() => {
+    if (session.activeCommand !== 'repair') return;
+    const seen = new Set<string>();
+    for (const line of session.lines) {
+      if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
+      seen.add(repairDeviceKey(line.payload.sourceSku, line.payload.productModel));
+    }
+    for (const item of selectedItems) {
+      const key = repairDeviceKey(item.sku, item.name);
+      if (seen.has(key)) continue;
+      // Seeded inside the loop as well: `session.lines` is this render's
+      // snapshot and does not grow as we add, so two identically-keyed picks
+      // in one pass would otherwise both land.
+      seen.add(key);
+      actions.addRepair({
+        title: item.name,
+        unitAmountCents: Math.round((item.price ?? 0) * 100),
+        payload: {
+          productModel: item.name,
+          sourceSku: item.sku,
+          serialNumber: '',
+          price: item.price != null ? item.price.toFixed(2) : '',
+        },
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- picker selection only
+  }, [selectedItems]);
+
   const checkoutStage =
     session.activeCommand === 'repair' ? (
       <div className={KIOSK_CENTRE_SURFACE}>
         <KioskRepairPane
           selectedProduct={selectedProduct}
-          price={servicePrice}
           onBack={returnToRepairCatalog}
         />
       </div>
@@ -308,6 +428,7 @@ export function KioskShell() {
           consultStance={session.consultStance}
           onConsultStance={onStanceChange}
           showCheckoutSlots={false}
+          showStaffTools={false}
         />
         <div className="min-h-0 min-w-0 flex-1">
           {session.consultStance === 'show' ? <KioskShowFace /> : <KioskCustomerFace />}
@@ -380,10 +501,45 @@ export function KioskShell() {
           data-testid="kiosk-work-surface"
           aria-hidden={utilitySlot !== null}
         >
-        {showCatalog ? (
+        {/* History leads the branch list because it is a TOOL over whichever
+            command is running: the catalog / buyback / pickup branches below
+            are still the session's state and are restored, untouched, the
+            moment a command is picked again. */}
+        {historyOpen ? (
+          // No `History` title in the band: the command dropdown already reads
+          // History while the tool is open (operator 2026-09-22). The face
+          // takes the band instead, and seats its search glyph + kind filter
+          // in it — one chrome unit, never a second one.
+          //
+          // And NOTHING mode-specific rides along: cart, paperwork and the
+          // Work · Show · Verify stance all belong to the command running
+          // underneath, which History is only a tool over (operator
+          // 2026-09-22: *"the history tab should not display the cart paper
+          // work and different work modes since that would be specific to a
+          // mode"*). The cart is not cleared — it is not SHOWN; picking a
+          // command again brings its chrome back untouched.
+          <KioskHistoryPane
+            onClose={() => setHistoryOpen(false)}
+            chrome={(center) => (
+              <KioskTopChrome
+                activeMode={activeServiceId}
+                onModeSwitch={handleCommandSwitch}
+                center={center}
+                activeSlot={utilitySlot}
+                onSelect={setUtilitySlot}
+                cartCount={session.lines.length}
+                consultStance={session.consultStance}
+                onConsultStance={onStanceChange}
+                showCheckoutSlots={false}
+                showStance={false}
+              />
+            )}
+          />
+        ) : showCatalog ? (
           <ProductSelector
             key={session.activeCommand}
             apiBasePath={catalogBasePath(session.activeCommand)}
+            favoritesWorkspace={catalogFavoritesWorkspace(session.activeCommand)}
             catalogSearchMode="server"
             appearance="flush"
             layout="kiosk-split"
@@ -405,7 +561,7 @@ export function KioskShell() {
             selectedProduct={selectedProduct}
             onSelect={onSelectProduct}
             selectedItems={selectedItems}
-            onSelectedItemsChange={setSelectedItems}
+            onSelectedItemsChange={onSelectedItemsChange}
             onPriceChange={setServicePrice}
             searchQuery={catalogSearch}
             onSearchQueryChange={setCatalogSearch}

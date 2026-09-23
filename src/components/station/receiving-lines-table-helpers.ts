@@ -68,6 +68,9 @@ export interface ReceivingPackageUpdatedDetail {
   is_return?: boolean;
   /** Set with platform save on Return cartons — drives claim subject identity. */
   return_platform?: string | null;
+  /** Manual priority override broadcast (receiving.priority_tier / is_priority). */
+  priority_tier?: number | null;
+  is_priority?: boolean;
 }
 
 /** Optimistic row shape after POST /api/receiving/:id/unpair. */
@@ -111,6 +114,12 @@ export function mergeReceivingPackageMetaIntoRow(
   }
   if ('support_notes' in detail) {
     next.receiving_support_notes = detail.support_notes ?? null;
+  }
+  if ('priority_tier' in detail) {
+    next.priority_tier = detail.priority_tier ?? null;
+  }
+  if ('is_priority' in detail) {
+    next.is_priority = !!detail.is_priority;
   }
   return next;
 }

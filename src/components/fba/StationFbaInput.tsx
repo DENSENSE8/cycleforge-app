@@ -44,7 +44,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
   const scanIcon = (
     <Package
       className={`h-[17px] w-[17px] ${
-        fbaScanOnly ? c.workspaceChrome.fnskuScanIconClass : 'text-violet-600'
+        fbaScanOnly ? c.workspaceChrome.fnskuScanIconClass : 'text-text-info'
       }`}
     />
   );
@@ -92,7 +92,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       inputClassName={
         fbaScanOnly
           ? undefined
-          : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0' /* ds-allow-focus: identity/one-off hue or ring-0 */
+          : '!py-2.5 !text-sm'
       }
       showModeButtons={showModeToggle}
       visibleModes={['plan', 'select']}
@@ -149,9 +149,9 @@ export default function StationFbaInput(props: StationFbaInputProps) {
           <p
             className={`text-role-micro font-semibold uppercase tracking-widest ${
               c.planHint
-                ? 'text-emerald-600'
+                ? 'text-text-success'
                 : c.selectedCount > 0
-                  ? 'text-blue-600'
+                  ? 'text-text-info'
                   : 'text-text-soft'
             }`}
           >
@@ -189,7 +189,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       {c.scanError ? (
         <div
           role="status"
-          className="flex items-start gap-2 rounded-none border border-red-200 bg-red-50 px-2.5 py-2 text-xs font-semibold text-red-800"
+          className="flex items-start gap-2 rounded-none border border-border-danger bg-surface-danger px-2.5 py-2 text-xs font-semibold text-text-danger"
         >
           <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           <span className="min-w-0 leading-snug">{c.scanError}</span>

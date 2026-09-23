@@ -221,7 +221,7 @@ describe('authSessionsCompoundView', () => {
     const view = authSessionsCompoundView(row());
     assert.equal(view.title, 'Dana Reyes');
     assert.equal(view.id, 'f3a91c40de77b2681aa4');
-    assert.equal(view.orderId, 'f3a91c40de77');
+    assert.equal(view.identityFace?.value, 'f3a91c40de77');
   });
 
   it('paints the device KIND as the state pill, in operator words', () => {

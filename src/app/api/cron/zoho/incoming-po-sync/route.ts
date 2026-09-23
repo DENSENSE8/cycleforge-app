@@ -35,22 +35,15 @@ import { syncZohoPurchaseOrdersToReceiving, type BulkSyncSummary } from '@/lib/z
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { forEachOrgWithProvider } from '@/lib/cron/for-each-org';
 import { logger } from '@/lib/observability/logger';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-function isAuthorized(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get('authorization') === `Bearer ${secret}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(req.headers)) return unauthorizedCronResponse();
 
   const startedAt = Date.now();
   const url = new URL(req.url);
@@ -95,7 +88,6 @@ export async function GET(req: NextRequest) {
               max_items: Number.isFinite(maxItemsRaw) && maxItemsRaw > 0 ? maxItemsRaw : 2000,
               po_date_floor: poDateFloor,
             }),
-          { includeDogfoodTransitional: true },
         );
 
         // Aggregate per-org summaries into the shape callers already expect.

@@ -22,6 +22,11 @@ import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useIdleReady } from '@/hooks/useIdleReady';
 import { getInboxChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { toast } from '@/lib/toast';
+import {
+  INBOX_ENTITY_NOUN,
+  notifiableEvent,
+  type InboxEntityType,
+} from '@/lib/notifications/event-vocabulary';
 
 const MAX_ITEMS = 20;
 /** Time window during which Undo is offered for reversible items */
@@ -520,9 +525,17 @@ export function ActivityInboxProvider({
     inboxEnabled,
   );
 
+  // Both kinds of durable staff_inbox_items row arrive on this one event name.
+  //
   // A colleague handed this staffer a record (WS-TASKS). The durable row is
   // already in staff_inbox_items — this is the live mirror that makes a bench
   // handoff land now instead of on the next window focus.
+  //
+  // A WATCHED DOMAIN EVENT (a carton this staffer follows scanned in at the
+  // door) is NOT mirrored into `items`: that array is session-scoped, carries
+  // an undo TTL, and `clear()` wipes it — a durable ledger row must not live
+  // under those semantics. The push only invalidates the inbox query the
+  // popover reads, so the server list stays the one source of those rows.
   useAblyChannel(
     inboxChannel,
     'inbox_item',
@@ -538,6 +551,10 @@ export function ActivityInboxProvider({
       };
     }) => {
       const d = msg?.data ?? {};
+      if (typeof d.eventKey === 'string' && notifiableEvent(d.eventKey)) {
+        void queryClient.invalidateQueries({ queryKey: ['api-inbox'] });
+        return;
+      }
       // The channel carries every inbox push; render only the assignment kind
       // here. A future event on this name must opt in explicitly rather than
       // inherit this row's copy.
@@ -759,15 +776,13 @@ export function ActivityInboxProvider({
  * note. Deliberately a short noun + id rather than a chip parade — this face is
  * the compact activity row (`CompactActivityRow` + `RailRowBody`), which allows
  * exactly one meta fact.
+ *
+ * The noun comes from {@link INBOX_ENTITY_NOUN}, shared with the durable ledger
+ * row below it: the live mirror and the row it mirrors must not spell the same
+ * record two ways.
  */
-const WORK_TASK_ENTITY_NOUN: Record<string, string> = {
-  order: 'Order',
-  receiving: 'Carton',
-  support_ticket: 'Ticket',
-};
-
 function entityLabelFor(entityType: string, entityId: number): string {
-  return `${WORK_TASK_ENTITY_NOUN[entityType] ?? 'Record'} ${entityId}`;
+  return `${INBOX_ENTITY_NOUN[entityType as InboxEntityType] ?? 'Record'} ${entityId}`;
 }
 
 function truncateLabel(s: string, max = 52): string {

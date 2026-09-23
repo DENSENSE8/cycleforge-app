@@ -27,7 +27,7 @@
  * (`lib/daily-checks`, `contexts`, `utils`). No desktop feature component.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -52,6 +52,25 @@ import {
 import { MobileDailyRow } from './MobileDailyRow';
 import { MobileDailyDetailSheet } from './MobileDailySheets';
 import { MobileDailyComposerSheet } from './MobileDailyComposerSheet';
+import { MobileCurrentSession } from '@/components/mobile/session/MobileCurrentSession';
+import { useMyTasks, useToggleTaskDone } from '@/lib/tasks/use-my-tasks';
+import { taskDeadlineFact, taskRecordLabel } from '@/lib/tasks/task-row-facts';
+import {
+  taskDeskRecordHref,
+  taskDeskTicketNumber,
+  type TaskDeskRow,
+} from '@/lib/tasks/task-desk-row';
+
+/** One assigned task, reduced to what the shared row paints. */
+interface MobileAgendaTask {
+  row: TaskDeskRow;
+  title: string;
+  subtitle: string | null;
+  overdue: boolean;
+  done: boolean;
+  ticketId: number | null;
+  href: string | null;
+}
 
 type MobileDailyStatus = 'all' | 'open' | 'done';
 
@@ -84,6 +103,12 @@ export function MobileDailyChecklist() {
    * thread whose every request would 403.
    */
   const canOpenTickets = has('integrations.zendesk');
+  /**
+   * Assigned tasks live on this list too (operator 2026-09-23: one task system
+   * on the phone). `GET /api/tasks` and `PATCH /api/tasks/[id]` both gate on
+   * this key, so the rows and the tick agree with the routes.
+   */
+  const canSeeTasks = has('work_orders.claim');
 
   const dateKey = getCurrentPSTDateKey();
   const { data, isLoading, isError } = useDailyChecks(dateKey);
@@ -111,6 +136,45 @@ export function MobileDailyChecklist() {
       status === 'all' || (status === 'open' ? !doneSet.has(id) : doneSet.has(id)),
     [status, doneSet],
   );
+
+  /**
+   * Assigned work, on the SAME list. `work_orders.claim` is the door: without
+   * it `GET /api/tasks` 403s, so the query never runs and Daily is simply the
+   * checklist. The tick is the same gesture as a check's — see
+   * {@link useToggleTaskDone}.
+   */
+  const { data: myTasks } = useMyTasks(canSeeTasks);
+  const toggleTask = useToggleTaskDone();
+
+  /** One clock for every "Due today / Overdue" caption on the screen. */
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(tick);
+  }, []);
+
+  const taskRows = useMemo<MobileAgendaTask[]>(() => {
+    return (myTasks ?? [])
+      .map((row) => {
+        const done = row.status === 'DONE';
+        const due = taskDeadlineFact(row.deadlineAtMs, nowMs);
+        const record = taskRecordLabel(row);
+        // A handoff with no words still names the record it is about, so the
+        // row is never a blank line with a checkbox.
+        const title = row.note || record;
+        const captionParts = [due?.text, title === record ? null : record].filter(Boolean);
+        return {
+          row,
+          done,
+          title,
+          subtitle: captionParts.length > 0 ? captionParts.join(' · ') : null,
+          overdue: Boolean(due?.overdue) && !done,
+          ticketId: taskDeskTicketNumber(row),
+          href: taskDeskRecordHref(row, 'phone'),
+        };
+      })
+      .filter((task) => (status === 'all' ? true : status === 'open' ? !task.done : task.done));
+  }, [myTasks, nowMs, status]);
 
   // Recurring first, one-offs under their band — the same order the desk's
   // authored branch keeps, so both faces answer "what does the shift owe"
@@ -150,12 +214,11 @@ export function MobileDailyChecklist() {
     });
   }, [addItem, draft]);
 
-  const mine = data?.mine;
-
   const renderRow = (item: (typeof recurring)[number]) => (
     <MobileDailyRow
-      key={item.id}
+      key={`check-${item.id}`}
       itemId={item.id}
+      rowKey={`check-${item.id}`}
       title={item.title}
       done={doneSet.has(item.id)}
       once={item.kind === 'once'}
@@ -179,17 +242,41 @@ export function MobileDailyChecklist() {
     />
   );
 
+  /**
+   * A thrown task, rendered as the SAME row as a check. The two stores stay
+   * apart (a check is a per-day attestation, a task is a handoff with an
+   * assignee and a deadline) but the operator has one list and one gesture:
+   * tick the circle. The caption carries the only two facts that differ —
+   * when it is owed, and which record it is about.
+   */
+  const renderTaskRow = (task: MobileAgendaTask) => (
+    <MobileDailyRow
+      key={`task-${task.row.id}`}
+      itemId={task.row.id}
+      rowKey={`task-${task.row.id}`}
+      title={task.title}
+      done={task.done}
+      subtitle={task.subtitle}
+      subtitleTone={task.overdue ? 'danger' : 'muted'}
+      ticketId={task.ticketId}
+      detail="record"
+      onToggle={(next) => toggleTask.mutate({ taskId: task.row.id, done: next })}
+      onOpenDetail={() => {
+        if (task.href) router.push(task.href);
+      }}
+      onOpenTicket={
+        canOpenTickets && task.ticketId != null
+          ? () => router.push(`/m/t/${task.ticketId}`)
+          : undefined
+      }
+    />
+  );
+
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       {/* `pb-28` clears the sticky CTA — the last row must stay tappable. */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-3">
-        <div className="flex items-baseline justify-between gap-3 pb-3">
-          <p className="text-role-caption font-semibold text-text-default">
-            {mine ? `${mine.doneCount} of ${mine.total} checked` : 'Today'}
-          </p>
-          <p className="text-role-micro tabular-nums text-text-faint">{dateKey}</p>
-        </div>
-
+        <MobileCurrentSession />
         <TabSwitch
           tabs={STATUS_TABS.map((t) => ({ id: t.id, label: t.label }))}
           activeTab={status}
@@ -207,6 +294,17 @@ export function MobileDailyChecklist() {
           </>
         ) : null}
 
+        {/* Assigned work, under the shift's own list: what the org owes every
+            day comes first, then what a colleague handed to this person. */}
+        {taskRows.length > 0 ? (
+          <>
+            <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+              Assigned to me
+            </p>
+            <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>
+          </>
+        ) : null}
+
         {isLoading ? (
           <p className="pt-6 text-role-caption text-text-muted">Loading the checklist…</p>
         ) : null}
@@ -215,7 +313,11 @@ export function MobileDailyChecklist() {
             Could not load the checklist.
           </p>
         ) : null}
-        {!isLoading && !isError && recurring.length === 0 && onceItems.length === 0 ? (
+        {!isLoading &&
+        !isError &&
+        recurring.length === 0 &&
+        onceItems.length === 0 &&
+        taskRows.length === 0 ? (
           <p className="pt-6 text-role-caption text-text-muted">{EMPTY_COPY[status]}</p>
         ) : null}
       </div>

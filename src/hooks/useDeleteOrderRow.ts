@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { dispatchCloseShippedDetails, dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { fetchWithStepUp } from '@/components/auth/StepUpModal';
 import { useStepUp } from '@/components/providers/StepUpProvider';
+import { optimisticallyRemoveOrderRows } from '@/lib/queries/order-cache-optimistic';
 
 export type DeleteOrderRowPayload =
   | { rowSource?: 'order'; orderId?: number; orderIds?: number[] }
@@ -57,6 +58,15 @@ export function useDeleteOrderRow() {
         throw new Error('No matching order row was deleted');
       }
       return data;
+    },
+    onMutate: async (payload) => {
+      const orderIds = payload.rowSource === 'order'
+        ? (payload.orderIds ?? (payload.orderId != null ? [payload.orderId] : []))
+        : [];
+      return { rollback: optimisticallyRemoveOrderRows(queryClient, orderIds) };
+    },
+    onError: (_error, _payload, context) => {
+      context?.rollback();
     },
     onSuccess: async () => {
       await Promise.all([

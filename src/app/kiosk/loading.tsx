@@ -1,5 +1,5 @@
 /**
- * /kiosk first-paint — catalog trail (toggle + All products), not welcome copy.
+ * /kiosk first-paint — catalog trail (toggle + Favorites), not welcome copy.
  *
  * Callers: Next.js loading UI for `/kiosk`. Affected API: none. Schemas: none.
  * User: "Remove the welcome, how can we help you?"

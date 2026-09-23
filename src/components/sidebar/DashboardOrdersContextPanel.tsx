@@ -4,7 +4,6 @@ import { useSearchParams } from 'next/navigation';
 import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
 import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
-import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
 import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import {
@@ -20,8 +19,7 @@ import {
  *   • outbound — the order feed (`UnshippedSidebar`), the only branch
  *   • inbound  — recents (`DashboardRecentsPanel`)
  *   • sales    — station hand-offs (`WalkInHistorySidebar`); Repairs L2
- *     (`?mode=repairs`) uses {@link RepairSidebarPanel} — never the Sales
- *     transaction-history rail (same favorites/intake rail as `/repair`).
+ *     (`?mode=repairs`) has no context sidebar.
  *
  * Inbound used to `return null` here, so `/dashboard?mode=inbound` reserved a
  * 360px column and painted nothing in it; that void is the bug Phase 1.1 of
@@ -46,10 +44,11 @@ export function DashboardOrdersContextPanel() {
   }
 
   if (domain === 'sales') {
-    // Repairs history desk ≠ Sales transaction board — don't paint
-    // WalkInHistorySidebar ("New sale" / "Local pickup") over RepairTable.
+    // Repair Service is a table-only Sales child. In particular, do not mount
+    // the repair Favorites rail here: favorites remain an intake convenience
+    // on the dedicated repair station, not a Sales-history sidebar.
     if (isDashboardRepairsMode(searchParams)) {
-      return <RepairSidebarPanel embedded hideSectionHeader />;
+      return null;
     }
     return <WalkInHistorySidebar />;
   }

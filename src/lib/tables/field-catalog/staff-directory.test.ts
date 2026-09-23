@@ -322,7 +322,7 @@ describe('staff-directory row view', () => {
     const view = staffDirectoryCompoundView(row());
     assert.equal(view.id, '42');
     assert.equal(view.title, 'Sam Rivera');
-    assert.equal(view.orderId, '42');
+    assert.equal(view.identityFace?.value, '42');
     // The retired Name cell had one line; a bound subtitle is an org's choice.
     assert.equal(view.note, null);
     assert.equal(view.tracking, null);

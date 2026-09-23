@@ -2,7 +2,7 @@
  * Order row flag registry — the vocabulary contract.
  *
  * The flag id set lives in TWO places by necessity: the app registry (which
- * renders it) and the `order_flags_flag_chk` CHECK in the birth migration
+ * renders it) and the current `order_flags_flag_chk` CHECK migration
  * (which is the only thing stopping a bad writer from persisting free text).
  * A discriminator whose two lists drift is the exact regression the house
  * polymorphic contract calls out — `reason_codes_flow_context_chk` survived
@@ -22,7 +22,7 @@ import {
   resolveOrderRowFlag,
 } from './order-row-flags';
 
-const MIGRATION = join(process.cwd(), 'src/lib/migrations/2026-07-31_order_flags.sql');
+const MIGRATION = join(process.cwd(), 'src/lib/migrations/2026-09-17_order_flags_discrepancy.sql');
 
 describe('order row flag registry', () => {
   it('the DDL CHECK and the app registry name the same ids', () => {

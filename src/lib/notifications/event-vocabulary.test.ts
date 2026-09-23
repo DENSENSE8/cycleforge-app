@@ -6,6 +6,7 @@ import { OPS_EVENT_ENTITY_TYPES } from '@/lib/ops-event-types';
 import { ALL_PERMISSIONS } from '@/lib/auth/permissions-shared';
 import {
   ENTITY_VIEW_PERMISSION,
+  INBOX_ENTITY_TYPES,
   NOTIFIABLE_ENTITY_TYPES,
   NON_NOTIFIABLE_ENTITY_TYPES,
   NOTIFIABLE_EVENTS,
@@ -13,12 +14,19 @@ import {
   buildDedupKey,
   expandEventPattern,
   expandEventPatterns,
+  isInboxEntityType,
   isNotifiableEntityType,
 } from './event-vocabulary';
 
 const MIGRATION = join(
   process.cwd(),
   'src/lib/migrations/2026-07-28c_staff_subscriptions.sql',
+);
+
+/** Where `staff_inbox_items_entity_type_chk` last got its list. */
+const INBOX_MIGRATION = join(
+  process.cwd(),
+  'src/lib/migrations/2026-09-22a_staff_inbox_support_ticket.sql',
 );
 
 test('entity vocabulary is a partition of OPS_EVENT_ENTITY_TYPES', () => {
@@ -47,8 +55,37 @@ test('notifiable entity types match the DB CHECK byte-for-byte', () => {
   assert.deepEqual(inDb, [...NOTIFIABLE_ENTITY_TYPES].sort());
 });
 
-test('every notifiable entity type maps to a REGISTERED permission', () => {
+test('inbox entity types match the DB CHECK byte-for-byte', () => {
+  // The inbox's list is a strict superset of the subscribable one, so it needs
+  // its own pin — `support_ticket` is in `staff_inbox_items_entity_type_chk`
+  // and deliberately NOT in `staff_subscriptions_entity_type_chk`, and a test
+  // that only checked one of them would have called that drift.
+  const sql = readFileSync(INBOX_MIGRATION, 'utf8');
+  const match = sql.match(
+    /ADD CONSTRAINT staff_inbox_items_entity_type_chk\s+CHECK \(entity_type IN \(([^)]+)\)\)/,
+  );
+  assert.ok(match, 'entity_type CHECK not found in the widening migration');
+  const inDb = match[1]
+    .split(',')
+    .map((s) => s.trim().replace(/^'|'$/g, ''))
+    .filter(Boolean)
+    .sort();
+  assert.deepEqual(inDb, [...INBOX_ENTITY_TYPES].sort());
+});
+
+test('a ticket can be an inbox row but never a subscription', () => {
+  // The whole reason the two lists are separate: `staff_subscriptions` has no
+  // delete trigger or CHECK value for a ticket, and no event feeds one, so a
+  // Subscribe toggle on a ticket row would write a constraint violation.
+  assert.equal(isInboxEntityType('support_ticket'), true);
+  assert.equal(isNotifiableEntityType('support_ticket'), false);
   for (const t of NOTIFIABLE_ENTITY_TYPES) {
+    assert.ok(isInboxEntityType(t), `${t} is subscribable but not inbox-anchorable`);
+  }
+});
+
+test('every inbox entity type maps to a REGISTERED permission', () => {
+  for (const t of INBOX_ENTITY_TYPES) {
     const perm = ENTITY_VIEW_PERMISSION[t];
     assert.ok(perm, `${t} has no view permission`);
     // A typo'd permission id would silently deny every recipient forever.

@@ -173,12 +173,20 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/documents/ecwid-packing-slips?limit=25",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/photos/drive-mirror?limit=25",
       "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/signals/buyer-notes-heal",
       "schedule": "15 9 * * *"
+    },
+    {
+      "path": "/api/cron/tickets/designated-assign",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

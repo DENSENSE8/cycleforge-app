@@ -28,6 +28,8 @@ import type { AuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
+import { requiresStepUp, rolesIncludeAdmin } from '@/lib/auth/permissions';
+import { hasStepUp } from '@/lib/auth/stepup';
 import { audit } from '@/lib/auth/audit';
 import { recordAudit } from '@/lib/audit-logs';
 
@@ -73,6 +75,20 @@ export async function requireRoutePerm(
       ),
       ctx: null,
     };
+  }
+
+  const isAdmin = rolesIncludeAdmin(user.roles);
+  if (!isAdmin && requiresStepUp(perm)) {
+    const granted = await hasStepUp(user.session.sid, perm);
+    if (!granted) {
+      return {
+        denied: NextResponse.json(
+          { error: 'STEPUP_REQUIRED', scope: perm, method_hint: 'pin' },
+          { status: 403 },
+        ),
+        ctx: null,
+      };
+    }
   }
 
   return {

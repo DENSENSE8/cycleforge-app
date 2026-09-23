@@ -2,7 +2,7 @@
  * Verify profile selection — shared by `scripts/verify.mjs` and its unit test.
  *
  *   fast     lint + typecheck
- *   dogfood  same as fast (the route-auth / schema gates were removed 2026-08-20)
+ *   dogfood  + route-auth source and manifest gates
  *   full     + unit tests
  *
  * @typedef {'fast' | 'dogfood' | 'full'} VerifyProfile
@@ -68,12 +68,13 @@ export function gateInProfile(gate, profile) {
  *   dogfood → dogfood + full
  *   full    → full only
  *
- * The hygiene / drift gates (knip, jscpd, depcruise, route-auth, tenancy,
+ * The hygiene / drift gates (knip, jscpd, depcruise, tenancy,
  * schema drift + model parity, integration manifest, doc catalog) and their
  * ratchet baselines were DELETED on 2026-08-20 at the operator's instruction —
  * they were the bulk of the verify wall clock. Nothing enforces those
- * invariants automatically any more; those rules were review-only and the
- * doctrine was deleted with the Warehouse OS refactor.
+ * invariants automatically any more. Route-auth enforcement and manifest
+ * drift were restored as focused dogfood/full gates after the route inventory
+ * had silently fallen 60 handlers behind source.
  *
  * @type {VerifyGate[]}
  */
@@ -102,6 +103,36 @@ export const ALL_GATES = [
     cmd: 'node',
     args: ['scripts/typecheck.mjs'],
     env: { NODE_OPTIONS: '--max-old-space-size=6144' },
+    profiles: 'always',
+  },
+  {
+    name: 'Route-auth enforce',
+    cmd: localBin('tsx'),
+    args: ['scripts/audit-route-auth.ts', '--enforce'],
+    profiles: 'dogfood',
+  },
+  {
+    name: 'Route-permission drift',
+    cmd: localBin('tsx'),
+    args: ['scripts/audit-route-auth.ts', '--check'],
+    profiles: 'dogfood',
+  },
+  {
+    name: 'Cron contract',
+    cmd: 'node',
+    args: ['scripts/cron-contract-guard.mjs'],
+    profiles: 'always',
+  },
+  {
+    name: 'Tenancy isolation',
+    cmd: localBin('tsx'),
+    args: ['scripts/tenancy-guard.ts', '--check', '--static-only'],
+    profiles: 'always',
+  },
+  {
+    name: 'Schema drift',
+    cmd: 'node',
+    args: ['scripts/schema-drift-guard.mjs', '--check'],
     profiles: 'always',
   },
   {
@@ -146,6 +177,33 @@ export const ALL_GATES = [
     // its runtime half is the useFixedBandHeight ResizeObserver.
     cmd: localBin('tsx'),
     args: ['scripts/action-bar-height-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Data table industrial',
+    // The canonical table is judged by owned seams, never by source length.
+    // Same pure rule module feeds this always-on gate, the unit tripwire,
+    // ds_data_table and the slot-table eval cohort.
+    cmd: localBin('tsx'),
+    args: ['scripts/data-table-industrial-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Industrial translation',
+    // External design briefs enter through this complete intent matrix, never
+    // as a second palette, component family or set of call-site physics.
+    // The same deterministic verdict feeds the unit tripwire, JSON CLI,
+    // ds_industrial_translation and its eval cohort.
+    cmd: localBin('tsx'),
+    args: ['scripts/industrial-translation-guard.ts'],
+    profiles: 'always',
+  },
+  {
+    name: 'Outbound workflow',
+    // One deterministic source verdict protects the mobile-first Orders
+    // contract across CI, CLI, MCP and the eventual cohort runner.
+    cmd: localBin('tsx'),
+    args: ['scripts/outbound-workflow-guard.ts'],
     profiles: 'always',
   },
   {

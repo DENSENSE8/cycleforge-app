@@ -82,7 +82,7 @@ export function PackerScanReadyCamera() {
       if (orderId) qs.set('orderId', orderId);
       qs.set('step', 'slip');
       const suffix = qs.toString();
-      router.push(`/m/p/${packerLogId}/photos${suffix ? `?${suffix}` : ''}`);
+      router.replace(`/m/p/${packerLogId}/photos${suffix ? `?${suffix}` : ''}`);
     },
     [router, getClient, channel],
   );

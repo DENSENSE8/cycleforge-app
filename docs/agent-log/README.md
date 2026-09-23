@@ -44,7 +44,7 @@ One entry = one markdown list item, timestamp first so it sorts machine-cleanly:
 
 Entries live in **one append-only file per lane**: `entries/<lane>.md`. Two lanes
 never write the same file, so worktree branches merge to `main` **without append
-conflicts** — the same collision-avoidance logic behind the [worktree lanes](../portfolio/WORKTREE-LANES.md).
+conflicts** — the same collision-avoidance logic behind one worktree lane per initiative.
 `worklog:tail` globs every `entries/*.md`, merges by timestamp, and prints the
 newest N, so it still reads as one log.
 

@@ -164,7 +164,7 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 | **ALP-2.1** | `.cycle_forge_ops/scripts/master-plan-sync-daemon.mjs` + `fs.watch` | `done` | Starts under PM2 |
 | **ALP-2.2** | Upstream: local save → Y.Text → Ably | `done` | Cursor save appears in web &lt;1s |
 | **ALP-2.3** | Downstream: remote update → atomic write (temp+rename); echo tokens | `done` | No infinite write loop |
-| **ALP-2.4** | `ecosystem.config.cjs` entry + env docs in `context/ENV-VARS.md` | `done` | Documented vars only; no secrets committed |
+| **ALP-2.4** | `ecosystem.config.cjs` entry + env docs in `docs/ENV-VARS.md` | `done` | Documented vars only; no secrets committed |
 | **ALP-2.5** | `forge.sh` VERIFY success updates TicketStatus in local MDX | `done` | Daemon broadcasts `deployed` |
 
 **HUMAN GATE 2:** edit in Cursor ↔ edit in web round-trip without clobber.
@@ -320,7 +320,7 @@ Status values for tasks below: `todo` · `in-progress` · `review` · `done` · 
 ### Migrations awaiting apply (author-only — DO NOT auto-apply)
 - `src/lib/migrations/2026-07-11_user_reported_issues.sql` — tenant-from-birth, `enforce_tenant_isolation()`, modeled in `drizzle/schema.ts` (`userReportedIssues`). Apply via `/db-migrate`, then `npm run tenancy:coverage`.
 
-### ENV vars the human must set (blank in `.env.example`, documented in `context/ENV-VARS.md`)
+### ENV vars the human must set (blank in `.env.example`, documented in `docs/ENV-VARS.md`)
 - `ABLY_API_KEY` (already present) — the daemon publishes with it.
 - `MASTER_PLAN_PATH` (optional, default `<repo>/master-plan.mdx`), `MASTER_PLAN_ORG_ID` (default `FORGE_ORG_ID`).
 - `NEON_API_KEY` + `NEON_PROJECT_ID` and `FORGE_NEON_VERIFY=1` to enable the Phase-4 branch sandbox.

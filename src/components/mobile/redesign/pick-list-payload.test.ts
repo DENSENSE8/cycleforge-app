@@ -90,6 +90,63 @@ test('counts reject negatives and non-numbers rather than rendering them', () =>
   assert.deepEqual(list.counts, { mine: 3, all: 0, unpaired: 0, unallocated: 12 });
 });
 
+test('unallocated order lines keep actionable allocation blockers', () => {
+  const list = normalizePickListPayload(
+    {
+      counts: { unallocated: 3 },
+      shortfall: [
+        {
+          orderId: 41,
+          orderNumber: 'ORD-41',
+          sku: 'SKU-READY',
+          productTitle: 'Ready stock',
+          qty: 2,
+          blocker: 'ready_to_allocate',
+        },
+        {
+          orderId: 42,
+          orderNumber: 'ORD-42',
+          productTitle: 'Missing identity',
+          blocker: 'no_catalog_link',
+        },
+        {
+          orderId: 43,
+          orderNumber: 'ORD-43',
+          productTitle: 'Unknown future blocker',
+          blocker: 'future_state',
+        },
+      ],
+    },
+    'mine',
+  );
+
+  assert.equal(list.counts.unallocated, 3);
+  assert.deepEqual(
+    list.shortfall.map((row) => [row.orderId, row.blocker]),
+    [
+      [41, 'ready_to_allocate'],
+      [42, 'no_catalog_link'],
+      // Unknown server states stay conservative and never offer allocation.
+      [43, 'no_stock'],
+    ],
+  );
+  assert.equal(list.shortfall[0]?.qty, 2);
+});
+
+test('shortfall rows without a stable order id are dropped', () => {
+  const list = normalizePickListPayload(
+    {
+      shortfall: [
+        { orderId: null, orderNumber: 'NO-ID', blocker: 'no_stock' },
+        { orderId: 9, orderNumber: 'ORD-9', blocker: 'no_stock' },
+      ],
+    },
+    'all',
+  );
+
+  assert.deepEqual(list.shortfall.map((row) => row.orderId), [9]);
+});
+
 test('scope falls back to mine for an unknown or absent ?scope=', () => {
   assert.equal(parsePickListScope('UNPAIRED'), 'unpaired');
   assert.equal(parsePickListScope('everything'), 'mine');

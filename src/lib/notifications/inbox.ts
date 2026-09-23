@@ -12,9 +12,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { QueryResult, QueryResultRow } from 'pg';
 import {
   ENTITY_VIEW_PERMISSION,
-  NOTIFIABLE_ENTITY_TYPES,
+  INBOX_ENTITY_TYPES,
   eventLabelFor,
-  type NotifiableEntityType,
+  type InboxEntityType,
 } from './event-vocabulary';
 import { notificationHref } from './notification-href';
 import type { InboxFeedDto, InboxItemDto, InboxState, InboxTriageAction } from './types';
@@ -41,8 +41,8 @@ export type InboxFilter = 'active' | 'unread' | 'done' | 'snoozed';
  * asked for is the page size they get (post-filtering a LIMIT silently returns
  * short pages), and so a staffer with no visible types costs zero rows.
  */
-function visibleEntityTypes(permissions: readonly string[]): NotifiableEntityType[] {
-  return NOTIFIABLE_ENTITY_TYPES.filter((t) => permissions.includes(ENTITY_VIEW_PERMISSION[t]));
+function visibleEntityTypes(permissions: readonly string[]): InboxEntityType[] {
+  return INBOX_ENTITY_TYPES.filter((t) => permissions.includes(ENTITY_VIEW_PERMISSION[t]));
 }
 
 export async function getInboxFeed(
@@ -74,7 +74,7 @@ export async function getInboxFeed(
     args.orgId,
     `SELECT i.id, i.entity_type, i.entity_id, i.event_key, i.reason, i.state,
             i.collapse_count, i.snoozed_until, i.occurred_at, i.last_event_at,
-            i.actor_staff_id, i.subscription_id,
+            i.actor_staff_id, i.subscription_id, i.payload,
             -- Live follow state for the row's bell. Joined on the ENTITY, not on
             -- subscription_id, so a row whose subscription was deleted still
             -- reports correctly (and a re-follow is picked up).
@@ -190,6 +190,7 @@ interface InboxRow {
   actor_staff_id: number | null;
   subscription_id: number | string | null;
   subscription_state: string | null;
+  payload: unknown;
 }
 
 function toItemDto(row: InboxRow): InboxItemDto {
@@ -214,7 +215,33 @@ function toItemDto(row: InboxRow): InboxItemDto {
     href: notificationHref(row.entity_type, entityId),
     subscriptionId: row.subscription_id == null ? null : Number(row.subscription_id),
     subscriptionState: (row.subscription_state as InboxItemDto['subscriptionState']) ?? null,
+    trackingNumber: readTrackingNumber(row.payload),
+    ticketNumber: readTicketNumber(row.payload),
   };
+}
+
+/**
+ * The tracking number an event carried, for the row's own copy.
+ *
+ * A watched arrival's whole content is WHICH package landed, and the answer is
+ * already in the payload `recordReceivingScan` stamped — so the row reads it
+ * rather than asking the reader to open the carton to find out. Render hint
+ * only: the worker filters on the canonical form, never on this.
+ */
+function readTrackingNumber(payload: unknown): string | null {
+  const raw = (payload as { trackingNumber?: unknown } | null)?.trackingNumber;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+/**
+ * The PROVIDER ticket number a thrown ticket task stamped on its payload.
+ * Absent on every other row — and on a ticket row written before the write
+ * path carried it, which reads the registry id instead rather than a guess.
+ */
+function readTicketNumber(payload: unknown): number | null {
+  const raw = (payload as { ticketNumber?: unknown } | null)?.ticketNumber;
+  const n = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 function toIso(v: Date | string | null): string | null {

@@ -64,6 +64,7 @@ test('a normal throw creates the task and never touches urgency', async () => {
     assignedByStaffId: ACTOR,
     priority: 100,
     note: null,
+    deadlineAt: null,
     status: 'OPEN',
   });
   assert.equal(promotions.length, 0, 'a normal task must not promote anything');
@@ -154,6 +155,35 @@ test('a note is trimmed, an empty note is null, an oversized note is refused', a
   assert.equal(long.inserts.length, 0);
 });
 
+/**
+ * The composer captures assignee · priority · deadline in ONE form, so the
+ * deadline has to survive the create. If it did not, the desk would POST then
+ * PATCH — showing the assignee a half-made task and splitting one act across
+ * two audit rows.
+ */
+test('a deadline reaches the insert, and omitting it inserts NULL', async () => {
+  const { deps, inserts } = fakes();
+  await createTaskCore({ ...base, deadlineAt: '2026-09-30T17:00:00.000Z' }, deps);
+  assert.equal(inserts[0].deadlineAt, '2026-09-30T17:00:00.000Z');
+
+  const none = fakes();
+  await createTaskCore(base, none.deps);
+  assert.equal(none.inserts[0].deadlineAt, null, 'no deadline is NULL, not today');
+
+  const explicitNull = fakes();
+  await createTaskCore({ ...base, deadlineAt: null }, explicitNull.deps);
+  assert.equal(explicitNull.inserts[0].deadlineAt, null);
+});
+
+test('an unparseable deadline is refused before anything is written', async () => {
+  for (const deadlineAt of ['next tuesday', '', 42, {}]) {
+    const { deps, inserts } = fakes();
+    const result = await createTaskCore({ ...base, deadlineAt }, deps);
+    assert.deepEqual(result, { ok: false, reason: 'invalid_deadline' }, String(deadlineAt));
+    assert.equal(inserts.length, 0);
+  }
+});
+
 test('the assignee is notified, with the note and the urgency flag', async () => {
   const { deps, notifications } = fakes();
   const result = await createTaskCore(
@@ -186,23 +216,23 @@ test('a failed notification still lands the task', async () => {
 });
 
 /**
- * `staff_inbox_items.entity_type` has no `support_ticket`, so a ticket task is
- * a legal work_assignment that cannot yet become an inbox row. Refusing in the
- * domain keeps a CHECK violation off an operator's screen — and REPORTING it
- * keeps "nobody was told" from looking identical to "delivered".
+ * `support_ticket` joined `staff_inbox_items_entity_type_chk` in migration
+ * `2026-09-22a`, so a ticket handoff now raises a badge like any other. This
+ * pins the arm that used to be the exception — a regression here would put
+ * `skipped_entity` back and silently un-notify every ticket task.
  */
-test('a ticket task is created but honestly reports nobody was notified', async () => {
+test('a ticket task notifies its assignee like any other record', async () => {
   const { deps, inserts, notifications } = fakes();
   const result = await createTaskCore({ ...base, entityType: 'support_ticket' }, deps);
 
-  assert.equal(result.ok, true, 'the task itself is still legal');
-  assert.equal(result.ok && result.notified, 'skipped_entity');
+  assert.equal(result.ok, true);
+  assert.equal(result.ok && result.notified, 'sent');
   assert.equal(inserts.length, 1, 'the work_assignment is written');
-  assert.equal(notifications.length, 0, 'the inbox insert must not be attempted');
+  assert.equal(notifications.length, 1, 'and the inbox row with it');
 });
 
-test('order and receiving tasks DO notify', async () => {
-  for (const entityType of ['order', 'receiving'] as const) {
+test('every throwable record kind notifies', async () => {
+  for (const entityType of ['order', 'receiving', 'support_ticket'] as const) {
     const { deps, notifications } = fakes();
     const result = await createTaskCore({ ...base, entityType }, deps);
     assert.equal(result.ok && result.notified, 'sent', `${entityType} must notify`);

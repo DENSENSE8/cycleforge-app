@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OUTBOUND_HANDLING_FACTS } from '@/lib/shipping/outbound-handling-facts';
 
 // ─── Reusable building blocks ───────────────────────────────────────────────
 
@@ -12,6 +13,9 @@ const optNonNegInt = z.number().int().nonnegative().nullable().optional();
 const lifecycleStatusEnum = z.enum(['active', 'eol', 'discontinued', 'nrnd', 'unknown']);
 /** Per-SKU pack/handling guidance (multi-line, may be cleared with null). */
 const optPackNotes = trimmed.max(4000).nullable().optional();
+const handlingFactEnum = z.enum(OUTBOUND_HANDLING_FACTS);
+/** Absent preserves the catalog value; an explicit empty array clears it. */
+const optHandlingFacts = z.array(handlingFactEnum).max(3).transform((facts) => [...new Set(facts)]).optional();
 
 // ─── POST /api/sku-catalog ──────────────────────────────────────────────────
 
@@ -37,6 +41,8 @@ export const SkuCatalogCreateBody = z
     replenishTargetCents: optNonNegInt,
     /** "How to pack this product" guidance shown to the packer (P1-PCK-02). */
     packNotes: optPackNotes,
+    /** Closed warehouse warnings projected into the outbound row. */
+    handlingFacts: optHandlingFacts,
     /**
      * Polymorphic pack-profile override linked to this SKU (not stored on sku_catalog).
      * Null clears the link (falls back to rule-based defaults).
@@ -83,6 +89,8 @@ export const SkuCatalogUpdateBody = z
     replenishTargetCents: optNonNegInt,
     /** "How to pack this product" guidance shown to the packer (P1-PCK-02). */
     packNotes: optPackNotes,
+    /** Explicit empty array clears the governed product-level warnings. */
+    handlingFacts: optHandlingFacts,
     /** Optional pack-profile override linked to this SKU (polymorphic). */
     packTier: optPackTier,
     /** Optional minutes override linked to this SKU (polymorphic). */

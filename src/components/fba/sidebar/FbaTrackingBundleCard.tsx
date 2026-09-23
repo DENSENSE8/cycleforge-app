@@ -9,7 +9,7 @@ import { FbaQtyStepper } from '@/components/fba/sidebar/FbaQtyStepper';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { IconButton, TextField } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import type { StationTheme } from '@/utils/staff-colors';
 
@@ -74,7 +74,7 @@ export function FbaTrackingBundleCard({
       ref={setNodeRef}
       className={`overflow-hidden rounded-none border transition-colors ${
         isOver
-          ? 'border-dashed border-blue-400 bg-blue-50/40'
+          ? 'border-dashed border-border-accent bg-surface-accent'
           : bundle.allocations.length > 0
             ? 'border-border-soft bg-surface-card'
             : 'border-border-soft bg-surface-canvas/30'
@@ -103,22 +103,23 @@ export function FbaTrackingBundleCard({
               <IconButton
                 type="button"
                 onClick={() => setEditingTracking(true)}
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                radius="flush"
+                className="flex h-4 w-4 shrink-0 items-center justify-center text-text-faint hover:bg-surface-sunken hover:text-text-muted"
                 ariaLabel="Edit tracking number"
                 icon={<Pencil className="h-2.5 w-2.5" />}
               />
             </HoverTooltip>
           </div>
         ) : (
-          <input
-            type="text"
+          <TextField
+            label="Tracking number"
             value={bundle.tracking_number}
-            onChange={(e) => onUpdateTracking(bundleIndex, e.target.value)}
+            onChange={(value) => onUpdateTracking(bundleIndex, value)}
             onBlur={() => { if (bundle.tracking_number.trim()) setEditingTracking(false); }}
             onKeyDown={(e) => { if (e.key === 'Enter' && bundle.tracking_number.trim()) setEditingTracking(false); }}
             autoFocus={editingTracking}
-            placeholder="1Z..."
-            className={"min-w-0 rounded-md border border-border-soft bg-surface-card px-2 py-1 font-mono text-role-micro text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+            mono
+            className="min-w-0"
           />
         )}
 
@@ -132,7 +133,8 @@ export function FbaTrackingBundleCard({
           <IconButton
             type="button"
             onClick={() => onToggleCollapse(bundleIndex)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:text-text-muted"
+            radius="flush"
+            className="flex h-5 w-5 shrink-0 items-center justify-center text-text-faint hover:text-text-muted"
             ariaLabel={bundle.collapsed ? 'Expand box' : 'Collapse box'}
             icon={bundle.collapsed ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
           />
@@ -141,7 +143,8 @@ export function FbaTrackingBundleCard({
           <IconButton
             type="button"
             onClick={() => onRemoveBundle(bundleIndex)}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-text-faint hover:bg-red-50 hover:text-red-500"
+            radius="flush"
+            className="flex h-5 w-5 shrink-0 items-center justify-center text-text-faint hover:bg-surface-danger hover:text-text-danger"
             ariaLabel="Remove this box"
             icon={<Trash2 className="h-3 w-3" />}
           />

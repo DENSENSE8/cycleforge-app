@@ -39,7 +39,9 @@
  * When `changed` is false the caller keeps the set it already had.
  */
 
-export interface SelectionAnchorState {
+export type SelectionId = string | number;
+
+export interface SelectionAnchorState<Id extends SelectionId = number> {
   /**
    * Row ids in **display order** — the order on screen, after sorting and
    * filtering.
@@ -48,15 +50,15 @@ export interface SelectionAnchorState {
    * two rows, so a resolver reading source order would select rows that are
    * not between them, and on a sorted view would select rows not on screen.
    */
-  readonly ids: readonly number[];
+  readonly ids: readonly Id[];
   /** Currently checked ids. */
-  readonly selected: ReadonlySet<number>;
+  readonly selected: ReadonlySet<Id>;
   /** The row the operator last acted on, or null before the first gesture. */
-  readonly anchorId: number | null;
+  readonly anchorId: Id | null;
 }
 
-export interface SelectionAnchorResult {
-  readonly selected: ReadonlySet<number>;
+export interface SelectionAnchorResult<Id extends SelectionId = number> {
+  readonly selected: ReadonlySet<Id>;
   /**
    * Where the next extend measures from.
    *
@@ -64,20 +66,20 @@ export interface SelectionAnchorResult {
    * Shift+↓ grows the span by one row rather than re-measuring from the
    * original anchor and re-selecting what is already selected.
    */
-  readonly anchorId: number | null;
+  readonly anchorId: Id | null;
   /** False when the gesture altered nothing — the caller keeps its own set. */
   readonly changed: boolean;
 }
 
-function unchanged(state: SelectionAnchorState, anchorId: number | null): SelectionAnchorResult {
+function unchanged<Id extends SelectionId>(state: SelectionAnchorState<Id>, anchorId: Id | null): SelectionAnchorResult<Id> {
   return { selected: state.selected, anchorId, changed: false };
 }
 
 /** Plain toggle — a click, `x`, or Space on one row. Moves the anchor. */
-export function toggleAt(
-  state: SelectionAnchorState,
-  targetId: number,
-): SelectionAnchorResult {
+export function toggleAt<Id extends SelectionId>(
+  state: SelectionAnchorState<Id>,
+  targetId: Id,
+): SelectionAnchorResult<Id> {
   const next = new Set(state.selected);
   if (next.has(targetId)) next.delete(targetId);
   else next.add(targetId);
@@ -93,10 +95,10 @@ export function toggleAt(
  * what keeps a shift-click from being a silent no-op on the gesture an
  * operator most expects to work.
  */
-export function extendTo(
-  state: SelectionAnchorState,
-  targetId: number,
-): SelectionAnchorResult {
+export function extendTo<Id extends SelectionId>(
+  state: SelectionAnchorState<Id>,
+  targetId: Id,
+): SelectionAnchorResult<Id> {
   const { ids, selected, anchorId } = state;
   if (anchorId == null || anchorId === targetId) return toggleAt(state, targetId);
 
@@ -123,17 +125,17 @@ export function extendTo(
 }
 
 /** Replace the whole set with exactly this row — a row-body click on a rail surface. */
-export function selectOnlyAt(
-  state: SelectionAnchorState,
-  targetId: number,
-): SelectionAnchorResult {
+export function selectOnlyAt<Id extends SelectionId>(
+  state: SelectionAnchorState<Id>,
+  targetId: Id,
+): SelectionAnchorResult<Id> {
   const sole = state.selected.size === 1 && state.selected.has(targetId);
   if (sole) return unchanged(state, targetId);
   return { selected: new Set([targetId]), anchorId: targetId, changed: true };
 }
 
 /** Check every row in the view — ⌘A. */
-export function selectAll(state: SelectionAnchorState): SelectionAnchorResult {
+export function selectAll<Id extends SelectionId>(state: SelectionAnchorState<Id>): SelectionAnchorResult<Id> {
   const { ids, selected, anchorId } = state;
   if (ids.length === selected.size && ids.every((id) => selected.has(id))) {
     return unchanged(state, anchorId);
@@ -142,11 +144,11 @@ export function selectAll(state: SelectionAnchorState): SelectionAnchorResult {
 }
 
 /** Check or uncheck a named set of rows without replacing the rest of the set. */
-export function setMany(
-  state: SelectionAnchorState,
-  ids: readonly number[],
+export function setMany<Id extends SelectionId>(
+  state: SelectionAnchorState<Id>,
+  ids: readonly Id[],
   checked: boolean,
-): SelectionAnchorResult {
+): SelectionAnchorResult<Id> {
   if (ids.length === 0) return unchanged(state, state.anchorId);
   const next = new Set(state.selected);
   let changed = false;
@@ -165,7 +167,7 @@ export function setMany(
 }
 
 /** Drop every checked row — Esc with the form closed, or the bar's Clear. */
-export function clearSelection(state: SelectionAnchorState): SelectionAnchorResult {
+export function clearSelection<Id extends SelectionId>(state: SelectionAnchorState<Id>): SelectionAnchorResult<Id> {
   if (state.selected.size === 0) return unchanged(state, null);
   return { selected: new Set(), anchorId: null, changed: true };
 }

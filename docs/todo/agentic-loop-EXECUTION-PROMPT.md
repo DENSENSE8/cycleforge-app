@@ -89,7 +89,7 @@ Get the contracts right over getting it done fast.
   card chrome on the plan hero.
 - **Neon cost:** no `refetchInterval` polling on the plan/run surfaces — Ably only. Ephemeral
   branches (Phase 4) must have TTL + delete-on-success.
-- **Secrets:** never commit `.env`. Document new vars in `context/ENV-VARS.md` + `.env.example`
+- **Secrets:** never commit `.env`. Document new vars in `docs/ENV-VARS.md` + `.env.example`
   with blank values.
 - **Git (local Claude Code sessions):** work on `main`; never `git stash`; never commit/push —
   leave the tree for GitHub Desktop. **(Cloud agents follow their own branch/PR instructions.)**
@@ -156,7 +156,7 @@ Deliverables:
    configurable) containing at least one `<TicketStatus status="pending" … />` example and a short
    legend. Prefer repo-root `./master-plan.mdx` if gitignore/policy allows; otherwise document the
    path in ENV and the plan.
-5. Update `context/ENV-VARS.md` + `.env.example` stubs for upcoming daemon vars (blank values).
+5. Update `docs/ENV-VARS.md` + `.env.example` stubs for upcoming daemon vars (blank values).
 
 HUMAN GATE 0: present channel name, TicketStatus types, and starter MDX path for approval.
 Do not add heavy deps yet if the human wants to adjust the file path.

@@ -85,6 +85,7 @@ import { ReducedMotionProvider } from '@/components/providers/ReducedMotionProvi
 import { AppearanceApplier } from '@/components/settings/AppearanceApplier';
 import { ReceivingZohoSyncToaster } from '@/components/receiving/ReceivingZohoSyncToaster';
 import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolvedToaster';
+import { WatchedArrivalToaster } from '@/components/providers/WatchedArrivalToaster';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
 import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
 
@@ -135,6 +136,7 @@ export function WarehouseShell({
                       </HeaderProvider>
                       <ReceivingZohoSyncToaster />
                       <UserIssueResolvedToaster />
+                      <WatchedArrivalToaster />
                       <SwitchStaffSheet />
                       <CursorLabelLayer />
                       <ScanHotkeySync />

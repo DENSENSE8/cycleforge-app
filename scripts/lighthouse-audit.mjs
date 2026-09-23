@@ -32,7 +32,7 @@ const repoRoot = path.resolve(__dirname, '..');
 const outDir = path.join(repoRoot, 'lighthouse');
 const baselinePath = path.join(repoRoot, 'lighthouse-baseline.json');
 
-const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3050';
 
 /**
  * Point chrome-launcher at a browser, without anyone having to know the path.

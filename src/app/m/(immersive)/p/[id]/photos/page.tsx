@@ -16,6 +16,7 @@ function PhotoPageInner() {
   const stepParam = searchParams.get('step');
   const spamMode = searchParams.get('mode') === 'spam';
   const guided = !spamMode;
+  const completePacking = searchParams.get('complete') === '1';
   const initialStep = stepParam === 'box' ? 'box' : 'slip';
 
   const validPackerLogId = Number.isFinite(packerLogId) && packerLogId > 0;
@@ -34,10 +35,11 @@ function PhotoPageInner() {
       packerLogId={packerLogId}
       orderId={orderId}
       headerLabel={headerLabel}
-      returnHref="/m/work"
+      returnHref={completePacking ? '/m/pack' : '/m/work'}
       maxPhotos={10}
       guided={guided}
       initialStep={initialStep}
+      completePacking={completePacking}
     />
   );
 }

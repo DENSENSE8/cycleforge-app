@@ -48,9 +48,11 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
         organizationId,
         `INSERT INTO work_assignments
            (organization_id, entity_type, entity_id, work_type,
-            assignee_staff_id, assigned_by_staff_id, status, priority, notes)
+            assignee_staff_id, assigned_by_staff_id, status, priority, notes,
+            deadline_at)
          VALUES ($1, $2::work_entity_type_enum, $3, $4::work_type_enum,
-                 $5, $6, $7::assignment_status_enum, $8, $9)
+                 $5, $6, $7::assignment_status_enum, $8, $9,
+                 $10::timestamptz)
          RETURNING id, entity_id, priority, notes`,
         [
           organizationId,
@@ -62,6 +64,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
           args.status,
           args.priority,
           args.note,
+          args.deadlineAt,
         ],
       );
 
@@ -92,6 +95,31 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
      * announce and the push is skipped rather than re-fired.
      */
     async notifyAssignee({ task, actorStaffId, urgent }: NotifyAssigneeArgs): Promise<void> {
+      /**
+       * One extra read, on the ticket arm only, so the inbox row can print the
+       * number the operator quotes. `entity_id` stays the LOCAL registry id —
+       * it is what the CHECK, the delete trigger and `?ticket=` are built on —
+       * and the provider number rides the payload as a render hint. A failed
+       * lookup degrades to the id, never to a wrong number.
+       */
+      const ticketNumber =
+        task.entityType === 'support_ticket'
+          ? await tenantQuery<{ external_ticket_id: string | null }>(
+              organizationId,
+              `SELECT external_ticket_id
+                 FROM support_tickets
+                WHERE organization_id = $1 AND id = $2
+                LIMIT 1`,
+              [organizationId, task.entityId],
+            )
+              .then((res) => {
+                const raw = res.rows[0]?.external_ticket_id?.trim();
+                const parsed = raw ? Number(raw) : NaN;
+                return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+              })
+              .catch(() => null)
+          : null;
+
       const inserted = await tenantQuery<{ id: number }>(
         organizationId,
         ASSIGN_INBOX_ITEM_SQL,
@@ -103,6 +131,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
           actorStaffId,
           note: task.note,
           urgent,
+          ticketNumber,
         }) as unknown[],
       );
 

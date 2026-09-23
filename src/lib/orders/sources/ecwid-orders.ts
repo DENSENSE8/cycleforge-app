@@ -123,6 +123,10 @@ function resolveEcwidLineSaleAmount(item: Record<string, unknown>, units: number
  *     ingested, and the reason Ecwid showed the worst average lateness of any
  *     channel (15 days) while nothing was actually wrong with its fulfilment.
  *     An unknown ship-by is null; the placement fact goes to `orderDate`.
+ *
+ * Added 2026-09-23: `buyer`. Every Ecwid order landed with
+ * `orders.customer_id IS NULL` (494/494) because this mapper dropped the
+ * customer block the payload already carried. See the body for the tiering.
  */
 export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): CanonicalOrderLine[] {
   const lines: CanonicalOrderLine[] = [];
@@ -143,6 +147,50 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
     // currency from a source that never knew it.
     const currency = cleanText(order.currency).toUpperCase() || null;
 
+    // The BUYER, in the transport shape `resolveBuyerCustomers` reads. This is
+    // never persisted onto `orders` — only the customer id it resolves to is —
+    // so populating it costs one object per order and closes the reason every
+    // Ecwid order carried `customer_id IS NULL` (494/494 before this).
+    //
+    // `customerId` is Ecwid's storefront account and is the TIER-1 key
+    // (CHANNEL_IDENTITY_COLUMNS.ecwid → customers.ecwid_customer_id): it
+    // survives a buyer changing their email or phone, which neither of the
+    // lower tiers do. Shipping person wins over billing for contact because
+    // that is who the unit is going back to.
+    //
+    // The name is deliberately NOT an identity here: `buyerIdentityKey` returns
+    // null without an id/email/phone, and the whole block is dropped rather
+    // than resolved by name — two different "John Smith"s must never merge.
+    const shippingPerson = (order.shippingPerson ?? {}) as Record<string, any>;
+    const billingPerson = (order.billingPerson ?? {}) as Record<string, any>;
+    // `||`, not `??`: Ecwid sends present-but-empty strings on these, and a
+    // nullish fallback would keep the empty one.
+    const buyerName = cleanText(shippingPerson.name || billingPerson.name);
+    const buyerPhone = cleanText(shippingPerson.phone || billingPerson.phone || order.phone);
+    const buyerEmail = cleanText(order.email);
+    const channelCustomerId = cleanText(order.customerId);
+    const shipFrom = cleanText(shippingPerson.street) ? shippingPerson : billingPerson;
+    const buyer =
+      channelCustomerId || buyerEmail || buyerPhone
+        ? {
+            channelCustomerId,
+            name: buyerName,
+            email: buyerEmail,
+            phone: buyerPhone,
+            shipTo: cleanText(shipFrom.street)
+              ? {
+                  address1: cleanText(shipFrom.street),
+                  address2: null,
+                  city: cleanText(shipFrom.city),
+                  state: cleanText(shipFrom.stateOrProvinceCode),
+                  postalCode: cleanText(shipFrom.postalCode),
+                  country: cleanText(shipFrom.countryCode),
+                  residential: null,
+                }
+              : null,
+          }
+        : null;
+
     const items: unknown[] =
       Array.isArray(order.items) && order.items.length > 0 ? order.items : [{}];
 
@@ -160,10 +208,12 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
         condition: '',
         quantity: cleanText(item.quantity) || '1',
         notes,
-        // `notes` here is the buyer's own comment, which is a note. Ecwid does
-        // carry a customer object — wire it by id/email if orders need buyer
-        // linkage, not by name.
+        // `customerName` stays empty ON PURPOSE. It is the name-only fallback
+        // tier (`resolveCustomersByName`), and routing Ecwid through it would
+        // merge two different "John Smith"s. The buyer below carries real
+        // identity, so this order never reaches that tier.
         customerName: '',
+        buyer,
         accountSource: 'ecwid',
         // Ecwid fulfillment state is not read here — no lifecycle opinion.
         status: null,

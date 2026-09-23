@@ -1,0 +1,302 @@
+/**
+ * The **task desk** view model — one `work_assignments` row as the desk,
+ * the phone and the report all read it.
+ *
+ * ## Why this module exists at all
+ *
+ * `work_assignments` is read by six surfaces with six different questions, and
+ * the task desk asks the one none of them did: *what has been handed to a
+ * person, by whom, due when, at what priority, and against which record*. The
+ * columns for that already exist (R-A, 2026-09-22 — zero DDL); what did not
+ * exist was one assembled answer. Without this module the read route, the slot
+ * catalog, the composer and the `/m` face each re-derive urgency from an int
+ * and a name from a join, and they drift the first time one of them is edited.
+ *
+ * A VIEW MODEL, assembled once per row (kinetic-ledger law 4). Derived facts —
+ * urgency from `priority`, openness from `status` — are computed HERE so two
+ * cells on one row can never disagree.
+ *
+ * ## Every task points at a record, and that is the store's shape
+ *
+ * `work_assignments.entity_type` / `entity_id` are NOT NULL and the enum names
+ * real records (ORDER · RECEIVING · SUPPORT_TICKET). There is no "standalone
+ * task" row to represent, so the composer resolves a target before it can
+ * throw — the same `(entityType, entityId)` pair `POST /api/tasks` has always
+ * taken, via {@link resolveThrowTargets}. Inventing a self-referential TASK
+ * kind would be a new polymorphic parent (enum value + delete-integrity
+ * trigger family) for a row the operator already describes as *"pair a ticket
+ * to it"*.
+ *
+ * Pure and dependency-free apart from the task vocabulary, so a client picker
+ * imports it without dragging a write path into the browser bundle.
+ */
+
+import {
+  taskUrgencyFromPriority,
+  type TaskEntityType,
+  type TaskUrgency,
+} from './task-vocabulary';
+
+/**
+ * `assignment_status_enum`, verbatim. Re-spelled here (not imported from the
+ * Drizzle schema) so the client bundle gets the vocabulary without the schema
+ * module; `task-desk-row.test.ts` pins it against `assignmentStatusEnum`.
+ */
+export const TASK_DESK_STATUSES = [
+  'OPEN',
+  'ASSIGNED',
+  'IN_PROGRESS',
+  'DONE',
+  'CANCELED',
+] as const;
+
+export type TaskDeskStatus = (typeof TASK_DESK_STATUSES)[number];
+
+export function isTaskDeskStatus(raw: unknown): raw is TaskDeskStatus {
+  return typeof raw === 'string' && (TASK_DESK_STATUSES as readonly string[]).includes(raw);
+}
+
+/**
+ * Statuses a task is still WORK in. `CANCELED` is not open and not done — it
+ * is withdrawn, which is why the done lane cannot simply be "not open".
+ */
+const OPEN_STATUSES: readonly TaskDeskStatus[] = ['OPEN', 'ASSIGNED', 'IN_PROGRESS'];
+
+export function isTaskDeskOpen(status: TaskDeskStatus): boolean {
+  return OPEN_STATUSES.includes(status);
+}
+
+/**
+ * Band-1 lanes. `open` is the default, so it IS the unfiltered working list;
+ * `done` is the record (and what `/reports` reads); `all` is the audit view
+ * that also shows withdrawn rows.
+ */
+export type TaskDeskLane = 'open' | 'done' | 'all';
+
+export function parseTaskDeskLane(raw: string | null | undefined): TaskDeskLane {
+  return raw === 'done' || raw === 'all' ? raw : 'open';
+}
+
+/** The statuses a lane reads, or `null` for "every status". */
+export function taskDeskLaneStatuses(lane: TaskDeskLane): readonly TaskDeskStatus[] | null {
+  if (lane === 'open') return OPEN_STATUSES;
+  if (lane === 'done') return ['DONE'];
+  return null;
+}
+
+/** A staffer as a task row names them — machine id plus the face to paint. */
+export interface TaskDeskPerson {
+  id: number;
+  name: string;
+}
+
+/**
+ * The paired ticket, when `entityType === 'support_ticket'`. `subject` and
+ * `status` are the local caches (`support_tickets.subject_cache` /
+ * `status_cache`) — the desk never reaches Zendesk to paint a row.
+ */
+export interface TaskDeskTicket {
+  id: number;
+  provider: string;
+  subject: string | null;
+  status: string | null;
+  /** Remote id, when the ticket mirrors one. Never the id to join on. */
+  externalId: string | null;
+}
+
+/** One assembled task row. */
+export interface TaskDeskRow {
+  /** `work_assignments.id` — a machine handle, and the only thing column one prints. */
+  id: number;
+  /** The record this task is about. */
+  entityType: TaskEntityType;
+  entityId: number;
+  /** `work_assignments.notes` — the task text an operator typed. */
+  note: string;
+  status: TaskDeskStatus;
+  /** Stored int. Lower sorts first (`idx_work_assignments_assignee`). */
+  priority: number;
+  /** Derived from {@link priority} once, here. */
+  urgency: TaskUrgency;
+  assignee: TaskDeskPerson | null;
+  assignedBy: TaskDeskPerson | null;
+  /** When it was handed over (`assigned_at`, NOT NULL). */
+  assignedAtMs: number;
+  /** "The start date" — `started_at`, null until someone picks it up. */
+  startedAtMs: number | null;
+  /** "The deadline" — `deadline_at`. */
+  deadlineAtMs: number | null;
+  completedAtMs: number | null;
+  ticket: TaskDeskTicket | null;
+}
+
+/**
+ * The row as it crosses the wire. Timestamps are ISO strings because that is
+ * what `JSON.stringify` does to a Date and what `pg` hands back — the epoch-ms
+ * conversion happens once, in {@link taskDeskRowFromWire}, rather than in
+ * every consumer's `new Date(...)`.
+ */
+export interface TaskDeskWireRow {
+  id: number;
+  entityType: TaskEntityType;
+  entityId: number;
+  note: string | null;
+  status: string;
+  priority: number | null;
+  assignee: TaskDeskPerson | null;
+  assignedBy: TaskDeskPerson | null;
+  assignedAt: string;
+  startedAt: string | null;
+  deadlineAt: string | null;
+  completedAt: string | null;
+  ticket: TaskDeskTicket | null;
+}
+
+/** The `GET /api/tasks` envelope. */
+export interface TaskDeskListPayload {
+  ok: boolean;
+  count: number;
+  tasks: TaskDeskWireRow[];
+}
+
+function ms(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const parsed = Date.parse(iso);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function taskDeskRowFromWire(wire: TaskDeskWireRow): TaskDeskRow {
+  const priority = typeof wire.priority === 'number' ? wire.priority : 100;
+  return {
+    id: wire.id,
+    entityType: wire.entityType,
+    entityId: wire.entityId,
+    note: (wire.note ?? '').trim(),
+    // An unknown status label is a schema drift, not a row to drop: paint it
+    // as OPEN so the operator still sees the work, and let the enum test fail.
+    status: isTaskDeskStatus(wire.status) ? wire.status : 'OPEN',
+    priority,
+    urgency: taskUrgencyFromPriority(priority),
+    assignee: wire.assignee,
+    assignedBy: wire.assignedBy,
+    assignedAtMs: ms(wire.assignedAt) ?? 0,
+    startedAtMs: ms(wire.startedAt),
+    deadlineAtMs: ms(wire.deadlineAt),
+    completedAtMs: ms(wire.completedAt),
+    ticket: wire.ticket,
+  };
+}
+
+/**
+ * Desk order: urgent first, then the nearest deadline, then newest handoff.
+ *
+ * A task with no deadline is not "due last" by accident — it sorts after every
+ * dated peer at the same urgency, because a dateless task is the one nobody
+ * promised a day for.
+ */
+export function sortTaskDeskRows(rows: readonly TaskDeskRow[]): TaskDeskRow[] {
+  return [...rows].sort((a, b) => {
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    const aDue = a.deadlineAtMs ?? Number.POSITIVE_INFINITY;
+    const bDue = b.deadlineAtMs ?? Number.POSITIVE_INFINITY;
+    if (aDue !== bDue) return aDue - bDue;
+    return b.assignedAtMs - a.assignedAtMs;
+  });
+}
+
+/**
+ * The record kind, as an operator names it. A task's subject is printed on
+ * four surfaces (slot cell, compound note line, composer, `/m` row) and a
+ * fifth spelling of "Carton" is how two of them come to disagree.
+ */
+export const TASK_DESK_RECORD_NOUN: Readonly<Record<TaskEntityType, string>> = {
+  order: 'Order',
+  receiving: 'Carton',
+  support_ticket: 'Ticket',
+};
+
+/**
+ * What the href and label helpers need. `ticket` is optional so a caller that
+ * only has the two identity fields still type-checks; a ticket task that omits
+ * it simply gets the local-id face, which is the honest degradation.
+ */
+export type TaskRecordRef = Pick<TaskDeskRow, 'entityType' | 'entityId'> & {
+  ticket?: TaskDeskTicket | null;
+};
+
+/**
+ * The PROVIDER ticket number for a ticket task — `#48120`, the number an
+ * operator quotes — or null when this row has none.
+ *
+ * **A ticket task carries two different numbers and they are not
+ * interchangeable.** `entity_id` is the LOCAL `support_tickets.id`: migration
+ * `2026-08-08a` says the enum arm "keys on the LOCAL support_tickets.id …
+ * never a bare Zendesk id", and `list-tasks.ts` joins `st.id = wa.entity_id`
+ * on it. Every HELPDESK reader speaks the other number — `/api/zendesk/
+ * tickets/[id]` proxies the provider API verbatim, so `SupportTicketDetail`,
+ * `useZendeskTicketBundle`, `/support?ticket=` and `/m/t/[ticketId]` all want
+ * `external_ticket_id`.
+ *
+ * The translation lives HERE, next to the row that carries both, rather than
+ * inside the bundle route: that route is reached by a dozen call sites already
+ * holding a provider id, and teaching it to also accept local ids would make
+ * `48120` ambiguous for every one of them.
+ *
+ * Null on an `internal` ticket with no provider mirror — there is no helpdesk
+ * thread to open, and an invented number would open someone else's.
+ */
+export function taskDeskTicketNumber(row: TaskRecordRef): number | null {
+  if (row.entityType !== 'support_ticket') return null;
+  const external = row.ticket?.externalId?.trim();
+  if (!external) return null;
+  const parsed = Number(external);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** `Ticket 48120` — the record a task is about, in one phrase. */
+export function taskDeskRecordLabel(row: TaskRecordRef): string {
+  const noun = TASK_DESK_RECORD_NOUN[row.entityType] ?? 'Record';
+  // A ticket is named by the number the operator quotes, not by the registry
+  // id they have never seen.
+  return `${noun} ${taskDeskTicketNumber(row) ?? row.entityId}`;
+}
+
+/**
+ * Which app is asking for the door. A phone that follows a desk-only route
+ * lands on a surface it cannot run (`SURFACE_LAW` §1), so the caller says
+ * where it is and this module answers once.
+ */
+export type TaskDeskSurface = 'desk' | 'phone';
+
+/**
+ * The record a task points at, as a route.
+ *
+ * One declaration for both surfaces so a task row cannot link one place on the
+ * desk and another on the phone by accident — but the two are not always the
+ * same string, and each divergence below is named:
+ *
+ * - **Ticket** — the phone has its own thread at `/m/t/[ticketId]`; `/support`
+ *   is a desk console. Both take the PROVIDER number
+ *   ({@link taskDeskTicketNumber}), never `entityId`. No provider mirror means
+ *   no door: null, and the caller paints no link.
+ * - **Carton** — `/m/r/[id]` keys on the same numeric receiving id `/unbox`
+ *   does, so the phone gets its own door.
+ * - **Order** — `/m/orders/[orderId]` keys on the PUBLIC order number, which a
+ *   task row does not carry (`entityId` is `orders.id`). The phone keeps the
+ *   desk route until `/m` grows a numeric-id order door.
+ */
+export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface): string | null {
+  switch (row.entityType) {
+    case 'order':
+      return `/dashboard?order=${row.entityId}`;
+    case 'receiving':
+      return surface === 'phone' ? `/m/r/${row.entityId}` : `/unbox?carton=${row.entityId}`;
+    case 'support_ticket': {
+      const ticketNumber = taskDeskTicketNumber(row);
+      if (ticketNumber == null) return null;
+      return surface === 'phone' ? `/m/t/${ticketNumber}` : `/support?ticket=${ticketNumber}`;
+    }
+    default:
+      return null;
+  }
+}

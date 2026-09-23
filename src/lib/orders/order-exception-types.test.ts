@@ -3,8 +3,10 @@ import { describe, it } from 'node:test';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   deriveOrderExceptionBlockers,
+  resolveOrderExceptionRouting,
   exceptionPairingResolveCount,
   exceptionRailMetaCount,
+  collapseExceptionRailByItem,
   sortExceptionQueueRows,
 } from '@/lib/orders/order-exception-types';
 
@@ -69,6 +71,21 @@ describe('deriveOrderExceptionBlockers', () => {
   });
 });
 
+
+describe('resolveOrderExceptionRouting', () => {
+  it('maps missing identity to an Inventory-owned add-item-number action', () => {
+    assert.deepEqual(resolveOrderExceptionRouting(['unpaired', 'no_item_number']), {
+      category: 'SKU mapping', actionRequired: 'Add item number', owner: 'Inventory',
+    });
+  });
+
+  it('maps an identified unpaired order to an Inventory-owned SKU-pair action', () => {
+    assert.deepEqual(resolveOrderExceptionRouting(['unpaired']), {
+      category: 'SKU mapping', actionRequired: 'Pair SKU', owner: 'Inventory',
+    });
+  });
+});
+
 describe('sortExceptionQueueRows', () => {
   it('counts this order plus unpaired siblings', () => {
     assert.equal(exceptionPairingResolveCount({ siblingUnpairedCount: 0 }), 1);
@@ -98,5 +115,37 @@ describe('sortExceptionQueueRows', () => {
       { id: 4, blockers: ['unpaired'] as const, siblingUnpairedCount: 5 },
     ]);
     assert.deepEqual(sorted.map((r) => r.id), [3, 4, 2, 1]);
+  });
+});
+
+describe('collapseExceptionRailByItem', () => {
+  it('keeps one rail row per item number', () => {
+    const collapsed = collapseExceptionRailByItem([
+      { id: 1, itemNumber: 'B0D6X2MFSZ', blockers: ['unpaired'] as const, siblingUnpairedCount: 4 },
+      { id: 2, itemNumber: 'B0D6X2MFSZ', blockers: ['unpaired'] as const, siblingUnpairedCount: 4 },
+      { id: 3, itemNumber: 'b0d6x2mfsz', blockers: ['unpaired'] as const, siblingUnpairedCount: 4 },
+      { id: 4, itemNumber: 'OTHER', blockers: ['unpaired'] as const, siblingUnpairedCount: 0 },
+      { id: 5, itemNumber: 'B0D6X2MFSZ', blockers: ['unpaired'] as const, siblingUnpairedCount: 4 },
+    ]);
+    assert.deepEqual(collapsed.map((r) => r.id), [5, 4]);
+  });
+
+  it('does not collapse orders that have no item number', () => {
+    const collapsed = collapseExceptionRailByItem([
+      { id: 1, itemNumber: '', blockers: ['unpaired', 'no_item_number'] as const, siblingUnpairedCount: 0 },
+      { id: 2, itemNumber: '   ', blockers: ['unpaired', 'no_item_number'] as const, siblingUnpairedCount: 0 },
+    ]);
+    assert.deepEqual(collapsed.map((r) => r.id), [2, 1]);
+  });
+
+  it('keeps the open record as the representative of its item', () => {
+    const collapsed = collapseExceptionRailByItem(
+      [
+        { id: 10, itemNumber: 'B0D6X2MFSZ', blockers: ['unpaired'] as const, siblingUnpairedCount: 2 },
+        { id: 20, itemNumber: 'B0D6X2MFSZ', blockers: ['unpaired'] as const, siblingUnpairedCount: 2 },
+      ],
+      10,
+    );
+    assert.deepEqual(collapsed.map((r) => r.id), [10]);
   });
 });

@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * Mobile orders queue — `/m/work`.
+ * Mobile orders queue — canonical `/m/orders`; `/m/work` is a compatibility
+ * alias that mounts this same component.
  *
- * In-warehouse to-ship list with All / Assigned / Unassigned tabs. Home keeps
- * the inset preview card; this page is the full phone queue, not a shrunk
- * spreadsheet.
+ * This page is the full phone queue, not a shrunk spreadsheet.
  */
 
 import { Suspense } from 'react';

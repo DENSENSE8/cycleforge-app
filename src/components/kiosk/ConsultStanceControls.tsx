@@ -18,7 +18,7 @@ import { Button } from '@/design-system/primitives';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { KIOSK_POS_TRAIL_CONTROL } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import { CONSULT_STANCES, type ConsultStance } from '@/lib/counter/consult-stance';
@@ -66,7 +66,7 @@ export function ConsultStanceControls({
           placeholder="Work"
           searchPlaceholder="Search stance"
           emptyMessage="No stance match"
-          contentClassName={cn('min-w-40 overflow-hidden', HEADER_ICON_CORNER)}
+          contentClassName={cn('min-w-40 overflow-hidden', DROPDOWN_SHELL_CORNER)}
           className={cn(KIOSK_POS_TRAIL_CONTROL, 'shrink-0 font-medium text-text-default', focusRing('control', 'neutral'))}
           options={CONSULT_STANCES.map((stance) => ({
             value: stance,

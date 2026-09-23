@@ -56,7 +56,6 @@ import {
   type PickupRailFacets,
 } from '@/components/sidebar/rail-shell/PickupRailFilters';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
-import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
 import { PickupSidebarRail } from '@/components/receiving/pickup/PickupSidebarRail';
 import type { PickupLine, PickupOrderGroup } from '@/components/receiving/pickup/pickup-lines';
 import { emitReceiving } from '@/components/receiving/receiving-events';
@@ -521,11 +520,14 @@ export function ReceivingSidebarPanel() {
           // Actions pane stays empty rather than resurrecting a Views rail twin.
           null
         ) : mode === 'repair' ? (
-          // Repair Favorites + intake overlay. Active/Done · search · Add live in
-          // RepairWorkspaceHeader on the right pane (RepairTable).
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <RepairSidebarPanel embedded hideSectionHeader />
-          </div>
+          // Repair desk is rail-less too (`railless: true` on the repair nav
+          // entry). Its left column had exactly one tenant — the Favorites rail
+          // — and favorites now live as the Favorites SCOPE of the shared
+          // catalog picker (ProductSelector `favoritesWorkspace` / `?mode=favorites`),
+          // so there is nothing left to mount. The `?new=true` intake overlay is
+          // hosted by `RepairIntakeHost` on the right pane; Active/Done · search
+          // · Add stay in RepairWorkspaceHeader (RepairTable).
+          null
         ) : mode === 'pickup' ? (
           // Local Pickup — station scan bar (open/match LCPU) + orders rail.
           // Selecting an order writes `?lcpu=` to highlight products in the table.

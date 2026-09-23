@@ -15,7 +15,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { Panel, Button } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { Barcode, ChevronRight, Clock } from '@/components/Icons';
@@ -148,7 +147,6 @@ export default function RmaPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <NetworkChip />
           <Link href="/warehouse/rma/disposition">
             <Button variant="secondary" size="sm">
               <Barcode className="h-3.5 w-3.5" />

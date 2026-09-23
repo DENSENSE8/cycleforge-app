@@ -16,17 +16,9 @@ import {
 import { fbaWorkspaceScanChrome } from '@/utils/staff-colors';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { FBA_SCAN_STATUS, FBA_ACTIVE_SHIPMENTS_REFRESH } from '@/lib/fba/events';
-import { SIDEBAR_INTAKE_LABEL_CLASS } from '@/design-system/components/sidebar-intake/intakeFormClasses';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { Button } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
 import { refreshDomain } from '@/lib/refresh/bus';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
-
-
-
-const fieldBaseClass =
-  cn('mt-1 w-full rounded-xl border-2 border-border-emphasis bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint disabled:opacity-50', focusRing('field', 'neutral'));
 
 const TRACKING_PANEL_VARIANTS = {
   hidden: { opacity: 0 },
@@ -64,7 +56,7 @@ export function FbaWorkspaceScanField({
     return null;
   })();
 
-  const { theme: stationTheme, colors: themeColors } = useStationTheme({ staffId: effectiveStaffId });
+  const { theme: stationTheme } = useStationTheme({ staffId: effectiveStaffId });
 
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -75,7 +67,6 @@ export function FbaWorkspaceScanField({
     [reduceMotion]
   );
   const scanChrome = fbaWorkspaceScanChrome[stationTheme];
-  const fieldClass = `${fieldBaseClass} ${scanChrome.fieldFocusRing}`;
   const selectedItems = selection.selectedItems;
 
   const selectedPlanIds = useMemo(
@@ -236,9 +227,9 @@ export function FbaWorkspaceScanField({
 
             <div className="space-y-3">
               {trackingTargetPlanIds.length > 1 ? (
-                <div className={`rounded-2xl ${themeColors.border} ${themeColors.light} px-3 py-3`}>
+                <div className="border border-border-accent bg-surface-accent px-3 py-3">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className={`mt-0.5 h-4 w-4 shrink-0 ${themeColors.text}`} />
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-text-accent" />
                     <div>
                       <p className="text-role-micro uppercase tracking-[0.16em] text-text-default">Apply to selected plans</p>
                       <p className="mt-1 text-role-caption leading-5 text-text-default">
@@ -248,48 +239,37 @@ export function FbaWorkspaceScanField({
                   </div>
                 </div>
               ) : null}
-              <label className="block">
-                <span className={SIDEBAR_INTAKE_LABEL_CLASS}>Amazon FBA shipment ID</span>
-                <input
-                  value={activeTracking.amazon}
-                  onChange={(e) => setActiveTracking({ amazon: e.target.value })}
-                  disabled={saving || trackingTargetPlanIds.length === 0}
-                  placeholder="FBA17XXXXXXXX"
-                  className={`${fieldClass} font-mono text-xs ${
-                    activeTracking.amazon && !amazonOk ? 'border-amber-400' : ''
-                  } ${!activeTracking.amazon ? 'text-text-soft' : ''}`}
-                />
-              </label>
-              <label className="block">
-                <span className={SIDEBAR_INTAKE_LABEL_CLASS}>UPS shipping label / tracking</span>
-                <input
-                  value={activeTracking.ups}
-                  onChange={(e) => setActiveTracking({ ups: e.target.value })}
-                  disabled={saving || trackingTargetPlanIds.length === 0}
-                  placeholder="1Z999AA10123456784"
-                  className={`${fieldClass} font-mono text-xs ${activeTracking.ups && !upsOk ? 'border-amber-400' : ''} ${
-                    !activeTracking.ups ? 'text-text-soft' : ''
-                  }`}
-                />
-              </label>
+              <TextField
+                label="Amazon FBA shipment ID"
+                value={activeTracking.amazon}
+                onChange={(value) => setActiveTracking({ amazon: value })}
+                disabled={saving || trackingTargetPlanIds.length === 0}
+                mono
+                inputClassName={activeTracking.amazon && !amazonOk ? 'border-border-warning' : ''}
+              />
+              <TextField
+                label="UPS shipping label / tracking"
+                value={activeTracking.ups}
+                onChange={(value) => setActiveTracking({ ups: value })}
+                disabled={saving || trackingTargetPlanIds.length === 0}
+                mono
+                inputClassName={activeTracking.ups && !upsOk ? 'border-border-warning' : ''}
+              />
 
               <Button
-                variant="secondary"
+                variant={trackingReady && !saving ? 'success' : 'secondary'}
                 type="button"
                 onClick={() => void onSaveTracking()}
                 disabled={saving || !trackingReady}
-                className={`h-auto w-full rounded-xl border-2 px-3 py-2.5 text-role-caption font-semibold uppercase tracking-[0.12em] ring-0 ${
-                  trackingReady && !saving
-                    ? `${themeColors.border} ${themeColors.light} text-text-default hover:opacity-95`
-                    : 'cursor-not-allowed border-border-soft bg-surface-sunken text-text-faint'
-                }`}
+                radius="flush"
+                className="h-auto w-full px-3 py-2.5 text-role-caption font-semibold uppercase tracking-[0.12em]"
               >
                 {trackingReady ? 'Save tracking' : 'Enter valid FBA ID and UPS to save'}
               </Button>
             </div>
 
             {saveError && (
-              <p className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-2 text-role-caption font-semibold text-red-700">
+              <p className="border border-border-danger bg-surface-danger px-2.5 py-2 text-role-caption font-semibold text-text-danger">
                 {saveError}
               </p>
             )}
@@ -303,7 +283,8 @@ export function FbaWorkspaceScanField({
                 variant="secondary"
                 type="button"
                 onClick={() => clearSelection()}
-                className="h-auto rounded-full border border-border-soft px-2.5 py-1 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft ring-0 hover:bg-surface-hover hover:text-text-default"
+                radius="flush"
+                className="h-auto border border-border-soft px-2.5 py-1 text-role-eyebrow uppercase tracking-[0.14em] text-text-soft hover:bg-surface-hover hover:text-text-default"
               >
                 Clear
               </Button>

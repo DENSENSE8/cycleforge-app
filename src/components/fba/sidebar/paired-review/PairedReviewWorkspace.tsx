@@ -9,7 +9,7 @@ import { FbaQtySplitPopover } from '@/components/fba/sidebar/FbaQtySplitPopover'
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type { StationTheme } from '@/utils/staff-colors';
 import { StickyActionBar } from '@/design-system/components/StickyActionBar';
-import { IconButton } from '@/design-system/primitives';
+import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { PairedReviewController } from './usePairedReview';
 
@@ -32,27 +32,27 @@ export function PairedReviewWorkspace({
           bottom action bar, like receiving / testing). */}
       <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-hairline px-4 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <p className="shrink-0 text-role-eyebrow uppercase tracking-widest text-text-soft">
-            FBA Shipment ID
-          </p>
-          <input
+          <TextField
+            label="FBA Shipment ID"
             value={c.lockedFbaId || c.amazonShipmentId}
-            onChange={(e) => {
+            onChange={(value) => {
               if (c.lockedFbaId) return;
-              c.setAmazonShipmentId(e.target.value.toUpperCase());
+              c.setAmazonShipmentId(value.toUpperCase());
             }}
-            placeholder="FBA1234ABCD"
             disabled={c.saving || Boolean(c.lockedFbaId)}
-            className={`${c.chrome.monoInput} max-w-[260px] min-w-0 flex-1 ${c.lockedFbaId ? '!bg-emerald-50 !border-emerald-200 !text-emerald-800' : ''}`}
+            mono
+            className="max-w-[260px] min-w-0 flex-1"
+            inputClassName={c.lockedFbaId ? 'disabled:!border-border-success disabled:!bg-surface-success disabled:!text-text-success' : ''}
           />
           {c.lockedFbaId && (
             <HoverTooltip label="Done with this FBA Shipment ID" asChild>
               <IconButton
                 type="button"
+                radius="flush"
                 icon={<Check className="h-3.5 w-3.5" />}
                 ariaLabel="Done — clear FBA Shipment ID"
                 onClick={c.handleDismissFbaId}
-                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-success text-text-success hover:bg-surface-hover"
               />
             </HoverTooltip>
           )}
@@ -69,12 +69,12 @@ export function PairedReviewWorkspace({
       {(c.activeSplit || c.success) ? (
         <div className="shrink-0 space-y-1 px-4 pt-2">
           {c.activeSplit ? (
-            <p className="text-role-eyebrow font-semibold leading-snug text-amber-800">
+            <p className="text-role-eyebrow font-semibold leading-snug text-text-warning">
               If you change this FBA ID from the prefilled value, Save creates a new active shipment for these
               FNSKUs with this Amazon ID and UPS; the original card keeps its FBA ID for remaining lines.
             </p>
           ) : null}
-          {c.success ? <p className={`${microBadge} tracking-wider text-emerald-600`}>{c.success}</p> : null}
+          {c.success ? <p className={`${microBadge} tracking-wider text-text-success`}>{c.success}</p> : null}
         </div>
       ) : null}
 
@@ -115,21 +115,23 @@ export function PairedReviewWorkspace({
                 </div>
               ))}
 
-              {/* ds-raw-button: full-height vertical (icon-over-label) dashed drop-tile; Button is a horizontal pill */}
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="lg"
+                radius="flush"
                 onClick={c.addBucket}
                 disabled={c.saving}
-                className="flex w-44 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch rounded-lg border border-dashed border-border-default py-6 text-role-micro uppercase tracking-wider text-text-soft transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 disabled:opacity-40"
+                className="h-auto w-44 shrink-0 flex-col justify-center gap-1.5 self-stretch border border-dashed border-border-default py-6 text-role-micro uppercase tracking-wider text-text-soft hover:border-border-accent hover:bg-surface-accent hover:text-text-accent disabled:opacity-40"
               >
                 <Plus className="h-4 w-4" />
                 Add UPS Box
-              </button>
+              </Button>
             </div>
 
             <DragOverlay>
               {c.activeItem ? (
-                <div className="rounded-lg border border-blue-300 bg-surface-card/95 shadow-lg">
+                <div className="border border-border-accent bg-surface-card/95 shadow-none">
                   <FbaSelectedLineRow
                     displayTitle={c.activeItem.display_title || 'No title'}
                     fnsku={String(c.activeItem.fnsku || '').toUpperCase()}
@@ -144,7 +146,7 @@ export function PairedReviewWorkspace({
           </DndContext>
         ) : c.lockedFbaId ? (
           <div className="flex h-full items-center justify-center px-6 text-center">
-            <p className={`${microBadge} tracking-wider text-emerald-600`}>
+            <p className={`${microBadge} tracking-wider text-text-success`}>
               Select more packed items to add another UPS tracking to {c.lockedFbaId}
             </p>
           </div>

@@ -91,8 +91,21 @@ const PHONE_CLICK_DEFER_MS = 280;
  * tip readable; longer hover still lands the action strip.
  */
 const GALLERY_OPEN_DELAY_MS = 420;
-/** Gap between the pill and the portaled gallery — ~6px, same as carton chip menus. */
+/**
+ * Gap between the pill and the portaled gallery.
+ *
+ * ZERO on carton chrome: every other hover panel on that bar (the order-id and
+ * tracking chip menus, listing, ticket) is a `ChipHoverMenuSurface`, which
+ * anchors at `gap={0}` — flush under the cell. The photos panel was the one
+ * face carrying a 6px offset, so it read as the only dropdown on the strip
+ * floating off its button. Operator 2026-09-22: "it's the only one that has a
+ * gap in the drop down display."
+ *
+ * The non-chrome faces (item dock `pill`, flush cube) keep the 6px: those sit
+ * inside padded panels where a flush panel would kiss the neighbouring content.
+ */
 const GALLERY_GAP_PX = 6;
+const GALLERY_CHROME_GAP_PX = 0;
 
 function galleryAnchoredPlacement(
   placement: 'below' | 'above' | 'right' | 'left',
@@ -541,7 +554,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         anchorRef={hostRef}
         placement={galleryAnchoredPlacement(galleryPlacement)}
         level="panelPopover"
-        gap={GALLERY_GAP_PX}
+        gap={chromeFace ? GALLERY_CHROME_GAP_PX : GALLERY_GAP_PX}
         avoidCollisions={appearance !== 'chrome'}
         closeOnEscape={!galleryUploadPinned && !galleryMovePinned}
         className="w-max max-w-[18rem]"

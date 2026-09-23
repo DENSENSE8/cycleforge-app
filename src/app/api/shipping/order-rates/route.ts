@@ -4,18 +4,18 @@ import { ApiError, errorResponse } from '@/lib/api';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import {
-  getShipStationV1,
   getShipStationV2,
   resolveShipFrom,
   ShipFromNotConfiguredError,
   ShipStationNotConnectedError,
 } from '@/lib/shipping/shipstation/config';
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
+import { resolveOrderShipTo } from '@/lib/shipping/shipstation/order-ship-to';
 import {
   OrderRateDimensionsSchema,
   resolveOrderRateParcel,
 } from '@/lib/shipping/shipstation/order-parcel';
-import type { Parcel, ShipAddress, ShipmentSpec } from '@/lib/shipping/shipstation/types';
+import type { ShipmentSpec } from '@/lib/shipping/shipstation/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,72 +66,8 @@ function numericColumn(value: string | number | null): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-async function loadCustomerShipTo(orgId: OrgId, customerId: number): Promise<ShipAddress | null> {
-  const res = await tenantQuery<{
-    name: string | null;
-    phone: string | null;
-    addr1: string | null;
-    addr2: string | null;
-    city: string | null;
-    state: string | null;
-    postal: string | null;
-    country: string | null;
-  }>(
-    orgId,
-    `SELECT
-       COALESCE(NULLIF(display_name, ''), NULLIF(customer_name, ''),
-                NULLIF(CONCAT_WS(' ', NULLIF(first_name, ''), NULLIF(last_name, '')), ''), '') AS name,
-       NULLIF(phone, '')              AS phone,
-       NULLIF(shipping_address_1, '') AS addr1,
-       NULLIF(shipping_address_2, '') AS addr2,
-       NULLIF(shipping_city, '')      AS city,
-       NULLIF(shipping_state, '')     AS state,
-       NULLIF(shipping_postal_code, '') AS postal,
-       NULLIF(shipping_country, '')   AS country
-     FROM customers WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-    [customerId, orgId],
-  );
-  const r = res.rows[0];
-  if (!r || !r.addr1 || !r.city) return null;
-  return {
-    name: r.name || 'Customer',
-    phone: r.phone,
-    company: null,
-    addressLine1: r.addr1,
-    addressLine2: r.addr2,
-    cityLocality: r.city,
-    stateProvince: r.state ?? '',
-    postalCode: r.postal ?? '',
-    countryCode: (r.country ?? 'US').toUpperCase(),
-    residential: true,
-  };
-}
-
-/** Resolve ship-to + the engine-side weight, preferring ShipStation data. */
-async function resolveShipToAndEngineWeight(
-  orgId: OrgId,
-  order: OrderRow,
-): Promise<{ shipTo: ShipAddress | null; engineWeight: Parcel['weight'] | null }> {
-  let shipTo: ShipAddress | null = null;
-  let engineWeight: Parcel['weight'] | null = null;
-
-  if (order.account_source === 'shipstation' && order.order_id) {
-    const v1 = await getShipStationV1(orgId);
-    if (v1) {
-      const ssOrder = await v1.getOrderByNumber(order.order_id);
-      if (ssOrder) {
-        shipTo = ssOrder.shipTo;
-        if (ssOrder.weight) engineWeight = ssOrder.weight;
-      }
-    }
-  }
-
-  if (!shipTo && order.customer_id) {
-    shipTo = await loadCustomerShipTo(orgId, order.customer_id);
-  }
-
-  return { shipTo, engineWeight };
-}
+// loadCustomerShipTo + resolveShipToAndEngineWeight live in
+// src/lib/shipping/shipstation/order-ship-to.ts (shared with label purchase).
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -162,7 +98,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const order = await loadOrder(orgId, orderId);
     if (!order) throw ApiError.notFound('order', orderId);
 
-    const { shipTo, engineWeight } = await resolveShipToAndEngineWeight(orgId, order);
+    const { shipTo, engineWeight } = await resolveOrderShipTo(orgId, order);
     if (!shipTo) {
       throw ApiError.badRequest(
         'No ship-to address on this order. Add a customer shipping address (or sync it from ShipStation).',

@@ -109,7 +109,6 @@ Primary operational tables:
 - `packer_logs`
 - `orders_exceptions`
 - `receiving`
-- `receiving_tasks`
 - `sku_stock`
 - `sku`
 - `repair_service`

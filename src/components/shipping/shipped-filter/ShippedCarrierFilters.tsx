@@ -3,22 +3,23 @@ import type { DateRange } from 'react-day-picker';
 import { ChevronDown, Filter, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import {
+  FILTER_DROPDOWN_LABEL_CLASS,
+  FILTER_DROPDOWN_SELECT_CLASS,
+} from '@/design-system/components/FilterDropdownSelect';
 import type { CarrierCode, ShipmentStatusCategory } from '@/components/shipping/ShipmentStatusBadge';
 import { CARRIERS, CARRIER_LABEL, STATUS_CATEGORIES, STATUS_LABEL, TYPE_ITEMS, TYPE_LABEL, type ShippedTypeFilter } from './shipped-filter-constants';
 import { toISODate } from './shipped-filter-params';
 import { useShippedFilterActions } from './useShippedFilterActions';
 import { useStaffOptions } from './useStaffOptions';
 import { CarrierSelect, NeedsAttentionButton, StatusSelect, TypeSelect } from './ShippedFilterControls';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { cn } from '@/utils/_cn';
-import { Panel } from '@/design-system/primitives';
+import { Button, Panel } from '@/design-system/primitives';
 
 
 
 
-const selectClass =
-  cn('h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300', focusRing('field', 'accent'));
-const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
+const selectClass = FILTER_DROPDOWN_SELECT_CLASS;
+const labelClass = FILTER_DROPDOWN_LABEL_CLASS;
 
 export function ShippedCarrierFilters({
   className,
@@ -79,10 +80,9 @@ export function ShippedCarrierFilters({
         <CarrierSelect value={carrier} onChange={a.setCarrier} />
         <StatusSelect value={statusCategory} onChange={a.setStatus} />
         {activeCount > 0 ? (
-          // ds-raw-button: minimal inline text link with hover:underline, not a DS Button control
-          <button type="button" onClick={clearAll} className="text-xs font-semibold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
+          <Button type="button" variant="ghost" size="sm" radius="flush" onClick={clearAll} className="h-auto px-0">
             Clear
-          </button>
+          </Button>
         ) : null}
       </div>
     );
@@ -93,23 +93,24 @@ export function ShippedCarrierFilters({
       {/* Single filter entry point — Type (All/Orders/SKU/FBA) lives inside the
           popover alongside every other refinement (Shopify / Linear pattern). */}
       <div className="relative" ref={popoverRef}>
-        {/* ds-raw-button: popover trigger (aria-haspopup dialog) with conditional active fill + count badge + chevron, not a DS variant */}
-        <button
-          type="button"
+        <Button
+          variant={activeCount > 0 ? 'primarySoft' : 'secondary'}
+          size="md"
+          radius="flush"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
           aria-haspopup="dialog"
-          className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-role-caption font-semibold ring-1 ring-inset transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
-            activeCount > 0 ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover'
-          }`}
+          icon={<Filter />}
+          iconRight={<ChevronDown className={open ? 'rotate-180' : undefined} />}
+          className="w-full justify-start"
         >
-          <Filter className="h-4 w-4 shrink-0" />
-          <span className="flex-1 text-left">Filters</span>
-          {activeCount > 0 ? (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-role-micro text-white">{activeCount}</span>
-          ) : null}
-          <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
+          <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
+            Filters
+            {activeCount > 0 ? (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-none bg-fill-info px-1.5 text-role-micro text-text-inverse">{activeCount}</span>
+            ) : null}
+          </span>
+        </Button>
 
         <AnchoredLayer
           open={open}
@@ -184,10 +185,9 @@ export function ShippedCarrierFilters({
             </label>
 
             {activeCount > 0 ? (
-              // ds-raw-button: minimal inline text link with hover:underline, not a DS Button control
-              <button type="button" onClick={clearAll} className="w-full text-center text-xs font-semibold text-text-soft underline-offset-2 hover:text-text-default hover:underline">
+              <Button type="button" variant="ghost" size="sm" radius="flush" onClick={clearAll} className="w-full">
                 Clear filters
-              </button>
+              </Button>
             ) : null}
           </Panel>
         </AnchoredLayer>
@@ -197,16 +197,17 @@ export function ShippedCarrierFilters({
       {chips.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
           {chips.map((chip) => (
-            // ds-raw-button: removable active-filter pill chip (label + embedded X), not a standard action button
-            <button
+            <Button
               key={chip.key}
               type="button"
+              variant="primarySoft"
+              size="sm"
+              radius="flush"
               onClick={chip.onRemove}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200 transition-colors hover:bg-blue-100"
+              iconRight={<X />}
             >
               {chip.label}
-              <X className="h-3 w-3" />
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}

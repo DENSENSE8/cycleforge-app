@@ -34,19 +34,112 @@ export function isContactComplete(data: RepairFormData): boolean {
   return CONTACT_FIELDS.every((field) => isContactFieldValid(field, data));
 }
 
+/**
+ * The CONTACT half only — the customer's own details.
+ *
+ * `CONTACT_FIELDS` includes the legacy `extras` entry, whose validator is the
+ * form's singular serial + price. That is a DEVICE fact, and on the kiosk it
+ * lives per cart line rather than on the form, so asking it here would gate
+ * the submit on two fields nothing writes any more — Submit repair disabled
+ * forever with every device correctly filled in. With a device list the
+ * device facts are asked by `deviceFactsSatisfied`, once, where they belong.
+ */
+function isContactCompleteFor(
+  data: RepairFormData,
+  devices?: readonly RepairDeviceGateRow[],
+): boolean {
+  if (!devices) return isContactComplete(data);
+  return CONTACT_FIELDS.filter((field) => field !== 'extras').every((field) =>
+    isContactFieldValid(field, data),
+  );
+}
+
+/**
+ * The DEVICE facts a gate needs, per unit on the counter.
+ *
+ * Structural on purpose — this module must not import the kiosk cart to ask
+ * "is every device serialised". `src/lib/kiosk/repair-devices.ts` produces
+ * rows that satisfy it; the staff form passes nothing and keeps its singular
+ * fields. One rule, two callers, no fork.
+ */
+export interface RepairDeviceGateRow {
+  title: string;
+  serialNumber: string;
+  price: string;
+}
+
+/**
+ * Is every device serialised and quoted?
+ *
+ * With a device list (kiosk, one row per unit) EVERY row must answer, because
+ * every row becomes its own `repair_service` write. Without one (staff form,
+ * one device per intake) the form's own singular fields are the answer. An
+ * EMPTY list is not "nothing to check" — it is a visit with no device on it.
+ */
+function deviceFactsSatisfied(
+  data: RepairFormData,
+  devices?: readonly RepairDeviceGateRow[],
+): boolean {
+  if (devices) {
+    return (
+      devices.length > 0 &&
+      devices.every((d) => d.serialNumber.trim().length > 0 && d.price.trim().length > 0)
+    );
+  }
+  return !!data.serialNumber.trim() && !!data.price.trim();
+}
+
 /** Mirrors `/api/repair/submit` required fields + signature gate on the review step. */
-export function canSubmitRepairIntake(data: RepairFormData, hasSignature: boolean): boolean {
-  return isProductSelected(data) && hasRepairIssue(data) && isContactComplete(data) && hasSignature;
+export function canSubmitRepairIntake(
+  data: RepairFormData,
+  hasSignature: boolean,
+  devices?: readonly RepairDeviceGateRow[],
+): boolean {
+  const productChosen = devices ? devices.length > 0 : isProductSelected(data);
+  return (
+    productChosen &&
+    hasRepairIssue(data) &&
+    isContactCompleteFor(data, devices) &&
+    deviceFactsSatisfied(data, devices) &&
+    hasSignature
+  );
 }
 
 /** Tooltip copy when the review-step submit button is disabled. */
-export function getRepairSubmitBlockReason(data: RepairFormData, hasSignature: boolean): string | undefined {
-  if (!isProductSelected(data)) return 'Select a repair product to submit';
+export function getRepairSubmitBlockReason(
+  data: RepairFormData,
+  hasSignature: boolean,
+  devices?: readonly RepairDeviceGateRow[],
+): string | undefined {
+  if (devices) {
+    if (devices.length === 0) return 'Add the device being dropped off';
+  } else if (!isProductSelected(data)) {
+    return 'Select a repair product to submit';
+  }
   if (!hasRepairIssue(data)) return 'Issue or repair notes required to submit';
   if (!data.customer.name.trim()) return 'Customer name required to submit';
   if (!data.customer.phone.trim()) return 'Phone number required to submit';
-  if (!data.serialNumber.trim()) return 'Serial number required to submit';
-  if (!data.price.trim()) return 'Price required to submit';
+  if (devices) {
+    // Name the unit: "Serial number required" beside four device cards does
+    // not say which card is short.
+    const short = devices.find(
+      (d) => !d.serialNumber.trim() || !d.price.trim(),
+    );
+    if (short) {
+      const missing = [
+        short.serialNumber.trim() ? null : 'serial number',
+        short.price.trim() ? null : 'price',
+      ]
+        .filter(Boolean)
+        .join(' and ');
+      return devices.length > 1
+        ? `${short.title} still needs its ${missing}`
+        : `${missing.charAt(0).toUpperCase()}${missing.slice(1)} required to submit`;
+    }
+  } else {
+    if (!data.serialNumber.trim()) return 'Serial number required to submit';
+    if (!data.price.trim()) return 'Price required to submit';
+  }
   if (!hasSignature) return 'Signature required to submit';
   return undefined;
 }
@@ -108,17 +201,27 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
  * SETTLED, not "answered": the slider opens on Create and an untouched control
  * files a new ticket, so an untouched visit is not blocked. What blocks is the
  * half-finished state — slid to Link with no ticket picked.
+ *
+ * ## Why DEVICE takes a list (2026-09-16)
+ *
+ * A customer can hand over several units, and each one becomes its own
+ * `repair_service` row with its own serial and its own quote. The gate
+ * therefore asks every device, not one pair of fields: the old single check
+ * passed a four-device visit on the strength of device one's serial, and the
+ * other three were written blank. `devices` omitted = the staff form's single
+ * device, unchanged.
  */
 export function repairStepGates(
   data: RepairFormData,
   hasSignature: boolean,
   ticketSettled: boolean,
+  devices?: readonly RepairDeviceGateRow[],
 ): readonly [boolean, boolean, boolean, boolean] {
   return [
     hasRepairIssue(data),
-    !!data.serialNumber.trim() && !!data.price.trim(),
+    deviceFactsSatisfied(data, devices),
     data.customer.phone.replace(/\D/g, '').length >= 7,
-    canSubmitRepairIntake(data, hasSignature) && ticketSettled,
+    canSubmitRepairIntake(data, hasSignature, devices) && ticketSettled,
   ] as const;
 }
 

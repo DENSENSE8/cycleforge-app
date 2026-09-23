@@ -18,16 +18,40 @@
  * they get a real one under `/m` with a completable job, not a branch here.
  *
  * The header lives in the shell; the body runs to the bottom (shell `pb-safe`).
+ *
+ * Above the feed sits ONE control strip: the window size and a `View all`
+ * door to `/m/receiving/history` (search · status facets · 200 rows). The
+ * feed is bottom-anchored — newest at the bottom, older scrolling UP — so
+ * past {@link FEED_LIMIT} there was no way off the window at all. The strip
+ * lives here rather than in {@link MobileReceivingList} because that feed is
+ * also the Arrival station body (`surface="triage"`), which has its own
+ * scan-first chrome and must not grow a second door.
  */
 
+import Link from 'next/link';
 import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 import { MobileReceivingList } from '@/components/mobile/receiving/MobileReceivingList';
+
+/** Rows kept in the live window. Named so the strip copy cannot drift from it. */
+const FEED_LIMIT = 25;
 
 export default function RedesignedMobileReceivingLive() {
   return (
     <div className={`flex h-full min-h-0 flex-col overflow-hidden ${TOKENS.colors.background}`}>
+      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-4">
+        <p className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-muted">
+          Latest {FEED_LIMIT}
+        </p>
+        <Link
+          href="/m/receiving/history"
+          prefetch={false}
+          className="inline-flex min-h-11 items-center text-role-caption font-semibold uppercase tracking-wider text-text-muted active:text-text-default"
+        >
+          View all
+        </Link>
+      </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <MobileReceivingList limit={25} />
+        <MobileReceivingList limit={FEED_LIMIT} />
       </div>
     </div>
   );

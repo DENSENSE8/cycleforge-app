@@ -9,6 +9,7 @@ export type StationActivityType =
   | 'SERIAL_ADDED'
   | 'PACK_COMPLETED'
   | 'PACK_SCAN'
+  | 'PACK_SHIPPED'
   | 'FBA_READY'
   // Dock / handoff scan: the package physically left the building. Distinct from
   // PACK_* (in the box) and from carrier-reported custody on shipping_tracking_numbers.

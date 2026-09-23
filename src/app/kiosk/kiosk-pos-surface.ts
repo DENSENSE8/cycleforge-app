@@ -196,6 +196,45 @@ export const KIOSK_POS_CARD_SELECT_DOT = cn(
 export const KIOSK_POS_CARD_SELECT_DOT_ON = 'bg-blue-600 text-white';
 
 /**
+ * Grid CELL — the wrapper that holds a card and its corner controls.
+ *
+ * The card itself is a `<button>` (tap = pick the product), so the favorite pip
+ * cannot live inside it: a button inside a button is invalid HTML and the inner
+ * control never receives the tap. The cell is therefore the positioning
+ * context, and `h-full` keeps the card stretched to the grid row the way it was
+ * when it WAS the grid child — without it, one long product title makes a
+ * short-captioned neighbour float at its own height.
+ */
+export const KIOSK_POS_CARD_CELL = 'relative h-full';
+
+/**
+ * Favorite pip — top-RIGHT of the cell, opposite the selection dot.
+ *
+ * Always mounted, unlike {@link KIOSK_POS_CARD_SELECT_DOT}, and that is not the
+ * decal the select dot's note rejects. A hover-revealed control does not exist
+ * on a counter tablet: there is no pointer to reveal it with, so "pin this
+ * repair" would be unreachable on the one surface that needs it. It earns the
+ * permanence by being QUIET when off — translucent card fill, faint ink — and
+ * amber only once the SKU is actually pinned.
+ *
+ * 32px face: a glove/thumb target on the same z-layer as the selection frame.
+ */
+export const KIOSK_POS_CARD_FAVORITE_PIP = cn(
+  'ds-raw-button absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center',
+  cornerClass('pill'),
+  'transition-colors duration-150 ease-out',
+);
+
+/** Pinned — amber, the house favorite ink (`Star` in the admin catalog). */
+export const KIOSK_POS_CARD_FAVORITE_PIP_ON = 'bg-amber-500 text-white';
+
+/** Unpinned — present but recessive; the photo stays the loudest thing. */
+export const KIOSK_POS_CARD_FAVORITE_PIP_OFF = cn(
+  'bg-surface-card/70 text-text-faint',
+  'hover:bg-surface-card hover:text-amber-600 active:bg-surface-card',
+);
+
+/**
  * Caption band under the image well — tight, no card padding balloon.
  * Transparent so {@link KIOSK_POS_CARD_SELECTED} shows through (see there).
  */
@@ -439,4 +478,19 @@ export const KIOSK_POS_CTA_SECONDARY = cn(
   'enabled:active:scale-100',
   'transition-[transform,background-color,border-color] duration-100 ease-out',
   'motion-reduce:transform-none motion-reduce:transition-none',
+);
+
+/**
+ * The History face's master rail — the twin of {@link KIOSK_POS_SIDEBAR}, one
+ * step wider.
+ *
+ * A catalog category is one or two words, so 16rem fits it. A history row is
+ * four facts on two lines (ticket · customer, then model · when), and at
+ * `w-64` the customer name truncates on almost every real visit — the one
+ * field an operator scans the rail FOR. The rail stacks above the detail on a
+ * phone and becomes the left column from `md`, exactly like the catalog.
+ */
+export const KIOSK_POS_HISTORY_RAIL = cn(
+  'flex min-h-0 w-full flex-col border-b border-border-soft',
+  'md:w-80 md:shrink-0 md:border-b-0 md:border-r',
 );

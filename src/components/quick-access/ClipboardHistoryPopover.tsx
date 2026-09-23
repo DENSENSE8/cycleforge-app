@@ -11,7 +11,8 @@ import {
   type ClipboardEntry,
 } from '@/lib/clipboard-history';
 import { resolveClipboardEntryMeta } from '@/lib/clipboard-entry-meta';
-import { StaffRecipientList, type StaffRecipient } from './StaffRecipientList';
+import { StaffRecipientList } from './StaffRecipientList';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { CHIP_TONES } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';

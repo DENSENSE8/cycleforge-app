@@ -9,11 +9,11 @@
       "url": "https://mcp.motion.dev/plus"
     },
     "design-mcp": {
-      "type": "stdio",
-      "command": "/home/michaelgarisek/.local/share/mise/shims/node",
-      "args": [
-        "/home/michaelgarisek/Projects/cycleforge-app/tools/design-mcp/server.mjs"
-      ]
+      "command": "/home/michaelgarisek/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh",
+      "args": [],
+      "env": {
+        "DESIGN_MCP_PROJECT": "cycleforge-app"
+      }
     }
   }
 }

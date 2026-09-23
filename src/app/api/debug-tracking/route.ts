@@ -57,6 +57,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         pl.id,
         COALESCE(stn.tracking_number_raw, pl.scan_ref) AS tracking_number,
         pl.tracking_type,
+        pl.completion_state,
         pl.created_at AS packed_at,
         pl.packed_by
       FROM packer_logs pl

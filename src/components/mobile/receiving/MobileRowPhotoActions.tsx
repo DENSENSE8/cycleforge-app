@@ -3,6 +3,7 @@
 import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import { Camera, Image as ImageIcon } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 interface MobileRowPhotoActionsProps {
@@ -14,8 +15,10 @@ interface MobileRowPhotoActionsProps {
   onOpenGallery?: () => void;
 }
 
-const BTN =
-  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-lg px-2 outline-none ring-0 transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 active:scale-[0.97]';
+const BTN = cn(
+  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-lg px-2 transition-colors active:scale-[0.97]',
+  focusRing('control'),
+);
 
 /** Fixed to icon + two tabular digits so 1 and 11 do not resize the chip. */
 const GALLERY_BTN = cn(

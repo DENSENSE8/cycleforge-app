@@ -68,7 +68,8 @@ export async function generatePdfThumbnail(
           })
         : await source.arrayBuffer();
 
-    const doc = await pdfjs.getDocument({ data }).promise;
+    const loadingTask = pdfjs.getDocument({ data });
+    const doc = await loadingTask.promise;
     try {
       const page = await doc.getPage(1);
       const baseViewport = page.getViewport({ scale: 1 });
@@ -97,7 +98,7 @@ export async function generatePdfThumbnail(
       if (!blob) return null;
       return { blob, width: canvas.width, height: canvas.height };
     } finally {
-      doc.destroy().catch(() => {});
+      loadingTask.destroy().catch(() => {});
     }
   } catch (err) {
     // Encrypted PDFs, malformed inputs, unsupported sources — all land here.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAuthorizedCronRequest } from '@/lib/cron/auth';
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { runOutboundDocumentNasMirrorBatch } from '@/lib/documents/mirror-nas';
@@ -14,9 +14,7 @@ export const maxDuration = 300;
  * DOCUMENTS_NAS_MIRROR_AFTER_DAYS (default 90) to NAS cold storage.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorizedCronRequest(request.headers)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
 
   const limit = Number(new URL(request.url).searchParams.get('limit') || 20);
 

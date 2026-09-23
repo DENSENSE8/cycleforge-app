@@ -116,7 +116,7 @@ describe('morphingComponentIdentity', () => {
         childSkuCatalogId: 44,
       },
     );
-    assert.equal(id.kind, 'kit_part');
+    assert.equal(id.kind, 'catalog_child');
     assert.equal(id.sku, 'REMOTE-1');
     assert.equal(id.skuCatalogId, 44);
     assert.equal(id.kitPartId, null);

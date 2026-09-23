@@ -32,7 +32,7 @@ import type {
  * shape is read here; WO / tracking stay in the links call).
  */
 const ITEMS_ON_DAY_SQL = `
-  SELECT i.id, i.title, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
+  SELECT i.id, i.title, i.description, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
          s.name AS assigned_staff_name,
          t.entity_id AS ticket_id
     FROM daily_check_items i
@@ -47,6 +47,12 @@ const ITEMS_ON_DAY_SQL = `
     ) t ON TRUE
    WHERE i.effective_from <= $1::date
      AND (i.retired_at IS NULL OR i.retired_at > $1::date)
+     AND (
+       $2::int IS NULL
+       OR i.kind = 'recurring'
+       OR i.assigned_staff_id IS NULL
+       OR i.assigned_staff_id = $2
+     )
    ORDER BY i.sort_order ASC, i.id ASC
 `;
 
@@ -54,6 +60,7 @@ const MARKS_ON_DAY_SQL = `
   SELECT item_id, staff_id, marked_at, note
     FROM daily_check_marks
    WHERE marked_on = $1::date
+     AND ($2::int IS NULL OR staff_id = $2)
 `;
 
 /**
@@ -65,12 +72,14 @@ const ROSTER_SQL = `
   SELECT id, name
     FROM staff
    WHERE active IS TRUE
+     AND ($1::int IS NULL OR id = $1)
    ORDER BY name ASC
 `;
 
 interface ItemRow {
   id: string | number;
   title: string;
+  description: string | null;
   sort_order: number;
   kind: 'recurring' | 'once';
   assigned_staff_id: number | null;
@@ -100,18 +109,22 @@ export async function loadDailyCheckReport(args: {
   dateKey: string;
   viewerStaffId: number | null;
   viewerName?: string | null;
+  /** Home/Daily passes `true`; manager reports deliberately pass `false`. */
+  onlyViewerItems?: boolean;
 }): Promise<DailyCheckReport> {
-  const { orgId, dateKey, viewerStaffId, viewerName } = args;
+  const { orgId, dateKey, viewerStaffId, viewerName, onlyViewerItems = false } = args;
+  const staffScope = onlyViewerItems ? viewerStaffId : null;
 
   const [itemsRes, marksRes, rosterRes] = await Promise.all([
-    tenantQuery<ItemRow>(orgId, ITEMS_ON_DAY_SQL, [dateKey]),
-    tenantQuery<MarkRow>(orgId, MARKS_ON_DAY_SQL, [dateKey]),
-    tenantQuery<StaffRow>(orgId, ROSTER_SQL),
+    tenantQuery<ItemRow>(orgId, ITEMS_ON_DAY_SQL, [dateKey, staffScope]),
+    tenantQuery<MarkRow>(orgId, MARKS_ON_DAY_SQL, [dateKey, staffScope]),
+    tenantQuery<StaffRow>(orgId, ROSTER_SQL, [staffScope]),
   ]);
 
   const items: DailyCheckItem[] = itemsRes.rows.map((r) => ({
     id: toNum(r.id),
     title: r.title,
+    description: r.description,
     sortOrder: r.sort_order,
     kind: r.kind,
     assignedStaffId: r.assigned_staff_id,
@@ -153,7 +166,16 @@ export async function markDailyCheck(args: {
   return withTenantTransaction(orgId, async (client) => {
     const res = await client.query(
       `INSERT INTO daily_check_marks (item_id, staff_id, marked_on, note)
-            VALUES ($1, $2, $3::date, $4)
+       SELECT $1, $2, $3::date, $4
+         WHERE EXISTS (
+           SELECT 1 FROM daily_check_items
+            WHERE id = $1
+              AND (
+                kind = 'recurring'
+                OR assigned_staff_id IS NULL
+                OR assigned_staff_id = $2
+              )
+         )
        ON CONFLICT (organization_id, item_id, staff_id, marked_on) DO NOTHING
          RETURNING id`,
       [itemId, staffId, dateKey, note ?? null],
@@ -182,6 +204,29 @@ export async function unmarkDailyCheck(args: {
     );
     return (res.rowCount ?? 0) > 0;
   });
+}
+
+/**
+ * A shift member can act on recurring and unowned work; an owned one-off is
+ * limited to its assigned staffer.
+ */
+export async function dailyCheckItemBelongsToStaff(args: {
+  orgId: string;
+  itemId: number;
+  staffId: number;
+}): Promise<boolean> {
+  const res = await tenantQuery<{ id: number }>(
+    args.orgId,
+    `SELECT id FROM daily_check_items
+      WHERE id = $1
+        AND (
+          kind = 'recurring'
+          OR assigned_staff_id IS NULL
+          OR assigned_staff_id = $2
+        )`,
+    [args.itemId, args.staffId],
+  );
+  return res.rows.length > 0;
 }
 
 /**
@@ -220,27 +265,29 @@ export async function clearDailyCheckMarks(args: {
 export async function createDailyCheckItem(args: {
   orgId: string;
   title: string;
+  description?: string | null;
   effectiveFrom: string;
   kind: 'recurring' | 'once';
   assignedStaffId?: number | null;
   glyph?: string | null;
 }): Promise<DailyCheckItem> {
-  const { orgId, title, effectiveFrom, kind, assignedStaffId, glyph } = args;
+  const { orgId, title, description, effectiveFrom, kind, assignedStaffId, glyph } = args;
   return withTenantTransaction(orgId, async (client) => {
     // Append: one past the current max, so a new item never displaces the order
     // operators already know.
     const res = await client.query<ItemRow>(
       `INSERT INTO daily_check_items
-         (title, sort_order, effective_from, retired_at, kind, assigned_staff_id, glyph)
+         (title, description, sort_order, effective_from, retired_at, kind, assigned_staff_id, glyph)
        VALUES ($1,
+               $2,
                COALESCE((SELECT MAX(sort_order) + 1 FROM daily_check_items), 0),
-               $2::date,
-               CASE WHEN $3::text = 'once' THEN $2::date + 1 ELSE NULL END,
-               $3::text,
-              $4,
-              $5)
+               $3::date,
+               CASE WHEN $4::text = 'once' THEN $3::date + 1 ELSE NULL END,
+               $4::text,
+               $5,
+               $6)
          RETURNING id, sort_order`,
-      [title, effectiveFrom, kind, assignedStaffId ?? null, glyph ?? null],
+      [title, description ?? null, effectiveFrom, kind, assignedStaffId ?? null, glyph ?? null],
     );
     const id = toNum(res.rows[0].id);
     let assignedStaffName: string | null = null;
@@ -256,6 +303,7 @@ export async function createDailyCheckItem(args: {
     return {
       id,
       title,
+      description: description ?? null,
       sortOrder: toNum(res.rows[0].sort_order as string | number),
       kind,
       assignedStaffId: assignedStaffId ?? null,
@@ -318,7 +366,7 @@ export async function updateDailyCheckItem(args: {
           AND prev.id = i.id
           AND i.effective_from <= $3::date
           AND (i.retired_at IS NULL OR i.retired_at > $3::date)
-       RETURNING i.id, i.title, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
+       RETURNING i.id, i.title, i.description, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
                  prev.title AS previous_title,
                  (SELECT s.name FROM staff s WHERE s.id = i.assigned_staff_id)
                    AS assigned_staff_name,
@@ -336,6 +384,7 @@ export async function updateDailyCheckItem(args: {
       item: {
         id: toNum(row.id),
         title: row.title,
+        description: row.description,
         sortOrder: toNum(row.sort_order),
         kind: row.kind,
         assignedStaffId: row.assigned_staff_id,

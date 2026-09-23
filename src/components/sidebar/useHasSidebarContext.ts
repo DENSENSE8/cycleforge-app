@@ -1,21 +1,23 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { hasSidebarContextPanel } from '@/lib/sidebar-navigation';
+import { isDashboardRepairsMode } from '@/lib/dashboard/dashboard-domains';
 
 /**
  * Does the current location actually have a context panel to render?
  *
- * It is now purely a route-key question. This hook used to carry one param-aware
- * exception: `/dashboard?mode=inbound` reserved a 360px column whose panel
- * returned `null`, so the answer had to inspect `?mode=`. Phase 1.1 of the
- * dashboard IA rework gave the inbound domain a real picker (recents), so the
- * exception has nothing left to except — and the hook stops being the one place
- * that knew a route key could lie about its own panel.
+ * It is primarily a route-key question. Repair Service is the one dashboard
+ * child that deliberately has no context rail: inspect the query here, at the
+ * parent eligibility boundary, so `ContextPanelLayout` does not mount an empty
+ * column around a child that returns `null`.
  *
  * One consumer: `ContextPanelLayout`, which uses it to decide whether to mount
  * the rail column beside the workspace at all.
  */
 export function useHasSidebarContext(): boolean {
-  return hasSidebarContextPanel(usePathname());
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  if (pathname === '/dashboard' && isDashboardRepairsMode(searchParams)) return false;
+  return hasSidebarContextPanel(pathname);
 }

@@ -1,25 +1,70 @@
+/**
+ * GET/POST /api/repair/issues — the org's repair reason vocabulary.
+ *
+ * GET answers for a SKU STRING (`?sku=`), or for nothing (the globals). It used
+ * to take `?favoriteSkuId=`, a `favorite_skus.id`, which only the favorites
+ * rail could supply; that rail is gone (2026-09-16 — favorites are a scope of
+ * the catalog picker now), and the intake form knows the SKU the operator
+ * picked, not a curation row id. Resolving the anchor is `listSkuReasons`'
+ * job, exactly as on the device twin (`/api/kiosk/repair/issues`), so both
+ * principals read one vocabulary through one code path.
+ *
+ * POST still names the anchor by id: it is the staff CRUD desk
+ * (Settings › Repair issues) writing globals (`favoriteSkuId: null`) or one
+ * SKU's own row, and it already holds the id it is editing.
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getIssuesForFavorite, createIssueTemplate } from '@/lib/neon/repair-issue-queries';
-import { isMissingRelationError } from '@/lib/repair/sku-reasons';
+import { createIssueTemplate, getIssuesForFavorite } from '@/lib/neon/repair-issue-queries';
+import {
+  isMissingRelationError,
+  listSkuReasons,
+  type SkuReasonDeps,
+} from '@/lib/repair/sku-reasons';
+import {
+  ensureFavoriteSkuAnchor,
+  findFavoriteSkuIdBySku,
+} from '@/lib/favorites/sku-favorites';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import type { OrgId } from '@/lib/tenancy/constants';
 
+const deps: SkuReasonDeps = {
+  findFavoriteSkuId: (sku, orgId) => findFavoriteSkuIdBySku(sku, orgId),
+  ensureFavoriteSkuId: (input, orgId) => ensureFavoriteSkuAnchor(input, orgId),
+  listIssues: (favoriteSkuId, orgId) => getIssuesForFavorite(favoriteSkuId, orgId),
+  createIssue: (input, orgId) =>
+    createIssueTemplate(
+      { favoriteSkuId: input.favoriteSkuId, label: input.label, sortOrder: input.sortOrder },
+      orgId,
+    ),
+};
+
 export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
   try {
-    const { searchParams } = new URL(req.url);
-    const rawFavId = searchParams.get('favoriteSkuId');
-    const favoriteSkuId = rawFavId ? Number(rawFavId) : null;
+    const sku = String(new URL(req.url).searchParams.get('sku') ?? '').trim();
 
-    if (rawFavId && (!Number.isFinite(favoriteSkuId) || favoriteSkuId! <= 0)) {
-      return NextResponse.json({ error: 'Invalid favoriteSkuId' }, { status: 400 });
+    // No SKU: the management desk reading the GLOBAL templates, which it edits
+    // by id — so it gets the full rows, not the label projection the pills use.
+    if (!sku) {
+      const issues = await getIssuesForFavorite(null, ctx.organizationId as OrgId);
+      return NextResponse.json({ issues, count: issues.length });
     }
 
-    const issues = await getIssuesForFavorite(favoriteSkuId, ctx.organizationId as OrgId);
-    return NextResponse.json({ issues, count: issues.length });
+    const { favoriteSkuId, rows } = await listSkuReasons(
+      ctx.organizationId as OrgId,
+      sku,
+      deps,
+    );
+    return NextResponse.json({
+      issues: rows,
+      labels: rows.map((row) => row.label),
+      favoriteSkuId,
+      count: rows.length,
+    });
   } catch (error: unknown) {
     if (isMissingRelationError(error)) {
       // DB not migrated yet — ReasonSelector falls back to built-in defaults.
-      return NextResponse.json({ issues: [], count: 0 });
+      return NextResponse.json({ issues: [], labels: [], favoriteSkuId: null, count: 0 });
     }
     console.error('GET /api/repair/issues error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

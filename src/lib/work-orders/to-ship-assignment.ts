@@ -5,6 +5,61 @@ import {
   conditionGradeTableLabel,
   conditionLabel,
 } from '@/lib/conditions';
+import { resolveOutboundWorkflowFacts } from '@/lib/shipping/outbound-workflow-facts';
+
+export type MobileOrderView =
+  | 'all'
+  | 'must-go-today'
+  | 'urgent'
+  | 'blocked'
+  | 'exceptions'
+  | 'ready-to-pack'
+  | 'packed';
+
+export const MOBILE_ORDER_VIEWS: readonly { id: MobileOrderView; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'must-go-today', label: 'Must go today' },
+  { id: 'urgent', label: 'Urgent' },
+  { id: 'blocked', label: 'Blocked' },
+  { id: 'exceptions', label: 'Exceptions' },
+  { id: 'ready-to-pack', label: 'Ready to pack' },
+  { id: 'packed', label: 'Packed' },
+];
+
+export function parseMobileOrderView(raw: string | null | undefined): MobileOrderView {
+  return MOBILE_ORDER_VIEWS.some((view) => view.id === raw)
+    ? (raw as MobileOrderView)
+    : 'all';
+}
+
+/** Warehouse order facets share the same workflow verdict as the desk. */
+export function filterToShipByOrderView(
+  rows: readonly WorkOrderRow[],
+  view: Exclude<MobileOrderView, 'exceptions'>,
+  todayKey?: string,
+): WorkOrderRow[] {
+  if (view === 'all') return [...rows];
+  return rows.filter((row) => {
+    const facts = resolveOutboundWorkflowFacts(
+      {
+        shipmentId: row.shipmentId,
+        hasTechScan: row.hasTechScan,
+        packedAt: row.packedAt,
+        dockStagedAt: row.dockStagedAt,
+        isOutOfStock: row.outOfStock,
+        deadlineAt: row.deadlineAt,
+      },
+      { todayKey },
+    );
+    if (view === 'must-go-today') {
+      return facts.deadlineBand === 'today' || facts.deadlineBand === 'overdue';
+    }
+    if (view === 'urgent') return row.isUrgent === true;
+    if (view === 'blocked') return facts.blocked;
+    if (view === 'ready-to-pack') return facts.stage === 'TESTED';
+    return facts.stage === 'PACKED_STAGED';
+  });
+}
 
 export type MobileToShipTab = 'all' | 'assigned' | 'unassigned';
 
@@ -122,6 +177,20 @@ export function filterToShipByQuery(
     }
     return fields.some((value) => value.includes(needle));
   });
+}
+
+/**
+ * Marketplace is an order-routing fact, not a presentation label. Keep this
+ * case-insensitive filter beside the other React-free queue refinements so
+ * phone and desk adapters cannot disagree about a connected platform.
+ */
+export function filterToShipByPlatform(
+  rows: readonly WorkOrderRow[],
+  platform: string | null | undefined,
+): WorkOrderRow[] {
+  const wanted = platform?.trim().toLowerCase() ?? '';
+  if (!wanted || wanted === 'all') return [...rows];
+  return rows.filter((row) => (row.accountSource ?? '').trim().toLowerCase() === wanted);
 }
 
 function resolveStaffLabel(

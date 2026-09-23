@@ -37,7 +37,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = pl.shipment_id
        LEFT JOIN orders o ON o.shipment_id = pl.shipment_id AND pl.shipment_id IS NOT NULL
             AND o.organization_id = pl.organization_id
-       WHERE pl.packed_by = $1 AND pl.organization_id = $3
+       WHERE pl.packed_by = $1
+         AND pl.organization_id = $3
+         AND pl.completion_state = 'COMPLETED'
        ORDER BY pl.id DESC
        LIMIT $2`,
       [user.staffId, limit, ctx.organizationId],

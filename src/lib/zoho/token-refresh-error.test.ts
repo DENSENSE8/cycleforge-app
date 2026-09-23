@@ -4,7 +4,6 @@ import {
   formatZohoTokenRefreshBodyError,
   formatZohoTokenRefreshHttpError,
   parseZohoTokenErrorBody,
-  zohoVaultBlocksEnvFallback,
 } from '@/lib/zoho/token-refresh-error';
 
 describe('parseZohoTokenErrorBody', () => {
@@ -79,22 +78,5 @@ describe('formatZohoTokenRefreshBodyError', () => {
       formatZohoTokenRefreshBodyError({ error: 'invalid_token' }),
       'Zoho token refresh error: invalid_token',
     );
-  });
-});
-
-describe('zohoVaultBlocksEnvFallback', () => {
-  it('allows env when no vault row', () => {
-    assert.equal(zohoVaultBlocksEnvFallback(null), false);
-    assert.equal(zohoVaultBlocksEnvFallback(undefined), false);
-    assert.equal(zohoVaultBlocksEnvFallback(''), false);
-  });
-
-  it('blocks env when vault is error or revoked', () => {
-    assert.equal(zohoVaultBlocksEnvFallback('error'), true);
-    assert.equal(zohoVaultBlocksEnvFallback('revoked'), true);
-  });
-
-  it('does not block for active (env path should not run anyway)', () => {
-    assert.equal(zohoVaultBlocksEnvFallback('active'), false);
   });
 });

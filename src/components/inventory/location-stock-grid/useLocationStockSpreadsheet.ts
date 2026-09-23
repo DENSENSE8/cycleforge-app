@@ -76,7 +76,7 @@ export interface UseLocationStockSpreadsheetOptions {
    */
   selection?: {
     isSelected: (row: LocationStockTableRow) => boolean;
-    toggle: (row: LocationStockTableRow) => void;
+    toggle: (row: LocationStockTableRow, event?: { shiftKey: boolean }) => void;
   };
   emptyMessage?: string;
 }
@@ -140,7 +140,8 @@ export function useLocationStockSpreadsheet({
           selectionScope: LOCATION_STOCK_SELECTION_SCOPE,
           selection: {
             isSelected: selection.isSelected,
-            onToggle: (row: LocationStockTableRow) => selection.toggle(row),
+            onToggle: (row: LocationStockTableRow, event: { shiftKey: boolean }) =>
+              selection.toggle(row, event),
           },
         }
       : null),

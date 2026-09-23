@@ -2,61 +2,42 @@
 /**
  * One-shot CLI for the CycleForge design-mcp server.
  *
- * Use when Cursor has not surfaced `ds_*` as native MCP tools (known gap for
- * project `.cursor/mcp.json` stdio servers). Same handlers as the MCP process.
+ * Use when a harness has not surfaced `ds_*` as native MCP tools. Same handlers
+ * as the MCP process.
  *
  *   node tools/design-mcp/ds.mjs contract "dumb station mouth"
  *   node tools/design-mcp/ds.mjs tokens station-skin --filter porcelain
  *   node tools/design-mcp/ds.mjs critique src/components/outbound/scan-out/ScanOutComposerDock.tsx
- *   node tools/design-mcp/ds.mjs stamp   # refresh session receipt only
- *
- * Every successful call writes `.cursor/design-mcp-session.json` so hooks can
- * prove the agent consulted the design system before UI writes.
  */
 import { spawn } from 'node:child_process'
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '..', '..')
-const STAMP = path.join(REPO, '.cursor', 'design-mcp-session.json')
-const LAUNCHER = path.join(HERE, 'run-mcp.sh')
+// The engine is the host's; the LAW is this repo's design-mcp.profile.json.
+// This lane used to carry a 102 KB copy of the engine, which drifted until it
+// and the host disagreed about this repo's own corner ladder. The launcher is
+// resolved through GARISEK_OS_ROOT so a checkout that moves does not silently
+// fall back to a stale local copy.
+const GARISEK_OS = process.env.GARISEK_OS_ROOT || path.join(process.env.HOME ?? '', 'Projects/Garisek-OS')
+const LAUNCHER = path.join(GARISEK_OS, 'tools/design-mcp/run-mcp.sh')
 
 function usage(code = 1) {
   console.error(`usage:
   node tools/design-mcp/ds.mjs contract <intent> [--limit N]
   node tools/design-mcp/ds.mjs tokens <axis> [--filter substring]
   node tools/design-mcp/ds.mjs critique <repo-relative-file>
+  node tools/design-mcp/ds.mjs data-table
+  node tools/design-mcp/ds.mjs industrial-translation
+  node tools/design-mcp/ds.mjs outbound-workflow
   node tools/design-mcp/ds.mjs boundary <repo-relative-file>
   node tools/design-mcp/ds.mjs nav-names
   node tools/design-mcp/ds.mjs mobile-first
   node tools/design-mcp/ds.mjs sku-identity
   node tools/design-mcp/ds.mjs mobile-ground
-  node tools/design-mcp/ds.mjs identity-purity
-  node tools/design-mcp/ds.mjs stamp`)
+  node tools/design-mcp/ds.mjs identity-purity`)
   process.exit(code)
-}
-
-function writeStamp(extra = {}) {
-  mkdirSync(path.dirname(STAMP), { recursive: true })
-  let prev = {}
-  if (existsSync(STAMP)) {
-    try {
-      prev = JSON.parse(readFileSync(STAMP, 'utf8'))
-    } catch {
-      prev = {}
-    }
-  }
-  const next = {
-    ...prev,
-    ...extra,
-    repo: REPO,
-    updatedAt: new Date().toISOString(),
-    updatedMs: Date.now(),
-  }
-  writeFileSync(STAMP, `${JSON.stringify(next, null, 2)}\n`)
-  return next
 }
 
 function rpcCall(name, args, timeoutMs = 30_000) {
@@ -64,7 +45,9 @@ function rpcCall(name, args, timeoutMs = 30_000) {
     const child = spawn(LAUNCHER, [], {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: REPO,
-      env: process.env,
+      // DESIGN_MCP_PROJECT names WHICH project; the engine resolves WHERE from
+      // the cwd's git worktree, so every lane of this repo gets its own tree.
+      env: { ...process.env, DESIGN_MCP_PROJECT: process.env.DESIGN_MCP_PROJECT || 'cycleforge-app' },
     })
     let out = ''
     let err = ''
@@ -138,12 +121,6 @@ const argv = process.argv.slice(2)
 const cmd = argv[0]
 if (!cmd) usage()
 
-if (cmd === 'stamp') {
-  const stamp = writeStamp({ source: 'stamp' })
-  console.log(JSON.stringify(stamp, null, 2))
-  process.exit(0)
-}
-
 if (cmd === 'contract') {
   const intent = argv[1]
   if (!intent) usage()
@@ -152,18 +129,6 @@ if (cmd === 'contract') {
   if (li >= 0) limit = Number(argv[li + 1]) || 8
   const res = await rpcCall('ds_contract', { intent, limit })
   const text = extractText(res)
-  writeStamp({
-    source: 'cli',
-    lastTool: 'ds_contract',
-    lastIntent: intent,
-    lastTopId: (() => {
-      try {
-        return JSON.parse(text)?.matches?.[0]?.id ?? null
-      } catch {
-        return null
-      }
-    })(),
-  })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -180,7 +145,6 @@ if (cmd === 'tokens') {
   if (fi >= 0 && argv[fi + 1]) args.filter = argv[fi + 1]
   const res = await rpcCall('ds_tokens', args)
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_tokens', lastAxis: axis })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -194,7 +158,6 @@ if (cmd === 'critique') {
   if (!file_path) usage()
   const res = await rpcCall('ds_critique', { file_path })
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_critique', lastFile: file_path })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -203,12 +166,58 @@ if (cmd === 'critique') {
   process.exit(0)
 }
 
+if (cmd === 'data-table') {
+  const res = await rpcCall('ds_data_table', {})
+  const text = extractText(res)
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
+if (cmd === 'industrial-translation') {
+  const res = await rpcCall('ds_industrial_translation', {})
+  const text = extractText(res)
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
+if (cmd === 'outbound-workflow') {
+  const res = await rpcCall('ds_outbound_workflow', {})
+  const text = extractText(res)
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try { ok = JSON.parse(text)?.ok !== false } catch { /* MCP text remains usable */ }
+  process.exit(ok ? 0 : 1)
+}
+
 if (cmd === 'boundary') {
   const file_path = argv[1]
   if (!file_path) usage()
   const res = await rpcCall('ds_boundary', { file_path })
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_boundary', lastFile: file_path })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -220,7 +229,6 @@ if (cmd === 'boundary') {
 if (cmd === 'nav-names') {
   const res = await rpcCall('ds_nav_names', {})
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_nav_names' })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -240,7 +248,6 @@ if (cmd === 'nav-names') {
 if (cmd === 'mobile-first') {
   const res = await rpcCall('ds_mobile_first', {})
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_mobile_first' })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -258,7 +265,6 @@ if (cmd === 'mobile-first') {
 if (cmd === 'sku-identity') {
   const res = await rpcCall('ds_sku_identity', {})
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_sku_identity' })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -276,7 +282,6 @@ if (cmd === 'sku-identity') {
 if (cmd === 'mobile-ground') {
   const res = await rpcCall('ds_mobile_ground', {})
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_mobile_ground' })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)
@@ -293,7 +298,6 @@ if (cmd === 'mobile-ground') {
 if (cmd === 'identity-purity') {
   const res = await rpcCall('ds_identity_purity', {})
   const text = extractText(res)
-  writeStamp({ source: 'cli', lastTool: 'ds_identity_purity' })
   if (res.result?.isError) {
     console.error(text)
     process.exit(2)

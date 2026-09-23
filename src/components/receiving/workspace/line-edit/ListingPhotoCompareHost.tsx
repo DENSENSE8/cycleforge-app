@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from '@/components/Icons';
 import { PhotoThumb } from '@/components/photos/PhotoThumb';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { useListingGallery } from '@/hooks/useListingGallery';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
@@ -148,6 +149,11 @@ export function ListingPhotoCompareHost({ row }: { row: ReceivingLineRow }) {
             <Button
               variant="ghost"
               size="sm"
+              // Station chrome is square. This button sits on the Displays
+              // column beside flush scan-station faces, and the desk default
+              // (`cornerClass('surface')`) rounded it alone — one soft corner in
+              // a flush stack reads as a stray control.
+              className={cornerClass('flush')}
               icon={<ExternalLink className="h-3.5 w-3.5" />}
               onClick={() => window.open(listingHref, '_blank', 'noopener,noreferrer')}
             >

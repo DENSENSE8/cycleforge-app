@@ -9,7 +9,6 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { replenishmentStatusBadgeClass } from '@/lib/replenishment-status';
 import { Panel, Button } from '@/design-system/primitives';
 
@@ -120,7 +119,6 @@ export default function ReplenishmentPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <NetworkChip />
           <Button variant="secondary" size="sm" onClick={() => void fetchTasks()}>
             Refresh
           </Button>

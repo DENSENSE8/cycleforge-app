@@ -3,6 +3,8 @@
 import { motion, motionRole, useMotionPressRole } from '@/design-system/motion';
 import { getStaffThemeById, stationThemeClasses } from '@/utils/staff-colors';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 export interface StaffOption {
   id: number;
@@ -52,10 +54,11 @@ export function StaffButtonGrid({
                 type="button"
                 whileTap={pressGesture}
                 onClick={() => onSelect(m.id)}
-                className={[
-                  'touch-manipulation flex h-11 w-full min-w-0 flex-col items-center justify-center rounded-lg border-2 px-2 transition-all active:scale-[0.98]',
-                  active ? `${cls.active} border-transparent shadow-lg` : cls.inactive,
-                ].join(' ')}
+                className={cn(
+                  'touch-manipulation flex h-11 w-full min-w-0 flex-col items-center justify-center border-2 px-2 transition-colors',
+                  cornerClass('control'),
+                  active ? `${cls.active} border-transparent` : cls.inactive,
+                )}
               >
                 <span className="w-full text-center text-role-micro uppercase leading-tight tracking-[0.04em]">
                   {m.name}

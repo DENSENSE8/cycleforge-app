@@ -10,10 +10,10 @@
  */
 
 import { searchHitHref } from '@/lib/search/search-hit';
-import type { NotifiableEntityType } from './event-vocabulary';
+import type { InboxEntityType } from './event-vocabulary';
 
 export function notificationHref(entityType: string, entityId: number): string {
-  switch (entityType as NotifiableEntityType) {
+  switch (entityType as InboxEntityType) {
     case 'order':
       return searchHitHref('ORDER', entityId);
     case 'serial_unit':
@@ -24,6 +24,13 @@ export function notificationHref(entityType: string, entityId: number): string {
       return searchHitHref('REPAIR', entityId);
     case 'fba_shipment':
       return searchHitHref('FBA_SHIPMENT', entityId);
+    // `?ticket=` takes `support_tickets.id` — `resolveSupportContext` probes the
+    // PK first and the provider id second, so the LOCAL id an inbox row carries
+    // lands on the right thread. (The desk task row links with the PROVIDER
+    // number instead, because that is the one an operator reads aloud; both
+    // resolve, and `taskDeskTicketNumber` is why they never get swapped.)
+    case 'support_ticket':
+      return searchHitHref('SUPPORT_TICKET', entityId);
     // Not in SearchEntityType — a receiving LINE opens its carton's workspace
     // with the line preselected (Unbox is the first-class receiving surface).
     case 'receiving_line':

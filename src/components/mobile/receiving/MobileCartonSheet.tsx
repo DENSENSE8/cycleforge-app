@@ -7,6 +7,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { getReceivingPoIdentityParts } from '@/lib/receiving/po-group-title';
+import { platformMetaIconTone } from '@/lib/source-platform';
 import {
   joinStackedIdentityKeys,
   StackedRowIdentity,
@@ -40,12 +44,23 @@ interface MobileCartonSheetProps {
  */
 export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonSheetProps) {
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
+  const resolvePlatformMeta = usePlatformMeta();
 
   if (!row) return null;
 
   const receivingId = row.receiving_id;
   const productTitle = row.item_name || row.zoho_item_id || 'Unnamed inbound line';
-  const poValue = (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
+  // PO identity + channel come from the receiving SoT, not a local `||` ladder:
+  // it also INFERS the platform from an eBay 2-5-5 / Amazon 3-7-7 order-id
+  // shape when `source_platform` is null, which a hand-rolled poValue cannot.
+  const { poValue, platformLabel } = getReceivingPoIdentityParts(row, (raw) =>
+    resolvePlatformMeta(raw).label,
+  );
+  // Same raw ladder the helper walks (source_platform → inbound_source_type).
+  const platformMeta = resolvePlatformMeta(
+    row.source_platform || row.inbound_source_type || null,
+  );
+  const platformIconTone = platformMetaIconTone(platformMeta);
   const trackingValue = (row.tracking_number || '').trim();
   const qtyExpected = row.quantity_expected ?? 0;
   const qtyReceived = row.quantity_received;
@@ -113,7 +128,22 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
                   {conditionLabel}
                 </span>
               </span>,
-              <OrderIdChip key="po" value={poValue} display={getLast8(poValue)} dense />,
+              platformMeta.value ? (
+                <HoverTooltip key="platform" label={platformMeta.label} asChild focusable={false}>
+                  <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                    <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                  </span>
+                </HoverTooltip>
+              ) : null,
+              <OrderIdChip
+                key="po"
+                value={poValue}
+                display={getLast8(poValue)}
+                platformLabel={platformLabel}
+                iconClass={platformIconTone?.className}
+                iconStyle={platformIconTone?.style}
+                dense
+              />,
               <TrackingChip
                 key="tracking"
                 value={trackingValue}

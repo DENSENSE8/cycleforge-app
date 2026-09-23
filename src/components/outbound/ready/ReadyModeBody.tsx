@@ -20,7 +20,7 @@ export function ReadyModeBody() {
       </p>
       <Link
         href={fbaOutboundHref({ fbaMode: 'plan' })}
-        className="inline-flex text-role-caption font-semibold uppercase tracking-widest text-violet-700 hover:underline"
+        className="inline-flex text-role-caption font-semibold uppercase tracking-widest text-text-accent hover:underline"
       >
         Open Plan →
       </Link>

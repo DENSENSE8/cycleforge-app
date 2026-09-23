@@ -39,8 +39,8 @@ import {
   RECEIVING_COMPOUND_COLUMNS,
 } from '@/lib/receiving/receiving-grid-layout';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
-import { TASKS_COMPOUND_COLUMNS } from '@/lib/staff-todos/tasks-grid-layout';
-import { DAILY_COMPOUND_COLUMNS } from '@/lib/daily-checks/daily-grid-layout';
+import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
+import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
 import { CATALOG_LINK_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 
@@ -56,8 +56,10 @@ const widths = (c: readonly { key: string; width?: string }[]) =>
 const FAMILIES = [
   ['Receiving (Unbox · History · Testing)', RECEIVING_COMPOUND_COLUMNS],
   ['Incoming', INCOMING_COMPOUND_COLUMNS],
-  ['Tasks', TASKS_COMPOUND_COLUMNS],
-  ['Daily', DAILY_COMPOUND_COLUMNS],
+  // Tasks and Daily are NOT here: both are engine-record families
+  // (`TASKS_FAMILY`, `DAILY_FAMILY`), so the engine binds their identity fact
+  // into the identity chrome track and the array is DERIVED rather than the
+  // shared object. Each gets its own assertion below, beside Orders.
   ['Review · Listing match', CATALOG_LINK_COMPOUND_COLUMNS],
   ['Review · Missing item number', IMPORT_EXCEPTION_COMPOUND_COLUMNS],
 ] as const;
@@ -82,6 +84,8 @@ const ORDERS_KEYS = [
   'status:1',
   '_fill',
 ] as const;
+
+const DAILY_KEYS = [...ORDERS_KEYS] as const;
 
 describe('compound layout is shared, not forked', () => {
   it('every shared family declares the SAME tracks, in the same order', () => {
@@ -108,6 +112,32 @@ describe('compound layout is shared, not forked', () => {
     // The track KEY is the slot; the FIELD is the product default binding.
     assert.equal(status1?.fieldId, 'orders.picked');
     assert.equal(status1?.label, 'Pick');
+  });
+
+  it('Daily derives the same tracks with its identity bound into the id track', () => {
+    assert.deepEqual(keys(DAILY_COMPOUND_COLUMNS), [...DAILY_KEYS]);
+    const id = DAILY_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
+    // The header word stays the engine's `Id`; the FIELD is what it paints.
+    assert.equal(id?.fieldId, 'daily.item');
+    // Every shared track keeps the shared geometry; only the materialized
+    // status band is Daily's own.
+    assert.deepEqual(
+      widths(DAILY_COMPOUND_COLUMNS.filter((c) => !c.key.startsWith('status:'))),
+      widths(COMPOUND_TRACKS),
+    );
+    const stateIdx = DAILY_COMPOUND_COLUMNS.findIndex((c) => c.key === 'state');
+    const owner = DAILY_COMPOUND_COLUMNS[stateIdx + 1];
+    assert.equal(owner?.key, 'status:1');
+    assert.equal(owner?.fieldId, 'daily.owner');
+    assert.equal(owner?.label, 'Owner');
+  });
+
+  it('Tasks derives the shared tracks with its identity bound into the id track', () => {
+    assert.deepEqual(keys(TASKS_COMPOUND_COLUMNS), keys(COMPOUND_TRACKS));
+    assert.deepEqual(widths(TASKS_COMPOUND_COLUMNS), widths(COMPOUND_TRACKS));
+    const id = TASKS_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
+    // The header word stays the engine's `Id`; the FIELD is what it paints.
+    assert.equal(id?.fieldId, 'tasks.task');
   });
 
   it('and the same geometry — the tables must read as one product', () => {
@@ -164,9 +194,9 @@ describe('compound layout is shared, not forked', () => {
     const thumb = COMPOUND_TRACKS.find((c) => c.key === 'thumb');
     assert.equal(thumb?.gridLabel, 'Image');
     assert.equal(thumb?.type, 'image');
-    // Engine law: the header is the Image glyph on every mount (tabs fork
-    // rows, not this track). Fit / headerForceLabel must not paint the word.
-    assert.equal(gridHeaderShowsLabel(thumb!), false);
+    // The photo gutter explicitly keeps its word even though the track is
+    // narrow; headerForceLabel outranks the ordinary image-glyph fallback.
+    assert.equal(gridHeaderShowsLabel(thumb!), true);
   });
 
   it('freezes a contiguous prefix in every family', () => {

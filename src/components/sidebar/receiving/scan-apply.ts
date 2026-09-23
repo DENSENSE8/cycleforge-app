@@ -305,7 +305,14 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     const pickForOpen = openLines[0] ?? poCtx.lines[0];
     if (pickForOpen) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
-      ctx.setSelectedLine(buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, pickForOpen));
+      ctx.setSelectedLine(
+        buildMatchedStubRow(
+          poCtx.receiving_id,
+          ctx.trackingNumber,
+          pickForOpen,
+          poCtx.receiving_package?.source_platform ?? null,
+        ),
+      );
       ctx.setScanDriven(true);
     }
   }
@@ -314,7 +321,12 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   // frame — the hydration fetch below reconciles serials in the background.
   // Cache stays carton-keyed (all lines); UI scopes to the active PO at read time.
   const stubRows = allLines.map((l) =>
-    buildMatchedStubRow(poCtx.receiving_id, ctx.trackingNumber, l),
+    buildMatchedStubRow(
+      poCtx.receiving_id,
+      ctx.trackingNumber,
+      l,
+      poCtx.receiving_package?.source_platform ?? null,
+    ),
   );
   seedReceivingSiblingsCache(
     ctx.queryClient,
@@ -442,6 +454,8 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
                 quantity_received: r.quantity_received,
                 zoho_purchaseorder_id: r.zoho_purchaseorder_id,
                 zoho_purchaseorder_number: r.zoho_purchaseorder_number,
+                source_order_id: r.source_order_id,
+                inbound_source_type: r.inbound_source_type,
                 receiving_type: r.receiving_type,
                 condition_grade: r.condition_grade,
               }),

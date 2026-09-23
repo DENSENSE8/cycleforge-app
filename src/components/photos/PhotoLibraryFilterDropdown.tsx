@@ -1,6 +1,7 @@
 'use client';
 
-import { StaffRecipientList, type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
+import { StaffRecipientList } from '@/components/quick-access/StaffRecipientList';
+import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';

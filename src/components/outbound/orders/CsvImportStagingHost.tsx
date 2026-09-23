@@ -315,7 +315,7 @@ export function CsvImportStagingHost() {
       </div>
       <div className="shrink-0">
         {submitError ? (
-          <p className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-role-micro font-semibold text-rose-700">
+          <p className="border-t border-border-danger bg-surface-danger px-4 py-2 text-role-micro font-semibold text-text-danger">
             {submitError}
           </p>
         ) : null}

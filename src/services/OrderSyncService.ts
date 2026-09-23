@@ -83,11 +83,9 @@ export class OrderSyncService {
   /**
    * Ingest an order received from an external channel (eBay, Ecwid, Square, …).
    *
-   * Phase 3a: tenant scoping. The orgId must be supplied by the caller —
-   * either from the authenticated session (`ctx.organizationId`) for routes
-   * that receive webhooks under a tenant subdomain, or from
-   * `transitionalDogfoodOrgId()` for the QStash batch reconciliation job
-   * (which is single-tenant until tenant-aware cron lands).
+   * Tenant scoping is caller-owned: authenticated routes pass
+   * `ctx.organizationId`, while session-less jobs pass the organization ID
+   * stamped on their work item. There is no implicit tenant fallback here.
    */
   async ingestExternalOrder(orgId: string, rawOrder: ChannelOrder) {
     // Bind the supplied tenant for every zohoClient call this ingest makes

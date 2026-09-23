@@ -74,13 +74,12 @@ test('the signature is drawn into the band, at printed geometry', () => {
   );
 });
 
-test('the ticket preview and a print control are both on the review display', () => {
+test('the ticket preview is on the review display', () => {
   const pane = read(PANE);
   // The number rides the sheet's own heading slot, through ONE derivation.
   assert.match(pane, /paperworkTicketId \?\? ''/);
   assert.match(pane, /useNextTicketPreview/);
-  assert.match(pane, /ariaLabel="Print this paperwork"/);
-  assert.match(pane, /<Printer /, 'a print affordance is a printer glyph');
+  assert.doesNotMatch(pane, /kiosk-repair-print|Print paperwork/);
 });
 
 /**
@@ -104,31 +103,15 @@ test('a picked existing ticket, not the projection, is what the sheet states', (
 });
 
 /**
- * The icon must NOT print the sheet on screen.
- *
- * The visible sheet is `density="compact"` — column width, small type, sized
- * for a 512px form measure. Printing it would hand the customer a signed
- * document that is not the drop-off paperwork: a third rendering of the
- * agreement, the exact defect that got the hand-rolled review card deleted.
- * So the icon prints the A4 `surface="print"` layout of the SAME component,
- * with the same props object and the same ink.
+ * The review is the only paperwork mount. Success is the cart's receipt face,
+ * so there is no second submitted-paperwork rendering to keep in sync.
  */
-test('print targets the A4 surface, and both mounts share one props object', () => {
+test('one paperwork derivation feeds every review sheet, with no second mount', () => {
   const pane = read(PANE);
-  assert.match(pane, /printDomNode\(printSheetRef\.current/, 'never the on-screen sheet ref');
-  assert.match(pane, /surface="print"/, 'the printed copy is the A4 layout');
-
-  // One facts object, two mounts — they cannot state different facts.
-  const spreads = pane.match(/\{\.\.\.paperworkProps\}/g) ?? [];
-  assert.equal(spreads.length, 2, 'screen sheet and print copy must share the props memo');
-  assert.doesNotMatch(
-    pane,
-    /buildRepairIntakeReceiptProps\([\s\S]{0,400}buildRepairIntakeReceiptProps\(/,
-    'the mapper must be called once, not per mount',
-  );
-
-  // The print copy has to LAY OUT to be printable, so it is parked
-  // off-viewport rather than `hidden`; printDomNode clears that on its clone.
-  assert.match(pane, /left: '-10000px'/);
-  assert.match(read('src/lib/print/print-dom-node.ts'), /cloneNode\(true\)/);
+  assert.match(pane, /const paperworkSheets = useMemo/);
+  assert.match(pane, /paperworkSheets\.map\(\(sheet\) =>/);
+  assert.equal((pane.match(/<RepairServiceForm/g) ?? []).length, 1);
+  assert.equal((pane.match(/\{\.\.\.sheet\.props\}/g) ?? []).length, 1);
+  assert.match(pane, /<KioskCartDoneFace/);
+  assert.doesNotMatch(pane, /printDomNode|surface="print"/);
 });
