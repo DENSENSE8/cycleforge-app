@@ -5,13 +5,15 @@ import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
+import { manualContentUrl } from '@/lib/manuals/order-manuals';
 
 interface ResolvedManuals {
   found: boolean;
   manuals: unknown[];
 }
 
-function buildDocUrls(googleFileId: string) {
+function buildDocUrls(googleFileId: string | null) {
+  if (!googleFileId) return { previewUrl: null, viewUrl: null, downloadUrl: null };
   return {
     previewUrl: `https://docs.google.com/document/d/${googleFileId}/preview`,
     viewUrl: `https://docs.google.com/document/d/${googleFileId}`,
@@ -70,6 +72,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            product_title,
            display_name,
            google_file_id,
+           source_url,
            type,
            updated_at
          FROM product_manuals
@@ -110,6 +113,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            pm.product_title,
            pm.display_name,
            pm.google_file_id,
+           pm.source_url,
            pm.type,
            pm.updated_at
          FROM product_manuals pm
@@ -143,6 +147,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       type: row.type || null,
       matchedBy,
       updatedAt: row.updated_at,
+      contentUrl: manualContentUrl(Number(row.id), row.source_url),
       ...buildDocUrls(row.google_file_id),
     }));
 

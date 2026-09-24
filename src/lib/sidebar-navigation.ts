@@ -1833,14 +1833,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // not the route: each keeps its `to()` and its `resolveChild` clause so
       // a bookmark still lands and the band simply lights nothing. Unpark by
       // deleting the ledger entry, not by editing this list.
-      { id: 'ledger',    label: 'Ledger',    icon: Clipboard,  to: () => ({ pathname: INVENTORY, params: {} }) },
-      // The warehouse-wide (location, sku) stock list. A SIBLING of Locations,
-      // not a member of it: Locations manages the SHELVES (bin tags, bays,
-      // rooms, the map) and this reads what is sitting ON them, which is the
-      // question the lane's own name asks. Named `Stock` — never `Inventory`,
-      // which is the lane, nor `Bins`, which is a Locations tab
+      // SKU Exceptions leads the band (owner 2026-09-24: "stock and exceptions
+      // as top level tabs more top left"). Floor-minted placeholder SKUs
+      // (`TMP-…`) waiting to be paired to their Zoho item: the queue, and the
+      // record staff share by URL. Named `SKU Exceptions` — never `Exceptions`
+      // alone, which is Shipping's lane word for held orders
       // (`nav-name-collisions.ts`).
-      { id: 'stock', label: 'Stock', icon: Package, to: () => ({ pathname: `${INVENTORY}/stock`, params: {} }) },
+      { id: 'sku-exceptions', label: 'SKU Exceptions', icon: AlertTriangle, to: () => ({ pathname: `${INVENTORY}/sku-exceptions`, params: {} }) },
+      { id: 'ledger',    label: 'Ledger',    icon: Clipboard,  to: () => ({ pathname: INVENTORY, params: {} }) },
       { id: 'triage',    label: 'Tracking Exceptions', icon: Zap,        to: () => ({ pathname: `${INVENTORY}/triage`, params: {} }) },
       { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: {} }) },
       { id: 'graph',     label: 'Graph',     icon: Layers,     to: () => ({ pathname: `${INVENTORY}/graph`, params: {} }) },
@@ -1867,7 +1867,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       ) {
         return 'locations';
       }
-      if (pathname.startsWith(`${INVENTORY}/stock`)) return 'stock';
+      if (pathname.startsWith(`${INVENTORY}/sku-exceptions`)) return 'sku-exceptions';
       if (pathname.startsWith(`${INVENTORY}/graph`)) return 'graph';
       if (pathname.startsWith(`${INVENTORY}/triage`)) return 'triage';
       if (pathname.startsWith(`${INVENTORY}/pulse`)) return 'pulse';

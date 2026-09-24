@@ -1151,6 +1151,34 @@ export async function publishStockLedgerEvent(input: StockLedgerEventInput) {
   });
 }
 
+// ── SKU exceptions (provisional / on-hold placeholder products) ─────────────
+
+export type SkuExceptionChangedAction = 'created' | 'updated' | 'photo' | 'merged';
+
+/**
+ * A placeholder product changed outside the stock ledger: minted, renamed,
+ * described, photographed, or merged into its real SKU. Count changes already
+ * ride `activity.logged` (`STOCK_DELTA_*` from `adjustBinQty`), so this only
+ * covers the facts that write no ledger row. Subscribers:
+ * `useSkuExceptionsRealtime` (desk `/inventory/sku-exceptions`, phone `/m/on-hold`).
+ */
+export async function publishSkuExceptionChanged(payload: {
+  organizationId: string;
+  sku: string;
+  action: SkuExceptionChangedAction;
+  targetSku?: string | null;
+  source: string;
+}) {
+  await publishEvent(getStationChannelName(payload.organizationId), 'sku-exception.changed', {
+    type: 'sku-exception.changed',
+    sku: payload.sku,
+    action: payload.action,
+    targetSku: payload.targetSku ?? null,
+    source: payload.source,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 // ── Counter session (desk↔tablet bridge) ────────────────────────────────────
 
 /**

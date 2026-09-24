@@ -9,8 +9,8 @@
  *
  * ## The find box is the page's `?q=`, not a pass over one offset page
  *
- * Same shape as `@/components/inventory/StockByLocationView`, the in-repo
- * precedent for an RSC page whose search is server-answered: the box writes
+ * Same shape as `@/app/settings/audit/AuditLogTable`, an RSC page whose
+ * search is server-answered: the box writes
  * `?q=` through {@link useOptimisticUrlParam} — so the field paints on the
  * keystroke and the table is NOT remounted mid-word — the page reads that param
  * into its SQL and its COUNT, and the rows handed back here ARE the answer.

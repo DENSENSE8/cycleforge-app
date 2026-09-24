@@ -19,18 +19,39 @@
  * ## This is a modal, and should be
  *
  * Unlike `MobileStationSheet` (the station's always-present working surface),
- * this interrupts to ask two questions and goes away. It mounts inside the
+ * this interrupts to ask a few questions and goes away. It mounts inside the
  * bind sheet's own slot rather than over the whole screen so the location code
  * stays visible above it — you are naming a thing that goes in THAT bin.
+ *
+ * ## Description and photos are optional, and follow the SKU
+ *
+ * The person holding the box is the only one who can see it; whoever pairs it
+ * to the real SKU later is working from what they wrote and shot. Photos
+ * upload AFTER the placeholder exists (they attach to its `sku_stock` row), so
+ * a failed upload is a toast, never a lost SKU.
  */
 
-import { useCallback, useMemo, useState } from 'react';
-import { Loader2 } from '@/components/Icons';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Camera, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
+import type { StagedPhoto } from '@/hooks/useTicketPhotoStaging';
+import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
+import { captureTimeFromFile } from '@/lib/photos/capture-time';
+import { uploadPhotoClient } from '@/lib/photos/upload-client';
+import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import type { SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
+import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
+
+const DESCRIPTION_MAX = 2000;
+
+interface StagedFile extends StagedPhoto {
+  file: File;
+}
 
 /**
  * Does this look like something a scanner produced rather than something a
@@ -56,18 +77,56 @@ export function ProvisionalCreateSheet({
   /** Hands back a catalog-shaped item so the caller's normal pairing path runs. */
   onCreated: (item: SkuCatalogItem) => void;
 }) {
+  const queryClient = useQueryClient();
   const seedIsBarcode = useMemo(() => looksLikeBarcode(seed), [seed]);
   const [barcode, setBarcode] = useState(seedIsBarcode ? seed.trim() : '');
   const [title, setTitle] = useState(seedIsBarcode ? '' : seed.trim());
-  const [busy, setBusy] = useState(false);
+  const [description, setDescription] = useState('');
+  const [staged, setStaged] = useState<StagedFile[]>([]);
+  const [phase, setPhase] = useState<'idle' | 'creating' | 'uploading'>('idle');
   const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
 
+  // Blob previews are revoked when the sheet goes away, created or not.
+  useEffect(
+    () => () => {
+      for (const photo of stagedRef.current) URL.revokeObjectURL(photo.previewUrl);
+    },
+    [],
+  );
+
+  const busy = phase !== 'idle';
   const ready = barcode.trim().length > 0 && title.trim().length >= 2;
+
+  const addFiles = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const next: StagedFile[] = Array.from(files)
+      .filter((file) => file.type.startsWith('image/'))
+      .map((file, index) => ({
+        tempId: `${Date.now()}-${index}-${file.name}`,
+        name: file.name,
+        previewUrl: URL.createObjectURL(file),
+        status: 'done',
+        file,
+      }));
+    setStaged((prev) => [...prev, ...next]);
+  }, []);
+
+  const removeStaged = useCallback((tempId: string) => {
+    setStaged((prev) => {
+      const gone = prev.find((photo) => photo.tempId === tempId);
+      if (gone) URL.revokeObjectURL(gone.previewUrl);
+      return prev.filter((photo) => photo.tempId !== tempId);
+    });
+  }, []);
 
   const submit = useCallback(async () => {
     if (!ready || busy) return;
-    setBusy(true);
+    setPhase('creating');
     setError(null);
+    let item: ProvisionalSku;
     try {
       const res = await fetch('/api/sku-catalog/provisional', {
         method: 'POST',
@@ -76,35 +135,71 @@ export function ProvisionalCreateSheet({
         body: JSON.stringify({
           barcode: barcode.trim(),
           productTitle: title.trim(),
+          description: description.trim() || undefined,
           staffId: staffId > 0 ? staffId : undefined,
         }),
       });
       const data = (await res.json().catch(() => null)) as {
         success?: boolean;
         error?: string;
-        item?: { sku: string; productTitle: string; barcode: string };
+        item?: ProvisionalSku;
       } | null;
       if (!res.ok || !data?.success || !data.item) {
         throw new Error(data?.error || `Could not create (${res.status})`);
       }
-      // Shaped as a catalog hit so the caller pairs it through the exact same
-      // keypad path a real SKU takes — one pairing flow, not two.
-      onCreated({
-        id: -1,
-        sku: data.item.sku,
-        zoho_sku: null,
-        product_title: data.item.productTitle,
-        category: null,
-        upc: data.item.barcode || null,
-        image_url: null,
-        is_active: true,
-      });
+      item = data.item;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create');
-    } finally {
-      setBusy(false);
+      setPhase('idle');
+      return;
     }
-  }, [barcode, busy, onCreated, ready, staffId, title]);
+
+    // The SKU exists from here on; a photo that fails is reported and skipped.
+    if (staged.length > 0) {
+      setPhase('uploading');
+      let failed = 0;
+      for (const photo of staged) {
+        setStaged((prev) =>
+          prev.map((p) => (p.tempId === photo.tempId ? { ...p, status: 'uploading' } : p)),
+        );
+        try {
+          await uploadPhotoClient({
+            file: photo.file,
+            entityType: 'SKU_STOCK',
+            entityId: item.stockId,
+            clientCapturedAtMs: captureTimeFromFile(photo.file),
+          });
+          setStaged((prev) =>
+            prev.map((p) => (p.tempId === photo.tempId ? { ...p, status: 'done' } : p)),
+          );
+        } catch {
+          failed += 1;
+          setStaged((prev) =>
+            prev.map((p) => (p.tempId === photo.tempId ? { ...p, status: 'error' } : p)),
+          );
+        }
+      }
+      if (failed > 0) {
+        toast.error(
+          `${failed} photo${failed === 1 ? '' : 's'} did not upload — add ${failed === 1 ? 'it' : 'them'} again from ${item.sku}.`,
+        );
+      }
+    }
+    void invalidateSkuExceptions(queryClient);
+
+    // Shaped as a catalog hit so the caller pairs it through the exact same
+    // keypad path a real SKU takes — one pairing flow, not two.
+    onCreated({
+      id: -1,
+      sku: item.sku,
+      zoho_sku: null,
+      product_title: item.productTitle,
+      category: null,
+      upc: item.barcode || null,
+      image_url: null,
+      is_active: true,
+    });
+  }, [barcode, busy, description, onCreated, queryClient, ready, staffId, staged, title]);
 
   return (
     <div
@@ -116,7 +211,7 @@ export function ProvisionalCreateSheet({
         cornerClass('surface'),
       )}
     >
-      <p className="text-role-caption font-semibold text-text-default">On-hold product</p>
+      <p className="text-role-caption font-semibold text-text-default">SKU exception</p>
 
       <TextField
         value={barcode}
@@ -135,6 +230,42 @@ export function ProvisionalCreateSheet({
         autoComplete="off"
         autoFocus={seedIsBarcode}
       />
+      <TextField
+        value={description}
+        onChange={(next) => setDescription(next.slice(0, DESCRIPTION_MAX))}
+        label="Description (optional)"
+        multiline
+        rows={3}
+        maxLength={DESCRIPTION_MAX}
+        autoComplete="off"
+      />
+
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        className="hidden"
+        onChange={(event) => {
+          addFiles(event.target.files);
+          event.target.value = '';
+        }}
+      />
+      <ComposerStagedPhotoStrip
+        staged={staged}
+        onRemove={busy ? () => {} : removeStaged}
+      />
+      <Button
+        variant="secondary"
+        size="lg"
+        radius="flush"
+        icon={<Camera />}
+        disabled={busy}
+        onClick={() => fileInput.current?.click()}
+      >
+        {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
+      </Button>
 
       {error && (
         <p role="alert" className="text-role-caption text-text-danger">
@@ -166,7 +297,11 @@ export function ProvisionalCreateSheet({
           icon={busy ? <Loader2 className="animate-spin" /> : undefined}
           onClick={() => void submit()}
         >
-          {busy ? 'Creating…' : 'Create & count'}
+          {phase === 'creating'
+            ? 'Creating…'
+            : phase === 'uploading'
+              ? 'Uploading photos…'
+              : 'Create & count'}
         </Button>
       </div>
     </div>

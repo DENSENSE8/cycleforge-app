@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
@@ -10,6 +10,7 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
+import { publishSkuExceptionChanged } from '@/lib/realtime/publish';
 
 /**
  * On-hold placeholder products.
@@ -52,6 +53,7 @@ export const POST = withAuth(
         {
           barcode: parsed.barcode,
           productTitle: parsed.productTitle,
+          description: parsed.description ?? null,
           staffId: parsed.staffId ?? ctx.staffId ?? null,
         },
         orgId,
@@ -68,7 +70,7 @@ export const POST = withAuth(
       action: AUDIT_ACTION.SKU_STOCK_ADJUST,
       entityType: AUDIT_ENTITY.SKU_STOCK,
       entityId: item.sku,
-      after: { sku: item.sku, product_title: item.productTitle },
+      after: { sku: item.sku, product_title: item.productTitle, description: item.description },
       method: 'scan',
       reasonCode: 'PROVISIONAL_CREATE',
       actorStaffIdOverride: parsed.staffId ?? ctx.staffId ?? null,
@@ -81,6 +83,15 @@ export const POST = withAuth(
     // `get-title-by-sku` (10 min) and `scan/resolve` (30 min) — so a desk
     // scanning the same box gets "unknown SKU" for up to half an hour.
     await invalidateCacheTags(orgId, [CACHE_TAGS.skuCatalog]);
+
+    after(() =>
+      publishSkuExceptionChanged({
+        organizationId: orgId,
+        sku: item.sku,
+        action: 'created',
+        source: 'sku-catalog.provisional.create',
+      }),
+    );
 
     return NextResponse.json({ success: true, item });
   },

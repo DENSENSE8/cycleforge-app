@@ -577,6 +577,23 @@ test('regression: buyer-note ack enforces packing.complete_order OR shipping.buy
   assert.ok(ack.methods.includes('POST'));
 });
 
+test('regression: order manuals — reads are orders.view, every manual write is product_manuals.manage', () => {
+  // To-ship paperwork walk: packers read an order's SKU manuals with
+  // orders.view, but upload / pair / rename / replace / unpair / delete mutate
+  // the shared manual library, so they need product_manuals.manage (the POST
+  // on the list route gates in-handler; the manifest records GET's perm).
+  const list = routeByPath('/api/orders/[id]/manuals/route.ts');
+  assert.ok(list, 'the order manuals route should be in the manifest');
+  assert.equal(list.gate, 'requireRoutePerm');
+  assert.equal(list.permission, 'orders.view');
+  assert.deepEqual([...list.methods].sort(), ['GET', 'POST']);
+
+  const one = routeByPath('/api/orders/[id]/manuals/[manualId]/route.ts');
+  assert.ok(one, 'the per-manual route should be in the manifest');
+  assert.equal(one.permission, 'product_manuals.manage');
+  assert.deepEqual([...one.methods].sort(), ['DELETE', 'PATCH']);
+});
+
 test('regression: receiving-lines PATCH assign-only accepts tech.qc_pass in-handler', () => {
   // Testing triage ownership (docs/todo/testing-triage-ownership-scope-HANDOFF.md):
   // technicians lack receiving.mark_received; assign-only PATCHes

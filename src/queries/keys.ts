@@ -77,6 +77,14 @@ export const qk = {
     /** One repair's signed documents (`GET /api/repair-service/document/[id]`). */
     documents: (id: number) => ['repairs', 'documents', id] as const,
   },
+  skuExceptions: {
+    /** Broad invalidation prefix — every SKU-exception (TMP- placeholder) read. */
+    all: ['sku-exceptions'] as const,
+    /** The open queue (`GET /api/sku-catalog/provisional`). */
+    list: ['sku-exceptions', 'list'] as const,
+    /** One exception's hub reads; per-facet keys append one string. */
+    hub: (sku: string, facet: string) => ['sku-exceptions', 'hub', sku, facet] as const,
+  },
   skuCatalog: {
     /** Broad invalidation prefix — matches every SKU catalog admin query. */
     all: ['sku-catalog'] as const,

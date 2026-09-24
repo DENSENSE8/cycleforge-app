@@ -200,6 +200,11 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   // a partial completion path until mobile pack confirmation is implemented.
   ['/pack', '/m/pack'],
   ['/pack/', '/m/pack'],
+  // SKU Exceptions: the shared record link is the desk URL
+  // (`/inventory/sku-exceptions?sku=TMP-…`); on a phone it lands on the
+  // on-hold queue, which redirects `?sku=` to the phone record.
+  ['/inventory/sku-exceptions', '/m/on-hold'],
+  ['/inventory/sku-exceptions/', '/m/on-hold'],
   ['/signin', '/m/signin'],
   ['/signin/', '/m/signin'],
 ]);

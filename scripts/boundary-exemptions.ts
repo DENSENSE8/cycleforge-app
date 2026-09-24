@@ -33,7 +33,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/bin-label-printer/NumericStep.tsx",
   "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/label-builder-layout.ts",
   "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/rack-printer/rack-printer-config.ts",
-  "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/station/send-to-device/useSendToDevice.ts",
   // Operator 2026-09-15: Inventory › Locations › Totes consumes the /m tote
   // printer chrome. Copies is LabelPrintRunNumField, same field as other 2×1
   // printers — do not fork a second stepper.

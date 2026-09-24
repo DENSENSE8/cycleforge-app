@@ -40,6 +40,8 @@ import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePi
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
+import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
+import { previousMobilePath } from '@/lib/mobile/nav-trail';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -58,7 +60,19 @@ interface LocationContents {
   productTitle: string | null;
 }
 
-export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
+export function MobilePairQty({
+  code,
+  sku,
+  returnHref,
+}: {
+  code: string;
+  sku: string;
+  /**
+   * The screen that sent the operator here and should get them back — the SKU
+   * exception record. Omitted: Back is the candidate list, Confirm the scan loop.
+   */
+  returnHref?: string;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -161,6 +175,13 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
       });
       pendingCommandId.current = null;
       await queryClient.invalidateQueries({ queryKey: invalidateKey });
+      if (isProvisionalSku(sku)) await invalidateSkuExceptions(queryClient);
+      if (returnHref) {
+        // Pop when the record is the entry below, so its own Back still works.
+        if (previousMobilePath() === returnHref) router.back();
+        else router.replace(returnHref);
+        return;
+      }
       // Straight back to the scan loop: the job that brought you here is done,
       // and the next thing an operator does is scan the next label.
       router.replace('/m/scan');
@@ -177,6 +198,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
     numericDraft,
     queryClient,
     reason,
+    returnHref,
     router,
     sku,
     user,
@@ -189,7 +211,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
         title={title}
         subtitle={face}
         mono
-        backHref={`/m/pair/${encodeURIComponent(code)}`}
+        backHref={returnHref ?? `/m/pair/${encodeURIComponent(code)}`}
       />
 
       <div className="flex-1 space-y-4 px-4 py-4">

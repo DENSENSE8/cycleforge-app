@@ -27,7 +27,7 @@ import { useRailExclusions } from './useRailExclusions';
 import { useRailRowDismiss } from './useRailRowDismiss';
 import { useRailRowDelete } from './useRailRowDelete';
 import { receivingShareUrl } from './receiving-sidebar-shared';
-import { shareRailLink } from '@/components/sidebar/rail-shell/rail-row-copy';
+import { shareRecordLink } from '@/lib/share-link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRailEditMode } from '@/components/sidebar/rail-edit-mode';
 import { railExclusionFeedKey } from '@/lib/receiving/rail/exclusion-feed-key';
@@ -185,7 +185,7 @@ export function ReceivingFeedRail({
             }
           : null,
         share: hasCarton
-          ? () => void shareRailLink(receivingShareUrl(cartonId, row.id), ctx.rowLabel)
+          ? () => void shareRecordLink(receivingShareUrl(cartonId, row.id), ctx.rowLabel)
           : null,
         hide: exclusionFeedKey ? () => void dismissRow(row.id, ctx.rowLabel) : null,
         remove: hasCarton && canDelete ? () => void deleteCarton(cartonId, ctx.rowLabel) : null,

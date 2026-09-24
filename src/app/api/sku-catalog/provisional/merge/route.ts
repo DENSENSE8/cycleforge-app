@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseBody } from '@/lib/schemas/parse';
@@ -7,7 +7,7 @@ import { mergeProvisionalSku } from '@/lib/neon/provisional-sku-queries';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
-import { publishStockLedgerEvent } from '@/lib/realtime/publish';
+import { publishSkuExceptionChanged, publishStockLedgerEvent } from '@/lib/realtime/publish';
 
 /**
  * The override: fold an on-hold placeholder into the real SKU.
@@ -60,6 +60,7 @@ export const POST = withAuth(
         qty_moved: result.qtyMoved,
         bin_rows_moved: result.binRowsMoved,
         ledger_rows_rekeyed: result.ledgerRowsRekeyed,
+        photos_moved: result.photosMoved,
       },
     });
 
@@ -100,6 +101,16 @@ export const POST = withAuth(
       }
     }
 
+    // The SKU Exceptions queues drop the row even when no stock moved.
+    after(() =>
+      publishSkuExceptionChanged({
+        organizationId: orgId,
+        sku: parsed.provisionalSku,
+        action: 'merged',
+        targetSku: parsed.targetSku,
+        source: 'sku-catalog.provisional.merge',
+      }),
+    );
     return NextResponse.json({ success: true, ...result });
   },
   { permission: 'sku_stock.manage' },

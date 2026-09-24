@@ -288,14 +288,11 @@ const TABLE_ENTITY_FAMILIES = [
    */
   'sku-ledger',
   /**
-   * Inventory › Stock — one row = one `(location, sku)` pair holding stock,
-   * warehouse-wide. Read-only. Catalog: field-catalog/location-stock.ts.
-   * Neither of its two neighbours: `bins` rows a LOCATION with aggregates over
-   * every SKU inside it, and `sku-bins` rows the pairs of ONE SKU on a page
-   * that already names it. This family spans the floor, so `room` is a fact it
-   * filters and sorts by and `product_title` is a real join.
+   * Inventory › SKU Exceptions — one row = one floor-minted placeholder SKU
+   * (`TMP-<barcode>`) awaiting its Zoho pairing. Catalog:
+   * field-catalog/sku-exceptions.ts. Row open writes `?sku=` (the record).
    */
-  'location-stock',
+  'sku-exceptions',
   /**
    * `/search` find plane — one row = one cross-entity search HIT. Read-only.
    * Catalog: field-catalog/search-hits.ts. ONE family over six entity types

@@ -1168,8 +1168,8 @@ export async function upsertBinContentIfVersion(data: {
  * subscriber one manual refresh, never a lost write.
  *
  * `action: 'set'` (`upsertBinContent`) writes no ledger row, so it emits no
- * event — see `src/lib/inventory/stock-bin-verb-writes.ts` for why the desk's
- * delete is a whole-count `take` rather than a `set 0`.
+ * event — which is why a desk count change is a `put` / `take`
+ * (`src/lib/inventory/stock-bin-verb-writes.ts`), never a `set`.
  */
 export async function adjustBinQty(data: {
   locationId: number;

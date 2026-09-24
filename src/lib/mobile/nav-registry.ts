@@ -15,7 +15,7 @@
  */
 
 import type { MobileNavTabId } from '@/lib/auth/mobile-display-config';
-import { BarChart3, Inbox, ListChecks, PackageOpen, Printer } from '@/components/Icons';
+import { BarChart3, Inbox, ListChecks, PackageOpen, PackageSearch, Printer } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
 import { TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
 import { OUTBOUND_WORKFLOW_SURFACES } from '@/lib/mobile/mobile-first-surface';
@@ -282,6 +282,18 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     href: '/m/inbox',
     icon: Inbox,
     requires: 'home.inbox.view',
+  },
+  // An L0 row, the phone twin of the desk's SKU exceptions workbench
+  // (`/inventory/sku-exceptions`): floor-minted `TMP-…` placeholders waiting
+  // on their real Zoho SKU. Gated on `sku_stock.view`, the permission the
+  // list endpoint carries.
+  {
+    kind: 'leaf',
+    id: 'sku-exceptions',
+    label: 'SKU Exceptions',
+    href: '/m/on-hold',
+    icon: PackageSearch,
+    requires: 'sku_stock.view',
   },
   // NO separate Tasks row (operator 2026-09-23: *"there should just be only one
   // task system"*). A thrown task and a daily check are two stores but ONE list

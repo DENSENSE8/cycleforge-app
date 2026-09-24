@@ -4,16 +4,16 @@
  * Every assertion here is a regression the old implementation actually had: it
  * read `columns[].fieldId` alone, so on a compound peer the product title, the
  * identity handle, the state word, the date stamp and the line qty were all
- * visible and none of them were searchable. The Inventory › Stock desk is where
- * that surfaced (operator asked to "search for product title and the qty"), but
- * the fix is the engine's, so this pins the engine.
+ * visible and none of them were searchable. The retired Inventory › Stock desk
+ * is where that surfaced (operator asked to "search for product title and the
+ * qty"), but the fix is the engine's, so this pins the engine.
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { LOCATION_STOCK_COMPOUND_COLUMNS } from '@/components/inventory/location-stock-grid/location-stock-table-definition';
+import { SKU_EXCEPTIONS_COMPOUND_COLUMNS } from '@/components/inventory/sku-exceptions/sku-exceptions-table-definition';
 import { slotTableSortFactFor } from '@/components/tables/compound/slot-table-columns';
-import { LOCATION_STOCK_FAMILY } from '@/lib/tables/field-catalog/location-stock';
+import { SKU_EXCEPTIONS_FAMILY } from '@/lib/tables/field-catalog/sku-exceptions';
 import { slotTableSearchFactIds } from './slot-table-search-vocabulary';
 
 /** A compound skeleton in miniature: two chrome tracks, one bound status slot. */
@@ -90,21 +90,21 @@ describe('slot-table search vocabulary', () => {
     assert.ok(!bare.includes('fam.sku'));
   });
 
-  it('gives the Stock desk every fact it paints', () => {
-    // The real family, its real mounted columns.
+  it('gives the SKU Exceptions desk every fact it paints', () => {
+    // The real family, its real mounted columns — the find box must answer the
+    // title, both handles, the description and the location codes.
     const ids = slotTableSearchFactIds({
-      columns: LOCATION_STOCK_COMPOUND_COLUMNS,
-      sortFactFor: (col) => slotTableSortFactFor(LOCATION_STOCK_FAMILY, col),
-      subtitleFieldIds: ['location-stock.qty'],
-      adapterPaintedFieldIds: ['location-stock.sku'],
+      columns: SKU_EXCEPTIONS_COMPOUND_COLUMNS,
+      sortFactFor: (col) => slotTableSortFactFor(SKU_EXCEPTIONS_FAMILY, col),
+      adapterPaintedFieldIds: ['sku-exceptions.barcode', 'sku-exceptions.description'],
     });
     for (const fact of [
-      'location-stock.item',
-      'location-stock.qty',
-      'location-stock.location',
-      'location-stock.room',
-      'location-stock.sku',
-      'location-stock.source',
+      'sku-exceptions.title',
+      'sku-exceptions.sku',
+      'sku-exceptions.barcode',
+      'sku-exceptions.description',
+      'sku-exceptions.locations',
+      'sku-exceptions.created_by',
     ]) {
       assert.ok(ids.includes(fact), `${fact} is painted but not searchable`);
     }

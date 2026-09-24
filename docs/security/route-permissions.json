@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T16:16:43Z",
-  "totalRoutes": 1058,
+  "generatedAt": "2026-09-24T16:58:37Z",
+  "totalRoutes": 1070,
   "summary": {
-    "permissionGated": 866,
-    "authenticatedNoPermission": 108,
+    "permissionGated": 871,
+    "authenticatedNoPermission": 112,
     "anonymousIntentional": 36,
     "serviceToService": 48,
     "ungatedRead": 0,
-    "ungatedWrite": 0
+    "ungatedWrite": 3
   },
   "routes": [
     {
@@ -2050,7 +2050,8 @@
     {
       "path": "/api/customers/[id]/route.ts",
       "methods": [
-        "GET"
+        "GET",
+        "PATCH"
       ],
       "gate": "withAuth",
       "permission": "orders.view",
@@ -3196,6 +3197,44 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/carts/[id]/done/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/carts/[id]/open/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/carts/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ],
+      "gate": "NONE",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/carts/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/kiosk/companion/route.ts",
       "methods": [
         "POST"
@@ -4321,6 +4360,26 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/manuals/[manualId]/route.ts",
+      "methods": [
+        "DELETE",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "product_manuals.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/manuals/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/notes/route.ts",
       "methods": [
         "GET",
@@ -5169,6 +5228,33 @@
       "path": "/api/photos/upload/route.ts",
       "methods": [
         "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/upload/video/[id]/finalize/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/upload/video/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/photos/videos/[id]/content/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
@@ -6556,6 +6642,17 @@
       "exemptReason": null
     },
     {
+      "path": "/api/repair-service/[id]/customer/route.ts",
+      "methods": [
+        "DELETE",
+        "POST",
+        "PUT"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.intake",
+      "exemptReason": null
+    },
+    {
       "path": "/api/repair-service/[id]/label-printed/route.ts",
       "methods": [
         "POST"
@@ -6700,6 +6797,15 @@
       "methods": [
         "DELETE",
         "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "repair.mark_repaired",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/repair/actions/[id]/ticket-post/route.ts",
+      "methods": [
+        "POST"
       ],
       "gate": "withAuth",
       "permission": "repair.mark_repaired",
@@ -7727,6 +7833,16 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.manage",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-catalog/provisional/[sku]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "sku_stock.view",
       "exemptReason": null
     },
     {

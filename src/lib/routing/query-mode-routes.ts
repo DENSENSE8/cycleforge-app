@@ -530,29 +530,24 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/inventory/stock` — the warehouse-wide (location, sku) stock list.
+ * `/inventory/sku-exceptions` — the floor-minted placeholder SKU (`TMP-…`)
+ * queue and its record walk.
  *
- * Longer prefix than `/inventory`, so its two facets cannot collide with the
- * Ledger's ownership of `q` (the sidebar search, a different feed and a
- * different field vocabulary) or leak a room selection into the bucket
- * multi-select the Ledger reads out of `filter`.
- *
- * Both keys are already declared in `SHARED_OWNED_KEYS`: `q` is "narrow this
- * list", asked by every route that shows one, and `room` is the warehouse room
- * facet this desk asks with the same vocabulary Locations does — the same room
- * names, out of the same `locations.room` column. A third name for the same
- * question is what that list exists to prevent.
+ * Longer prefix than `/inventory`, so `q` here is this queue's find box, not
+ * the Ledger's sidebar search. `sku` is the open RECORD — the URL staff share
+ * ("look at this one") — and is the same identifier `SHARED_OWNED_KEYS.sku`
+ * already names: a focused SKU string.
  *
  * Column sort rides the ambient `?colsort=` / `?coldir=` carries, which is why
  * neither is named here.
  */
-export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
-  route: '/inventory/stock',
+export const INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/sku-exceptions',
   owns: {
     /** The one search box, over every fact a row paints. */
     q: paramText,
-    /** Room funnel — a comma-separated multi-select, like Inventory's `state`. */
-    room: paramText,
+    /** The open placeholder SKU (`TMP-…`) — swaps the table for its editor. */
+    sku: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -642,7 +637,7 @@ export const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
     until: paramDateKey,
     /**
      * The table's find box — the same "narrow this list" question `q` already
-     * answers on `/inventory/stock`, over every fact an event row paints.
+     * answers on `/inventory/sku-exceptions`, over every fact an event row paints.
      * Declared because the desk mounts `SurfaceParamHygiene` (via
      * `app/inventory/layout.tsx`): an undeclared key is stripped on the next
      * param change, which would empty the box mid-search.
@@ -792,7 +787,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_ROUTE_PARAMS,
   SPECIAL_BIN_PRINT_ROUTE_PARAMS,
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
-  INVENTORY_STOCK_ROUTE_PARAMS,
+  INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,
   // Ex-/admin/inventory desks, re-homed under the Inventory desk.
   INVENTORY_HEALTH_ROUTE_PARAMS,
   INVENTORY_CYCLE_COUNTS_ROUTE_PARAMS,

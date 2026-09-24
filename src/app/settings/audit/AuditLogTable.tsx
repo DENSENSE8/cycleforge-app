@@ -10,8 +10,8 @@
  *
  * ## The find box is the page's `?q=`, not a pass over fifty rows
  *
- * Same shape as `@/components/inventory/StockByLocationView`, the in-repo
- * precedent for an RSC page whose search is server-answered: the box writes
+ * Same shape as `@/app/inventory/events/EventsExplorerTable`, an RSC page
+ * whose search is server-answered: the box writes
  * `?q=` through {@link useOptimisticUrlParam} — so the field paints on the
  * keystroke and the table is NOT remounted mid-word — the page reads that
  * param into its SQL, and the feed handed back here IS the answer. Declaring

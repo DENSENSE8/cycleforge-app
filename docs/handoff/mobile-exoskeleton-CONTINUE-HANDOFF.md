@@ -131,22 +131,56 @@ that open the existing runners. Each entity gets:
 - an `/info` screen, with the pencil edit through its **existing** write route;
 - probes: equal-height measure, card → `/info`, Back with no loop, 0 GETs on revisit.
 
-### 4. Repair leftovers — each needs an operator answer (ask in one batch)
-1. **Video** on Photos: the pipeline is image-only (`src/lib/photos/service.ts` ALLOWED_MIME,
-   8 MB cap, sharp thumbnails). Needs a storage/format/size decision.
-2. **Customer contact edit** on repairs linked to a customer: there's no customer write
-   route. Add `PATCH /api/customers/[id]`, or keep it read-only?
-3. **Paperwork:**
-   - keep `POST /print-log` (an audit-only write)?
-   - add a view-only receipt variant (today it opens the print dialog)?
-   - add a station ID on the print bridge so one named station can be picked?
-4. **Stock deduction:** SKU-ledger only, no bin decrement, can go negative. Is that enough?
-5. **Install banner:** it now takes layout space at the bottom instead of floating. OK?
-   Desk pickup now requires a signer. OK?
-6. **Hub Ticket row:** keep `· opens with a "<status>" draft`?
-7. **Survive a browser refresh?** It would need `@tanstack/query-sync-storage-persister`
-   (a new dependency) and would store customer PII in sessionStorage.
-8. **Operator phone check** of the hub / info / doors split.
+### 4. Repair leftovers — answered 2026-09-24, built in pass 4
+Decisions and build spec: `mobile-workbench-PASS4-HANDOFF.md`. All eight are answered; rows
+1–7 are built and probed at :3050 with writes mocked (screenshots `/tmp/rs-video-*`,
+`/tmp/rs-contact-*`, `/tmp/rs-print-station-*`, `/tmp/rs-benchlog-*`, `/tmp/desk-signoff-*`,
+`/tmp/rs-cache-*`). Row 8 is the operator's phone check.
+
+1. **Video** — same routing as photos, generic over `PhotoEntityType`:
+   - `POST /api/photos/upload/video` (gate `uploadPermissionFor(entityType)`, same as
+     `POST /api/photos/upload`) → pending `entity_videos` row + V4 signed PUT
+     (content type + size range signed); `POST /api/photos/upload/video/[id]/finalize` reads
+     GCS metadata → ready → `publishEntityMediaInsert` (the photo route's per-entity
+     realtime dispatch, now shared); `GET /api/photos/videos/[id]/content` → 302 signed read.
+   - Same bucket; key `{org}/videos/{photo flow dir}/{videoId}.{ext}`
+     (`buildGcsVideoObjectKey`, `entityFlowDirectory` in `storage/path-builder.ts`).
+   - Rules: `src/lib/photos/video-upload-rules.ts` (mp4/quicktime/webm, cap
+     `PHOTOS_VIDEO_MAX_BYTES`, default 500 MB). Client: `src/lib/photos/video-upload-client.ts`.
+   - `GET /api/repair-service/[id]/photos` returns `videos[]`; grid video tile; the swipe
+     viewer plays inline. Migration `2026-09-24d_entity_videos.sql`.
+   - Operator: bucket CORS for browser PUT (origin list, `PUT`, headers `Content-Type`,
+     `x-goog-content-length-range`) is not applied yet; no sweep for abandoned pending rows.
+2. **Customer contact** — `PATCH /api/customers/[id]` (`repair.intake`);
+   `POST|PUT|DELETE /api/repair-service/[id]/customer` (create+link / change / unlink, never
+   deletes the customer). `customer_id` left the generic repair PATCH allowlist.
+   `RepairInfoEditSheet` + `RepairCustomerPickerSheet`; plan in `repair-info-edit.ts`.
+3. **Print station** — `src/lib/print/print-station.ts` (per-browser id + name, per-staff
+   remembered pick); jobs require `targetStationId`; `StaffPrintStationPicker` on paperwork
+   and `/m/print` (both on `useStaffPrintBridgeClient`, self-echo filtered); station name
+   field in Settings → Hardware; `/print-log` kept and records `stationName`.
+4. **Stock** — take-from-stock needs a bin (`RepairStockBinPicker`, existing
+   `GET /api/sku-stock/[sku]/bins`); `bin_contents` + ledger move in the action's
+   transaction; short bin → 409; delete reverses both (`repair-stock-take.ts`).
+5. **Desk pickup** — `RepairPickupFlow` rebuilt from kiosk v2 pieces (`KioskPaneForm`,
+   `KioskEntryField`, `SignaturePad`, `KioskChip` decline reasons, review); one write,
+   `pickup-submit.ts`. Banner slot change accepted.
+6. **Bench log → ticket** — INTERNAL note (operator confirmed 2026-09-24; `REPAIR_LOG_TICKET_NOTE_PUBLIC` in
+   `repair-action-ticket-note.ts`, one constant) posted after commit, idempotent per action
+   (`ticket_post_*` columns); retry `POST /api/repair/actions/[id]/ticket-post`
+   (`repair.mark_repaired`). Timeline shows Posted / Failed — Retry. Hub draft line kept.
+   Migration `2026-09-24e_repair_actions_bin_and_ticket_post.sql` (also row 4's bin columns).
+7. **Refresh** — `WorkbenchCachePersistence` (in `AuthProvider`, `WarehouseShell`) +
+   `src/lib/mobile/workbench-cache.ts`: sessionStorage `cf-rq-wb:{org}:{staff}`, buster
+   `wb-v1`, 24h; cleared on sign-out/owner change. Restored entries are applied when the
+   first workbench query subscribes (hydrating in render caused a hydration error).
+8. **Operator phone check** — pending.
+
+Migrations `2026-09-24d_entity_videos` and `2026-09-24e_repair_actions_bin_and_ticket_post`
+were applied 2026-09-24 with the operator's OK, together with two other sessions' pending files
+(`2026-09-24_platform_short_labels`, `2026-09-24d_kiosk_carts`). After that the dry run showed
+0 pending, and `tenancy:coverage` was regenerated. Still not exercised: a real GCS upload
+(it needs the bucket CORS rule) and a real Zendesk post.
 
 ## Checks before you call it done
 - `pnpm verify:fast` (only the known `sessions.ts` error allowed).

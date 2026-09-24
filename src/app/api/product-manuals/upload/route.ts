@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
-import { put, del } from '@vercel/blob';
+import { put } from '@vercel/blob';
 import { withAuth } from '@/lib/auth/withAuth';
-import { docxToPdf } from '@/lib/manuals/docxToPdf';
+import {
+  deleteManualBlob,
+  ManualFileError,
+  safeManualFileSlug,
+  storeManualFile,
+} from '@/lib/manuals/manual-file-store';
 import {
   upsertProductManual,
   updateProductManual,
@@ -66,16 +71,6 @@ export const POST = withAuth(
     // upload comes without one (replace from a non-PDF, generator failure,
     // backfill not yet performed), we just leave thumbnail_url null.
     const thumbnailFile = form.get('thumbnail');
-    if (file.size === 0) {
-      return NextResponse.json({ success: false, error: 'file is empty' }, { status: 400 });
-    }
-    // 50MB ceiling — Vercel Blob can take more, but operators dropping huge
-    // scans into the library is almost always a mistake. Bump if a real case
-    // shows up.
-    if (file.size > 50 * 1024 * 1024) {
-      return NextResponse.json({ success: false, error: 'file exceeds 50MB' }, { status: 413 });
-    }
-
     const idRaw = form.get('id');
     const id = idRaw != null && idRaw !== '' ? Number(idRaw) : null;
     if (idRaw != null && idRaw !== '' && (!Number.isFinite(id) || id! <= 0)) {
@@ -93,43 +88,9 @@ export const POST = withAuth(
     const status =
       statusRaw === 'assigned' || statusRaw === 'archived' ? statusRaw : 'unassigned';
 
-    // Sanitize the filename slug — strip path traversal, collapse spaces.
-    const safeName = file.name
-      .replace(/[/\\]/g, '_')
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9._-]/g, '');
-
-    // Word docs (.doc/.docx) are converted to PDF server-side via headless
-    // LibreOffice before they ever touch Blob — the library only ever stores
-    // and previews PDFs, so the .docx is transient (we don't keep the source).
-    const isWordDoc =
-      /\.docx?$/i.test(file.name)
-      || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      || file.type === 'application/msword';
+    const safeName = safeManualFileSlug(file.name);
 
     try {
-      let buffer: Buffer = Buffer.from(await file.arrayBuffer());
-      // Final blob name/type — rewritten to .pdf when we convert a Word doc.
-      let outName = safeName || 'manual.pdf';
-      let contentType = file.type || 'application/pdf';
-
-      if (isWordDoc) {
-        try {
-          buffer = await docxToPdf(buffer);
-        } catch (err) {
-          const detail = err instanceof Error ? err.message : 'conversion failed';
-          console.error('[product-manuals/upload] docx→pdf conversion failed:', err);
-          return NextResponse.json(
-            { success: false, error: `Word→PDF conversion failed: ${detail}` },
-            { status: 502 },
-          );
-        }
-        outName = (safeName || 'manual').replace(/\.docx?$/i, '') + '.pdf';
-        contentType = 'application/pdf';
-      }
-
-      const blobKey = `product-manuals/${Date.now()}_${outName}`;
-
       // Replace flow: load the existing row first so we can clean up its blob.
       let previousSourceUrl: string | null = null;
       if (id) {
@@ -142,7 +103,8 @@ export const POST = withAuth(
         previousSourceUrl = existing.source_url || null;
       }
 
-      const uploaded = await put(blobKey, buffer, { access: 'public', contentType });
+      // Validates size, converts Word → PDF, uploads (lib/manuals/manual-file-store).
+      const stored = await storeManualFile(file);
 
       // Upload the companion thumbnail (if provided) under a sibling key
       // so del() lifetimes track the parent — we don't actively clean these
@@ -169,7 +131,7 @@ export const POST = withAuth(
       let row = id
         ? await updateProductManual({
             id,
-            sourceUrl: uploaded.url,
+            sourceUrl: stored.url,
             displayName,
             ...(folderPath != null ? { folderPath } : {}),
             ...(type ? { type } : {}),
@@ -178,7 +140,7 @@ export const POST = withAuth(
             ...(thumbnailUrl ? { thumbnailUrl } : {}),
           }, orgId)
         : await upsertProductManual({
-            sourceUrl: uploaded.url,
+            sourceUrl: stored.url,
             displayName,
             folderPath,
             type,
@@ -188,21 +150,24 @@ export const POST = withAuth(
             // Use the stored file's name so the search matcher can match
             // against it — for converted Word docs that's the .pdf, not the
             // transient .docx the operator dropped in.
-            fileName: isWordDoc ? file.name.replace(/\.docx?$/i, '') + '.pdf' : file.name,
+            fileName: stored.fileName,
           }, orgId);
 
       if (!id && sku) {
         row = await updateProductManual({ id: row.id, sku }, orgId);
       }
 
-      // Best-effort delete of the old blob — never throw, since the DB row
-      // already points at the new URL and a stale blob is harmless.
-      if (previousSourceUrl && previousSourceUrl !== uploaded.url) {
-        try { await del(previousSourceUrl); } catch { /* ignore */ }
+      // Best-effort delete of the old blob — the DB row already points at the
+      // new URL and a stale blob is harmless.
+      if (previousSourceUrl && previousSourceUrl !== stored.url) {
+        await deleteManualBlob(previousSourceUrl);
       }
 
-      return NextResponse.json({ success: true, manual: row, blobUrl: uploaded.url });
+      return NextResponse.json({ success: true, manual: row, blobUrl: stored.url });
     } catch (err: unknown) {
+      if (err instanceof ManualFileError) {
+        return NextResponse.json({ success: false, error: err.message }, { status: err.status });
+      }
       const message = err instanceof Error ? err.message : 'upload failed';
       console.error('[product-manuals/upload] error:', err);
       return NextResponse.json({ success: false, error: message }, { status: 500 });

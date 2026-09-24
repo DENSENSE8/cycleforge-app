@@ -72,6 +72,11 @@ export interface OrderShippingPanelProps {
    * The intake host passes `intake` so its locked locators keep resolving.
    */
   testIdPrefix?: string;
+  /**
+   * Render the upload / attach tray. Default true. The To-ship paperwork walk
+   * passes false: it shows the order's documents inline above this panel.
+   */
+  showDocuments?: boolean;
   className?: string;
 }
 
@@ -81,6 +86,7 @@ export function OrderShippingPanel({
   onFactsChanged,
   onLabelPurchased,
   testIdPrefix = 'shipping-panel',
+  showDocuments = true,
   className,
 }: OrderShippingPanelProps) {
   const fieldId = useId();
@@ -270,16 +276,18 @@ export function OrderShippingPanel({
         )}
 
         {/* ── Upload / attach tray (browser→NAS PUT + attach-by-URL) ─────── */}
-        <div className="border border-border-hairline">
-          <OrderDocumentsSection
-            orderId={orderId}
-            orderRef={orderRef}
-            readOnly={false}
-            flush
-            showBuySection={false}
-            onChanged={handleFactsChanged}
-          />
-        </div>
+        {showDocuments ? (
+          <div className="border border-border-hairline">
+            <OrderDocumentsSection
+              orderId={orderId}
+              orderRef={orderRef}
+              readOnly={false}
+              flush
+              showBuySection={false}
+              onChanged={handleFactsChanged}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

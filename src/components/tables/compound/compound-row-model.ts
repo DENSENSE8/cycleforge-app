@@ -823,15 +823,14 @@ export const COMPOUND_DATES_DUE_HOVER = 'Due date';
  * Tips that already name the Hash (start) line — return as-is, never prefix
  * `Start date · …` (same escape hatch as Dwell on the Calendar line).
  *
- * `Counted` / `Never counted` joined the list on 2026-09-15. Two inventory
- * families put a CYCLE-COUNT stamp on this line (`sku-bins`, `location-stock`),
- * and both were declaring `startedHover: 'Counted Sep 10 · 3:04 PM'` — an
- * explicit name the prefix then buried under a shipping word, so hovering a
- * shelf read "Start date · Counted …", and an uncounted pair read "Start date"
- * flat about a bin with no date at all.
+ * `Counted` / `Never counted` joined the list on 2026-09-15: `sku-bins` puts a
+ * CYCLE-COUNT stamp on this line (`startedHover: 'Counted Sep 10 · 3:04 PM'`),
+ * and the prefix buried that explicit name under a shipping word, so hovering a
+ * shelf read "Start date · Counted …". `Created` (2026-09-24) is the
+ * `sku-exceptions` stamp — when the placeholder SKU was minted on the floor.
  */
 const DATES_START_TIP_OWNS_NAME =
-  /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised|Counted|Never counted)\b/i;
+  /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised|Counted|Never counted|Created)\b/i;
 
 /**
  * Hover copy for one DATES line. Portable defaults (`Start date` / `Due date`)

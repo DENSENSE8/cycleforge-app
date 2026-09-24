@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
@@ -68,6 +69,14 @@ export async function POST(
   const documentType = typeRaw;
   const buffer = Buffer.from(await file.arrayBuffer());
   const contentType = file.type || 'application/octet-stream';
+  // Dedupe on the file's bytes, not just (order, type): the default
+  // buildSourceHash({ platform:'manual', orderRef, documentType }) made a second,
+  // different upload of the same type silently return the FIRST document.
+  // Identical re-uploads still collapse onto the existing row.
+  const fileSha256 = createHash('sha256').update(buffer).digest('hex');
+  const sourceHash = createHash('sha256')
+    .update(['manual_upload', orderId, documentType, fileSha256].join('|'))
+    .digest('hex');
 
   try {
     const result = await storeOutboundDocumentFromBytes(gate.ctx.organizationId as OrgId, {
@@ -81,6 +90,7 @@ export async function POST(
       extension: extensionOf(file.name, contentType),
       filename: file.name,
       uploadedBy: gate.ctx.staffId ?? null,
+      sourceHash,
     });
 
     await recordAudit(pool, gate.ctx, req, {

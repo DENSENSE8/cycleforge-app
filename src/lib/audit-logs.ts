@@ -621,6 +621,14 @@ export const AUDIT_ACTION = {
   ORDER_DOCUMENT_BUNDLE_PRINT: 'order.document.bundle_print',
   /** Explicit reprint of an already-printed pack bundle (never re-buys postage). */
   ORDER_DOCUMENT_BUNDLE_REPRINT: 'order.document.bundle_reprint',
+  // To-ship paperwork: SKU manuals (product_manuals) paired to an order's
+  // item number + SKU via /api/orders/[id]/manuals. Entity is the order.
+  ORDER_MANUAL_ATTACH:  'order.manual.attach',   // new file uploaded + paired
+  ORDER_MANUAL_PAIR:    'order.manual.pair',     // existing library manual paired
+  ORDER_MANUAL_UPDATE:  'order.manual.update',   // rename / retype
+  ORDER_MANUAL_REPLACE: 'order.manual.replace',  // stored file swapped
+  ORDER_MANUAL_UNPAIR:  'order.manual.unpair',   // back to the library, unassigned
+  ORDER_MANUAL_DELETE:  'order.manual.delete',   // deactivated
   // Orders-exceptions reconciliation sweep (writes orders + orders_exceptions)
   ORDERS_EXCEPTIONS_SYNC: 'orders_exceptions.sync',
   /** Manual tracking edit on a single open `orders_exceptions` row. */

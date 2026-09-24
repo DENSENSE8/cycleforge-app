@@ -95,7 +95,7 @@ function RepairPaperworkInner() {
         {repair ? (
           <>
             <section className="space-y-2">
-              <DetailSectionHeading>Print station</DetailSectionHeading>
+              <DetailSectionHeading>Printing</DetailSectionHeading>
               <RepairStationCard
                 staffName={bridge.staffName}
                 stations={bridge.stations}

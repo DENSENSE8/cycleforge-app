@@ -7,6 +7,7 @@ import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { deletePhoto } from '@/lib/photos/service';
 import { getReceivingPhotoDeleteMeta, countReceivingPhotos } from '@/lib/photos/queries/receiving-list';
 import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
+import { publishSkuStockMediaChanged } from '@/lib/photos/publish-entity-media';
 
 /**
  * DELETE /api/photos/[id] — unified photo delete across every entity_type
@@ -41,9 +42,9 @@ export async function DELETE(
   }
   const orgId = actor.organizationId;
 
-  const existing = await tenantQuery<{ entity_type: string }>(
+  const existing = await tenantQuery<{ entity_type: string; entity_id: string }>(
     orgId,
-    `SELECT l.entity_type
+    `SELECT l.entity_type, l.entity_id
        FROM photos p
        JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
       WHERE p.id = $1 AND p.organization_id = $2 AND l.link_role = 'primary'
@@ -55,7 +56,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
   }
 
-  const { entity_type: entityType } = existing.rows[0];
+  const { entity_type: entityType, entity_id: entityId } = existing.rows[0];
   const perm = PERM_BY_ENTITY_TYPE[entityType];
   if (!perm) {
     return NextResponse.json(
@@ -80,6 +81,9 @@ export async function DELETE(
       totalPhotoCount: await countReceivingPhotos(orgId, receivingId),
       source: 'api.photos.delete',
     });
+  }
+  if (entityType === 'SKU_STOCK') {
+    await publishSkuStockMediaChanged(orgId, Number(entityId), 'api.photos.delete');
   }
 
   return NextResponse.json({ success: true, id, entityType });

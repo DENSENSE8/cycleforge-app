@@ -12,8 +12,19 @@ import { z } from 'zod';
 export const ProvisionalCreateBody = z.object({
   barcode: z.string().trim().min(1).max(64),
   productTitle: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(2000).nullish(),
   staffId: z.number().int().positive().optional(),
 });
+
+/** PATCH /api/sku-catalog/provisional/[sku] — at least one field. */
+export const ProvisionalUpdateBody = z
+  .object({
+    productTitle: z.string().trim().min(2).max(200).optional(),
+    description: z.string().trim().max(2000).nullable().optional(),
+  })
+  .refine((body) => body.productTitle !== undefined || body.description !== undefined, {
+    message: 'productTitle or description is required',
+  });
 
 /** POST /api/sku-catalog/provisional/merge */
 export const ProvisionalMergeBody = z.object({
@@ -24,3 +35,4 @@ export const ProvisionalMergeBody = z.object({
 
 export type ProvisionalCreateInput = z.infer<typeof ProvisionalCreateBody>;
 export type ProvisionalMergeInput = z.infer<typeof ProvisionalMergeBody>;
+export type ProvisionalUpdateInput = z.infer<typeof ProvisionalUpdateBody>;

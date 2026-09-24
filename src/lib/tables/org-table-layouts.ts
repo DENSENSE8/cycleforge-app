@@ -98,9 +98,9 @@ import {
   SKU_BINS_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/sku-bins';
 import {
-  LOCATION_STOCK_FIELD_CATALOG,
-  LOCATION_STOCK_TABLE_LAYOUT_ID,
-} from '@/lib/tables/field-catalog/location-stock';
+  SKU_EXCEPTIONS_FIELD_CATALOG,
+  SKU_EXCEPTIONS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/sku-exceptions';
 import {
   SKU_LEDGER_FIELD_CATALOG,
   SKU_LEDGER_TABLE_LAYOUT_ID,
@@ -403,11 +403,10 @@ export const SLOT_LAYOUT_TABLES: Readonly<
     catalog: SKU_BINS_FIELD_CATALOG,
     morphs: ['compound'],
   },
-  // Inventory › Stock by location — COMPOUND only. A stored `sheet` layout
-  // would open a subtitle track for the line qty the item cell paints inline,
-  // which is the "count became a column" failure the desk exists against.
-  [LOCATION_STOCK_TABLE_LAYOUT_ID]: {
-    catalog: LOCATION_STOCK_FIELD_CATALOG,
+  // Inventory › SKU Exceptions — COMPOUND only: the description rides the item
+  // cell's note line, which a `sheet` morph has no place for.
+  [SKU_EXCEPTIONS_TABLE_LAYOUT_ID]: {
+    catalog: SKU_EXCEPTIONS_FIELD_CATALOG,
     morphs: ['compound'],
   },
   // Admin › per-SKU stock ledger — COMPOUND only. The three reference ids the

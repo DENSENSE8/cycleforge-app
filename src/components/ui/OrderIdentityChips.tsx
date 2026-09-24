@@ -298,48 +298,32 @@ export function useOrderIdentityCellNodes({
    * `omitCellIcon` — declaring that flag flips a surface to this language with
    * no component edit.
    */
-  const orderIdentity = resolveMarketplaceChipIdentity(orderId, platformLabel);
-  const orderBrandDot = platformMetaBrandDot(orderIdentity.meta);
-
   const orderChipNode = hideOrderId ? (
     <OrderIdChipPlaceholder plain={plain} />
+  ) : plain ? (
+    <OrderNumberIdentity
+      orderId={orderId}
+      platformLabel={platformLabel}
+      openHref={marketplaceOrderUrl}
+      onMenuOpenChange={handleMenuOpenChange}
+    />
   ) : (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      {plain ? (
-        <BrandIdentityDot className={orderBrandDot.className} style={orderBrandDot.style} />
-      ) : null}
-      <OrderNumberMenuChip
-        value={orderId}
-        platformLabel={orderIdentity.platformLabel}
-        openHref={marketplaceOrderUrl}
-        onMenuOpenChange={handleMenuOpenChange}
-        plain={plain}
-        dense
-      />
-    </span>
+    <OrderNumberMenuChip
+      value={orderId}
+      platformLabel={resolveMarketplaceChipIdentity(orderId, platformLabel).platformLabel}
+      openHref={marketplaceOrderUrl}
+      onMenuOpenChange={handleMenuOpenChange}
+      dense
+    />
   );
 
-  const trackingBrandDot = tracking
-    ? carrierBrandDotPaint(resolveCarrierBrand(tracking, carrierHint ?? null))
-    : null;
-
   const trackingChipNode = tracking ? (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      {trackingBrandDot ? (
-        <BrandIdentityDot
-          className={trackingBrandDot.className}
-          style={trackingBrandDot.style}
-          variant="ring"
-        />
-      ) : null}
-      <TrackingNumberMenuChip
-        value={tracking}
-        carrierHint={carrierHint}
-        plain
-        onEdit={onEditTracking}
-        onMenuOpenChange={handleMenuOpenChange}
-      />
-    </span>
+    <TrackingIdentity
+      tracking={tracking}
+      carrierHint={carrierHint}
+      onEdit={onEditTracking}
+      onMenuOpenChange={handleMenuOpenChange}
+    />
   ) : (
     // Empty tracking: the paste / Add-TRK affordance (labels) wins; otherwise a
     // staged row folds its serial into this trailing identity cell.
@@ -353,6 +337,70 @@ export function useOrderIdentityCellNodes({
     tracking: trackingChipNode,
     emptyTracking: emptyTrackingNode,
   };
+}
+
+/**
+ * Order # identity — the one face every record surface paints: the
+ * marketplace brand dot + the last-8 copy chip (hover: open on the platform).
+ * The dot is information (which marketplace), the `#` glyph would only restate
+ * the column, so the plain face carries the dot. Left-aligned, fixed gap.
+ */
+export function OrderNumberIdentity({
+  orderId,
+  platformLabel,
+  openHref = null,
+  onMenuOpenChange,
+}: {
+  orderId: string;
+  platformLabel?: string | null;
+  openHref?: string | null;
+  onMenuOpenChange?: (open: boolean) => void;
+}) {
+  const identity = resolveMarketplaceChipIdentity(orderId, platformLabel);
+  const dot = platformMetaBrandDot(identity.meta);
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5" data-identity="order">
+      <BrandIdentityDot className={dot.className} style={dot.style} />
+      <OrderNumberMenuChip
+        value={orderId}
+        platformLabel={identity.platformLabel}
+        openHref={openHref}
+        onMenuOpenChange={onMenuOpenChange}
+        plain
+        dense
+      />
+    </span>
+  );
+}
+
+/**
+ * Tracking # identity — the carrier brand RING (known carrier hex, else house
+ * tracking blue) + the last-8 copy chip (hover: open on the carrier, edit).
+ */
+export function TrackingIdentity({
+  tracking,
+  carrierHint = null,
+  onEdit,
+  onMenuOpenChange,
+}: {
+  tracking: string;
+  carrierHint?: string | null;
+  onEdit?: () => void;
+  onMenuOpenChange?: (open: boolean) => void;
+}) {
+  const dot = carrierBrandDotPaint(resolveCarrierBrand(tracking, carrierHint));
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5" data-identity="tracking">
+      <BrandIdentityDot className={dot.className} style={dot.style} variant="ring" />
+      <TrackingNumberMenuChip
+        value={tracking}
+        carrierHint={carrierHint}
+        plain
+        onEdit={onEdit}
+        onMenuOpenChange={onMenuOpenChange}
+      />
+    </span>
+  );
 }
 
 export function OrderIdentityChips(props: OrderIdentityChipsProps) {

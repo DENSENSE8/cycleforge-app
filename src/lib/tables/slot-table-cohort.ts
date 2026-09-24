@@ -66,15 +66,13 @@ export const SLOT_TABLE_ENGINE = {
   compoundSelectStatusFace: 'src/components/tables/compound/CompoundSelectStatusFace.tsx',
   compoundRowChrome: 'src/components/tables/compound/compound-row-chrome.ts',
   ledgerGridLeafRow: 'src/design-system/components/grid/LedgerGridLeafRow.tsx',
-  /** The action-bar height law and its two halves (operator 2026-09-15). */
+  /** The action-bar height law and its runtime half (operator 2026-09-15). */
   actionBarLaw: 'src/lib/tables/slot-table-action-bar-law.ts',
-  stockStripCell: 'src/components/inventory/location-stock-grid/stock-verb-row-parts.tsx',
   fixedBandHeight: 'src/hooks/useFixedBandHeight.ts',
   /** The identity column's one word, and the list of modules that may not re-word it. */
   idHeaderLaw: 'src/lib/tables/slot-table-id-header-law.ts',
   /** The identity purity law: ID column holds only machine handles, never staff names. */
   identityPurityLaw: 'src/lib/tables/slot-table-identity-purity-law.ts',
-  stockActionBar: 'src/components/inventory/location-stock-grid/StockActionBar.tsx',
   graphSymbols: [
     'CompoundItem',
     'CompoundState',
@@ -95,7 +93,6 @@ export const SLOT_TABLE_ENGINE = {
     'ordersCompoundColumnsFor',
     'COMPOUND_COLUMN_KEYS',
     'MorphingRowActionMenu',
-    'StockStripInput',
     'useFixedBandHeight',
     /**
      * The ID HEADER law (operator 2026-09-15). In the graph so `impact` names
@@ -113,7 +110,6 @@ export const SLOT_TABLE_ENGINE = {
     'src/components/tables/compound/CompoundCells.tsx',
     'src/components/tables/compound/CompoundRow.tsx',
     'src/components/tables/compound/StageStaffAssignPopover.tsx',
-    'src/components/inventory/location-stock-grid/StockActionBar.tsx',
     'src/design-system/components/AssigneeCombobox.tsx',
     'src/components/tables/compound/CompoundStaffRosterButton.tsx',
     'src/design-system/components/DateRangePickerField.tsx',
@@ -147,7 +143,7 @@ export const STAFF_COMBOBOX_HOSTS = [
  * Two shapes live here while the port runs. The older one is a data-only
  * `use{Family}TableLayout.ts` wrapper; the newer one is a `SlotTableFamily`
  * record in the field catalog, mounted straight from the family's spreadsheet
- * hook (`location-stock`, `sku-bins` — 2026-09-15). The record is the target
+ * hook (`sku-bins` — 2026-09-15, `sku-exceptions` — 2026-09-24). The record is the target
  * shape: a wrapper file per family was 47 modules of zero logic, and a family
  * record also feeds the column engine, which the wrapper never could.
  */
@@ -278,7 +274,7 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   },
   /**
    * No wrapper module: the family RECORD is the registration, mounted straight
-   * from the spreadsheet hook (`location-stock` / `sku-bins` precedent).
+   * from the spreadsheet hook (`sku-bins` / `sku-exceptions` precedent).
    */
   {
     tableId: 'report-tasks',
@@ -289,8 +285,8 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
     path: 'src/components/inventory/sku-bins-grid/useSkuBinsSpreadsheet.ts',
   },
   {
-    tableId: 'location-stock',
-    path: 'src/components/inventory/location-stock-grid/useLocationStockSpreadsheet.ts',
+    tableId: 'sku-exceptions',
+    path: 'src/components/inventory/sku-exceptions/useSkuExceptionsSpreadsheet.ts',
   },
   {
     tableId: 'sku-ledger',
@@ -340,9 +336,9 @@ export const SLOT_TABLE_GRID_ROW_ALLOWLIST = [
  * byte-identical. That is why a header-sort change used to land 35 times.
  *
  * The replacement is a {@link SlotTableFamily} record read by
- * `slot-table-columns.ts` — `location-stock` and `sku-bins` are the first two
- * and own no column module at all. Port a family by writing its record and
- * DELETING its line here.
+ * `slot-table-columns.ts` — `sku-bins` and `sku-exceptions` own no column
+ * module at all. Port a family by writing its record and DELETING its line
+ * here.
  *
  * The tripwire's contract: the set may never GROW. A new page that adds a
  * `*-grid-layout.ts` fails `eval:cohort slot-table` the day it lands, which
@@ -394,8 +390,8 @@ export const SLOT_TABLE_COLUMN_MODULE_DEBT = [
 
 /** Families that own NO column module — the engine paints them from a record. */
 export const SLOT_TABLE_COLUMN_ENGINE_FAMILIES = [
-  'location-stock',
   'sku-bins',
+  'sku-exceptions',
   'tasks',
   'daily',
 ] as const;
@@ -615,10 +611,8 @@ export const SLOT_TABLE_GRAPH_SYMBOL_FILES = {
   ordersCompoundColumnsFor: SLOT_TABLE_ENGINE.ordersLayout,
   COMPOUND_COLUMN_KEYS: SLOT_TABLE_ENGINE.compoundColumns,
   MorphingRowActionMenu: SLOT_TABLE_ENGINE.morphingRowActionMenu,
-  // The action-bar HEIGHT law (operator 2026-09-15). Both are in the graph so
-  // `impact` names the blast radius before somebody edits the band: the strip
-  // cell is shared by four rows, and the guard is the law's runtime half.
-  StockStripInput: SLOT_TABLE_ENGINE.stockStripCell,
+  // The action-bar HEIGHT law (operator 2026-09-15). In the graph so `impact`
+  // names the blast radius before somebody edits the law's runtime half.
   useFixedBandHeight: SLOT_TABLE_ENGINE.fixedBandHeight,
   SLOT_TABLE_ID_HEADER_WORD: SLOT_TABLE_ENGINE.idHeaderLaw,
   SLOT_TABLE_IDENTITY_PURITY_LAW: SLOT_TABLE_ENGINE.identityPurityLaw,

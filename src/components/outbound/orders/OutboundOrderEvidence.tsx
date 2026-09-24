@@ -23,6 +23,7 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
+import { OrderNumberIdentity, TrackingIdentity } from '@/components/ui/OrderIdentityChips';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import {
   daysLateOn,
@@ -62,7 +63,7 @@ import {
   LedgerPlatformPicker,
   LedgerSkuBinPicker,
   LedgerTrackingReplace,
-  LedgerValueActions,
+  LedgerOpenAction,
   LedgerQty,
   LedgerShipBy,
   LedgerStageAssign,
@@ -356,14 +357,18 @@ function OrderEvidence({
             />
           </span>
         </Fact>
+        {/* Identifiers wear the one record face (OrderIdentityChips): brand
+            dot + last-8 copy chip, left-aligned, the actions to the right. */}
         <Fact label="Order #">
-          <span className="flex min-w-0 flex-1 items-center">
-            <span className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 select-all truncate')}>{orderId || String(record.id)}</span>
-            <LedgerValueActions
-              value={orderId || String(record.id)}
-              href={marketplaceOrderUrl(orderId, view.platformValue)}
-              label="order number"
-            />
+          <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-order-chip">
+            <span className="flex min-w-0 flex-1 items-center">
+              <OrderNumberIdentity
+                orderId={orderId || String(record.id)}
+                platformLabel={channel.label || null}
+                openHref={marketplaceOrderUrl(orderId, view.platformValue)}
+              />
+            </span>
+            <LedgerOpenAction href={marketplaceOrderUrl(orderId, view.platformValue)} label="order number" />
           </span>
         </Fact>
         <Fact label="Listing">
@@ -371,22 +376,20 @@ function OrderEvidence({
             <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
           </span>
         </Fact>
-        {/* One line like Order #: the number and its actions. The carrier is
-            not printed — it only picks the tracking link. */}
         <Fact label="TRK#">
-          <span className="flex min-w-0 flex-1 items-center">
-            <span
-              className={cn(RECORD_ID_CLASS, 'min-w-0 flex-1 select-all truncate', view.tracking ? 'text-mode-ink' : 'text-mode-warn')}
-              title={view.tracking ?? undefined}
-            >
-              {view.tracking ?? 'NOT ATTACHED'}
+          <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-tracking-chip">
+            <span className="flex min-w-0 flex-1 items-center">
+              {view.tracking ? (
+                <TrackingIdentity tracking={view.tracking} carrierHint={view.carrier ?? null} />
+              ) : (
+                <span className={cn(RECORD_ID_CLASS, 'text-mode-warn')}>NOT ATTACHED</span>
+              )}
             </span>
             <LedgerTrackingReplace
               current={view.tracking ?? null}
               onCommit={(tracking) => commits.handleCommitTracking(record, tracking)}
             />
-            <LedgerValueActions
-              value={view.tracking ?? null}
+            <LedgerOpenAction
               href={
                 view.tracking
                   ? (view.carrier ? getTrackingUrlByCarrier(view.tracking, view.carrier) : null) ??
@@ -440,6 +443,7 @@ function OrderEvidence({
             selectedStaffId={staff.testerId}
             assignedName={staff.testerDisplay}
             onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.picked', id, name)}
+            showStamp
           />
         </Fact>
         <Fact label="Pack">
@@ -451,6 +455,7 @@ function OrderEvidence({
             selectedStaffId={staff.packerId}
             assignedName={staff.packerDisplay}
             onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.packed', id, name)}
+            showStamp
           />
         </Fact>
         {bench ? (

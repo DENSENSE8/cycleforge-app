@@ -103,7 +103,7 @@ export interface SlotTableIdentityBinding {
  * family is declared anywhere.
  */
 export interface SlotTableFamily {
-  /** The `PRODUCT_TABLES` / `tableLayouts` key ('orders', 'location-stock', …). */
+  /** The `PRODUCT_TABLES` / `tableLayouts` key ('orders', 'sku-exceptions', …). */
   tableId: string;
   catalog: FieldCatalog;
   productLayout: SlotLayout;

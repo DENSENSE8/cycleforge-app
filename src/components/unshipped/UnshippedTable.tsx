@@ -757,7 +757,6 @@ export function UnshippedTable({
 
   const handlePaperworkFactsChanged = useCallback(() => {
     invalidateUnshippedCounts(queryClient);
-    void queryClient.invalidateQueries({ queryKey: ['paperwork-manuals'] });
   }, [queryClient]);
 
   // Copy acts on the SELECTION, and the shape it copies is the shipped

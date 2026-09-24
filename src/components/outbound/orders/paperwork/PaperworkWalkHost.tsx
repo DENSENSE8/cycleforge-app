@@ -6,9 +6,10 @@
  * Compare across rows in the ledger, then walk one record. This host is the
  * RECORD half: it covers the desk stage edge to edge (`absolute inset-0` over
  * the still-mounted ledger — Center Lock Q5, never a body swap and never a
- * split under the table) in the industrial record face the ledger wears. The
- * doors are the Labels bar segment (`OrdersDeskLabelsAction`) and the evidence
- * column's Labels verb.
+ * split under the table). The ledger is the industrial floor face; the walk is
+ * understand-then-decide desk work, so it wears the TRIAGE mode (slate panels,
+ * grouped cards). The doors are the Labels bar segment
+ * (`OrdersDeskLabelsAction`) and the evidence column's Labels verb.
  *
  * While it is up the walk owns the `record` cursor, so the desk's ambient
  * keyboard (J / K / ↑ / ↓ step, Esc closes) walks these orders instead of the
@@ -19,7 +20,7 @@
 import { useCallback, useMemo } from 'react';
 import { PaperworkRecentRail } from './PaperworkRecentRail';
 import { PaperworkEditor } from './PaperworkEditor';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { singleBand } from '@/lib/group-rows';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -69,16 +70,16 @@ export function PaperworkWalkHost({
 
   if (!selected) {
     return (
-      <div className={cn(WALK_PLANE_CLASS, 'items-center justify-center')} data-testid="paperwork-walk-empty">
-        <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>No orders to walk.</p>
-      </div>
+      <ModeRegion mode="triage" className={cn(WALK_PLANE_CLASS, 'items-center justify-center')} data-testid="paperwork-walk-empty">
+        <p className="text-role-data text-text-muted">No orders to walk.</p>
+      </ModeRegion>
     );
   }
 
   return (
-    <div className={WALK_PLANE_CLASS} data-testid="paperwork-walk">
+    <ModeRegion mode="triage" className={WALK_PLANE_CLASS} data-testid="paperwork-walk">
       <aside
-        className="flex w-[22rem] shrink-0 flex-col border-r border-mode-ink bg-mode-bar"
+        className="flex w-[22rem] shrink-0 flex-col border-r border-border-soft bg-mode-bar"
         aria-label="Labels queue"
       >
         <PaperworkRecentRail
@@ -98,6 +99,6 @@ export function PaperworkWalkHost({
         onExit={onExit}
         onFactsChanged={onFactsChanged}
       />
-    </div>
+    </ModeRegion>
   );
 }

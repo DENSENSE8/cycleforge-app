@@ -90,5 +90,5 @@ export const PRODUCT_TABLES: readonly ProductTable[] = [
   { tableId: 'sku-ledger', label: 'SKU · Stock ledger' },
   { tableId: 'sku-allocations', label: 'SKU · Open allocations' },
   { tableId: 'search-hits', label: 'Search · Results' },
-  { tableId: 'location-stock', label: 'Inventory · Stock by location' },
+  { tableId: 'sku-exceptions', label: 'Inventory · SKU exceptions' },
 ] as const;

@@ -2,6 +2,7 @@ import {
   publishPackerPhotoChanged,
   publishReceivingPhotoChanged,
   publishRepairChanged,
+  publishSkuExceptionChanged,
   publishUnitPhotoChanged,
 } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -75,8 +76,29 @@ export async function publishEntityMediaInsert(input: {
     // /m/rs/{id} page and every repair desk surface already revalidate on
     // repair.changed, so the Photos screen paints live.
     await publishRepairChanged({ organizationId: orgId, repairIds: [entityId], source });
+  } else if (entityType === 'SKU_STOCK') {
+    await publishSkuStockMediaChanged(organizationId, entityId, source);
   }
   return { receivingId: null };
+}
+
+/**
+ * A photo added to / removed from a `sku_stock` row. Only placeholder
+ * (SKU exception) rows have a live surface, so real SKUs publish nothing.
+ */
+export async function publishSkuStockMediaChanged(
+  organizationId: string,
+  stockId: number,
+  source: string,
+): Promise<void> {
+  const r = await tenantQuery<{ sku: string }>(
+    organizationId,
+    `SELECT sku FROM sku_stock WHERE id = $1 AND organization_id = $2 AND is_provisional = true LIMIT 1`,
+    [stockId, organizationId],
+  );
+  const sku = r.rows[0]?.sku;
+  if (!sku) return;
+  await publishSkuExceptionChanged({ organizationId, sku, action: 'photo', source });
 }
 
 async function resolveReceivingId(lineId: number, organizationId: string): Promise<number | null> {

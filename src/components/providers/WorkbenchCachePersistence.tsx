@@ -61,7 +61,9 @@ function createSessionPersister(storageKey: string, holding: () => boolean) {
     cancel();
     if (!client) return;
     try {
-      sessionStorage.setItem(storageKey, serializeWorkbenchCache(client, storageKey));
+      // No workbench reads cached: no entry, rather than an empty one.
+      if (client.clientState.queries.length === 0) sessionStorage.removeItem(storageKey);
+      else sessionStorage.setItem(storageKey, serializeWorkbenchCache(client, storageKey));
     } catch {
       try {
         sessionStorage.removeItem(storageKey);

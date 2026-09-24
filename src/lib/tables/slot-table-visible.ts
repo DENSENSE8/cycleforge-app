@@ -6,8 +6,8 @@
  * publishes the ids on screen, and Select all / Deselect all read them.
  *
  * An id is whatever the surface's `getRowId` returns. Most families key on a
- * numeric PK; a JUNCTION family cannot — Inventory › Stock keys on
- * `(location, sku, source)` (`locationStockRowId`), and forcing that through
+ * numeric PK; a JUNCTION family cannot — the retired Inventory › Stock desk
+ * keyed on `(location, sku, source)`, and forcing that through
  * `Number()` yielded `NaN`, which this registry then dropped. The scope's
  * selection total came out 0 while rows were plainly on screen, so the header
  * checkbox read "all selected" at one tick. Hence {@link SlotTableRowId}: the

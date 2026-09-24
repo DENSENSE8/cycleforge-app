@@ -15,7 +15,7 @@ import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/side
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rail-row-actions';
 import { buildRailRowActions } from '@/lib/receiving/rail/row-actions';
-import { shareRailLink } from '@/components/sidebar/rail-shell/rail-row-copy';
+import { shareRecordLink } from '@/lib/share-link';
 import { receivingShareUrl } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   RAIL_ENTRY_RESTORED_EVENT,
@@ -220,7 +220,7 @@ const readOnlyReceivingRowActions: RailRowActionsResolver<ReceivingLineRow> = (r
   return buildRailRowActions('receiving', {
     select: null,
     share: hasCarton
-      ? () => void shareRailLink(receivingShareUrl(cartonId, row.id), rowShareTitle(row))
+      ? () => void shareRecordLink(receivingShareUrl(cartonId, row.id), rowShareTitle(row))
       : null,
     hide: null,
     remove: null,

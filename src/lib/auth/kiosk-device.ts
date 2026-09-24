@@ -94,13 +94,17 @@ export async function loadKioskDeviceByToken(
       LIMIT 1`,
     [sha256(token)],
   );
-  const row = r.rows[0] as { id: number; organization_id: string; label: string } | undefined;
+  // `kiosk_devices.id` is BIGSERIAL, which node-postgres returns as a STRING.
+  // Handed out as-is, every `deviceId === otherId` comparison downstream was
+  // string-vs-number and false (a tablet read its own cart as "held elsewhere").
+  const row = r.rows[0] as { id: number | string; organization_id: string; label: string } | undefined;
   if (!row) return null;
+  const deviceId = Number(row.id);
   // Best-effort activity stamp; a failure here must never fail the request.
   void pool
-    .query(`UPDATE kiosk_devices SET last_seen_at = now() WHERE id = $1`, [row.id])
+    .query(`UPDATE kiosk_devices SET last_seen_at = now() WHERE id = $1`, [deviceId])
     .catch(() => { /* swallow — activity stamp is advisory */ });
-  return { deviceId: row.id, organizationId: row.organization_id, label: row.label };
+  return { deviceId, organizationId: row.organization_id, label: row.label };
 }
 
 /** Read the raw device token off the request cookie (the token IS the capability; we hash to verify). */
@@ -186,8 +190,8 @@ export async function createKioskEnrollment(
        RETURNING id, enroll_code_expires_at`,
       [orgId, opts.label, sha256(code), String(ttl), opts.enrolledByStaffId],
     );
-    const row = r.rows[0] as { id: number; enroll_code_expires_at: Date };
-    return { deviceId: row.id, code, expiresAt: row.enroll_code_expires_at };
+    const row = r.rows[0] as { id: number | string; enroll_code_expires_at: Date };
+    return { deviceId: Number(row.id), code, expiresAt: row.enroll_code_expires_at };
   });
 }
 
@@ -233,9 +237,9 @@ export async function pairKioskDevice(
       RETURNING id, organization_id, label`,
     [sha256(code), sha256(token), expectedOrg],
   );
-  const row = r.rows[0] as { id: number; organization_id: string; label: string } | undefined;
+  const row = r.rows[0] as { id: number | string; organization_id: string; label: string } | undefined;
   if (!row) return null;
-  return { deviceId: row.id, organizationId: row.organization_id, label: row.label, token };
+  return { deviceId: Number(row.id), organizationId: row.organization_id, label: row.label, token };
 }
 
 /** Prefix every dogfood auto-bind row carries, so Settings → Devices groups them. */

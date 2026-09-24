@@ -95,8 +95,9 @@ export const SLOT_TABLE_ID_HEADER_POSITION =
  * Modules that materialize a `fulfillment` track and therefore MUST NOT set
  * its `label` / `gridLabel`. Shrink-only: an entry leaves when the family
  * ports onto a `SlotTableFamily` record (`slot-table-family.ts`) and stops
- * owning a column module at all — `location-stock` and `sku-bins` already did,
- * which is why 24 measured 22 by the time this law was written.
+ * owning a column module at all — `sku-bins` and the since-retired
+ * `location-stock` already had, which is why 24 measured 22 by the time this
+ * law was written.
  *
  * Never append. A new column module fails the cohort tripwire first
  * (`SLOT_TABLE_COLUMN_MODULE_DEBT`), and this list second.

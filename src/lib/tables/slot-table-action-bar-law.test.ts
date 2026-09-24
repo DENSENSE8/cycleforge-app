@@ -1,8 +1,8 @@
 /**
  * THE GATE for "the action bar never changes height".
  *
- * Every assertion here is a cause that actually shipped on the Stock strip and
- * moved the toolbar under the operator's cursor (operator 2026-09-15). The
+ * Every assertion here is a cause that actually shipped on the (retired) Stock
+ * strip and moved the toolbar under the operator's cursor (operator 2026-09-15). The
  * runtime half of the law is `useFixedBandHeight`; this half refuses the three
  * known causes at build time, in a test that reads the real source files rather
  * than a fixture — a law nobody can violate by editing a file the gate does
@@ -106,7 +106,7 @@ describe('slot-table action bar — the band declares its own height', () => {
    */
   it('mounts no conditional input — a sometimes-field is disabled, never unmounted', () => {
     const conditionalControl =
-      /[?&|]{1,2}\s*(?:\n\s*)?<(?:StockStripInput|SearchableSelectField|ReasonCodePicker|input|select|textarea)\b/;
+      /[?&|]{1,2}\s*(?:\n\s*)?<(?:SearchableSelectField|ReasonCodePicker|input|select|textarea)\b/;
     for (const file of SLOT_TABLE_ACTION_BAR_FILES) {
       const body = code(file);
       assert.doesNotMatch(
@@ -127,19 +127,5 @@ describe('slot-table action bar — the band declares its own height', () => {
     // And it sizes on the h-* scale now, not on padding.
     assert.match(picker, /\bh-8\b/);
     assert.ok(!picker.includes('py-1.5'), 'reason picker still pads to size');
-  });
-
-  it('every strip text cell is the SHARED one — three copies drift on height', () => {
-    // `StockStripInput` is the only text cell in the band; the rows that used
-    // to hand-roll their own are what let the qty field be h-11 in one place
-    // and h-8 in another.
-    for (const file of SLOT_TABLE_ACTION_BAR_FILES) {
-      const body = code(file);
-      if (!/<input\b/.test(body)) continue;
-      assert.ok(
-        file.endsWith('stock-verb-row-parts.tsx'),
-        `${file} hand-rolls an <input> — use StockStripInput.`,
-      );
-    }
   });
 });

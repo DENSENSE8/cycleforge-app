@@ -55,16 +55,12 @@ for (const file of SLOT_TABLE_ACTION_BAR_FILES) {
   }
 
   const conditionalControl =
-    /[?&|]{1,2}\s*(?:\n\s*)?<(?:StockStripInput|SearchableSelectField|ReasonCodePicker|input|select|textarea)\b/;
+    /[?&|]{1,2}\s*(?:\n\s*)?<(?:SearchableSelectField|ReasonCodePicker|input|select|textarea)\b/;
   if (conditionalControl.test(body)) {
     violations.push(
       `${file} renders a control conditionally — mount it and pass \`disabled\` instead. ` +
         'A control that appears on a press changes the band height under the cursor.',
     );
-  }
-
-  if (/<input\b/.test(body) && !file.endsWith('stock-verb-row-parts.tsx')) {
-    violations.push(`${file} hand-rolls an <input> — use StockStripInput.`);
   }
 }
 

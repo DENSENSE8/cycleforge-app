@@ -86,7 +86,7 @@ import { REPORT_STAFF_DAY_TABLE_BINDING } from '@/components/reports/report-staf
 import { REPORT_PACKER_DAY_TABLE_BINDING } from '@/components/reports/report-packer-day-grid/report-packer-day-table-definition';
 import { REPORT_TASKS_TABLE_BINDING } from '@/components/reports/report-tasks-grid/report-tasks-table-definition';
 import { SKU_BINS_TABLE_BINDING } from '@/components/inventory/sku-bins-grid/sku-bins-table-definition';
-import { LOCATION_STOCK_TABLE_BINDING } from '@/components/inventory/location-stock-grid/location-stock-table-definition';
+import { SKU_EXCEPTIONS_TABLE_BINDING } from '@/components/inventory/sku-exceptions/sku-exceptions-table-definition';
 import { SKU_LEDGER_TABLE_BINDING } from '@/components/inventory/sku-ledger-grid/sku-ledger-table-definition';
 import { SKU_ALLOCATIONS_TABLE_BINDING } from '@/components/inventory/sku-allocations-grid/sku-allocations-table-definition';
 import { SEARCH_HITS_TABLE_BINDING } from '@/components/search/hits-grid/search-hits-table-definition';
@@ -241,10 +241,8 @@ export const REGISTERED_BINDINGS = [
   // no verbs, and the record plane is the `?sel=` handoff a FIND surface
   // exists for.
   SEARCH_HITS_TABLE_BINDING,
-  // Inventory › Stock — the warehouse-wide (location, sku) pair list. Read-only
-  // and recordPlane 'none': `bin_contents` is written by counts and moves at
-  // the stations that scan them, and no route opens a PAIR. Its own tableId
-  // rather than a third mount of `bins`/`sku-bins`, which row a location and
-  // one SKU respectively.
-  LOCATION_STOCK_TABLE_BINDING,
+  // Inventory › SKU Exceptions — floor-minted placeholder SKUs (`TMP-…`).
+  // recordPlane 'navigate': a row writes `?sku=` and the page swaps to that
+  // record's editor, the same URL staff share.
+  SKU_EXCEPTIONS_TABLE_BINDING,
 ] as const;

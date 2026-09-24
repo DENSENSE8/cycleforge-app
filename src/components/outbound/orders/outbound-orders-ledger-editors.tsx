@@ -11,7 +11,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { usePlatformAccountCatalog, usePlatformCatalog } from '@/hooks/useCatalog';
-import { useLocationPickerOptions } from '@/components/inventory/location-stock-grid/useLocationPickerOptions';
+import { useLocationPickerOptions } from '@/hooks/useLocationPickerOptions';
 import {
   Popover,
   PopoverContent,
@@ -19,7 +19,6 @@ import {
 } from '@/design-system/primitives/radix-popover';
 import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { CopyActionIcon } from '@/design-system/components/CopyActionIcon';
 import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkActionIcon';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity';
@@ -30,7 +29,7 @@ import {
   type CompoundSlotValue,
   type CompoundStageStepFacts,
 } from '@/components/tables/compound/compound-row-model';
-import { ExternalLink, FileText } from '@/components/Icons';
+import { ExternalLink, FileText, Pencil } from '@/components/Icons';
 import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import {
   conditionGradeTableLabel,
@@ -174,6 +173,7 @@ export function LedgerStageAssign({
   selectedStaffId,
   assignedName,
   onCommit,
+  showStamp = false,
 }: {
   verb: string;
   doneVerb: string;
@@ -182,13 +182,20 @@ export function LedgerStageAssign({
   selectedStaffId: number | null;
   /** Assignee face (`---` = nobody) — shown until the step is stamped. */
   assignedName: string;
-  onCommit: (staffId: number | null, staffName: string | null) => void;
+  /** Absent ⇒ read-only (the paperwork walk shows who and when, it does not assign). */
+  onCommit?: (staffId: number | null, staffName: string | null) => void;
+  /**
+   * Paint the step's date + time under the name. Detail columns (evidence,
+   * paperwork) have the width; the ledger's 7rem cell keeps it on hover.
+   */
+  showStamp?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const assign = { selectedStaffId, label: verb, role, onCommit };
   const done = Boolean(facts?.at);
-  const assignable = canAssignCompoundStage(assign, facts?.at);
+  const assignable = onCommit
+    ? canAssignCompoundStage({ selectedStaffId, label: verb, role, onCommit }, facts?.at)
+    : false;
   const actorId = facts?.whoStaffId ?? selectedStaffId;
   const actorName =
     (facts?.who ?? '').trim() ||
@@ -197,6 +204,16 @@ export function LedgerStageAssign({
   const hasActor = Boolean(actorId || actorName);
   const tip = formatCompoundStageStepLine(facts);
 
+  const who = (
+    <>
+      <span className={cn(RECORD_LABEL_CLASS, done ? 'text-mode-ink' : 'text-mode-muted')}>
+        {done ? doneVerb : verb}
+      </span>
+      <span className="min-w-0 truncate text-role-caption text-mode-muted">
+        {actorName ?? (hasActor ? '' : '—')}
+      </span>
+    </>
+  );
   const face = (
     <>
       {hasActor ? (
@@ -204,12 +221,19 @@ export function LedgerStageAssign({
       ) : (
         <span aria-hidden className={cn('h-5 w-5 shrink-0 border border-dashed border-mode-edge', cornerClass('flush'))} />
       )}
-      <span className={cn(RECORD_LABEL_CLASS, done ? 'text-mode-ink' : 'text-mode-muted')}>
-        {done ? doneVerb : verb}
-      </span>
-      <span className="min-w-0 truncate text-role-caption text-mode-muted">
-        {actorName ?? (hasActor ? '' : '—')}
-      </span>
+      {showStamp ? (
+        <span className="flex min-w-0 flex-col py-1">
+          <span className="flex min-w-0 items-center gap-1.5">{who}</span>
+          <span
+            data-testid={`ledger-stage-stamp-${role}`}
+            className={cn('font-mono text-role-caption tabular-nums', done ? 'text-mode-ink' : 'text-mode-muted')}
+          >
+            {facts?.at ?? 'Not yet'}
+          </span>
+        </span>
+      ) : (
+        who
+      )}
     </>
   );
 
@@ -240,14 +264,14 @@ export function LedgerStageAssign({
 
   return (
     <>
-      {tip && !assignable ? (
+      {tip && !assignable && !showStamp ? (
         <HoverTooltip label={tip} asChild>
           {body}
         </HoverTooltip>
       ) : (
         body
       )}
-      {assignable ? (
+      {assignable && onCommit ? (
         <StageStaffAssignPopover
           open={open}
           onClose={() => setOpen(false)}
@@ -558,37 +582,21 @@ export function LedgerSkuBinPicker({
 }
 
 /**
- * A copy + open pair for one identifier in the evidence column (order #,
- * tracking #). Square flush cells, the DS action icons, 1px edge between.
+ * The open cell beside an identifier chip in the evidence column (order #,
+ * tracking #). The chip copies; this opens. Square flush cell, 1px edge.
  */
-export function LedgerValueActions({
-  value,
-  href,
-  label,
-}: {
-  value: string | null;
-  href: string | null;
-  label: string;
-}) {
+export function LedgerOpenAction({ href, label }: { href: string | null; label: string }) {
   return (
-    <span className="inline-flex shrink-0 items-stretch border-l border-mode-edge">
-      <CopyActionIcon
-        value={value ?? ''}
-        ariaLabel={`Copy ${label}`}
-        title={`Copy ${label}`}
-        className={cn('inline-flex w-8 items-center justify-center hover:bg-mode-hover', LEDGER_HIT_CLASS, focusRing('cell'))}
-      />
-      <ExternalLinkActionIcon
-        href={href}
-        ariaLabel={`Open ${label}`}
-        title={`Open ${label}`}
-        className={cn(
-          'inline-flex w-8 items-center justify-center border-l border-mode-edge hover:bg-mode-hover',
-          LEDGER_HIT_CLASS,
-          focusRing('cell'),
-        )}
-      />
-    </span>
+    <ExternalLinkActionIcon
+      href={href}
+      ariaLabel={`Open ${label}`}
+      title={`Open ${label}`}
+      className={cn(
+        'inline-flex w-8 shrink-0 items-center justify-center border-l border-mode-edge hover:bg-mode-hover',
+        LEDGER_HIT_CLASS,
+        focusRing('cell'),
+      )}
+    />
   );
 }
 
@@ -619,14 +627,15 @@ export function LedgerTrackingReplace({
           type="button"
           data-testid="evidence-tracking-replace"
           onClick={stop}
+          aria-label={current ? 'Replace tracking number' : 'Add tracking number'}
+          title={current ? 'Replace tracking number' : 'Add tracking number'}
           className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center border-l border-mode-edge px-2 text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
+            'ds-raw-button inline-flex w-8 shrink-0 items-center justify-center border-l border-mode-edge text-mode-ink hover:bg-mode-hover',
             LEDGER_HIT_CLASS,
-            RECORD_LABEL_CLASS,
             focusRing('cell'),
           )}
         >
-          {current ? 'Replace' : 'Add'}
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={0} className="w-72 rounded-none p-2" onClick={stop}>

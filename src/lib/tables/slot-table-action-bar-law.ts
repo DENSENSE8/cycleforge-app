@@ -91,39 +91,32 @@ export const SLOT_TABLE_ACTION_BAR_CONTROL_CLASS = 'h-8' as const;
  * Source files that render INTO the action-bar band and are therefore bound by
  * this law. Grows when a family gains a strip; never shrinks silently — a file
  * leaving this list means that surface stopped having an action bar.
+ *
+ * Empty since 2026-09-24: the Stock strip (`location-stock-grid/*`) was the
+ * last band, and it retired with `/inventory/stock`. The law stays for the
+ * next strip.
  */
-export const SLOT_TABLE_ACTION_BAR_FILES = [
-  'src/components/inventory/location-stock-grid/StockActionBar.tsx',
-  'src/components/inventory/location-stock-grid/StockVerbRow.tsx',
-  'src/components/inventory/location-stock-grid/StockAdjustRow.tsx',
-  'src/components/inventory/location-stock-grid/StockMoveRow.tsx',
-  'src/components/inventory/location-stock-grid/StockReplaceRow.tsx',
-  'src/components/inventory/location-stock-grid/StockPairComposer.tsx',
-] as const;
+export const SLOT_TABLE_ACTION_BAR_FILES: readonly string[] = [];
 
 /**
  * The band HOSTS — the files that must carry
  * {@link SLOT_TABLE_ACTION_BAR_BAND_CLASS} and mount the runtime guard.
  *
- * A LIST since 2026-09-22. It was a single const while Stock was the only
- * strip; the task desk briefly added a second, and when Daily consolidated
- * into one agenda whose gutter is a TICK rather than a multi-select, that
- * strip was deleted with the desk it belonged to. The list shape stays,
- * because the docblock above has always promised it would grow again and a
- * second host hard-coded beside the first is how the runtime half of this law
- * quietly stops covering half the strips it governs.
+ * A LIST since 2026-09-22, so a second strip registers beside the first
+ * instead of hard-coding a host the runtime half then quietly stops covering.
+ * Empty with {@link SLOT_TABLE_ACTION_BAR_FILES}.
  */
-export const SLOT_TABLE_ACTION_BAR_HOSTS = [
-  'src/components/inventory/location-stock-grid/StockActionBar.tsx',
-] as const;
+export const SLOT_TABLE_ACTION_BAR_HOSTS: readonly string[] = [];
 
 /**
  * Primitives whose height is fixed ABOVE the control scale, so they cannot
- * appear in the band. `TextField` is the whole reason this list exists; the
- * band's text cell is `StockStripInput`.
+ * appear in the band. `TextField` is the whole reason this list exists.
  */
 export const SLOT_TABLE_ACTION_BAR_BANNED_IMPORTS = [
-  { symbol: 'TextField', reason: 'h-11 + a required floating label. Use StockStripInput.' },
+  {
+    symbol: 'TextField',
+    reason: 'h-11 + a required floating label. Use an h-8 input sized by SLOT_TABLE_ACTION_BAR_CONTROL_CLASS.',
+  },
 ] as const;
 
 /**
