@@ -303,6 +303,12 @@ export interface ShipStationV2Client {
     opts?: LabelPurchaseOptions,
   ): Promise<LabelPurchaseResult>;
   voidLabel(labelId: string): Promise<{ approved: boolean; message?: string | null }>;
+  /**
+   * Fetch a purchased label's bytes. `label_download.href` answers 401 without
+   * the account's `API-Key`, so the key rides along — but only to a
+   * ShipStation / ShipEngine host, never to an arbitrary URL.
+   */
+  downloadLabel(url: string): Promise<{ buffer: Buffer; contentType: string }>;
 }
 
 export function createShipStationV2Client(
@@ -416,14 +422,38 @@ export function createShipStationV2Client(
     return { approved: Boolean(json?.approved), message: json?.message ?? null };
   };
 
-  return { listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel };
+  const downloadLabel = (url: string) =>
+    downloadLabelBytes(url, isShipStationHost(url, baseUrl) ? apiKey : undefined);
+
+  return { listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel };
+}
+
+/** True when `url` is served by ShipStation / ShipEngine (or the configured v2 base). */
+export function isShipStationHost(url: string, baseUrl: string = DEFAULT_BASE_URL): boolean {
+  let host: string;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    host = parsed.hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  let baseHost: string | null = null;
+  try {
+    baseHost = new URL(baseUrl).hostname.toLowerCase();
+  } catch {
+    baseHost = null;
+  }
+  if (baseHost && host === baseHost) return true;
+  return ['shipstation.com', 'shipengine.com'].some((d) => host === d || host.endsWith(`.${d}`));
 }
 
 /**
- * Download a purchased label's bytes. v2 label URLs are public (a unique token
- * is embedded in the path) so no API key is required — but we pass it anyway in
- * case the download host ever gates it. Returns raw bytes + content type for the
- * document store (storeOutboundDocumentFromBytes).
+ * Download a purchased label's bytes. The pdf/png/zpl URLs carry a token, but
+ * the generic `href` (`/v2/downloads/…`) is API-key gated and answers 401
+ * without it — call it through {@link ShipStationV2Client.downloadLabel}, which
+ * supplies the key for ShipStation hosts. Returns raw bytes + content type for
+ * the document store (storeOutboundDocumentFromBytes).
  */
 export async function downloadLabelBytes(
   url: string,

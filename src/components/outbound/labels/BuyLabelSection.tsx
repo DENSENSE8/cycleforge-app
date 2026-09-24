@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useMutation } from '@tanstack/react-query';
-import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2 } from '@/components/Icons';
+import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2, Printer } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -11,6 +11,12 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
+import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
+import type { OutboundDocument } from '@/lib/documents/types';
+import {
+  printDocument,
+  useOrderDocuments,
+} from '@/components/outbound/orders/paperwork/order-paperwork-client';
 
 interface RatesResponse {
   ok: boolean;
@@ -90,6 +96,21 @@ interface BuyLabelSectionProps {
   onPurchased?: (info: BuyResponse) => void;
 }
 
+/** The document this purchase stored, else the newest of that type on the order. */
+function pickDocument(
+  documents: readonly OutboundDocument[],
+  type: OutboundDocument['documentType'],
+  preferId: number | null,
+): OutboundDocument | null {
+  if (preferId != null) {
+    const exact = documents.find((d) => d.id === preferId);
+    if (exact) return exact;
+  }
+  const ofType = documents.filter((d) => d.documentType === type);
+  if (ofType.length === 0) return null;
+  return ofType.reduce((a, b) => (Date.parse(b.createdAt) > Date.parse(a.createdAt) ? b : a));
+}
+
 /**
  * Buy Label — the ShipStation rate-shop → purchase → print flow for the Outbound
  * · Labels order panel. Fetches live rates on demand, lets the operator pick one
@@ -115,8 +136,15 @@ export function BuyLabelSection({
   const [bought, setBought] = useState<BuyResponse | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [voidOpen, setVoidOpen] = useState(false);
-  // One idempotency key per rate-shop session — a retried purchase is a no-op.
+  // One idempotency key per INTENDED purchase: it survives re-rating, a
+  // network retry and a page-level remount of the confirm step, so a retry can
+  // only ever replay the purchase the server already recorded. A fresh key is
+  // minted only after a confirmed void (the next buy is a new purchase).
   const clientEventIdRef = useRef<string>('');
+  const purchaseKey = () => {
+    if (!clientEventIdRef.current) clientEventIdRef.current = safeRandomUUID();
+    return clientEventIdRef.current;
+  };
 
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
   // one pair, then spread into the single props object this call site passes.
@@ -146,15 +174,14 @@ export function BuyLabelSection({
     onSuccess: (data) => {
       setSelectedRateId(data.rates?.[0]?.rateId ?? null);
       setConfirming(false);
-      clientEventIdRef.current = safeRandomUUID();
     },
   });
 
   const buyMutation = useMutation<BuyResponse, Error, ShippingRateOption>({
     mutationFn: async (rate) => {
       // A held order (buyer note) opens the note before the irreversible
-      // purchase; the clientEventId is reused on retry (the route dedupes on it
-      // only after a label was actually bought).
+      // purchase; the clientEventId is reused on retry — the route claims it
+      // before charging, so a retry replays instead of buying again.
       const res = await sendWithBuyerNoteAck(() =>
         fetch('/api/shipping/order-labels/purchase', {
           method: 'POST',
@@ -162,7 +189,7 @@ export function BuyLabelSection({
           body: JSON.stringify({
             orderId,
             rateId: rate.rateId,
-            clientEventId: clientEventIdRef.current,
+            clientEventId: purchaseKey(),
             notifyCustomer,
           }),
         }),
@@ -198,6 +225,7 @@ export function BuyLabelSection({
       return data;
     },
     onSuccess: () => {
+      clientEventIdRef.current = '';
       setBought(null);
       setVoidOpen(false);
       setVoidReason('');
@@ -206,6 +234,15 @@ export function BuyLabelSection({
       onChange();
     },
   });
+
+  // The bought label + generated slip land in the order's documents; print
+  // them from here instead of sending the operator to another panel.
+  const documentsQuery = useOrderDocuments(bought ? orderId : 0);
+  const orderDocuments = documentsQuery.data?.documents ?? [];
+  const labelDoc = pickDocument(orderDocuments, 'shipping_label', bought?.labelDocumentId ?? null);
+  const slipDoc = pickDocument(orderDocuments, 'packing_slip', null);
+  const labelSrc = outboundDocumentContentSrc(labelDoc);
+  const slipSrc = outboundDocumentContentSrc(slipDoc);
 
   const rates = ratesMutation.data?.rates ?? [];
   const invalidRates = ratesMutation.data?.invalidRates ?? [];
@@ -262,9 +299,37 @@ export function BuyLabelSection({
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{bought.warning}</span>
               </div>
-            ) : (
-              <p className="text-role-eyebrow text-text-faint">Label + packing slip are ready — print them from the main panel.</p>
-            )}
+            ) : null}
+
+            <div className="flex items-center gap-1.5" data-testid="buy-label-print-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+                icon={<Printer className="h-3.5 w-3.5" />}
+                disabled={!labelSrc}
+                data-testid="buy-label-print-label"
+                onClick={() => labelSrc && printDocument(labelSrc)}
+              >
+                Print label
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+                icon={<Printer className="h-3.5 w-3.5" />}
+                disabled={!slipSrc}
+                data-testid="buy-label-print-slip"
+                onClick={() => slipSrc && printDocument(slipSrc)}
+              >
+                Print slip
+              </Button>
+            </div>
+            {!labelSrc && documentsQuery.isFetching ? (
+              <p className="text-role-eyebrow text-text-faint">Loading the stored label…</p>
+            ) : null}
 
             {/* Void / refund */}
             {voidOpen ? (

@@ -19,8 +19,12 @@ import {
   getShipStationV2,
   ShipStationNotConnectedError,
 } from '@/lib/shipping/shipstation/config';
-import { downloadLabelBytes, ShipStationApiError, type LabelPurchaseOptions } from '@/lib/shipping/shipstation/client';
-import type { LabelPurchaseResult } from '@/lib/shipping/shipstation/types';
+import { ShipStationApiError, type LabelPurchaseOptions, type ShipStationV2Client } from '@/lib/shipping/shipstation/client';
+import {
+  attachLabelPurchaseFacts,
+  purchaseLabelOnce,
+  type LabelPurchaseRecord,
+} from '@/lib/shipping/label-purchase-ledger';
 import { resolveOrderShipTo, snapshotShipToOnShipment } from '@/lib/shipping/shipstation/order-ship-to';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
@@ -39,11 +43,15 @@ export const dynamic = 'force-dynamic';
  *   4. audit (LABEL_PURCHASED, + LABEL_PRINTED on first label, + TRACKING_ADDED)
  *   5. fire-and-forget realtime + customer ship-notification email
  *
- * Idempotency: `clientEventId` is required and stored as the label document's
- * sourceHash — a retry that already stored a label short-circuits instead of
- * buying a second one. NOTE: ShipStation's create-label is not itself
- * idempotent, so the UI must also disable double-submit; the residual window is
- * a purchase that succeeded but died before the document write.
+ * Idempotency: `clientEventId` is required. It is CLAIMED in
+ * `shipping_label_purchases` before the charge and the purchase is recorded the
+ * moment ShipStation answers — before the label bytes are downloaded or stored
+ * (`purchaseLabelOnce`, src/lib/shipping/label-purchase-ledger.ts). A retry
+ * under the same key replays the recorded purchase and backfills whatever the
+ * first attempt did not finish (tracking link, label document, slip); a key
+ * whose first attempt never recorded an outcome answers 409 instead of buying
+ * again. The label document still carries the key as its sourceHash, so keys
+ * minted before the ledger existed keep short-circuiting on the document.
  *
  * Body: { orderId, rateId, clientEventId, labelFormat?: 'pdf'|'png'|'zpl', notifyCustomer?: boolean }
  */
@@ -104,7 +112,32 @@ async function resolveCustomerEmail(orgId: OrgId, order: OrderRow): Promise<stri
   return null;
 }
 
-function buildShipEmail(to: string, orderRef: string, label: LabelPurchaseResult) {
+/** What the post-charge steps need — from a fresh label or a recorded purchase. */
+interface PurchasedLabel {
+  purchaseId: number;
+  labelId: string | null;
+  trackingNumber: string;
+  carrierCode: string | null;
+  serviceCode: string | null;
+  cost: number | null;
+  currency: string | null;
+  labelUrl: string | null;
+}
+
+function fromRecord(record: LabelPurchaseRecord): PurchasedLabel {
+  return {
+    purchaseId: record.id,
+    labelId: record.labelId,
+    trackingNumber: record.trackingNumber ?? '',
+    carrierCode: record.carrierCode,
+    serviceCode: record.serviceCode,
+    cost: record.cost,
+    currency: record.currency,
+    labelUrl: record.labelUrl,
+  };
+}
+
+function buildShipEmail(to: string, orderRef: string, label: PurchasedLabel) {
   const carrier = label.carrierCode ? label.carrierCode.toUpperCase() : 'the carrier';
   const text = [
     `Good news — your order ${orderRef} is on its way.`,
@@ -120,53 +153,30 @@ function buildShipEmail(to: string, orderRef: string, label: LabelPurchaseResult
   return { to, subject: `Your order ${orderRef} has shipped`, text, html };
 }
 
-export const POST = withAuth(async (req: NextRequest, ctx) => {
-  const orgId = ctx.organizationId as OrgId;
-  try {
-    const body = await req.json().catch(() => null);
-    const orderId = Number(body?.orderId);
-    const rateId = String(body?.rateId || '').trim();
-    const clientEventId = String(body?.clientEventId || '').trim();
-    const labelFormat: LabelPurchaseOptions['labelFormat'] = ['pdf', 'png', 'zpl'].includes(body?.labelFormat)
-      ? body.labelFormat
-      : 'pdf';
-    const notifyCustomer = body?.notifyCustomer !== false; // default on
+/**
+ * Everything after the charge. Each step is safe to repeat — tracking upserts,
+ * the documents dedupe on their sourceHash — so a replayed key re-runs this to
+ * backfill whatever the first attempt did not finish. Nothing here may throw:
+ * the label is already paid for.
+ */
+async function finishPurchase(input: {
+  orgId: OrgId;
+  order: OrderRow;
+  orderId: number;
+  orderRef: string;
+  clientEventId: string;
+  labelFormat: NonNullable<LabelPurchaseOptions['labelFormat']>;
+  staffId: number | null;
+  v2: ShipStationV2Client;
+  label: PurchasedLabel;
+  knownShipmentId: number | null;
+  knownDocumentId: number | null;
+}): Promise<{ shipmentId: number | null; labelDocumentId: number | null; isFirstLabel: boolean; warning: string | null }> {
+  const { orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId, v2, label } = input;
 
-    if (!Number.isFinite(orderId) || orderId <= 0) throw ApiError.badRequest('Valid orderId is required');
-    if (!rateId) throw ApiError.badRequest('rateId is required');
-    if (!clientEventId) throw ApiError.badRequest('clientEventId is required (idempotency key)');
-
-    const order = await loadOrder(orgId, orderId);
-    if (!order) throw ApiError.notFound('order', orderId);
-    const orderRef = order.order_id || `order-${orderId}`;
-
-    // Idempotency short-circuit — don't buy a second label for the same key.
-    const prior = await findLabelBySourceHash(orgId, clientEventId);
-    if (prior) {
-      return NextResponse.json({
-        ok: true,
-        idempotent: true,
-        tracking: prior.tracking,
-        carrier: prior.carrier,
-        labelDocumentId: prior.id,
-      });
-    }
-
-    // Buyer-note interlock — before the IRREVERSIBLE purchase: the order's
-    // current buyer note must be acknowledged (src/lib/orders/buyer-note-interlock.ts).
-    const buyerNoteHold = await readBuyerNoteHold(
-      { query: (text, params) => tenantQuery(orgId, text, params) },
-      orgId,
-      orderId,
-    );
-    if (buyerNoteHold) return NextResponse.json(buyerNoteHoldBody(buyerNoteHold), { status: 409 });
-
-    // 1. Buy the label — IRREVERSIBLE.
-    const v2 = await getShipStationV2(orgId);
-    const label = await v2.purchaseLabelFromRate(rateId, { labelFormat });
-
-    // 2. Register the tracking as the order's primary (STN + link + cache).
-    let primaryShipmentId: number | null = null;
+  // 2. Register the tracking as the order's primary (STN + link + cache).
+  let primaryShipmentId: number | null = input.knownShipmentId;
+  if (primaryShipmentId == null && label.trackingNumber) {
     try {
       const trk = await applyOrderTrackingOps({
         orderIds: [orderId],
@@ -181,12 +191,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // CREATED a link row; upsertOrderTracking instead writes orders.shipment_id
     // directly — read it back so the snapshot below targets the real STN row.
     if (primaryShipmentId == null) {
-      const refreshed = await tenantQuery<{ shipment_id: number | null }>(
-        orgId,
-        `SELECT shipment_id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-        [orderId, orgId],
-      );
-      primaryShipmentId = refreshed.rows[0]?.shipment_id ?? null;
+      try {
+        const refreshed = await tenantQuery<{ shipment_id: number | null }>(
+          orgId,
+          `SELECT shipment_id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+          [orderId, orgId],
+        );
+        primaryShipmentId = refreshed.rows[0]?.shipment_id ?? null;
+      } catch (e) {
+        console.warn('[buy-label] shipment read-back failed', e);
+      }
     }
 
     // 2b. Snapshot the AS-SHIPPED ship-to onto the STN row. The address a
@@ -200,52 +214,48 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           shipTo,
           customerId: order.customer_id,
           orderRef,
-          labelId: label.labelId ?? null,
-          service: label.serviceCode ?? null,
-          cost: label.cost ?? null,
-          currency: label.currency ?? null,
-          purchasedBy: ctx.staffId ?? null,
+          labelId: label.labelId,
+          service: label.serviceCode,
+          cost: label.cost,
+          currency: label.currency,
+          purchasedBy: staffId,
         });
       }
     } catch (e) {
       console.warn('[buy-label] ship_to snapshot failed', e);
     }
+  }
 
-    // 3a. Store the label bytes (best-effort; GCS-gated).
-    const labelUrl =
-      label.labelDownload.pdf ||
-      label.labelDownload.href ||
-      label.labelDownload.png ||
-      label.labelDownload.zpl ||
-      null;
-    let labelDocumentId: number | null = null;
-    let isFirstLabel = false;
-    let warning: string | null = null;
+  // 3a. Store the label bytes (best-effort; GCS-gated). The v2 client carries
+  // the API key — the generic `href` download answers 401 without it.
+  let labelDocumentId: number | null = input.knownDocumentId;
+  let isFirstLabel = false;
+  let warning: string | null = null;
+  if (labelDocumentId == null) {
     try {
-      if (labelUrl) {
-        const { buffer, contentType } = await downloadLabelBytes(labelUrl);
-        const stored = await storeOutboundDocumentFromBytes(orgId, {
-          orderId,
-          orderRef,
-          documentType: 'shipping_label',
-          platform: 'shipstation',
-          source: 'shipstation_api',
-          buffer,
-          contentType,
-          tracking: label.trackingNumber,
-          carrier: label.carrierCode,
-          uploadedBy: ctx.staffId,
-          sourceHash: clientEventId,
-          filename: `label-${label.trackingNumber}.${labelFormat}`,
-        });
-        labelDocumentId = stored.document.id;
-        isFirstLabel = stored.isFirstLabel;
-      }
+      if (!label.labelUrl) throw new Error('ShipStation returned no label download URL.');
+      const { buffer, contentType } = await v2.downloadLabel(label.labelUrl);
+      const stored = await storeOutboundDocumentFromBytes(orgId, {
+        orderId,
+        orderRef,
+        documentType: 'shipping_label',
+        platform: 'shipstation',
+        source: 'shipstation_api',
+        buffer,
+        contentType,
+        tracking: label.trackingNumber,
+        carrier: label.carrierCode,
+        uploadedBy: staffId,
+        sourceHash: clientEventId,
+        filename: `label-${label.trackingNumber}.${labelFormat}`,
+      });
+      labelDocumentId = stored.document.id;
+      isFirstLabel = stored.isFirstLabel;
     } catch (e) {
       warning =
         e instanceof OutboundDocumentValidationError
           ? 'Label purchased, but document storage is not configured — open/print it from the label URL.'
-          : `Label purchased, but storing the label document failed: ${e instanceof Error ? e.message : String(e)}`;
+          : `Label purchased, but storing the label document failed: ${e instanceof Error ? e.message : String(e)}. Buying again under this purchase retries the download without a second charge.`;
       console.warn('[buy-label] label document store failed', e);
     }
 
@@ -267,13 +277,138 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         contentType: 'application/pdf',
         tracking: label.trackingNumber,
         carrier: label.carrierCode,
-        uploadedBy: ctx.staffId,
+        uploadedBy: staffId,
         sourceHash: `${clientEventId}:slip`,
         filename: `packing-slip-${orderRef}.pdf`,
       });
     } catch (e) {
       console.warn('[buy-label] packing slip store failed', e);
     }
+  }
+
+  try {
+    await attachLabelPurchaseFacts(orgId, label.purchaseId, { labelDocumentId, shipmentId: primaryShipmentId });
+  } catch (e) {
+    console.warn('[buy-label] purchase ledger update failed', e);
+  }
+
+  return { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning };
+}
+
+export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const orgId = ctx.organizationId as OrgId;
+  try {
+    const body = await req.json().catch(() => null);
+    const orderId = Number(body?.orderId);
+    const rateId = String(body?.rateId || '').trim();
+    const clientEventId = String(body?.clientEventId || '').trim();
+    const labelFormat: NonNullable<LabelPurchaseOptions['labelFormat']> = ['pdf', 'png', 'zpl'].includes(body?.labelFormat)
+      ? body.labelFormat
+      : 'pdf';
+    const notifyCustomer = body?.notifyCustomer !== false; // default on
+
+    if (!Number.isFinite(orderId) || orderId <= 0) throw ApiError.badRequest('Valid orderId is required');
+    if (!rateId) throw ApiError.badRequest('rateId is required');
+    if (!clientEventId) throw ApiError.badRequest('clientEventId is required (idempotency key)');
+
+    const order = await loadOrder(orgId, orderId);
+    if (!order) throw ApiError.notFound('order', orderId);
+    const orderRef = order.order_id || `order-${orderId}`;
+
+    // Keys minted before the purchase ledger existed: the label document was
+    // the only record — keep honouring it.
+    const prior = await findLabelBySourceHash(orgId, clientEventId);
+    if (prior) {
+      return NextResponse.json({
+        ok: true,
+        idempotent: true,
+        tracking: prior.tracking,
+        carrier: prior.carrier,
+        labelDocumentId: prior.id,
+      });
+    }
+
+    // Buyer-note interlock — before the IRREVERSIBLE purchase: the order's
+    // current buyer note must be acknowledged (src/lib/orders/buyer-note-interlock.ts).
+    const buyerNoteHold = await readBuyerNoteHold(
+      { query: (text, params) => tenantQuery(orgId, text, params) },
+      orgId,
+      orderId,
+    );
+    if (buyerNoteHold) return NextResponse.json(buyerNoteHoldBody(buyerNoteHold), { status: 409 });
+
+    // 1. Claim the key, buy the label — IRREVERSIBLE — and record it before
+    //    anything else can fail.
+    const v2 = await getShipStationV2(orgId);
+    const outcome = await purchaseLabelOnce(
+      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null },
+      () => v2.purchaseLabelFromRate(rateId, { labelFormat }),
+    );
+
+    if (outcome.kind === 'in_flight') {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: 'LABEL_PURCHASE_IN_FLIGHT',
+          error:
+            'A purchase for this label is already in progress or did not finish. Check ShipStation for a new label on this order before buying again.',
+        },
+        { status: 409 },
+      );
+    }
+    if (outcome.kind === 'replay') {
+      if (outcome.record.status === 'voided') {
+        return NextResponse.json(
+          { ok: false, code: 'LABEL_PURCHASE_VOIDED', error: 'That label was voided. Get fresh rates to buy a new one.' },
+          { status: 409 },
+        );
+      }
+      // Bought on an earlier attempt — finish what that attempt may not have
+      // (every step below dedupes), but never charge again.
+      const label = fromRecord(outcome.record);
+      const finished = await finishPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId });
+      return NextResponse.json({
+        ok: true,
+        idempotent: true,
+        tracking: label.trackingNumber,
+        carrier: label.carrierCode,
+        service: label.serviceCode,
+        cost: label.cost,
+        currency: label.currency,
+        labelId: label.labelId,
+        labelUrl: label.labelUrl,
+        shipmentId: finished.shipmentId,
+        labelDocumentId: finished.labelDocumentId,
+        warning: finished.warning,
+      });
+    }
+
+    const label: PurchasedLabel = {
+      ...fromRecord(outcome.record),
+      labelId: outcome.label.labelId ?? null,
+      trackingNumber: outcome.label.trackingNumber,
+      carrierCode: outcome.label.carrierCode ?? null,
+      serviceCode: outcome.label.serviceCode ?? null,
+      cost: outcome.label.cost ?? null,
+      currency: outcome.label.currency ?? null,
+      labelUrl: outcome.labelUrl,
+    };
+
+    // 2–3. Tracking, ship-to snapshot, label document, packing slip.
+    const { shipmentId: primaryShipmentId, labelDocumentId, isFirstLabel, warning } = await finishPurchase({
+      orgId,
+      order,
+      orderId,
+      orderRef,
+      clientEventId,
+      labelFormat,
+      staffId: ctx.staffId ?? null,
+      v2,
+      label,
+      knownShipmentId: null,
+      knownDocumentId: null,
+    });
+    const labelUrl = label.labelUrl;
 
     // 4. Audit trail (recordAudit never throws).
     await recordAudit(pool, ctx, req, {
@@ -290,7 +425,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         labelId: label.labelId,
         rateId,
       },
-      extra: { shipmentId: primaryShipmentId, labelDocumentId },
+      extra: { shipmentId: primaryShipmentId, labelDocumentId, clientEventId },
     });
     if (isFirstLabel) {
       await recordAudit(pool, ctx, req, {

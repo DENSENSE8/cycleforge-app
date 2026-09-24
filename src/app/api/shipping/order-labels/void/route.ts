@@ -14,6 +14,7 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { getShipStationV2, ShipStationNotConnectedError } from '@/lib/shipping/shipstation/config';
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
+import { markLabelPurchaseVoided } from '@/lib/shipping/label-purchase-ledger';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { ok: false, approved: false, error: result.message || 'The carrier declined the void request.' },
         { status: 409 },
       );
+    }
+
+    // The purchase ledger stops replaying this label; the client mints a
+    // fresh idempotency key for the next buy.
+    try {
+      await markLabelPurchaseVoided(orgId, labelId);
+    } catch (e) {
+      console.warn('[void-label] purchase ledger stamp failed', e);
     }
 
     // Best-effort reversal of the local linkage/document.

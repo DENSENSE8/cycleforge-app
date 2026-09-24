@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createShipStationV2Client } from './client';
+import { createShipStationV2Client, isShipStationHost } from './client';
 import type { ShipAddress } from './types';
 
 /**
@@ -113,4 +113,32 @@ test('API error surfaces the ShipStation error message', async () => {
   } finally {
     restore();
   }
+});
+
+test('downloadLabel: sends the API-Key to ShipStation hosts (href answers 401 without it)', async () => {
+  const orig = globalThis.fetch;
+  const seen: Array<{ url: string; key: string | null }> = [];
+  globalThis.fetch = (async (url: string | URL, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    seen.push({ url: String(url), key: headers.get('API-Key') });
+    return new Response(new Uint8Array([37, 80, 68, 70]), { status: 200, headers: { 'content-type': 'application/pdf' } });
+  }) as typeof fetch;
+  try {
+    const client = createShipStationV2Client('sekret');
+    const out = await client.downloadLabel('https://api.shipstation.com/v2/downloads/10/abc/label-1.pdf');
+    assert.equal(out.contentType, 'application/pdf');
+    assert.equal(out.buffer.length, 4);
+    await client.downloadLabel('https://labels.example.com/label-1.pdf');
+    assert.deepEqual(seen.map((s) => s.key), ['sekret', null]);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+test('isShipStationHost: only https ShipStation / ShipEngine hosts carry the key', () => {
+  assert.equal(isShipStationHost('https://api.shipstation.com/v2/downloads/1/x.pdf'), true);
+  assert.equal(isShipStationHost('https://api.shipengine.com/v1/downloads/1/x.pdf'), true);
+  assert.equal(isShipStationHost('http://api.shipstation.com/v2/downloads/1/x.pdf'), false);
+  assert.equal(isShipStationHost('https://shipstation.com.evil.example/x.pdf'), false);
+  assert.equal(isShipStationHost('not a url'), false);
 });
