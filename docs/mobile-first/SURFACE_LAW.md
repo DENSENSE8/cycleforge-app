@@ -144,7 +144,7 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 | Identification kernel (QC-done, claim, scan-out) | `/m/id/*` — `/m/id/methods`, `/m/id/[job]/[entityId]`, `/m/id/scan-out/[orderId]` |
 | Packing | **`/m/p/[id]/photos`** — the photo feed reached from the desk `scan_ready` bridge. There is **no `/m/pack` queue**: deleted 2026-09-14 by operator ruling. Do not recreate it. |
 | Claim | `/m/claim` |
-| SKU exceptions (on-hold `TMP-…` placeholders) | `/m/on-hold` queue · `/m/on-hold/[sku]` record (edit, photos, share, per-location count via `/m/pair/[code]/[sku]?from=on-hold`) · `/m/on-hold/[sku]/pair` pair to Zoho SKU. Desk twin `/inventory/sku-exceptions`; `?sku=` share links land on the phone record. |
+| SKU exceptions (on-hold `TMP-…` placeholders) | `/m/on-hold` queue · `/m/on-hold/[sku]` hub (summary card → `/info` details + pencil edit; doors Photos · Locations · Pair; dock Share · Take photo · Pair) · `/photos` · `/locations` (count via `/m/pair/[code]/[sku]?from=on-hold`, returns here) · `/pair` pair to Zoho SKU. Desk twin `/inventory/sku-exceptions`; `?sku=` share links land on the phone hub. |
 | Locations / labels (port target) | `/m/…` TBD — must exist before desk Labels is “done” |
 
 **Outbound / inbound verb order** (operator, 2026-09-14) is the ledger in
