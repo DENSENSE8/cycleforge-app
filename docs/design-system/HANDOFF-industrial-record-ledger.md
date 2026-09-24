@@ -143,9 +143,13 @@ The desktop terminal's `.evidence-panel`, always mounted (selecting never reflow
 next · close. Then the order number large, the state strip (code · word · next action), photo +
 title + SKU + item #, then a fact list: **Location** (all paths + units allocated) · Platform ·
 Order # (copy / open) · Tracking + carrier · Ship by · Ordered · Condition · Quantity · Price ·
-Pick · Pack · Pack bench · Note (latest + add). Foot: **Labels** (paperwork walk on this order)
-and **Actions** (checks the record so the governed bulk bar opens — the column never grows a
-second verb implementation). Nothing open ⇒ the queue read as the floor reads it: counts per
+Pick · Pack · Pack bench · Note (latest + add). **Order actions (owner, 2026-09-24):** the
+orders verb catalog resolved for THIS order — grouped as the bulk bar groups them, direction-aware
+(Mark urgent / Clear urgent, Mark scanned out / Undo), disabled verbs say why, **Delete** set apart
+last. It is the same catalog at n=1 (read from the rail-actions store), never a second
+implementation; dialog verbs confirm against the rows they were opened for. Foot: **Labels**
+(paperwork walk on this order) and **Select** (adds the record to the bulk check-set for
+many-order work). Nothing open ⇒ the queue read as the floor reads it: counts per
 state, late, unassigned location. Keys: J / K step, Esc closes. The in-stage order overlay and
 the right-rail `detail:order` inspector are **not** mounted on an industrial desk.
 

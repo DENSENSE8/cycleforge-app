@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
+import { AlertTriangle, Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -94,7 +94,13 @@ type DashSelectableRow = {
   latest_status_category?: string | null;
   is_terminal?: boolean | null;
   shipment_id?: number | string | null;
+  is_urgent?: boolean | null;
 };
+
+/** Urgent is ONE reversible verb: mark when the row is not urgent, clear when it is. */
+function urgentDirection(row: DashSelectableRow): VerbDirection {
+  return row.is_urgent ? 'undo' : 'do';
+}
 
 /**
  * The facts every orders mount can RESOLVE for its rows — the whole family
@@ -158,6 +164,14 @@ export function useDashboardBulkSelection(
     (r) => Number(r.id),
   );
   const deleteOrderRow = useDeleteOrderRow();
+
+  // The rows a DIALOG verb was run WITH. The catalog is offered at n=1 too
+  // (the Selected-order column runs a verb on the open record without it being
+  // checked), so a dialog must confirm against the rows it was opened for —
+  // not whatever the check-set holds. Null = no dialog verb in flight; the
+  // table bar passes the check-set itself, so its behaviour is unchanged.
+  const [dialogRows, setDialogRows] = useState<DashSelectableRow[] | null>(null);
+  const targetRows = dialogRows ?? selectedRows;
 
   const clearSelection = useCallback(() => {
     emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
@@ -262,13 +276,13 @@ export function useDashboardBulkSelection(
   }, []);
 
   const selectedOrderIds = useCallback(() => {
-    const ids = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+    const ids = targetRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
     if (ids.length > BULK_WRITE_CAP) {
       toast.error(`Select at most ${BULK_WRITE_CAP} orders`);
       return [];
     }
     return ids;
-  }, [selectedRows]);
+  }, [targetRows]);
 
   // ─── Staff roster (listing-rule overlay) + stage assign opens via column foot ─
   const [listingRuleOrderIds, setListingRuleOrderIds] = useState<number[]>([]);
@@ -306,7 +320,10 @@ export function useDashboardBulkSelection(
   const [shipByOpen, setShipByOpen] = useState(false);
   const [isSavingShipBy, setIsSavingShipBy] = useState(false);
 
-  const handleSetShipBy = useCallback(() => setShipByOpen(true), []);
+  const handleSetShipBy = useCallback((rows: DashSelectableRow[]) => {
+    setDialogRows(rows.length > 0 ? rows : null);
+    setShipByOpen(true);
+  }, []);
 
   const handleConfirmShipBy = useCallback(
     async (dateKey: string) => {
@@ -417,7 +434,15 @@ export function useDashboardBulkSelection(
   const [flagOpen, setFlagOpen] = useState(false);
   const [isSavingFlag, setIsSavingFlag] = useState(false);
 
-  const handleSetFlag = useCallback(() => setFlagOpen(true), []);
+  const handleSetFlag = useCallback((rows: DashSelectableRow[]) => {
+    setDialogRows(rows.length > 0 ? rows : null);
+    setFlagOpen(true);
+  }, []);
+
+  // Every dialog closed → the next verb targets the check-set again.
+  useEffect(() => {
+    if (!conditionOpen && !qtyOpen && !notesOpen && !shipByOpen && !flagOpen) setDialogRows(null);
+  }, [conditionOpen, qtyOpen, notesOpen, shipByOpen, flagOpen]);
 
   const handleConfirmFlag = useCallback(
     async (flag: OrderRowFlagId | null) => {
@@ -491,6 +516,33 @@ export function useDashboardBulkSelection(
     const missing = ids.length - docs.length;
     if (missing > 0) toast(`Printing ${docs.length}; ${missing} had no label`);
   }, []);
+
+  // ─── Urgent (one verb, two directions) ─────────────────────────────────────
+  // `orders.is_urgent` drives the URG lifecycle state; the write rides the one
+  // order-assign path (optimistic cache + fulfillment cache bust).
+  const handleSetUrgent = useCallback(
+    async (rows: DashSelectableRow[], resolved?: { direction: VerbDirection }) => {
+      const direction = resolved?.direction ?? 'do';
+      const orderIds = rows
+        .filter((r) => urgentDirection(r) === direction)
+        .map((r) => Number(r.id))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      if (orderIds.length === 0) return;
+      const want = direction === 'do';
+      try {
+        await assignOrder.mutateAsync({ orderIds, isUrgent: want });
+        toast.success(
+          want
+            ? orderIds.length === 1 ? 'Marked urgent' : `${orderIds.length} orders marked urgent`
+            : orderIds.length === 1 ? 'Urgent cleared' : `Urgent cleared on ${orderIds.length} orders`,
+        );
+        refreshDomain('orders.outbound');
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not update urgency');
+      }
+    },
+    [assignOrder],
+  );
 
   // ─── Print paperwork (browser fallback — the print station is down) ────────
   // Label · slip · manuals for every selected order, pack order, ONE dialog.
@@ -718,7 +770,10 @@ export function useDashboardBulkSelection(
         writesField: 'orders.condition',
         enabled: (rows) => rows.some(isInBuilding),
         disabledReason: 'These orders have already left the floor',
-        run: () => setConditionOpen(true),
+        run: (rows) => {
+          setDialogRows(rows.length > 0 ? rows : null);
+          setConditionOpen(true);
+        },
       },
       {
         key: 'qty',
@@ -728,7 +783,10 @@ export function useDashboardBulkSelection(
         writesField: 'orders.qty',
         enabled: (rows) => rows.some(isInBuilding),
         disabledReason: 'These orders have already left the floor',
-        run: () => setQtyOpen(true),
+        run: (rows) => {
+          setDialogRows(rows.length > 0 ? rows : null);
+          setQtyOpen(true);
+        },
       },
       {
         key: 'notes',
@@ -736,7 +794,10 @@ export function useDashboardBulkSelection(
         icon: <FileText className="h-4 w-4" />,
         group: 'Set on these orders',
         writesField: 'orders.notes',
-        run: () => setNotesOpen(true),
+        run: (rows) => {
+          setDialogRows(rows.length > 0 ? rows : null);
+          setNotesOpen(true);
+        },
       },
       {
         key: 'listing-rule',
@@ -773,6 +834,15 @@ export function useDashboardBulkSelection(
         enabled: (rows) => rows.some(hasShippingPaperwork),
         disabledReason: 'No shipping document until the order is packed',
         run: handlePrintShippingLabels,
+      },
+      {
+        key: 'urgent',
+        label: 'Urgent',
+        icon: <AlertTriangle className="h-4 w-4" />,
+        group: 'Set on these orders',
+        direction: urgentDirection,
+        directionLabels: { do: 'Mark urgent', undo: 'Clear urgent' },
+        run: handleSetUrgent,
       },
       {
         key: 'print-paperwork',
@@ -818,6 +888,7 @@ export function useDashboardBulkSelection(
       handlePrintLabels,
       handlePrintShippingLabels,
       handlePrintPaperwork,
+      handleSetUrgent,
       handleExportCsv,
       handleDelete,
       handleScanOut,
@@ -854,35 +925,35 @@ export function useDashboardBulkSelection(
       ) : null}
       <BulkConditionDialog
         open={conditionOpen}
-        count={selectedRows.length}
+        count={targetRows.length}
         saving={isSavingCondition}
         onCancel={() => setConditionOpen(false)}
         onConfirm={handleConfirmCondition}
       />
       <BulkQtyDialog
         open={qtyOpen}
-        count={selectedRows.length}
+        count={targetRows.length}
         saving={isSavingQty}
         onCancel={() => setQtyOpen(false)}
         onConfirm={handleConfirmQty}
       />
       <BulkNotesDialog
         open={notesOpen}
-        count={selectedRows.length}
+        count={targetRows.length}
         saving={isSavingNotes}
         onCancel={() => setNotesOpen(false)}
         onConfirm={handleConfirmNotes}
       />
       <BulkShipByDialog
         open={shipByOpen}
-        count={selectedRows.length}
+        count={targetRows.length}
         saving={isSavingShipBy}
         onCancel={() => setShipByOpen(false)}
         onConfirm={handleConfirmShipBy}
       />
       <BulkFlagDialog
         open={flagOpen}
-        count={selectedRows.length}
+        count={targetRows.length}
         saving={isSavingFlag}
         onCancel={() => setFlagOpen(false)}
         onConfirm={handleConfirmFlag}

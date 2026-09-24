@@ -58,6 +58,7 @@ export const SELECTION_STATUS_BAR_META: Record<
   'print-paperwork': { label: 'Paperwork', variant: 'secondary', hotkey: 'w' },
   'scan-out': { label: 'Scan out', variant: 'success', hotkey: 'x' },
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
+  urgent: { label: 'Urgent', variant: 'warning', hotkey: 'u' },
   'download-photos': { label: 'Download', variant: 'secondary', hotkey: 'i' },
   delete: { label: 'Delete', variant: 'danger', hotkey: 'd' },
 };

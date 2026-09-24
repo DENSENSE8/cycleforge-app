@@ -17,7 +17,7 @@
  * editor on the same commit waist, so the column and the row cannot disagree.
  */
 
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
@@ -72,6 +72,13 @@ import {
 import {
   LEDGER_HIT_CLASS,
 } from './outbound-orders-ledger-geometry';
+import {
+  getRailActions,
+  getServerRailActions,
+  subscribeRailActions,
+} from '@/lib/right-rail/rail-actions-store';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
 
 /** Queue-summary order when nothing is open: the states that need hands first. */
 const SUMMARY_STATES: readonly LifecycleState[] = ['outOfStock', 'urgent', 'ready', 'packed'];
@@ -474,8 +481,11 @@ function OrderEvidence({
         </Fact>
       </dl>
 
-      {/* Verbs: the bulk bar owns the governed actions — this opens it on this order. */}
-      <div className="mt-auto flex gap-2 border-t border-mode-ink p-4">
+      <div className="mt-auto">
+      <RecordVerbs record={record} />
+
+      {/* Labels walk · add this order to the bulk check-set. */}
+      <div className="flex gap-2 border-t border-mode-ink p-4">
         {onOpenLabels ? (
           <button
             type="button"
@@ -491,10 +501,12 @@ function OrderEvidence({
           aria-pressed={checked}
           data-testid="ledger-evidence-actions"
           className={cn(VERB_BUTTON, 'bg-mode-ink text-mode-bar')}
-          onClick={() => onToggleSelect(record, { shiftKey: false })}
+          title="Add this order to the bulk selection (the bar under the table acts on many orders)"
+          onClick={(event) => onToggleSelect(record, { shiftKey: event.shiftKey })}
         >
-          {checked ? 'Clear actions' : 'Actions'}
+          {checked ? 'Selected' : 'Select'}
         </button>
+      </div>
       </div>
     </>
   );
@@ -553,5 +565,66 @@ function QueueEvidence({ records, todayKey }: OutboundOrderEvidenceProps) {
         Open a record · J / K to step · Esc to close
       </p>
     </>
+  );
+}
+
+/**
+ * The order's actions, in the column where the operator is already looking —
+ * the SAME verb catalog the bulk bar runs (`useDashboardBulkSelection`, read
+ * from the rail-actions store), resolved for this ONE order: the catalog at
+ * n=1, never a second implementation (table-engine law: "the row menu is the
+ * same catalog at n=1"). Direction comes from the row (Mark urgent / Clear
+ * urgent); a verb that cannot run says why in its tooltip; Delete sits apart.
+ */
+function RecordVerbs({ record }: { record: ShippedOrder }) {
+  const snapshot = useSyncExternalStore(subscribeRailActions, getRailActions, getServerRailActions);
+  const resolved = useMemo(() => {
+    if (snapshot.scope !== DASHBOARD_ORDERS_SELECTION_SCOPE) return [];
+    const actions = snapshot.actions as SelectionAction<ShippedOrder>[];
+    return actions.map((action) => resolveSelectionAction(action, [record]));
+  }, [snapshot, record]);
+
+  if (resolved.length === 0) return null;
+  const main = resolved.filter((r) => r.action.key !== 'delete');
+  const destructive = resolved.filter((r) => r.action.key === 'delete');
+  const groups = new Map<string, typeof main>();
+  for (const r of main) {
+    const group = r.action.group ?? '';
+    groups.set(group, [...(groups.get(group) ?? []), r]);
+  }
+
+  const button = (r: (typeof resolved)[number], danger = false) => (
+    <button
+      key={r.action.key}
+      type="button"
+      disabled={r.disabled}
+      title={r.reason}
+      data-testid={`ledger-evidence-verb-${r.action.key}`}
+      className={cn(
+        VERB_BUTTON,
+        'flex-none justify-start border-mode-edge bg-mode-panel text-mode-ink enabled:hover:bg-mode-hover disabled:opacity-40',
+        danger && 'border-border-danger text-text-danger enabled:hover:bg-surface-danger',
+      )}
+      onClick={() => {
+        void r.action.run([record], r.direction ? { direction: r.direction } : undefined);
+      }}
+    >
+      {r.action.icon}
+      {r.label}
+    </button>
+  );
+
+  return (
+    <section aria-label="Order actions" data-testid="ledger-evidence-verbs" className="border-t border-mode-ink px-4 py-3">
+      {[...groups.entries()].map(([group, items]) => (
+        <div key={group || 'lead'} className="mb-3 last:mb-0">
+          {group ? <p className={cn(RECORD_LABEL_CLASS, 'mb-1.5 text-mode-muted')}>{group}</p> : null}
+          <div className="grid grid-cols-2 gap-1.5">{items.map((r) => button(r))}</div>
+        </div>
+      ))}
+      {destructive.length > 0 ? (
+        <div className="mt-3 border-t border-mode-edge pt-3">{destructive.map((r) => button(r, true))}</div>
+      ) : null}
+    </section>
   );
 }

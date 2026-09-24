@@ -176,7 +176,7 @@ _code-graph CLI unavailable_
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-24T18:56:21.596Z · cohort `shortcuts` · run id `2026-09-24T18-54-36-224Z`_
+_Updated 2026-09-24T20:39:53.642Z · cohort `shortcuts` · run id `2026-09-24T20-38-06-111Z`_
 <!-- /eval-ledger:auto:last-run -->
 
 
