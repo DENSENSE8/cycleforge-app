@@ -29,6 +29,7 @@ export function TriageScrollLayout({
   banner,
   sections,
   knobs = false,
+  measure = 'fluid',
   className,
   'data-testid': testId,
 }: {
@@ -38,6 +39,13 @@ export function TriageScrollLayout({
   sections: readonly TriageSectionSpec[];
   /** Show the edge jump rail. Off by default — see the note above. */
   knobs?: boolean;
+  /**
+   * Column measure — see {@link TriageSections}. `fixed` also reserves the
+   * scrollbar gutter, so the column does not shift sideways the moment the
+   * content (a rate list, a preview) grows past the pane and a scrollbar
+   * appears.
+   */
+  measure?: 'fluid' | 'fixed';
   className?: string;
   'data-testid'?: string;
 }) {
@@ -49,10 +57,13 @@ export function TriageScrollLayout({
       <div className="flex min-h-0 flex-1">
         <div
           ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto',
+            measure === 'fixed' && 'overflow-x-auto [scrollbar-gutter:stable]',
+          )}
           data-triage-scroll-root=""
         >
-          <TriageSections sections={sections} banner={banner} />
+          <TriageSections sections={sections} banner={banner} measure={measure} />
         </div>
         {knobs ? <TriageScrollKnobs sections={sections} scrollRef={scrollRef} /> : null}
       </div>

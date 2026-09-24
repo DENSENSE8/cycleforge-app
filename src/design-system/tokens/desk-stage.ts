@@ -46,6 +46,30 @@ export const DESK_STAGE_MAX_PX = 1152;
  */
 export const DESK_STAGE_FIXED_CLASS = 'mx-auto w-full max-w-6xl';
 
+/**
+ * Fixed measure for the ONE record column a desk walk opens over the stage —
+ * the To-ship Labels walk's order form (parcel · ShipStation rates · buy
+ * label). Twin of {@link DESK_RECORD_MEASURE_CLASS} — change both together.
+ *
+ * **Why fixed, not `max-w`.** A record column that re-measures to the pane
+ * moves every field, rate row and Buy button whenever the window, the
+ * fullscreen toggle or the scrollbar changes — and the paperwork card flips
+ * between stacked and side-by-side at its container breakpoint. The operator
+ * works this column order after order; its controls must stay where the hand
+ * left them.
+ *
+ * **Why 736.** The stage caps at {@link DESK_STAGE_MAX_PX} (1152). The walk's
+ * queue rail takes 352 (`w-[22rem]`), leaving 800 for the record pane. 736
+ * (border-box, its own `px-6` inside) leaves 64 of that for a reserved
+ * scrollbar gutter plus slack, so on every machine the desk targets the column
+ * is exactly this wide; only a pane narrower than the column (a small window)
+ * scrolls it sideways instead of squeezing it.
+ */
+export const DESK_RECORD_MEASURE_PX = 736;
+
+/** Tailwind twin of {@link DESK_RECORD_MEASURE_PX} (46rem). */
+export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
+
 /** Fullscreen stage: the gutters collapse and the body takes the content canvas. */
 export const DESK_STAGE_FULLSCREEN_CLASS = 'w-full';
 

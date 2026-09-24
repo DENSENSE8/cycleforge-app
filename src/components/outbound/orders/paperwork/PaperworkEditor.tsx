@@ -328,6 +328,9 @@ export function PaperworkEditor({
     >
       <TriageScrollLayout
         className="min-h-0 min-w-0 flex-1"
+        // One fixed column — parcel, ShipStation rates and Buy stay put from
+        // order to order, whatever the window or fullscreen does.
+        measure="fixed"
         header={header}
         banner={<BuyerNoteBlock note={String(row.buyer_note ?? '').trim() || null} />}
         sections={[

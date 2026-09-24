@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { DESK_RECORD_MEASURE_CLASS } from '@/design-system/tokens/desk-stage';
 
 export type TriageSectionSpec = {
   id: string;
@@ -36,12 +37,25 @@ export type TriageSectionSpec = {
  * edge with the entire remainder empty on the other. That reads as a layout
  * that failed rather than one that chose a measure. Centring splits the slack
  * into two equal gutters, which is what makes a fixed measure look deliberate.
+ *
+ * ## `measure="fixed"` — a column that never re-measures
+ *
+ * The default measure is a CEILING (`max-w-4xl`): below it the column follows
+ * the pane. A record the operator works order after order (the To-ship Labels
+ * walk: parcel, ShipStation rates, buy) passes `fixed` instead — the column is
+ * exactly {@link DESK_RECORD_MEASURE_CLASS} wide at every pane width, so fields
+ * and the Buy button do not move when the window, fullscreen or the scrollbar
+ * changes. A pane narrower than the column scrolls it sideways (the host's
+ * scroll root) rather than squeezing it.
  */
 export function TriageSections({
   sections,
   banner,
+  measure = 'fluid',
 }: {
   sections: readonly TriageSectionSpec[];
+  /** `fluid` (default): capped at `max-w-4xl`. `fixed`: exactly the desk record measure. */
+  measure?: 'fluid' | 'fixed';
   /**
    * Rendered above the first card, inside the same centred measure.
    *
@@ -58,7 +72,15 @@ export function TriageSections({
     // edge while the reading measure stays fixed, so a field never stretches
     // across a 1600px monitor to hold an 8-character SKU. `mx-auto` centres
     // that measure — see the note above.
-    <div className="mx-auto w-full max-w-4xl space-y-7 px-6 py-5">
+    <div
+      className={cn(
+        'mx-auto space-y-7 py-5',
+        measure === 'fixed'
+          ? cn(DESK_RECORD_MEASURE_CLASS, 'shrink-0 px-6')
+          : 'w-full max-w-4xl px-6',
+      )}
+      data-measure={measure}
+    >
       {banner}
       {sections.map((section) => (
         <section
