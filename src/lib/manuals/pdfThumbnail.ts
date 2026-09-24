@@ -31,7 +31,7 @@ export interface PdfThumbnailResult {
 
 let pdfjsModulePromise: Promise<typeof import('pdfjs-dist')> | null = null;
 
-async function loadPdfjs() {
+export async function loadPdfjs() {
   if (!pdfjsModulePromise) {
     pdfjsModulePromise = (async () => {
       const mod = await import('pdfjs-dist');

@@ -31,3 +31,13 @@ export const OutboundDocumentFetchBody = z
     types: z.array(outboundDocumentType).min(1, 'At least one document type is required'),
   })
   .strict();
+
+/**
+ * POST /api/orders/print-packet — browser-fallback paperwork for 1..100 orders
+ * (`buildPaperworkPackets`). `batchId` is the client's idempotency key: a
+ * retried request re-uses it, so the print-job ledger does not double-count.
+ */
+export const PaperworkPrintBody = z.object({
+  orderIds: z.array(z.number().int().positive()).min(1).max(100),
+  batchId: z.string().trim().min(8).max(80),
+});

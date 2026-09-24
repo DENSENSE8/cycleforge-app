@@ -114,7 +114,7 @@ export type TableEngineLawId = keyof typeof TABLE_ENGINE_LAW;
  * which is the whole point of enumerating them.
  */
 export const VERB_CATALOG_MODULES = [
-  /** Orders / outbound — the 15-verb catalog every order lane binds from. */
+  /** Orders / outbound — the 16-verb catalog every order lane binds from. */
   'src/hooks/useDashboardBulkSelection.tsx',
   /** Receiving lines. */
   'src/hooks/useReceivingLineBulkSelection.tsx',

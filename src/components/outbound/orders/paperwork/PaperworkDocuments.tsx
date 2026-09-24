@@ -52,6 +52,7 @@ import {
 import type { OutboundDocument } from '@/lib/documents/types';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { toast } from '@/lib/toast';
 import {
   downloadAllHref,
   downloadHref,
@@ -259,6 +260,24 @@ export function PaperworkDocuments({
     title: `order-${orderRef}-paperwork`,
   });
 
+  // Print all — label · slip · manuals in pack order, one dialog. The door for
+  // when the packer print station is down; the server ledgers each page as
+  // `fallback_browser` so pack history stays true.
+  const [printingAll, setPrintingAll] = useState(false);
+  const onPrintAll = async () => {
+    setPrintingAll(true);
+    try {
+      const { printPaperworkPackets, describePaperworkPrint } = await import('@/lib/print/printPaperworkPackets');
+      const verdict = describePaperworkPrint(await printPaperworkPackets([orderId]));
+      if (verdict.ok) toast.success(verdict.message);
+      else toast.error(verdict.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not print the paperwork');
+    } finally {
+      setPrintingAll(false);
+    }
+  };
+
   const loading = documentsQuery.isLoading || manualsQuery.isLoading;
   const slipIngest = documentsQuery.data?.packingSlipIngest ?? null;
   const pairing = manualsQuery.data ?? null;
@@ -287,6 +306,17 @@ export function PaperworkDocuments({
           ))}
         </div>
         <span className="min-w-0 flex-1" />
+        <Button
+          variant="secondary"
+          size="md"
+          className={triagePanelControl()}
+          icon={<Printer />}
+          disabled={files.length === 0 || printingAll}
+          data-testid="paperwork-print-all"
+          onClick={() => void onPrintAll()}
+        >
+          {printingAll ? 'Preparing…' : 'Print all'}
+        </Button>
         {zipHref ? (
           <a
             href={zipHref}

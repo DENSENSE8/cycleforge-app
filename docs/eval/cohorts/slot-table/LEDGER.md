@@ -60,13 +60,15 @@ _Agents: do not invent gaps. Pick **one unblocked** row from Discover → DELETE
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify)._
+| Date | Gate | Result | Snapshot |
+|------|------|--------|----------|
+| 2026-09-24 | verify:fast | pass | `docs/eval/cohorts/slot-table/snapshots/2026-09-24-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Tripwire result
 
 <!-- eval-ledger:auto:tripwire-result -->
-**pass** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-22-tripwire.log`
+**pass** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-24-tripwire.log`
 <!-- /eval-ledger:auto:tripwire-result -->
 
 ## Peer matrix (PRODUCT_TABLES × engine opt-in)
@@ -198,7 +200,7 @@ _Skipped verify (--skip-verify)._
 ## Industrial cohesion verdict
 
 <!-- eval-ledger:auto:industrial-cohesion -->
-**pass** — deterministic source verdict; snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-22-data-table-industrial.json`
+**pass** — deterministic source verdict; snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-24-data-table-industrial.json`
 <!-- /eval-ledger:auto:industrial-cohesion -->
 
 ## Discover — next gap
@@ -206,7 +208,7 @@ _Skipped verify (--skip-verify)._
 <!-- eval-ledger:auto:discover-next -->
 _No unblocked mechanical deletes._
 
-_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-22-discover.json`
+_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-24-discover.json`
 <!-- /eval-ledger:auto:discover-next -->
 
 ## Discover — DELETE (mechanical)
@@ -395,214 +397,161 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundItem.json` |
-| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundState.json` |
-| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 58 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useSlotTableLayout.json` |
-| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 81 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-materializeTracks.json` |
-| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 26 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-getExternalUrlByItemNumber.json` |
-| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 18 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DateRangePickerField.json` |
-| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useOptimisticMutation.json` |
-| DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 37 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DataTableFilterMenu.json` |
-| queueSortForColumnKey | `function:src/utils/queue-display-sort.ts:queueSortForColumnKey` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-queueSortForColumnKey.json` |
-| LedgerGridColumnHeader | `component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader` | 35 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-LedgerGridColumnHeader.json` |
-| isSlotTableChromeTrack | `function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-isSlotTableChromeTrack.json` |
-| AssigneeCombobox | `component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox` | 3 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-AssigneeCombobox.json` |
-| ensureLineQtySubtitle | `function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineQtySubtitle.json` |
-| pinLineQtyFirst | `function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineQtyFirst.json` |
-| ensureLineMoneySubtitle | `function:src/lib/tables/slot-table-line-money.ts:ensureLineMoneySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineMoneySubtitle.json` |
-| pinLineMoneyAfterQty | `function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineMoneyAfterQty.json` |
-| ordersCompoundColumnsFor | `function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor` | 19 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ordersCompoundColumnsFor.json` |
-| COMPOUND_COLUMN_KEYS | `variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-COMPOUND_COLUMN_KEYS.json` |
-| MorphingRowActionMenu | `component:src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx:MorphingRowActionMenu` | 4 | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-MorphingRowActionMenu.json` |
-| StockStripInput | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-StockStripInput.json` |
-| useFixedBandHeight | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-useFixedBandHeight.json` |
-| SLOT_TABLE_ID_HEADER_WORD | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_ID_HEADER_WORD.json` |
-| SLOT_TABLE_IDENTITY_PURITY_LAW | — | no match | `docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundCells.txt`
+- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundCells.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundCells.tsx",
-  "summary": "1 problem, worst first: 3 arbitrary type size where the typography axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundRow.txt`
+- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundRow.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundRow.tsx",
-  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-StageStaffAssignPopover.txt`
+- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-StageStaffAssignPopover.txt`
 ```
-{
-  "file": "src/components/tables/compound/StageStaffAssignPopover.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/inventory/location-stock-grid/StockActionBar.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-StockActionBar.txt`
+- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-AssigneeCombobox.txt`
 ```
-{
-  "file": "src/components/inventory/location-stock-grid/StockActionBar.tsx",
-  "summary": "1 problem, worst first: Renders components but imports none from the design system",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-AssigneeCombobox.txt`
+- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundStaffRosterButton.txt`
 ```
-{
-  "file": "src/design-system/components/AssigneeCombobox.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundStaffRosterButton.txt`
+- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-DateRangePickerField.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundStaffRosterButton.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-DateRangePickerField.txt`
+- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-useSlotTableLayout.txt`
 ```
-{
-  "file": "src/design-system/components/DateRangePickerField.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-useSlotTableLayout.txt`
+- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-external-item-url.txt`
 ```
-{
-  "file": "src/components/tables/useSlotTableLayout.ts",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-external-item-url.txt`
+- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-DataTable.txt`
 ```
-{
-  "file": "src/utils/external-item-url.ts",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [],
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-DataTable.txt`
+- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-LedgerGridColumnHeader.txt`
 ```
-{
-  "file": "src/components/tables/DataTable.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-LedgerGridColumnHeader.txt`
+- `src/components/tables/compound/CompoundCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundCell.txt`
 ```
-{
-  "file": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
-  "summary": "1 problem, worst first: 2 inline style object where the token axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundCell.txt`
+- `src/components/tables/compound/CompoundGridCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundGridCell.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundCell.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [],
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundGridCell.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundGridCell.txt`
+- `src/components/tables/compound/CompoundRowDetailBand.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundRowDetailBand.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundGridCell.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundRowDetailBand.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundRowDetailBand.txt`
+- `src/components/tables/compound/SlotTableGroupParentRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-SlotTableGroupParentRow.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundRowDetailBand.tsx",
-  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/SlotTableGroupParentRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-SlotTableGroupParentRow.txt`
+- `src/components/tables/compound/CompoundEdgeRail.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundEdgeRail.txt`
 ```
-{
-  "file": "src/components/tables/compound/SlotTableGroupParentRow.tsx",
-  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundEdgeRail.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundEdgeRail.txt`
+- `src/components/tables/compound/CompoundSelectStatusFace.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-CompoundSelectStatusFace.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundEdgeRail.tsx",
-  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
-  "problems": [
-    {
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/tables/compound/CompoundSelectStatusFace.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-CompoundSelectStatusFace.txt`
+- `src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-MorphingRowActionMenu.txt`
 ```
-{
-  "file": "src/components/tables/compound/CompoundSelectStatusFace.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [],
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
-- `src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-MorphingRowActionMenu.txt`
+- `src/design-system/components/grid/LedgerGrid.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-24-critique-LedgerGrid.txt`
 ```
-{
-  "file": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx",
-  "summary": "1 problem, worst first: a raw <input> where the system has TextField",
-  "problems": [
-    {
-```
-- `src/design-system/components/grid/LedgerGrid.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-22-critique-LedgerGrid.txt`
-```
-{
-  "file": "src/design-system/components/grid/LedgerGrid.tsx",
-  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
-  "problems": [],
-  "design_system_used": [],
+node:internal/child_process:285
+      const err = new ErrnoException(exitCode, syscall);
+                  ^
+
+Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
 ```
 <!-- /eval-ledger:auto:design-critique -->
 
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundItem.json`)
-- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-CompoundState.json`)
-- **useSlotTableLayout** — 58 files, 58 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useSlotTableLayout.json`)
-- **materializeTracks** — 81 files, 111 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-materializeTracks.json`)
-- **getExternalUrlByItemNumber** — 26 files, 29 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-getExternalUrlByItemNumber.json`)
-- **DateRangePickerField** — 18 files, 22 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DateRangePickerField.json`)
-- **useOptimisticMutation** — 12 files, 12 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-useOptimisticMutation.json`)
-- **DataTableFilterMenu** — 37 files, 37 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-DataTableFilterMenu.json`)
-- **queueSortForColumnKey** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-queueSortForColumnKey.json`)
-- **LedgerGridColumnHeader** — 35 files, 35 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-LedgerGridColumnHeader.json`)
-- **isSlotTableChromeTrack** — 27 files, 43 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-isSlotTableChromeTrack.json`)
-- **AssigneeCombobox** — 3 files, 3 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-AssigneeCombobox.json`)
-- **ensureLineQtySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineQtySubtitle.json`)
-- **pinLineQtyFirst** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineQtyFirst.json`)
-- **ensureLineMoneySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ensureLineMoneySubtitle.json`)
-- **pinLineMoneyAfterQty** — 9 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-pinLineMoneyAfterQty.json`)
-- **ordersCompoundColumnsFor** — 19 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-ordersCompoundColumnsFor.json`)
-- **COMPOUND_COLUMN_KEYS** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-COMPOUND_COLUMN_KEYS.json`)
-- **MorphingRowActionMenu** — 4 files, 6 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-impact-MorphingRowActionMenu.json`)
-- **StockStripInput** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-StockStripInput.json`)
-- **useFixedBandHeight** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-useFixedBandHeight.json`)
-- **SLOT_TABLE_ID_HEADER_WORD** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_ID_HEADER_WORD.json`)
-- **SLOT_TABLE_IDENTITY_PURITY_LAW** — no match (`docs/eval/cohorts/slot-table/snapshots/2026-09-22-find-SLOT_TABLE_IDENTITY_PURITY_LAW.json`)
+_No graph symbols configured or code-graph CLI unavailable._
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -624,15 +573,11 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 ## graph_stats
 
 <!-- eval-ledger:auto:graph-stats -->
-- project: `cycleforge-app`
-- status: `ready`
-- last_built_at: `2026-09-06T22:48:33.312Z`
-- nodes: 41038 · edges: 191462 · embedded: 41038
-- snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-22-graph-stats.json`
+_code-graph CLI unavailable_
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-22T19:28:27.883Z · cohort `slot-table` · run id `2026-09-22T19-26-41-205Z`_
+_Updated 2026-09-24T18:58:28.585Z · cohort `slot-table` · run id `2026-09-24T18-56-28-688Z`_
 <!-- /eval-ledger:auto:last-run -->

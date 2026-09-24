@@ -492,6 +492,22 @@ export function useDashboardBulkSelection(
     if (missing > 0) toast(`Printing ${docs.length}; ${missing} had no label`);
   }, []);
 
+  // ─── Print paperwork (browser fallback — the print station is down) ────────
+  // Label · slip · manuals for every selected order, pack order, ONE dialog.
+  // The server ledgers each page as `fallback_browser` in document_print_jobs.
+  const handlePrintPaperwork = useCallback(async (rows: DashSelectableRow[]) => {
+    const ids = rows.map((r) => Number(r.id)).filter((n) => Number.isInteger(n) && n > 0);
+    if (ids.length === 0) return;
+    try {
+      const { printPaperworkPackets, describePaperworkPrint } = await import('@/lib/print/printPaperworkPackets');
+      const verdict = describePaperworkPrint(await printPaperworkPackets(ids));
+      if (verdict.ok) toast.success(verdict.message);
+      else toast.error(verdict.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not print the paperwork');
+    }
+  }, []);
+
   const handlePrintLabels = useCallback((rows: DashSelectableRow[]) => {
     void loadProductLabelPrinter()
       .then(({ printProductLabel, printProductLabels }) => {
@@ -759,6 +775,13 @@ export function useDashboardBulkSelection(
         run: handlePrintShippingLabels,
       },
       {
+        key: 'print-paperwork',
+        label: 'Print paperwork',
+        icon: <Printer className="h-4 w-4" />,
+        group: 'Take away',
+        run: handlePrintPaperwork,
+      },
+      {
         key: 'scan-out',
         label: 'Scan out',
         icon: <ShippingModeScanOut className="h-4 w-4" />,
@@ -794,6 +817,7 @@ export function useDashboardBulkSelection(
       handleSetFlag,
       handlePrintLabels,
       handlePrintShippingLabels,
+      handlePrintPaperwork,
       handleExportCsv,
       handleDelete,
       handleScanOut,

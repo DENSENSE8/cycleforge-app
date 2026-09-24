@@ -874,3 +874,10 @@ test('regression: admin.view gates the organization profile route (ship-from add
     `expected /api/admin/organization/profile under admin.view, got ${paths.filter((p) => p.includes('organization')).join(', ')}`,
   );
 });
+
+test('regression: shipping.view gates the browser-fallback paperwork print route', () => {
+  const r = routeByPath('/api/orders/print-packet/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'shipping.view');
+  assert.deepEqual(r.methods, ['POST']);
+});

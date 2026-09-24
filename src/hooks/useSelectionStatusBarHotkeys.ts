@@ -54,6 +54,8 @@ export const SELECTION_STATUS_BAR_META: Record<
   'ship-by': { label: 'Ship-by', variant: 'warning', hotkey: 'b' },
   print: { label: 'Product labels', variant: 'secondary', hotkey: 'p' },
   'print-shipping': { label: 'Shipping labels', variant: 'secondary', hotkey: 's' },
+  // Label · slip · manuals in one dialog when the pack print station is down.
+  'print-paperwork': { label: 'Paperwork', variant: 'secondary', hotkey: 'w' },
   'scan-out': { label: 'Scan out', variant: 'success', hotkey: 'x' },
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
   'download-photos': { label: 'Download', variant: 'secondary', hotkey: 'i' },

@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T18:14:22Z",
-  "totalRoutes": 1070,
+  "generatedAt": "2026-09-24T18:44:30Z",
+  "totalRoutes": 1071,
   "summary": {
-    "permissionGated": 871,
+    "permissionGated": 872,
     "authenticatedNoPermission": 115,
     "anonymousIntentional": 36,
     "serviceToService": 48,
@@ -4661,6 +4661,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "orders.set_price",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/print-packet/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
       "exemptReason": null
     },
     {
