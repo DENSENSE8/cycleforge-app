@@ -1,0 +1,69 @@
+{
+  "source": "Owner paste 2026-09-24 — bay C-04 bin sheet (ITEM / SKU / QTY / NOTE per location). Verbatim cell text kept in `raw`; parsed fields are a PROPOSAL the importer must confirm (see HANDOFF-sku-temp-intake-c04.md decisions).",
+  "legend": {
+    "sku_kind": {
+      "zoho": "looks like a catalog SKU (e.g. 00114-P-1, 326-P-1) — verify it exists in the Zoho items mirror",
+      "numeric": "bare number (736, 86, 847, 1012, 681, 672, 892) — may be a Zoho SKU or a legacy item number; verify, else temp SKU",
+      "legacy": "[OLD]-prefixed — verify, else temp SKU",
+      "wrong": "sheet says the SKU is wrong — temp SKU, keep the written SKU in the description",
+      "none": "NO SKU / blank / 'EXPANSION no SKU' — temp SKU",
+      "empty": "location is empty (ITEM NA / N/A / blank) — no write"
+    },
+    "qty": "`units` = whole units; `parts` = the `p` suffix (parts / partial units — owner decision D2); `other` = uncategorised '+ n' / 'bad' (owner decision D3)"
+  },
+  "rows": [
+    { "location": "C-04-15-1", "item": "Remote mix box 2", "sku_raw": "", "sku_kind": "none", "raw_qty": "", "units": null, "note": "", "flags": ["qty missing"] },
+    { "location": "C-04-15-2", "item": "Remote mix box 1", "sku_raw": "", "sku_kind": "none", "raw_qty": "", "units": null, "note": "", "flags": ["qty missing"] },
+    { "location": "C-04-15-3", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-15-4", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-15-5", "item": "RC 25 Lifestyle 5", "sku_raw": "736", "sku_kind": "numeric", "raw_qty": "10", "units": 10, "note": "" },
+    { "location": "C-04-15-6", "item": "RC Defective", "sku_raw": "", "sku_kind": "none", "raw_qty": "", "units": null, "note": "", "flags": ["qty missing", "defective — condition, not a product?"] },
+
+    { "location": "C-04-13-1", "item": "Bose R/C RC-PWS Universal Cinemate II (Black)", "sku_raw": "45-P-2-BK - NEW not used WRONG SKU", "sku_kind": "wrong", "raw_qty": "3", "units": 3, "note": "In box" },
+    { "location": "C-04-13-2", "item": "Boss Life style RC35S", "sku_raw": "EXPANSION no SKU", "sku_kind": "none", "raw_qty": "1", "units": 1, "note": "In box", "flags": ["title typo? 'Boss' → 'Bose'"] },
+    { "location": "C-04-13-3", "item": "RC-PWS II", "sku_raw": "86", "sku_kind": "numeric", "raw_qty": "1", "units": 1, "note": "In box" },
+    { "location": "C-04-13-4", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-13-5", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-13-6", "item": "NA", "sku_kind": "empty" },
+
+    { "location": "C-04-11-1", "item": "Bose R/C RC-PWS Universal Cinemate II (Black)", "sku_raw": "45-P-2-BK - NEW not used WRONG SKU", "sku_kind": "wrong", "raw_qty": "4", "units": 4, "note": "", "flags": ["same product as C-04-13-1 — ONE temp SKU for both"] },
+    { "location": "C-04-11-2", "item": "Bose RC-PWS II/ III R/C", "sku_raw": "326-P-1", "sku_kind": "zoho", "raw_qty": "5", "units": 5, "note": "" },
+    { "location": "C-04-11-3", "item": "Bose Cinemate 15 R/C", "sku_raw": "00080-P-1", "sku_kind": "zoho", "raw_qty": "7", "units": 7, "note": "" },
+    { "location": "C-04-11-4", "item": "RC 5", "sku_raw": "847", "sku_kind": "numeric", "raw_qty": "17", "units": 17, "note": "" },
+    { "location": "C-04-11-5", "item": "RC 9", "sku_raw": "1012", "sku_kind": "numeric", "raw_qty": "12", "units": 12, "note": "" },
+    { "location": "C-04-11-6", "item": "RC 20", "sku_raw": "681", "sku_kind": "numeric", "raw_qty": "4", "units": 4, "note": "" },
+
+    { "location": "C-04-09-1", "item": "Bose Universal RC Universal Cinemate I (Gray)", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "8+4p", "units": 8, "parts": 4, "note": "" },
+    { "location": "C-04-09-2", "item": "Bose Universal RC Cinemate II (Black)", "sku_raw": "00114-P-1", "sku_kind": "zoho", "raw_qty": "6", "units": 6, "note": "" },
+    { "location": "C-04-09-3", "item": "", "sku_kind": "empty" },
+    { "location": "C-04-09-4", "item": "Bose Cinemate GS I (Grey)", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "13 + 3", "units": 13, "other": 3, "note": "", "flags": ["'+ 3' without p — parts or extra units?"] },
+    { "location": "C-04-09-5", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-09-6", "item": "RCPMC III - 27", "sku_raw": "[OLD]-01138", "sku_kind": "legacy", "raw_qty": "4", "units": 4, "note": "" },
+
+    { "location": "C-04-07-1", "item": "Bose AV321 Media Center I", "sku_raw": "672", "sku_kind": "numeric", "raw_qty": "White : 2. Gray: 15 + 6p", "units": 17, "parts": 6, "variants": { "White": 2, "Gray": 15 }, "note": "", "flags": ["two colours under one SKU — split into variants?"] },
+    { "location": "C-04-07-2", "item": "AV 321 (I) GS", "sku_raw": "672", "sku_kind": "numeric", "raw_qty": "16 + 6", "units": 16, "other": 6, "note": "" },
+    { "location": "C-04-07-3", "item": "Bose 321 GS Media I", "sku_raw": "672", "sku_kind": "numeric", "raw_qty": "39", "units": 39, "note": "", "flags": ["SKU 672 on three differently named items (C-04-07-1..3)"] },
+    { "location": "C-04-07-4", "item": "Bose AV321 GSX II, III", "sku_raw": "00048-P-1", "sku_kind": "zoho", "raw_qty": "4", "units": 4, "note": "" },
+    { "location": "C-04-07-5", "item": "RC 321 GS II/ III", "sku_raw": "00046-P-6", "sku_kind": "zoho", "raw_qty": "8", "units": 8, "note": "" },
+    { "location": "C-04-07-6", "item": "RC 321 II RM cover Parts", "sku_raw": "00046-P-6", "sku_kind": "zoho", "raw_qty": "9p", "units": 0, "parts": 9, "note": "", "flags": ["parts only, same SKU as C-04-07-5"] },
+
+    { "location": "C-04-05-1", "item": "N/A", "sku_kind": "empty" },
+    { "location": "C-04-05-2", "item": "RC18S2-27", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "12", "units": 12, "note": "" },
+    { "location": "C-04-05-3", "item": "RC28T1-27", "sku_raw": "00187-P-1", "sku_kind": "zoho", "raw_qty": "15 + 18p", "units": 15, "parts": 18, "note": "" },
+    { "location": "C-04-05-4", "item": "RC28S2-27", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "3", "units": 3, "note": "" },
+    { "location": "C-04-05-5", "item": "38S2-27R/C", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "4", "units": 4, "note": "" },
+    { "location": "C-04-05-6", "item": "RC48S2-27", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "17 + 4p", "units": 17, "parts": 4, "note": "" },
+
+    { "location": "C-04-03-1", "item": "RC V1T-27", "sku_raw": "00499-P-1", "sku_kind": "zoho", "raw_qty": "10", "units": 10, "note": "" },
+    { "location": "C-04-03-2", "item": "RC18T1-27", "sku_raw": "00132-P-1", "sku_kind": "zoho", "raw_qty": "2 + 7p", "units": 2, "parts": 7, "note": "" },
+    { "location": "C-04-03-3", "item": "Universal RC", "sku_raw": "00020-P-1", "sku_kind": "zoho", "raw_qty": "3", "units": 3, "note": "" },
+    { "location": "C-04-03-4", "item": "OEM Universal RC", "sku_raw": "NO SKU - OEM SOLO RC", "sku_kind": "none", "raw_qty": "3", "units": 3, "note": "", "flags": ["title hint from SKU cell: 'OEM SOLO RC'"] },
+    { "location": "C-04-03-5", "item": "RC38TI-27", "sku_raw": "892", "sku_kind": "numeric", "raw_qty": "10", "units": 10, "note": "" },
+    { "location": "C-04-03-6", "item": "Cable, Array extended black", "sku_raw": "00148-P-3-BK", "sku_kind": "zoho", "raw_qty": "10", "units": 10, "note": "" },
+
+    { "location": "C-04-01-1", "item": "AM input cable 6 speaker (White)", "sku_raw": "00148-P-3-WY", "sku_kind": "zoho", "raw_qty": "24", "units": 24, "note": "" },
+    { "location": "C-04-01-2", "item": "AM input cable (Blank)", "sku_raw": "00148-P-3-BK", "sku_kind": "zoho", "raw_qty": "5", "units": 5, "note": "", "flags": ["'Blank' → 'Black'?", "same SKU as C-04-03-6 (Cable, Array extended black) — title mismatch"] },
+    { "location": "C-04-01-3", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-04-01-5", "item": "Cable, Array extended white", "sku_raw": "00148-P-3-WY", "sku_kind": "zoho", "raw_qty": "72 + 1 bad", "units": 72, "other": 1, "note": "", "flags": ["1 bad unit — damaged, not sellable stock", "same SKU as C-04-01-1 (AM input cable) — title mismatch"] }
+  ]
+}
