@@ -21,6 +21,7 @@
 
 import {
   routeScan,
+  scannedUnitKey,
   type ScanRoute,
   type ScanType,
 } from '../barcode-routing';
@@ -74,7 +75,24 @@ export interface ArmedScanSession {
   expects: readonly ScanType[];
   /** The session's current title, kept as-is by any Card that returns none. */
   title?: string | null;
+  /**
+   * The Card this session DOES, when it is a single-job session (the scan
+   * kernel armed with `?work=qc` arms `'qc'`). Rows keyed on it fire only
+   * inside that session: a unit label is a preview anywhere else, and QC only
+   * where the tech is running QC.
+   */
+  work?: ScanCard;
 }
+
+/**
+ * The QC session the scan kernel (`/m/scan?work=qc`) arms: QC runs on units,
+ * and a line label is taken so the tech can pick one of its units.
+ */
+export const QC_SCAN_SESSION: ArmedScanSession = {
+  expects: ['serial-unit', 'receiving-line'],
+  work: 'qc',
+  title: 'Quality control',
+};
 
 export interface ScanDispatchInput {
   /** A raw scan (routed here) or an already-decoded route. */
@@ -112,6 +130,8 @@ interface DispatchRow {
   card: ScanCard;
   stateful: boolean;
   reason: string;
+  /** Fires only when the armed session's `work` is this Card. */
+  armedFor?: ScanCard;
 }
 
 const ALWAYS = () => true;
@@ -140,6 +160,30 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     card: 'qc',
     stateful: true,
     reason: 'this licence plate has an open QC check',
+  },
+  {
+    // Session work, not object state: a unit has no "QC open" fact on it, so
+    // the unit label only means QC inside a session armed to run QC. It is
+    // `stateful` because the armed job outranks the class default exactly the
+    // way prior state does — at a QC station a unit label is never a preview.
+    id: 'qc-unit',
+    classes: ['serial-unit'],
+    when: ALWAYS,
+    armedFor: 'qc',
+    card: 'qc',
+    stateful: true,
+    reason: 'this station is running QC on units',
+  },
+  {
+    // A line label names a PO line that can hold several units; QC is per
+    // unit, so inside a QC session the line opens QC to pick one of them.
+    id: 'qc-line',
+    classes: ['receiving-line'],
+    when: ALWAYS,
+    armedFor: 'qc',
+    card: 'qc',
+    stateful: true,
+    reason: 'this station is running QC — pick a unit on this line',
   },
   {
     id: 'staged-for-pack',
@@ -192,7 +236,7 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
 
 // ─── Titles are data ────────────────────────────────────────────────────────
 //
-// Every session title this app writes for a scan is one of these three
+// Every session title this app writes for a scan is one of these five
 // templates. A Card that returns `null` keeps the session's existing title —
 // that is the plan's "existing" row, not a missing case.
 
@@ -201,7 +245,9 @@ const TITLE_TEMPLATES = {
   // the ID, never a destination called "Arrival" — the door is what you are
   // doing, not a place the phone navigates to.
   arrival: (carrier: string, last4: string) => `Intake · ${carrier} ${last4}`,
-  qc: (lpn: string) => `QC · LPN ${lpn}`,
+  qcLpn: (lpn: string) => `QC · LPN ${lpn}`,
+  qcUnit: (unit: string) => `QC · Unit ${unit}`,
+  qcLine: (line: string) => `QC · Line ${line}`,
   pack: (ref: string) => `Pack · ${ref}`,
 } as const;
 
@@ -247,7 +293,17 @@ function titleFor(
     return TITLE_TEMPLATES.arrival(route.carrier ?? 'Unknown', last4(route.value));
   }
   if (card === 'qc') {
-    return TITLE_TEMPLATES.qc(lpnLabel(route));
+    // The unit reads as the key printed on its label (serial / unit_uid), the
+    // same one `/api/serial-units/[id]` resolves — never a guessed tail.
+    if (route.type === 'serial-unit') {
+      return TITLE_TEMPLATES.qcUnit(scannedUnitKey(route.value) ?? route.value);
+    }
+    if (route.type === 'receiving-line') {
+      // A URL-form line label reads as its printed handle, not the whole URL.
+      const lineId = /^\/m\/l\/(\d+)$/.exec(route.redirect || '')?.[1];
+      return TITLE_TEMPLATES.qcLine(lineId ? `L-${lineId}` : route.value);
+    }
+    return TITLE_TEMPLATES.qcLpn(lpnLabel(route));
   }
   if (card === 'pack') {
     return TITLE_TEMPLATES.pack(route.orderRef ?? state.binOrderId ?? lpnLabel(route));
@@ -280,7 +336,8 @@ function isExpected(session: ArmedScanSession, type: ScanType): boolean {
  * Resolution, in order:
  *
  *  1. Collect every row whose class list holds this scan's class and whose
- *     state predicate is true.
+ *     state predicate is true. A row `armedFor` a Card counts only when the
+ *     armed session's `work` is that Card.
  *  2. **Prior state wins.** If any `stateful` row matched, the class defaults
  *     are dropped — a known carton beats "arrival", a paired bin beats "bin
  *     preview".
@@ -316,7 +373,10 @@ export function dispatchScan(input: ScanDispatchInput): ScanDispatch {
   };
 
   const matches = DISPATCH_TABLE.filter(
-    (row) => row.classes.includes(route.type) && row.when(state),
+    (row) =>
+      row.classes.includes(route.type) &&
+      (row.armedFor === undefined || armed?.work === row.armedFor) &&
+      row.when(state),
   );
   const stateful = matches.filter((row) => row.stateful);
   const contenders = stateful.length ? stateful : matches;

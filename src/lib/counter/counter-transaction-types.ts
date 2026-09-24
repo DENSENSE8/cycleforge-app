@@ -139,6 +139,17 @@ export type CounterTicketWorkInput =
   | { mode: 'create' }
   | { mode: 'attach'; ticketId: number };
 
+/**
+ * An EXISTING `repair_service` row brought into this visit — an Ecwid drop-off
+ * or desk ticket that never went through a tablet cart. Only the id travels:
+ * the device, serial, quote and signature are the ticket's own, read back on
+ * the server, so a tablet can never re-price or re-describe a repair it did not
+ * take in.
+ */
+export interface CounterLinkedRepairInput {
+  repairId: number;
+}
+
 export interface CounterTransactionInput {
   customer: CounterCustomerInput;
   retailLines?: CounterRetailLine[];
@@ -161,6 +172,14 @@ export interface CounterTransactionInput {
    * name every site instead.
    */
   services?: CounterServiceLine[];
+  /**
+   * Existing repairs this visit settles or carries. Linked to the header and
+   * added to its total and staged order, but NEVER re-created, re-signed or
+   * re-ticketed — that intake already happened. Kept apart from `services`
+   * (rather than a flag on a service line) because every `services` consumer
+   * — pre-flight, `submitRepairIntake`, ticket work — means "take a device in".
+   */
+  linkedRepairs?: CounterLinkedRepairInput[];
   priorOrder?: CounterPriorOrderInput | null;
   ticketWork?: CounterTicketWorkInput;
   /**

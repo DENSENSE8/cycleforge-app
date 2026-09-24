@@ -21,7 +21,12 @@
  * reads and writes are `cart-line.ts`'s.
  */
 
-import { isRepairPayload, type KioskCartLine, type RepairPayload } from './cart-line';
+import {
+  isLinkedRepairLine,
+  isRepairPayload,
+  type KioskCartLine,
+  type RepairPayload,
+} from './cart-line';
 
 /** One device on the visit, flattened for the form that edits it. */
 export interface KioskRepairDevice {
@@ -36,15 +41,25 @@ export interface KioskRepairDevice {
   /** The line's money, which is what the cart total and the header are built from. */
   priceCents: number;
   notes: string | null;
+  /** A keypad-typed device: its "product" is its price, not a catalog SKU. */
+  custom: boolean;
 }
 
-/** The visit's devices, in cart order. */
+/**
+ * The visit's devices, in cart order.
+ *
+ * A LINKED repair is not a device on this counter: it was taken in, serialised
+ * and signed for when its ticket was written. Listing it here would put it on
+ * Device & quote, the paperwork and the signature pad — re-running an intake
+ * that already happened — so it is skipped at the one source all three read.
+ */
 export function repairDevicesFromLines(
   lines: readonly KioskCartLine[],
 ): KioskRepairDevice[] {
   const devices: KioskRepairDevice[] = [];
   for (const line of lines) {
     if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
+    if (isLinkedRepairLine(line)) continue;
     const payload: RepairPayload = line.payload;
     devices.push({
       lineId: line.id,
@@ -54,6 +69,7 @@ export function repairDevicesFromLines(
       price: payload.price ?? '',
       priceCents: Number.isFinite(line.unitAmountCents) ? Math.trunc(line.unitAmountCents) : 0,
       notes: payload.notes ?? null,
+      custom: payload.custom === true,
     });
   }
   return devices;
@@ -106,6 +122,63 @@ export function repairDeviceBlockReason(
 /** Quoted total for the visit's repairs, in cents. */
 export function repairDevicesTotalCents(devices: readonly KioskRepairDevice[]): number {
   return devices.reduce((sum, device) => sum + device.priceCents, 0);
+}
+
+/**
+ * Identity of a repair PRODUCT: its SKU and its own single title. Two of the
+ * same radio share it (two serials, two rows, one card); the picker → cart
+ * sync uses it so the same tile tapped twice does not grow a twin.
+ */
+export function repairDeviceKey(sku: string | null | undefined, title: string): string {
+  return `${sku ?? ''}::${title}`;
+}
+
+/** One product on the visit and every unit of it — a card on Device & quote. */
+export interface KioskRepairDeviceGroup {
+  key: string;
+  title: string;
+  sku: string | null;
+  /** One per physical unit (one cart line, one `repair_service` row), cart order. */
+  units: KioskRepairDevice[];
+}
+
+/**
+ * The devices grouped by product, in order of first appearance.
+ *
+ * The ROW stays one per unit — each has its own serial and is its own
+ * `repair_service` row — but the staffer counts units of one SKU on one card
+ * with the cart's `−  N  +` (operator 2026-09-24: "add multiple serial numbers
+ * per one SKU within the device and quote section").
+ *
+ * A keypad-typed device has no SKU — every one is titled `Custom Amount` — so
+ * its identity is its price: two $49 hand-priced units are one card, a $49
+ * and a $120 are two, and the card's one Price field can never rewrite a
+ * different device's quote.
+ */
+export function repairDeviceGroups(
+  devices: readonly KioskRepairDevice[],
+): KioskRepairDeviceGroup[] {
+  const groups = new Map<string, KioskRepairDeviceGroup>();
+  for (const device of devices) {
+    const key = device.custom
+      ? `custom::${device.title}::${device.priceCents}`
+      : repairDeviceKey(device.sku, device.title);
+    const group = groups.get(key);
+    if (group) group.units.push(device);
+    else groups.set(key, { key, title: device.title, sku: device.sku, units: [device] });
+  }
+  return [...groups.values()];
+}
+
+/**
+ * Which unit `−` takes away: the newest one still without a serial — nobody
+ * has read its chassis yet — else the newest.
+ */
+export function repairUnitToDrop(units: readonly KioskRepairDevice[]): KioskRepairDevice | null {
+  for (let i = units.length - 1; i >= 0; i -= 1) {
+    if (!units[i]!.serialNumber.trim()) return units[i]!;
+  }
+  return units[units.length - 1] ?? null;
 }
 
 /**

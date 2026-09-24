@@ -116,7 +116,6 @@ interface OrgProfileResponse {
   kiosk: {
     defaultCommand?: KioskCommandId;
     compReasons?: string[];
-    voidReasons?: string[];
   };
   brand: {
     name?: string;
@@ -579,34 +578,21 @@ export function OrganizationSection() {
             starting point.
           </span>
         </label>
-        {(
-          [
-            {
-              key: 'compReasons',
-              label: 'Comp reasons',
-              hint: 'Why an item stays on the bill at $0. One per line; a staff PIN approves every comp.',
-            },
-            {
-              key: 'voidReasons',
-              label: 'Void reasons',
-              hint: 'Why a line the customer already saw was removed. One per line; recorded, never printed.',
-            },
-          ] as const
-        ).map(({ key, label, hint }) => (
-          <label key={key} className="block max-w-sm">
-            <span className="mb-1 block text-xs font-medium text-text-muted">{label}</span>
-            <textarea
-              rows={4}
-              value={(draft.kiosk?.[key] ?? [...DEFAULT_LINE_REASONS[key === 'compReasons' ? 'comp' : 'void']]).join('\n')}
-              onChange={(e) =>
-                setDraft({ ...draft, kiosk: { ...draft.kiosk, [key]: e.target.value.split('\n') } })
-              }
-              className={FIELD_CLS}
-              data-testid={`org-kiosk-${key}`}
-            />
-            <span className="mt-1 block text-xs text-text-soft">{hint}</span>
-          </label>
-        ))}
+        <label className="block max-w-sm">
+          <span className="mb-1 block text-xs font-medium text-text-muted">Comp reasons</span>
+          <textarea
+            rows={4}
+            value={(draft.kiosk?.compReasons ?? [...DEFAULT_LINE_REASONS.comp]).join('\n')}
+            onChange={(e) =>
+              setDraft({ ...draft, kiosk: { ...draft.kiosk, compReasons: e.target.value.split('\n') } })
+            }
+            className={FIELD_CLS}
+            data-testid="org-kiosk-compReasons"
+          />
+          <span className="mt-1 block text-xs text-text-soft">
+            Why an item stays on the bill at $0. One per line; a staff PIN approves every comp.
+          </span>
+        </label>
       </div>
 
       <div className="space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">

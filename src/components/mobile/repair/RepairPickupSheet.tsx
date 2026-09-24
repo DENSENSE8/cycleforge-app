@@ -300,9 +300,11 @@ export function RepairPickupSheet({
         </ModeRegion>
       </BottomSheet>
 
+      {/* Level 1 — above the full-screen pickup sheet; Escape closes only this. */}
       <ConfirmSheet
         open={confirmKind !== null}
         onClose={() => setConfirmKind(null)}
+        level={1}
         title="Record pickup?"
         message={confirmMessage}
         confirmLabel="Record pickup"

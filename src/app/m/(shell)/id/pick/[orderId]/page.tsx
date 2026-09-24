@@ -72,7 +72,7 @@ export default function MobilePickIdentificationPage() {
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       <MobileDetailTopBar backHref="/m/pick" subtitle="Pick" title={title} mono />
-      <main className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
+      <div className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
         {!isLoaded || !user ? (
           <p className="text-role-caption text-text-muted">Loading…</p>
         ) : query.isError ? (
@@ -95,7 +95,7 @@ export default function MobilePickIdentificationPage() {
         ) : (
           <p className="text-role-caption text-text-muted">Loading…</p>
         )}
-      </main>
+      </div>
     </div>
   );
 }

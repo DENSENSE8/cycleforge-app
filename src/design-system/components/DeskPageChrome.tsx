@@ -111,6 +111,11 @@ import { cornerClass } from '../tokens/radius';
 import { focusRing } from '../tokens/focus-ring';
 import { DeskStageProvider } from './DeskStageContext';
 import {
+  DESK_BAR_SEGMENT_CLASS,
+  DeskHeaderFaceProvider,
+  deskBarSegmentTone,
+} from './DeskActionSlot';
+import {
   DESK_CHROME_STAGE_BODY_CLASS,
   DESK_PAGE_HEADER_ROW_CLASS,
   DESK_STAGE_DETACH_CLASS,
@@ -187,10 +192,12 @@ export interface DeskPageChromeProps {
   onToggleFullscreen: () => void;
   /**
    * `'card'` (default): the 1152px centred card on the page ground.
-   * `'flush'`: an industrial desk (BRIEF §4) — the body runs edge to edge on
-   * the mode canvas with no gutter, no floor and no radius; only the header
-   * and tab rows keep the gutter so their text does not touch the viewport
-   * edge. Adopted page by page: To ship is the first.
+   * `'flush'`: an industrial desk (BRIEF §4) — the desktop terminal's frame.
+   * No page title row: ONE full-width bar carries the desk's modes as flush
+   * segments (active = ink fill) with the page actions at its right end, and
+   * the body runs edge to edge on the mode canvas with no gutter, floor or
+   * radius. The title stays in the document as an `sr-only` heading. Adopted
+   * page by page: To ship is the first.
    */
   stage?: 'card' | 'flush';
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
@@ -214,7 +221,6 @@ export function DeskPageChrome({
 }: DeskPageChromeProps) {
   const flush = stage === 'flush' && !fullscreen;
   const measure = fullscreen || flush ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
-  const rowGutter = flush && DESK_STAGE_GUTTER_CLASS;
 
   // Escape is the keyboard half of the one-click-out budget. Bubble phase and a
   // `defaultPrevented` check so a dialog or menu that owns Escape closes itself
@@ -238,7 +244,7 @@ export function DeskPageChrome({
           // moves the gutter onto the header + tab rows (below) instead.
           !fullscreen && !flush && DESK_STAGE_GUTTER_CLASS,
           !fullscreen && (flush ? 'bg-mode-canvas' : DESK_STAGE_GROUND_CLASS),
-          !fullscreen && 'pt-2',
+          !fullscreen && !flush && 'pt-2',
           !fullscreen && !flush && DESK_STAGE_FLOOR_CLASS,
           className,
         )}
@@ -248,7 +254,17 @@ export function DeskPageChrome({
           fullscreen. Not hidden — unrendered, so the card's flex-basis is the
           whole canvas rather than the canvas minus two invisible rows.
         */}
-        {fullscreen ? null : (
+        {fullscreen ? null : flush ? (
+          <DeskIndustrialBar
+            title={title}
+            subtitle={subtitle}
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={onTabChange}
+            addSlot={addSlot}
+            tabsLead={tabsLead}
+          />
+        ) : (
           <>
             {/* ── Page header — title left, CTA right ────────────────────── */}
             <div
@@ -256,7 +272,6 @@ export function DeskPageChrome({
               className={cn(
                 'flex min-w-0 shrink-0 items-center justify-between gap-3',
                 measure,
-                rowGutter,
                 DESK_PAGE_HEADER_ROW_CLASS,
               )}
             >
@@ -282,7 +297,6 @@ export function DeskPageChrome({
               className={cn(
                 'flex min-w-0 shrink-0 items-stretch',
                 measure,
-                rowGutter,
                 DESK_TAB_ROW_CLASS,
               )}
             >
@@ -384,3 +398,73 @@ export function DeskPageChrome({
     </DeskStageProvider>
   );
 }
+
+/**
+ * The industrial desk bar (`stage="flush"`) — the desktop terminal's
+ * `.header-routes`: modes as flush mono segments across the full width, the
+ * active one ink-filled (colour only, no geometry change), page actions at the
+ * right end in the SAME segment face ({@link DeskHeaderFaceProvider}
+ * `segment`): full bar height, no gap, no padding between cells, a 1px edge
+ * between neighbours, pressed = ink fill (owner 2026-09-24).
+ */
+function DeskIndustrialBar({
+  title,
+  subtitle,
+  tabs,
+  activeTab,
+  onTabChange,
+  addSlot,
+  tabsLead,
+}: Pick<
+  DeskPageChromeProps,
+  'title' | 'subtitle' | 'tabs' | 'activeTab' | 'onTabChange' | 'addSlot' | 'tabsLead'
+>) {
+  return (
+    <div
+      data-testid="desk-page-chrome-band"
+      className="flex min-h-11 w-full min-w-0 shrink-0 items-stretch border-b-2 border-mode-ink bg-mode-bar"
+    >
+      <h1 className="sr-only">{title}</h1>
+      {tabsLead}
+      <div role="tablist" aria-label={title} className="flex min-w-0 items-stretch">
+        {tabs.map((tab) => {
+          const active = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onTabChange(tab.id)}
+              data-testid={`desk-tab-${tab.id}`}
+              data-active={active ? '' : undefined}
+              className={cn(
+                DESK_BAR_SEGMENT_CLASS,
+                'border-r border-mode-edge',
+                deskBarSegmentTone(active),
+              )}
+            >
+              {tab.icon}
+              <span className="truncate">{tab.label}</span>
+              {typeof tab.count === 'number' ? (
+                <span className="tabular-nums">{tab.count > 99 ? '99+' : tab.count}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+      {subtitle ? (
+        <span className="flex min-w-0 items-center truncate px-4 text-role-caption text-mode-muted">
+          {subtitle}
+        </span>
+      ) : null}
+      <div
+        data-testid="desk-page-header"
+        className="ml-auto flex min-w-0 items-stretch"
+      >
+        <DeskHeaderFaceProvider face="segment">{addSlot}</DeskHeaderFaceProvider>
+      </div>
+    </div>
+  );
+}
+

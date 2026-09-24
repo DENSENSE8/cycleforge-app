@@ -22,12 +22,14 @@
  * outbound, so Internal-first put the extra tap on the common case.
  */
 
+import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { Button } from '@/design-system/primitives';
 import { MOBILE_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { useTicketComposer } from '@/lib/composer/use-ticket-composer';
+import type { TicketThreadHandoff } from '@/lib/composer/ticket-thread-handoff';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -44,12 +46,21 @@ const REPLY_TEXTAREA_CLASS = cn(
 export function MobileTicketReplyDock({
   ticketId,
   onSent,
+  handoff,
 }: {
   ticketId: number;
   /** Fired after a successful post — the host scrolls its stream to the echo. */
   onSent?: () => void;
+  /** Prepared reply handed over by another surface (draft, photos, channel); never auto-sent. */
+  handoff?: TicketThreadHandoff;
 }) {
-  const composer = useTicketComposer({ ticketId, onSent });
+  const composer = useTicketComposer({
+    ticketId,
+    onSent,
+    initialBody: handoff?.draft,
+    initialPhotoIds: handoff?.photoIds,
+    initialIsPublic: handoff?.visibility ? handoff.visibility === 'public' : undefined,
+  });
 
   return (
     <div
@@ -61,6 +72,11 @@ export function MobileTicketReplyDock({
         elevationClass('raised'),
       )}
     >
+      <ComposerStagedPhotoStrip
+        staged={composer.staging.staged}
+        onRemove={composer.staging.remove}
+        className="pb-2"
+      />
       <textarea
         value={composer.body}
         onChange={(e) => composer.setBody(e.target.value)}

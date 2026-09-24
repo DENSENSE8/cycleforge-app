@@ -13,7 +13,7 @@ export function MobileDockStagingQueue() {
   const rows = query.data?.pending ?? [];
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-dock-staging-queue">
+    <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-dock-staging-queue">
       <div className="border-b border-border-hairline px-3 py-2 text-role-caption text-text-muted">
         {query.isPending ? 'Loading packed cartons…' : `${rows.length} packed ${rows.length === 1 ? 'carton' : 'cartons'} to stage`}
       </div>
@@ -52,6 +52,6 @@ export function MobileDockStagingQueue() {
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }

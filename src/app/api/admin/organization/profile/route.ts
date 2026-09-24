@@ -145,12 +145,11 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       nextKiosk.defaultCommand = kiosk.defaultCommand;
       touched = true;
     }
-    // Comp / void reason lists: trimmed, de-duplicated, capped like the schema.
-    for (const key of ['compReasons', 'voidReasons'] as const) {
-      if (!Array.isArray(kiosk[key])) continue;
-      nextKiosk[key] = [
+    // Comp reason list: trimmed, de-duplicated, capped like the schema.
+    if (Array.isArray(kiosk.compReasons)) {
+      nextKiosk.compReasons = [
         ...new Set(
-          (kiosk[key] as unknown[])
+          (kiosk.compReasons as unknown[])
             .filter((r): r is string => typeof r === 'string')
             .map((r) => r.trim().slice(0, 60))
             .filter(Boolean),

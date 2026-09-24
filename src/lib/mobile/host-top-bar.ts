@@ -41,6 +41,8 @@ export const OWN_TOP_BAR_PREFIXES = [
   '/m/orders/sync',
   // Exception records own MobileDetailTopBar; the queue keeps the host bar.
   '/m/exceptions/',
+  // The QC line pick (landed from the scan kernel armed for QC) owns its bar.
+  '/m/qc/',
 ] as const;
 
 /**

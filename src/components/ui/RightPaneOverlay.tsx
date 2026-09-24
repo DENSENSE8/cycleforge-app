@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useLayoutEffect,
   useRef,
@@ -18,6 +19,7 @@ import {
   useBodyScrollLock,
   useEscapeClose,
   useHorizontalEdgeResize,
+  useRegisterOverlay,
 } from '@/design-system/hooks';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -142,7 +144,14 @@ export function RightPaneOverlay({
   const hostFromContext = useRightPaneHost();
   const host = anchor === 'viewport' ? null : hostFromContext;
   useBodyScrollLock(open && lockScroll);
-  useEscapeClose(open && closeOnEscape, onClose);
+  // Claim the overlay stack while open: ambient record keyboards stand down
+  // (Escape closes this panel, not the surface under it), and a stacked
+  // overlay above this one takes Escape first.
+  const isTopmost = useRegisterOverlay(open);
+  const closeIfTopmost = useCallback(() => {
+    if (isTopmost()) onClose();
+  }, [isTopmost, onClose]);
+  useEscapeClose(open && closeOnEscape, closeIfTopmost);
 
   const rightEdgeResize = useHorizontalEdgeResize({
     storageKey: align === 'right' && resizable ? storageKey : undefined,

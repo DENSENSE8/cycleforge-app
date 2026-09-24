@@ -30,6 +30,8 @@ export interface PlatformRow {
   organization_id: string;
   slug: string;
   label: string;
+  /** Dense face (≤ 8, upper-case) for the 2x1 label / ledger band; null = built-in fallback. */
+  short_label: string | null;
   tone: string | null;
   /** Optional `#RRGGBB` accent; ink/softFill derived via color-contrast SoT. */
   color_hex: string | null;
@@ -67,6 +69,8 @@ export interface PlatformAccountRow {
   platform_id: number;
   slug: string;
   label: string;
+  /** Connection-grain dense face; wins over the platform's `short_label`. */
+  short_label: string | null;
   /** → organization_integrations.scope (the specific connection). */
   integration_scope: string | null;
   is_active: boolean;
@@ -347,6 +351,7 @@ export async function updatePlatform(
   id: number,
   data: {
     label?: string;
+    shortLabel?: string | null;
     tone?: string | null;
     colorHex?: string | null;
     provider?: string | null;
@@ -354,7 +359,7 @@ export async function updatePlatform(
     isActive?: boolean;
   },
 ): Promise<PlatformRow | null> {
-  // Dynamic SET so nullable fields (tone / color_hex) can be cleared with null;
+  // Dynamic SET so nullable fields (tone / color_hex / short_label) can be cleared with null;
   // COALESCE would leave the previous value and make "reset to builtin" impossible.
   const sets: string[] = [];
   const params: unknown[] = [organizationId, id];
@@ -362,6 +367,10 @@ export async function updatePlatform(
   if (data.label !== undefined) {
     sets.push(`label = $${i++}`);
     params.push(data.label);
+  }
+  if (data.shortLabel !== undefined) {
+    sets.push(`short_label = $${i++}`);
+    params.push(data.shortLabel);
   }
   if (data.tone !== undefined) {
     sets.push(`tone = $${i++}`);
@@ -649,18 +658,31 @@ export async function createPlatformAccount(
 export async function updatePlatformAccount(
   organizationId: OrgId,
   id: number,
-  data: { label?: string; integrationScope?: string | null; isActive?: boolean },
+  data: { label?: string; shortLabel?: string | null; integrationScope?: string | null; isActive?: boolean },
 ): Promise<PlatformAccountRow | null> {
   const setScope = Object.prototype.hasOwnProperty.call(data, 'integrationScope');
+  // `null` clears the connection's short label back to the platform's — the
+  // same sentinel treatment as integration_scope, never COALESCE.
+  const setShort = Object.prototype.hasOwnProperty.call(data, 'shortLabel');
   const res = await tenantQuery<PlatformAccountRow>(
     organizationId,
     `UPDATE platform_accounts SET
        label             = COALESCE($3, label),
        integration_scope = CASE WHEN $4::boolean THEN $5::text ELSE integration_scope END,
-       is_active         = COALESCE($6, is_active)
+       is_active         = COALESCE($6, is_active),
+       short_label       = CASE WHEN $7::boolean THEN $8::text ELSE short_label END
      WHERE organization_id = $1 AND id = $2
      RETURNING *`,
-    [organizationId, id, data.label ?? null, setScope, data.integrationScope ?? null, data.isActive ?? null],
+    [
+      organizationId,
+      id,
+      data.label ?? null,
+      setScope,
+      data.integrationScope ?? null,
+      data.isActive ?? null,
+      setShort,
+      data.shortLabel ?? null,
+    ],
   );
   return res.rows[0] ?? null;
 }

@@ -208,6 +208,15 @@ test('Inbox is an L0 door at /m/inbox, gated on home.inbox.view', () => {
   assert.equal(inbox?.requires, 'home.inbox.view');
 });
 
+test('Quality control is an L0 door onto the scan kernel armed for QC, gated on tech.qc_pass', () => {
+  // The checklist GET/POST both carry `tech.qc_pass`; a drawer row without the
+  // same gate would open a station whose first step 403s.
+  const qc = MOBILE_NAV_DESTINATIONS.find((item) => item.id === 'qc');
+  assert.equal(qc?.kind, 'leaf');
+  assert.equal(qc?.href, '/m/scan?work=qc', 'the one scan kernel, armed for QC — not a second scan door');
+  assert.equal(qc?.requires, 'tech.qc_pass');
+});
+
 test('there is ONE task door on the phone — Daily; no separate /m/tasks row', () => {
   // Operator 2026-09-23: *"there should just be only one task system"*. A daily
   // check and a thrown task are two stores, but the phone shows one list at

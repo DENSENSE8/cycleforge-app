@@ -91,6 +91,7 @@ PHOTOS_SIGNED_URL_TTL_SECONDS=3600
 PHOTOS_SHARE_DEFAULT_TTL_DAYS=30
 PHOTOS_THUMB_MAX_PX=256
 PHOTOS_UPLOAD_MAX_BYTES=8388608            # 8 MB
+PHOTOS_VIDEO_MAX_BYTES=524288000          # 500 MB default — entity videos (POST /api/photos/upload/video)
 PHOTOS_NAS_MIRROR_AFTER_DAYS=90          # future NAS cold-mirror cron
 NEXT_PUBLIC_PHOTOS_UPLOAD_PROVIDER=adapter
 PHOTOS_ANALYZE_ENABLED=false
@@ -106,6 +107,8 @@ PHOTOS_JOB_MAX_ATTEMPTS=5
 **NAS cold mirror:** `/api/cron/photos/nas-mirror` runs daily; requires `NAS_AGENT_URL` + `NAS_AGENT_TOKEN` (or `NAS_DEV_ROOT` locally).
 
 **Legacy URL attach:** `POST /api/receiving-photos` with `photoUrl` still works for NAS picker flows but returns a `Deprecation` header — prefer `POST /api/photos/upload`.
+
+**Video (entity videos):** `POST /api/photos/upload/video` signs a direct-to-GCS PUT (same bucket, `{org}/videos/{entity flow}/…`), then `POST /api/photos/upload/video/{id}/finalize` checks the stored object. GCS-only (503 when `isGcsConfigured()` is false). The browser PUT needs a bucket CORS rule allowing `PUT` with `content-type` + `x-goog-content-length-range` from the app origin.
 
 ## NAS (Synology — receiving / shipping photos)
 

@@ -7,6 +7,10 @@
  * (class × object-state) decides the Card; never-seen tracking intakes a
  * package (PO match on lookup-po). House labels identify onto their record.
  * The capture sheet is the same bottom window as scan-out.
+ *
+ * `?work=qc` arms the QC session on this same kernel (there is no second QC
+ * scan door): a unit label opens its checklist, a line label its unit pick,
+ * and any other label lands exactly as it does unarmed.
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,6 +39,7 @@ import {
 } from '@/lib/receiving/arrival-mobile-flow';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { landScanIdentify } from '@/lib/scan/identify-land';
+import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
 import { cn } from '@/utils/_cn';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
@@ -122,6 +127,7 @@ function MobileScanIdentifyInner() {
   const classifyRid = parseArrivalReceivingId(searchParams.get('rid'));
   const classifyStep = parseArrivalClassifyStep(searchParams.get('step'));
   const classifyTypeHint = parseArrivalTypeHint(searchParams.get('type'));
+  const qcArmed = searchParams.get('work') === 'qc';
 
   const [tape, setTape] = useState<StationTapeEntry[]>([]);
   const { history, isError: historyFailed, retry: retryHistory } = useArrivalHistory();
@@ -226,7 +232,7 @@ function MobileScanIdentifyInner() {
       setDispatching((n) => n + 1);
       void (async () => {
         try {
-          const dispatch = await resolve(value);
+          const dispatch = await resolve(value, qcArmed ? QC_SCAN_SESSION : null);
           const returnTo = searchParams.get('returnTo');
           if (returnTo === '/m/orders/new') {
             // The shared dispatch path has already classified this scan. Return
@@ -264,7 +270,7 @@ function MobileScanIdentifyInner() {
         }
       })();
     },
-    [resolve, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
+    [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
   );
 
   /**
@@ -359,6 +365,10 @@ function MobileScanIdentifyInner() {
                 Try again
               </Button>
             </>
+          ) : qcArmed ? (
+            <p className={cn('text-role-eyebrow text-text-soft', STATION_EYEBROW_CLASS)}>
+              Quality control — scan the unit label unbox put on the unit
+            </p>
           ) : (
             <p className={cn('text-role-eyebrow text-text-soft', STATION_EYEBROW_CLASS)}>
               Scan a tracking number or location code
@@ -382,7 +392,7 @@ function MobileScanIdentifyInner() {
         ) : (
           <MobileCaptureWindow
             label="Scan camera"
-            collapsedLabel="Scan a label"
+            collapsedLabel={qcArmed ? 'Scan a unit label' : 'Scan a label'}
             status={status}
             statusAlert={cameraOff || !online}
             pending={pending}

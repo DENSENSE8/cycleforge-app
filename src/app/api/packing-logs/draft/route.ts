@@ -4,6 +4,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import pool from '@/lib/db';
 import { startPackerLogCapture } from '@/lib/packing/packer-log-writer';
+import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
 const ROUTE = 'packing-logs.draft';
 
@@ -16,6 +17,7 @@ type PackingDraftResponse =
       orderRowId: number;
       trackingNumber: string;
     }
+  | ReturnType<typeof buyerNoteHoldBody>
   | { error: string };
 
 /**
@@ -68,11 +70,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
              FROM orders o
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
             WHERE o.id = $1 AND o.organization_id = $2
-            FOR UPDATE`,
+            FOR UPDATE OF o`,
           [orderRowId, ctx.organizationId],
         );
         const order = orderResult.rows[0];
         if (!order) throw new Error('Order was not found.');
+        // Buyer-note interlock first: the note is read before anything else
+        // about starting this pack (src/lib/orders/buyer-note-interlock.ts).
+        const hold = await readBuyerNoteHold(client, ctx.organizationId, order.id);
+        if (hold) return { hold };
         if (order.shipment_id == null || !order.tracking_number?.trim()) {
           throw new Error('This order needs a carrier tracking number before packing can start.');
         }
@@ -96,6 +102,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         };
       });
 
+      if ('hold' in result && result.hold) return { status: 409, body: buyerNoteHoldBody(result.hold) };
       return { status: 201, body: { success: true, ...result } };
     } catch (error) {
       return {

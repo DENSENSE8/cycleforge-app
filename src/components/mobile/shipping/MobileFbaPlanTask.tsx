@@ -80,7 +80,7 @@ export function MobileFbaPlanTask() {
   };
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-surface-card" aria-label="FBA plan shipment">
+    <div className="flex h-full min-h-0 flex-col bg-surface-card" aria-label="FBA plan shipment">
       <header className="border-b border-border-hairline px-3 pb-3 pt-2">
         <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Amazon prep</p>
         <h1 className="mt-1 text-lg font-semibold tracking-tight text-text-default">Today&apos;s FBA plan</h1>
@@ -156,6 +156,6 @@ export function MobileFbaPlanTask() {
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }

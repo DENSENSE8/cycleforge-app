@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
-import { photoContentUrl } from '@/lib/photos/display-url';
+import { photoContentUrl, videoContentUrl } from '@/lib/photos/display-url';
 import { listPhotosForEntity } from '@/lib/photos/service';
+import { listReadyVideosForEntity } from '@/lib/photos/videos';
+import type { RepairPhotosResponse } from '@/lib/repair/repair-photos';
 
 /**
- * GET /api/repair-service/[id]/photos — read-only list of photos linked to a
- * repair ticket (entity REPAIR_SERVICE), oldest first.
+ * GET /api/repair-service/[id]/photos — read-only list of the photos and ready
+ * videos linked to a repair ticket (entity REPAIR_SERVICE), each oldest first.
  */
 export async function GET(
   request: NextRequest,
@@ -21,13 +23,10 @@ export async function GET(
   }
 
   try {
-    const rows = await listPhotosForEntity({
-      organizationId: orgId,
-      entityType: 'REPAIR_SERVICE',
-      entityId: repairId,
-    });
+    const entity = { organizationId: orgId, entityType: 'REPAIR_SERVICE', entityId: repairId } as const;
+    const [rows, videos] = await Promise.all([listPhotosForEntity(entity), listReadyVideosForEntity(entity)]);
 
-    return NextResponse.json({
+    const body: RepairPhotosResponse = {
       photos: rows.map((row) => ({
         id: row.id,
         url: photoContentUrl(row.id),
@@ -35,7 +34,15 @@ export async function GET(
         photoType: row.photoType,
         createdAt: row.createdAt,
       })),
-    });
+      videos: videos.map((video) => ({
+        id: video.id,
+        url: videoContentUrl(video.id),
+        contentType: video.contentType,
+        sizeBytes: video.fileSizeBytes ?? video.declaredSizeBytes,
+        createdAt: video.createdAt,
+      })),
+    };
+    return NextResponse.json(body);
   } catch (err: unknown) {
     console.error('[repair-service/[id]/photos GET] error:', err);
     return NextResponse.json({ error: 'Failed to fetch repair photos' }, { status: 500 });

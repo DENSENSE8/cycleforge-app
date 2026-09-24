@@ -240,7 +240,7 @@ function CartonPageInner() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-3 space-y-3 pb-24">
+      <div className="flex-1 px-4 py-3 space-y-3 pb-24">
         {loading && (
           <p className="text-center text-sm font-semibold text-text-soft py-10">
             Loading…
@@ -450,7 +450,7 @@ function CartonPageInner() {
             </ul>
           </Panel>
         )}
-      </main>
+      </div>
 
       <footer
         className="sticky bottom-0 z-20 border-t border-border-soft bg-surface-card/95 px-4 py-3 backdrop-blur-md"

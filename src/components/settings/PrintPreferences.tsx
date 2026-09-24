@@ -30,6 +30,8 @@ import {
 } from '@/lib/desktop/desktop-host';
 import { buildTestLabelCommands } from '@/lib/print/labelCommands';
 import { isSilentPrintEnabled, setSilentPrintEnabled } from '@/lib/print/printMode';
+import { PRINT_STATION_NAME_MAX, readPrintStation, setPrintStationName } from '@/lib/print/print-station';
+import { UNNAMED_PRINT_STATION } from '@/lib/print/staff-print-bridge';
 import { friendlyPrintError } from '@/lib/print/printErrors';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
@@ -91,6 +93,48 @@ function SilentPrintToggle({ onStoreChange }: { onStoreChange?: () => void }) {
   );
 }
 
+/**
+ * This computer's print-station name — what a phone signed in as the same
+ * staffer sees in its station picker. Saved on blur / Enter; the bridge host
+ * republishes its status on the change event.
+ */
+function PrintStationNameField() {
+  const [name, setName] = useState('');
+  useEffect(() => {
+    const stored = readPrintStation().name;
+    setName(stored === UNNAMED_PRINT_STATION ? '' : stored);
+  }, []);
+  const save = () => {
+    const next = name.trim();
+    const stored = readPrintStation().name;
+    if (next === (stored === UNNAMED_PRINT_STATION ? '' : stored)) return;
+    setPrintStationName(next);
+    setName(next);
+  };
+  return (
+    <div className="mb-4 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
+      <label htmlFor="print-station-name" className="text-sm font-semibold text-text-default">
+        Print station name
+      </label>
+      <p className="mt-0.5 text-xs text-text-soft">
+        Phones signed in as you pick this computer by this name to print on its printers.
+      </p>
+      <input
+        id="print-station-name"
+        className={cn(FIELD_CLS, 'mt-2')}
+        value={name}
+        maxLength={PRINT_STATION_NAME_MAX}
+        placeholder={`${UNNAMED_PRINT_STATION} — e.g. Bench A`}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+      />
+    </div>
+  );
+}
+
 export function PrintPreferences({ onClose, embedded, onStoreChange }: PrintPreferencesProps) {
   const webAvail = isBrowserPrintSupported();
 
@@ -121,6 +165,7 @@ export function PrintPreferences({ onClose, embedded, onStoreChange }: PrintPref
       )}
 
       {!embedded && <SilentPrintToggle onStoreChange={onStoreChange} />}
+      {!embedded && <PrintStationNameField />}
 
       {webAvail ? (
         <BrowserProfiles embedded={embedded} onStoreChange={onStoreChange} />

@@ -10,7 +10,8 @@ import {
   recordChecklistStep,
   updateQcCheck,
 } from './sku-testing-api';
-import { NUMERIC_VALUE_KINDS, type ChecklistStep, type UnitResult } from './sku-testing-types';
+import { stepValueFields } from '@/lib/qc/qc-step';
+import type { ChecklistStep, UnitResult } from './sku-testing-types';
 
 interface Params {
   receivingLineId: number;
@@ -141,19 +142,12 @@ export function useChecklistEditor({
   const recordValue = useCallback(
     async (step: ChecklistStep, raw: string) => {
       if (serialUnitId == null) return;
-      const isNumeric = NUMERIC_VALUE_KINDS.has(step.value_kind ?? '');
-      const body: { stepId: number; valueNum?: number; valueText?: string | null } = { stepId: step.step_id };
-      if (isNumeric) {
-        if (raw.trim() === '') return;
-        const n = Number(raw);
-        if (!Number.isFinite(n)) {
-          toast.error('Enter a valid number');
-          return;
-        }
-        body.valueNum = n;
-      } else {
-        body.valueText = raw.trim() || null;
+      const value = stepValueFields(step, raw);
+      if (!value.ok) {
+        if (value.reason === 'invalid') toast.error('Enter a valid number');
+        return;
       }
+      const body = { stepId: step.step_id, ...value.fields };
       setRecordingStep(step.step_id);
       try {
         await recordChecklistStep(serialUnitId, body);

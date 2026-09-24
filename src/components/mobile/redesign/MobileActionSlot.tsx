@@ -53,27 +53,31 @@ import { Button, type ButtonProps } from '@/design-system/primitives/Button';
 import { cn } from '@/utils/_cn';
 
 /**
- * The one corner for a phone top-bar action — the same `radius="surface"`
- * {@link MobileScanCta} paints, so the two controls in the right cluster read
- * as one pair rather than two languages. Not a call-site choice, exactly as
- * `DESK_HEADER_ACTION_RADIUS` is not one on the desk.
+ * One mobile top-bar cell — menu, back, page action, scan. Operator
+ * 2026-09-24: the corners are square boxes, flush to the bar's top, bottom
+ * and outer edge, no radius and no padding around them — the phone twin of
+ * the desk's industrial bar segments (`DESK_BAR_SEGMENT_CLASS`). The cell IS
+ * the bar height (44px, the touch floor), so paint == hit and no
+ * pseudo-element is needed. Neighbours share a 1px `border-border-soft` edge;
+ * the call site picks the side (`border-r` left of the title, `border-l` in
+ * the right cluster). Press is a fill, never a scale: a shrinking cell opens a
+ * gap in a flush bar.
  */
-export const MOBILE_TOP_BAR_ACTION_RADIUS = 'surface' as const;
+export const MOBILE_BAR_CELL_CLASS =
+  'relative shrink-0 border-border-soft text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default active:scale-100 enabled:active:scale-100 active:bg-surface-sunken';
 
-/**
- * 32px PAINTED with a 44px hit region carried by the pseudo-element
- * (32 + 6 + 6) — `MOBILE_CONTROL_LADDER`'s paint-small-hit-big rule, copied
- * from the scan CTA rather than re-derived so the pair cannot drift by a pixel.
- */
-const MOBILE_TOP_BAR_ACTION_FACE =
-  "relative h-8 shrink-0 px-2.5 text-role-caption font-semibold tracking-tight before:absolute before:-inset-1.5 before:content-['']";
+/** The one corner for a phone top-bar cell — flush, same as every bar segment. */
+export const MOBILE_TOP_BAR_ACTION_RADIUS = 'flush' as const;
+
+/** A labelled cell: full bar height, width from its label. */
+const MOBILE_TOP_BAR_ACTION_FACE = `${MOBILE_BAR_CELL_CLASS} h-11 border-l px-3 text-role-caption font-semibold tracking-tight`;
 
 export type MobileTopBarActionProps = Omit<ButtonProps, 'radius' | 'size' | 'variant'>;
 
 /**
  * The page action's locked face.
  *
- * `secondary`, identical in weight to the scan CTA beside it — deliberately
+ * `ghost`, a flush cell identical to the scan cell beside it — deliberately
  * NOT louder. The affordance is the fixed corner and the label, not volume;
  * the spine ruling *"no hue, anywhere"* holds on the phone too, and a
  * saturated block here would out-shout the one permanent control in the bar.
@@ -85,7 +89,7 @@ export function MobileTopBarAction({ className, ...props }: MobileTopBarActionPr
   return (
     <Button
       {...props}
-      variant="secondary"
+      variant="ghost"
       size="sm"
       radius={MOBILE_TOP_BAR_ACTION_RADIUS}
       className={cn(MOBILE_TOP_BAR_ACTION_FACE, className)}

@@ -1,11 +1,14 @@
 'use client';
 
 /**
- * Silent-print host — listens on this staff ID's print channel and drives
- * USB/serial via printLabelRun when THIS device can actually silent-print.
+ * Silent-print host — this browser's print station. Listens on this staff ID's
+ * print channel, answers status requests with its station id + name + printer
+ * faces, and drives USB/serial via printLabelRun for jobs ADDRESSED TO THIS
+ * STATION (`targetStationId`) that it can actually silent-print.
  *
- * Mount on the desk frame and on `/m/*` (phone-frame SoT). A phone without a
- * paired printer must not ack — the computer with USB acks and prints.
+ * Mount on the desk frame and on `/m/*` (phone-frame SoT). Another computer
+ * signed in as the same staffer — or a phone with no paired printer — never
+ * acks a job aimed at a different station.
  */
 
 import { useEffect, useRef } from 'react';
@@ -31,6 +34,7 @@ import {
 } from '@/lib/print/staff-print-bridge';
 import { getProfileForRole, listProfiles, setRoute } from '@/lib/print/browserPrint';
 import { isSilentPrintEnabled, setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
+import { PRINT_STATION_CHANGED_EVENT, readPrintStation } from '@/lib/print/print-station';
 import {
   printBinLabelRun,
   printHandlingUnitLabelRun,
@@ -41,6 +45,7 @@ import { platesPerTote } from '@/lib/print/labelCopies';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
 import { triggerPackPrintBundle } from '@/components/packer/pack-print-bundle';
+import { printRepairStationJob } from '@/lib/print/printRepairStationJob';
 import type { RackSegments } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 
@@ -48,10 +53,13 @@ function snapshotStatus(): StaffPrintStatus {
   const label = getProfileForRole('label');
   const paper = getProfileForRole('paper');
   const silent = isSilentPrintEnabled();
+  const station = readPrintStation();
   const labelUsb =
     !!label && label.kind !== 'os' && label.language !== 'none';
   return {
     type: 'staff.print_status',
+    stationId: station.id,
+    stationName: station.name,
     silent,
     label: {
       ready: silent && labelUsb,
@@ -97,9 +105,13 @@ export function useStaffPrintBridgeHost() {
 
   useEffect(() => {
     void publishStatus();
-    const onSilent = () => void publishStatus();
-    window.addEventListener(SILENT_PRINT_CHANGED_EVENT, onSilent);
-    return () => window.removeEventListener(SILENT_PRINT_CHANGED_EVENT, onSilent);
+    const republish = () => void publishStatus();
+    window.addEventListener(SILENT_PRINT_CHANGED_EVENT, republish);
+    window.addEventListener(PRINT_STATION_CHANGED_EVENT, republish);
+    return () => {
+      window.removeEventListener(SILENT_PRINT_CHANGED_EVENT, republish);
+      window.removeEventListener(PRINT_STATION_CHANGED_EVENT, republish);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelName]);
 
@@ -117,7 +129,8 @@ export function useStaffPrintBridgeHost() {
     STAFF_PRINT_OPTIONS_PATCH_EVENT,
     (message) => {
       const patch = parseStaffPrintOptionsPatch(message?.data);
-      if (!patch) return;
+      // Routing is per station: only the addressed computer changes its printers.
+      if (!patch || patch.targetStationId !== readPrintStation().id) return;
       if (typeof patch.silent === 'boolean') setSilentPrintEnabled(patch.silent);
       if (patch.routing) {
         if ('label' in patch.routing) setRoute('label', patch.routing.label ?? null);
@@ -164,6 +177,12 @@ export function useStaffPrintBridgeHost() {
           packerLogId: job.papers.packerLogId,
           reprint: job.papers.reprint,
         });
+        return;
+      }
+
+      if (job.grain === 'repair' && job.repair) {
+        const error = await printRepairStationJob(job.repair, job.request_id);
+        if (error) toast.error(error);
         return;
       }
 

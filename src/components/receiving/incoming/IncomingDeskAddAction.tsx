@@ -11,7 +11,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { FileText, Package, RefreshCw, RotateCcw } from '@/components/Icons';
 import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
-import { SlicedActionDock } from '@/design-system/primitives';
+import { DeskHeaderSplitAction } from '@/design-system/components/DeskHeaderSplitAction';
 import {
   GLOBAL_ADD_INTENT_EVENT,
   consumeGlobalAddIntent,
@@ -121,10 +121,8 @@ export function IncomingDeskAddAction() {
 
   const control = useMemo(
     () => (
-      <div className="shrink-0" data-testid="incoming-add-purchase-order">
-        <SlicedActionDock
-          embedded
-          embeddedChrome="header"
+      <div className="flex shrink-0" data-testid="incoming-add-purchase-order">
+        <DeskHeaderSplitAction
           tone="blue"
           icon={<Package aria-hidden className="h-3.5 w-3.5" />}
           label="Add purchase order"

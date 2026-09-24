@@ -7,6 +7,7 @@ import { IconButton } from '@/design-system/primitives';
 import { MobileScanCta } from '@/components/mobile/redesign/mobile-scan-cta';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { mobileRouteOwnsTopBar } from '@/lib/mobile/host-top-bar';
+import { previousMobilePath } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';
 
 interface MobileDetailTopBarProps {
@@ -23,7 +24,13 @@ interface MobileDetailTopBarProps {
   mono?: boolean;
   /** Slot between the back button and the title block — a domain glyph, an avatar. */
   lead?: ReactNode;
-  /** Optional URL to navigate back to. If omitted, `router.back()` is used. */
+  /**
+   * Where Back lands. When the operator just came from there, Back pops the
+   * history (so that screen's own Back still reaches where they were before);
+   * otherwise it REPLACES this entry. Never a push — a pushed parent whose Back
+   * is `router.back()` returns here, and the two bounce forever. Omitted:
+   * `router.back()`.
+   */
   backHref?: string;
   /** Slot at the right edge — status pill, network chip, print button. */
   right?: ReactNode;
@@ -87,12 +94,20 @@ export function MobileDetailTopBar({
   const ownsScanSeat = mobileRouteOwnsTopBar(pathname);
 
   const handleBack = useCallback(() => {
-    if (backHref) router.push(backHref);
-    else router.back();
+    if (!backHref) return router.back();
+    if (previousMobilePath() === backHref.split(/[?#]/)[0]) router.back();
+    else router.replace(backHref);
   }, [backHref, router]);
 
   return (
-    <header className="sticky top-0 z-header flex min-h-14 items-center gap-2 border-b border-border-hairline bg-surface-card/95 pl-2 pr-4 backdrop-blur supports-[backdrop-filter]:bg-surface-card/80">
+    <header
+      className={cn(
+        'sticky top-0 z-header flex min-h-14 items-center gap-2 border-b border-border-hairline bg-surface-card/95 pl-2 backdrop-blur supports-[backdrop-filter]:bg-surface-card/80',
+        // The scan cell is square and flush to the outer edge (operator
+        // 2026-09-24); padding would float it off the corner.
+        ownsScanSeat ? 'pr-0' : 'pr-4',
+      )}
+    >
       <IconButton
         onClick={handleBack}
         ariaLabel="Back"
@@ -140,11 +155,11 @@ export function MobileDetailTopBar({
           <p className="truncate text-role-caption font-semibold text-text-muted">{meta}</p>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1 self-stretch">
         {right}
         {/* Same corner, same control as the host header — and only when that
             header is absent. See {@link ownsScanSeat}. */}
-        {ownsScanSeat ? <MobileScanCta /> : null}
+        {ownsScanSeat ? <MobileScanCta fill /> : null}
       </div>
     </header>
   );

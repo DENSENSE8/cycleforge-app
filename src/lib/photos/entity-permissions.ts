@@ -1,5 +1,6 @@
+import { ApiError } from '@/lib/api';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
-import type { PhotoEntityType } from './types';
+import { PHOTO_ENTITY_TYPES, type PhotoEntityType } from './types';
 
 /** Upload/delete permission for each photo entity type. */
 export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = {
@@ -29,4 +30,25 @@ export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = 
 
 export function uploadPermissionFor(entityType: PhotoEntityType): PermissionString {
   return UPLOAD_PERM_BY_ENTITY[entityType];
+}
+
+/**
+ * The entity a media upload targets, parsed off the request exactly one way for
+ * photos (`POST /api/photos/upload`) and videos (`POST /api/photos/upload/video`):
+ * a known `PHOTO_ENTITY_TYPES` value (case-insensitive) and a positive id.
+ * Gate the result with {@link uploadPermissionFor}.
+ */
+export function parseMediaEntityTarget(
+  rawType: unknown,
+  rawId: unknown,
+): { entityType: PhotoEntityType; entityId: number } {
+  const entityType = String(rawType || '').trim().toUpperCase();
+  if (!PHOTO_ENTITY_TYPES.includes(entityType as PhotoEntityType)) {
+    throw ApiError.badRequest(`Invalid entityType: ${entityType}`);
+  }
+  const entityId = Number(rawId);
+  if (!Number.isFinite(entityId) || entityId <= 0) {
+    throw ApiError.badRequest('Valid entityId is required');
+  }
+  return { entityType: entityType as PhotoEntityType, entityId };
 }

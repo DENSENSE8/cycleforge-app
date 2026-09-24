@@ -244,6 +244,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
       <ConfirmSheet
         open={confirmPass}
         onClose={() => setConfirmPass(false)}
+        level={1}
         title={`Mark ${lineCount} line${lineCount === 1 ? '' : 's'} PASSED?`}
         message="Marks each line tested-PASS with disposition ACCEPT. Cannot be undone from this screen."
         confirmLabel={busy ? 'Working…' : 'Yes, mark PASSED'}

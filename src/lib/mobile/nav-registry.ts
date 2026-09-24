@@ -17,8 +17,10 @@
 import type { MobileNavTabId } from '@/lib/auth/mobile-display-config';
 import { BarChart3, Inbox, ListChecks, PackageOpen, Printer } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
+import { TECH_NAV_ICONS } from '@/lib/nav/station-nav-icons';
 import { OUTBOUND_WORKFLOW_SURFACES } from '@/lib/mobile/mobile-first-surface';
 import { MOBILE_LABEL_INTAKE_PATH } from '@/lib/shipping/orders-desk';
+import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 
 // ─── Destination tree (sidebar drawer) ───────────────────────────────────────
@@ -227,6 +229,19 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
         requires: 'packing.review',
       },
     ],
+  },
+  // An L0 row, the phone twin of the desk's Quality Control station row (same
+  // glyph). QC is its own scan TYPE (operator 2026-09-24), run on the one scan
+  // kernel armed for QC — not a second scan door, not a face of Unbox, not a
+  // Repair door. Gated on `tech.qc_pass`, the permission the checklist read
+  // and write carry, so a staffer who would 403 on the first step never sees it.
+  {
+    kind: 'leaf',
+    id: 'qc',
+    label: 'Quality control',
+    href: QC_SCAN_HREF,
+    icon: TECH_NAV_ICONS.testing,
+    requires: 'tech.qc_pass',
   },
   // CROSS-LANE, so an L0 row rather than a member of any lane: a shift report
   // spans Inbound and Outbound alike. Gated on `operations.view` — the Monitor

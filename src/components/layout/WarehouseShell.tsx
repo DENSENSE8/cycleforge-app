@@ -60,6 +60,7 @@ import { ThemeSync } from '@/components/theme/ThemeSync';
 import { TimeFormatSync } from '@/components/time-format/TimeFormatSync';
 import { QuickAccessSync } from '@/components/quick-access/QuickAccessSync';
 import { AuthenticatedAblyProvider } from '@/components/providers/AuthenticatedAblyProvider';
+import { WorkbenchCachePersistence } from '@/components/providers/WorkbenchCachePersistence';
 import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { InstallPrompt } from '@/components/station/InstallPrompt';
 /**
@@ -105,6 +106,9 @@ export function WarehouseShell({
         <PostHogProvider>
           <Providers>
             <AuthProvider initial={initialUser}>
+              {/* First child: restores the repair workbench cache before any
+                  route renders its queries. */}
+              <WorkbenchCachePersistence />
               <AuthenticatedAblyProvider>
                 <ActivityInboxProvider>
                   <StaffColorsProvider>
@@ -146,8 +150,11 @@ export function WarehouseShell({
             </AuthProvider>
           </Providers>
         </PostHogProvider>
+        {/* In-flow bottom slot, not a fixed overlay: while the banner is up the
+            route shell above shrinks, so sticky docks (repair workbench, ticket
+            reply, confirm docks) sit above it instead of under it. */}
+        <InstallPrompt />
       </div>
-      <InstallPrompt />
       <AppearanceApplier />
     </ReducedMotionProvider>
   );

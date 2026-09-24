@@ -4,7 +4,7 @@
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeItemNumber } from '@/lib/automations/listing-match';
+import { normalizeItemNumber, normalizeSku } from '@/lib/automations/listing-match';
 import type {
   AutomationRuleCreateBody,
   AutomationRuleUpdateBody,
@@ -63,8 +63,8 @@ function normalizeWhen(when: Record<string, unknown>): Record<string, unknown> {
   if (when.sku_catalog_id != null) {
     out.sku_catalog_id = String(when.sku_catalog_id);
   }
-  if (when.sku != null && String(when.sku).trim()) {
-    out.sku = String(when.sku).trim();
+  if (when.sku != null && normalizeSku(String(when.sku))) {
+    out.sku = normalizeSku(String(when.sku));
   }
   if (when.account_source != null && String(when.account_source).trim()) {
     out.account_source = String(when.account_source).trim().toLowerCase();

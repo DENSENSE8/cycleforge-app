@@ -1175,29 +1175,6 @@ export async function upsertVerification(params: {
   return result.rows[0];
 }
 
-/**
- * Derive a step's pass/fail. When the step has a numeric pass band
- * (pass_min/pass_max), the recorded number decides it (inclusive bounds);
- * otherwise fall back to the explicit boolean the tester sent. Returns null
- * when nothing can be determined (no band + no explicit value).
- */
-export function deriveStepPassed(
-  step: { pass_min?: string | number | null; pass_max?: string | number | null },
-  recorded: { passed?: boolean; valueNum?: number | null },
-): boolean | null {
-  const min = step.pass_min == null ? null : Number(step.pass_min);
-  const max = step.pass_max == null ? null : Number(step.pass_max);
-  const hasBand = (min != null && !Number.isNaN(min)) || (max != null && !Number.isNaN(max));
-
-  if (hasBand && recorded.valueNum != null) {
-    if (min != null && !Number.isNaN(min) && recorded.valueNum < min) return false;
-    if (max != null && !Number.isNaN(max) && recorded.valueNum > max) return false;
-    return true;
-  }
-  if (recorded.passed !== undefined) return recorded.passed;
-  return null;
-}
-
 // ─── Cache-first resolve-or-fetch from Zoho ─────────────────────────────────
 
 /**

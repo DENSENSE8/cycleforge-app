@@ -16,10 +16,12 @@
  * can send "look at ticket 48120" and land a thumb on the answer.
  *
  * ONE JOB: read this thread, answer it. No assignment editor, no status
- * change, no photo attach — the desk console keeps those, and each is its own
- * verb with its own destination (SURFACE_LAW R1). The stream face is the house
- * {@link ConversationMessageCard}; the mouth is {@link MobileTicketReplyDock},
- * chrome over the shared composer waist.
+ * change, no photo picker — the desk console keeps those, and each is its own
+ * verb with its own destination (SURFACE_LAW R1). Photos arrive only already
+ * chosen, staged by the surface that handed over (`?photos=`, e.g. the repair
+ * workbench's Photos screen); the dock shows them and lets the operator drop
+ * one. The stream face is the house {@link ConversationMessageCard}; the mouth
+ * is {@link MobileTicketReplyDock}, chrome over the shared composer waist.
  *
  * Boundary: platform layer + `src/lib` + `src/hooks` only. The desk's
  * `MergedRecordStream` and `TicketComposer` are `src/components/**` feature
@@ -43,6 +45,7 @@ import { renderBlockMarkdown } from '@/lib/support/markdown';
 import { initials, requesterFrom, resolveAuthor } from '@/lib/support/support-chat-utils';
 import type { ZendeskAgent, ZendeskUser } from '@/lib/zendesk';
 import { cn } from '@/utils/_cn';
+import type { TicketThreadHandoff } from '@/lib/composer/ticket-thread-handoff';
 import { MobileTicketReplyDock } from './MobileTicketReplyDock';
 
 /**
@@ -55,7 +58,14 @@ import { MobileTicketReplyDock } from './MobileTicketReplyDock';
 const NO_AGENTS: Map<number, ZendeskAgent> = new Map();
 const NO_USERS: Map<number, ZendeskUser> = new Map();
 
-export function MobileTicketThread({ ticketId }: { ticketId: number | null }) {
+export function MobileTicketThread({
+  ticketId,
+  handoff,
+}: {
+  ticketId: number | null;
+  /** Prepared reply (`?draft=` / `?photos=` / `?visibility=`); editable, never auto-sent. */
+  handoff?: TicketThreadHandoff;
+}) {
   const { has, isLoaded } = useAuth();
   /**
    * The same permission the read and write routes gate on
@@ -170,6 +180,7 @@ export function MobileTicketThread({ ticketId }: { ticketId: number | null }) {
       {canRead && ticketId != null ? (
         <MobileTicketReplyDock
           ticketId={ticketId}
+          handoff={handoff}
           onSent={() => streamEnd.current?.scrollIntoView({ block: 'end' })}
         />
       ) : null}

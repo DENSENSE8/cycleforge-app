@@ -1,5 +1,11 @@
 # HANDOFF — Outbound "To ship" → industrial record ledger
 
+**Status (2026-09-24, uncommitted):** Steps 0–2 landed, then revised by the owner — industrial
+canvas `#fafafa`, `SURFACE_LAW.md` amended, `OutboundOrdersLedger` on To ship (edge-to-edge
+industrial desk bar; location in the context band; condition beside the select box; the open
+record reads in an evidence column, not the right rail). Step 3 skipped: `apps/mobile-ios` is not
+in `prod`. **Next work follows [`HANDOFF-industrial-record-ledger.md`](./HANDOFF-industrial-record-ledger.md).**
+
 Paste this whole file as the first message of a fresh session in the **prod lane**
 (`~/Projects/cycleforge-lanes/prod`). You are implementing one page. Read
 [`BRIEF.md`](./BRIEF.md) first — it is the law; where older docs disagree, BRIEF wins.

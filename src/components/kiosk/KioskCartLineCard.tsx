@@ -36,10 +36,10 @@
  * Schemas: `counter_session_lines` via {@link cartLineCardView}.
  */
 
-import { useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
-import { Wrench, SalesPrice, RefreshCw, Minus, Plus } from '@/components/Icons';
+import { useState } from 'react';
+import { Wrench, SalesPrice, RefreshCw } from '@/components/Icons';
 import { KioskChip } from '@/components/kiosk/KioskChip';
-import { Button, IconButton } from '@/design-system/primitives';
+import { KioskQuantityStepper, KioskRemoveConfirm } from '@/components/kiosk/KioskQuantityStepper';
 import { cartLineCardView, stepCartQuantity } from '@/lib/kiosk/cart-card-view';
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
@@ -58,15 +58,6 @@ const TYPE_FACE = {
   BUYBACK: { Icon: RefreshCw, tone: 'info' as const },
   RETAIL: { Icon: SalesPrice, tone: 'success' as const },
 };
-
-/**
- * The stepper's presses belong to the stepper: a click must not open the
- * editor, Enter must not reach the card's key handler, and a press must not
- * start the swipe row's pointer capture.
- */
-function keepPressHere(event: MouseEvent | KeyboardEvent | PointerEvent): void {
-  event.stopPropagation();
-}
 
 export function KioskCartLineCard({
   line,
@@ -161,36 +152,14 @@ export function KioskCartLineCard({
           green"). A stepper line's `−  N  +` IS its
           quantity, so the right edge prints the total alone — never N twice. */}
       {confirmRemove ? (
-        <div
-          className="flex items-center justify-between gap-3"
-          onClick={keepPressHere}
-          onKeyDown={keepPressHere}
-          onPointerDown={keepPressHere}
-          data-testid="kiosk-cart-line-remove-confirm"
-        >
-          <span className="text-sm font-semibold text-text-default">Remove this item?</span>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() => setConfirmRemove(false)}
-              data-testid="kiosk-cart-line-keep"
-            >
-              Keep
-            </Button>
-            <Button
-              variant="danger"
-              size="lg"
-              onClick={() => {
-                setConfirmRemove(false);
-                onRemove?.();
-              }}
-              data-testid="kiosk-cart-line-remove"
-            >
-              Remove
-            </Button>
-          </div>
-        </div>
+        <KioskRemoveConfirm
+          testIdPrefix="kiosk-cart-line"
+          onKeep={() => setConfirmRemove(false)}
+          onRemove={() => {
+            setConfirmRemove(false);
+            onRemove?.();
+          }}
+        />
       ) : (
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -214,42 +183,13 @@ export function KioskCartLineCard({
           </div>
           <div className="flex shrink-0 items-center gap-3">
             {stepper ? (
-              <div
-                role="group"
-                aria-label={`Quantity of ${view.title}`}
-                className="flex items-center gap-1"
-                onClick={keepPressHere}
-                onKeyDown={keepPressHere}
-                onPointerDown={keepPressHere}
-                data-testid="kiosk-cart-line-stepper"
-              >
-                <IconButton
-                  size="touch"
-                  radius="pill"
-                  className="border border-border-hairline"
-                  icon={<Minus className="h-5 w-5" />}
-                  ariaLabel={view.quantity <= 1 ? `Remove ${view.title}` : `One fewer ${view.title}`}
-                  disabled={view.quantity <= 1 && !onRemove}
-                  onClick={() => step(-1)}
-                  data-testid="kiosk-cart-line-minus"
-                />
-                <span
-                  className="min-w-8 text-center text-base font-semibold tabular-nums text-text-default"
-                  aria-live="polite"
-                  data-testid="kiosk-cart-line-qty"
-                >
-                  {view.quantity}
-                </span>
-                <IconButton
-                  size="touch"
-                  radius="pill"
-                  className="border border-border-hairline"
-                  icon={<Plus className="h-5 w-5" />}
-                  ariaLabel={`One more ${view.title}`}
-                  onClick={() => step(1)}
-                  data-testid="kiosk-cart-line-plus"
-                />
-              </div>
+              <KioskQuantityStepper
+                title={view.title}
+                quantity={view.quantity}
+                onStep={step}
+                canRemove={Boolean(onRemove)}
+                testIdPrefix="kiosk-cart-line"
+              />
             ) : null}
             {view.adjustedFrom ? (
               // The catalog price, struck — the amount beside it is what the

@@ -29,7 +29,7 @@ export function MobileShippedHistory() {
   );
 
   return (
-    <main
+    <div
       className="flex h-full min-h-0 flex-col bg-surface-card"
       data-testid="mobile-shipped-history"
     >
@@ -102,6 +102,6 @@ export function MobileShippedHistory() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

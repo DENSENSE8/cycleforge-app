@@ -10,6 +10,11 @@
  * shoved right, hard against the pane edge, on a wide bench). The carton identity bar composes
  * {@link CatalogManagerList} inline under the centered pills (not this overlay).
  * The /settings catalog section renders the same list without overlay chrome.
+ *
+ * `kind="platform"` is "Edit platforms": the platform list (display label +
+ * short label) AND, under it, the connections ({@link PlatformAccountsManager}
+ * — connection name + short label). Opened from Unbox's platform pill and the
+ * To-ship ledger toolbar, so both surfaces edit the one catalog they paint.
  */
 
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -17,11 +22,12 @@ import { IconButton } from '@/design-system/primitives';
 import { X } from '@/components/Icons';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { CatalogManagerList, type CatalogKind } from './CatalogManagerList';
+import { PlatformAccountsManager } from './PlatformAccountsManager';
 
 export type { CatalogKind } from './CatalogManagerList';
 
 const TITLE: Record<CatalogKind, string> = {
-  platform: 'Manage platforms',
+  platform: 'Edit platforms',
   type: 'Manage types',
   priority: 'Manage priorities',
 };
@@ -66,6 +72,12 @@ export function CatalogManagerPopover({
           // here too — not only in Settings.
           enablePlatformRules
         />
+        {kind === 'platform' ? (
+          <section aria-label="Connections" className="mt-5 border-t border-border-hairline pt-4">
+            <p className={`${microBadge} mb-2 text-text-muted`}>Connections</p>
+            <PlatformAccountsManager />
+          </section>
+        ) : null}
       </div>
     </RightPaneOverlay>
   );

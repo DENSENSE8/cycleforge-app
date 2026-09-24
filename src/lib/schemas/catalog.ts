@@ -24,6 +24,18 @@ const colorHex = z
   .nullable()
   .optional();
 
+/**
+ * Dense face for the 2x1 label / ledger band (`platforms.short_label`,
+ * `platform_accounts.short_label`) — ≤ 8 chars, stored upper-case. `null`
+ * clears back to the built-in compact / full label.
+ */
+const shortLabel = trimmed
+  .min(1)
+  .max(8, 'shortLabel must be 8 characters or fewer')
+  .transform((s) => s.toUpperCase())
+  .nullable()
+  .optional();
+
 const typeKind = z.enum(['receiving', 'shipping', 'both']);
 
 // ─── platforms ────────────────────────────────────────────────────────────────
@@ -43,6 +55,7 @@ export const PlatformCreateBody = z
 export const PlatformUpdateBody = z
   .object({
     label: trimmed.min(1).optional(),
+    shortLabel,
     tone: trimmed.min(1).nullable().optional(),
     colorHex,
     provider: trimmed.min(1).nullable().optional(),
@@ -123,6 +136,7 @@ export const PlatformAccountCreateBody = z
 export const PlatformAccountUpdateBody = z
   .object({
     label: trimmed.min(1).optional(),
+    shortLabel,
     integrationScope: trimmed.min(1).nullable().optional(),
     isActive: z.boolean().optional(),
   })

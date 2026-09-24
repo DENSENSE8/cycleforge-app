@@ -172,6 +172,15 @@ const BodySchema = z.object({
    * `{success: true, data: {}}`.
    */
   serviceLines: z.array(ServiceSchema).max(20).optional(),
+  /**
+   * Existing repairs this visit links (no intake, no signature, no ticket).
+   * Ids only — the server reads each quote and device from the ticket itself,
+   * so a tablet can never re-price a repair it did not take in.
+   */
+  linkedRepairs: z
+    .array(z.object({ repairId: z.number().int().positive() }).strict())
+    .max(50)
+    .optional(),
   priorOrder: z
     .object({ orderNumber: z.string().trim().min(1), phone: z.string().trim().min(1) })
     .nullable()
@@ -182,25 +191,6 @@ const BodySchema = z.object({
       z.object({ mode: z.literal('create') }),
       z.object({ mode: z.literal('attach'), ticketId: z.number().int().positive() }),
     ])
-    .optional(),
-  /**
-   * Lines voided during the visit. Each void was authorized — and audited — by
-   * `/api/kiosk/price-approval` when its PIN was entered; they ride the submit
-   * only so the visit's own audit row can list them. Unverifiable ones are
-   * dropped from that list, never trusted.
-   */
-  voidedLines: z
-    .array(
-      z
-        .object({
-          approval: z.string().min(1).max(4000),
-          title: z.string().trim().min(1).max(300),
-          quantity: z.number().int().min(0).max(999),
-          unitAmountCents: z.number().int().min(-100_000_000).max(100_000_000),
-        })
-        .strict(),
-    )
-    .max(200)
     .optional(),
 })
   // STRICT: an unknown key is a stale client, not noise to discard. Without
@@ -261,7 +251,8 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
   const hasTransaction =
     !!parsed.data.customer &&
     ((parsed.data.retailLines?.length ?? 0) > 0 ||
-      (parsed.data.serviceLines?.length ?? 0) > 0);
+      (parsed.data.serviceLines?.length ?? 0) > 0 ||
+      (parsed.data.linkedRepairs?.length ?? 0) > 0);
 
   let result: CounterTransactionResult | null = null;
   /** The price-proven lines that were committed — what the per-line audits describe. */
@@ -312,6 +303,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
       },
       retailLines: proven.retailLines,
       services: proven.services,
+      linkedRepairs: parsed.data.linkedRepairs ?? [],
       priorOrder: parsed.data.priorOrder ?? null,
       ticketWork: parsed.data.ticketWork ?? { mode: 'none' },
       clientEventId: idempotencyKey,
@@ -331,12 +323,6 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
     committed = proven;
   }
 
-  // Voids are filed from their verified claims only; an unverifiable one was
-  // either forged or expired, and its approval-time row already stands.
-  const voided = (parsed.data.voidedLines ?? []).flatMap((v) => {
-    const claims = verifyPriceApproval(v.approval, ctx.organizationId);
-    return claims && claims.kind === 'void' ? [{ line: v, claims }] : [];
-  });
 
   // Device-as-`via` attribution. `ctx.staffId` does not exist here — the audit
   // actor is the stepped-up staff (privileged) or nobody (anonymous base
@@ -363,6 +349,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
                 counter_status: result.status,
                 repair_ids: result.repairs.map((r) => r.id),
                 rs_numbers: result.repairs.map((r) => r.rsNumber),
+                linked_repair_ids: (parsed.data.linkedRepairs ?? []).map((r) => r.repairId),
                 staged_order_id: result.sale?.providerOrderId ?? null,
                 idempotent_replay: result.idempotentReplay,
               }
@@ -370,12 +357,10 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
         },
       });
 
-      // One row per line whose price the catalog did not set, and one per line
-      // voided during the visit — attributed to the staffer whose PIN
-      // authorized it and filed on the VISIT, where History reads its trail
-      // (the tablet had no server session to file them on mid-cart). A void
-      // already has an approval-time row on the device; this one ties it to
-      // the visit it happened in. A replayed submit wrote them the first time.
+      // One row per line whose price the catalog did not set — attributed to
+      // the staffer whose PIN authorized it and filed on the VISIT, where
+      // History reads its trail. A replayed submit wrote them the first time.
+      // (Removing a line needs no PIN and files nothing — operator 2026-09-24.)
       if (result && committed && !result.idempotentReplay && result.counterTransactionId != null) {
         const visitId = result.counterTransactionId;
         for (const entry of adjustedLines(committed)) {
@@ -402,25 +387,6 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
               via: `kiosk_device:${ctx.deviceId}`,
               principal: 'kiosk',
             },
-          });
-        }
-        for (const { line, claims } of voided) {
-          await recordAudit(client, null, req, {
-            source: 'kiosk',
-            action: AUDIT_ACTION.COUNTER_LINE_VOID,
-            entityType: AUDIT_ENTITY.COUNTER_TRANSACTION,
-            entityId: visitId,
-            organizationIdOverride: ctx.organizationId,
-            actorStaffIdOverride: claims.staffId,
-            reasonCode: claims.reason,
-            method: 'manual',
-            before: {
-              title: line.title,
-              quantity: line.quantity,
-              unitAmountCents: line.unitAmountCents,
-            },
-            after: null,
-            extra: { via: `kiosk_device:${ctx.deviceId}`, principal: 'kiosk' },
           });
         }
       }

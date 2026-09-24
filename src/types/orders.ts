@@ -50,6 +50,11 @@ export interface ShippedOrder {
   dock_staged_at?: string | null;
   /** Live, allocated unit locations; never a guessed first-bin display value. */
   storage_locations?: OutboundStorageLocation[] | null;
+  /**
+   * The SKU's home bin (`sku_stock.location`) — where it is picked from while
+   * nothing is allocated. Never outranks `storage_locations` on the record.
+   */
+  sku_home_location?: OutboundStorageLocation | null;
   /** Server-derived allocation progress for the mobile Orders roster. */
   allocated_unit_count?: number | null;
   picked_unit_count?: number | null;

@@ -211,7 +211,7 @@ export function MobileOrderExceptionTask({ orderId }: { orderId: number }) {
         meta={row.orderNumber || `#${row.id}`}
         backHref="/m/exceptions"
       />
-      <main className="min-h-0 flex-1 overflow-y-auto pb-8">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-8">
         <section className="border-b border-border-warning bg-surface-warning px-3 py-2 text-role-caption text-text-warning">
           <p className="font-semibold">{blockerText || 'Catalog pairing required'}</p>
           <p className="mt-0.5">
@@ -278,7 +278,7 @@ export function MobileOrderExceptionTask({ orderId }: { orderId: number }) {
             </div>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

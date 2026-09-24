@@ -4,15 +4,19 @@
  * /kiosk/v2 shell — cart is the session root.
  *
  * Trail: command dropdown (Repair · Sales · History · Exit), search glyph,
- * filter, cart · paperwork · Work/Show/Verify. No side rails.
- * Center: catalog / repair details, or History, or the cart/paperwork swap.
+ * filter, carts · cart · paperwork · Work/Show/Verify. No side rails.
+ * Center: catalog / repair details, or History, or the cart / paperwork /
+ * Recent carts swap. The cart is written to `kiosk_carts` by
+ * `useKioskCartSync` (mounted here, once) so several customers can be juggled
+ * and any paired tablet can open a cart by its `#id`.
  *
  * Every command is a catalog command. Buyback and Pickup were deleted
  * 2026-09-23 (see `lib/kiosk/commands.ts`): each stacked a title that
  * repeated the mode name, and Pickup ran its lookup as body fields instead of
  * the header search. A new command comes back through the same header band.
  *
- * Callers: `/kiosk`, `/kiosk/v2`. Affected API: none.
+ * Callers: `/kiosk`, `/kiosk/v2`. Affected API: `/api/kiosk/carts` (via
+ * `useKioskCartSync`).
  * User: "Converting the left sidebar into just a top left drop down so repair
  * or sales or more and then an exit button so you can exit out of the kiosk
  * mode. The right sidebar should also be removed as well and everything placed
@@ -44,7 +48,7 @@ import {
   isRepairPayload,
   retailQuantitiesByVariation,
 } from '@/lib/kiosk/cart-line';
-import { summarizeProductTitles } from '@/lib/kiosk/repair-devices';
+import { repairDeviceKey, summarizeProductTitles } from '@/lib/kiosk/repair-devices';
 import { classifyKioskScan } from '@/lib/kiosk/scan-classify';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { toast } from '@/lib/toast';
@@ -65,6 +69,8 @@ import { KioskCustomerFace } from './v2/KioskCustomerFace';
 import { KioskShowFace } from './v2/KioskShowFace';
 import { catalogRefFromPick } from '@/lib/kiosk/consult-proposal';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
+import { useKioskCartSync } from '@/components/kiosk/useKioskCartSync';
+import { KioskRecentCarts } from '@/components/kiosk/KioskRecentCarts';
 
 /** Catalog API prefix per command — repair = `-RS`; retail = non-`-RS`. */
 function catalogBasePath(command: KioskCommandId): string {
@@ -94,19 +100,11 @@ function orientationIsCustomerFacing(): boolean {
   return normalized === 180;
 }
 
-/**
- * Identity of a repair DEVICE for the picker → cart sync: its SKU and its own
- * single product title. Two of the same radio are two devices (two serials,
- * two rows); the SAME tile tapped twice is one, so re-tapping — or a
- * re-render — must not grow a twin.
- */
-function repairDeviceKey(sku: string | null | undefined, title: string): string {
-  return `${sku ?? ''}::${title}`;
-}
-
 export function KioskShell() {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
+  /** The ONE cart, written down per org — Recent carts + the Carts badge. */
+  const { carts: openCarts, refresh: refreshCarts, openCart, newCart } = useKioskCartSync();
 
   const liveModes = useMemo(() => KIOSK_SERVICES.filter((s) => s.status === 'live'), []);
   const commandServiceId: KioskServiceId = commandToServiceId(session.activeCommand);
@@ -168,6 +166,31 @@ export function KioskShell() {
     selectedItemsRef.current = items;
     setSelectedItems(items);
   }, []);
+
+  // Opening the panel is when the operator is looking: show the list as it is
+  // now, not as of the last poll.
+  useEffect(() => {
+    if (utilitySlot === 'carts') void refreshCarts();
+  }, [utilitySlot, refreshCarts]);
+
+  /*
+   * A cart switch is a new visit on screen: the picker's ticks and the repair
+   * flow's step belong to the cart being left, and a stale repair tick would
+   * otherwise sync itself onto the cart just opened.
+   */
+  const onNewCart = useCallback(async () => {
+    await newCart();
+    resetBrowseState();
+    setUtilitySlot(null);
+  }, [newCart, resetBrowseState, setUtilitySlot]);
+  const onOpenCart = useCallback(
+    async (id: number) => {
+      if (!(await openCart(id))) return;
+      resetBrowseState();
+      setUtilitySlot('cart');
+    },
+    [openCart, resetBrowseState, setUtilitySlot],
+  );
 
   const handleCommandSwitch = (mode: KioskServiceId) => {
     const tile = liveModes.find((s) => s.id === mode);
@@ -439,6 +462,7 @@ export function KioskShell() {
       activeSlot={utilitySlot}
       onSelect={setUtilitySlot}
       cartCount={session.lines.length}
+      openCartCount={openCarts.length}
       consultStance={session.consultStance}
       onConsultStance={onStanceChange}
     />
@@ -500,6 +524,7 @@ export function KioskShell() {
             activeSlot={utilitySlot}
             onSelect={setUtilitySlot}
             cartCount={session.lines.length}
+            openCartCount={openCarts.length}
             consultStance={session.consultStance}
             onConsultStance={onStanceChange}
           />
@@ -553,6 +578,7 @@ export function KioskShell() {
                 activeSlot={utilitySlot}
                 onSelect={setUtilitySlot}
                 cartCount={session.lines.length}
+                openCartCount={openCarts.length}
                 consultStance={session.consultStance}
                 onConsultStance={onStanceChange}
                 showCheckoutSlots={false}
@@ -570,13 +596,13 @@ export function KioskShell() {
               activeSlot={utilitySlot}
               onSelect={setUtilitySlot}
               cartCount={session.lines.length}
+              openCartCount={openCarts.length}
               consultStance={session.consultStance}
               onConsultStance={onStanceChange}
             />
             <KioskKeypadFace
               mode={session.activeCommand === 'repair' ? 'repair' : 'retail'}
               onCharge={onKeypadCharge}
-              onVoidInCart={() => setUtilitySlot('cart')}
             />
           </div>
         ) : (
@@ -624,6 +650,14 @@ export function KioskShell() {
           <KioskCartLedger openAt={cartOpenAt} onClose={() => setUtilitySlot(null)} />
         )}
         {utilitySlot === 'paperwork' && <KioskPaperworkPanel />}
+        {utilitySlot === 'carts' && (
+          <KioskRecentCarts
+            carts={openCarts}
+            currentCartId={session.cartDone ? null : session.cartId}
+            onNewCart={onNewCart}
+            onOpenCart={onOpenCart}
+          />
+        )}
       </div>
     </div>
     </div>

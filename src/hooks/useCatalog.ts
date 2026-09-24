@@ -18,11 +18,16 @@ import type {
   TypeRow,
 } from '@/lib/neon/catalog-queries';
 import { SOURCE_PLATFORMS, sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
+import {
+  buildOrderChannelResolver,
+  buildPlatformShortLabelLookup,
+  catalogPlatformMeta,
+  type OrderChannelResolver,
+} from '@/lib/platform-display';
 import { RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
-import { getOrderPlatformLabel } from '@/utils/order-platform';
 
 /** A picker option resolved from the catalog (or the built-in fallback). */
 export interface CatalogOption {
@@ -143,12 +148,9 @@ export function useReceivingTypeCatalog() {
 
 /**
  * Catalog-aware platform tone/label resolver. Returns `resolve(value)` →
- * {@link SourcePlatformMeta}: the org catalog's **label** wins (so a renamed or
- * custom platform reads correctly), `color_hex` (when set) drives accent paint
- * via the color-contrast SoT, else catalog `tone` overrides the text tone, and
- * everything else falls back to the built-in `sourcePlatformMeta` (which also
- * supplies the border tone when no hex is set). A custom slug with no built-in
- * match resolves to its catalog label + neutral border instead of "Unknown".
+ * {@link SourcePlatformMeta} via {@link catalogPlatformMeta} (org label,
+ * `color_hex` accent, catalog tone), falling back to the built-in
+ * `sourcePlatformMeta` for a slug the catalog does not hold.
  */
 export function usePlatformMeta(): (value: string | null | undefined) => SourcePlatformMeta {
   const { rows } = usePlatformCatalog();
@@ -156,26 +158,20 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
     const byValue = new Map(rows.map((r) => [r.slug, r]));
     return (value: string | null | undefined): SourcePlatformMeta => {
       const key = String(value ?? '').trim().toLowerCase();
-      const builtin = sourcePlatformMeta(key);
       const row = byValue.get(key);
-      if (!row) return builtin;
-      const accentHex = row.color_hex?.trim() || null;
-      return {
-        value: key,
-        // The hue is the pinned brand fact and stays the built-in's even when
-        // an org overrides the paint: `accentHex` changes the ink, not which
-        // colour this channel IS.
-        hue: builtin.hue,
-        label: row.label,
-        mark: builtin.mark || row.label.slice(0, 2),
-        text: accentHex ? '' : (row.tone ?? builtin.text),
-        border: accentHex ? '' : builtin.border,
-        dot: builtin.dot || 'bg-border-emphasis',
-        accentHex,
-        tileSrc: builtin.tileSrc,
-      };
+      return row ? catalogPlatformMeta(row) : sourcePlatformMeta(key);
     };
   }, [rows]);
+}
+
+/**
+ * `lookup(platformText)` → the org's `short_label` for a platform named by
+ * slug or display label, else null. The carton label printer reads it so the
+ * 2x1 face prints the org's dense name (`AMZRN`) instead of the full label.
+ */
+export function usePlatformShortLabelLookup(): (value: string | null | undefined) => string | null {
+  const { rows } = usePlatformCatalog();
+  return useMemo(() => buildPlatformShortLabelLookup(rows), [rows]);
 }
 
 /**
@@ -223,46 +219,12 @@ export function useWorkflowNodeOptions() {
   return { ...q, nodes: q.data ?? [] };
 }
 
-/** `resolve(orderId, accountSource)` → the channel label for one order row. */
-export type OrderChannelLabelResolver = (
-  orderId: string | null | undefined,
-  accountSource: string | null | undefined,
-) => string;
-
 /** Stable empties so "no rows yet" never churns the resolver's identity. */
 const NO_PLATFORM_ROWS: readonly PlatformRow[] = [];
 const NO_ACCOUNT_ROWS: readonly PlatformAccountRow[] = [];
 
 /**
- * The lookup itself — three Maps + the built-in fallback. Pure, so the shared
- * cell below can build it exactly once per (platforms, accounts) pair instead
- * of once per consumer.
- */
-function buildOrderChannelLabelResolver(
-  platforms: readonly PlatformRow[],
-  accounts: readonly PlatformAccountRow[],
-): OrderChannelLabelResolver {
-  const platformById = new Map(platforms.map((p) => [p.id, p]));
-  const accountBySlug = new Map(accounts.map((a) => [a.slug.toLowerCase(), a]));
-  const platformBySlug = new Map(platforms.map((p) => [p.slug.toLowerCase(), p]));
-  return (orderId: string | null | undefined, accountSource: string | null | undefined): string => {
-    // Exact Amazon 3-7-7 / eBay 2-5-5 shapes identify the channel from the
-    // number itself — catalog account_source (often a Zoho slug) must not
-    // paint a marketplace order as a different platform.
-    const fromId = getOrderPlatformLabel(orderId, accountSource);
-    if (fromId === 'eBay' || fromId === 'Amazon') return fromId;
-    const key = String(accountSource ?? '').trim().toLowerCase();
-    if (key) {
-      const acct = accountBySlug.get(key);
-      const platform = acct ? platformById.get(acct.platform_id) : platformBySlug.get(key);
-      if (platform) return platform.label;
-    }
-    return fromId;
-  };
-}
-
-/**
- * ONE catalog subscription for every consumer of {@link useOrderChannelLabel}.
+ * ONE catalog subscription for every consumer of {@link useOrderChannel}.
  *
  * ## Why this is not just `useQuery` twice
  *
@@ -287,13 +249,13 @@ function buildOrderChannelLabelResolver(
  * listener and detaching on the last reproduces `useQuery`'s mount semantics
  * (fetch-on-mount, refetch-on-invalidate, staleTime) — once instead of 60 times.
  */
-function createOrderChannelLabelCell(client: QueryClient) {
+function createOrderChannelCell(client: QueryClient) {
   const platformObserver = new QueryObserver(client, platformsQuery());
   const accountObserver = new QueryObserver(client, platformAccountsQuery());
   const listeners = new Set<() => void>();
   let platforms: readonly PlatformRow[] = NO_PLATFORM_ROWS;
   let accounts: readonly PlatformAccountRow[] = NO_ACCOUNT_ROWS;
-  let resolver = buildOrderChannelLabelResolver(platforms, accounts);
+  let resolver = buildOrderChannelResolver(platforms, accounts);
   let detach: (() => void) | null = null;
 
   const read = (notify: boolean) => {
@@ -304,7 +266,7 @@ function createOrderChannelLabelCell(client: QueryClient) {
     if (nextPlatforms === platforms && nextAccounts === accounts) return;
     platforms = nextPlatforms;
     accounts = nextAccounts;
-    resolver = buildOrderChannelLabelResolver(platforms, accounts);
+    resolver = buildOrderChannelResolver(platforms, accounts);
     if (notify) for (const listener of [...listeners]) listener();
   };
 
@@ -314,7 +276,7 @@ function createOrderChannelLabelCell(client: QueryClient) {
   read(false);
 
   return {
-    getResolver: (): OrderChannelLabelResolver => resolver,
+    getResolver: (): OrderChannelResolver => resolver,
     subscribe(listener: () => void): () => void {
       listeners.add(listener);
       if (!detach) {
@@ -337,36 +299,35 @@ function createOrderChannelLabelCell(client: QueryClient) {
   };
 }
 
-type OrderChannelLabelCell = ReturnType<typeof createOrderChannelLabelCell>;
+type OrderChannelCell = ReturnType<typeof createOrderChannelCell>;
 
 /** Keyed by client so a test / second provider gets its own cell, and so the
  *  cell dies with the client rather than pinning rows in a module forever. */
-const orderChannelLabelCells = new WeakMap<QueryClient, OrderChannelLabelCell>();
+const orderChannelCells = new WeakMap<QueryClient, OrderChannelCell>();
 
-function orderChannelLabelCell(client: QueryClient): OrderChannelLabelCell {
-  let cell = orderChannelLabelCells.get(client);
+function orderChannelCell(client: QueryClient): OrderChannelCell {
+  let cell = orderChannelCells.get(client);
   if (!cell) {
-    cell = createOrderChannelLabelCell(client);
-    orderChannelLabelCells.set(client, cell);
+    cell = createOrderChannelCell(client);
+    orderChannelCells.set(client, cell);
   }
   return cell;
 }
 
 /**
- * Catalog-aware order-channel label resolver. Returns `resolve(orderId,
- * accountSource)` → the channel label, preferring the org catalog (so a renamed
- * or custom platform / storefront reads correctly) and falling back to the
- * built-in {@link getOrderPlatformLabel} pattern matcher. `account_source` is
- * hybrid-grain — an eBay account slug ('ebay-mk') or a platform slug
- * ('ecwid','fba') — so we match accounts first, then platforms. This is the
- * read-side unlock the plan defers to Phase 2 (orders.account_source → catalog
- * label across the order tables). The text column stays the cache.
+ * Catalog-aware order-channel resolver. Returns `resolve(orderId,
+ * accountSource)` → {@link PlatformDisplay}: the full `label`, the dense
+ * `shortLabel` (connection → platform `short_label` → built-in compact →
+ * label), the `connectionName` when the storefront says more than the label,
+ * and the catalog-aware dot `meta`. Built by {@link buildOrderChannelResolver};
+ * the order-number shape (Amazon 3-7-7 / eBay 2-5-5) stays the fallback and
+ * wins over a stale `account_source`.
  *
  * Safe to call per row: every caller shares ONE catalog subscription and ONE
- * resolver instance (see {@link createOrderChannelLabelCell}).
+ * resolver instance (see {@link createOrderChannelCell}).
  */
-export function useOrderChannelLabel(): OrderChannelLabelResolver {
-  const cell = orderChannelLabelCell(useQueryClient());
+export function useOrderChannel(): OrderChannelResolver {
+  const cell = orderChannelCell(useQueryClient());
   return useSyncExternalStore(cell.subscribe, cell.getResolver, cell.getResolver);
 }
 

@@ -19,8 +19,9 @@
  *          at once as a `Custom Amount` line and resets to $0.00. No title or
  *          note field above the pad (operator 2026-09-24) — a note is added
  *          afterwards from the line's editor.
- *   RIGHT  `Current sale` — the ONE cart's cards (stepper, remove, editor),
- *          the total, and a full-width `Charge $X` key pinned bottom-right.
+ *   RIGHT  `Current sale` — the ONE cart's list (`KioskCartLineList`, the same
+ *          cards, editor and remove as the cart) under the cart's `N · $total`
+ *          header, and a full-width `Charge $X` key pinned bottom-right.
  *
  * Charge commits any pending amount, then hands off to the existing checkout
  * (`onCharge`); money only ever moves through `KioskCartLedger`.
@@ -38,11 +39,10 @@
 import { useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { KioskAmountKeypad } from '@/components/kiosk/KioskAmountKeypad';
-import { KioskCartSwipeRow } from '@/components/kiosk/KioskCartSwipeRow';
-import { KioskCartLineCard } from '@/components/kiosk/KioskCartLineCard';
-import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
+import { KioskCartLineList } from '@/components/kiosk/KioskCartLineList';
+import { KioskStepTitleRow } from '@/components/kiosk/KioskStepTitleRow';
 import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
-import { cartMoneySplit } from '@/lib/kiosk/cart-money';
+import { cartMoneySplit, cartUnitCount } from '@/lib/kiosk/cart-money';
 import { formatCartCents } from '@/lib/kiosk/cart-card-view';
 import { keypadLine } from '@/lib/kiosk/keypad-line';
 import { KIOSK_POS_CTA } from '@/app/kiosk/kiosk-pos-surface';
@@ -52,24 +52,19 @@ import { cn } from '@/utils/_cn';
 export function KioskKeypadFace({
   mode,
   onCharge,
-  onVoidInCart,
 }: {
   /** Sales adds a sale line; Repair adds a hand-priced device. */
   mode: 'retail' | 'repair';
   /** Charge, after any pending amount has landed: hand off to checkout. */
   onCharge: () => void;
-  /** A line the customer already saw leaves only as a void — the cart owns that floor. */
-  onVoidInCart: () => void;
 }) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [cents, setCents] = useState(0);
-  const [editingLineId, setEditingLineId] = useState<string | null>(null);
 
   const money = useMemo(() => cartMoneySplit(session.lines), [session.lines]);
-  const seenIds = useMemo(() => new Set(session.customerSeenLineIds), [session.customerSeenLineIds]);
   const chargeCents = money.totalCents + cents;
-  const canRemove = session.sharedSessionId === null;
+  const itemCount = useMemo(() => cartUnitCount(session.lines), [session.lines]);
 
   /** Land the amount on display as a line. False when nothing landed. */
   const commit = (): boolean => {
@@ -93,15 +88,6 @@ export function KioskKeypadFace({
     onCharge();
   };
 
-  const remove = (id: string) => {
-    if (seenIds.has(id)) {
-      onVoidInCart();
-      return;
-    }
-    void actions.removeLine(id);
-    setEditingLineId((prev) => (prev === id ? null : prev));
-  };
-
   return (
     <div
       className="grid min-h-0 flex-1 grid-cols-2 bg-surface-card"
@@ -117,53 +103,16 @@ export function KioskKeypadFace({
 
       {/* RIGHT — Current sale */}
       <section aria-label="Current sale" className="flex min-h-0 flex-col">
-        <div className="flex items-baseline justify-between gap-4 px-4 pb-3 pt-5">
-          <h2 className="min-w-0 truncate text-left text-role-display font-bold text-text-default">
-            Current sale
-          </h2>
-          <p
-            className="shrink-0 text-role-title font-semibold tabular-nums text-text-success"
-            data-testid="kiosk-keypad-sale-total"
-          >
-            {formatCartCents(money.totalCents)}
-          </p>
-        </div>
-        <div
-          role="list"
-          aria-label="Current sale items"
-          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-3 pb-4"
-        >
-          {session.lines.map((line) => (
-            <div role="listitem" key={line.id}>
-              <KioskCartSwipeRow
-                canVoid={canRemove}
-                onEdit={() => {
-                  actions.setPresentation({ lineId: line.id, catalog: null });
-                  setEditingLineId(line.id);
-                }}
-                onVoid={() => remove(line.id)}
-              >
-                <KioskCartLineCard
-                  line={line}
-                  open={editingLineId === line.id}
-                  onOpen={() => {
-                    actions.setPresentation({ lineId: line.id, catalog: null });
-                    setEditingLineId((prev) => (prev === line.id ? null : line.id));
-                  }}
-                  onQuantityChange={(quantity) => actions.updateLine(line.id, { quantity })}
-                  onRemove={canRemove ? () => remove(line.id) : undefined}
-                />
-                {editingLineId === line.id && (
-                  <KioskCartLineEditor
-                    line={line}
-                    onDone={() => setEditingLineId(null)}
-                    onRemove={() => remove(line.id)}
-                  />
-                )}
-              </KioskCartSwipeRow>
-            </div>
-          ))}
-        </div>
+        <KioskStepTitleRow
+          title="Current sale"
+          count={itemCount}
+          totalCents={money.totalCents}
+          testId="kiosk-keypad-sale-total"
+        />
+        <KioskCartLineList
+          ariaLabel="Current sale items"
+          className="min-h-0 flex-1 overflow-y-auto px-3 pb-4"
+        />
         <div className="shrink-0 border-t border-border-hairline p-4">
           <Button
             size="lg"

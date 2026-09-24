@@ -33,6 +33,9 @@ export const MOBILE_FIRST_ROUTE_PREFIXES = [
   '/m/triage',
   '/m/identify',
   '/m/print',
+  // QC as its own scan type (operator 2026-09-24) runs on `/m/scan?work=qc`;
+  // `/m/qc/line/[id]` is where that kernel lands a line label to pick a unit.
+  '/m/qc',
   '/m/orders',
   '/m/pack',
   '/m/shipping',

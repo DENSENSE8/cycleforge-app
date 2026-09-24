@@ -41,18 +41,40 @@ function emit(): void {
   for (const l of listeners) l();
 }
 
+/** One overlay's hold on the keyboard, from `claimOverlay()`. */
+export interface OverlayClaim {
+  /** Remove exactly this claim (safe to call twice; a stale release is a no-op). */
+  release: () => void;
+  /**
+   * True while this claim is the most recently opened one still held — the
+   * overlay on top. Stacked overlays that each listen for Escape (an action
+   * sheet with a confirm sheet over it) gate on this so one keystroke closes
+   * only the top layer.
+   */
+  isTopmost: () => boolean;
+}
+
+/** Claim the keyboard for an overlay that just opened. */
+export function claimOverlay(): OverlayClaim {
+  token += 1;
+  const mine = token;
+  open.add(mine);
+  emit();
+  return {
+    release: () => {
+      if (open.delete(mine)) emit();
+    },
+    // Tokens only grow, so the newest held claim is the largest.
+    isTopmost: () => open.has(mine) && Math.max(...open) === mine,
+  };
+}
+
 /**
  * Claim the keyboard for an overlay that just opened. Returns a release fn that
  * removes exactly this claim (safe to call twice; a stale release is a no-op).
  */
 export function pushOverlay(): () => void {
-  token += 1;
-  const mine = token;
-  open.add(mine);
-  emit();
-  return () => {
-    if (open.delete(mine)) emit();
-  };
+  return claimOverlay().release;
 }
 
 /** True while any overlay is open — the signal for ambient owners to stand down. */

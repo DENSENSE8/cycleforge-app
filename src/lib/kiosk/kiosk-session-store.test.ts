@@ -394,3 +394,118 @@ describe('the org’s opening command', () => {
   });
 });
 
+/*
+ * Recent carts: the store names WHICH persisted cart it is on and announces how
+ * one ends; `useKioskCartSync` turns that into network. The org's reasons are a
+ * screen fact and must survive every cart move — a custom list silently
+ * reverting to the defaults after a cart switch is the plausible bug here.
+ */
+describe('recent carts — which cart the tablet is on', () => {
+  const orgReasons = { comp: ['Loyalty'] };
+  const cartSnapshot = {
+    lines: [line({ id: 'c-1', title: 'Cable', unitAmountCents: 1250 })],
+    customerPhone: '5551234567',
+    customerName: 'Dana',
+    customerEmail: '',
+    customerAddress: '',
+    ticketChoice: null,
+    activeCommand: 'retail' as const,
+  };
+
+  function recordEndings() {
+    const endings: Array<{ id: number; how: string }> = [];
+    const off = kioskSessionStore.onCartEnded((e) => endings.push(e));
+    return { endings, off };
+  }
+
+  beforeEach(() => {
+    kioskSessionStore.applyLineReasons(orgReasons);
+  });
+
+  it('loadCart puts the cart’s visit and id on the tablet and keeps the org’s reasons', () => {
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.cartId, 42);
+    assert.equal(snap.cartVersion, 3);
+    assert.deepEqual(snap.lines.map((l) => l.id), ['c-1']);
+    assert.equal(snap.customerName, 'Dana');
+    assert.equal(snap.activeCommand, 'retail');
+    assert.equal(snap.lineReasons, orgReasons);
+  });
+
+  it('startNewCart empties the visit and drops the id without ending the cart left behind', () => {
+    const { endings, off } = recordEndings();
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    kioskSessionStore.startNewCart();
+    off();
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.cartId, null);
+    assert.deepEqual(snap.lines, []);
+    assert.equal(snap.customerName, '');
+    assert.equal(snap.activeCommand, 'retail', 'keeps the command it was on');
+    assert.equal(snap.lineReasons, orgReasons);
+    assert.deepEqual(endings, [], 'cart #42 stays open in Recent carts');
+  });
+
+  it('clearCart deletes the persisted cart once and drops the id', () => {
+    const { endings, off } = recordEndings();
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    kioskSessionStore.clearCart();
+    kioskSessionStore.clearCart();
+    off();
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.cartId, null);
+    assert.deepEqual(snap.lines, []);
+    assert.equal(snap.ticketChoice, null);
+    assert.equal(snap.lineReasons, orgReasons);
+    assert.deepEqual(endings, [{ id: 42, how: 'cleared' }]);
+  });
+
+  it('completeCart closes the cart before the done face; Next customer ends nothing twice', () => {
+    const { endings, off } = recordEndings();
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    kioskSessionStore.completeCart();
+    assert.equal(kioskSessionStore.getSnapshot().lines.length, 1, 'the done face still reads the lines');
+    assert.equal(
+      kioskSessionStore.attachCart({ id: 43, version: 1, epoch: kioskSessionStore.cartEpoch() }),
+      false,
+      'a submitted visit is never re-created as a new cart',
+    );
+    kioskSessionStore.resetSession();
+    off();
+    assert.deepEqual(endings, [{ id: 42, how: 'done' }]);
+    assert.equal(kioskSessionStore.getSnapshot().cartId, null);
+  });
+
+  it('Next customer on a still-open cart closes it as done', () => {
+    const { endings, off } = recordEndings();
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    kioskSessionStore.resetSession();
+    off();
+    assert.deepEqual(endings, [{ id: 42, how: 'done' }]);
+  });
+
+  it('a create that was in flight across a cart switch does not name the new cart', () => {
+    kioskSessionStore.addRetail({ title: 'Cable', unitAmountCents: 1250, payload: { variationId: null, sku: 'C' } });
+    const epoch = kioskSessionStore.cartEpoch();
+    kioskSessionStore.startNewCart();
+    assert.equal(kioskSessionStore.attachCart({ id: 50, version: 1, epoch }), false);
+    assert.equal(kioskSessionStore.getSnapshot().cartId, null);
+    assert.equal(
+      kioskSessionStore.attachCart({ id: 51, version: 1, epoch: kioskSessionStore.cartEpoch() }),
+      true,
+    );
+    assert.equal(kioskSessionStore.getSnapshot().cartId, 51);
+  });
+
+  it('a desk mirror is not this tablet’s cart to swap or end', () => {
+    const { endings, off } = recordEndings();
+    mirrorOnce(1, [line()]);
+    kioskSessionStore.loadCart({ id: 42, version: 3, snapshot: cartSnapshot });
+    assert.equal(kioskSessionStore.getSnapshot().cartId, null);
+    assert.equal(kioskSessionStore.getSnapshot().sharedSessionId, 42, 'still the mirror');
+    kioskSessionStore.detachSharedSession();
+    off();
+    assert.deepEqual(endings, []);
+  });
+});

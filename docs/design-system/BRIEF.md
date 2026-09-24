@@ -126,6 +126,8 @@ light/dark; **no mode switcher**. AI/automations run in assistant; their effects
 record, assistant for the AI; one right-edge slot, detail outranks assistant). Edits: one fact on
 one order → inline (industrial); understand one order → rail (triage); rule for many orders →
 rules view or AI with a triage-style preview before apply.
+*Industrial desks override the rail for records — see §11 "Changed": the record opens in the
+desk's evidence column. The rail keeps the assistant.*
 
 ## 7. Platforms — **Changed** (Q7, Q7b)
 
@@ -183,6 +185,14 @@ CSS injected by `src/app/layout.tsx`, mounts on `/shipping`, `/pack`, `/m/pick`,
 
 Outbound **To ship** (`/shipping/orders`): replace the slot DataTable with the industrial record
 ledger. Spec and prompt: [`HANDOFF-outbound-to-ship-ledger.md`](./HANDOFF-outbound-to-ship-ledger.md).
+
+**Changed (owner, 2026-09-24, after the first slice landed):** on an industrial desk the open
+record reads in an **evidence column** beside the ledger (the desktop terminal's
+`.evidence-panel`), never in the right rail and never over the rows — "the right rail components
+are terrible and not used properly for this use case". **Location** leads the context band (between
+the state code and the platform); **condition** sits beside the select box. The desk frame is one
+full-width **industrial bar** (modes as flush segments, no page title row). Port spec and prompt:
+[`HANDOFF-industrial-record-ledger.md`](./HANDOFF-industrial-record-ledger.md).
 
 ## Resolved 2026-09-24 (all six approved as written)
 

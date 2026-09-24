@@ -192,7 +192,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
         backHref={`/m/pair/${encodeURIComponent(code)}`}
       />
 
-      <main className="flex-1 space-y-4 px-4 py-4">
+      <div className="flex-1 space-y-4 px-4 py-4">
         {/*
           The header already carries the product name, and when the catalog has
           no title that name IS the SKU — printing it again underneath is the
@@ -306,7 +306,7 @@ export function MobilePairQty({ code, sku }: { code: string; sku: string }) {
         </div>
 
         {error && <p className="text-center text-role-caption text-text-danger">{error}</p>}
-      </main>
+      </div>
 
       <footer className="sticky bottom-0 border-t border-border-soft bg-surface-card px-4 py-3">
         <MotionButton

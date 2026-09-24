@@ -41,3 +41,25 @@ export function formatOutboundStoragePath(
   const paths = Array.from(new Set((locations ?? []).map(locationPath).filter(Boolean)));
   return paths.length > 0 ? paths.join(' | ') : null;
 }
+
+/** Where an order's BIN comes from: its allocated units, else its SKU's home bin. */
+export interface OrderBinFace {
+  path: string | null;
+  source: 'allocation' | 'sku_home' | null;
+}
+
+/**
+ * The record's BIN: every allocated unit's path when anything is allocated;
+ * otherwise the SKU's home bin (`sku_stock.location`), so a freshly set bin
+ * shows before allocation runs. Allocation always wins — it is where the unit
+ * physically is.
+ */
+export function resolveOrderBin(
+  storageLocations: readonly OutboundStorageLocation[] | null | undefined,
+  skuHome: OutboundStorageLocation | null | undefined,
+): OrderBinFace {
+  const allocated = formatOutboundStoragePath(storageLocations);
+  if (allocated) return { path: allocated, source: 'allocation' };
+  const home = skuHome ? formatOutboundStoragePath([skuHome]) : null;
+  return home ? { path: home, source: 'sku_home' } : { path: null, source: null };
+}

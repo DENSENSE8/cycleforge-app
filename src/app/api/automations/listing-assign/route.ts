@@ -18,7 +18,7 @@ const ROUTE_LISTING_ASSIGN_POST = 'automations.listing-assign.post';
 
 /**
  * GET /api/automations/listing-assign?orderIds=1,2,3
- * Preview distinct item numbers covered by the selection.
+ * Preview distinct (item #, SKU) pairs covered by the selection.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -45,7 +45,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
 /**
  * POST /api/automations/listing-assign
- * save_and_assign — upsert rules per item# + assign TEST/PACK on selected orders.
+ * save_and_assign — upsert one rule per (item #, SKU) pair + assign TEST/PACK on selected orders.
  * apply_existing — fire existing automation_rules against the selection.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {

@@ -105,7 +105,7 @@ test('kiosk notes use the same entry control as the contact block', () => {
   );
   // And the control it mounts is the one token every kiosk input answers to.
   assert.match(
-    read('src/components/kiosk/KioskCustomerIntake.tsx'),
+    read('src/components/kiosk/KioskEntryField.tsx'),
     /className=\{KIOSK_POS_ENTRY_AREA\}/,
     'the multiline entry face is KIOSK_POS_ENTRY_AREA',
   );

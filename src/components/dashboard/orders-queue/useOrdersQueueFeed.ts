@@ -123,6 +123,12 @@ export interface OrdersQueueCommits {
     staffName: string | null,
   ) => void;
   handleCommitSubtitleField: (record: ShippedOrder, fieldId: string, value: string | null) => void;
+  /** Re-point an order imported under the wrong platform (`orders.account_source`). */
+  handleCommitPlatform: (record: ShippedOrder, accountSource: string) => void;
+  /** Set the SKU's home bin (`sku_stock.location`) — where this SKU is picked from. */
+  handleCommitSkuBin: (record: ShippedOrder, locationBarcode: string) => void;
+  /** Replace the order's primary carrier tracking # (assign waist → upsertOrderTracking). */
+  handleCommitTracking: (record: ShippedOrder, tracking: string) => void;
 }
 
 export interface OrdersQueueSortMenu {
@@ -303,6 +309,60 @@ export function useOrdersQueueFeed({
     [assignMutate],
   );
 
+  /**
+   * Platform correction: an order the import filed under the wrong channel.
+   * Goes through the order record PATCH (`orders.create`), which invalidates
+   * the queue caches and publishes the realtime change — not the assign
+   * waist, which has no `account_source` field and must not grow one.
+   */
+  const handleCommitPlatform = useCallback((record: ShippedOrder, accountSource: string) => {
+    const id = Number(record.id);
+    const next = accountSource.trim();
+    if (!Number.isFinite(id) || !next) return;
+    void fetch(`/api/orders/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountSource: next }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`platform ${res.status}`);
+        refreshDomain('orders.outbound');
+      })
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to change the platform'));
+  }, []);
+
+  /**
+   * SKU home bin: `POST /api/update-sku-location` (`bin.set`) — the same write
+   * the stock desk's Change Location uses, with its `location_transfers` audit.
+   * It moves no allocated unit; the record's BIN shows it only while nothing is
+   * allocated (see `sku_home_location` in `/api/orders`).
+   */
+  const handleCommitSkuBin = useCallback((record: ShippedOrder, locationBarcode: string) => {
+    const sku = String(record.sku ?? '').trim();
+    const location = locationBarcode.trim();
+    if (!sku || !location) return;
+    void fetch('/api/update-sku-location', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sku, location }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`location ${res.status}`);
+        refreshDomain('orders.outbound');
+      })
+      .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to set the bin'));
+  }, []);
+
+  const handleCommitTracking = useCallback(
+    (record: ShippedOrder, tracking: string) => {
+      const id = Number(record.id);
+      const next = tracking.trim();
+      if (!Number.isFinite(id) || !next) return;
+      assignMutate({ orderId: id, shippingTrackingNumber: next });
+    },
+    [assignMutate],
+  );
+
   const handleSortMenuSelect = useCallback(
     (id: string) => {
       const next = id as QueueDisplaySort;
@@ -384,6 +444,9 @@ export function useOrdersQueueFeed({
     handleCommitShipBy,
     handleCommitStageAssign,
     handleCommitSubtitleField,
+    handleCommitPlatform,
+    handleCommitSkuBin,
+    handleCommitTracking,
     sortMenu,
     views,
   };

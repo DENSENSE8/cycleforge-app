@@ -1,7 +1,7 @@
 // Single source of truth for repair-action TYPE tones.
 //
 // Background + border only (no text color). Single surface today
-// (components/repair/mobile/RepairActionTimeline). Classes preserved verbatim;
+// (components/mobile/repair/RepairActionTimeline). Classes preserved verbatim;
 // hues: replaced=info, repaired/tested=success, cleaned=sky, no_fix=danger,
 // awaiting_part=warning. src/lib is in Tailwind's content globs.
 

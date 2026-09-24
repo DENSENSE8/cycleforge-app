@@ -5,6 +5,11 @@ export function photoContentUrl(id: number, variant?: 'thumb' | 'full'): string 
   return `/api/photos/${id}/content${q}`;
 }
 
+/** Stable same-origin URL for an entity video; the route 302s to a short-lived signed GCS read. */
+export function videoContentUrl(id: number): string {
+  return `/api/photos/videos/${id}/content`;
+}
+
 /**
  * Resolve a display URL for a photo list item.
  * Prefer id-based content route when photo id is known; fall back to legacy url normalization.

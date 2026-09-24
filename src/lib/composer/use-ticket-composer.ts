@@ -16,7 +16,7 @@
  * about CCs. The behaviour is the SoT; the chrome follows it.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
@@ -25,6 +25,7 @@ import { useTicketPhotoStaging, type TicketPhotoStaging } from '@/hooks/useTicke
 import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
+import { photoContentUrl } from '@/lib/photos/display-url';
 import type { ComposerDrillNode } from '@/components/composer/ComposerDrillMenu';
 
 export type UseTicketComposerOptions = {
@@ -41,6 +42,19 @@ export type UseTicketComposerOptions = {
   /** Icons for the `+` rows — the host owns glyph sizing. */
   insertIcons?: { browse?: ComposerDrillNode['icon']; upload?: ComposerDrillNode['icon'] };
   onSent?: () => void;
+  /**
+   * Editable first draft (e.g. a repair status update handed over from
+   * `/m/rs/[id]`). Seeds the body once; nothing sends until the operator does.
+   */
+  initialBody?: string;
+  /**
+   * Existing photo ids to stage as attachments on arrival (e.g. repair photos
+   * picked on `/m/rs/[id]/photos`). Staged once through the same library path
+   * as the `+` → Browse picker; they ride the next reply only if it is sent.
+   */
+  initialPhotoIds?: readonly number[];
+  /** Starting channel; omitted keeps the PUBLIC-first default. */
+  initialIsPublic?: boolean;
 };
 
 export function useTicketComposer({
@@ -49,12 +63,15 @@ export function useTicketComposer({
   staging: hostStaging,
   insertIcons,
   onSent,
+  initialBody,
+  initialPhotoIds,
+  initialIsPublic,
 }: UseTicketComposerOptions) {
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(initialBody ?? '');
   // PUBLIC first (operator ruling 2026-08-31). Ticket work is outbound: a claim
   // exists to reach a seller and a reply answers one, so Internal-first put the
-  // extra tap on the common case.
-  const [isPublic, setIsPublic] = useState(true);
+  // extra tap on the common case. A handing-over surface may choose otherwise.
+  const [isPublic, setIsPublic] = useState(initialIsPublic ?? true);
   const [ccs, setCcs] = useState<string[]>([]);
   // Held here, not inside the strip, so send can fold a half-typed address in
   // rather than dropping it.
@@ -80,6 +97,23 @@ export function useTicketComposer({
     () => new Set(stagedDone.map((s) => s.photoId!)),
     [stagedDone],
   );
+
+  // Hand-over photos stage exactly once per ticket, through the same library
+  // path as the `+` → Browse picker (link to the ticket, ride the next reply).
+  // The ref also absorbs React's dev double-effect so the link fires once.
+  const seededFor = useRef<number | null>(null);
+  const addLibraryPhotos = staging.addLibraryPhotos;
+  useEffect(() => {
+    if (ticketId == null || !initialPhotoIds?.length || seededFor.current === ticketId) return;
+    seededFor.current = ticketId;
+    addLibraryPhotos(
+      initialPhotoIds.map((id) => ({
+        id,
+        url: photoContentUrl(id),
+        thumbUrl: photoContentUrl(id, 'thumb'),
+      })),
+    );
+  }, [ticketId, initialPhotoIds, addLibraryPhotos]);
 
   // A new ticket is a new audience. CCs belong to the thread that was on
   // screen, never to whichever one loads next.

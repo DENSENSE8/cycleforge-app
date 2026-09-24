@@ -42,6 +42,7 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     // must never masquerade as an SLA countdown on a phone.
     deadlineAt: row.deadline_at || row.ship_by_date || null,
     notes: row.notes ?? null,
+    buyerNote: String(row.buyer_note ?? '').trim() || null,
     assignedAt: null,
     updatedAt: null,
     orderId: orderId || null,

@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T10:35:42Z",
-  "totalRoutes": 1051,
+  "generatedAt": "2026-09-24T16:16:43Z",
+  "totalRoutes": 1058,
   "summary": {
-    "permissionGated": 863,
-    "authenticatedNoPermission": 104,
+    "permissionGated": 866,
+    "authenticatedNoPermission": 108,
     "anonymousIntentional": 36,
     "serviceToService": 48,
     "ungatedRead": 0,
@@ -1465,6 +1465,16 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/counter/companion/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.intake",
       "exemptReason": null
     },
     {
@@ -3186,6 +3196,33 @@
       "exemptReason": null
     },
     {
+      "path": "/api/kiosk/companion/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/companion/sync/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/customer/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withKioskAuth",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/kiosk/dev-autopair/route.ts",
       "methods": [
         "POST"
@@ -4216,6 +4253,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/buyer-note/ack/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -6538,6 +6584,16 @@
       "exemptReason": null
     },
     {
+      "path": "/api/repair-service/[id]/print-log/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/repair-service/[id]/reopen/route.ts",
       "methods": [
         "POST"
@@ -6651,6 +6707,16 @@
     },
     {
       "path": "/api/repair/actions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "repair.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/repair/bench-sessions/route.ts",
       "methods": [
         "GET",
         "POST"

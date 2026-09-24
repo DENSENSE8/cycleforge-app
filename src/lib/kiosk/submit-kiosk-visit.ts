@@ -31,15 +31,12 @@ import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
 import { kioskTicketWork } from '@/lib/kiosk/repair-ticket-choice';
 import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
-import type { KioskVoidedLine } from '@/lib/kiosk/kiosk-session-store';
 import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 
 /** The visit facts the submit reads — a structural slice of the session root. */
 export interface KioskVisitSubmitSession {
   lines: readonly KioskCartLine[];
-  /** Lines voided during this visit — recorded with it, never charged or printed. */
-  voidedLines?: readonly KioskVoidedLine[];
   customerPhone: string;
   customerName: string;
   customerEmail: string;
@@ -60,7 +57,7 @@ export async function submitKioskVisit(
   session: KioskVisitSubmitSession,
   options: KioskVisitSubmitOptions,
 ): Promise<CounterTransactionResult> {
-  const { retailLines, services } = mapKioskCartToCounterParts(session.lines);
+  const { retailLines, services, linkedRepairs } = mapKioskCartToCounterParts(session.lines);
 
   const res = await kioskFetchHealed('/api/kiosk/intake', {
     method: 'POST',
@@ -79,6 +76,7 @@ export async function submitKioskVisit(
           },
           retailLines,
           services,
+          linkedRepairs,
           priorOrder: null,
           /*
            * The VISIT's decision, not a hardcoded create: the repair flow's
@@ -92,12 +90,6 @@ export async function submitKioskVisit(
           takePayment: options.takePayment,
           staffId: options.staffId,
           pin: options.pin,
-          voidedLines: (session.voidedLines ?? []).map((v) => ({
-            approval: v.approval,
-            title: v.title,
-            quantity: v.quantity,
-            unitAmountCents: v.unitAmountCents,
-          })),
         },
       ),
     ),

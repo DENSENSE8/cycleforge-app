@@ -45,7 +45,7 @@ import {
 import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
-import { useOrderChannelLabel } from '@/hooks/useCatalog';
+import { useOrderChannel } from '@/hooks/useCatalog';
 import {
   formatDateWithOrdinal,
   formatLaneAgeCompact,
@@ -450,7 +450,7 @@ function OrdersQueueMobileStack({
   onToggleSelect,
   onRequestReplaceTracking,
 }: OrdersQueueMobileStackProps) {
-  const orderChannelLabel = useOrderChannelLabel();
+  const resolveOrderChannel = useOrderChannel();
   const assignOrder = useOrderAssignment();
 
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
@@ -481,7 +481,7 @@ function OrdersQueueMobileStack({
     // The channel is carried by the ORDER cell's brand dot (the identity
     // language: dot, never a type glyph) and named in full on the chip's hover
     // label. One fact, one place — the row needs no channel track of its own.
-    platformLabel: orderChannelLabel(record.order_id || '', record.account_source),
+    platformLabel: resolveOrderChannel(record.order_id || '', record.account_source).label,
     productPageUrl: null,
     marketplaceOrderUrl: marketplaceOrderUrl(record.order_id, record.account_source),
     isFba: isFbaOrder(record.order_id, record.account_source),

@@ -12,7 +12,7 @@ function parseId(raw: string): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-/** PATCH /api/catalog/platforms/[id] — rename / retone / reorder / (de)activate. */
+/** PATCH /api/catalog/platforms/[id] — rename / short-label / retone / reorder / (de)activate. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');
@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const updated = await updatePlatform(gate.ctx.organizationId, id, {
       label: parsed.label,
+      shortLabel: parsed.shortLabel,
       tone: parsed.tone,
       colorHex:
         parsed.colorHex === undefined

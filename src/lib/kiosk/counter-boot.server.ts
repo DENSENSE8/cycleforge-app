@@ -31,7 +31,7 @@ import 'server-only';
  * that guard, shared rather than re-derived.
  *
  * Callers: `/kiosk/v2/page.tsx`. Affected API: none.
- * Schemas: `organizations.settings.kiosk.{defaultCommand,compReasons,voidReasons}`
+ * Schemas: `organizations.settings.kiosk.{defaultCommand,compReasons}`
  * and `organizations.settings.brand.primaryColor`, read-only.
  */
 

@@ -148,3 +148,51 @@ export const gcsAdapter: PhotoStorageAdapter = {
     await storage.bucket(input.bucket).file(input.objectKey).delete({ ignoreNotFound: true });
   },
 };
+
+/**
+ * V4 signed PUT for one object the browser uploads directly (phone videos are
+ * too big to stream through a function). The signature binds the content type
+ * and `x-goog-content-length-range`, so GCS itself refuses a different type or
+ * an oversized body; the client must send exactly `headers`.
+ *
+ * Browser PUTs need a bucket CORS rule allowing PUT with these two headers
+ * from the app origin.
+ */
+export async function signGcsUploadUrl(input: {
+  bucket: string;
+  objectKey: string;
+  contentType: string;
+  maxBytes: number;
+  ttlSeconds: number;
+}): Promise<{ url: string; headers: Record<string, string>; expiresAt: string }> {
+  const expires = Date.now() + input.ttlSeconds * 1000;
+  const headers = {
+    'content-type': input.contentType,
+    'x-goog-content-length-range': `1,${input.maxBytes}`,
+  };
+  const [url] = await getStorage().bucket(input.bucket).file(input.objectKey).getSignedUrl({
+    version: 'v4',
+    action: 'write',
+    expires,
+    contentType: input.contentType,
+    extensionHeaders: { 'x-goog-content-length-range': headers['x-goog-content-length-range'] },
+  });
+  return { url, headers, expiresAt: new Date(expires).toISOString() };
+}
+
+/** What GCS actually stored for an object (size + content type), or `exists: false`. */
+export async function statGcsObject(input: {
+  bucket: string;
+  objectKey: string;
+}): Promise<{ exists: boolean; sizeBytes: number | null; contentType: string | null }> {
+  const file = getStorage().bucket(input.bucket).file(input.objectKey);
+  const [exists] = await file.exists();
+  if (!exists) return { exists: false, sizeBytes: null, contentType: null };
+  const [meta] = await file.getMetadata();
+  const size = Number(meta.size);
+  return {
+    exists: true,
+    sizeBytes: Number.isFinite(size) ? size : null,
+    contentType: meta.contentType ?? null,
+  };
+}

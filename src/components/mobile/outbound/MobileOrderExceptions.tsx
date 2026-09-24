@@ -66,7 +66,7 @@ export function MobileOrderExceptions() {
   };
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-order-exceptions">
+    <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-order-exceptions">
       <div className="border-b border-border-hairline bg-surface-card">
         <Inset space="chip">
           <SearchField
@@ -134,6 +134,6 @@ export function MobileOrderExceptions() {
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }

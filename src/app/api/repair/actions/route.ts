@@ -1,63 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishRepairChanged } from '@/lib/realtime/publish';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import type { RepairActionRecord } from '@/lib/repair/repair-actions';
-
-const VALID_ACTION_TYPES = new Set<string>([
-  'replaced',
-  'repaired',
-  'cleaned',
-  'tested',
-  'no_fix',
-  'awaiting_part',
-]);
-
-function normString(v: unknown): string | null {
-  const s = String(v ?? '').trim();
-  return s || null;
-}
-
-function normInt(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
-}
+import { scheduleAfterResponse } from '@/lib/next/schedule-after-response';
+import { publishRepairChanged, publishStockLedgerEvent } from '@/lib/realtime/publish';
+import { parseBody } from '@/lib/schemas/parse';
+import { RepairActionCreateBody } from '@/lib/schemas/repair-actions';
+import {
+  createRepairAction,
+  listRepairActions,
+  REPAIR_LEDGER_REASON,
+} from '@/lib/repair/repair-action-queries';
+import { postRepairActionToTicket } from '@/lib/repair/repair-action-ticket-post';
+import { readRepairTicketLink } from '@/lib/repair/ticket-link';
 
 /**
  * GET /api/repair/actions?repairId={id}
  *
- * Returns newest-first actions for a repair, excluding soft-deleted rows.
- * Joined with staff for display names.
+ * Newest-first bench log for a repair (soft-deleted rows excluded), with the
+ * author's name, session link, and donor/component facts.
  */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    const orgId = ctx.organizationId;
     const repairId = Number(req.nextUrl.searchParams.get('repairId'));
     if (!Number.isFinite(repairId) || repairId <= 0) {
       return NextResponse.json({ error: 'repairId is required' }, { status: 400 });
     }
 
     try {
-      const result = await tenantQuery<RepairActionRecord>(
-        orgId,
-        `SELECT a.id, a.repair_id, a.action_type, a.part_name,
-                a.old_sku, a.new_sku, a.old_serial, a.new_serial,
-                a.duration_min, a.notes, a.staff_id,
-                s.name AS staff_name,
-                a.created_at
-           FROM repair_actions a
-           LEFT JOIN staff s ON s.id = a.staff_id
-          WHERE a.repair_id = $1
-            AND a.deleted_at IS NULL
-          ORDER BY a.created_at DESC, a.id DESC`,
-        [repairId],
-      );
-      return NextResponse.json({ actions: result.rows });
-    } catch (error: any) {
+      const actions = await listRepairActions(ctx.organizationId, repairId);
+      return NextResponse.json({ actions });
+    } catch (error: unknown) {
       console.error('GET /api/repair/actions error:', error);
       return NextResponse.json(
-        { error: 'Failed to load repair actions', details: error?.message },
+        { error: 'Failed to load repair actions', details: error instanceof Error ? error.message : String(error) },
         { status: 500 },
       );
     }
@@ -68,77 +43,66 @@ export const GET = withAuth(
 /**
  * POST /api/repair/actions
  *
- * Body: { repairId, actionType, partName?, oldSku?, newSku?, oldSerial?,
- *         newSerial?, durationMin?, notes? }
+ * Body (`RepairActionCreateBody`): { repairId, actionType, partName?, oldSku?,
+ * newSku?, oldSerial?, newSerial?, durationMin?, notes?, sessionId?,
+ * donorSource?, donorRef?, componentRef?, componentValue?, componentQty?,
+ * consumeStock?, stockLocationId? }
  *
- * staff_id is taken from the session — never trusted from the body.
+ * staff_id, organization_id and created_at come from the session / server —
+ * never the body. Taking the part from stock needs the bin (`stockLocationId`)
+ * and is refused with 409 when that bin holds less than the take.
+ *
+ * On a repair whose helpdesk link is `linked`, the entry is queued
+ * (`ticket_post_status = 'pending'`) and posted to the ticket as a note after
+ * the response — a helpdesk failure is recorded on the entry, never on the save.
  */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
-    const orgId = ctx.organizationId;
-    const body = await req.json().catch(() => ({}));
-    const repairId = Number(body?.repairId);
-    const actionType = String(body?.actionType ?? '').trim().toLowerCase();
-
-    if (!Number.isFinite(repairId) || repairId <= 0) {
-      return NextResponse.json({ error: 'repairId is required' }, { status: 400 });
-    }
-    if (!VALID_ACTION_TYPES.has(actionType)) {
-      return NextResponse.json(
-        { error: `Invalid actionType. Expected one of: ${Array.from(VALID_ACTION_TYPES).join(', ')}` },
-        { status: 400 },
-      );
-    }
+    const raw = await req.json().catch(() => ({}));
+    const parsed = parseBody(RepairActionCreateBody, raw);
+    if (parsed instanceof NextResponse) return parsed;
 
     try {
-      const fetched = await withTenantTransaction(orgId, async (client) => {
-        const inserted = await client.query<{ id: number }>(
-          `INSERT INTO repair_actions
-              (repair_id, action_type, part_name, old_sku, new_sku,
-               old_serial, new_serial, duration_min, notes, staff_id, organization_id)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-                   (SELECT organization_id FROM unit_repairs WHERE id = $1))
-           RETURNING id`,
-          [
-            repairId,
-            actionType,
-            normString(body?.partName),
-            normString(body?.oldSku),
-            normString(body?.newSku),
-            normString(body?.oldSerial),
-            normString(body?.newSerial),
-            normInt(body?.durationMin),
-            normString(body?.notes),
-            ctx.staffId,
-          ],
-        );
+      const link = await readRepairTicketLink(ctx.organizationId, parsed.repairId);
+      const ticketId = link?.state === 'linked' ? link.zendeskTicketId : null;
+      const result = await createRepairAction(ctx.organizationId, ctx.staffId, parsed, ticketId);
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error }, { status: result.status });
+      }
 
-        const newId = inserted.rows[0]?.id;
-        return client.query<RepairActionRecord>(
-          `SELECT a.id, a.repair_id, a.action_type, a.part_name,
-                  a.old_sku, a.new_sku, a.old_serial, a.new_serial,
-                  a.duration_min, a.notes, a.staff_id,
-                  s.name AS staff_name,
-                  a.created_at
-             FROM repair_actions a
-             LEFT JOIN staff s ON s.id = a.staff_id
-            WHERE a.id = $1`,
-          [newId],
-        );
-      });
+      if (result.action.ticket_post_status === 'pending') {
+        const actionId = result.action.id;
+        const orgId = ctx.organizationId;
+        scheduleAfterResponse(async () => {
+          await postRepairActionToTicket(orgId, actionId);
+        });
+      }
 
       await invalidateCacheTags(['repair-service']);
       await publishRepairChanged({
         organizationId: ctx.organizationId,
-        repairIds: [repairId],
+        repairIds: [parsed.repairId],
         source: 'repair.action-logged',
       });
+      const { stock_ledger_id: ledgerId, new_sku: sku, stock_qty: takenQty } = result.action;
+      if (ledgerId != null && sku) {
+        await publishStockLedgerEvent({
+          organizationId: ctx.organizationId,
+          ledgerId,
+          sku,
+          delta: -(takenQty ?? 1),
+          reason: REPAIR_LEDGER_REASON.installed,
+          dimension: 'WAREHOUSE',
+          staffId: ctx.staffId,
+          source: 'repair.action-logged',
+        });
+      }
 
-      return NextResponse.json({ success: true, action: fetched.rows[0] });
-    } catch (error: any) {
+      return NextResponse.json({ success: true, action: result.action });
+    } catch (error: unknown) {
       console.error('POST /api/repair/actions error:', error);
       return NextResponse.json(
-        { error: 'Failed to log repair action', details: error?.message },
+        { error: 'Failed to log repair action', details: error instanceof Error ? error.message : String(error) },
         { status: 500 },
       );
     }

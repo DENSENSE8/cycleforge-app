@@ -15,7 +15,7 @@ import { TOKENS } from '@/components/mobile/redesign/DesignSystem';
 
 export default function MobileShippingPacking() {
   return (
-    <main className={`flex h-full min-h-full flex-col ${TOKENS.colors.background}`} aria-label="Shipping and packing">
+    <div className={`flex h-full min-h-full flex-col ${TOKENS.colors.background}`} aria-label="Shipping and packing">
       <header className="border-b border-border-hairline px-3 pb-3 pt-2">
         <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Execution</p>
         <h1 className="mt-1 text-lg font-semibold tracking-tight text-text-default">Shipping &amp; packing</h1>
@@ -46,6 +46,6 @@ export default function MobileShippingPacking() {
           </Link>
         </div>
       </Inset>
-    </main>
+    </div>
   );
 }

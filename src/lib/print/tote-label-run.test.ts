@@ -21,6 +21,7 @@ import { buildFaceInfoHtml } from './labelFace';
 const toteJob = (tote: unknown) => ({
   type: 'staff.print_job',
   request_id: 'req-1',
+  targetStationId: 'ps_bench',
   grain: 'tote',
   role: 'label',
   tote,
@@ -53,6 +54,7 @@ describe('tote print job on the wire', () => {
     const bin = parseStaffPrintJob({
       type: 'staff.print_job',
       request_id: 'req-2',
+      targetStationId: 'ps_bench',
       grain: 'bin',
       role: 'label',
       location: {

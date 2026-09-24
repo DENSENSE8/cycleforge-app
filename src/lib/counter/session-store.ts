@@ -994,6 +994,7 @@ export async function submitSession(
           },
           retailLines: parts.retailLines,
           services: parts.services,
+          linkedRepairs: parts.linkedRepairs,
           clientEventId,
           kioskDeviceId: snapshot.kioskDeviceId,
           steppedUpStaffId: args.steppedUpStaffId ?? null,

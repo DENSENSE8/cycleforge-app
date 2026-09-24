@@ -43,14 +43,6 @@ export interface Bundle {
   manuals: ManualRow[];
 }
 
-/** Numeric value kinds capture a number (and may have a pass band). */
-export const NUMERIC_VALUE_KINDS = new Set(['PERCENT', 'NUMBER']);
-
-/** Steps whose answer is a structured value rather than a pass/fail tap. */
-export function needsValueInput(kind?: string | null): boolean {
-  return kind === 'PERCENT' || kind === 'NUMBER' || kind === 'ENUM' || kind === 'TEXT';
-}
-
 // Mirrors the surface tokens in TechTestingWorkspace — flat hairline card +
 // quieted section label. Keep these in sync.
 export const SECTION = 'rounded-2xl bg-surface-card p-4 ring-1 ring-border-soft/70';

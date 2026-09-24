@@ -46,6 +46,8 @@ interface StaffAvatarProps {
    * decoration.
    */
   colorRing?: boolean;
+  /** Mark corner — see {@link IdentityMark} `shape`. */
+  shape?: 'round' | 'square';
   className?: string;
   /** Accessible name. Omit on rows that already name the staffer in text. */
   alt?: string;
@@ -59,6 +61,7 @@ export function StaffAvatar({
   size = 'sm',
   ring = true,
   colorRing = false,
+  shape = 'round',
   className,
   alt,
 }: StaffAvatarProps) {
@@ -87,6 +90,7 @@ export function StaffAvatar({
       size={size}
       ring={ring}
       ringHex={colorRing ? resolvedColor : null}
+      shape={shape}
       className={className}
       alt={alt ?? (trimmed || undefined)}
     />

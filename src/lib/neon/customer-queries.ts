@@ -1,6 +1,14 @@
+import type { PoolClient } from 'pg';
 import pool from '../db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  customerContactColumns,
+  splitCustomerName,
+  type CustomerContactColumns,
+  type CustomerContactPatch,
+  type RepairCustomerCreate,
+} from '@/lib/schemas/customers';
 
 export interface CustomerRecord {
   id: number;
@@ -138,46 +146,54 @@ export async function findCustomerByName(name: string, orgId?: OrgId): Promise<C
   return result.rows.length > 0 ? result.rows[0] : null;
 }
 
-/**
- * Create a customer linked to a repair service entity.
- */
-export async function createRepairCustomer(params: {
+interface RepairCustomerParams {
   name: string;
   phone: string;
   email?: string;
   /** Callers: submitCounterTransaction.createCustomer. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
   address?: string;
   repairId?: number;
-}, orgId?: OrgId): Promise<CustomerRecord> {
-  const parts = params.name.trim().split(/\s+/);
-  const firstName = parts[0] || '';
-  const lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+}
+
+/** The tenant INSERT behind {@link createRepairCustomer}, on a caller's transaction. */
+async function insertRepairCustomer(
+  client: PoolClient,
+  params: RepairCustomerParams,
+  orgId: OrgId,
+): Promise<CustomerRecord> {
+  const { first, last } = splitCustomerName(params.name);
+  const result = await client.query<CustomerRecord>(
+    `INSERT INTO customers (
+      customer_name, display_name, first_name, last_name,
+      phone, email, shipping_address_1, contact_type, entity_type, entity_id,
+      organization_id, created_at, updated_at
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'repair_customer', $8, $9, $10, NOW(), NOW())
+    RETURNING id, customer_name, display_name, first_name, last_name, email, phone,
+              contact_type, entity_type, entity_id`,
+    [
+      params.name,
+      params.name,
+      first,
+      last,
+      params.phone || null,
+      params.email || null,
+      params.address?.trim() || null,
+      params.repairId ? 'REPAIR' : null,
+      params.repairId ?? null,
+      orgId,
+    ],
+  );
+  return result.rows[0];
+}
+
+/**
+ * Create a customer linked to a repair service entity.
+ */
+export async function createRepairCustomer(params: RepairCustomerParams, orgId?: OrgId): Promise<CustomerRecord> {
+  const { first: firstName, last: lastName } = splitCustomerName(params.name);
 
   if (orgId) {
-    return withTenantTransaction(orgId, async (client) => {
-      const result = await client.query<CustomerRecord>(
-        `INSERT INTO customers (
-          customer_name, display_name, first_name, last_name,
-          phone, email, shipping_address_1, contact_type, entity_type, entity_id,
-          organization_id, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'repair_customer', $8, $9, $10, NOW(), NOW())
-        RETURNING id, customer_name, display_name, first_name, last_name, email, phone,
-                  contact_type, entity_type, entity_id`,
-        [
-          params.name,
-          params.name,
-          firstName,
-          lastName,
-          params.phone || null,
-          params.email || null,
-          params.address?.trim() || null,
-          params.repairId ? 'REPAIR' : null,
-          params.repairId ?? null,
-          orgId,
-        ],
-      );
-      return result.rows[0];
-    });
+    return withTenantTransaction(orgId, (client) => insertRepairCustomer(client, params, orgId));
   }
 
   const result = await pool.query(
@@ -223,6 +239,139 @@ export async function linkCustomerToRepair(customerId: number, repairId: number,
      WHERE id = $2 AND entity_id IS NULL`,
     [repairId, customerId],
   );
+}
+
+export type CustomerContactUpdateResult =
+  | {
+      ok: true;
+      before: CustomerContactColumns;
+      /** Only the columns that changed; empty = nothing was written. */
+      columns: Partial<CustomerContactColumns>;
+      /** Repairs pointing at this customer — they display its name/phone/email. */
+      repairIds: number[];
+    }
+  | { ok: false; status: 400 | 404; error: string };
+
+/**
+ * Correct a customer's contact columns (`PATCH /api/customers/[id]`). One
+ * transaction: lock the row, diff through {@link customerContactColumns}, write
+ * only what changed, and name the repairs that read it. A cross-tenant id is a
+ * 404 (no disclosure).
+ */
+export async function updateCustomerContact(
+  customerId: number,
+  patch: CustomerContactPatch,
+  orgId: OrgId,
+): Promise<CustomerContactUpdateResult> {
+  return withTenantTransaction(orgId, async (client) => {
+    const found = await client.query<CustomerContactColumns>(
+      `SELECT customer_name, display_name, first_name, last_name, phone, email
+         FROM customers
+        WHERE id = $1 AND organization_id = $2
+        FOR UPDATE`,
+      [customerId, orgId],
+    );
+    const before = found.rows[0];
+    if (!before) return { ok: false as const, status: 404 as const, error: 'Customer not found' };
+
+    const plan = customerContactColumns(before, patch);
+    if (!plan.ok) return { ok: false as const, status: 400 as const, error: plan.error };
+
+    const entries = Object.entries(plan.columns);
+    if (entries.length > 0) {
+      await client.query(
+        `UPDATE customers
+            SET ${entries.map(([col], i) => `${col} = $${i + 3}`).join(', ')}, updated_at = NOW()
+          WHERE id = $1 AND organization_id = $2`,
+        [customerId, orgId, ...entries.map(([, value]) => value)],
+      );
+    }
+
+    const repairs = await client.query<{ id: number }>(
+      `SELECT id FROM repair_service WHERE customer_id = $1 AND organization_id = $2`,
+      [customerId, orgId],
+    );
+    return { ok: true as const, before, columns: plan.columns, repairIds: repairs.rows.map((r) => Number(r.id)) };
+  });
+}
+
+export type RepairCustomerLinkResult =
+  | { ok: true; before: { customer_id: number | null }; after: { customer_id: number | null } }
+  | { ok: false; status: 404; error: string };
+
+/**
+ * Point a repair at a customer, or at none (`customerId` null = unlink).
+ *
+ * Only `repair_service.customer_id` moves — an unlink NEVER deletes the
+ * customer row, which other repairs, orders and counter visits may share. The
+ * target customer must belong to the same org: the FK alone would accept
+ * another tenant's id.
+ */
+export async function setRepairCustomer(
+  repairId: number,
+  customerId: number | null,
+  orgId: OrgId,
+): Promise<RepairCustomerLinkResult> {
+  return withTenantTransaction(orgId, async (client) => {
+    const repair = await client.query<{ customer_id: number | null }>(
+      `SELECT customer_id FROM repair_service WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [repairId, orgId],
+    );
+    if (!repair.rows[0]) return { ok: false as const, status: 404 as const, error: 'Repair not found' };
+
+    if (customerId != null) {
+      const customer = await client.query(
+        `SELECT 1 FROM customers WHERE id = $1 AND organization_id = $2`,
+        [customerId, orgId],
+      );
+      if (!customer.rows[0]) return { ok: false as const, status: 404 as const, error: 'Customer not found' };
+    }
+
+    await client.query(
+      `UPDATE repair_service SET customer_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
+      [customerId, repairId, orgId],
+    );
+    return {
+      ok: true as const,
+      before: { customer_id: repair.rows[0].customer_id ?? null },
+      after: { customer_id: customerId },
+    };
+  });
+}
+
+/**
+ * Create a customer from contact typed on the phone and point the repair at it,
+ * in one transaction. Replaces any current link; the previous customer row is
+ * kept.
+ */
+export async function createAndLinkRepairCustomer(
+  repairId: number,
+  input: RepairCustomerCreate,
+  orgId: OrgId,
+): Promise<RepairCustomerLinkResult> {
+  return withTenantTransaction(orgId, async (client) => {
+    const repair = await client.query<{ customer_id: number | null }>(
+      `SELECT customer_id FROM repair_service WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [repairId, orgId],
+    );
+    if (!repair.rows[0]) return { ok: false as const, status: 404 as const, error: 'Repair not found' };
+
+    const created = await insertRepairCustomer(
+      client,
+      { name: input.name, phone: input.phone, email: input.email, repairId },
+      orgId,
+    );
+    const customerId = Number(created.id);
+    await client.query(
+      `UPDATE repair_service SET customer_id = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3`,
+      [customerId, repairId, orgId],
+    );
+    return {
+      ok: true as const,
+      before: { customer_id: repair.rows[0].customer_id ?? null },
+      after: { customer_id: customerId },
+    };
+  });
 }
 
 /**

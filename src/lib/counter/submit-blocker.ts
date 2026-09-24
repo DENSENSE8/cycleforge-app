@@ -14,7 +14,7 @@
  * name the same gate.
  */
 
-import { isRepairPayload } from '@/lib/kiosk/cart-line';
+import { isLinkedRepairLine, isRepairPayload } from '@/lib/kiosk/cart-line';
 import type { CounterSessionSnapshot } from './session-events';
 
 /**
@@ -35,8 +35,14 @@ export function submitBlocker(snapshot: CounterSessionSnapshot): CounterSubmitBl
   if (live.length === 0) return 'EMPTY_CART';
   if (!snapshot.customer.phone.trim()) return 'MISSING_CUSTOMER';
 
+  // A LINKED repair is exempt: it was signed for when its ticket was written,
+  // and this visit only settles it.
   const unsigned = live.some(
-    (l) => l.type === 'REPAIR' && isRepairPayload(l.payload) && !l.payload.signatureDataUrl,
+    (l) =>
+      l.type === 'REPAIR' &&
+      isRepairPayload(l.payload) &&
+      !isLinkedRepairLine(l) &&
+      !l.payload.signatureDataUrl,
   );
   // A repair is a legal agreement about someone's property. An unsigned one is
   // not a slow path to fix later — it is a visit that must not be charged.

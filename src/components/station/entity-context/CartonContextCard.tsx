@@ -619,6 +619,7 @@ export function CartonContextCard({
         readOnly={!classifyInteractive}
         placeholder={isUnmatched ? 'Unfound' : 'Platform'}
         onEditCatalog={classifyInteractive ? () => setCatalogManager('platform') : undefined}
+        editCatalogLabel="Edit platforms"
       />
       <InlinePillPicker
         ariaLabel="Type"

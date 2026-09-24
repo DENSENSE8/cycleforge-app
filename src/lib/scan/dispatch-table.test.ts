@@ -12,7 +12,7 @@
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 
-import { dispatchScan, type ScanCard } from './dispatch-table';
+import { dispatchScan, QC_SCAN_SESSION, type ScanCard } from './dispatch-table';
 import { routeScan, routeScanPaired } from '../barcode-routing';
 
 // ─── The payloads, one per class ────────────────────────────────────────────
@@ -172,6 +172,92 @@ test('a bin that turned out to be paired still satisfies a session armed for bin
   const d = dispatchScan({ scan: paired, armedSession: { expects: ['bin'] } });
   strictEqual(d.mode, 'act', 'pairing is a fact the session did not have when it armed');
   strictEqual(d.parks, true);
+});
+
+// ─── The scan kernel armed to RUN QC (`/m/scan?work=qc`) ────────────────────
+
+test('ARMED FOR QC: every unit label unbox prints opens QC on that unit and parks', () => {
+  const labels: Array<[string, string]> = [
+    [SERIAL, 'QC · Unit SN123'],
+    ['(01)00012345678905(21)CN1A2B3', 'QC · Unit CN1A2B3'],
+    ['https://usav.app.cycleforge.ai/01/00012345678905/21/CN1A2B3', 'QC · Unit CN1A2B3'],
+    ['IPH13-128-BLU-2601-000042', 'QC · Unit IPH13-128-BLU-2601-000042'],
+  ];
+  for (const [label, title] of labels) {
+    strictEqual(routeScan(label)?.type, 'serial-unit', `${label} is a unit label`);
+    const d = dispatchScan({ scan: label, armedSession: QC_SCAN_SESSION });
+    strictEqual(d.card, 'qc', `${label} → qc`);
+    strictEqual(d.mode, 'act', `${label} → the station takes it`);
+    strictEqual(d.parks, true, `${label} → parks`);
+    strictEqual(d.title, title);
+    strictEqual(d.destination, 'QC');
+    ok(/running QC on units/.test(d.reason), d.reason);
+  }
+});
+
+test('a unit label outside a QC session still previews — the row needs the armed work', () => {
+  strictEqual(dispatchScan({ scan: SERIAL }).card, 'preview', 'nothing armed');
+
+  // Armed for units but doing some OTHER job: the unit acts, but not as QC.
+  const other = dispatchScan({ scan: SERIAL, armedSession: { expects: ['serial-unit'] } });
+  strictEqual(other.card, 'preview');
+  strictEqual(other.mode, 'act');
+  strictEqual(other.title, null);
+
+  const pack = dispatchScan({ scan: SERIAL, armedSession: { expects: ['serial-unit'], work: 'pack' } });
+  strictEqual(pack.card, 'preview', 'a session armed for Pack does not open QC');
+});
+
+test('ARMED FOR QC: an LPN keeps qc-open semantics and is not taken as a unit', () => {
+  const open = dispatchScan({ scan: LPN, state: { qcOpen: true }, armedSession: QC_SCAN_SESSION });
+  strictEqual(open.card, 'qc');
+  strictEqual(open.title, 'QC · LPN 12', 'the LPN title, not a unit title');
+  strictEqual(open.mode, 'preview', 'the unit station does not expect licence plates');
+  strictEqual(open.parks, false);
+
+  // With nothing open the plate previews, whatever the session is running.
+  strictEqual(dispatchScan({ scan: LPN, armedSession: QC_SCAN_SESSION }).card, 'preview');
+
+  // And the LPN tie is untouched by the new row.
+  const tie = dispatchScan({
+    scan: LPN,
+    state: { qcOpen: true, stagedForPack: true },
+    armedSession: { ...QC_SCAN_SESSION, expects: ['handling-unit'] },
+  });
+  strictEqual(tie.mode, 'ask');
+  deepStrictEqual([...(tie.candidates ?? [])], ['qc', 'pack']);
+});
+
+test('ARMED FOR QC: a bin or a tracking number previews and parks nothing', () => {
+  for (const scan of [BIN, UPS]) {
+    const d = dispatchScan({ scan, armedSession: QC_SCAN_SESSION });
+    strictEqual(d.mode, 'preview', `${scan} is not what a QC station takes`);
+    strictEqual(d.parks, false);
+    ok(/not what this session is waiting for/.test(d.reason), d.reason);
+  }
+  // A paired bin still names its own Card — only the mode refuses it.
+  strictEqual(dispatchScan({ scan: BIN, state: { binOrderId: ORDER }, armedSession: QC_SCAN_SESSION }).card, 'pack');
+});
+
+test('ARMED FOR QC: a line label opens QC to pick one of its units', () => {
+  for (const [scan, title] of [
+    ['L-77', 'QC · Line L-77'],
+    ['https://usav.app.cycleforge.ai/m/l/77', 'QC · Line L-77'],
+  ] as const) {
+    const d = dispatchScan({ scan, armedSession: QC_SCAN_SESSION });
+    strictEqual(d.card, 'qc', scan);
+    strictEqual(d.mode, 'act', 'the station expects line labels');
+    strictEqual(d.parks, true);
+    strictEqual(d.title, title);
+  }
+
+  // Outside a QC session a line label is the plain preview it always was.
+  strictEqual(dispatchScan({ scan: 'L-77' }).card, 'preview');
+
+  // A station that does not expect lines refuses it like any other stray class.
+  const unitsOnly = dispatchScan({ scan: 'L-77', armedSession: { ...QC_SCAN_SESSION, expects: ['serial-unit'] } });
+  strictEqual(unitsOnly.mode, 'preview');
+  strictEqual(unitsOnly.parks, false);
 });
 
 // ─── The tie ────────────────────────────────────────────────────────────────

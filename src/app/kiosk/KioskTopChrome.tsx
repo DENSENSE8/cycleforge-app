@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Kiosk trail chrome — command dropdown + optional center + cart / paperwork /
- * Work · Show · Verify. No left or right side rails.
+ * Kiosk trail chrome — command dropdown + optional center + carts / cart /
+ * paperwork / Work · Show · Verify. No left or right side rails.
  *
  * Callers: `KioskShell` (staff work, utility panels, customer face) —
  * `src/app/kiosk/KioskShell.tsx` imports `KioskTopChrome`, `KioskCommandMenu`,
@@ -10,11 +10,13 @@
  * User: "execute now" / "cart icon most top right side and ensure icons for
  * the repair sales buy back and more" / "work show verify should be word and
  * drop downs on the left side of the paper work icon" / "access the kisok
- * from the bottom left side or the top right of the global header"
+ * from the bottom left side or the top right of the global header" / "recent
+ * carts for juggling multiple customers at the same time, IDed for multiple
+ * devices" (2026-09-24 — the Carts key, badge = the org's open carts)
  */
 
 import type { ReactNode } from 'react';
-import { FileText, ShoppingCart, X } from '@/components/Icons';
+import { FileText, Layers, ShoppingCart, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/design-system/primitives';
@@ -40,7 +42,7 @@ import {
   KIOSK_POS_TRAIL_ICON,
 } from './kiosk-pos-surface';
 
-export type KioskUtilitySlotId = 'cart' | 'paperwork';
+export type KioskUtilitySlotId = 'cart' | 'paperwork' | 'carts';
 
 export function KioskCommandMenu({
   activeMode,
@@ -115,6 +117,7 @@ export function KioskUtilityCluster({
   activeSlot,
   onSelect,
   cartCount,
+  openCartCount = 0,
   consultStance,
   onConsultStance,
   showCheckoutSlots = true,
@@ -123,6 +126,8 @@ export function KioskUtilityCluster({
   activeSlot: KioskUtilitySlotId | null;
   onSelect: (next: KioskUtilitySlotId | null) => void;
   cartCount: number;
+  /** Open carts across the org (Recent carts) — the Carts key's badge. */
+  openCartCount?: number;
   consultStance: ConsultStance;
   onConsultStance: (stance: ConsultStance) => void;
   showCheckoutSlots?: boolean;
@@ -166,6 +171,29 @@ export function KioskUtilityCluster({
               data-testid="kiosk-utility-paperwork"
             />
           </HoverTooltip>
+          {/* Recent carts sits beside the Cart key it switches between. */}
+          <div className="relative inline-flex shrink-0 items-center justify-center">
+            <HoverTooltip label={activeSlot === 'carts' ? 'Hide carts' : 'Recent carts'} asChild>
+              <IconButton
+                icon={<Layers className={TOP_CHROME_ICON_FACE} aria-hidden />}
+                ariaLabel="Carts"
+                size="md"
+                aria-pressed={activeSlot === 'carts'}
+                onClick={() => onSelect(activeSlot === 'carts' ? null : 'carts')}
+                className={cn(
+                  HEADER_ICON_BTN_CLASS,
+                  KIOSK_POS_TRAIL_ICON,
+                  activeSlot === 'carts' && HEADER_ICON_BTN_OPEN_CLASS,
+                )}
+                data-testid="kiosk-utility-carts"
+              />
+            </HoverTooltip>
+            {openCartCount > 0 ? (
+              <span className={KIOSK_CART_COUNT_BADGE} data-testid="kiosk-open-carts-count">
+                {openCartCount > 9 ? '9+' : openCartCount}
+              </span>
+            ) : null}
+          </div>
           {/*
             Badge positions against the button face, not a wrapper — otherwise
             -top-* floats into the gutter above the cart glyph.
@@ -203,6 +231,7 @@ export function KioskTopChrome({
   activeSlot,
   onSelect,
   cartCount,
+  openCartCount,
   consultStance,
   onConsultStance,
   showCheckoutSlots = true,
@@ -215,6 +244,8 @@ export function KioskTopChrome({
   activeSlot: KioskUtilitySlotId | null;
   onSelect: (next: KioskUtilitySlotId | null) => void;
   cartCount: number;
+  /** Passed straight to {@link KioskUtilityCluster}. */
+  openCartCount?: number;
   consultStance: ConsultStance;
   onConsultStance: (stance: ConsultStance) => void;
   showCheckoutSlots?: boolean;
@@ -243,6 +274,7 @@ export function KioskTopChrome({
         activeSlot={activeSlot}
         onSelect={onSelect}
         cartCount={cartCount}
+        openCartCount={openCartCount}
         consultStance={consultStance}
         onConsultStance={onConsultStance}
         showCheckoutSlots={showCheckoutSlots}

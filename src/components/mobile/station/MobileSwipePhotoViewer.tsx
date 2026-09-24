@@ -10,7 +10,7 @@ import {
   useTransform,
   useReducedMotion,
 } from '@/design-system/motion';
-import { Trash2, ChevronDown } from '@/components/Icons';
+import { Trash2, ChevronDown, Play } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
@@ -43,6 +43,12 @@ const GLASS_CHROME =
 export interface SwipePhotoSlide {
   id: string;
   previewUrl: string;
+  /**
+   * `video` plays `previewUrl` inline (`<video controls playsInline>`) when it is
+   * the active slide; neighbours show a play placeholder so paging away stops
+   * playback. Default `photo`.
+   */
+  kind?: 'photo' | 'video';
   deletable?: boolean;
   /** Staff who captured this frame; renders as a StaffAvatar in the top chrome. */
   uploadedBy?: number | null;
@@ -208,7 +214,7 @@ export function MobileSwipePhotoViewer({
     const NEIGHBOURS = 2;
     for (let i = index - NEIGHBOURS; i <= index + NEIGHBOURS; i += 1) {
       const slide = slides[i];
-      if (!slide) continue;
+      if (!slide || slide.kind === 'video') continue;
       const img = new window.Image();
       img.decoding = 'async';
       img.src = slide.previewUrl;
@@ -424,16 +430,38 @@ export function MobileSwipePhotoViewer({
                   key={slide.id}
                   className="flex h-[100dvh] w-[100vw] shrink-0 items-center justify-center"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={slide.previewUrl}
-                    alt={`Photo ${i + 1}`}
-                    draggable={false}
-                    loading="eager"
-                    decoding="async"
-                    fetchPriority={Math.abs(i - index) <= 1 ? 'high' : 'low'}
-                    className="pointer-events-none max-h-full max-w-full object-contain"
-                  />
+                  {slide.kind === 'video' ? (
+                    i === index ? (
+                      // Its own pointer stream: the native controls (play, scrub,
+                      // fullscreen) must not start a page/dismiss gesture, which
+                      // captures the pointer and would swallow the tap.
+                      <video
+                        src={slide.previewUrl}
+                        controls
+                        playsInline
+                        autoPlay
+                        preload="metadata"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        className="max-h-full max-w-full"
+                        data-testid="swipe-viewer-video"
+                      />
+                    ) : (
+                      <span className="flex h-16 w-16 items-center justify-center rounded-full bg-scrim/45 text-white">
+                        <Play className="h-8 w-8" />
+                      </span>
+                    )
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={slide.previewUrl}
+                      alt={`Photo ${i + 1}`}
+                      draggable={false}
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority={Math.abs(i - index) <= 1 ? 'high' : 'low'}
+                      className="pointer-events-none max-h-full max-w-full object-contain"
+                    />
+                  )}
                 </div>
               ))}
             </motion.div>

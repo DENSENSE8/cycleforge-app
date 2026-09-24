@@ -9,7 +9,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
-import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
+import { useOrderChannel, usePlatformMeta } from '@/hooks/useCatalog';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useAddTrackingNav } from '@/components/outbound/labels/add-tracking-context';
 import { orderRowConditionLabel } from '@/lib/conditions';
@@ -33,7 +33,7 @@ interface SkuResolution {
  */
 export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
   const orderId = Number(record.id);
-  const orderChannelLabel = useOrderChannelLabel();
+  const resolveOrderChannel = useOrderChannel();
   const nav = useAddTrackingNav();
   const mutation = useOrderAssignment();
   const [localOpen, setLocalOpen] = useState(false);
@@ -103,7 +103,7 @@ export function AddTrackingPopover({ record }: { record: ShippedOrder }) {
   }, [sku, open]);
 
   const resolvePlatformMeta = usePlatformMeta();
-  const channelLabel = orderChannelLabel(record.order_id || '', record.account_source);
+  const channelLabel = resolveOrderChannel(record.order_id || '', record.account_source).label;
   const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
   const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
   const iconTone = platformMeta.value ? platformMetaIconTone(platformMeta) : null;

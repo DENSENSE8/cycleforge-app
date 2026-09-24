@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * To-ship selection overlay: save item# → QC + packer as automation_rules
+ * To-ship selection overlay: save (item #, SKU) → QC + packer as automation_rules
  * and assign the selected orders now. Mirrors WorkOrderAssignmentCard chrome
  * (AssignmentOverlayCard + StaffButtonGrid) without the per-row carousel.
  */
@@ -11,8 +11,10 @@ import { AssignmentOverlayCard } from '@/design-system/components/AssignmentOver
 import { Button } from '@/design-system/primitives';
 import { StaffButtonGrid, type StaffOption } from '@/components/shipping/StaffButtonGrid';
 
+/** One rule key; sku null = item-#-only rule covering every SKU on that listing. */
 export type ListingAutomationListing = {
   itemNumber: string;
+  sku: string | null;
   orderCount: number;
 };
 
@@ -140,7 +142,7 @@ export function ListingAutomationAssignCard({
       title="Listing → staff"
       subtitle={
         preview.status === 'ready'
-          ? `${preview.totalOrders} selected · ${listingCount} listing${listingCount === 1 ? '' : 's'}`
+          ? `${preview.totalOrders} selected · ${listingCount} item/SKU pair${listingCount === 1 ? '' : 's'}`
           : `${orderIds.length} selected`
       }
       footer={
@@ -182,10 +184,12 @@ export function ListingAutomationAssignCard({
               <ul className="max-h-36 space-y-1 overflow-y-auto rounded-lg border border-border-hairline bg-surface-sunken px-3 py-2">
                 {preview.listings.map((row) => (
                   <li
-                    key={row.itemNumber}
+                    key={`${row.itemNumber}|${row.sku ?? ''}`}
                     className="flex items-center justify-between gap-2 text-role-caption text-text-default"
                   >
-                    <span className="font-mono tabular-nums">{row.itemNumber}</span>
+                    <span className="font-mono tabular-nums">
+                      ITEM {row.itemNumber} · SKU {row.sku ?? '(any)'}
+                    </span>
                     <span className="text-text-soft">
                       {row.orderCount} order{row.orderCount === 1 ? '' : 's'}
                     </span>
@@ -219,7 +223,7 @@ export function ListingAutomationAssignCard({
         ) : null}
         {error ? <p className="text-role-caption text-text-danger">{error}</p> : null}
         <p className="text-role-eyebrow text-text-soft">
-          Save rules &amp; assign writes item number → staff for future imports and
+          Save rules &amp; assign writes item # + SKU → staff for future imports and
           assigns these orders now. Apply existing rules only uses rules already saved.
         </p>
       </div>

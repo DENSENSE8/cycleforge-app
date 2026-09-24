@@ -109,7 +109,7 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
           {showHeader && <MobileTopBar onMenu={() => setSidebarOpen(true)} overlay={overlayHeader} />}
           <WmsRealtimeStatus />
 
-          <main className="relative min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-contain">
+          <div className="relative min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-contain">
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
@@ -134,7 +134,7 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
               </ErrorBoundary>
             </motion.div>
           </AnimatePresence>
-          </main>
+          </div>
         </div>
 
         <Suspense fallback={null}>

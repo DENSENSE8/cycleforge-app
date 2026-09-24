@@ -18,7 +18,7 @@
 import { useCallback, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { Plus } from '@/components/Icons';
-import { KioskEntryField } from '@/components/kiosk/KioskCustomerIntake';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
 import { useKioskSkuReasons } from '@/components/repair/useKioskSkuReasons';
 import { mergeReasonLabel, SKU_REASON_LABEL_MAX } from '@/lib/repair/sku-reasons';

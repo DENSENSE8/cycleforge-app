@@ -68,6 +68,14 @@ export const qk = {
   repairs: {
     all: ['repairs'] as const,
     list: (page: number, limit: number) => ['repairs', page, limit] as const,
+    /**
+     * One repair's phone workbench reads (record, actions, ticket link, photos,
+     * print log, bench). Under `repairs` so the `repair.changed` realtime
+     * invalidation reaches them; per-facet keys append one string.
+     */
+    workbench: (id: number, facet: string) => ['repairs', 'workbench', id, facet] as const,
+    /** One repair's signed documents (`GET /api/repair-service/document/[id]`). */
+    documents: (id: number) => ['repairs', 'documents', id] as const,
   },
   skuCatalog: {
     /** Broad invalidation prefix — matches every SKU catalog admin query. */

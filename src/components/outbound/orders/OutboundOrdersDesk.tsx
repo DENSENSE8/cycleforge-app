@@ -23,7 +23,6 @@ import { useDashboardViewWarmup } from '@/hooks/useDashboardViewWarmup';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
 import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
-import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
 import {
@@ -253,8 +252,9 @@ function OutboundOrdersDeskContent({
   const { selectionEnabled, selectMode, selectionOverlays } =
     useOrderRailSelection(orderView);
 
-  const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
-    useDashboardSelectedOrder(detailsEnabled && !isSupportContext);
+  // Keeps `?openOrderId=` and the open record in step (deep links, back/forward);
+  // the record itself paints in the ledger's evidence column.
+  useDashboardSelectedOrder(detailsEnabled && !isSupportContext);
 
   const { openOrderId, setOpenOrderId } = useSupportOrderOpenParam(isSupportContext);
 
@@ -273,10 +273,6 @@ function OutboundOrdersDeskContent({
 
   useDashboardRealtime();
   useDashboardViewWarmup({ orderView, searchQuery, enabled: true });
-
-  const refreshDashboard = useCallback(() => {
-    refreshDomain('orders.outbound');
-  }, []);
 
   // Support context: Station focus replaces the slide-in details panel when an
   // order is open (`?openOrderId=`). Board stays DashboardOrdersView SoT.
@@ -302,26 +298,20 @@ function OutboundOrdersDeskContent({
         selectionOverlays={selectionOverlays}
         onPrimaryPainted={onPrimaryPainted}
         stageOverlay={
-          !isSupportContext && parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null ? (
-            showIngestRail && ingestLeaf === 'triage' && !importActive ? (
-              <OrderIntakeOverlay
-                open
-                orderId={triageOrderId}
-                onClose={closeIntakeForm}
-                onOrderCreated={bindTriageOrder}
-              />
-            ) : (
-              <DashboardOrderDetails
-                detailsEnabled={detailsEnabled}
-                selectedShipped={selectedShipped}
-                selectedContext={selectedContext}
-                onClose={requestCloseSelectedOrder}
-                onUpdate={refreshDashboard}
-                // To ship: the record opens in the right rail (triage) beside
-                // the ledger, never on top of it.
-                placement="rail"
-              />
-            )
+          // The open record reads in the ledger's evidence column
+          // (`OutboundOrderEvidence`), never on top of the rows or in the right
+          // rail. The stage only ever carries the hand-entry intake.
+          !isSupportContext &&
+          parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null &&
+          showIngestRail &&
+          ingestLeaf === 'triage' &&
+          !importActive ? (
+            <OrderIntakeOverlay
+              open
+              orderId={triageOrderId}
+              onClose={closeIntakeForm}
+              onOrderCreated={bindTriageOrder}
+            />
           ) : null
         }
       />

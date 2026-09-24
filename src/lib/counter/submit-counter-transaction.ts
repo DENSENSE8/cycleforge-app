@@ -10,6 +10,7 @@
  *   resolveCounterCustomer()      deterministic identity (phone only)
  *     → counter_transactions      the header + the idempotency anchor
  *     → submitRepairIntake(..., ticketWork: 'skip')  COMPOSED — counter owns ticket enqueue
+ *     → linkRepairToHeader(linked)  an EXISTING ticket brought in — no intake, no ticket
  *     → stageSquareOrder(...)     staged, NEVER charged
  *     → enqueueTicketWork(...)    the outbox
  *
@@ -77,11 +78,33 @@ import {
 /** Thrown when the input cannot describe a transaction at all. Callers map → 400. */
 export class CounterTransactionValidationError extends Error {
   readonly missing: string[];
-  constructor(missing: string[]) {
-    super(`Missing required fields: ${missing.join(', ')}`);
+  /**
+   * `message` overrides the "Missing required fields" sentence for refusals
+   * that are not a missing field — a linked repair already on another visit is
+   * a fact to act on, and the tablet prints this message verbatim.
+   */
+  constructor(missing: string[], message?: string) {
+    super(message ?? `Missing required fields: ${missing.join(', ')}`);
     this.name = 'CounterTransactionValidationError';
     this.missing = missing;
   }
+}
+
+/**
+ * An existing `repair_service` row as a visit links it. The money and the
+ * device facts come from HERE, never from the tablet: the ticket was quoted
+ * when it was written, and a client-supplied figure would let a cart re-price
+ * a repair it never took in.
+ */
+export interface LinkableRepairRow {
+  id: number;
+  ticketNumber: string | null;
+  productTitle: string;
+  serialNumber: string;
+  /** `repair_service.price` — TEXT, parsed by `serviceLineCents` like any quote. */
+  price: string;
+  issue: string | null;
+  counterTransactionId: number | null;
 }
 
 interface ResolvedCustomer {
@@ -163,7 +186,15 @@ export interface SubmitCounterTransactionDeps {
 
   /** COMPOSED, never re-implemented. */
   submitRepair: typeof submitRepairIntake;
-  linkRepairToHeader(orgId: OrgId, repairId: number, headerId: number): Promise<void>;
+  /**
+   * Point a repair at the header. Guarded: it only claims a row that is
+   * unlinked (or already this header's), and reports whether it did — a
+   * linked repair that another visit claimed a moment earlier must not be
+   * charged on this one too.
+   */
+  linkRepairToHeader(orgId: OrgId, repairId: number, headerId: number): Promise<boolean>;
+  /** The existing repairs a visit links, org-scoped. Missing ids are simply absent. */
+  findLinkableRepairs(orgId: OrgId, repairIds: number[]): Promise<LinkableRepairRow[]>;
 
   /**
    * Creates a provider order and stops.
@@ -232,6 +263,58 @@ function repairLineItemName(service: CounterServiceLine, rsNumber: string): stri
     .filter(Boolean);
   const summary = reasons.length > 0 ? reasons.join(', ') : rsNumber;
   return `${service.productModel} repair — ${summary}`;
+}
+
+/** The RS number a linked ticket answers to; the id when it was never ticketed. */
+function linkedRepairLabel(row: LinkableRepairRow): string {
+  return row.ticketNumber || `RS-${row.id}`;
+}
+
+/**
+ * A linked ticket as a service line — ONLY so it can flow through the same
+ * `serviceLineCents` / `repairLineItemName` a new device does. It is never
+ * handed to `submitRepair` or the pre-flight: those mean "take a device in".
+ */
+function linkedServiceLine(row: LinkableRepairRow): CounterServiceLine {
+  return {
+    productModel: row.productTitle.trim() || linkedRepairLabel(row),
+    serialNumber: row.serialNumber,
+    price: row.price,
+    repairReasons: row.issue ? [row.issue] : [],
+  };
+}
+
+/**
+ * Read and prove the repairs a visit links, in the order the cart listed them.
+ * Refuses (nothing written yet) when one is not in this org's book or already
+ * sits on another visit.
+ */
+async function linkedRepairRows(
+  orgId: OrgId,
+  repairIds: number[],
+  deps: SubmitCounterTransactionDeps,
+): Promise<LinkableRepairRow[]> {
+  if (repairIds.length === 0) return [];
+  const found = await deps.findLinkableRepairs(orgId, repairIds);
+  const rows: LinkableRepairRow[] = [];
+  for (const repairId of repairIds) {
+    const row = found.find((candidate) => candidate.id === repairId);
+    if (!row) {
+      throw new CounterTransactionValidationError(
+        [`Linked repair ${repairId}`],
+        'A linked repair is no longer in the book — remove it from the cart.',
+      );
+    }
+    if (row.counterTransactionId !== null) {
+      const label = linkedRepairLabel(row);
+      throw new CounterTransactionValidationError(
+        [`Linked repair ${label}`],
+        `${label} is already on visit #${row.counterTransactionId} — remove it from the cart.`,
+      );
+    }
+    rows.push(row);
+  }
+  return rows;
 }
 
 /**
@@ -459,12 +542,41 @@ const defaultDeps: SubmitCounterTransactionDeps = {
   submitRepair: submitRepairIntake,
 
   async linkRepairToHeader(orgId, repairId, headerId) {
-    await tenantQuery(
+    const res = await tenantQuery(
       orgId,
       `UPDATE repair_service SET counter_transaction_id = $1
-        WHERE id = $2 AND organization_id = $3`,
+        WHERE id = $2 AND organization_id = $3
+          AND (counter_transaction_id IS NULL OR counter_transaction_id = $1)`,
       [headerId, repairId, orgId],
     );
+    return (res.rowCount ?? 0) > 0;
+  },
+
+  async findLinkableRepairs(orgId, repairIds) {
+    if (repairIds.length === 0) return [];
+    const res = await tenantQuery<Record<string, unknown>>(
+      orgId,
+      `SELECT id,
+              NULLIF(TRIM(COALESCE(ticket_number, '')), '') AS ticket_number,
+              COALESCE(product_title, '')                   AS product_title,
+              COALESCE(serial_number, '')                   AS serial_number,
+              COALESCE(price, '')                           AS price,
+              NULLIF(TRIM(COALESCE(issue, '')), '')         AS issue,
+              counter_transaction_id
+         FROM repair_service
+        WHERE organization_id = $1 AND id = ANY($2::int[])`,
+      [orgId, repairIds],
+    );
+    return res.rows.map((row) => ({
+      id: Number(row.id),
+      ticketNumber: (row.ticket_number as string | null) ?? null,
+      productTitle: String(row.product_title ?? ''),
+      serialNumber: String(row.serial_number ?? ''),
+      price: String(row.price ?? ''),
+      issue: (row.issue as string | null) ?? null,
+      counterTransactionId:
+        row.counter_transaction_id == null ? null : Number(row.counter_transaction_id),
+    }));
   },
 
   async stageOrder(orgId, lines, idempotencyKey) {
@@ -524,6 +636,15 @@ export async function submitCounterTransaction(
   // see CounterTransactionInput.services for why the singular field was removed
   // outright rather than aliased.
   const services = (input.services ?? []).filter(Boolean);
+  // Existing repairs this visit links. Deduped: one ticket linked twice would
+  // be charged twice on the staged order.
+  const linkedRepairIds = [
+    ...new Set(
+      (input.linkedRepairs ?? [])
+        .map((link) => link?.repairId)
+        .filter((id): id is number => Number.isSafeInteger(id) && id > 0),
+    ),
+  ];
 
   // ── Validate ──────────────────────────────────────────────────────────────
   const missing: string[] = [];
@@ -532,7 +653,7 @@ export async function submitCounterTransaction(
   if (!phone) missing.push('Phone');
   else if (phoneDigits.length < 7) missing.push('A complete phone number');
   if (!String(input.clientEventId ?? '').trim()) missing.push('clientEventId');
-  if (retailLines.length === 0 && services.length === 0) {
+  if (retailLines.length === 0 && services.length === 0 && linkedRepairIds.length === 0) {
     missing.push('At least one item or a service');
   }
   /*
@@ -604,6 +725,14 @@ export async function submitCounterTransaction(
     };
   }
 
+  // ── Linked repairs: proven before any write ──────────────────────────────
+  //
+  // Read back from the book, org-scoped. A repair already on ANOTHER visit is
+  // refused outright rather than re-pointed: moving it would silently strip it
+  // from the receipt and staged order the first visit already printed.
+  const linkedRows = await linkedRepairRows(orgId, linkedRepairIds, deps);
+  const linkedServices = linkedRows.map(linkedServiceLine);
+
   // ── Identity (deterministic only) ─────────────────────────────────────────
   const displayName = String(input.customer?.name ?? '').trim();
   const email = String(input.customer?.email ?? '').trim() || undefined;
@@ -642,7 +771,13 @@ export async function submitCounterTransaction(
     }
   }
 
-  const { subtotalCents, totalCents } = computeCounterTotals({ retailLines, services });
+  // Linked repairs count toward the visit exactly as a new device does —
+  // through `serviceLineCents` on the ticket's own quote — so the header total
+  // and the staged order below cannot disagree about what they cost.
+  const { subtotalCents, totalCents } = computeCounterTotals({
+    retailLines,
+    services: [...services, ...linkedServices],
+  });
 
   // ── The header ────────────────────────────────────────────────────────────
   const header = await deps.insertHeader(orgId, {
@@ -752,6 +887,38 @@ export async function submitCounterTransaction(
           'could not be recorded — this visit needs reconciling.',
       );
       console.error('[counter] repair intake failed after header insert', err);
+    }
+  }
+
+  // ── The linked repairs ───────────────────────────────────────────────────
+  //
+  // Pointed at this header and staged beside the new devices, but never passed
+  // to `submitRepair` and never ticketed: the intake, signature and helpdesk
+  // conversation already exist on the ticket. `repairs` (and so ticket work
+  // below) stays new-devices-only for the same reason.
+  for (const [index, row] of linkedRows.entries()) {
+    const linkedService = linkedServices[index]!;
+    const rsNumber = linkedRepairLabel(row);
+    try {
+      const claimed = await deps.linkRepairToHeader(orgId, row.id, header.id);
+      if (!claimed) {
+        // Another visit claimed it between the check above and this write.
+        // Charging it here too would bill one repair on two receipts.
+        repairFailed = true;
+        warnings.push(`${rsNumber} was linked to another visit a moment ago — it is not charged here.`);
+        continue;
+      }
+      stageableRepairLines.push({
+        variationId: null,
+        sku: `REPAIR-${row.id}`,
+        productTitle: repairLineItemName(linkedService, rsNumber),
+        quantity: 1,
+        unitAmountCents: serviceLineCents(linkedService),
+      });
+    } catch (err) {
+      repairFailed = true;
+      warnings.push(`${rsNumber} could not be linked to this visit — it needs reconciling.`);
+      console.error('[counter] linking an existing repair failed after header insert', err);
     }
   }
 

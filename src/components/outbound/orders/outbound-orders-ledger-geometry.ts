@@ -84,18 +84,24 @@ export const LEDGER_SPINE_CLASS = 'w-[5px] shrink-0 self-stretch';
 export const LEDGER_SPINE_HATCH_CLASS =
   '[background-image:repeating-linear-gradient(135deg,transparent_0_3px,var(--mode-panel)_3px_5px)]';
 
-/** Seed-group child indent — the lane under the group's shared spine. */
-export const LEDGER_CHILD_INDENT_CLASS = 'w-4 shrink-0 self-stretch';
+/**
+ * Location lane in the context band — between the state code and the
+ * platform, because the first thing a floor hand needs is WHERE the item is.
+ * Wide enough for a `ZONE-F // BIN-TECH-PARTS` breadcrumb before it clips.
+ */
+export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
+  S: 'w-44 shrink-0',
+  M: 'w-60 shrink-0',
+  L: 'w-60 shrink-0',
+};
 
-/** Mono label face: 10px heavy uppercase, 0.08em (BRIEF §4 industrial). */
-export const LEDGER_LABEL_CLASS =
-  'font-mono text-role-micro font-extrabold uppercase tracking-[0.08em]';
-
-/** IDs / SKUs: mono bold 13. */
-export const LEDGER_ID_CLASS = 'font-mono text-role-data font-bold tabular-nums';
-
-/** Title: sans bold, one line, ellipsis. */
-export const LEDGER_TITLE_CLASS = 'min-w-0 truncate text-role-body font-bold';
+/**
+ * The evidence column beside the ledger — the desktop terminal's
+ * `.evidence-panel` (`minmax(288px, 24vw)`), always mounted so selecting a
+ * record never reflows the rows.
+ */
+export const LEDGER_EVIDENCE_CLASS =
+  'flex w-[max(18rem,24vw)] shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-bar';
 
 /**
  * Toolbar strip. Shared with the SSR stand-in so the first data row lands on

@@ -146,7 +146,7 @@ export async function startPackerLogCapture(
        completion_state, packed_by
      ) VALUES ($1::uuid, $2, $3, 'ORDERS', $4, $5)
      ON CONFLICT (organization_id, shipment_id)
-       WHERE completion_state = 'CAPTURING'
+       WHERE completion_state = 'CAPTURING' AND shipment_id IS NOT NULL
      DO UPDATE SET packed_by = EXCLUDED.packed_by, updated_at = NOW()
      RETURNING id, created_at::text, completion_state`,
     [

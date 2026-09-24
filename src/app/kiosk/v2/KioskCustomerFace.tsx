@@ -15,6 +15,7 @@ import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import {
   computeKioskCartTotals,
   cartHasRepairLine,
+  isLinkedRepairLine,
   isRepairPayload,
 } from '@/lib/kiosk/cart-line';
 import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
@@ -26,11 +27,16 @@ function formatCents(cents: number): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
+/**
+ * A linked repair was signed for when its ticket was written — asking the
+ * customer to sign for it again would be a second agreement for one device.
+ */
 function needsUnsignedRepair(sessionLines: ReturnType<typeof useKioskSession>['lines']): boolean {
   return sessionLines.some(
     (line) =>
       line.type === 'REPAIR' &&
       isRepairPayload(line.payload) &&
+      !isLinkedRepairLine(line) &&
       !line.payload.signatureDataUrl,
   );
 }
@@ -71,7 +77,7 @@ export function KioskCustomerFace() {
       : null;
 
   const onSignature = (data: SignatureData | null) => {
-    const repairLine = session.lines.find((l) => l.type === 'REPAIR');
+    const repairLine = session.lines.find((l) => l.type === 'REPAIR' && !isLinkedRepairLine(l));
     if (!repairLine || !isRepairPayload(repairLine.payload)) return;
     actions.updateRepairLine(repairLine.id, {
       payload: {

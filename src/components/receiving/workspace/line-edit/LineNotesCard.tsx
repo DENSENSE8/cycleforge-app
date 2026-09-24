@@ -22,11 +22,11 @@ import {
 } from '@/lib/receiving/recent-label-note';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import {
-  ComposerStagedPhotoStrip,
   ComposerTicketChannelToggle,
   ComposerTicketInsetChrome,
   StationComposerHost,
 } from '@/components/composer';
+import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';

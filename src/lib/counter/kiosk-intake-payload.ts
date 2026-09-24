@@ -12,16 +12,11 @@ interface KioskIntakeBodyOpts {
   takePayment: boolean;
   staffId?: number;
   pin?: string;
-  /**
-   * Lines voided during the visit, each with the signed approval the void
-   * was authorized (and audited) under. The route lists them on the visit.
-   */
-  voidedLines?: Array<{ approval: string; title: string; quantity: number; unitAmountCents: number }>;
 }
 
 type SalesIntakeParts = Pick<
   CounterTransactionInput,
-  'customer' | 'retailLines' | 'services' | 'priorOrder' | 'ticketWork'
+  'customer' | 'retailLines' | 'services' | 'linkedRepairs' | 'priorOrder' | 'ticketWork'
 >;
 
 /**
@@ -37,13 +32,11 @@ export function buildKioskSalesIntakeBodyFromInput(
     customer: input.customer,
     retailLines: input.retailLines,
     serviceLines: input.services ?? [],
+    linkedRepairs: input.linkedRepairs ?? [],
     priorOrder: input.priorOrder,
     ticketWork: input.ticketWork,
     takePayment: opts.takePayment,
   };
-  if (opts.voidedLines && opts.voidedLines.length > 0) {
-    body.voidedLines = opts.voidedLines;
-  }
   if (opts.staffId != null && opts.pin) {
     body.staffId = opts.staffId;
     body.pin = opts.pin;

@@ -12,7 +12,7 @@ function parseId(raw: string): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-/** PATCH /api/catalog/platform-accounts/[id] — rename / rescope / (de)activate. */
+/** PATCH /api/catalog/platform-accounts/[id] — rename / short-label / rescope / (de)activate. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');
@@ -32,6 +32,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       label: parsed.label,
       isActive: parsed.isActive,
     };
+    if (Object.prototype.hasOwnProperty.call(parsed, 'shortLabel')) {
+      data.shortLabel = parsed.shortLabel;
+    }
     if (Object.prototype.hasOwnProperty.call(parsed, 'integrationScope')) {
       data.integrationScope = parsed.integrationScope;
     }

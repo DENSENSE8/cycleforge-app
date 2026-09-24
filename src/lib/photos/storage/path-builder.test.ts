@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGcsObjectKey } from '../storage/path-builder';
+import { buildGcsObjectKey, buildGcsVideoObjectKey } from '../storage/path-builder';
 import { slugifyImageType } from '../image-types';
 
 test('buildGcsObjectKey nests receiving photos under org/receiving/YYYY/MM/PO-*', () => {
@@ -48,6 +48,52 @@ test('a custom prefix drops the PO segment when there is no poRef', () => {
     now: new Date('2026-06-24T12:00:00Z'),
   });
   assert.equal(objectKey, 'org-123/qc/2026/06/5.jpg');
+});
+
+test('a video files one videos/ level under the org, in the same flow directory as its photos', () => {
+  const now = new Date('2026-09-24T12:00:00Z');
+  const photo = buildGcsObjectKey({ organizationId: 'org-123', entityType: 'RECEIVING', photoId: 99, poRef: '4421', now });
+  const video = buildGcsVideoObjectKey({
+    organizationId: 'org-123',
+    entityType: 'RECEIVING',
+    entityId: 5,
+    videoId: 42,
+    extension: 'mov',
+    poRef: '4421',
+    now,
+  });
+  assert.equal(video, 'org-123/videos/receiving/2026/09/PO-4421/42.mov');
+  assert.equal(photo.objectKey.replace(/^org-123\//, 'org-123/videos/').replace(/99\.jpg$/, '42.mov'), video);
+});
+
+test('an entity with no dedicated flow (repair) lands in the dated misc directory, keeping its extension', () => {
+  const key = buildGcsVideoObjectKey({
+    organizationId: 'org-9',
+    entityType: 'REPAIR_SERVICE',
+    entityId: 4799,
+    videoId: 7,
+    extension: 'webm',
+    now: new Date('2026-01-03T00:00:00Z'),
+  });
+  assert.equal(key, 'org-9/videos/misc/2026/01/7.webm');
+});
+
+test('a video key partitions staff by the entity id and serial units by uid', () => {
+  assert.equal(
+    buildGcsVideoObjectKey({ organizationId: 'o', entityType: 'STAFF', entityId: 12, videoId: 3, extension: 'mp4' }),
+    'o/videos/staff/12/avatar/3.mp4',
+  );
+  assert.equal(
+    buildGcsVideoObjectKey({
+      organizationId: 'o',
+      entityType: 'SERIAL_UNIT',
+      entityId: 8,
+      videoId: 3,
+      extension: 'mp4',
+      unitUid: 'SKU-2510-000001',
+    }),
+    'o/videos/serial-units/SKU-2510-000001/3.mp4',
+  );
 });
 
 test('slugifyImageType lowercases, hyphenates, trims, and falls back', () => {

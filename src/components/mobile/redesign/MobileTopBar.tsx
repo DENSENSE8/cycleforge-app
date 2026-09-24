@@ -6,20 +6,8 @@ import { ChevronLeft, Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
-import { useMobileActionSlotNode } from './MobileActionSlot';
+import { MOBILE_BAR_CELL_CLASS, useMobileActionSlotNode } from './MobileActionSlot';
 import { MobileScanCta } from './mobile-scan-cta';
-
-/**
- * The 44px hit region a phone control needs, drawn as 32px.
- *
- * `MOBILE_CONTROL_LADDER` says paint small, hit big: Apple's 44×44 is the HIT
- * region and the HIG is explicit that the visible control may be smaller. A
- * pseudo-element carries the extra 6px on every side (32 + 6 + 6 = 44), so the
- * bar's HEIGHT is set by the paint while the thumb still gets the full target.
- * Growing the paint instead is what made this bar 60px tall.
- */
-const BAR_CONTROL =
-  "relative h-8 w-8 shrink-0 before:absolute before:-inset-1.5 before:content-['']";
 
 function MobilePageTitle() {
   const pathname = usePathname();
@@ -108,13 +96,19 @@ export const MobileTopBar = ({
   overlay?: boolean;
 }) => {
   const pageAction = useMobileActionSlotNode();
+  // The title needs its own air only when no box sits left of it. The menu box
+  // is `md:hidden` (the desk spine owns navigation there), so the title pads
+  // back in at `md` when menu is the only leading control.
+  const titleInset = onBack ? null : onMenu ? 'md:pl-3' : 'pl-3';
   return (
     <header
       className={cn(
-        // 40px tall: 32px of control with 4px of air. It was `py-2.5` around a
-        // 40px control — 60px of permanent chrome on a 844px screen, for two
-        // buttons and a label.
-        'top-0 z-header flex w-full shrink-0 items-center justify-between gap-1.5 px-3 py-1',
+        // Zero padding (operator 2026-09-24): the menu box and the scan box are
+        // square 44px cells flush to the bar's top, bottom and outer edges — the
+        // phone twin of the desk's industrial bar. The cells SET the bar height
+        // (no `h-*` here, so the in-flow bottom rule sits under them rather than
+        // clipping them), and the cell is the touch floor, so paint == hit.
+        'top-0 z-header flex w-full shrink-0 items-stretch justify-between',
         // The blur is the whole point, so the ground has to be see-through
         // enough for something to show through it. Where the browser cannot do
         // backdrop-filter the fallback is nearly opaque, because an unblurred
@@ -131,31 +125,23 @@ export const MobileTopBar = ({
             'sticky border-b border-border-soft',
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className={cn('flex min-w-0 items-center gap-3', titleInset)}>
         {onMenu && (
           <IconButton
+            size="touch"
             onClick={onMenu}
             ariaLabel="Open menu"
-            radius="surface"
-            icon={<Menu className="h-4 w-4" />}
-            className={cn(
-              'ds-allow-control-size flex items-center justify-center md:hidden',
-              BAR_CONTROL,
-              'border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
-            )}
+            icon={<Menu className="h-5 w-5" />}
+            className={cn(MOBILE_BAR_CELL_CLASS, 'border-r md:hidden')}
           />
         )}
         {onBack && (
           <IconButton
+            size="touch"
             onClick={onBack}
             ariaLabel="Back"
-            radius="surface"
-            icon={<ChevronLeft className="h-4 w-4" />}
-            className={cn(
-              'ds-allow-control-size flex items-center justify-center',
-              BAR_CONTROL,
-              'border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
-            )}
+            icon={<ChevronLeft className="h-5 w-5" />}
+            className={cn(MOBILE_BAR_CELL_CLASS, 'border-r')}
           />
         )}
         <Suspense
@@ -167,7 +153,7 @@ export const MobileTopBar = ({
         </Suspense>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-stretch">
         {pageAction}
         <MobileScanCta />
       </div>

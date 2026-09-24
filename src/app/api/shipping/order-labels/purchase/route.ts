@@ -22,6 +22,7 @@ import {
 import { downloadLabelBytes, ShipStationApiError, type LabelPurchaseOptions } from '@/lib/shipping/shipstation/client';
 import type { LabelPurchaseResult } from '@/lib/shipping/shipstation/types';
 import { resolveOrderShipTo, snapshotShipToOnShipment } from '@/lib/shipping/shipstation/order-ship-to';
+import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,6 +151,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         labelDocumentId: prior.id,
       });
     }
+
+    // Buyer-note interlock — before the IRREVERSIBLE purchase: the order's
+    // current buyer note must be acknowledged (src/lib/orders/buyer-note-interlock.ts).
+    const buyerNoteHold = await readBuyerNoteHold(
+      { query: (text, params) => tenantQuery(orgId, text, params) },
+      orgId,
+      orderId,
+    );
+    if (buyerNoteHold) return NextResponse.json(buyerNoteHoldBody(buyerNoteHold), { status: 409 });
 
     // 1. Buy the label — IRREVERSIBLE.
     const v2 = await getShipStationV2(orgId);

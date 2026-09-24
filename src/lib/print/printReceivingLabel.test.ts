@@ -58,6 +58,39 @@ test('receivingLabelPlatformDisplay keeps full Amazon name without a type', () =
   );
 });
 
+test('receivingLabelPlatformDisplay prints the org short label beside a type', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Amazon Renewed',
+      platformShortLabel: 'AMZRN',
+      receivingType: 'RETURN',
+    }),
+    'AMZRN - Return',
+  );
+});
+
+test('receivingLabelPlatformDisplay prints the org short label even without a type', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Amazon Renewed',
+      platformShortLabel: 'AMZRN',
+      receivingType: null,
+    }),
+    'AMZRN',
+  );
+});
+
+test('an org short label overrides the built-in Amazon compact', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'Amazon',
+      platformShortLabel: 'AZ',
+      receivingType: 'RETURN',
+    }),
+    'AZ - Return',
+  );
+});
+
 test('receivingLabelPlatformDisplay sentence-cases shouting platform + type', () => {
   assert.equal(
     receivingLabelPlatformDisplay({

@@ -45,7 +45,7 @@ export function OrdersDeskPastImportsAction() {
   // every render loops through the provider.
   const control = useMemo(
     () => (
-      <div className="shrink-0" data-testid="orders-desk-past-imports">
+      <div className="flex shrink-0" data-testid="orders-desk-past-imports">
         <DeskHeaderAction
           type="button"
           variant="secondary"

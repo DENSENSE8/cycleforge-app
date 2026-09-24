@@ -195,18 +195,23 @@ test('last writer wins — a route swap replaces the verb, never stacks it', () 
   m.unmount();
 });
 
-test('the pair is one control ladder: the action paints at scan height', () => {
-  // The regression this defends is measured: painting the full 44px hit target
-  // instead of 32px is what once made this bar 60px tall. `MobileTopBarAction`
-  // locks the face so a page cannot re-tallen the chrome.
+test('the right cluster is flush square cells: bar height, no radius, no hit pseudo', () => {
+  // Operator 2026-09-24: the corners are square boxes flush to the bar's top,
+  // bottom and edge. The cell is the 44px touch floor itself, so a page action
+  // that re-grew a soft 32px pill (or a pseudo hit region) would break the bar.
   const m = mountShell(h(PageWithAction, { label: 'Add order' }));
   const header = m.host.querySelector('header')!;
   const action = header.querySelector('button[aria-label="Add order"]')!;
   const scan = header.querySelector(`button[aria-label="${SCAN_LABEL}"]`)!;
-  for (const el of [action, scan]) {
+  const menu = header.querySelector('button[aria-label="Open menu"]')!;
+  for (const el of [action, scan, menu]) {
     const cls = el.getAttribute('class') ?? '';
-    assert.match(cls, /\bh-8\b/, '32px painted control');
-    assert.match(cls, /before:-inset-1\.5/, '44px hit region via the pseudo-element');
+    assert.match(cls, /\bh-11\b/, '44px cell = bar height');
+    assert.match(cls, /\brounded-none\b/, 'square corner');
+    assert.doesNotMatch(cls, /before:-inset/, 'no pseudo hit region');
   }
+  assert.match(scan.getAttribute('class') ?? '', /\bw-11\b/, 'scan is a square box');
+  assert.match(menu.getAttribute('class') ?? '', /\bw-11\b/, 'menu is a square box');
+  assert.doesNotMatch(header.getAttribute('class') ?? '', /\b(p|px|py)-\d/, 'bar has no padding');
   m.unmount();
 });

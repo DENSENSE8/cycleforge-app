@@ -22,12 +22,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import {
+  PRICE_ADJUST_KINDS,
   serviceLineCents,
   type CounterPriceAdjustment,
   type CounterRetailLine,
   type CounterServiceLine,
 } from '@/lib/counter/counter-transaction-types';
-import { PRICE_APPROVAL_KINDS } from './price-approval-kinds';
 
 /** Longer than any counter visit, short enough that a leaked token is stale by closing. */
 export const PRICE_APPROVAL_TTL_SECONDS = 4 * 60 * 60;
@@ -39,10 +39,10 @@ export const PriceApprovalClaimsSchema = z
     v: z.literal(1),
     organizationId: z.string().min(1),
     staffId: z.number().int().positive(),
-    kind: z.enum(PRICE_APPROVAL_KINDS),
+    kind: z.enum(PRICE_ADJUST_KINDS),
     /** The catalog price the change starts from; null for a custom amount. */
     fromCents: z.number().int().min(-MAX_CENTS).max(MAX_CENTS).nullable(),
-    /** The unit price authorized. 0 for a comp and a void. */
+    /** The unit price authorized. 0 for a comp. */
     toCents: z.number().int().min(-MAX_CENTS).max(MAX_CENTS),
     reason: z.string().trim().min(1).max(200),
     issuedAt: z.number().int().nonnegative(),
@@ -126,9 +126,6 @@ export class PriceApprovalError extends Error {
 }
 
 function adjustmentFromClaims(claims: PriceApprovalClaims): CounterPriceAdjustment {
-  if (claims.kind === 'void') {
-    throw new Error('a void approval never prices a line');
-  }
   return {
     kind: claims.kind,
     originalUnitAmountCents: claims.fromCents,
@@ -173,7 +170,7 @@ export async function verifyLinePrices(
   ): CounterPriceAdjustment | null => {
     if (!adjustment) return null;
     const claims = adjustment.approval ? deps.verify(adjustment.approval) : null;
-    if (!claims || claims.kind === 'void') {
+    if (!claims) {
       throw new PriceApprovalError('This price change needs a manager PIN again.', title);
     }
     if (claims.toCents !== unitAmountCents) {

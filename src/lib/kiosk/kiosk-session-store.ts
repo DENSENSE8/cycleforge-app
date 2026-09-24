@@ -35,6 +35,14 @@
  * deliberately does NOT land in `customerPhone`. The masked string is display
  * copy; if it reached the identity field, a local submit would post `••• •••
  * 4567` as a customer's phone number.
+ *
+ * **Recent carts (2026-09-24).** A local cart is also written to a
+ * `kiosk_carts` row (`cartId`, shown as `#42`) so the counter can juggle
+ * several customers and any paired tablet can open one. The store stays
+ * fetch-free: it names the cart (`loadCart`, `startNewCart`, `attachCart`) and
+ * announces how one ENDS (`onCartEnded`); `useKioskCartSync` does the network.
+ * Operator: "recent carts for juggling multiple customers at the same time,
+ * IDed for multiple devices".
  */
 
 'use client';
@@ -56,25 +64,11 @@ import {
   type RetailPayload,
 } from '@/lib/kiosk/cart-line';
 import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
+import type { KioskCartSnapshot } from '@/lib/kiosk/kiosk-cart-snapshot';
 import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 import { DEFAULT_LINE_REASONS, type KioskLineReasons } from '@/lib/kiosk/price-approval-kinds';
 
 type KioskFace = 'staff' | 'customer';
-
-/**
- * A line removed after the customer saw it — Square's "void": it never prints,
- * but it is recorded. The approval route audited it when the PIN was entered;
- * the visit's submit lists it again so History can show it on the visit.
- */
-export interface KioskVoidedLine {
-  title: string;
-  quantity: number;
-  unitAmountCents: number;
-  reason: string;
-  staffId: number;
-  staffName: string | null;
-  approval: string;
-}
 
 interface KioskSessionSnapshot {
   lines: KioskCartLine[];
@@ -121,16 +115,22 @@ interface KioskSessionSnapshot {
    * mirror cannot round-trip.
    */
   ticketChoice: KioskTicketChoice | null;
-  /**
-   * Lines the customer has had on their screen (Show / Verify). Removing one
-   * of these is a VOID — reason + PIN — not a quiet delete: "a line the
-   * customer already saw is evidence". Local only, like `ticketChoice`.
-   */
-  customerSeenLineIds: string[];
-  /** This visit's voids, submitted with it. Cleared with the cart. */
-  voidedLines: KioskVoidedLine[];
-  /** The org's comp / void reason lists (`OrgSettings.kiosk`). Survives a reset. */
+  /** The org's comp reason list (`OrgSettings.kiosk`). Survives a reset. */
   lineReasons: KioskLineReasons;
+  /**
+   * The `kiosk_carts` row this cart is written to (`#42`), or null while it is
+   * still empty / not yet created. `useKioskCartSync` owns the network; the
+   * store only knows which cart it is. Never set while a desk mirror is up.
+   */
+  cartId: number | null;
+  /** Server version of that row — the `expectedVersion` of the next save. */
+  cartVersion: number;
+  /**
+   * The visit was submitted (`completeCart`). The lines stay on screen for the
+   * done face, but the cart is closed: nothing saves it and nothing re-creates
+   * it until the next visit starts.
+   */
+  cartDone: boolean;
 }
 
 const INITIAL: KioskSessionSnapshot = {
@@ -150,22 +150,11 @@ const INITIAL: KioskSessionSnapshot = {
   sharedCustomerPhoneMasked: '',
   sharedAwaitingSignatureLineIds: [],
   ticketChoice: null,
-  customerSeenLineIds: [],
-  voidedLines: [],
   lineReasons: DEFAULT_LINE_REASONS,
+  cartId: null,
+  cartVersion: 0,
+  cartDone: false,
 };
-
-/** `prev`, plus every line in `lines` when a customer-facing stance shows them. */
-function seenAfter(
-  prev: readonly string[],
-  stance: ConsultStance,
-  lines: readonly KioskCartLine[],
-): string[] {
-  if (stance === 'work') return [...prev];
-  const seen = new Set(prev);
-  for (const line of lines) seen.add(line.id);
-  return [...seen];
-}
 
 let snapshot: KioskSessionSnapshot = INITIAL;
 const listeners = new Set<() => void>();
@@ -203,8 +192,58 @@ let commandChosen = false;
  */
 let defaultCommand: KioskCommandId = KIOSK_FALLBACK_COMMAND;
 
-/** The org's comp / void reasons once the server has stated them; see `applyLineReasons`. */
+/** The org's comp reasons once the server has stated them; see `applyLineReasons`. */
 let lineReasons: KioskLineReasons = DEFAULT_LINE_REASONS;
+
+/**
+ * How a persisted cart ENDED, told to `useKioskCartSync` so the row follows:
+ * `cleared` deletes it, `done` closes it. Switching carts is not an ending —
+ * the cart left behind stays open in Recent carts, which is the whole point.
+ * An event rather than a snapshot diff because "cartId went null" cannot tell
+ * a clear from a switch.
+ */
+export interface KioskCartEnding {
+  id: number;
+  how: 'done' | 'cleared';
+}
+
+const cartEndListeners = new Set<(ending: KioskCartEnding) => void>();
+
+/**
+ * Bumped whenever the store moves to a different cart. A create that was in
+ * flight across the move must not stamp its new id onto the cart that replaced
+ * it — see `attachCart`.
+ */
+let cartEpoch = 0;
+
+function endCart(how: KioskCartEnding['how']): void {
+  // A mirror is the desk's session, not this cart: nothing of ours ends.
+  if (snapshot.cartId === null || snapshot.cartDone || snapshot.sharedSessionId !== null) return;
+  const ending = { id: snapshot.cartId, how };
+  for (const l of cartEndListeners) l(ending);
+}
+
+/** An empty visit that keeps the command it was on and the org's reasons. */
+function emptyVisit(activeCommand: KioskCommandId): KioskSessionSnapshot {
+  return {
+    ...snapshot,
+    lines: [],
+    activeCommand,
+    presentation: { ...EMPTY_CONSULT_PRESENTATION },
+    customerPhone: '',
+    customerName: '',
+    customerEmail: '',
+    customerAddress: '',
+    awaitingCardSinceMs: null,
+    // The decision belongs to the VISIT it was made for; the next customer's
+    // drop-off must not inherit a link to the last one's ticket.
+    ticketChoice: null,
+    lineReasons,
+    cartId: null,
+    cartVersion: 0,
+    cartDone: false,
+  };
+}
 
 function emit(): void {
   for (const l of listeners) l();
@@ -234,63 +273,101 @@ function getServerSnapshot(): KioskSessionSnapshot {
 export const kioskSessionStore = {
   getSnapshot,
   subscribe,
-  /** Reset the whole visit (Done / Next Customer). */
+  /**
+   * Reset the whole visit (Done / Next Customer). "Next customer" only follows
+   * a successful submit, so a cart still open here is closed as done.
+   */
   resetSession(): void {
+    endCart('done');
+    cartEpoch += 1;
     commandChosen = false;
     setSnapshot({ ...INITIAL, lines: [], activeCommand: defaultCommand, lineReasons });
   },
-  /** Clear lines + identity but keep the active command. */
+  /** Clear lines + identity but keep the active command. A persisted cart is deleted. */
   clearCart(): void {
-    setSnapshot({
-      ...snapshot,
-      lines: [],
-      customerPhone: '',
-      customerName: '',
-      customerEmail: '',
-      customerAddress: '',
-      awaitingCardSinceMs: null,
-      // The decision belongs to the VISIT it was made for; the next customer's
-      // drop-off must not inherit a link to the last one's ticket.
-      ticketChoice: null,
-      customerSeenLineIds: [],
-      voidedLines: [],
-    });
+    endCart('cleared');
+    cartEpoch += 1;
+    setSnapshot(emptyVisit(snapshot.activeCommand));
   },
   /**
-   * Adopt the ORG's comp / void reason lists (`OrgSettings.kiosk`), delivered
+   * The visit was submitted: close its cart NOW, before the done face, so no
+   * tablet can reopen and submit it again while the receipt is still up. The
+   * lines stay for that face; `resetSession` starts the next visit.
+   */
+  completeCart(): void {
+    if (snapshot.cartDone) return;
+    endCart('done');
+    setSnapshot({ ...snapshot, cartDone: true });
+  },
+  /**
+   * `+ New cart`: an empty visit. The cart being left is NOT ended — it stays
+   * open (and held here) in Recent carts for when that customer is back.
+   * Also where a tablet lands when another device took its cart. No-op under
+   * a desk mirror: that visit is not this tablet's to swap out.
+   */
+  startNewCart(): void {
+    if (snapshot.sharedSessionId !== null) return;
+    cartEpoch += 1;
+    setSnapshot(emptyVisit(snapshot.activeCommand));
+  },
+  /**
+   * Put a persisted cart on this tablet (Recent carts tap). Replaces the visit
+   * fields only — face, stance and the org's reasons are this screen's. The
+   * loaded command counts as a pick, so the org default cannot yank it.
+   */
+  loadCart(input: { id: number; version: number; snapshot: KioskCartSnapshot }): void {
+    if (snapshot.sharedSessionId !== null) return;
+    cartEpoch += 1;
+    commandChosen = true;
+    const cart = input.snapshot;
+    setSnapshot({
+      ...emptyVisit(cart.activeCommand),
+      lines: cart.lines,
+      customerPhone: cart.customerPhone,
+      customerName: cart.customerName,
+      customerEmail: cart.customerEmail,
+      customerAddress: cart.customerAddress,
+      ticketChoice: cart.ticketChoice,
+      cartId: input.id,
+      cartVersion: input.version,
+    });
+  },
+  /** Which cart the store is on; pass it back to `attachCart`. */
+  cartEpoch(): number {
+    return cartEpoch;
+  },
+  /**
+   * Name the just-created row as this cart. Refused (false) when the store has
+   * moved to another cart since the create began — that row belongs to the
+   * cart that was left, which stays in Recent carts.
+   */
+  attachCart(input: { id: number; version: number; epoch: number }): boolean {
+    if (input.epoch !== cartEpoch || snapshot.cartId !== null || snapshot.cartDone) return false;
+    if (snapshot.sharedSessionId !== null) return false;
+    setSnapshot({ ...snapshot, cartId: input.id, cartVersion: input.version });
+    return true;
+  },
+  /** A save landed: the next one expects this version. */
+  setCartVersion(id: number, version: number): void {
+    if (snapshot.cartId !== id || snapshot.cartVersion === version) return;
+    setSnapshot({ ...snapshot, cartVersion: version });
+  },
+  /** `useKioskCartSync` listens here to delete / close the row; returns the unsubscribe. */
+  onCartEnded(listener: (ending: KioskCartEnding) => void): () => void {
+    cartEndListeners.add(listener);
+    return () => {
+      cartEndListeners.delete(listener);
+    };
+  },
+  /**
+   * Adopt the ORG's comp reason list (`OrgSettings.kiosk`), delivered
    * with the `/kiosk/v2` HTML like the default command. Held module-side so a
-   * reset keeps them.
+   * reset keeps it.
    */
   applyLineReasons(next: KioskLineReasons): void {
     lineReasons = next;
     if (snapshot.lineReasons === next) return;
     setSnapshot({ ...snapshot, lineReasons: next });
-  },
-  /**
-   * VOID lines the customer has seen: they leave the cart, and the void
-   * (reason, who, the signed approval that already audited it) stays with the
-   * visit so its submit can list it. A mirror never gets here — removal on a
-   * desk-held session is the desk's.
-   */
-  voidLines(
-    ids: readonly string[],
-    authorized: Pick<KioskVoidedLine, 'reason' | 'staffId' | 'staffName' | 'approval'>,
-  ): void {
-    const drop = new Set(ids);
-    const voided = snapshot.lines
-      .filter((line) => drop.has(line.id))
-      .map((line) => ({
-        title: line.title,
-        quantity: line.quantity,
-        unitAmountCents: line.unitAmountCents,
-        ...authorized,
-      }));
-    setSnapshot({
-      ...snapshot,
-      lines: snapshot.lines.filter((line) => !drop.has(line.id)),
-      customerSeenLineIds: snapshot.customerSeenLineIds.filter((id) => !drop.has(id)),
-      voidedLines: [...snapshot.voidedLines, ...voided],
-    });
   },
   setActiveCommand(command: KioskCommandId): void {
     commandChosen = true;
@@ -330,7 +407,6 @@ export const kioskSessionStore = {
       consultStance: stance,
       face,
       faceManualOverride: manual ? true : snapshot.faceManualOverride,
-      customerSeenLineIds: seenAfter(snapshot.customerSeenLineIds, stance, snapshot.lines),
     });
     if (bound && sharedWriter?.setConsultStance) {
       void sharedWriter.setConsultStance(stance);
@@ -454,6 +530,9 @@ export const kioskSessionStore = {
   detachSharedSession(): void {
     sharedWriter = null;
     if (snapshot.sharedSessionId === null) return;
+    // The mirror replaced whatever cart was here; a create still in flight for
+    // it must not land on the empty visit this detach leaves behind.
+    cartEpoch += 1;
     setSnapshot({
       ...INITIAL,
       activeCommand: snapshot.activeCommand,
@@ -476,12 +555,7 @@ export const kioskSessionStore = {
     // Optimistic either way; when mirrored, the edit also goes to the server and
     // the next projection reconciles it.
     const lines = [...snapshot.lines, line];
-    setSnapshot({
-      ...snapshot,
-      lines,
-      // Added while the customer is looking = seen the moment it lands.
-      customerSeenLineIds: seenAfter(snapshot.customerSeenLineIds, snapshot.consultStance, [line]),
-    });
+    setSnapshot({ ...snapshot, lines });
     if (snapshot.sharedSessionId !== null && sharedWriter) {
       void sharedWriter.addLine(line);
     }
@@ -583,6 +657,7 @@ export function useKioskSessionActions() {
   return {
     resetSession: useCallback(() => kioskSessionStore.resetSession(), []),
     clearCart: useCallback(() => kioskSessionStore.clearCart(), []),
+    completeCart: useCallback(() => kioskSessionStore.completeCart(), []),
     setActiveCommand: useCallback(
       (c: KioskCommandId) => kioskSessionStore.setActiveCommand(c),
       [],
@@ -648,13 +723,6 @@ export function useKioskSessionActions() {
       [],
     ),
     removeLine: useCallback((id: string) => kioskSessionStore.removeLine(id), []),
-    voidLines: useCallback(
-      (
-        ids: readonly string[],
-        authorized: Pick<KioskVoidedLine, 'reason' | 'staffId' | 'staffName' | 'approval'>,
-      ) => kioskSessionStore.voidLines(ids, authorized),
-      [],
-    ),
     addLine: useCallback(
       (input: Omit<KioskCartLine, 'id'> & { id?: string }) =>
         kioskSessionStore.addLine(input),

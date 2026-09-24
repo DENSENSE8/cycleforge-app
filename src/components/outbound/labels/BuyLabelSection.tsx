@@ -10,6 +10,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 
 interface RatesResponse {
   ok: boolean;
@@ -151,16 +152,21 @@ export function BuyLabelSection({
 
   const buyMutation = useMutation<BuyResponse, Error, ShippingRateOption>({
     mutationFn: async (rate) => {
-      const res = await fetch('/api/shipping/order-labels/purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          rateId: rate.rateId,
-          clientEventId: clientEventIdRef.current,
-          notifyCustomer,
+      // A held order (buyer note) opens the note before the irreversible
+      // purchase; the clientEventId is reused on retry (the route dedupes on it
+      // only after a label was actually bought).
+      const res = await sendWithBuyerNoteAck(() =>
+        fetch('/api/shipping/order-labels/purchase', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId,
+            rateId: rate.rateId,
+            clientEventId: clientEventIdRef.current,
+            notifyCustomer,
+          }),
         }),
-      });
+      );
       const data = (await res.json()) as BuyResponse;
       if (!res.ok || !data.ok) throw new Error(data.error || 'Purchase failed.');
       return data;

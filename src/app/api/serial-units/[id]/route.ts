@@ -5,6 +5,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { listPhotosForEntity } from '@/lib/photos/service';
 import { resolveCurrentReceivingLineIds } from '@/lib/neon/serial-units-queries';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 /**
  * GET /api/serial-units/:id
@@ -106,19 +107,12 @@ export async function GET(
     const currentLineMap = await resolveCurrentReceivingLineIds([Number(unit.id)], orgId);
     const currentReceivingLineId = currentLineMap.get(Number(unit.id)) ?? null;
 
-    // Inline product title + receiver name for display.
-    let productTitle: string | null = null;
-    if (unit.sku) {
-      const r = await tenantQuery<{ product_title: string | null }>(
-        orgId,
-        `SELECT COALESCE(sc.product_title, ss.product_title) AS product_title
-         FROM sku_stock ss
-         LEFT JOIN sku_catalog sc ON sc.sku = ss.sku AND sc.organization_id = ss.organization_id
-         WHERE ss.sku = $1 AND ss.organization_id = $2 LIMIT 1`,
-        [unit.sku, orgId],
-      );
-      productTitle = r.rows[0]?.product_title ?? null;
-    }
+    // Product title (SKU identity law) + receiver name for display.
+    const productTitle = await resolveUnitTitle(orgId, {
+      zohoItemId: (unit.zoho_item_id as string | null) ?? null,
+      skuCatalogId: unit.sku_catalog_id != null ? Number(unit.sku_catalog_id) : null,
+      sku: (unit.sku as string | null) ?? null,
+    });
 
     let receivedByName: string | null = null;
     if (unit.received_by != null) {
@@ -320,16 +314,7 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
       : null;
   const condition = (md.condition as string) ?? null;
 
-  const [catalog, stock, staffRow, tsn, invEvent] = await Promise.all([
-    skuCatalogId
-      ? tenantQuery<{ product_title: string | null; image_url: string | null; category: string | null }>(
-            orgId,
-            `SELECT product_title, image_url, category FROM sku_catalog WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-            [skuCatalogId, orgId],
-          )
-          .then((r) => r.rows[0] ?? null)
-          .catch(() => null)
-      : Promise.resolve(null),
+  const [stock, staffRow, tsn, invEvent] = await Promise.all([
     sku
       ? tenantQuery<{ stock: number; boxed_stock: number; product_title: string | null; location: string | null }>(
             orgId,
@@ -390,11 +375,12 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
           condition_grade: string | null;
           received_at: string | null;
           received_by: number | null;
+          zoho_item_id: string | null;
         }>(
           orgId,
           `SELECT id, serial_number, unit_uid, current_status::text AS current_status,
                   current_location, condition_grade::text AS condition_grade,
-                  received_at, received_by
+                  received_at, received_by, zoho_item_id
              FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1`,
           [resolvedSerialUnitId, orgId],
         )
@@ -417,7 +403,11 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
         .catch(() => null)
     : null;
 
-  const productTitle = catalog?.product_title ?? stock?.product_title ?? null;
+  const productTitle = await resolveUnitTitle(orgId, {
+    zohoItemId: liveUnit?.zoho_item_id ?? null,
+    skuCatalogId,
+    sku,
+  });
   // Serial = the serial linked to the QR label (tech_serial_numbers), falling
   // back to the minted unit id for auto-issue labels that reuse it as serial.
   const serial = linkedSerial ?? unitId;
@@ -476,4 +466,36 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
       ? { stock: stock.stock, boxed_stock: stock.boxed_stock, product_title: stock.product_title }
       : null,
   };
+}
+
+/**
+ * The unit's product title under the SKU identity law: the active Zoho item
+ * name governs, then the catalog row the unit is bound to (by id, never by a
+ * SKU-string guess), then the stock row's title. One round trip; `null` when
+ * none carries a title so the phone can say so instead of painting the SKU.
+ */
+async function resolveUnitTitle(
+  orgId: OrgId,
+  ref: { zohoItemId: string | null; skuCatalogId: number | null; sku: string | null },
+): Promise<string | null> {
+  if (!ref.zohoItemId && ref.skuCatalogId == null && !ref.sku) return null;
+  const r = await tenantQuery<{
+    zoho_item_title: string | null;
+    catalog_product_title: string | null;
+    item_name: string | null;
+  }>(
+    orgId,
+    `SELECT
+       (SELECT name FROM items
+         WHERE zoho_item_id = $1 AND organization_id = $4 AND status = 'active'
+         LIMIT 1) AS zoho_item_title,
+       (SELECT product_title FROM sku_catalog
+         WHERE id = $2 AND organization_id = $4
+         LIMIT 1) AS catalog_product_title,
+       (SELECT product_title FROM sku_stock
+         WHERE sku = $3 AND organization_id = $4
+         LIMIT 1) AS item_name`,
+    [ref.zohoItemId, ref.skuCatalogId, ref.sku, orgId],
+  );
+  return resolveSkuIdentityTitle(r.rows[0] ?? {}) || null;
 }

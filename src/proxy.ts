@@ -6,10 +6,10 @@
  *    through (shadow), redirects HTML to /signin, or returns 401 JSON
  *    for API routes when AUTH_V2_ENABLED is set.
  *
- * 2. Legacy QR-code rewrites — printed labels point to /m/b, /m/l, /m/u;
+ * 2. Legacy QR-code rewrites — printed labels point to /m/b and /m/l;
  *    rewrite those to their canonical app paths in-place (no extra
- *    round-trip). Device-specific routes (/m/enroll, /m/r/*, /m/scan)
- *    stay at /m/* untouched.
+ *    round-trip). Device-specific routes (/m/enroll, /m/r/*, /m/u/*,
+ *    /m/scan) stay at /m/* untouched.
  *
  * Edge runtime caveat: this file is bundled for the Edge runtime, where
  * `node:crypto`, `pg`, and the existing pool can't run. It does NOT touch
@@ -70,6 +70,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/visit(?:$|\/)/,        // device-authed visit receipt (withKioskAuth)
   /^\/api\/kiosk\/session(?:$|\/)/,      // device-authed counter-session mirror: read + set-customer + signature (withKioskAuth)
   /^\/api\/kiosk\/customer(?:$|\/)/,     // device-authed phone → name-on-file lookup, Contact step (withKioskAuth)
+  /^\/api\/kiosk\/companion(?:$|\/)/,    // device-authed phone-companion link: open + sync (withKioskAuth)
+  /^\/api\/kiosk\/carts(?:$|\/)/,        // device-authed Recent carts: list/create/save/open/done/clear (withKioskAuth)
   /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
@@ -158,10 +160,12 @@ function extractTenantSlug(host: string | null): string | null {
   return candidate;
 }
 
+// `/m/u/` is deliberately absent: the phone unit hub lives at
+// `src/app/m/(shell)/u/[id]` (with /qc, /history below it); `/serial/[id]` is
+// the desktop unit page.
 const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
   { prefix: '/m/b/', target: '/bin/' },
   { prefix: '/m/l/', target: '/receiving/lines/' },
-  { prefix: '/m/u/', target: '/serial/' },
 ];
 
 // Dual-route pages that have a dedicated mobile counterpart. When the request

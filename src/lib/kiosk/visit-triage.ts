@@ -17,6 +17,7 @@
 import {
   cartIsEmpty,
   isBuybackPayload,
+  isLinkedRepairLine,
   isRepairPayload,
   type KioskCartLine,
 } from '@/lib/kiosk/cart-line';
@@ -52,6 +53,10 @@ export interface KioskTriageSession {
 
 function repairIssues(line: KioskCartLine): KioskTriageItem[] {
   if (!isRepairPayload(line.payload)) return [];
+  // A linked repair's serial, symptom and signature were captured when its
+  // ticket was written; demanding them again would block a visit on facts the
+  // book already holds. Its money is read from that ticket at submit.
+  if (isLinkedRepairLine(line)) return [];
   const p = line.payload;
   const out: KioskTriageItem[] = [];
   const base = { target: 'line' as const, lineId: line.id, lineTitle: line.title };

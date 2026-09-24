@@ -104,7 +104,7 @@ export default function MobileTenantIdentificationPage() {
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       <MobileDetailTopBar backHref="/m/scan" subtitle="Identify" title={jobId || 'Identify'} mono />
-      <main className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
+      <div className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
         {!isLoaded || !user ? (
           <p className="text-role-caption text-text-muted">Loading…</p>
         ) : result ? (
@@ -117,7 +117,7 @@ export default function MobileTenantIdentificationPage() {
         ) : (
           <p className="text-role-caption text-text-muted">Loading…</p>
         )}
-      </main>
+      </div>
     </div>
   );
 }

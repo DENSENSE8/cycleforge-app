@@ -10,6 +10,8 @@ export interface CartonPayloadContext {
   trackingHint: string;
   /** useReceivingTypeLabel() resolver — type code → catalog label. */
   resolveTypeLabel: (code: string | null | undefined) => string;
+  /** usePlatformShortLabelLookup() — platform slug/label → org `short_label`. */
+  resolvePlatformShortLabel: (platform: string | null | undefined) => string | null;
 }
 
 /**
@@ -29,6 +31,9 @@ export function buildCartonLabelPayloadFromDraft(
     receivingId: ctx.receivingId ?? null,
     orgSlug: ctx.orgSlug ?? null,
     platform: draft.platform,
+    // Org dense face (`AMZRN`) for the 2x1 top-left slot; a hand-typed
+    // platform that names no catalog row prints as typed.
+    platformShortLabel: ctx.resolvePlatformShortLabel(draft.platform),
     notes: draft.notes.trim(),
     conditionCode: draft.conditionCode,
     receivingType: draft.receivingType || null,

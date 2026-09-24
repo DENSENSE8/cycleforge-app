@@ -46,6 +46,14 @@ export const Camera = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/** Video camera — Lucide `video` (body + lens wedge). */
+export const Video = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 13l5.223 3.482a.5.5 0 00.777-.416V7.87a.5.5 0 00-.752-.432L16 10.5" />
+        <rect x="2" y="6" width="14" height="12" rx="2" strokeWidth={2} />
+    </svg>
+);
+
 export const Mail = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

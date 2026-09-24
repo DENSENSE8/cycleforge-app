@@ -30,6 +30,10 @@ tree.
 - Raw `OmnichannelComposerDock` alone → incomplete mouth
 - Dumb / gun station → `showModeFaces={false}` (keep context ring); never
   `showModeRow={false}` to hide Unbox|Ticket
+- Mobile scanned-entity hub / mobile exoskeleton → **DetailSummaryCard**
+  - summary-only top card → `/info` for full facts + the only pencil edit
+  - at most two caption lines; mono identifier + status share one bottom row
+  - below: `DetailNav` doors; bottom: at most three task verbs
 
 ## The contract is derived, not written
 

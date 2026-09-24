@@ -1,18 +1,15 @@
 'use client';
 
 /**
- * To-ship / shipped-archive order record plane.
+ * Shipped-archive order record plane — Center Lock L2 on the desk stage.
  *
- * Two placements:
- * - `placement="stage"` (default — Shipped archive): Center Lock L2, a
- *   {@link DeskStageOverlay} `fill="stage"` over the queue (table stays
- *   mounted). Walk chrome (k of n, prev/next) reads the published record cursor.
- * - `placement="rail"` (To ship): the SAME panel registers as the right rail's
- *   `detail:order` occupant (triage mode), beside the industrial ledger instead
- *   of on top of it — the floor keeps its rows in view while it reads one order
- *   (BRIEF §6: page mode + right-rail mode). j / k still walk the cursor.
+ * Selected row / gutter "More information" opens {@link DeskStageOverlay}
+ * `fill="stage"` over the queue (table stays mounted). Walk chrome (k of n,
+ * prev/next) reads the published record cursor; body topics stay in
+ * {@link ShippedDetailsPanel} / {@link UnshippedDetailsPanel}.
  *
- * Body topics stay in {@link ShippedDetailsPanel} / {@link UnshippedDetailsPanel}.
+ * To ship does not mount this: its record opens in the ledger's evidence
+ * column (`OutboundOrderEvidence`).
  */
 
 import dynamic from 'next/dynamic';
@@ -40,8 +37,6 @@ interface DashboardOrderDetailsProps {
   selectedContext: ShippedDetailsContext;
   onClose: () => void;
   onUpdate: () => void;
-  /** Where the record opens — see the module doc. */
-  placement?: 'stage' | 'rail';
 }
 
 export function DashboardOrderDetails({
@@ -50,7 +45,6 @@ export function DashboardOrderDetails({
   selectedContext,
   onClose,
   onUpdate,
-  placement = 'stage',
 }: DashboardOrderDetailsProps) {
   const cursor = useRecordCursor('record');
   const open = detailsEnabled && Boolean(selectedShipped);
@@ -61,34 +55,6 @@ export function DashboardOrderDetails({
     cursor.available && cursor.position != null
       ? `${cursor.position} of ${cursor.total}`
       : undefined;
-
-  if (placement === 'rail') {
-    if (!open || !selectedShipped) return null;
-    return selectedContext === 'queue' ? (
-      <UnshippedDetailsPanel
-        key={selectedShipped.id}
-        shipped={selectedShipped}
-        onClose={handleClose}
-        onUpdate={onUpdate}
-        surface="rail"
-      />
-    ) : (
-      <ShippedDetailsPanel
-        key={selectedShipped.id}
-        shipped={selectedShipped}
-        context={
-          selectedContext === 'shipped'
-            ? 'shipped'
-            : selectedContext === 'packed'
-              ? 'packed'
-              : 'dashboard'
-        }
-        onClose={handleClose}
-        onUpdate={onUpdate}
-        surface="rail"
-      />
-    );
-  }
 
   return (
     <DeskStageOverlay

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
     const orgId = ctx.organizationId;
@@ -16,7 +17,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         const skuStr = rawSku.includes(':') ? rawSku.split(':')[0].trim() : rawSku;
         const locationStr = String(location).trim();
 
-        return await withTenantTransaction(orgId, async (client) => {
+        const response = await withTenantTransaction(orgId, async (client) => {
             // Capture prior location first, then UPDATE, so the audit row has the right from_location.
             // sku is a cross-tenant string key, so scope every sku_stock touch by organization_id.
             const stock = await client.query<{ id: number; prior: string | null }>(
@@ -55,6 +56,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
             return NextResponse.json({ success: true });
         });
+        // The To-ship queue reads the SKU's home bin (`sku_home_location` in
+        // /api/orders), and that payload is cached — drop it so the record's
+        // BIN repaints with the new location instead of up to 5 minutes later.
+        await invalidateAllOrdersApiCaches([], orgId);
+        return response;
     } catch (error: any) {
         console.error('Update location error:', error);
         return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });

@@ -73,7 +73,7 @@ test('the pad owns no height of its own, and exports the ink', () => {
  * The deliberate half of the decision the handoff asked for: fullscreen is
  * NOT exempt from the aspect law, and `fillHeight` is not an escape hatch
  * from it either — it survives only so the fixed-height STAFF wrappers
- * (`RepairIntakeForm`, `RepairPickupFlow`, `RepairPickupSheet`) keep their own layout, which this
+ * (`RepairIntakeForm`, `RepairPickupSheet`) keep their own layout, which this
  * change was not about. Widening `fill` back to `|| expanded` re-creates the
  * viewport-tall canvas.
  */
@@ -89,7 +89,6 @@ test('fullscreen takes the aspect law; only the staff wrappers still fill', () =
   // not variant- or mount-dependent.
   for (const mount of [
     'src/components/repair/RepairIntakeForm.tsx',
-    'src/components/repair/RepairPickupFlow.tsx',
     'src/components/mobile/repair/RepairPickupSheet.tsx',
   ]) {
     assert.match(read(mount), /fillHeight/, `${mount} is why the prop still exists`);

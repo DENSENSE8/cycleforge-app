@@ -3,8 +3,8 @@
 /**
  * Mobile bulk-print procedure — `/m/print`.
  *
- * One step per full page, one column, Continue. Phone publishes a job on this
- * staff ID's print channel; the computer logged in as that staff ID prints USB.
+ * One step per full page, one column, Continue. Phone sends a job over this
+ * staff ID's print bridge to the ONE picked print station, which prints USB.
  *
  * Callers: src/app/m/(shell)/print/page.tsx.
  * User: "There must be a back button top left… Continue sticky… see-through.
@@ -20,15 +20,9 @@ import { LABEL_BUILDER_SELECTED } from '@/components/barcode/label-builder-layou
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAblyClient } from '@/contexts/AblyContext';
-import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
-import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
-import {
-  getStaffPrintBridgeChannelName,
-  safeChannelName,
-} from '@/lib/realtime/channels';
+import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
 import { toast } from '@/lib/toast';
 import {
   MOBILE_PRINT_DRAFT_KEY,
@@ -51,20 +45,11 @@ import {
   clampToteCount,
   toteRunPlateCount,
 } from '@/lib/print/labelCopies';
-import {
-  STAFF_PRINT_JOB_EVENT,
-  STAFF_PRINT_OPTIONS_PATCH_EVENT,
-  STAFF_PRINT_PROGRESS_EVENT,
-  STAFF_PRINT_STATUS_EVENT,
-  STAFF_PRINT_STATUS_REQUEST_EVENT,
-  parseStaffPrintStatus,
-  type StaffPrintJob,
-  type StaffPrintProgress,
-  type StaffPrintRole,
-  type StaffPrintStatus,
-} from '@/lib/print/staff-print-bridge';
+import { staffPrintBlockedReason, type StaffPrintRole } from '@/lib/print/staff-print-bridge';
 import { DEFAULT_CONFIG, loadConfig } from '@/components/barcode/rack-printer/rack-printer-config';
 import { MobilePrintPrinterStep, MobilePrintOptionsDropdown } from '@/components/mobile/print/MobilePrintPrinterStep';
+import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
+import type { StaffPrintPatch } from '@/hooks/useStaffPrintBridgeClient';
 import { type TotePrintMode } from '@/components/mobile/print/TotePrintRunFields';
 import {
   MobilePrintPreviewStep,
@@ -151,21 +136,12 @@ export function MobilePrintWorkspace() {
   const searchParams = useSearchParams();
   const step = parseMobilePrintStep(searchParams.get('step'));
   const { user } = useAuth();
-  const { getClient } = useAblyClient();
   const { rooms, loading: roomsLoading } = useLocations();
   const { identity } = useOrgGs1();
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(false);
-  const [status, setStatus] = useState<StaffPrintStatus | null>(null);
-  const [progress, setProgress] = useState<StaffPrintProgress | null>(null);
-  const sendModel = useSendToDevice('print_job');
-
-  const orgId = user?.organizationId;
-  const staffId = user?.staffId ?? 0;
-  const staffName = user?.name?.trim() || 'you';
-  const channelName = safeChannelName(() =>
-    getStaffPrintBridgeChannelName(orgId ?? '', staffId),
-  );
+  const bridge = useStaffPrintBridgeClient({ active: step === 'options' || step === 'print' });
+  const { staffName, target, now, patchStation, sendJob } = bridge;
 
   useEffect(() => {
     setDraft(readDraft());
@@ -222,46 +198,11 @@ export function MobilePrintWorkspace() {
   }, [kind, draft.zoneLetter, draft.aisle, draft.bayLevels, effectiveBays]);
 
   const role: StaffPrintRole = 'label';
-
-  useAblyChannel(
-    channelName,
-    STAFF_PRINT_STATUS_EVENT,
-    (message) => {
-      const nextStatus = parseStaffPrintStatus(message?.data);
-      if (nextStatus) setStatus(nextStatus);
-    },
-    !!channelName && staffId > 0,
-  );
-
-  useAblyChannel(
-    channelName,
-    STAFF_PRINT_PROGRESS_EVENT,
-    (message) => {
-      const data = message?.data as StaffPrintProgress | undefined;
-      if (data?.type === 'staff.print_progress') setProgress(data);
-    },
-    !!channelName && staffId > 0,
-  );
-
-  const requestStatus = useCallback(async () => {
-    if (!channelName) return;
-    try {
-      const client = await getClient();
-      await client?.channels.get(channelName)?.publish(STAFF_PRINT_STATUS_REQUEST_EVENT, {
-        type: 'staff.print_status_request',
-      });
-    } catch {
-      /* best-effort */
-    }
-  }, [channelName, getClient]);
-
-  useEffect(() => {
-    if (step === 'options' || step === 'print') void requestStatus();
-  }, [step, requestStatus]);
+  const printBlocked = staffPrintBlockedReason(target, role, now);
 
   const go = useCallback(
-    (target: MobilePrintStep) => {
-      router.replace(mobilePrintHref(target));
+    (to: MobilePrintStep) => {
+      router.replace(mobilePrintHref(to));
     },
     [router],
   );
@@ -284,9 +225,9 @@ export function MobilePrintWorkspace() {
     if (step === 'preview') return runCount > 0;
     if (step === 'ack') return runCount > 0;
     if (step === 'options') return true;
-    if (step === 'print') return runCount > 0;
+    if (step === 'print') return runCount > 0 && printBlocked == null;
     return false;
-  }, [step, kind, draft, effectiveBays, runCount]);
+  }, [step, kind, draft, effectiveBays, runCount, printBlocked]);
 
   const onBack = useCallback(() => {
     if (prev) go(prev);
@@ -302,75 +243,49 @@ export function MobilePrintWorkspace() {
   }, [canContinue, next, go, kind, step]);
 
   const patchOptions = useCallback(
-    async (patch: { silent?: boolean; routing?: { label?: string | null; paper?: string | null } }) => {
-      if (!channelName) return;
-      try {
-        const client = await getClient();
-        const channel = client?.channels.get(channelName);
-        await channel?.publish(STAFF_PRINT_OPTIONS_PATCH_EVENT, {
-          type: 'staff.print_options_patch',
-          ...patch,
-        });
-        await channel?.publish(STAFF_PRINT_STATUS_REQUEST_EVENT, {
-          type: 'staff.print_status_request',
-        });
-      } catch {
-        toast.error('Could not reach this staffer’s computer');
-      }
+    async (patch: StaffPrintPatch) => {
+      if (!(await patchStation(patch))) toast.error('Could not reach the print station');
     },
-    [channelName, getClient],
+    [patchStation],
   );
 
   const firePrint = useCallback(async () => {
-    if (!channelName) {
-      toast.error('Sign in on this phone as the same person as the computer');
-      return;
-    }
-    const acked = await sendModel.send({
-      channelName,
-      publish: async (requestId) => {
-        const client = await getClient();
-        const channel = client?.channels.get(channelName);
-        if (!channel) throw new Error('print channel unavailable');
-        const job: StaffPrintJob = isTote
-          ? {
-              type: 'staff.print_job',
-              request_id: requestId,
-              grain: 'tote',
-              role: 'label',
-              tote:
-                draft.toteMode === 'reprint'
-                  ? { copiesPerSide: draft.copiesPerSide, code: draft.reprintCode.trim() }
-                  : { count: draft.toteCount, copiesPerSide: draft.copiesPerSide },
-            }
-          : {
-              type: 'staff.print_job',
-              request_id: requestId,
-              grain: kind === 'bin' ? 'bin' : 'rack',
-              role: 'label',
-              location: {
-                roomName: draft.roomName,
-                gln: identity.gln,
-                orgSlug: user?.organizationSlug ?? null,
-                segments,
-              },
-            };
-        await channel.publish(STAFF_PRINT_JOB_EVENT, job);
-      },
-    });
-    if (acked) toast.success('Computer accepted the print job');
-    else toast.error(`No computer answered for ${staffName} — open the desk app signed in as you`);
+    const stationName = target?.status.stationName ?? 'The print station';
+    const acked = await sendJob(
+      isTote
+        ? {
+            grain: 'tote',
+            role: 'label',
+            tote:
+              draft.toteMode === 'reprint'
+                ? { copiesPerSide: draft.copiesPerSide, code: draft.reprintCode.trim() }
+                : { count: draft.toteCount, copiesPerSide: draft.copiesPerSide },
+          }
+        : {
+            grain: kind === 'bin' ? 'bin' : 'rack',
+            role: 'label',
+            location: {
+              roomName: draft.roomName,
+              gln: identity.gln,
+              orgSlug: user?.organizationSlug ?? null,
+              segments,
+            },
+          },
+    );
+    if (acked) toast.success(`${stationName} accepted the print job`);
+    else toast.error(`${stationName} did not answer — keep the desk app open on it, then retry`);
   }, [
-    channelName,
+    sendJob,
+    target,
     kind,
     isTote,
-    sendModel,
-    getClient,
-    draft.roomName,
+    draft.toteMode,
+    draft.copiesPerSide,
+    draft.reprintCode,
     draft.toteCount,
+    draft.roomName,
     identity.gln,
     user?.organizationSlug,
-    staffName,
     segments,
   ]);
 
@@ -527,11 +442,14 @@ export function MobilePrintWorkspace() {
 
           {step === 'options' && (
             <MobilePrintPrinterStep
-              status={status}
+              stations={bridge.stations}
+              target={target}
+              now={now}
               role={role}
               staffName={staffName}
+              onPick={bridge.pickStation}
               onPatch={patchOptions}
-              onRefresh={() => void requestStatus()}
+              onRefresh={() => void bridge.requestStatus()}
             />
           )}
 
@@ -543,16 +461,30 @@ export function MobilePrintWorkspace() {
                   : `${runCount} labels · ${draft.zoneLetter}-${String(draft.aisle ?? '').padStart(2, '0')}`}
               </p>
               <div className="mt-3 flex flex-col gap-3">
-                <MobilePrintOptionsDropdown status={status} role={role} onPatch={patchOptions} />
+                <StaffPrintStationPicker
+                  stations={bridge.stations}
+                  target={target}
+                  now={now}
+                  staffName={staffName}
+                  onPick={bridge.pickStation}
+                  onRefresh={() => void bridge.requestStatus()}
+                />
+                {target ? (
+                  <MobilePrintOptionsDropdown status={target.status} role={role} onPatch={patchOptions} />
+                ) : null}
               </div>
-              {progress && (
+              {bridge.progress && (
                 <p className="mt-2 font-mono text-role-caption text-text-soft">
-                  Printing {progress.done}/{progress.total}
+                  Printing {bridge.progress.done}/{bridge.progress.total}
                 </p>
               )}
-              {sendModel.state === 'timed_out' && (
+              {target && printBlocked ? (
+                <p className="mt-2 text-role-caption text-text-warning">{printBlocked}</p>
+              ) : null}
+              {bridge.state === 'timed_out' && (
                 <p className="mt-2 text-role-caption text-text-danger">
-                  No computer answered. Sign into the desk app as {staffName}, or retry Print.
+                  {target?.status.stationName ?? 'The print station'} did not answer. Keep the desk app open on it
+                  signed in as {staffName}, or retry Print.
                 </p>
               )}
             </div>
@@ -565,8 +497,8 @@ export function MobilePrintWorkspace() {
             variant={step === 'print' ? 'success' : 'primary'}
             radius="surface"
             className="pointer-events-auto h-14 w-full"
-            disabled={step === 'print' ? !canContinue || sendModel.pending : !canContinue || !next}
-            loading={step === 'print' ? sendModel.pending : false}
+            disabled={step === 'print' ? !canContinue || bridge.pending : !canContinue || !next}
+            loading={step === 'print' ? bridge.pending : false}
             onClick={() => {
               if (step === 'print') void firePrint();
               else onContinue();

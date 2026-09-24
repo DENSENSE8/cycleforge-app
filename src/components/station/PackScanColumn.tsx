@@ -36,6 +36,7 @@ import { toast } from '@/lib/toast';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 
 interface ActivePackingOrder {
   orderRowId: number | null;
@@ -300,21 +301,25 @@ export default function PackScanColumn({
         }
 
         const normalizedScan = isTrackingInput ? normalizeTracking(scan) : scan;
-        const idempotencyKey = safeRandomUUID();
-        const res = await fetch('/api/packing-logs', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey,
-          },
-          body: JSON.stringify({
-            trackingNumber: normalizedScan,
-            photos: [],
-            packerId: String(userId),
-            packerName: userName,
-            createdAt: formatPSTTimestamp(),
-            idempotencyKey,
-          }),
+        // A held order (buyer note) opens the note first; acknowledging it
+        // re-sends the scan under a fresh key — see sendWithBuyerNoteAck.
+        const res = await sendWithBuyerNoteAck(() => {
+          const idempotencyKey = safeRandomUUID();
+          return fetch('/api/packing-logs', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
+            },
+            body: JSON.stringify({
+              trackingNumber: normalizedScan,
+              photos: [],
+              packerId: String(userId),
+              packerName: userName,
+              createdAt: formatPSTTimestamp(),
+              idempotencyKey,
+            }),
+          });
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || 'Failed to save packing scan');

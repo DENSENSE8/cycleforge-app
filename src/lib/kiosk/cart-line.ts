@@ -55,6 +55,17 @@ export interface RepairPayload extends LineExtras {
   price: string;
   signatureDataUrl?: string | null;
   signatureStrokes?: unknown;
+  /**
+   * `repair_service.id` of an EXISTING repair brought into this visit (an Ecwid
+   * drop-off or desk ticket that never went through a tablet cart). Set, the
+   * line is money and a link only: the device was already taken in, serialised
+   * and signed for when that ticket was written, so asking for a serial, a
+   * reason or a signature again would be re-doing an intake that happened.
+   * Submit links the row to the new header instead of creating a second one.
+   */
+  linkedRepairId?: number | null;
+  /** The linked ticket's RS number, for the card chip — `Linked · RS-1234`. */
+  linkedTicketNumber?: string | null;
 }
 
 export interface BuybackPayload {
@@ -112,6 +123,21 @@ export function computeKioskCartTotals(lines: readonly KioskCartLine[]): {
 
 export function cartHasRepairLine(lines: readonly KioskCartLine[]): boolean {
   return lines.some((l) => l.type === 'REPAIR');
+}
+
+/**
+ * A REPAIR line that points at an existing `repair_service` row rather than
+ * describing a new drop-off. The ONE predicate every intake gate asks, so the
+ * device stepper, triage and the submit mapper cannot disagree about which
+ * lines owe intake facts.
+ */
+export function isLinkedRepairLine(line: KioskCartLine): boolean {
+  return (
+    line.type === 'REPAIR' &&
+    isRepairPayload(line.payload) &&
+    typeof line.payload.linkedRepairId === 'number' &&
+    line.payload.linkedRepairId > 0
+  );
 }
 
 export function cartIsEmpty(lines: readonly KioskCartLine[]): boolean {

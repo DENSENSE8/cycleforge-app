@@ -7,14 +7,14 @@
  *
  * This was briefly two separate pill Buttons with a `gap-px` between them,
  * which read as two controls that happened to touch. The house already has the
- * shape: {@link SlicedActionDock} — one tone track with a hairline between a
- * primary segment and a chevron segment, `embeddedChrome="header"` giving the
- * same {@link cornerClass}(`'pill'`) capsule every other desk header CTA uses
- * ({@link DeskHeaderAction}). Composer-footer docks stay `embeddedChrome="pill"`
- * ({@link COMPOSER_SHELL_CORNER}); this slot is not that family.
+ * shape: {@link DeskHeaderSplitAction} — one track with a hairline between a
+ * primary segment and a chevron segment. The bar picks the face: the
+ * {@link cornerClass}(`'pill'`) capsule on a card desk, the flush mono segment
+ * on the industrial bar (To ship, owner 2026-09-24), where it sits flush
+ * against Labels and Past imports like the modes on the bar's left end.
  *
- * Segment order in header chrome is `[ primary CTA ]|[ ▾ menu ]`, so the
- * CTA's own icon sits between its label and the chevron.
+ * Segment order is `[ primary CTA ]|[ ▾ menu ]`, so the CTA's own icon sits
+ * between its label and the chevron.
  *
  * ## The chevron's menu is a sentence-case dropdown, not station caps
  *
@@ -64,7 +64,7 @@ import {
   DeskActionSlotRegistrar,
   useDeskExportMenuAction,
 } from '@/design-system/components/DeskActionSlot';
-import { SlicedActionDock } from '@/design-system/primitives';
+import { DeskHeaderSplitAction } from '@/design-system/components/DeskHeaderSplitAction';
 import { useToShipPlatformSyncMenu } from '@/components/outbound/orders/useToShipPlatformSyncMenu';
 
 /**
@@ -111,10 +111,8 @@ export function OrdersDeskAddAction({
   // and a fresh element every render would loop through the provider.
   const control = useMemo(
     () => (
-      <div className="shrink-0" data-testid="orders-desk-add">
-      <SlicedActionDock
-        embedded
-        embeddedChrome="header"
+      <div className="flex shrink-0" data-testid="orders-desk-add">
+      <DeskHeaderSplitAction
         tone="blue"
         icon={<RefreshCw aria-hidden className="h-3.5 w-3.5" />}
         label={syncing ? (syncProgressLabel ?? 'Syncing…') : 'Sync Google Sheet'}

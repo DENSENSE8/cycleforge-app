@@ -7,7 +7,7 @@ import { FormField } from '@/design-system/components';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { REPAIR_FAILURE_LABELS } from '@/lib/repair/repair-failure-reasons';
 import { KioskChip } from '@/components/kiosk/KioskChip';
-import { KioskEntryField } from '@/components/kiosk/KioskCustomerIntake';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from '@/components/Icons';
-import { NUMERIC_VALUE_KINDS, type ChecklistStep, type UnitResult } from './sku-testing-types';
+import { isNumericKind, passBandLabel, stepValueUnit } from '@/lib/qc/qc-step';
+import type { ChecklistStep, UnitResult } from './sku-testing-types';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -23,7 +24,7 @@ export function StepValueControl({
   onSubmit: (raw: string) => void;
 }) {
   const kind = step.value_kind ?? '';
-  const isNumeric = NUMERIC_VALUE_KINDS.has(kind);
+  const isNumeric = isNumericKind(kind);
   const recorded =
     result?.value_num != null
       ? String(result.value_num)
@@ -36,17 +37,7 @@ export function StepValueControl({
     setVal(recorded);
   }, [recorded]);
 
-  const unitSuffix = step.value_unit ? ` ${step.value_unit}` : kind === 'PERCENT' ? ' %' : '';
-  const min = step.pass_min == null ? null : Number(step.pass_min);
-  const max = step.pass_max == null ? null : Number(step.pass_max);
-  const band =
-    min != null && max != null
-      ? `${min}–${max}${unitSuffix}`
-      : min != null
-        ? `≥ ${min}${unitSuffix}`
-        : max != null
-          ? `≤ ${max}${unitSuffix}`
-          : null;
+  const band = passBandLabel(step);
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -79,7 +70,7 @@ export function StepValueControl({
             onBlur={() => {
               if (val !== recorded) onSubmit(val);
             }}
-            placeholder={isNumeric ? step.value_unit || (kind === 'PERCENT' ? '%' : 'value') : 'value'}
+            placeholder={isNumeric ? stepValueUnit(step) ?? 'value' : 'value'}
             disabled={busy}
             className={cn("w-24 rounded-md border border-border-soft px-2 py-1 text-role-caption font-medium text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />

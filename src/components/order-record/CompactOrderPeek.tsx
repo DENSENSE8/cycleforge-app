@@ -23,7 +23,7 @@ import {
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
-import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
+import { useOrderChannel, usePlatformMeta } from '@/hooks/useCatalog';
 import { searchOrderFeedbackHref } from '@/lib/search/search-hit';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import type { ShippedOrder } from '@/types/orders';
@@ -37,9 +37,9 @@ export function CompactOrderPeek({
 }) {
   const router = useRouter();
   const meta = deriveShippedHeaderMeta(order);
-  const orderChannelLabel = useOrderChannelLabel();
+  const resolveOrderChannel = useOrderChannel();
   const resolvePlatformMeta = usePlatformMeta();
-  const channelLabel = orderChannelLabel(order.order_id, order.account_source);
+  const channelLabel = resolveOrderChannel(order.order_id, order.account_source).label;
   const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
   const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
   const pillTone =

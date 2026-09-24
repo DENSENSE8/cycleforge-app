@@ -1,3 +1,6 @@
+> **Superseded 2026-09-24** — checkpoints below are done. Continue from
+> [mobile-repair-workbench-NEXT-HANDOFF.md](./mobile-repair-workbench-NEXT-HANDOFF.md).
+
 # CONTINUE PROMPT — Mobile repair workbench, one verified checkpoint at a time
 
 Paste this whole file into OMP TUI from the CycleForge production worktree.

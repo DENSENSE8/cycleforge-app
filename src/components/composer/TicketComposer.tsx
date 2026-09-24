@@ -45,7 +45,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import { stationComposerTicketCommitLabel } from '@/lib/composer/station-composer-mode';
 import { cn } from '@/utils/_cn';
 import { ComposerDrillMenu } from './ComposerDrillMenu';
-import { ComposerStagedPhotoStrip } from './ComposerStagedPhotoStrip';
+import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
 import { ComposerTicketChannelToggle } from './ComposerTicketChannelToggle';
 import { ComposerTicketInsetChrome } from './ComposerTicketInsetChrome';
 import { useTicketComposer } from '@/lib/composer/use-ticket-composer';

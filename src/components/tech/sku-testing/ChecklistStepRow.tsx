@@ -1,7 +1,8 @@
 import { Loader2, Pencil, Trash2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
-import { needsValueInput, type ChecklistStep, type UnitResult } from './sku-testing-types';
+import { needsValueInput } from '@/lib/qc/qc-step';
+import type { ChecklistStep, UnitResult } from './sku-testing-types';
 import { StepValueControl } from './StepValueControl';
 import type { ChecklistEditor } from './useChecklistEditor';
 import { focusRing } from '@/design-system/tokens/focus-ring';

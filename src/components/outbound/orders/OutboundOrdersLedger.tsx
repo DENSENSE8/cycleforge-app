@@ -7,14 +7,21 @@
  * Deliberately NOT the slot `DataTable`. Every order is a flush, full-width
  * record separated by a 1px ink rule — no column header, no gutters, no card:
  *
- *   spine │ photo │ context   CODE · platform · order # · bin ····· ship-by / LATE
- *         │       │ identity  title ······················· condition · QTY n
- *         │       │ facts     ☐ · price · SKU · Pick · Pack · note ····· → next
+ *   spine │ photo │ context   CODE · BIN location · platform · order # ···│ date / date · nD
+ *         │       │ identity  title ···········································│ QTY n
+ *         │       │ facts     ☐ · condition · $price · SKU · Pick · Pack · note · LISTING ↗ │ → next
+ *   (the photo opens Unbox's viewer on every item # + SKU photo)
+ *
+ *   seed parent: fold · ☐ · CODE n/n · BIN (all lines) · platform · order # ·
+ *                boxes · lines · Pick · Pack · QTY · $total · → next (worst line)
+ *   ─────────────────────────────────────────────────────────── │ evidence column
  *
  * Presentation only. The feed (`useOrdersQueueFeed`) is the same one the slot
  * table reads: rows + grouping + URL sort, the selection / cursor / inspector
- * plane, the one assignment waist for every inline edit. Colour comes from the
- * industrial mode (`*-mode-*`) and from `LIFECYCLE`; geometry from
+ * plane, the one assignment waist for every inline edit. The open record reads
+ * in {@link OutboundOrderEvidence} beside the rows (the desktop terminal's
+ * evidence column), never in the right rail or over the rows. Colour comes
+ * from the industrial mode (`*-mode-*`) and from `LIFECYCLE`; geometry from
  * `outbound-orders-ledger-geometry.ts`. No motion anywhere on this surface.
  */
 
@@ -32,13 +39,6 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { SearchField } from '@/design-system/primitives';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/design-system/primitives/radix-popover';
-import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
-import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import {
   DataTableFilterMenu,
   DataTablePageSizeMenu,
   DataTableSortMenu,
@@ -49,17 +49,8 @@ import { TableStatusBar } from '@/components/tables/TableStatusBar';
 import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
-import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
-import {
-  canAssignCompoundStage,
-  formatCompoundStageStepLine,
-  type CompoundSlotValue,
-  type CompoundStageStepFacts,
-} from '@/components/tables/compound/compound-row-model';
-import { ChevronDown, ChevronRight, FileText } from '@/components/Icons';
+import { ChevronDown, ChevronRight } from '@/components/Icons';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { OrdersLedgerStandIn } from '@/components/dashboard/OrdersQueueFirstPaint';
 import {
@@ -74,10 +65,7 @@ import {
   type OrdersQueueCommits,
 } from '@/components/dashboard/orders-queue/useOrdersQueueFeed';
 import { parentOrderLineTotals } from '@/components/dashboard/orders-queue/QueueGroupRow';
-import {
-  resolveRowWorkflowStage,
-  type QueueRowRecord,
-} from '@/components/dashboard/orders-queue/helpers';
+import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { ToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
@@ -100,20 +88,14 @@ import {
 import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
 import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
+import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
-import { orderLifecycleState } from '@/lib/order-lifecycle';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
-import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
+import { useOrderChannel } from '@/hooks/useCatalog';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
-import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
-import {
-  conditionGradeTableLabel,
-  conditionOptions,
-  resolveConditionGrade,
-} from '@/lib/conditions';
-import { dateKeyToLocalDate, formatDateKeyShort, localDateToDateKey } from '@/utils/date';
-import { formatCurrency } from '@/utils/_number';
+import { orderRowQtyTone } from '@/lib/condition-tone';
+import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
 import {
   LIFECYCLE,
   LIFECYCLE_CLASSES,
@@ -122,48 +104,48 @@ import {
 } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import {
+  RECORD_ID_CLASS,
+  RECORD_LABEL_CLASS,
+  RECORD_NOTE_SPINE_CLASS,
+  RECORD_TITLE_CLASS,
+  recordStateCodeClass,
+} from '@/design-system/tokens/industrial-record';
+import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import { useLedgerRowZoom } from './useLedgerRowZoom';
+import { CatalogManagerPopover } from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
+import { OutboundOrderEvidence } from './OutboundOrderEvidence';
+import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
+import { linePhotoLabel } from '@/lib/photos/line-photos';
+import { groupLocation, initials, recordState, worstState } from './outbound-orders-ledger-state';
+import {
+  LedgerCondition,
+  LedgerListingLink,
+  LedgerQty,
+  LedgerShipBy,
+  LedgerStageAssign,
+  stageFacts,
+  stop,
+} from './outbound-orders-ledger-editors';
 import {
   LEDGER_BAND_CLASS,
-  LEDGER_CHILD_INDENT_CLASS,
   LEDGER_DENSITY_STYLE,
+  LEDGER_EVIDENCE_CLASS,
   LEDGER_GROUP_CLASS,
   LEDGER_GROUP_PX,
   LEDGER_HIT_CLASS,
-  LEDGER_ID_CLASS,
-  LEDGER_LABEL_CLASS,
+  LEDGER_LOCATION_CLASS,
   LEDGER_PHOTO_CLASS,
   LEDGER_ROW_CLASS,
   LEDGER_ROW_PX,
   LEDGER_ROW_ZOOMS,
   LEDGER_SPINE_CLASS,
   LEDGER_SPINE_HATCH_CLASS,
-  LEDGER_TITLE_CLASS,
   LEDGER_TOOLBAR_CLASS,
   LEDGER_NESTED_HIT_CLASS,
   LEDGER_ZOOM_LABEL,
   type LedgerRowZoom,
 } from './outbound-orders-ledger-geometry';
-
-/** Worst-first — a group's shared spine wears its worst child. */
-const STATE_RANK: Readonly<Record<LifecycleState, number>> = {
-  outOfStock: 0,
-  urgent: 1,
-  packed: 2,
-  ready: 3,
-  shipped: 4,
-};
-
-/** State code ink. Urgent reads in the mode's warn ink — amber fails 4.5:1 as text. */
-function stateCodeClass(state: LifecycleState): string {
-  return state === 'urgent' ? 'text-mode-warn' : LIFECYCLE_CLASSES[state].text;
-}
-
-const CONDITION_OPTIONS = conditionOptions('table').map((opt) => ({
-  value: opt.value as string,
-  label: opt.label,
-  toneClass: conditionGradeTextClass(opt.value),
-}));
 
 const OVERSCAN = 8;
 
@@ -174,39 +156,7 @@ type LedgerItem =
       key: string;
       record: ShippedOrder;
       state: LifecycleState;
-      /** Seed-group child: the group's state paints the shared spine. */
-      groupState: LifecycleState | null;
     };
-
-function recordState(record: ShippedOrder): LifecycleState {
-  const r = record as QueueRowRecord;
-  return orderLifecycleState(resolveRowWorkflowStage(r), { urgent: Boolean(r.is_urgent) });
-}
-
-function worstState(states: readonly LifecycleState[]): LifecycleState {
-  return states.reduce<LifecycleState>(
-    (worst, s) => (STATE_RANK[s] < STATE_RANK[worst] ? s : worst),
-    'ready',
-  );
-}
-
-function initials(title: string): string {
-  return (
-    title
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join('')
-      .toUpperCase() || 'CF'
-  );
-}
-
-/** Stops a control's click from reaching the row's open target. */
-function stop(event: { stopPropagation: () => void }) {
-  event.stopPropagation();
-}
 
 export interface OutboundOrdersLedgerProps {
   chrome: ToShipChrome;
@@ -223,6 +173,8 @@ export interface OutboundOrdersLedgerProps {
   searchEmptyTitle: string;
   searchResultLabel: string;
   clearSearchLabel: string;
+  /** Paperwork walk opened on one order (To-ship Labels). */
+  onOpenLabels?: (record: ShippedOrder) => void;
 }
 
 export function OutboundOrdersLedger({
@@ -238,6 +190,7 @@ export function OutboundOrdersLedger({
   searchEmptyTitle,
   searchResultLabel,
   clearSearchLabel,
+  onOpenLabels,
 }: OutboundOrdersLedgerProps) {
   const searchValue = chrome.search.value;
   const feed = useOrdersQueueFeed({
@@ -255,6 +208,9 @@ export function OutboundOrdersLedger({
   });
   const { plane, orderGroupsByDate, displayedRecords, painted } = feed;
   const { zoom, setZoom } = useLedgerRowZoom('orders');
+  // "Edit platforms" — the same catalog manager Unbox's platform pill opens, so
+  // the short label the band paints (`AMZRN`) is edited where it is read.
+  const [platformsOpen, setPlatformsOpen] = useState(false);
 
   // The plane publishes the record cursor; this surface turns the keyboard on.
   useRecordCursorKeyboard({ enabled: true, scope: 'record' });
@@ -324,12 +280,12 @@ export function OutboundOrdersLedger({
           out.push({ kind: 'group', key: `g:${group.key}`, group, state: groupState, folded });
           if (folded) continue;
           group.rows.forEach((record, i) =>
-            out.push({ kind: 'row', key: `r:${record.id}`, record, state: states[i]!, groupState }),
+            out.push({ kind: 'row', key: `r:${record.id}`, record, state: states[i]! }),
           );
           continue;
         }
         const record = group.rows[0];
-        if (record) out.push({ kind: 'row', key: `r:${record.id}`, record, state: states[0]!, groupState: null });
+        if (record) out.push({ kind: 'row', key: `r:${record.id}`, record, state: states[0]! });
       }
     }
     return out;
@@ -365,6 +321,15 @@ export function OutboundOrdersLedger({
   const filterActive = chrome.filter.options.some((o: DataTableFilterOption) => o.active);
   const isNarrowed = Boolean(searchValue.trim()) || filterActive;
   const openId = plane.selectedRecord ? Number(plane.selectedRecord.id) : null;
+  // The evidence column reads the LIVE row (optimistic edits land there), not
+  // the snapshot the selection plane captured when the row was opened.
+  const openRecord = useMemo(
+    () =>
+      openId == null
+        ? null
+        : (displayedRecords.find((r) => Number(r.id) === openId) ?? plane.selectedRecord),
+    [openId, displayedRecords, plane.selectedRecord],
+  );
 
   const focusFirstRow = useCallback(() => {
     scrollRef.current?.querySelector<HTMLElement>('[data-ledger-open]')?.focus();
@@ -376,6 +341,9 @@ export function OutboundOrdersLedger({
     handleCommitShipBy,
     handleCommitStageAssign,
     handleCommitSubtitleField,
+    handleCommitPlatform,
+    handleCommitSkuBin,
+    handleCommitTracking,
   } = feed;
   const commits = useMemo<OrdersQueueCommits>(
     () => ({
@@ -383,16 +351,27 @@ export function OutboundOrdersLedger({
       handleCommitShipBy,
       handleCommitStageAssign,
       handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
     }),
-    [handleCommitCondition, handleCommitShipBy, handleCommitStageAssign, handleCommitSubtitleField],
+    [
+      handleCommitCondition,
+      handleCommitShipBy,
+      handleCommitStageAssign,
+      handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
+    ],
   );
 
   return (
     <div
-      data-testid="pending-grid-body"
-      className="flex min-h-0 min-w-0 flex-1 flex-col bg-mode-canvas text-mode-ink"
+      className="flex min-h-0 min-w-0 flex-1 bg-mode-canvas text-mode-ink"
       style={LEDGER_DENSITY_STYLE}
     >
+    <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* ── Toolbar: read · narrow · order · views · page — gap — draw ─────── */}
       <div
         data-testid="data-table-toolbar"
@@ -441,6 +420,21 @@ export function OutboundOrdersLedger({
           }}
         />
         <span className="ml-auto inline-flex shrink-0 items-stretch">
+          <button
+            type="button"
+            data-testid="ledger-edit-platforms"
+            aria-haspopup="dialog"
+            onClick={() => setPlatformsOpen(true)}
+            className={cn(
+              'ds-raw-button inline-flex items-center border-l border-mode-edge px-3',
+              LEDGER_HIT_CLASS,
+              RECORD_LABEL_CLASS,
+              focusRing('cell'),
+              'text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
+            )}
+          >
+            Edit platforms
+          </button>
           <div role="group" aria-label="Row size" className="inline-flex items-stretch border-l border-mode-edge">
             {LEDGER_ROW_ZOOMS.map((step) => (
               <button
@@ -453,7 +447,7 @@ export function OutboundOrdersLedger({
                 className={cn(
                   'ds-raw-button inline-flex w-8 items-center justify-center border-r border-mode-edge',
                   LEDGER_HIT_CLASS,
-                  LEDGER_LABEL_CLASS,
+                  RECORD_LABEL_CLASS,
                   focusRing('cell'),
                   zoom === step ? 'bg-mode-ink text-mode-bar' : 'text-mode-muted hover:bg-mode-hover',
                 )}
@@ -465,6 +459,7 @@ export function OutboundOrdersLedger({
           <DataTableFullscreenToggle />
         </span>
       </div>
+      <CatalogManagerPopover open={platformsOpen} kind="platform" onClose={() => setPlatformsOpen(false)} />
 
       {banner}
 
@@ -498,7 +493,7 @@ export function OutboundOrdersLedger({
                 ) : (
                   <>
                     <b className="text-role-body font-bold text-mode-ink">No orders to ship</b>
-                    <span className={cn(LEDGER_LABEL_CLASS, 'text-mode-muted')}>Queue clear</span>
+                    <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Queue clear</span>
                   </>
                 )}
               </div>
@@ -530,12 +525,13 @@ export function OutboundOrdersLedger({
                         selectedIds={plane.selectedIds}
                         onToggleFold={toggleFold}
                         onToggleGroup={plane.handleToggleGroup}
+                        getStaffName={feed.getStaffName}
+                        commits={commits}
                       />
                     ) : (
                       <LedgerRecord
                         record={item.record}
                         state={item.state}
-                        groupState={item.groupState}
                         zoom={zoom}
                         open={openId === Number(item.record.id)}
                         checked={plane.selectedIds.has(Number(item.record.id))}
@@ -575,10 +571,54 @@ export function OutboundOrdersLedger({
         onLoadMore={onLoadMore}
       />
     </div>
+      <aside aria-label="Selected order" data-testid="ledger-evidence" className={LEDGER_EVIDENCE_CLASS}>
+        <OutboundOrderEvidence
+          record={openRecord}
+          records={displayedRecords}
+          todayKey={feed.todayKey}
+          getStaffName={feed.getStaffName}
+          checked={openRecord ? plane.selectedIds.has(Number(openRecord.id)) : false}
+          onToggleSelect={plane.handleToggleSelect}
+          onClose={onCloseRecord}
+          onOpenLabels={onOpenLabels}
+          commits={commits}
+        />
+      </aside>
+    </div>
   );
 }
 
 // ── Seed group parent ───────────────────────────────────────────────────────
+
+/**
+ * One stage (pick or pack) across a group's lines: the assignee every line
+ * shares (or nobody), stamped only when every line is. Assigning from the
+ * parent writes each line that is not yet stamped — one verb for the order.
+ */
+function groupStage(
+  rows: readonly ShippedOrder[],
+  fieldId: 'orders.picked' | 'orders.packed',
+  getStaffName: (id: number) => string,
+) {
+  const lines = rows.map((row) => {
+    const staff = queueRowStaff(row as QueueRowRecord, getStaffName);
+    return {
+      row,
+      facts: stageFacts(resolveOrdersSlotValue(row, fieldId, staff)),
+      staffId: fieldId === 'orders.picked' ? staff.testerId : staff.packerId,
+      display: fieldId === 'orders.picked' ? staff.testerDisplay : staff.packerDisplay,
+    };
+  });
+  const first = lines[0];
+  const shared = first != null && lines.every((line) => line.staffId === first.staffId);
+  const allDone = lines.length > 0 && lines.every((line) => Boolean(line.facts?.at));
+  return {
+    facts: allDone ? (first?.facts ?? null) : null,
+    selectedStaffId: shared ? (first?.staffId ?? null) : null,
+    assignedName: shared ? (first?.display ?? '---') : '---',
+    open: lines.filter((line) => !line.facts?.at).map((line) => line.row),
+  };
+}
 
 const LedgerGroupRecord = memo(function LedgerGroupRecord({
   group,
@@ -588,6 +628,8 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   selectedIds,
   onToggleFold,
   onToggleGroup,
+  getStaffName,
+  commits,
 }: {
   group: RowGroup<ShippedOrder>;
   state: LifecycleState;
@@ -596,6 +638,8 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   selectedIds: ReadonlySet<number>;
   onToggleFold: (key: string) => void;
   onToggleGroup: (ids: readonly number[], checked: boolean) => void;
+  getStaffName: (id: number) => string;
+  commits: OrdersQueueCommits;
 }) {
   const ids = group.rows.map((row) => Number(row.id)).filter((id) => Number.isFinite(id) && id > 0);
   const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
@@ -603,10 +647,19 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
   const lead = group.rows[0]!;
   const orderId = String(lead.order_id || group.key || '').trim();
   const { boxCount } = orderCarrierBoxes(group.rows);
-  const { qty, amount } = parentOrderLineTotals(group.rows);
+  const { qty } = parentOrderLineTotals(group.rows);
   const inState = group.rows.filter((row) => recordState(row) === state).length;
-  const meta = resolveMarketplacePlatformMeta(orderId, lead.account_source);
+  // Band face = the org's dense short label (`AMZRN`); the full name rides the
+  // tooltip and the order-number menu.
+  const channel = useOrderChannel()(orderId, lead.account_source);
+  const meta = channel.meta;
   const spec = LIFECYCLE[state];
+  const where = groupLocation(group.rows);
+  // The order's next step is its worst line's: that line is what holds it.
+  const worst = group.rows.find((row) => recordState(row) === state) ?? lead;
+  const next = ordersNextStep(worst);
+  const pick = groupStage(group.rows, 'orders.picked', getStaffName);
+  const pack = groupStage(group.rows, 'orders.packed', getStaffName);
 
   return (
     <div
@@ -644,8 +697,9 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
         label={`Select all ${group.rows.length} lines of order ${orderId}`}
         className={cn(LEDGER_HIT_CLASS, 'w-8 items-center pt-0')}
       />
-      <div className={cn('flex min-w-0 flex-1 items-center gap-3 px-2', LEDGER_BAND_CLASS[zoom])}>
-        <span className={cn(LEDGER_LABEL_CLASS, 'w-16 shrink-0', stateCodeClass(state))}>
+      {/* One band carries the whole order: tighter lanes than a child's bands. */}
+      <div className={cn('flex min-w-0 flex-1 items-center gap-2 pl-2', LEDGER_BAND_CLASS[zoom])}>
+        <span className={cn(RECORD_LABEL_CLASS, 'w-16 shrink-0', recordStateCodeClass(state))}>
           <span aria-hidden>
             {spec.code} {inState}/{group.rows.length}
           </span>
@@ -653,12 +707,21 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             {spec.label}: {inState} of {group.rows.length} lines
           </span>
         </span>
+        {/* State first, location second — on the parent too (law 1). */}
+        <span className={cn('flex min-w-[6rem] flex-1 items-center gap-1 truncate', RECORD_LABEL_CLASS)}>
+          <LedgerLocation path={where.path} className="min-w-0" />
+          {where.path && where.unassigned > 0 ? (
+            <span className="shrink-0 text-mode-warn">· {where.unassigned} unassigned</span>
+          ) : null}
+        </span>
         <span className="inline-flex w-24 shrink-0 items-center gap-1.5">
           <BrandIdentityDot {...platformMetaBrandDot(meta)} />
-          <span className={cn(LEDGER_LABEL_CLASS, 'truncate text-mode-muted')}>{meta.label || '—'}</span>
+          <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={channel.connectionName ?? channel.label}>
+            {channel.shortLabel || '—'}
+          </span>
         </span>
         <span
-          className={cn(LEDGER_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-40 shrink-0 items-center truncate')}
+          className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-32 shrink-0 items-center truncate')}
           onClick={stop}
           onPointerDown={stop}
         >
@@ -670,26 +733,63 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             dense
           />
         </span>
-        <span className={cn(LEDGER_LABEL_CLASS, 'text-mode-muted')}>
+        <span className={cn(RECORD_LABEL_CLASS, 'min-w-0 shrink truncate text-mode-muted')}>
           {boxCount} {boxCount === 1 ? 'box' : 'boxes'} · {group.rows.length} lines
         </span>
-        <span className="ml-auto inline-flex shrink-0 items-center gap-3">
-          <span className={cn(LEDGER_LABEL_CLASS, orderRowQtyTone(qty))}>QTY {qty}</span>
-          <span className={cn(LEDGER_ID_CLASS, 'w-20 text-right')}>
-            {amount == null ? '—' : formatCurrency(amount)}
-          </span>
+        <span className="h-full w-28 shrink-0">
+          <LedgerStageAssign
+            verb="Pick"
+            doneVerb="Picked"
+            role="technician"
+            facts={pick.facts}
+            selectedStaffId={pick.selectedStaffId}
+            assignedName={pick.assignedName}
+            onCommit={(id, name) => {
+              for (const row of pick.open) commits.handleCommitStageAssign(row, 'orders.picked', id, name);
+            }}
+          />
         </span>
+        <span className="h-full w-28 shrink-0">
+          <LedgerStageAssign
+            verb="Pack"
+            doneVerb="Packed"
+            role="packer"
+            facts={pack.facts}
+            selectedStaffId={pack.selectedStaffId}
+            assignedName={pack.assignedName}
+            onCommit={(id, name) => {
+              for (const row of pack.open) commits.handleCommitStageAssign(row, 'orders.packed', id, name);
+            }}
+          />
+        </span>
+        <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', orderRowQtyTone(qty))}>QTY {qty}</span>
+        <LedgerNextStep next={next} />
       </div>
     </div>
   );
 });
+
+/** `→ Pick` / `→ Label` … — where the record (or the order) goes next. */
+function LedgerNextStep({ next }: { next: { label: string; tip?: string; blocked?: boolean } | null }) {
+  return (
+    <span
+      title={next?.tip}
+      className={cn(
+        RECORD_LABEL_CLASS,
+        'flex h-full w-32 shrink-0 items-center border-l border-mode-edge px-2',
+        next?.blocked ? STATE_TONE_CLASSES.danger.text : 'text-mode-ink',
+      )}
+    >
+      {next?.label ?? ''}
+    </span>
+  );
+}
 
 // ── One record ──────────────────────────────────────────────────────────────
 
 interface LedgerRecordProps {
   record: ShippedOrder;
   state: LifecycleState;
-  groupState: LifecycleState | null;
   zoom: LedgerRowZoom;
   open: boolean;
   checked: boolean;
@@ -706,7 +806,6 @@ interface LedgerRecordProps {
 const LedgerRecord = memo(function LedgerRecord({
   record,
   state,
-  groupState,
   zoom,
   open,
   checked,
@@ -728,13 +827,17 @@ const LedgerRecord = memo(function LedgerRecord({
   });
   const spec = LIFECYCLE[state];
   const orderId = view.orderId ?? '';
-  const meta = resolveMarketplacePlatformMeta(orderId, view.platformValue);
+  const channel = useOrderChannel()(orderId, view.platformValue);
+  const meta = channel.meta;
   const qty = Number(record.quantity);
   const qtyFace = Number.isFinite(qty) && qty > 0 ? qty : 1;
-  const amount = Number(record.sale_amount);
-  const price = record.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—';
-  const bin = view.detail?.location ?? null;
   const next = view.nextStep ?? null;
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const closePhotos = useCallback(() => setPhotosOpen(false), []);
+  const bin = resolveOrderBin(record.storage_locations, record.sku_home_location);
+  const locationFace = (
+    <LedgerLocation path={bin.path} source={bin.source} className={LEDGER_LOCATION_CLASS[zoom]} />
+  );
 
   const pickFacts = stageFacts(resolveOrdersSlotValue(record, 'orders.picked', staff));
   const packFacts = stageFacts(resolveOrdersSlotValue(record, 'orders.packed', staff));
@@ -771,14 +874,18 @@ const LedgerRecord = memo(function LedgerRecord({
     />
   );
   const code = (
-    <span className={cn(LEDGER_LABEL_CLASS, 'w-9 shrink-0', stateCodeClass(state))}>
+    <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))}>
       <span aria-hidden>{spec.code}</span>
       <span className="sr-only">{spec.label}</span>
     </span>
   );
+  // Buyer note: a rigid slot beside the state code on every record, so a noted
+  // and an un-noted row keep platform and order # on the same pixel.
+  const buyerNote = String(record.buyer_note ?? '').trim() || null;
+  const noteSlot = <RecordNoteSlot note={buyerNote} />;
   const orderChip = (
     <span
-      className={cn(LEDGER_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-40 shrink-0 items-center truncate')}
+      className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-40 shrink-0 items-center truncate')}
       onClick={stop}
       onPointerDown={stop}
     >
@@ -790,6 +897,14 @@ const LedgerRecord = memo(function LedgerRecord({
         dense
       />
     </span>
+  );
+  // Condition rides beside the select box at every zoom (owner 2026-09-24):
+  // the grade is what the hand checks while it holds the item.
+  const condition = (
+    <LedgerCondition
+      value={record.condition ?? null}
+      onCommit={(value) => commits.handleCommitCondition(record, value)}
+    />
   );
   const check = (
     <GridRowCheckbox
@@ -827,32 +942,32 @@ const LedgerRecord = memo(function LedgerRecord({
         }
         className={cn('absolute inset-0 z-0 cursor-pointer', focusRing('cell'))}
       />
-      {groupState ? (
-        <>
-          <span
-            className={cn(
-              LEDGER_SPINE_CLASS,
-              'relative z-10',
-              LIFECYCLE_CLASSES[groupState].dot,
-              groupState === 'outOfStock' && LEDGER_SPINE_HATCH_CLASS,
-            )}
-            aria-hidden
-          />
-          <span className={cn(LEDGER_CHILD_INDENT_CLASS, 'relative z-10 border-r border-mode-rule bg-mode-well')} aria-hidden />
-        </>
-      ) : null}
+      {/* A seed-group child wears ONE line — its own state spine. The parent
+          band above carries the grouping; a second group spine + indent lane
+          read as a double rule (owner 2026-09-24). */}
       <span
         className={cn(
           LEDGER_SPINE_CLASS,
           'pointer-events-none relative z-10',
           LIFECYCLE_CLASSES[state].dot,
           state === 'outOfStock' && LEDGER_SPINE_HATCH_CLASS,
+          buyerNote && RECORD_NOTE_SPINE_CLASS,
         )}
         aria-hidden
       />
-      <span
+      {/* The photo lane opens every photo of this item # + SKU (Unbox's viewer). */}
+      <button
+        type="button"
+        aria-label={`Photos for ${linePhotoLabel(record.item_number ?? null, view.detail?.sku ?? null)}`}
+        data-testid="ledger-photos"
+        onClick={(event) => {
+          event.stopPropagation();
+          setPhotosOpen(true);
+        }}
+        onPointerDown={stop}
         className={cn(
-          'pointer-events-none relative z-10 shrink-0 overflow-hidden border-r border-mode-rule bg-mode-well',
+          'ds-raw-button relative z-10 shrink-0 cursor-zoom-in overflow-hidden border-r border-mode-rule bg-mode-well',
+          focusRing('cell'),
           LEDGER_PHOTO_CLASS[zoom],
         )}
       >
@@ -876,7 +991,18 @@ const LedgerRecord = memo(function LedgerRecord({
             {initials(view.title)}
           </span>
         )}
-      </span>
+      </button>
+      {photosOpen ? (
+        <LedgerPhotoViewer
+          subject={{
+            skuCatalogId: Number(r.sku_catalog_id) > 0 ? Number(r.sku_catalog_id) : null,
+            sku: view.detail?.sku ?? record.sku ?? null,
+            itemNumber: record.item_number ?? null,
+            catalogImageUrl: view.thumbUrl ?? null,
+          }}
+          onClose={closePhotos}
+        />
+      ) : null}
 
       {zoom === 'S' ? (
         <div
@@ -886,10 +1012,13 @@ const LedgerRecord = memo(function LedgerRecord({
           )}
         >
           <span className="pointer-events-auto">{check}</span>
+          <span className="pointer-events-auto w-20 shrink-0">{condition}</span>
           {code}
+          {noteSlot}
+          {locationFace}
           <span className="pointer-events-auto">{orderChip}</span>
-          <span className={cn(LEDGER_TITLE_CLASS, 'flex-1')}>{view.title || '—'}</span>
-          <span className={cn(LEDGER_LABEL_CLASS, 'w-14 shrink-0 text-right', orderRowQtyTone(qtyFace))}>
+          <span className={cn(RECORD_TITLE_CLASS, 'flex-1')}>{view.title || '—'}</span>
+          <span className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-right', orderRowQtyTone(qtyFace))}>
             QTY {qtyFace}
           </span>
           <span className="pointer-events-auto w-28 shrink-0">{shipBy}</span>
@@ -898,62 +1027,53 @@ const LedgerRecord = memo(function LedgerRecord({
         </div>
       ) : (
         <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col">
-          {/* Band 1 — context */}
-          <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
+          {/*
+            F-pattern (owner 2026-09-24): Context → Identity → Execution, with
+            one right column down all three bands (date · QTY · next).
+          */}
+          {/* Band 1 — context & selection: ☐ · state · platform · order # ··· date */}
+          <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule', LEDGER_BAND_CLASS[zoom])}>
+            <span className="pointer-events-auto">{check}</span>
             {code}
+            {noteSlot}
             <span className="inline-flex w-24 shrink-0 items-center gap-1.5">
               <BrandIdentityDot {...platformMetaBrandDot(meta)} />
-              <span className={cn(LEDGER_LABEL_CLASS, 'truncate text-mode-muted')}>{meta.label || '—'}</span>
+              <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={channel.connectionName ?? channel.label}>
+                {channel.shortLabel || '—'}
+              </span>
             </span>
             <span className="pointer-events-auto">{orderChip}</span>
-            <span className={cn(LEDGER_LABEL_CLASS, 'min-w-0 flex-1 truncate text-mode-muted')}>
-              {bin ? `BIN ${bin}` : ''}
-            </span>
+            <span className="min-w-0 flex-1" />
             <span className="pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">{shipBy}</span>
           </div>
-          {/* Band 2 — identity */}
+          {/* Band 2 — identity: what it is ··· how many (the labour multiplier). */}
           <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
-            <span className={cn(LEDGER_TITLE_CLASS, 'flex-1')} title={view.title || undefined}>
+            <span className={cn(RECORD_TITLE_CLASS, 'flex-1')} title={view.title || undefined}>
               {view.title || '—'}
             </span>
-            <span className="pointer-events-auto w-24 shrink-0">
-              <LedgerCondition
-                value={record.condition ?? null}
-                onCommit={(value) => commits.handleCommitCondition(record, value)}
-              />
-            </span>
-            <span className="pointer-events-auto h-full w-24 shrink-0 border-l border-mode-edge">
+            <span className="pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">
               <LedgerQty
                 value={qtyFace}
                 onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
               />
             </span>
           </div>
-          {/* Band 3 — facts */}
-          <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
-            <span className="pointer-events-auto">{check}</span>
-            <span className={cn(LEDGER_ID_CLASS, 'w-20 shrink-0 text-right')}>{price}</span>
-            <span className={cn(LEDGER_LABEL_CLASS, 'w-36 shrink-0 truncate text-mode-muted')}>
-              SKU <span className={cn(LEDGER_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{view.detail?.sku ?? '—'}</span>
+          {/* Band 3 — execution: condition · BIN · SKU · pick · pack · listing ··· next.
+              Price is not here: it is noise on the floor and reads in the evidence column.
+              The buyer note is not here either: it is the NOTE badge on band 1 (left,
+              beside the state code) and its full text leads the evidence column. */}
+          <div className={cn('flex min-w-0 items-center gap-2 pl-2', LEDGER_BAND_CLASS[zoom])}>
+            <span className="pointer-events-auto w-20 shrink-0">{condition}</span>
+            <LedgerLocation path={bin.path} source={bin.source} className="min-w-[8rem] flex-1" />
+            <span className={cn(RECORD_LABEL_CLASS, 'w-36 shrink-0 truncate text-mode-muted')}>
+              SKU <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{view.detail?.sku ?? '—'}</span>
             </span>
-            <span className="pointer-events-auto w-40 shrink-0">{pick}</span>
-            <span className="pointer-events-auto w-40 shrink-0">{pack}</span>
-            <span className="pointer-events-auto min-w-0 flex-1">
-              <LedgerNote
-                value={String(record.notes ?? '')}
-                onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.notes', value)}
-              />
+            <span className="pointer-events-auto w-32 shrink-0">{pick}</span>
+            <span className="pointer-events-auto w-32 shrink-0">{pack}</span>
+            <span className="pointer-events-auto h-full shrink-0 border-l border-mode-edge">
+              <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} />
             </span>
-            <span
-              title={next?.tip}
-              className={cn(
-                LEDGER_LABEL_CLASS,
-                'flex h-full w-32 shrink-0 items-center border-l border-mode-edge px-2',
-                next?.blocked ? STATE_TONE_CLASSES.danger.text : 'text-mode-ink',
-              )}
-            >
-              {next?.label ?? ''}
-            </span>
+            <LedgerNextStep next={next} />
           </div>
         </div>
       )}
@@ -961,335 +1081,32 @@ const LedgerRecord = memo(function LedgerRecord({
   );
 });
 
-function stageFacts(value: CompoundSlotValue | null): CompoundStageStepFacts | null {
-  return value && value.kind === 'stage_event' ? value : null;
-}
-
-// ── Inline editors (instant commit, 32px hit, never open the row) ───────────
-
-function LedgerShipBy({
-  dateKey,
-  overdueDays,
-  dueToday,
-  tip,
-  onCommit,
+/**
+ * The order's WHERE — every live allocation's warehouse breadcrumb, from the
+ * server (`storage_locations`) through the formatter `/m/work` uses, so the
+ * desk and the handheld print the same path. With nothing allocated it falls
+ * back to the SKU's home bin (`resolveOrderBin`), tagged `HOME` so it never
+ * passes for an allocation. Neither reads UNASSIGNED in the warn ink: an order
+ * with nowhere to pick from is a floor problem.
+ */
+export function LedgerLocation({
+  path,
+  source = path ? 'allocation' : null,
+  className,
 }: {
-  dateKey: string | null;
-  overdueDays: number;
-  dueToday: boolean;
-  tip?: string;
-  onCommit: (dateKey: string) => void;
+  path: string | null;
+  source?: OrderBinFace['source'];
+  className?: string;
 }) {
-  const current = (dateKey ?? '').trim();
-  const face =
-    overdueDays > 0
-      ? `LATE ${overdueDays}d`
-      : dueToday
-        ? 'DUE TODAY'
-        : current
-          ? `SHIP ${formatDateKeyShort(current)}`
-          : 'SHIP BY —';
+  const home = source === 'sku_home';
   return (
-    <HoverTooltip label={tip ?? 'Ship by'} asChild>
-      <div className="h-full w-full" onClick={stop} onPointerDown={stop}>
-        <DateRangePickerField
-          variant="compact"
-          ariaLabel="Ship by"
-          clickCursor
-          value={dateKeyToLocalDate(current)}
-          faceLabel={face}
-          onChange={(day) => {
-            const key = localDateToDateKey(day);
-            if (!key || key === current) return;
-            onCommit(key);
-          }}
-          className={cn(
-            'h-full min-h-mode-hit w-full gap-1 rounded-none border-0 bg-transparent px-2 py-0 shadow-none',
-            'hover:border-0 hover:bg-mode-hover',
-            LEDGER_LABEL_CLASS,
-            overdueDays > 0 ? STATE_TONE_CLASSES.danger.text : dueToday ? 'text-mode-ink' : 'text-mode-muted',
-          )}
-        />
-      </div>
-    </HoverTooltip>
-  );
-}
-
-function LedgerStageAssign({
-  verb,
-  doneVerb,
-  role,
-  facts,
-  selectedStaffId,
-  assignedName,
-  onCommit,
-}: {
-  verb: string;
-  doneVerb: string;
-  role: 'technician' | 'packer';
-  facts: CompoundStageStepFacts | null;
-  selectedStaffId: number | null;
-  /** Assignee face (`---` = nobody) — shown until the step is stamped. */
-  assignedName: string;
-  onCommit: (staffId: number | null, staffName: string | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const assign = { selectedStaffId, label: verb, role, onCommit };
-  const done = Boolean(facts?.at);
-  const assignable = canAssignCompoundStage(assign, facts?.at);
-  const actorId = facts?.whoStaffId ?? selectedStaffId;
-  const actorName =
-    (facts?.who ?? '').trim() ||
-    (selectedStaffId && assignedName !== '---' ? assignedName : '') ||
-    null;
-  const hasActor = Boolean(actorId || actorName);
-  const tip = formatCompoundStageStepLine(facts);
-
-  const face = (
-    <>
-      {hasActor ? (
-        <StaffAvatar staffId={actorId} name={actorName} avatarPhotoId={null} size="xs" colorRing alt={actorName ?? undefined} />
-      ) : (
-        <span aria-hidden className="h-5 w-5 shrink-0 rounded-full border border-dashed border-mode-edge" />
-      )}
-      <span className={cn(LEDGER_LABEL_CLASS, done ? 'text-mode-ink' : 'text-mode-muted')}>
-        {done ? doneVerb : verb}
-      </span>
-      <span className="min-w-0 truncate text-role-caption text-mode-muted">
-        {actorName ?? (hasActor ? '' : '—')}
-      </span>
-    </>
-  );
-
-  const body = assignable ? (
-    <button
-      ref={triggerRef}
-      type="button"
-      aria-haspopup="listbox"
-      aria-expanded={open}
-      aria-label={hasActor ? `Reassign ${verb}` : `Assign ${verb}`}
-      data-testid={`ledger-assign-${role}`}
-      onClick={(event) => {
-        event.stopPropagation();
-        setOpen((v) => !v);
-      }}
-      onPointerDown={stop}
-      className={cn(
-        'ds-raw-button flex h-full w-full min-w-0 items-center gap-1.5 px-1 text-left hover:bg-mode-hover',
-        LEDGER_HIT_CLASS,
-        focusRing('cell'),
-      )}
+    <span
+      className={cn(RECORD_LABEL_CLASS, 'truncate', path ? 'text-mode-ink' : 'text-mode-warn', className)}
+      title={path ? (home ? `${path} — SKU home bin, no unit allocated yet` : path) : 'No allocated location'}
     >
-      {face}
-    </button>
-  ) : (
-    <span className={cn('flex h-full w-full min-w-0 items-center gap-1.5 px-1', LEDGER_HIT_CLASS)}>{face}</span>
-  );
-
-  return (
-    <>
-      {tip && !assignable ? (
-        <HoverTooltip label={tip} asChild>
-          {body}
-        </HoverTooltip>
-      ) : (
-        body
-      )}
-      {assignable ? (
-        <StageStaffAssignPopover
-          open={open}
-          onClose={() => setOpen(false)}
-          anchorRef={triggerRef}
-          label={verb}
-          role={role}
-          selectedStaffId={selectedStaffId}
-          onCommit={onCommit}
-        />
-      ) : null}
-    </>
+      <span className="text-mode-muted">{home ? 'BIN HOME ' : 'BIN '}</span>
+      {path ?? 'UNASSIGNED'}
+    </span>
   );
 }
 
-function LedgerCondition({
-  value,
-  onCommit,
-}: {
-  value: string | null;
-  onCommit: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const current = resolveConditionGrade(value);
-  const label = conditionGradeTableLabel(value);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Condition, ${label}`}
-          data-testid="ledger-condition"
-          onClick={stop}
-          onPointerDown={stop}
-          className={cn(
-            'ds-raw-button flex h-full w-full items-center px-1 text-left hover:bg-mode-hover',
-            LEDGER_HIT_CLASS,
-            LEDGER_LABEL_CLASS,
-            focusRing('cell'),
-            conditionGradeTextClass(value),
-          )}
-        >
-          <span className="truncate">{label}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={0} className="w-48 rounded-none p-0.5" onClick={stop}>
-        <ul role="listbox" aria-label="Condition" className="flex flex-col">
-          {CONDITION_OPTIONS.map((opt, index) => (
-            <li key={opt.value}>
-              <ToolbarListboxOption
-                index={index}
-                selected={current === opt.value}
-                checkAlign="end"
-                onClick={() => {
-                  setOpen(false);
-                  if (current !== opt.value) onCommit(opt.value);
-                }}
-              >
-                <span className={opt.toneClass}>{opt.label}</span>
-              </ToolbarListboxOption>
-            </li>
-          ))}
-        </ul>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function LedgerQty({ value, onCommit }: { value: number; onCommit: (value: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value));
-  const commit = () => {
-    setEditing(false);
-    const n = Number(draft);
-    if (!Number.isInteger(n) || n < 1 || n === value) return;
-    onCommit(String(n));
-  };
-  if (editing) {
-    return (
-      <input
-        type="number"
-        min={1}
-        step={1}
-        inputMode="numeric"
-        autoFocus
-        aria-label="Quantity"
-        data-testid="ledger-qty-input"
-        value={draft}
-        onClick={stop}
-        onPointerDown={stop}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          event.stopPropagation();
-          if (event.key === 'Enter') commit();
-          if (event.key === 'Escape') setEditing(false);
-        }}
-        className={cn(
-          'h-full w-full rounded-none border-0 bg-mode-panel px-2 text-right outline outline-2 -outline-offset-2 outline-mode-ink',
-          LEDGER_ID_CLASS,
-        )}
-      />
-    );
-  }
-  return (
-    <button
-      type="button"
-      aria-label={`Quantity ${value}, edit`}
-      data-testid="ledger-qty"
-      onClick={(event) => {
-        event.stopPropagation();
-        setDraft(String(value));
-        setEditing(true);
-      }}
-      onPointerDown={stop}
-      className={cn(
-        'ds-raw-button flex h-full w-full items-center justify-end gap-1 px-2 hover:bg-mode-hover',
-        LEDGER_HIT_CLASS,
-        focusRing('cell'),
-      )}
-    >
-      <span className={cn(LEDGER_LABEL_CLASS, 'text-mode-muted')}>QTY</span>
-      <span className={cn(LEDGER_ID_CLASS, orderRowQtyTone(value))}>{value}</span>
-    </button>
-  );
-}
-
-function LedgerNote({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState('');
-  const text = value.trim();
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) setDraft('');
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={text ? `Note: ${text}. Add a note` : 'Add a note'}
-          data-testid="ledger-note"
-          onClick={stop}
-          onPointerDown={stop}
-          className={cn(
-            'ds-raw-button flex h-full w-full min-w-0 items-center gap-1.5 px-1 text-left hover:bg-mode-hover',
-            LEDGER_HIT_CLASS,
-            focusRing('cell'),
-          )}
-        >
-          <FileText className={cn('h-3.5 w-3.5 shrink-0', text ? 'text-mode-ink' : 'text-mode-muted')} aria-hidden />
-          <span className="min-w-0 truncate text-role-caption text-mode-muted">{text}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={0} className="w-72 rounded-none p-2" onClick={stop}>
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const note = draft.trim();
-            if (!note) return;
-            onCommit(note);
-            setOpen(false);
-          }}
-        >
-          {text ? <p className="text-role-caption text-mode-muted">{text}</p> : null}
-          <textarea
-            autoFocus
-            rows={3}
-            aria-label="New note"
-            data-testid="ledger-note-input"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
-            }}
-            className="w-full rounded-none border border-mode-control bg-mode-panel p-2 text-role-body text-mode-ink"
-          />
-          <button
-            type="submit"
-            disabled={!draft.trim()}
-            className={cn(
-              'ds-raw-button self-end bg-mode-ink px-3 text-mode-bar disabled:opacity-50',
-              LEDGER_HIT_CLASS,
-              LEDGER_LABEL_CLASS,
-              focusRing('control'),
-            )}
-          >
-            Add note
-          </button>
-        </form>
-      </PopoverContent>
-    </Popover>
-  );
-}

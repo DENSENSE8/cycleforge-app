@@ -596,7 +596,9 @@ export async function updateRepairField(id: number, field: string, value: any, o
       'received_at',
       'intake_confirmed_at',
       'received_by_staff_id',
-      'customer_id',
+      // customer_id is NOT here: it moves only through `setRepairCustomer` /
+      // `createAndLinkRepairCustomer` (`/api/repair-service/[id]/customer`), which
+      // check the customer belongs to the same org.
     ];
 
     if (!validFields.includes(field)) throw new Error(`Invalid field: ${field}`);

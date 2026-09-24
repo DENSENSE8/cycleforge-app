@@ -1,61 +1,44 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import { publishRepairChanged } from '@/lib/realtime/publish';
+import { publishRepairChanged, publishStockLedgerEvent } from '@/lib/realtime/publish';
 import { tenantQuery } from '@/lib/tenancy/db';
-
-const VALID_ACTION_TYPES = new Set<string>([
-  'replaced',
-  'repaired',
-  'cleaned',
-  'tested',
-  'no_fix',
-  'awaiting_part',
-]);
-
-interface ActionRow {
-  id: number;
-  repair_id: number;
-  staff_id: number | null;
-}
+import { REPAIR_DONOR_SOURCES } from '@/lib/repair/repair-actions';
+import {
+  loadRepairActionForMutation,
+  REPAIR_LEDGER_REASON,
+  softDeleteRepairAction,
+  type RepairActionOwnerRow,
+} from '@/lib/repair/repair-action-queries';
+import { REPAIR_ACTION_TYPES } from '@/lib/schemas/repair-actions';
 
 function normString(v: unknown): string | null {
-  if (v === undefined) return undefined as unknown as null; // sentinel: skip
   const s = String(v ?? '').trim();
   return s || null;
 }
 
 function normInt(v: unknown): number | null {
-  if (v === undefined) return undefined as unknown as null; // sentinel: skip
   if (v === null) return null;
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
 }
 
-async function loadActionForMutation(
-  orgId: string,
-  id: number,
-): Promise<ActionRow | null> {
-  const r = await tenantQuery<ActionRow>(
-    orgId,
-    `SELECT id, repair_id, staff_id
-       FROM repair_actions
-      WHERE id = $1 AND deleted_at IS NULL`,
-    [id],
-  );
-  return r.rows[0] ?? null;
-}
-
-function canMutate(action: ActionRow, ctxStaffId: number, ctxRole: string | null | undefined): boolean {
+function canMutate(action: RepairActionOwnerRow, ctxStaffId: number, ctxRole: string | null | undefined): boolean {
   if (ctxRole === 'admin') return true;
   return action.staff_id === ctxStaffId;
 }
+
+/** Fields that decide what came off the shelf — frozen once the ledger was written. */
+const STOCK_BOUND_FIELDS = ['actionType', 'newSku', 'donorSource'] as const;
 
 /**
  * PATCH /api/repair/actions/[id]
  *
  * Editable fields: actionType, partName, oldSku, newSku, oldSerial, newSerial,
- * durationMin, notes. Author or admin only.
+ * durationMin, notes, donorSource, donorRef, componentRef, componentValue,
+ * componentQty. Author or admin only. An action that took its part from stock
+ * cannot change actionType / newSku / donorSource — delete it (which returns
+ * the part) and log it again.
  */
 export const PATCH = withAuth(
   async (req, ctx) => {
@@ -67,21 +50,35 @@ export const PATCH = withAuth(
       return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
 
-    const existing = await loadActionForMutation(orgId, id);
+    const existing = await loadRepairActionForMutation(orgId, id);
     if (!existing) return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     if (!canMutate(existing, ctx.staffId, ctx.role)) {
       return NextResponse.json({ error: 'Not allowed to edit this action' }, { status: 403 });
     }
 
     const body = await req.json().catch(() => ({}));
+    if (existing.stock_ledger_id != null && STOCK_BOUND_FIELDS.some((f) => body[f] !== undefined)) {
+      return NextResponse.json(
+        { error: 'This part was taken from stock — delete the entry and log it again to change it.' },
+        { status: 409 },
+      );
+    }
+
     const updates: Record<string, unknown> = {};
 
     if (body.actionType !== undefined) {
       const at = String(body.actionType).trim().toLowerCase();
-      if (!VALID_ACTION_TYPES.has(at)) {
+      if (!(REPAIR_ACTION_TYPES as readonly string[]).includes(at)) {
         return NextResponse.json({ error: `Invalid actionType` }, { status: 400 });
       }
       updates.action_type = at;
+    }
+    if (body.donorSource !== undefined) {
+      const ds = normString(body.donorSource);
+      if (ds !== null && !(REPAIR_DONOR_SOURCES as readonly string[]).includes(ds)) {
+        return NextResponse.json({ error: 'Invalid donorSource' }, { status: 400 });
+      }
+      updates.donor_source = ds;
     }
 
     const stringFields: Record<string, string> = {
@@ -91,25 +88,32 @@ export const PATCH = withAuth(
       oldSerial: 'old_serial',
       newSerial: 'new_serial',
       notes: 'notes',
+      donorRef: 'donor_ref',
+      componentRef: 'component_ref',
+      componentValue: 'component_value',
     };
     for (const [bodyKey, dbKey] of Object.entries(stringFields)) {
       if (body[bodyKey] !== undefined) updates[dbKey] = normString(body[bodyKey]);
     }
     if (body.durationMin !== undefined) updates.duration_min = normInt(body.durationMin);
+    if (body.componentQty !== undefined) {
+      const qty = normInt(body.componentQty);
+      updates.component_qty = qty && qty > 0 ? qty : null;
+    }
 
     const entries = Object.entries(updates);
     if (entries.length === 0) {
       return NextResponse.json({ error: 'No editable fields provided' }, { status: 400 });
     }
 
-    const setSql = entries.map(([col], i) => `${col} = $${i + 2}`).join(', ');
+    const setSql = entries.map(([col], i) => `${col} = $${i + 3}`).join(', ');
     const values = entries.map(([, v]) => v);
 
     try {
       await tenantQuery(
         orgId,
-        `UPDATE repair_actions SET ${setSql} WHERE id = $1`,
-        [id, ...values],
+        `UPDATE repair_actions SET ${setSql} WHERE id = $1 AND organization_id = $2`,
+        [id, orgId, ...values],
       );
       await invalidateCacheTags(['repair-service']);
       await publishRepairChanged({
@@ -118,10 +122,10 @@ export const PATCH = withAuth(
         source: 'repair.action-edited',
       });
       return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('PATCH /api/repair/actions/[id] error:', error);
       return NextResponse.json(
-        { error: 'Failed to update action', details: error?.message },
+        { error: 'Failed to update action', details: error instanceof Error ? error.message : String(error) },
         { status: 500 },
       );
     }
@@ -132,7 +136,8 @@ export const PATCH = withAuth(
 /**
  * DELETE /api/repair/actions/[id]
  *
- * Soft delete — sets deleted_at. Author or admin only.
+ * Soft delete — sets deleted_at. Author or admin only. If the action took its
+ * part from stock, the same transaction puts it back in its bin and on the ledger.
  */
 export const DELETE = withAuth(
   async (req, ctx) => {
@@ -143,29 +148,37 @@ export const DELETE = withAuth(
       return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
 
-    const existing = await loadActionForMutation(orgId, id);
+    const existing = await loadRepairActionForMutation(orgId, id);
     if (!existing) return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     if (!canMutate(existing, ctx.staffId, ctx.role)) {
       return NextResponse.json({ error: 'Not allowed to delete this action' }, { status: 403 });
     }
 
     try {
-      await tenantQuery(
-        orgId,
-        `UPDATE repair_actions SET deleted_at = NOW() WHERE id = $1`,
-        [id],
-      );
+      const result = await softDeleteRepairAction(orgId, ctx.staffId, id);
       await invalidateCacheTags(['repair-service']);
       await publishRepairChanged({
         organizationId: ctx.organizationId,
         repairIds: [existing.repair_id],
         source: 'repair.action-deleted',
       });
-      return NextResponse.json({ success: true });
-    } catch (error: any) {
+      if (result.returnedLedger) {
+        await publishStockLedgerEvent({
+          organizationId: ctx.organizationId,
+          ledgerId: result.returnedLedger.id,
+          sku: result.returnedLedger.sku,
+          delta: result.returnedLedger.delta,
+          reason: REPAIR_LEDGER_REASON.reversed,
+          dimension: 'WAREHOUSE',
+          staffId: ctx.staffId,
+          source: 'repair.action-deleted',
+        });
+      }
+      return NextResponse.json({ success: true, stockReturned: result.returnedLedger != null });
+    } catch (error: unknown) {
       console.error('DELETE /api/repair/actions/[id] error:', error);
       return NextResponse.json(
-        { error: 'Failed to delete action', details: error?.message },
+        { error: 'Failed to delete action', details: error instanceof Error ? error.message : String(error) },
         { status: 500 },
       );
     }

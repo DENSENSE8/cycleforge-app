@@ -60,7 +60,9 @@ import {
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Plus, ScanBarcode } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
+import { MOBILE_BAR_CELL_CLASS } from './MobileActionSlot';
 
 /**
  * The scan surface's own route — the CTA's destination and its "here" test.
@@ -141,13 +143,22 @@ export function useRegisterNewScan(handler: NewScanHandler): void {
  * The CTA itself. Renders last in {@link MobileTopBar}'s right cluster, so it
  * owns the top-right corner the thumb reaches for.
  *
- * It is the corner, not the colour. The face is `secondary` — card ground, hairline
- * ring, house ink — because the bar it sits in is already dense with meaning
- * (menu + unread dot, goal chip, page controls) and a saturated block there
- * competes with the record underneath rather than helping anyone find it.
- * Position and repetition do the work; volume was redundant.
+ * It is the corner, not the colour: a square 44px cell, flush to the bar's
+ * top-right corner, no radius, no padding around it (operator 2026-09-24) —
+ * the same cell face as the menu box top-left ({@link MOBILE_BAR_CELL_CLASS}).
+ * Icon only: the glyph states which act the tap takes (`ScanBarcode` = go
+ * scan, `Plus` = new scan on the scan surface) and the accessible name says
+ * both acts, so the square never needs a label to widen it.
  */
-export function MobileScanCta() {
+export function MobileScanCta({
+  fill = false,
+}: {
+  /**
+   * Stretch to the full height of a bar taller than the 44px cell (the 56px
+   * `MobileDetailTopBar`), so the cell stays flush to its top and bottom edges.
+   */
+  fill?: boolean;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const ctx = useContext(MobileScanContext);
@@ -273,9 +284,8 @@ export function MobileScanCta() {
   }, [cancelHold, onScanSurface, router, ctx]);
 
   return (
-    <Button
-      variant="secondary"
-      size="sm"
+    <IconButton
+      size="touch"
       onClick={onClick}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -288,36 +298,22 @@ export function MobileScanCta() {
       // the SYMBOL — it says "this thing is a code". The framed version with
       // the reticle corners is the VERB: point a reader at something. This
       // button starts a scan, so it wears the verb.
-      icon={onScanSurface ? <Plus className="h-3.5 w-3.5" /> : <ScanBarcode className="h-3.5 w-3.5" />}
+      icon={onScanSurface ? <Plus className="h-5 w-5" /> : <ScanBarcode className="h-5 w-5" />}
       // The name carries BOTH acts. A secondary gesture that is never announced
       // is a secret, and a screen-reader user cannot discover it by holding.
-      aria-label={
+      ariaLabel={
         onScanSurface
           ? 'Start a new scan. Press and hold, or Alt+Enter, to open Find.'
           : 'Go to scan. Press and hold, or Alt+Enter, to open Find.'
       }
       aria-keyshortcuts="Alt+Enter"
-      radius="surface"
-      // ds-allow-control-size — 32px PAINTED with a 44px hit region carried by
-      // the pseudo-element (32 + 6 + 6), which is `MOBILE_CONTROL_LADDER`'s
-      // paint-small-hit-big rule. It used to paint the full 44 and set the bar's
-      // height with it; the thumb target is unchanged, the chrome is 12px
-      // shorter, and the label dropped from 14px to 12px with it.
-      //
-      // QUIET on purpose (2026-08-21). It shipped as a saturated `primary` slab
-      // with a coloured shadow and 0.16em bold caps, which made a squared,
-      // monochrome header bar carry one loud blue block. The affordance was
-      // never the fill — it is the FIXED CORNER, the label, and the target.
-      // Volume was doing nothing the position wasn't already doing, and it
-      // fought the spine treatment it sits above ("No hue, anywhere").
-      //
       // `station-no-callout` kills the iOS text/image callout the hold would
       // otherwise raise over our own gesture.
-      className="station-no-callout relative h-8 shrink-0 px-2.5 text-role-caption font-semibold tracking-tight before:absolute before:-inset-1.5 before:content-['']"
-    >
-      {/* The label states which of the two behaviours the tap will take, so the
-          dual role is legible instead of hidden behind an identical face. */}
-      {onScanSurface ? 'New' : 'Scan'}
-    </Button>
+      className={cn(
+        MOBILE_BAR_CELL_CLASS,
+        'station-no-callout border-l text-text-default',
+        fill && 'h-auto self-stretch',
+      )}
+    />
   );
 }

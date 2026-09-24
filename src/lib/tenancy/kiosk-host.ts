@@ -283,6 +283,10 @@ const KIOSK_HOST_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/session(?:$|\/)/,
   // Callers: useKioskCustomerMatch. API: GET /api/kiosk/customer. User: "typing a phone number looks up an existing customer"
   /^\/api\/kiosk\/customer(?:$|\/)/,
+  // Callers: useKioskCompanionLink. API: POST /api/kiosk/companion[/sync]. User: "a QR code … to join the same repair service session"
+  /^\/api\/kiosk\/companion(?:$|\/)/,
+  // Callers: useKioskCartSync. API: /api/kiosk/carts[/[id][/open|/done]]. User: "recent carts for juggling multiple customers … IDed for multiple devices"
+  /^\/api\/kiosk\/carts(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,

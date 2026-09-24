@@ -3,9 +3,12 @@
 /**
  * CRUD manager for the org's storefront accounts (platform_accounts), grouped
  * under their platform. Each platform shows its active accounts with inline
- * rename + hide, a hidden/restore section, and an "add account" row; backed by
+ * rename (connection name + optional short label, `platform_accounts.short_label`
+ * — wins over the platform's on the ledger / label faces) + hide, a
+ * hidden/restore section, and an "add account" row; backed by
  * /api/catalog/platform-accounts. Lives in the /settings catalog section beside
- * {@link CatalogManagerList} (platforms + types).
+ * {@link CatalogManagerList} (platforms + types), and under the platform list
+ * in {@link CatalogManagerPopover} ("Edit platforms").
  *
  * Accounts are entirely org-defined (seeded from ebay_accounts + one default per
  * platform), so there is no built-in read-only fallback — before the migration
@@ -20,6 +23,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { normalizeShortLabelInput, PLATFORM_SHORT_LABEL_MAX } from '@/lib/platform-display';
 import { cn } from '@/utils/_cn';
 
 
@@ -38,6 +42,7 @@ export function PlatformAccountsManager() {
   const [addLabel, setAddLabel] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [editShort, setEditShort] = useState('');
   const [busyId, setBusyId] = useState<number | 'new' | null>(null);
 
   // Catalog isn't editable until the migration has seeded platforms.
@@ -73,7 +78,9 @@ export function PlatformAccountsManager() {
     const label = editLabel.trim();
     if (!label) return;
     setBusyId(id);
-    if (await call('PATCH', `/${id}`, { label })) setEditingId(null);
+    if (await call('PATCH', `/${id}`, { label, shortLabel: normalizeShortLabelInput(editShort) })) {
+      setEditingId(null);
+    }
     setBusyId(null);
   }
 
@@ -149,19 +156,39 @@ export function PlatformAccountsManager() {
                     className="flex items-center gap-2 rounded-lg border border-border-soft bg-surface-card inset-cozy"
                   >
                     {isEditing ? (
-                      <input
-                        autoFocus
-                        value={editLabel}
-                        onChange={(ev) => setEditLabel(ev.target.value)}
-                        onKeyDown={(ev) => {
-                          if (ev.key === 'Enter') void saveRename(a.id);
-                          if (ev.key === 'Escape') setEditingId(null);
-                        }}
-                        className={`${TEXT_INPUT} flex-1`}
-                      />
+                      <>
+                        <input
+                          autoFocus
+                          value={editLabel}
+                          aria-label="Connection name"
+                          onChange={(ev) => setEditLabel(ev.target.value)}
+                          onKeyDown={(ev) => {
+                            if (ev.key === 'Enter') void saveRename(a.id);
+                            if (ev.key === 'Escape') setEditingId(null);
+                          }}
+                          className={`${TEXT_INPUT} flex-1`}
+                        />
+                        <input
+                          value={editShort}
+                          maxLength={PLATFORM_SHORT_LABEL_MAX}
+                          aria-label="Connection short label"
+                          placeholder="SHORT"
+                          onChange={(ev) => setEditShort(ev.target.value.toUpperCase())}
+                          onKeyDown={(ev) => {
+                            if (ev.key === 'Enter') void saveRename(a.id);
+                            if (ev.key === 'Escape') setEditingId(null);
+                          }}
+                          className={`${TEXT_INPUT} w-24 shrink-0 font-mono uppercase`}
+                        />
+                      </>
                     ) : (
                       <span className="flex flex-1 items-center gap-2 truncate text-role-caption font-semibold text-text-default">
                         {a.label}
+                        {a.short_label ? (
+                          <span className="shrink-0 rounded bg-surface-sunken inset-chip font-mono text-role-eyebrow text-text-default">
+                            {a.short_label}
+                          </span>
+                        ) : null}
                         <span className="shrink-0 rounded bg-surface-sunken inset-chip font-mono text-role-eyebrow text-text-soft">
                           {a.slug}
                         </span>
@@ -191,6 +218,7 @@ export function PlatformAccountsManager() {
                           onClick={() => {
                             setEditingId(a.id);
                             setEditLabel(a.label);
+                            setEditShort(a.short_label ?? '');
                           }}
                           ariaLabel={`Rename ${a.label}`}
                           className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"

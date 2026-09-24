@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { labelCornerTicketDigits } from '@/lib/print/printReceivingLabel';
 import { formatLabelDateFromIso } from '@/components/labels/labelDate';
-import { usePlatformMeta, useReceivingTypeLabel } from '@/hooks/useCatalog';
+import { usePlatformMeta, usePlatformShortLabelLookup, useReceivingTypeLabel } from '@/hooks/useCatalog';
 import {
   printReceivingLabel,
   markReceivingLabelPrinted,
@@ -50,6 +50,7 @@ export function useCartonLabelEditor(
   const orgSlug = user?.organizationSlug ?? null;
   const resolvePlatformMeta = usePlatformMeta();
   const resolveTypeLabel = useReceivingTypeLabel();
+  const resolvePlatformShortLabel = usePlatformShortLabelLookup();
   // Label-only display choices (platform/date/corner), kept as a print-time
   // override so the preview reflects a custom print. Reset per carton line.
   const [labelOverride, setLabelOverride] = useState<LabelOverride>({});
@@ -79,8 +80,9 @@ export function useCartonLabelEditor(
         orgSlug,
         trackingHint,
         resolveTypeLabel,
+        resolvePlatformShortLabel,
       }),
-    [row.receiving_id, orgSlug, trackingHint, resolveTypeLabel],
+    [row.receiving_id, orgSlug, trackingHint, resolveTypeLabel, resolvePlatformShortLabel],
   );
 
   const draftDefaults: LabelEditDraft = {

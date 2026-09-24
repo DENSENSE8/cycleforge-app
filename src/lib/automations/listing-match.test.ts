@@ -4,6 +4,7 @@ import {
   filterActionsForCsvOverride,
   matchListingRule,
   normalizeItemNumber,
+  normalizeSku,
   parseAssignActions,
   ruleMatchesFacts,
   selectActionsForTrigger,
@@ -14,6 +15,12 @@ import {
 describe('normalizeItemNumber', () => {
   it('uppercases and strips non-alphanumerics', () => {
     assert.equal(normalizeItemNumber(' 9m52-b2c4 '), '9M52B2C4');
+  });
+});
+
+describe('normalizeSku', () => {
+  it('trims and uppercases, keeping punctuation', () => {
+    assert.equal(normalizeSku('  abc-12/x '), 'ABC-12/X');
   });
 });
 
@@ -37,6 +44,13 @@ describe('ruleMatchesFacts', () => {
 
   it('rejects empty when (no catch-all without keys)', () => {
     assert.equal(ruleMatchesFacts({}, { item_number: 'ABC' }), false);
+  });
+
+  it('compares sku normalized (trim + case)', () => {
+    assert.equal(
+      ruleMatchesFacts({ item_number: 'ABC', sku: ' red-1 ' }, { item_number: 'abc', sku: 'RED-1' }),
+      true,
+    );
   });
 });
 
@@ -90,6 +104,88 @@ describe('matchListingRule', () => {
     const sorted = [...rules].sort((a, b) => a.priority - b.priority || a.id - b.id);
     const hit = matchListingRule(sorted, 'unit.test_passed', { item_number: '9M52B2C4' });
     assert.equal(hit, null);
+  });
+});
+
+describe('matchListingRule — (item #, SKU) pair precedence', () => {
+  const assign = (tech: number, packer: number) => [
+    { type: 'assign_work', work_type: 'TEST', staff_id: tech },
+    { type: 'assign_work', work_type: 'PACK', staff_id: packer },
+  ];
+  const triggers = ['order.imported', 'order.item_number_set', 'unit.test_passed'];
+  // Sorted priority ASC: the wildcard outranks both pair rules by number.
+  const rules: AutomationRuleRow[] = [
+    {
+      id: 1,
+      name: 'Listing 9M52B2C4',
+      priority: 10,
+      triggerKeys: triggers,
+      whenJson: { item_number: '9M52B2C4' },
+      thenJson: assign(1, 2),
+    },
+    {
+      id: 2,
+      name: 'Listing 9M52B2C4 · BLK',
+      priority: 100,
+      triggerKeys: triggers,
+      whenJson: { item_number: '9M52B2C4', sku: 'BLK' },
+      thenJson: assign(3, 4),
+    },
+    {
+      id: 3,
+      name: 'Listing 9M52B2C4 · WHT',
+      priority: 100,
+      triggerKeys: triggers,
+      whenJson: { item_number: '9M52B2C4', sku: 'WHT' },
+      thenJson: assign(5, 6),
+    },
+  ];
+
+  it('pair rule beats the item-#-only wildcard despite a worse priority', () => {
+    const hit = matchListingRule(rules, 'order.imported', { item_number: '9m52-b2c4', sku: 'BLK' });
+    assert.equal(hit?.rule.id, 2);
+    assert.deepEqual(
+      hit?.actions.map((a) => a.staff_id),
+      [3, 4],
+    );
+  });
+
+  it('two SKUs on one item # route to their own pair rules', () => {
+    const hit = matchListingRule(rules, 'order.imported', { item_number: '9M52B2C4', sku: 'WHT' });
+    assert.equal(hit?.rule.id, 3);
+  });
+
+  it('wildcard still matches a SKU with no pair rule', () => {
+    const hit = matchListingRule(rules, 'order.imported', { item_number: '9M52B2C4', sku: 'RED' });
+    assert.equal(hit?.rule.id, 1);
+  });
+
+  it('wildcard matches an order line with no SKU', () => {
+    const hit = matchListingRule(rules, 'order.imported', { item_number: '9M52B2C4', sku: null });
+    assert.equal(hit?.rule.id, 1);
+  });
+
+  it('pair rule never matches a different SKU', () => {
+    const pairsOnly = rules.filter((r) => r.id !== 1);
+    assert.equal(
+      matchListingRule(pairsOnly, 'order.imported', { item_number: '9M52B2C4', sku: 'RED' }),
+      null,
+    );
+    assert.equal(
+      matchListingRule(pairsOnly, 'order.imported', { item_number: '9M52B2C4', sku: null }),
+      null,
+    );
+  });
+
+  it('pair match compares SKU normalized', () => {
+    const hit = matchListingRule(rules, 'order.imported', { item_number: '9M52B2C4', sku: ' blk ' });
+    assert.equal(hit?.rule.id, 2);
+  });
+
+  it('a pair rule without actions does not shadow the wildcard', () => {
+    const withEmptyPair = rules.map((r) => (r.id === 2 ? { ...r, thenJson: [] } : r));
+    const hit = matchListingRule(withEmptyPair, 'order.imported', { item_number: '9M52B2C4', sku: 'BLK' });
+    assert.equal(hit?.rule.id, 1);
   });
 });
 

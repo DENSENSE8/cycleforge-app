@@ -40,7 +40,7 @@ export function KioskV2Runtime({
    * frame is the wrong pane.
    */
   defaultCommand?: KioskCommandId;
-  /** The org's comp / void reason chips (`OrgSettings.kiosk`), delivered with the HTML likewise. */
+  /** The org's comp reason chips (`OrgSettings.kiosk`), delivered with the HTML likewise. */
   lineReasons?: KioskLineReasons;
   /** The org's brand colour (`OrgSettings.brand.primaryColor`) for the counter mode; null ⇒ registry default. */
   brandColor?: string | null;

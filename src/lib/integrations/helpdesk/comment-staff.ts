@@ -33,27 +33,32 @@ export async function recordHelpdeskCommentStaff(args: {
   );
 }
 
-/** After a post, bind the newest matching comment to the posting staffer. */
+/**
+ * After a post, bind the newest matching comment to the posting staffer.
+ * Returns that comment's id (null when no staffer or no comment matched), so a
+ * caller that must remember what it posted can store it.
+ */
 export async function recordStaffForPostedComment(args: {
   orgId: OrgId;
   ticketId: number;
   staffId: number;
   body: string;
   helpdesk: HelpdeskProvider;
-}): Promise<void> {
-  if (!args.staffId) return;
+}): Promise<number | null> {
+  if (!args.staffId) return null;
   const want = args.body.trim();
   const listed = await args.helpdesk.listComments(args.ticketId, { perPage: 100 });
   const comments = listed.comments ?? [];
   const match =
     [...comments].reverse().find((c) => (c.body ?? '').trim() === want) ?? comments.at(-1);
-  if (!match?.id) return;
+  if (!match?.id) return null;
   await recordHelpdeskCommentStaff({
     orgId: args.orgId,
     ticketId: args.ticketId,
     commentId: match.id,
     staffId: args.staffId,
   });
+  return match.id;
 }
 
 export async function staffAuthorsByCommentId(

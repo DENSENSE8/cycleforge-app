@@ -26,12 +26,20 @@
  * lives in the page headers of routes that ship their own mobile chrome.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { GlobalWedgeScannerMount, PhoneScanBridgeMount, StaffPrintBridgeMount } from '@/components/layout/scan-mounts';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
+import { recordMobileVisit } from '@/lib/mobile/nav-trail';
 
 export function MobileRouteShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  // Every /m landing joins the trail detail-bar Back reads (`lib/mobile/nav-trail`).
+  useEffect(() => {
+    if (pathname) recordMobileVisit(pathname);
+  }, [pathname]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Mirror of desktop: subscribe to phone:{staffId} so any device the

@@ -34,7 +34,7 @@
  */
 
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
-import { isBuybackPayload, isRepairPayload } from '@/lib/kiosk/cart-line';
+import { isBuybackPayload, isLinkedRepairLine, isRepairPayload } from '@/lib/kiosk/cart-line';
 import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
 import {
   consultStanceFromFace,
@@ -464,8 +464,15 @@ export function projectForDevicePrincipal(
     lines: visible.map(projectLine),
     customerName: snapshot.customer.name,
     customerPhoneMasked: maskPhone(snapshot.customer.phone),
+    // A linked repair was signed for when its ticket was written.
     awaitingSignatureLineIds: visible
-      .filter((l) => l.type === 'REPAIR' && isRepairPayload(l.payload) && !l.payload.signatureDataUrl)
+      .filter(
+        (l) =>
+          l.type === 'REPAIR' &&
+          isRepairPayload(l.payload) &&
+          !isLinkedRepairLine(l) &&
+          !l.payload.signatureDataUrl,
+      )
       .map((l) => l.id),
     paymentState: snapshot.paymentState,
     awaitingCardSinceMs: snapshot.awaitingCardSinceMs,
@@ -501,6 +508,9 @@ function projectLine(line: CounterSessionLine): KioskCartLine {
         serialNumber: line.payload.serialNumber,
         price: line.payload.price,
         signatureDataUrl: line.payload.signatureDataUrl ?? null,
+        // The ticket number is what the customer quotes; it is on their receipt.
+        linkedRepairId: line.payload.linkedRepairId ?? null,
+        linkedTicketNumber: line.payload.linkedTicketNumber ?? null,
       },
     };
   }

@@ -3,7 +3,15 @@
 /**
  * Mobile swipe-to-edit / swipe-to-void for a cart line.
  *
- * Callers: KioskCartLedger (only).
+ * A TAP must stay a tap. The row used to take pointer capture on every
+ * `pointerdown`, and a captured pointer's `click` is dispatched to the
+ * capturing element — this wrapper — so the card inside never received it:
+ * tapping a line opened nothing, and a repair line (no stepper) had no way to
+ * its serial or its Remove (operator 2026-09-24: "I cannot click anything to
+ * add a serial number … and I cannot remove the product"). Capture now starts
+ * only once the finger has travelled {@link DRAG_START_PX} sideways.
+ *
+ * Callers: KioskCartLineList.
  * Affected API: none (local gesture).
  * Data schemas: none.
  * User: "full create read update delete that I would easily be able to edit with side swipes that are mobile friendly"
@@ -16,38 +24,61 @@ import { cn } from '@/utils/_cn';
 
 const REVEAL_PX = 148;
 const COMMIT_PX = 56;
+/** Sideways travel before a press becomes a swipe. Below it, it is a tap. */
+const DRAG_START_PX = 8;
 
 export function KioskCartSwipeRow({
   children,
-  canVoid,
+  canRemove,
   onEdit,
-  onVoid,
+  onRemove,
 }: {
   children: ReactNode;
-  canVoid: boolean;
+  canRemove: boolean;
   onEdit: () => void;
-  onVoid: () => void;
+  onRemove: () => void;
 }) {
   const startX = useRef(0);
+  /** The press in progress (pointer id), or null. */
+  const pressing = useRef<number | null>(null);
+  const dragging = useRef(false);
   const [dx, setDx] = useState(0);
   const [open, setOpen] = useState(false);
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     startX.current = event.clientX;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    pressing.current = event.pointerId;
+    dragging.current = false;
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    const next = Math.min(0, event.clientX - startX.current);
-    setDx(Math.max(-REVEAL_PX, next));
+    if (pressing.current !== event.pointerId) return;
+    const travel = event.clientX - startX.current;
+    if (!dragging.current) {
+      if (Math.abs(travel) < DRAG_START_PX) return;
+      dragging.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    setDx(Math.max(-REVEAL_PX, Math.min(0, travel)));
   };
 
   const onPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    if (pressing.current !== event.pointerId) return;
+    pressing.current = null;
+    if (!dragging.current) {
+      // A tap: the card's own click handles it. A tap on a revealed row
+      // also folds the actions away.
+      if (open) {
+        setOpen(false);
+        setDx(0);
+      }
+      return;
+    }
+    dragging.current = false;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
-    const revealed = Math.abs(dx) >= COMMIT_PX || open;
+    const revealed = Math.abs(dx) >= COMMIT_PX;
     setOpen(revealed);
     setDx(revealed ? -REVEAL_PX : 0);
   };
@@ -67,15 +98,16 @@ export function KioskCartSwipeRow({
         >
           Edit
         </Button>
-        {canVoid ? (
+        {canRemove ? (
           <Button
             type="button"
             size="sm"
             variant="ghost"
             className={cn('self-center text-text-danger', counterCorner('chip'))}
-            onClick={onVoid}
+            onClick={onRemove}
+            data-testid="kiosk-cart-swipe-remove"
           >
-            Void
+            Remove
           </Button>
         ) : null}
       </div>

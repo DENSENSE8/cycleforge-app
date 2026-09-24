@@ -228,6 +228,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // desks would paint dashes for five minutes after deploy and blame the
       // data. Bump this string whenever the resolved price changes shape.
       priceProjectionVersion: 'price_facts_v1',
+      // Same reason: payloads cached before buyer_note / sku_home_location
+      // would paint no NOTE badge and no home bin for five minutes.
+      recordFactsVersion: 'buyer_note_sku_home_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=60' };
@@ -515,6 +518,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ${shortageLinkSelect}
         o.status,
         o.notes,
+        -- Marketplace buyer note (migration 2026-07-03p): an active fulfillment
+        -- exception the record paints as its NOTE badge; the pack/label routes
+        -- hold on it until acknowledged (src/lib/orders/buyer-note-interlock.ts).
+        o.buyer_note,
         /*
          * Row flag + ops-note count. THIRD copy of this projection, because the
          * outbound queue has three independent order readers (this route,
@@ -564,6 +571,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         allocation_facts.storage_locations,
         allocation_facts.allocated_unit_count,
         allocation_facts.picked_unit_count,
+        sku_home.location AS sku_home_location,
         pack_duration.duration AS pack_duration,
         test_activity.staff_id AS tested_by,
         to_char(test_activity.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at,
@@ -713,6 +721,33 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           AND allocation.organization_id = o.organization_id
           AND allocation.state NOT IN ('RELEASED', 'RETURNED')
       ) allocation_facts ON TRUE
+      /*
+       * The SKU's home bin (sku_stock.location) — where this SKU is picked from
+       * when no unit is allocated yet. Set from the To-ship evidence column via
+       * /api/update-sku-location. Same face as a storage_locations entry so one
+       * formatter paints both; allocations still win on the record.
+       */
+      LEFT JOIN LATERAL (
+        SELECT jsonb_build_object(
+                 'barcode', home.barcode,
+                 'name', COALESCE(home.name, stock.location),
+                 'room', COALESCE(home.room, home_room.name),
+                 'zoneLetter', COALESCE(home.zone_letter, home_room.zone_letter),
+                 'rowLabel', home.row_label,
+                 'colLabel', home.col_label
+               ) AS location
+          FROM sku_stock stock
+          LEFT JOIN locations home
+            ON home.organization_id = stock.organization_id
+           AND (home.barcode = stock.location OR home.name = stock.location)
+          LEFT JOIN locations home_room
+            ON home_room.id = home.parent_id
+           AND home_room.organization_id = home.organization_id
+         WHERE stock.organization_id = o.organization_id
+           AND stock.sku = COALESCE(sc.sku, o.sku)
+           AND NULLIF(btrim(stock.location), '') IS NOT NULL
+         LIMIT 1
+      ) sku_home ON TRUE
       ${PICK_FACTS_LATERALS}
       ${SHIP_OUT_LATERAL}
       ${DOCK_STAGING_LATERAL}

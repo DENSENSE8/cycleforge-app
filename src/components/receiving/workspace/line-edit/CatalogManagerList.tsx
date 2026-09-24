@@ -10,10 +10,15 @@
  * (rename edits the label only), hide-only — while custom rows are removable.
  * All deletes are soft, so anything hidden/removed is restorable below.
  *
- * Row anatomy — reorder · identity · name ……… accent · edit · remove:
+ * Row anatomy — reorder · identity · name · short ……… accent · edit · remove:
  *
- *   [▲▼] [●] [ Label  DEFAULT ] ……… [◍] [ ✎ ] [ 🗑 ]
- *         identity dot              accent name
+ *   [▲▼] [●] [ Label  AMZRN  DEFAULT ] ……… [◍] [ ✎ ] [ 🗑 ]
+ *         identity dot                     accent name
+ *
+ * Platforms carry a SHORT label (`platforms.short_label`, ≤ 8, upper-case) —
+ * the dense face the 2x1 carton label, the To-ship ledger band and the phone
+ * record print. The pencil edits name + short together; a blank short clears
+ * back to the built-in compact / full name ({@link platformShortLabelOverride}).
  *
  * TWO dots, two jobs, and they must not be collapsed into one:
  *
@@ -51,6 +56,11 @@ import { platformsQuery, typesQuery } from '@/lib/queries/catalog-queries';
 import type { PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
 import { useInvalidateCatalog, usePriorityCatalog } from '@/hooks/useCatalog';
 import { platformPaintFromHex } from '@/lib/color-contrast';
+import {
+  builtinPlatformShortLabel,
+  normalizeShortLabelInput,
+  PLATFORM_SHORT_LABEL_MAX,
+} from '@/lib/platform-display';
 import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { catalogIdentityDot } from './classify-pill-options';
@@ -111,6 +121,8 @@ interface Entry {
   isActive: boolean;
   isSystem: boolean;
   colorHex: string | null;
+  /** Org `short_label` (platforms only); null = built-in compact / full name. */
+  shortLabel: string | null;
 }
 
 /** Live face for a catalog accent — same paint the pill dot will use. */
@@ -175,6 +187,8 @@ export function CatalogManagerList({
    * out — every face below reads `Entry.colorHex`, never the kind.
    */
   const supportsColor = true;
+  /** Only platforms own a `short_label` column (2026-09-24). */
+  const supportsShortLabel = isPlatform;
 
   // Manager shows EVERYTHING (active + hidden) so a hidden default can be
   // restored — unlike the pickers, which read active-only via useCatalog.
@@ -209,6 +223,7 @@ export function CatalogManagerList({
         isActive: true,
         isSystem: true,
         colorHex: o.colorHex ?? null,
+        shortLabel: null,
       }))
     : rawRows.map((r) => ({
         id: r.id,
@@ -218,20 +233,27 @@ export function CatalogManagerList({
         isActive: r.is_active,
         isSystem: r.is_system,
         colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
+        shortLabel: isPlatform ? (r as PlatformRow).short_label : null,
       }));
   const editable = entries.length > 0;
   const active = entries.filter((e) => e.isActive);
   const hidden = entries.filter((e) => !e.isActive);
-  const fallbackLabels =
-    kind === 'platform'
-      ? SOURCE_PLATFORM_OPTS.map((o) => o.label)
-      : kind === 'priority'
-        ? PRIORITY_OVERRIDE_TIERS.map((t) => t.label)
-        : RECEIVING_TYPE_OPTS.map((o) => o.label);
+  // Deduped: two built-in platform options share the display name `Amazon`
+  // (marketplace + FBA), and this list is keyed by label.
+  const fallbackLabels = [
+    ...new Set(
+      kind === 'platform'
+        ? SOURCE_PLATFORM_OPTS.map((o) => o.label)
+        : kind === 'priority'
+          ? PRIORITY_OVERRIDE_TIERS.map((t) => t.label)
+          : RECEIVING_TYPE_OPTS.map((o) => o.label),
+    ),
+  ];
 
   const [adding, setAdding] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editLabel, setEditLabel] = useState('');
+  const [editShort, setEditShort] = useState('');
   const [busyId, setBusyId] = useState<number | 'new' | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [colorEditingId, setColorEditingId] = useState<number | null>(null);
@@ -270,13 +292,17 @@ export function CatalogManagerList({
     const label = editLabel.trim();
     if (!label) return;
     setBusyId(id);
-    if (await call('PATCH', `/${id}`, { label })) setEditingId(null);
+    const body = supportsShortLabel
+      ? { label, shortLabel: normalizeShortLabelInput(editShort) }
+      : { label };
+    if (await call('PATCH', `/${id}`, body)) setEditingId(null);
     setBusyId(null);
   }
 
   function beginEdit(e: Entry) {
     setEditingId(e.id);
     setEditLabel(e.label);
+    setEditShort(e.shortLabel ?? '');
     setColorEditingId(null);
   }
 
@@ -379,19 +405,43 @@ export function CatalogManagerList({
                 ) : null}
 
                 {isEditing ? (
-                  <input
-                    autoFocus
-                    value={editLabel}
-                    onChange={(ev) => setEditLabel(ev.target.value)}
-                    onKeyDown={(ev) => {
-                      if (ev.key === 'Enter') void saveRow(e.id);
-                      if (ev.key === 'Escape') setEditingId(null);
-                    }}
-                    className={`${TEXT_INPUT} flex-1`}
-                  />
+                  <>
+                    <input
+                      autoFocus
+                      value={editLabel}
+                      aria-label="Display label"
+                      onChange={(ev) => setEditLabel(ev.target.value)}
+                      onKeyDown={(ev) => {
+                        if (ev.key === 'Enter') void saveRow(e.id);
+                        if (ev.key === 'Escape') setEditingId(null);
+                      }}
+                      className={`${TEXT_INPUT} flex-1`}
+                    />
+                    {supportsShortLabel ? (
+                      <input
+                        value={editShort}
+                        maxLength={PLATFORM_SHORT_LABEL_MAX}
+                        aria-label="Short label (2x1 label)"
+                        placeholder={builtinPlatformShortLabel(e.slug) ?? 'SHORT'}
+                        onChange={(ev) => setEditShort(ev.target.value.toUpperCase())}
+                        onKeyDown={(ev) => {
+                          if (ev.key === 'Enter') void saveRow(e.id);
+                          if (ev.key === 'Escape') setEditingId(null);
+                        }}
+                        className={`${TEXT_INPUT} w-24 shrink-0 font-mono uppercase`}
+                      />
+                    ) : null}
+                  </>
                 ) : (
                   <span className="flex min-w-0 flex-1 items-center gap-2 truncate text-role-caption font-semibold text-text-default">
                     {e.label}
+                    {supportsShortLabel && e.shortLabel ? (
+                      <HoverTooltip label="Short label — prints on the 2x1 label" asChild>
+                        <span className="shrink-0 rounded bg-surface-sunken inset-chip font-mono text-role-eyebrow text-text-soft">
+                          {e.shortLabel}
+                        </span>
+                      </HoverTooltip>
+                    ) : null}
                     {e.isSystem ? (
                       <span className="shrink-0 rounded-full bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-wider text-text-soft">
                         Default
@@ -469,7 +519,7 @@ export function CatalogManagerList({
                         />
                       </HoverTooltip>
                     ) : null}
-                    <HoverTooltip label="Edit name" asChild>
+                    <HoverTooltip label={supportsShortLabel ? 'Edit name & short label' : 'Edit name'} asChild>
                       <IconButton
                         type="button"
                         onClick={() => beginEdit(e)}

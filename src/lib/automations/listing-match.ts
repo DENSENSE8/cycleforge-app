@@ -44,6 +44,15 @@ export function normalizeItemNumber(raw: string | null | undefined): string {
     .replace(/[^A-Z0-9]/g, '');
 }
 
+/**
+ * Normalize a SKU for rule keys: trim + upper-case. Same as
+ * platform_listings.merchant_sku_normalized (UPPER(BTRIM(sku))) and the
+ * ux_automation_rules_org_item_number_sku index expression.
+ */
+export function normalizeSku(raw: string | null | undefined): string {
+  return String(raw ?? '').trim().toUpperCase();
+}
+
 function factString(facts: ListingAutomationFacts, key: string): string | null {
   if (key === 'item_number') {
     const n = normalizeItemNumber(facts.item_number);
@@ -53,7 +62,7 @@ function factString(facts: ListingAutomationFacts, key: string): string | null {
     return facts.sku_catalog_id == null ? null : String(facts.sku_catalog_id);
   }
   if (key === 'sku') {
-    const s = String(facts.sku ?? '').trim();
+    const s = normalizeSku(facts.sku);
     return s || null;
   }
   if (key === 'account_source') {
@@ -67,6 +76,7 @@ function whenExpected(when: Record<string, unknown>, key: string): string | null
   const v = when[key];
   if (v == null || v === '') return null;
   if (key === 'item_number') return normalizeItemNumber(String(v)) || null;
+  if (key === 'sku') return normalizeSku(String(v)) || null;
   if (key === 'account_source') return String(v).trim().toLowerCase() || null;
   return String(v).trim() || null;
 }
@@ -111,14 +121,19 @@ export function parseAssignActions(raw: unknown): AssignWorkAction[] {
 }
 
 /**
- * First enabled rule (already sorted by priority ASC, id ASC) whose trigger
- * includes `triggerKey` and whose when matches facts.
+ * Rules arrive sorted by priority ASC, id ASC. Among enabled rules whose
+ * trigger includes `triggerKey`, whose when matches facts, and that carry at
+ * least one assign action: the first (item #, SKU) pair rule — both keys in
+ * when — wins regardless of priority, so it beats the item-#-only
+ * listing-wide wildcard; with no matching pair rule, the first match of any
+ * shape wins (priority order).
  */
 export function matchListingRule(
   rules: readonly AutomationRuleRow[],
   triggerKey: AutomationTriggerKey,
   facts: ListingAutomationFacts,
 ): { rule: AutomationRuleRow; actions: AssignWorkAction[] } | null {
+  let firstMatch: { rule: AutomationRuleRow; actions: AssignWorkAction[] } | null = null;
   for (const rule of rules) {
     if (!rule.triggerKeys.includes(triggerKey)) continue;
     const when =
@@ -128,9 +143,12 @@ export function matchListingRule(
     if (!ruleMatchesFacts(when, facts)) continue;
     const actions = parseAssignActions(rule.thenJson);
     if (actions.length === 0) continue;
-    return { rule, actions };
+    const isPairRule =
+      whenExpected(when, 'item_number') != null && whenExpected(when, 'sku') != null;
+    if (isPairRule) return { rule, actions };
+    firstMatch ??= { rule, actions };
   }
-  return null;
+  return firstMatch;
 }
 
 /** Filter assign actions by CSV override flags (row beats rule). */

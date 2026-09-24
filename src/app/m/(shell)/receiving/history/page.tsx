@@ -165,7 +165,7 @@ export default function MobileReceivingPipelinePage() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-surface-card">
-      <main className="relative min-h-0 flex-1 overflow-y-auto">
+      <div className="relative min-h-0 flex-1 overflow-y-auto">
         {/* Floating overlay — sticky, transparent, list scrolls behind. */}
         <div className="sticky top-0 z-sticky flex flex-col gap-2 px-3 pt-2 pb-3 pointer-events-none">
           <div className="pointer-events-auto">
@@ -265,7 +265,7 @@ export default function MobileReceivingPipelinePage() {
             })}
           </div>
         )}
-      </main>
+      </div>
 
       <MobileCartonSheet
         row={sheetRow}

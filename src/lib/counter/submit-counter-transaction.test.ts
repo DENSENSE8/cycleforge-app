@@ -7,6 +7,7 @@ import {
   CounterTransactionValidationError,
   interpretStageOrderResponse,
   submitCounterTransaction,
+  type LinkableRepairRow,
   type StageOrderResult,
   type SubmitCounterTransactionDeps,
 } from './submit-counter-transaction';
@@ -53,6 +54,10 @@ interface FakeOpts {
   stageThrows?: Error;
   priorOrderConfirms?: string | null;
   enqueueQueued?: boolean;
+  /** The repair book as `findLinkableRepairs` sees it. */
+  linkable?: LinkableRepairRow[];
+  /** Repair ids whose guarded link finds another visit already holding them. */
+  claimLost?: number[];
 }
 
 function fakes(opts: FakeOpts = {}) {
@@ -127,7 +132,12 @@ function fakes(opts: FakeOpts = {}) {
       };
     },
     async linkRepairToHeader(_orgId, repairId, headerId) {
+      if (opts.claimLost?.includes(repairId)) return false;
       calls.repairLinks.push({ repairId, headerId });
+      return true;
+    },
+    async findLinkableRepairs(_orgId, repairIds) {
+      return (opts.linkable ?? []).filter((row) => repairIds.includes(row.id));
     },
     async stageOrder(_orgId, lines, idempotencyKey) {
       calls.staged.push({ count: lines.length, idempotencyKey, lines: [...lines] });
@@ -289,6 +299,110 @@ test('combined: both halves persist against one header, and ONE staged order cov
   // The core identity this fix exists to hold: what gets staged for payment
   // equals what the header claims the visit is worth.
   assert.equal(res.sale?.totalCents, res.totalCents);
+});
+
+// ── Linked (existing) repairs ───────────────────────────────────────────────
+
+function linkable(patch: Partial<LinkableRepairRow> = {}): LinkableRepairRow {
+  return {
+    id: 4799,
+    ticketNumber: '#9998',
+    productTitle: 'Wave Radio CD',
+    serialNumber: '0488AC',
+    price: '168.00',
+    issue: 'No power',
+    counterTransactionId: null,
+    ...patch,
+  };
+}
+
+test('a linked repair is linked, totalled and staged — never re-created, signed or ticketed', async () => {
+  const { deps, calls } = fakes({ linkable: [linkable()] });
+
+  const res = await submitCounterTransaction(
+    input({
+      retailLines: [line({ unitAmountCents: 500 })],
+      linkedRepairs: [{ repairId: 4799 }, { repairId: 4799 }],
+      ticketWork: { mode: 'none' },
+    }),
+    ORG,
+    deps,
+  );
+
+  assert.deepEqual(calls.repairInputs, [], 'an existing repair is never re-submitted as intake');
+  assert.deepEqual(calls.repairLinks, [{ repairId: 4799, headerId: 900 }], 'linked once, deduped');
+  assert.deepEqual(calls.enqueued, [], 'no helpdesk ticket for a ticket that already exists');
+  assert.deepEqual(res.repairs, [], '`repairs` stays the devices taken in on THIS visit');
+  // The ticket's own quote ($168.00), not a tablet figure, joins the header.
+  assert.equal(res.subtotalCents, 500);
+  assert.equal(res.totalCents, 500 + 16800);
+  assert.equal(calls.headers[0]?.totalCents, 500 + 16800);
+  // One staged order: the retail line plus the linked repair, same money.
+  assert.equal(calls.staged.length, 1);
+  const repairLine = calls.staged[0].lines.find((l) => l.sku === 'REPAIR-4799');
+  assert.equal(repairLine?.unitAmountCents, 16800);
+  assert.match(repairLine?.productTitle ?? '', /Wave Radio CD repair — No power/);
+  assert.equal(res.sale?.totalCents, res.totalCents);
+});
+
+test('a visit carrying ONLY a linked repair submits — no service, no signature needed', async () => {
+  const { deps, calls } = fakes({ linkable: [linkable({ issue: null })] });
+
+  const res = await submitCounterTransaction(
+    input({ linkedRepairs: [{ repairId: 4799 }] }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.status, 'staged');
+  assert.equal(res.totalCents, 16800);
+  assert.deepEqual(calls.repairLinks, [{ repairId: 4799, headerId: 900 }]);
+  // No recorded issue → the line names the ticket, never a bare id.
+  assert.match(calls.staged[0].lines[0].productTitle, /Wave Radio CD repair — #9998/);
+});
+
+test('a linked repair already on ANOTHER visit is refused before anything is written', async () => {
+  const { deps, calls } = fakes({ linkable: [linkable({ counterTransactionId: 57 })] });
+
+  await assert.rejects(
+    () =>
+      submitCounterTransaction(
+        input({ retailLines: [line()], linkedRepairs: [{ repairId: 4799 }] }),
+        ORG,
+        deps,
+      ),
+    (err: unknown) => {
+      assert.ok(err instanceof CounterTransactionValidationError);
+      assert.match(err.message, /#9998 is already on visit #57/);
+      return true;
+    },
+  );
+  assert.deepEqual(calls.headers, [], 'no header — the idempotency key stays free to retry');
+  assert.deepEqual(calls.createdCustomers, []);
+  assert.deepEqual(calls.repairLinks, []);
+});
+
+test('a linked repair outside this org\'s book is refused, not silently dropped', async () => {
+  const { deps, calls } = fakes({ linkable: [] });
+  await assert.rejects(
+    () => submitCounterTransaction(input({ linkedRepairs: [{ repairId: 4799 }] }), ORG, deps),
+    (err: unknown) => err instanceof CounterTransactionValidationError,
+  );
+  assert.deepEqual(calls.headers, []);
+});
+
+test('a linked repair another visit claims mid-submit is not charged here', async () => {
+  const { deps, calls } = fakes({ linkable: [linkable()], claimLost: [4799] });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], linkedRepairs: [{ repairId: 4799 }] }),
+    ORG,
+    deps,
+  );
+
+  assert.ok(calls.staged[0].lines.every((l) => l.sku !== 'REPAIR-4799'));
+  assert.equal(res.status, 'partially_paid');
+  assert.ok(res.warnings.some((w) => /#9998 was linked to another visit/.test(w)));
 });
 
 // ── Partial failure (doc 04 §5) ─────────────────────────────────────────────

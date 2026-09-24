@@ -19,6 +19,7 @@ import {
   type MobileDisplayConfig,
 } from '@/lib/auth/mobile-display-config';
 import type { OrgMembership } from '@/lib/identity/types';
+import { clearWorkbenchCache } from '@/lib/mobile/workbench-cache';
 
 export type { OrgMembership };
 
@@ -172,7 +173,11 @@ export function AuthProvider({ initial = null, kioskHost = false, children }: Pr
     } catch {
       // swallow — even if the server call fails, drop the local user
     }
-    setUser(null);
+    // Committed synchronously so `WorkbenchCachePersistence` has unmounted (and
+    // cancelled its throttled write) before the repair workbench's refresh
+    // cache — customer PII in this tab — is cleared.
+    flushSync(() => setUser(null));
+    clearWorkbenchCache();
     // Rail first-paint seeds now live in Upstash keyed per org + viewer with a
     // short TTL (see rail-snapshot-cache.ts) — no browser-side purge needed; a
     // different login simply reads its own (or an empty) seed.

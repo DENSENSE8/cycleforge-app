@@ -6,6 +6,7 @@ import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 
 type StartResponse = {
   success: true;
@@ -66,17 +67,21 @@ export default function MobilePackStartPage() {
     startedFor.current = orderRowId;
 
     let cancelled = false;
-    const idempotencyKey = safeRandomUUID();
     void (async () => {
       try {
         setError(null);
-        const response = await fetch('/api/packing-logs/draft', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey,
-          },
-          body: JSON.stringify({ orderId: orderRowId, clientEventId: idempotencyKey }),
+        // A held order (buyer note) opens the note first; acknowledging it
+        // retries under a fresh key — see sendWithBuyerNoteAck.
+        const response = await sendWithBuyerNoteAck(() => {
+          const idempotencyKey = safeRandomUUID();
+          return fetch('/api/packing-logs/draft', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
+            },
+            body: JSON.stringify({ orderId: orderRowId, clientEventId: idempotencyKey }),
+          });
         });
         const body: unknown = await response.json().catch(() => null);
         if (!response.ok || !isStartResponse(body)) {
@@ -99,7 +104,7 @@ export default function MobilePackStartPage() {
   }, [attempt, isLoaded, orderRowId, params?.orderId, router, user]);
 
   return (
-    <main className="grid min-h-[100dvh] place-items-center bg-surface-card px-6 py-10 text-center">
+    <div className="grid min-h-[100dvh] place-items-center bg-surface-card px-6 py-10 text-center">
       <div className="max-w-sm border border-border-hairline bg-surface-card px-5 py-6">
         {error ? (
           <>
@@ -130,6 +135,6 @@ export default function MobilePackStartPage() {
           </>
         )}
       </div>
-    </main>
+    </div>
   );
 }

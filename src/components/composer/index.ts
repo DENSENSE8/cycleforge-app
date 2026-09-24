@@ -11,7 +11,6 @@ export {
   ComposerModeRow,
   ComposerProcedureRingButton,
 } from './ComposerModeRow';
-export { ComposerStagedPhotoStrip } from './ComposerStagedPhotoStrip';
 export { TicketComposer } from './TicketComposer';
 export { useTicketComposer } from '@/lib/composer/use-ticket-composer';
 export type { TicketComposerApi } from '@/lib/composer/use-ticket-composer';

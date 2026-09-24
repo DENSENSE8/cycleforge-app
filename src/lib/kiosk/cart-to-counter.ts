@@ -15,6 +15,7 @@ import {
   isRetailPayload,
 } from '@/lib/kiosk/cart-line';
 import type {
+  CounterLinkedRepairInput,
   CounterPriceAdjustment,
   CounterRetailLine,
   CounterServiceLine,
@@ -47,6 +48,12 @@ interface KioskCartMappedParts {
    * left to count, so the counter is gone rather than left reporting zero.
    */
   services: CounterServiceLine[];
+  /**
+   * REPAIR lines that point at an existing ticket. Only the id travels: the
+   * server reads the quote and device from the ticket itself, and a linked
+   * line in `services` would be taken in (and signed for) a second time.
+   */
+  linkedRepairs: CounterLinkedRepairInput[];
 }
 
 export function mapKioskCartToCounterParts(
@@ -54,6 +61,7 @@ export function mapKioskCartToCounterParts(
 ): KioskCartMappedParts {
   const retailLines: CounterRetailLine[] = [];
   const services: CounterServiceLine[] = [];
+  const linkedRepairs: CounterLinkedRepairInput[] = [];
 
   for (const line of lines) {
     if (line.type === 'RETAIL' && isRetailPayload(line.payload)) {
@@ -84,6 +92,10 @@ export function mapKioskCartToCounterParts(
 
     if (line.type === 'REPAIR' && isRepairPayload(line.payload)) {
       const p = line.payload;
+      if (p.linkedRepairId != null && p.linkedRepairId > 0) {
+        linkedRepairs.push({ repairId: p.linkedRepairId });
+        continue;
+      }
       const mapped: CounterServiceLine = {
         productType: p.productType ?? null,
         productModel: p.productModel,
@@ -111,5 +123,5 @@ export function mapKioskCartToCounterParts(
     }
   }
 
-  return { retailLines, services };
+  return { retailLines, services, linkedRepairs };
 }

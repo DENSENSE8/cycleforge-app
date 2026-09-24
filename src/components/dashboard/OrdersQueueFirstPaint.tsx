@@ -16,21 +16,26 @@
  */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { resolveRowWorkflowStage, type QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
-import { orderLifecycleState } from '@/lib/order-lifecycle';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path';
+import { recordState } from '@/components/outbound/orders/outbound-orders-ledger-state';
 import {
   LEDGER_BAND_CLASS,
-  LEDGER_ID_CLASS,
-  LEDGER_LABEL_CLASS,
+  LEDGER_LOCATION_CLASS,
   LEDGER_PHOTO_CLASS,
   LEDGER_ROW_CLASS,
   LEDGER_SPINE_CLASS,
-  LEDGER_TITLE_CLASS,
   LEDGER_TOOLBAR_CLASS,
   type LedgerRowZoom,
 } from '@/components/outbound/orders/outbound-orders-ledger-geometry';
 import { cn } from '@/utils/_cn';
+import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
+import {
+  RECORD_ID_CLASS,
+  RECORD_LABEL_CLASS,
+  RECORD_TITLE_CLASS,
+  recordStateCodeClass,
+} from '@/design-system/tokens/industrial-record';
 
 /** Byte-identical to `'relative flex min-h-0 min-w-0 flex-1 flex-col'` in workbench-shell.tsx. */
 const SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-col';
@@ -154,9 +159,8 @@ export function OrdersLedgerStandIn({
   return (
     <ul>
       {rows.map((row) => {
-        const state = orderLifecycleState(resolveRowWorkflowStage(row as QueueRowRecord), {
-          urgent: Boolean((row as QueueRowRecord).is_urgent),
-        });
+        const state = recordState(row);
+        const location = formatOutboundStoragePath(row.storage_locations);
         const orderId = String(row.order_id || row.id || '').trim();
         const title = String(row.product_title || row.sku || 'Order').trim();
         return (
@@ -177,18 +181,36 @@ export function OrdersLedgerStandIn({
                   bands.length > 1 && 'border-b border-mode-rule',
                 )}
               >
-                <span className={cn(LEDGER_LABEL_CLASS, 'w-9 shrink-0', state === 'urgent' ? 'text-mode-warn' : LIFECYCLE_CLASSES[state].text)}>
+                <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))}>
                   {LIFECYCLE[state].code}
                 </span>
-                <span className={cn(LEDGER_ID_CLASS, 'truncate')}>{orderId || '—'}</span>
+                {/* Same rigid slot as the live record, so the swap never shifts. */}
+                <RecordNoteSlot note={String(row.buyer_note ?? '').trim() || null} />
+                {bands.length > 1 ? null : (
+                  <span
+                    className={cn(
+                      RECORD_LABEL_CLASS,
+                      LEDGER_LOCATION_CLASS[zoom],
+                      'truncate',
+                      location ? 'text-mode-ink' : 'text-mode-warn',
+                    )}
+                  >
+                    BIN {location ?? 'UNASSIGNED'}
+                  </span>
+                )}
+                <span className={cn(RECORD_ID_CLASS, 'truncate')}>{orderId || '—'}</span>
               </span>
               {bands.length > 1 ? (
                 <>
                   <span className={cn('flex min-w-0 items-center border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
-                    <span className={LEDGER_TITLE_CLASS}>{title}</span>
+                    <span className={RECORD_TITLE_CLASS}>{title}</span>
                   </span>
-                  <span className={cn('flex min-w-0 items-center pl-2', LEDGER_BAND_CLASS[zoom])}>
-                    <span className={cn(LEDGER_LABEL_CLASS, 'text-mode-muted')}>
+                  {/* F-pattern band 3: BIN beside SKU, the physical lookup pair. */}
+                  <span className={cn('flex min-w-0 items-center gap-3 pl-2', LEDGER_BAND_CLASS[zoom])}>
+                    <span className={cn(RECORD_LABEL_CLASS, 'truncate', location ? 'text-mode-ink' : 'text-mode-warn')}>
+                      BIN {location ?? 'UNASSIGNED'}
+                    </span>
+                    <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>
                       SKU {String(row.sku || '—')}
                     </span>
                   </span>

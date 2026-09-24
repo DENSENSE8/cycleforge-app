@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import {
+  claimOverlay,
   getOverlayDepth,
   getServerOverlayDepth,
-  pushOverlay,
   subscribeOverlayStack,
+  type OverlayClaim,
 } from '@/lib/overlay-stack/store';
 
 /**
@@ -14,15 +15,26 @@ import {
  * in one line: **the innermost open overlay owns Escape**, so ambient keyboard
  * owners can stand down instead of stealing the keystroke in capture phase.
  *
+ * Returns a stable `isTopmost()` for overlays that own their own Escape
+ * listener: a stacked sheet (confirm over an action sheet) and its parent both
+ * hear the key, and only the one on top may act on it.
+ *
  * `AnchoredLayer` calls this, which covers every house Popover / DropdownMenu /
  * ContextMenu / cell editor / Calendar for free. A bespoke overlay that portals
  * its own panel should call it too.
  */
-export function useRegisterOverlay(active: boolean): void {
+export function useRegisterOverlay(active: boolean): () => boolean {
+  const claimRef = useRef<OverlayClaim | null>(null);
   useEffect(() => {
     if (!active) return undefined;
-    return pushOverlay();
+    const claim = claimOverlay();
+    claimRef.current = claim;
+    return () => {
+      claim.release();
+      if (claimRef.current === claim) claimRef.current = null;
+    };
   }, [active]);
+  return useCallback(() => claimRef.current?.isTopmost() ?? false, []);
 }
 
 /**

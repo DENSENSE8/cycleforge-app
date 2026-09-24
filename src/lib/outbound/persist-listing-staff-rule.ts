@@ -1,6 +1,7 @@
 /**
- * Client write for the repeating item-number → picker/packer rule.
- * Same POST as the To-ship "Listing → staff" overlay.
+ * Client write for the repeating (item #, SKU) → picker/packer rule.
+ * Same POST as the To-ship "Listing → staff" overlay; the server reads the
+ * order line's item # and SKU and keys the rule on that pair.
  */
 
 export async function persistListingStaffRule(args: {

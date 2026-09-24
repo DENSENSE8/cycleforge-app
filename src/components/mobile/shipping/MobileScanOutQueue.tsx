@@ -13,7 +13,7 @@ export function MobileScanOutQueue() {
   const rows = query.data?.staged ?? [];
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-scan-out-queue">
+    <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-scan-out-queue">
       <div className="border-b border-border-hairline px-3 py-2 text-role-caption text-text-muted">
         {query.isPending ? 'Loading staged cartons…' : `${rows.length} staged ${rows.length === 1 ? 'carton' : 'cartons'} awaiting carrier`}
       </div>
@@ -38,6 +38,6 @@ export function MobileScanOutQueue() {
           </ul>
         )}
       </div>
-    </main>
+    </div>
   );
 }

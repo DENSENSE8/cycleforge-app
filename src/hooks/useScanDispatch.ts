@@ -28,6 +28,7 @@ import { routeScan } from '@/lib/barcode-routing';
 import type { ScanRoute } from '@/lib/barcode-routing';
 import {
   dispatchScan,
+  type ArmedScanSession,
   type ScanDispatch,
   type ScanObjectState,
 } from '@/lib/scan/dispatch-table';
@@ -56,19 +57,23 @@ async function trackingSeen(raw: string): Promise<boolean> {
 /**
  * Resolve one raw scan to its dispatch — the Card, session title, mode,
  * reason and destination — fetching object state only when the class can use
- * it. `null` only when the value does not decode at all.
+ * it. `null` only when the value does not decode at all. `armedSession` is
+ * the kernel's current job (e.g. QC), or null when nothing is armed.
  */
 export function useScanDispatch() {
-  const resolve = useCallback(async (raw: string): Promise<ScanDispatch | null> => {
+  const resolve = useCallback(async (
+    raw: string,
+    armedSession: ArmedScanSession | null = null,
+  ): Promise<ScanDispatch | null> => {
     const route = routeScan(raw);
     if (!route) return null;
 
     if (route.type === 'carrier-tracking') {
-      return dispatchScan({ scan: route, state: { trackingSeen: await trackingSeen(raw) } });
+      return dispatchScan({ scan: route, state: { trackingSeen: await trackingSeen(raw) }, armedSession });
     }
 
     if (!OBJECT_STATE_CLASSES.has(route.type)) {
-      return dispatchScan({ scan: route });
+      return dispatchScan({ scan: route, armedSession });
     }
 
     let state: ScanObjectState = {};
@@ -88,7 +93,7 @@ export function useScanDispatch() {
       /* offline / hard failure → honest empty state, never a guess */
     }
 
-    return dispatchScan({ scan: route, state });
+    return dispatchScan({ scan: route, state, armedSession });
   }, []);
 
   return { resolve };

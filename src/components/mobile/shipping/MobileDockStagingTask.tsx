@@ -48,7 +48,7 @@ export function MobileDockStagingTask({ shipmentId }: { shipmentId: number }) {
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-dock-staging-task">
       <MobileDetailTopBar backHref="/m/shipping/stage" subtitle="Stage at rack" title={row?.orderId || 'Packed carton'} mono />
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {query.isError ? (
           <EmptyState tone="danger" icon={<AlertTriangle className="h-6 w-6" />} title="Couldn’t load this carton" description="Return to the staging queue and retry." />
         ) : query.isPending ? (
@@ -69,7 +69,7 @@ export function MobileDockStagingTask({ shipmentId }: { shipmentId: number }) {
             </Inset>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }

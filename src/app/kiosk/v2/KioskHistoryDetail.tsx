@@ -101,6 +101,8 @@ import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepa
 import { toast } from '@/lib/toast';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { KIOSK_POS_CTA, KIOSK_POS_CTA_SECONDARY } from '@/app/kiosk/kiosk-pos-surface';
+import { useAddLinkedRepair } from '@/components/kiosk/KioskLinkRepair';
+import { linkableRepairFromHistory } from '@/lib/kiosk/linked-repair-line';
 import type {
   KioskVisitDetail,
   KioskVisitEditInput,
@@ -394,6 +396,9 @@ export function KioskHistoryDetail({
   const [editing, setEditing] = useState(false);
   const [customerDraft, setCustomerDraft] = useState({ name: '', phone: '', email: '' });
   const [deviceDrafts, setDeviceDrafts] = useState<Record<number, DeviceDraft>>({});
+  // A standalone ticket can join the live cart as a linked line — the same
+  // helper the cart's own `Link existing repair` search uses.
+  const addLinked = useAddLinkedRepair();
 
   // A new record on screen cancels any half-typed edit of the previous one —
   // saving a draft against a different visit is the worst bug this face could
@@ -1045,6 +1050,21 @@ export function KioskHistoryDetail({
                 ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {!visit && repair ? (
+              // Only a STANDALONE ticket: a visit's repair is already on a
+              // receipt, and the server refuses to move it onto another.
+              <Button
+                variant="secondary"
+                size="lg"
+                className={cn(KIOSK_POS_CTA_SECONDARY, ACTION_KEY)}
+                disabled={busy}
+                onClick={() => addLinked(linkableRepairFromHistory(repair, soleDevice))}
+                data-testid="kiosk-history-add-to-cart"
+              >
+                Add to cart
+              </Button>
+            ) : null}
 
             {soleDevice ? (
               <Button

@@ -1,12 +1,21 @@
 /**
- * Staff-ID silent print bridge — phone publishes a job; the computer logged
- * in as that staff ID prints on the paired USB/serial profile.
+ * Staff-ID silent print bridge — phone publishes a job; ONE named print
+ * station (a computer signed in as that staff ID) prints it on its paired
+ * USB/serial profile.
  *
  * Port of the packer/phone handshake grammar (subscribe-before-publish ACK),
  * not a Pack clone. Channel: {@link getStaffPrintBridgeChannelName}.
  *
- * Callers: StaffPrintBridgeHost (desktop), mobile /m/print. No DB schema —
- * Ably is ephemeral (same D3 as send-to-device). User: staff ID ↔ silent USB.
+ * Station targeting: every host status carries its `stationId` + `stationName`;
+ * every job and options patch carries a REQUIRED `targetStationId`. A wire
+ * message without a target is junk (parsers return null), so no job is ever
+ * broadcast to every computer signed in as the staffer. Status requests stay
+ * broadcast — every station answers, which is how the phone lists them.
+ *
+ * Callers: StaffPrintBridgeHost (desktop), useStaffPrintBridgeClient (mobile
+ * /m/print and repair paperwork /m/rs/[id]/paperwork). No DB schema — Ably is
+ * ephemeral (same D3 as send-to-device). User: staff ID ↔ silent USB;
+ * operator 2026-09-24 "you should be able to pick one named print station."
  */
 
 import type { LocationSegments } from '@/lib/barcode-routing';
@@ -22,7 +31,7 @@ export const STAFF_PRINT_STATUS_REQUEST_EVENT = 'staff_print_status_request';
 export const STAFF_PRINT_PROGRESS_EVENT = 'staff_print_progress';
 export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote';
+export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -50,6 +59,26 @@ export type StaffPrintTotePayload = {
   code?: string;
 };
 
+/** Which repair document a `repair` job prints — the role follows from it. */
+export type StaffPrintRepairDocument = 'receipt' | 'label' | 'manual';
+
+/**
+ * One repair document on the station's printer. `receipt` is the repair paper
+ * (`/api/repair-service/print/[id]`, intake + pickup signature bands) on the
+ * paper printer; `label` is the 2×1 `REP-{id}` sticker on the label printer;
+ * `manual` is a product manual (`/api/product-manuals/[manualId]/content`).
+ */
+export type StaffPrintRepairPayload = {
+  repairId: number;
+  document: StaffPrintRepairDocument;
+  /** Required for `manual`, absent otherwise. */
+  manualId?: number;
+};
+
+export function repairDocumentRole(document: StaffPrintRepairDocument): StaffPrintRole {
+  return document === 'label' ? 'label' : 'paper';
+}
+
 // The tote run's ceiling lives in `labelCopies` (dependency-free print
 // constants) because the server's zod schema must read the same number
 // without importing this wire module.
@@ -57,12 +86,21 @@ export type StaffPrintTotePayload = {
 export type StaffPrintJob = {
   type: 'staff.print_job';
   request_id: string;
+  /** The one station that prints it; every other host ignores the job. */
+  targetStationId: string;
   grain: StaffPrintGrain;
   role: StaffPrintRole;
   location?: StaffPrintLocationPayload;
   papers?: StaffPrintPapersPayload;
   tote?: StaffPrintTotePayload;
+  repair?: StaffPrintRepairPayload;
 };
+
+/**
+ * What a sender chooses; the bridge client stamps `type`, the minted
+ * `request_id` and the picked station's `targetStationId`.
+ */
+export type StaffPrintJobBody = Omit<StaffPrintJob, 'type' | 'request_id' | 'targetStationId'>;
 
 export type StaffPrintProfileSnap = {
   id: string;
@@ -73,6 +111,10 @@ export type StaffPrintProfileSnap = {
 
 export type StaffPrintStatus = {
   type: 'staff.print_status';
+  /** Stable per-browser station id (see `@/lib/print/print-station`). */
+  stationId: string;
+  /** Human name the operator gave this computer. */
+  stationName: string;
   silent: boolean;
   label: { ready: boolean; name: string | null; kind: string | null; profileId: string | null };
   paper: { ready: boolean; name: string | null; kind: string | null; profileId: string | null };
@@ -81,6 +123,8 @@ export type StaffPrintStatus = {
 
 export type StaffPrintOptionsPatch = {
   type: 'staff.print_options_patch';
+  /** The one station whose silent flag / routing this changes. */
+  targetStationId: string;
   silent?: boolean;
   routing?: { label?: string | null; paper?: string | null };
 };
@@ -126,9 +170,45 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
   const rec = raw as Record<string, unknown>;
   const requestId = String(rec.request_id ?? '').trim();
   if (!requestId) return null;
+  // No target, no job: an untargeted job would print on every computer signed
+  // in as the staffer.
+  const targetStationId = String(rec.targetStationId ?? '').trim();
+  if (!targetStationId) return null;
   const grain = rec.grain;
-  if (grain !== 'rack' && grain !== 'bin' && grain !== 'papers' && grain !== 'tote') return null;
+  if (
+    grain !== 'rack' &&
+    grain !== 'bin' &&
+    grain !== 'papers' &&
+    grain !== 'tote' &&
+    grain !== 'repair'
+  ) {
+    return null;
+  }
   const role = rec.role === 'paper' ? 'paper' : 'label';
+
+  if (grain === 'repair') {
+    const repair = rec.repair;
+    if (!repair || typeof repair !== 'object') return null;
+    const r = repair as Record<string, unknown>;
+    const repairId = asInt(r.repairId);
+    if (repairId == null || !Number.isInteger(repairId) || repairId <= 0) return null;
+    const document = r.document;
+    if (document !== 'receipt' && document !== 'label' && document !== 'manual') return null;
+    let manualId: number | undefined;
+    if (document === 'manual') {
+      const id = asInt(r.manualId);
+      if (id == null || !Number.isInteger(id) || id <= 0) return null;
+      manualId = id;
+    }
+    return {
+      type: 'staff.print_job',
+      request_id: requestId,
+      targetStationId,
+      grain,
+      role: repairDocumentRole(document),
+      repair: manualId == null ? { repairId, document } : { repairId, document, manualId },
+    };
+  }
 
   if (grain === 'tote') {
     const tote = rec.tote;
@@ -142,6 +222,7 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
       return {
         type: 'staff.print_job',
         request_id: requestId,
+        targetStationId,
         grain,
         role: 'label',
         tote: { copiesPerSide, code },
@@ -154,6 +235,7 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     return {
       type: 'staff.print_job',
       request_id: requestId,
+      targetStationId,
       grain,
       role: 'label',
       tote: { count, copiesPerSide },
@@ -170,6 +252,7 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     return {
       type: 'staff.print_job',
       request_id: requestId,
+      targetStationId,
       grain,
       role: 'paper',
       papers: {
@@ -190,6 +273,7 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
   return {
     type: 'staff.print_job',
     request_id: requestId,
+    targetStationId,
     grain,
     role,
     location: {
@@ -220,6 +304,10 @@ function parseRoleFace(raw: unknown): {
 export function parseStaffPrintStatus(raw: unknown): StaffPrintStatus | null {
   if (!raw || typeof raw !== 'object') return null;
   const rec = raw as Record<string, unknown>;
+  // A status with no station id cannot be picked or targeted — junk.
+  const stationId = String(rec.stationId ?? '').trim();
+  if (!stationId) return null;
+  const stationName = String(rec.stationName ?? '').trim() || UNNAMED_PRINT_STATION;
   const label = parseRoleFace(rec.label);
   const paper = parseRoleFace(rec.paper);
   if (!label || !paper) return null;
@@ -239,6 +327,8 @@ export function parseStaffPrintStatus(raw: unknown): StaffPrintStatus | null {
   }
   return {
     type: 'staff.print_status',
+    stationId,
+    stationName,
     silent: rec.silent !== false,
     label,
     paper,
@@ -249,7 +339,9 @@ export function parseStaffPrintStatus(raw: unknown): StaffPrintStatus | null {
 export function parseStaffPrintOptionsPatch(raw: unknown): StaffPrintOptionsPatch | null {
   if (!raw || typeof raw !== 'object') return null;
   const rec = raw as Record<string, unknown>;
-  const patch: StaffPrintOptionsPatch = { type: 'staff.print_options_patch' };
+  const targetStationId = String(rec.targetStationId ?? '').trim();
+  if (!targetStationId) return null;
+  const patch: StaffPrintOptionsPatch = { type: 'staff.print_options_patch', targetStationId };
   if (typeof rec.silent === 'boolean') patch.silent = rec.silent;
   const routing = rec.routing;
   if (routing && typeof routing === 'object') {
@@ -268,12 +360,95 @@ export function roleReady(status: StaffPrintStatus | null, role: StaffPrintRole)
 }
 
 /**
- * Whether THIS workstation should ack + silent-print a job.
- * Phone with no USB profile must return false so the staff-ID computer acks.
+ * Whether THIS station should ack + silent-print a job: it must be the job's
+ * `targetStationId` AND have the job's role ready. Every other computer signed
+ * in as the staffer — and the phone's own host — returns false and stays quiet.
  */
 export function thisDeviceCanFulfillPrintJob(
-  job: Pick<StaffPrintJob, 'grain'>,
+  job: Pick<StaffPrintJob, 'grain' | 'targetStationId'> & { role?: StaffPrintRole },
   status: StaffPrintStatus,
 ): boolean {
-  return job.grain === 'papers' ? status.paper.ready : status.label.ready;
+  if (job.targetStationId !== status.stationId) return false;
+  const paper = job.grain === 'papers' || (job.grain === 'repair' && job.role === 'paper');
+  return paper ? status.paper.ready : status.label.ready;
+}
+
+// ── Station roster (phone side) ────────────────────────────────────────────
+
+/** Name shown for a station whose operator never named it. */
+export const UNNAMED_PRINT_STATION = 'Unnamed computer';
+
+/** How often an open picker re-asks every station for its status. */
+export const STAFF_PRINT_STATUS_POLL_MS = 15_000;
+
+/** A station unheard for this long is offline (two missed polls + slack). */
+export const STAFF_PRINT_STATION_STALE_MS = 40_000;
+
+/** A station the phone has heard from, and when it last answered. */
+export type StaffPrintStation = { status: StaffPrintStatus; lastSeenAt: number };
+
+/**
+ * Fold one status into the roster: replaces that station's entry, sorted by
+ * name then id. Only hosts with something paired are print stations — a
+ * phone's own host, or a computer that unpaired everything, drops out.
+ */
+export function upsertStaffPrintStation(
+  stations: readonly StaffPrintStation[],
+  status: StaffPrintStatus,
+  now: number,
+): StaffPrintStation[] {
+  const rest = stations.filter((s) => s.status.stationId !== status.stationId);
+  const paired = status.profiles.length > 0 || status.label.ready || status.paper.ready;
+  if (paired) rest.push({ status, lastSeenAt: now });
+  return rest.sort(
+    (a, b) =>
+      a.status.stationName.localeCompare(b.status.stationName) ||
+      a.status.stationId.localeCompare(b.status.stationId),
+  );
+}
+
+export function isStaffPrintStationLive(station: StaffPrintStation, now: number): boolean {
+  return now - station.lastSeenAt <= STAFF_PRINT_STATION_STALE_MS;
+}
+
+/**
+ * The station a job goes to: the staffer's remembered pick when it is in the
+ * roster (live or not — offline is shown, never silently swapped), else the
+ * only live station, else none (the phone must pick).
+ */
+export function resolveStaffPrintTarget(
+  stations: readonly StaffPrintStation[],
+  rememberedId: string | null,
+  now: number,
+): StaffPrintStation | null {
+  if (rememberedId) {
+    const remembered = stations.find((s) => s.status.stationId === rememberedId);
+    if (remembered) return remembered;
+  }
+  const live = stations.filter((s) => isStaffPrintStationLive(s, now));
+  return live.length === 1 ? live[0] : null;
+}
+
+/** "just now" · "25s ago" · "4 min ago" · "2 h ago". */
+export function formatStationLastSeen(lastSeenAt: number, now: number): string {
+  const seconds = Math.max(0, Math.floor((now - lastSeenAt) / 1000));
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
+  return `${Math.floor(seconds / 3600)} h ago`;
+}
+
+/** Why a role cannot print on the chosen station right now; null when it can. */
+export function staffPrintBlockedReason(
+  station: StaffPrintStation | null,
+  role: StaffPrintRole,
+  now: number,
+): string | null {
+  if (!station) return 'Pick a print station first.';
+  const name = station.status.stationName;
+  if (!isStaffPrintStationLive(station, now)) {
+    return `${name} is offline — last heard ${formatStationLastSeen(station.lastSeenAt, now)}.`;
+  }
+  if (!roleReady(station.status, role)) return `No ${role} printer ready on ${name}.`;
+  return null;
 }

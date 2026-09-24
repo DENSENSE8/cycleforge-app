@@ -24,14 +24,13 @@ export function buildGcsObjectKey(opts: {
   const now = opts.now ?? new Date();
   const yyyy = String(now.getUTCFullYear());
   const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
-  const safePo = sanitizePathSegment(opts.poRef || 'unknown');
   const baseName = `${opts.photoId}.jpg`;
 
   // Custom image type → its own bucket path, date-partitioned, PO segment only
   // when the photo carries a poRef.
   const customPrefix = opts.prefix ? sanitizePathSegment(opts.prefix) : null;
   if (customPrefix) {
-    const poSeg = opts.poRef ? `PO-${safePo}/` : '';
+    const poSeg = opts.poRef ? `PO-${sanitizePathSegment(opts.poRef)}/` : '';
     const segment = `${customPrefix}/${yyyy}/${mm}/${poSeg}${baseName}`;
     const prefix = opts.organizationId;
     return {
@@ -40,33 +39,68 @@ export function buildGcsObjectKey(opts: {
     };
   }
 
-  let segment: string;
-  switch (opts.entityType) {
-    case 'RECEIVING':
-    case 'RECEIVING_LINE':
-      segment = `receiving/${yyyy}/${mm}/PO-${safePo}/${baseName}`;
-      break;
-    case 'PACKER_LOG':
-      segment = `packing/${yyyy}/${mm}/PO-${safePo}/${baseName}`;
-      break;
-    case 'SERIAL_UNIT':
-      segment = `serial-units/${sanitizePathSegment(opts.unitUid || String(opts.photoId))}/${baseName}`;
-      break;
-    case 'STAFF':
-      // Person-partitioned, not date-partitioned: a profile photo is replaced
-      // in place over a career, so grouping by staffer keeps every version of
-      // one face in one prefix instead of scattered across months.
-      segment = `staff/${sanitizePathSegment(String(opts.entityId ?? opts.photoId))}/avatar/${baseName}`;
-      break;
-    default:
-      segment = `misc/${yyyy}/${mm}/${baseName}`;
-      break;
-  }
+  const segment = `${entityFlowDirectory({ ...opts, fallbackId: opts.photoId, now })}/${baseName}`;
 
   const prefix = opts.organizationId;
   const objectKey = `${prefix}/${segment}`;
   const thumbSegment = segment.replace(/\.jpg$/i, '_thumb.jpg');
   return { objectKey, thumbObjectKey: `${prefix}/${thumbSegment}` };
+}
+
+/**
+ * Object key for an entity video: `{org}/videos/{flow}/{videoId}.{ext}`, where
+ * `{flow}` is the SAME entity directory a photo of that entity files under
+ * (see {@link entityFlowDirectory}), so an entity's videos sit beside its photos
+ * one `videos/` level down. Videos have no thumbnail object.
+ */
+export function buildGcsVideoObjectKey(opts: {
+  organizationId: string;
+  entityType: PhotoEntityType;
+  entityId: number;
+  videoId: number;
+  /** Canonical container extension (`VIDEO_MIME_EXTENSIONS`), no dot. */
+  extension: string;
+  poRef?: string | null;
+  unitUid?: string | null;
+  now?: Date;
+}): string {
+  const flow = entityFlowDirectory({ ...opts, fallbackId: opts.videoId, now: opts.now ?? new Date() });
+  return `${opts.organizationId}/videos/${flow}/${opts.videoId}.${sanitizePathSegment(opts.extension)}`;
+}
+
+/**
+ * The per-entity directory under the org root — one switch shared by photo and
+ * video keys so both media kinds of one entity always route to the same place.
+ * `fallbackId` names the serial-unit / staff folder when the entity's own key
+ * (unit uid / entity id) is absent — the media id, as photos always did.
+ */
+function entityFlowDirectory(opts: {
+  entityType: PhotoEntityType;
+  entityId?: number | null;
+  poRef?: string | null;
+  unitUid?: string | null;
+  fallbackId: number;
+  now: Date;
+}): string {
+  const yyyy = String(opts.now.getUTCFullYear());
+  const mm = String(opts.now.getUTCMonth() + 1).padStart(2, '0');
+  const safePo = sanitizePathSegment(opts.poRef || 'unknown');
+  switch (opts.entityType) {
+    case 'RECEIVING':
+    case 'RECEIVING_LINE':
+      return `receiving/${yyyy}/${mm}/PO-${safePo}`;
+    case 'PACKER_LOG':
+      return `packing/${yyyy}/${mm}/PO-${safePo}`;
+    case 'SERIAL_UNIT':
+      return `serial-units/${sanitizePathSegment(opts.unitUid || String(opts.fallbackId))}`;
+    case 'STAFF':
+      // Person-partitioned, not date-partitioned: a profile photo is replaced
+      // in place over a career, so grouping by staffer keeps every version of
+      // one face in one prefix instead of scattered across months.
+      return `staff/${sanitizePathSegment(String(opts.entityId ?? opts.fallbackId))}/avatar`;
+    default:
+      return `misc/${yyyy}/${mm}`;
+  }
 }
 
 function sanitizePathSegment(raw: string): string {

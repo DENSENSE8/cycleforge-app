@@ -7,6 +7,7 @@ import { conditionLabel } from '@/lib/conditions';
 // bundle inherit this module's print/bwip-js graph.
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 import { sourcePlatformMeta } from '@/lib/source-platform';
+import { builtinPlatformShortLabel } from '@/lib/platform-display';
 import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 export interface ReceivingLabelPayload {
@@ -23,6 +24,11 @@ export interface ReceivingLabelPayload {
   /** Override the encoded URL. Defaults to platform Digital Link when orgSlug is set. */
   qrValue?: string;
   platform: string;
+  /**
+   * Org-catalog dense face for `platform` (`short_label`, e.g. `AMZRN`). When
+   * set it replaces the built-in compact in the top-left slot.
+   */
+  platformShortLabel?: string | null;
   /** Sidebar Zendesk field — only an all‑digits ticket (# optional) replaces PO last‑4; URLs/other text uses PO shorthand. */
   zendeskTicket?: string;
   /**
@@ -47,8 +53,12 @@ export interface ReceivingLabelPayload {
 /**
  * Compact platform name for small thermal labels where the full catalog name
  * overflows the top-left slot (e.g. "Amazon - Return" → "AMZ - Return",
- * "Unfound - Return" → "UNF - Return"). Without this the 2×1" `.tl` ellipsis
- * clips the type to "… - Re…".
+ * "Amazon Renewed - Return" → "AMZRN - Return"). Without this the 2×1" `.tl`
+ * ellipsis clips the type to "… - Re…".
+ *
+ * An org `short_label` is an explicit "print it as this" and wins always; the
+ * built-in compact (`platform-display`) only steps in when a type shares the
+ * slot, so a type-less carton still reads the full "Amazon".
  */
 function receivingLabelPlatformName(platform: string): string {
   const meta = sourcePlatformMeta(platform);
@@ -56,12 +66,10 @@ function receivingLabelPlatformName(platform: string): string {
   return sentenceCaseLabel(platform);
 }
 
-function receivingLabelPlatformCompact(platform: string, type: string): string {
+function receivingLabelPlatformCompact(platform: string, shortLabel: string, type: string): string {
+  if (shortLabel) return shortLabel;
   if (!type) return receivingLabelPlatformName(platform);
-  const key = platform.trim().toLowerCase();
-  if (key === 'amazon') return 'AMZ';
-  if (key === 'unfound') return 'UNF';
-  return receivingLabelPlatformName(platform);
+  return builtinPlatformShortLabel(platform) || receivingLabelPlatformName(platform);
 }
 
 /**
@@ -73,14 +81,15 @@ function receivingLabelPlatformCompact(platform: string, type: string): string {
  * ("…") on the 2×1" face.
  */
 export function receivingLabelPlatformDisplay(
-  payload: Pick<ReceivingLabelPayload, 'platform' | 'receivingType' | 'receivingTypeLabel'>,
+  payload: Pick<ReceivingLabelPayload, 'platform' | 'platformShortLabel' | 'receivingType' | 'receivingTypeLabel'>,
 ): string {
   const platform = String(payload.platform ?? '').trim();
+  const shortLabel = String(payload.platformShortLabel ?? '').trim();
   // Prefer the org-catalog label (custom / renamed types); else the built-in map.
   const type = sentenceCaseLabel(
     (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType),
   );
-  const compact = receivingLabelPlatformCompact(platform, type);
+  const compact = receivingLabelPlatformCompact(platform, shortLabel, type);
   if (!type) return compact;
   const typeU = type.toUpperCase();
   const compactU = compact.toUpperCase();

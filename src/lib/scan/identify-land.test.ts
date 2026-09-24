@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import { strictEqual } from 'node:assert';
 
 import { routeScan } from '../barcode-routing';
-import { dispatchScan } from './dispatch-table';
+import { dispatchScan, QC_SCAN_SESSION } from './dispatch-table';
 import { landScanIdentify } from './identify-land';
 
 const UPS = '1Z999AA10123454471';
@@ -64,4 +64,34 @@ test('a letter-guess bin settles (no door intake, no identify hop)', () => {
   strictEqual(route?.type, 'bin');
   strictEqual(route?.redirect, undefined);
   strictEqual(land.kind, 'settle');
+});
+
+test('a unit label lands on the phone unit hub, whatever its frame', () => {
+  for (const [raw, href] of [
+    ['U-CN1A2B3', '/m/u/CN1A2B3'],
+    ['00039-BK-2639-000068', '/m/u/00039-BK-2639-000068'],
+    // GS1 routes to /01/…/21/… — the resolver would send it to the DESK page.
+    ['(01)00012345678905(21)SER-9', '/m/u/SER-9'],
+  ] as const) {
+    const { route, land } = landFor(raw);
+    strictEqual(route?.type, 'serial-unit', raw);
+    strictEqual(land.kind, 'identify', raw);
+    if (land.kind === 'identify') strictEqual(land.href, href, raw);
+  }
+});
+
+test('the kernel armed for QC lands a unit label on its checklist, a line on its unit pick', () => {
+  for (const [raw, href] of [
+    ['U-CN1A2B3', '/m/u/CN1A2B3/qc'],
+    ['(01)00012345678905(21)SER-9', '/m/u/SER-9/qc'],
+    ['L-32545', '/m/qc/line/32545'],
+  ] as const) {
+    const route = routeScan(raw);
+    const land = landScanIdentify(dispatchScan({ scan: route!, armedSession: QC_SCAN_SESSION }), route);
+    strictEqual(land.kind, 'identify', raw);
+    if (land.kind === 'identify') strictEqual(land.href, href, raw);
+  }
+  // A stray label under QC previews exactly as it would unarmed — no second router.
+  const bin = routeScan(BIN_FLAT);
+  strictEqual(landScanIdentify(dispatchScan({ scan: bin!, armedSession: QC_SCAN_SESSION }), bin).kind, 'settle');
 });

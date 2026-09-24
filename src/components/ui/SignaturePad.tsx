@@ -29,8 +29,8 @@ interface SignaturePadProps {
   /**
    * Legacy STAFF fill: the pad's box takes its parent's height instead of its
    * own aspect ({@link REPAIR_SIGNATURE_PAD_CLASS}). Kept for the staff mounts
-   * that size the pad from a fixed-height wrapper (`RepairIntakeForm`,
-   * `RepairPickupFlow`, mobile `RepairPickupSheet` — a 5:1 box is ~70px tall
+   * that size the pad from a fixed-height wrapper (`RepairIntakeForm`, mobile
+   * `RepairPickupSheet` — a 5:1 box is ~70px tall
    * on a phone) so the 2026-09-15 kiosk geometry change does not relayout
    * surfaces it was not about.
    *

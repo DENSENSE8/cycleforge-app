@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * The one circular identity mark — org workspace and staff both wear it.
+ * The one identity mark — org workspace and staff both wear it. Circular by
+ * default; `shape="square"` for industrial (radius-0) surfaces.
  *
  * Geometry, ring, type role and the image-vs-initials fallback live here so the
  * MasterNav top band and the spine footer cannot drift apart again (the org
@@ -21,6 +22,7 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/_cn';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 export type IdentityMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -59,6 +61,12 @@ interface IdentityMarkProps {
    * after a staffer uploads a face — without doubling it when they have not.
    */
   ringHex?: string | null;
+  /**
+   * `round` (default) — the spine / nav mark. `square` — industrial surfaces
+   * (radius 0), where a circle beside square cells reads as a foreign part
+   * (To-ship ledger pick / pack, owner 2026-09-24).
+   */
+  shape?: 'round' | 'square';
   className?: string;
   /** Accessible name. Omit ⇒ `aria-hidden` (the row already names the entity). */
   alt?: string;
@@ -71,6 +79,7 @@ export function IdentityMark({
   size = 'sm',
   ring = true,
   ringHex,
+  shape = 'round',
   className,
   alt,
 }: IdentityMarkProps) {
@@ -89,7 +98,8 @@ export function IdentityMark({
     <span
       {...a11y}
       className={cn(
-        'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full font-semibold text-white',
+        'relative flex shrink-0 items-center justify-center overflow-hidden font-semibold text-white',
+        shape === 'square' ? cornerClass('flush') : 'rounded-full',
         SIZE_CLASS[size],
         ring && 'ring-1 ring-border-soft',
         !showPhoto && !colorHex && 'bg-surface-inverse',

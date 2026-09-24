@@ -31,11 +31,12 @@
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/design-system/primitives';
-import { Plus, Receipt, Trash2 } from '@/components/Icons';
+import { Plus, Receipt } from '@/components/Icons';
 import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';
 import { KioskReasonStep } from '@/components/repair/KioskReasonStep';
 import { KioskTicketStep } from '@/components/kiosk/KioskTicketStep';
-import { KioskCustomerIntake, KioskEntryField } from '@/components/kiosk/KioskCustomerIntake';
+import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { KioskCartDoneFace } from './KioskCartDoneFace';
@@ -53,14 +54,20 @@ import {
   useKioskSession,
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
-import { repairPriceToCents } from '@/lib/kiosk/repair-line-payload';
+import { repairQuotePatch } from '@/lib/kiosk/repair-line-payload';
 import {
+  repairDeviceGroups,
   repairDevicesFromLines,
   repairDevicesTotalCents,
-  type KioskRepairDevice,
+  repairUnitToDrop,
+  type KioskRepairDeviceGroup,
 } from '@/lib/kiosk/repair-devices';
+import { stepCartQuantity } from '@/lib/kiosk/cart-card-view';
+import { KioskQuantityStepper, KioskRemoveConfirm } from '@/components/kiosk/KioskQuantityStepper';
 import { submitKioskVisit } from '@/lib/kiosk/submit-kiosk-visit';
-import { formatCartCents } from '@/lib/kiosk/cart-card-view';
+import { KioskStepTitleRow } from '@/components/kiosk/KioskStepTitleRow';
+import { KioskCompanionPanel } from '@/components/kiosk/KioskCompanionPanel';
+import { useKioskCompanionLink } from '@/components/kiosk/useKioskCompanionLink';
 import { isKioskTicketChoiceSettled } from '@/lib/kiosk/repair-ticket-choice';
 import { useNextTicketPreview } from '@/lib/kiosk/use-next-ticket-preview';
 import { isRepairPayload, type KioskCartLine, type RepairPayload } from '@/lib/kiosk/cart-line';
@@ -74,14 +81,14 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 interface KioskRepairPaneProps {
   /**
    * The picker's current selection — read for the step-0 reason vocabulary
-   * (`sourceSku`) and as the template for `+ Add another device`. It is NOT
-   * the device list: that is the cart's.
+   * (`sourceSku`). It is NOT the device list: that is the cart's.
    */
   selectedProduct: ProductSelection | null;
   /**
    * Exit the step flow back to the repair catalog — the X in the pane's step
-   * band. REQUIRED: the flow has no other way out, and the optional form is
-   * what left a dead titled-band branch behind.
+   * band, and `+ Add another device` (the next device is picked from the
+   * catalog like the first). REQUIRED: the flow has no other way out, and the
+   * optional form is what left a dead titled-band branch behind.
    */
   onBack: () => void;
 }
@@ -148,44 +155,66 @@ function signatureFromLines(lines: readonly KioskCartLine[]): SignatureData | nu
 }
 
 /**
- * ONE device on the visit: its own title, its own SKU, its own serial, quote
- * and notes.
+ * ONE product on the visit and every unit of it: its title, its SKU, the
+ * cart's `−  N  +`, one serial field per unit, and the product's quote and
+ * notes.
+ *
+ * Each unit is still its own cart line and its own `repair_service` row — a
+ * serial belongs to exactly one chassis — so `+` adds a line and `−` removes
+ * one ({@link repairUnitToDrop}). Price and notes are the PRODUCT's: typing
+ * one writes every unit (three identical radios, one quote each).
+ *
+ * `−` at 1 swaps in the cart's `Remove this item?` row (operator 2026-09-24:
+ * "it should be like a inline edit display same as the cart for adding
+ * multiple … minusing … removing"); it replaced a bare "Remove this device"
+ * button that existed only on a multi-device visit.
  *
  * ## Why the ids are shaped this way
  *
- * A DOM element carries exactly one `data-testid`, so "indexed AND legacy" is
- * not a thing one input can be. The FIRST device keeps the unsuffixed
- * `kiosk-repair-serial` / `kiosk-repair-price` / `kiosk-repair-notes` — a
- * single-device visit is the overwhelming case and its selectors are the ones
- * every existing assertion holds — and each further device is addressed by its
- * index. `idScope` keeps the `<label for>` pointing at THIS device's input;
- * without it every copy after the first would share the first's DOM id and a
- * screen reader would announce the wrong device.
+ * A DOM element carries exactly one `data-testid`. The FIRST unit on the visit
+ * keeps the unsuffixed `kiosk-repair-serial`, the first card keeps
+ * `kiosk-repair-price` / `kiosk-repair-notes`, and every later one is
+ * addressed by its index. `idScope` keeps each `<label for>` pointing at THIS
+ * unit's input; without it every copy would share the first's DOM id.
  */
 function KioskRepairDeviceCard({
-  device,
-  index,
-  removable,
-  onRemove,
+  group,
+  groupIndex,
+  unitIndexOf,
+  onAddUnit,
+  onDropUnit,
   onSerialChange,
   onPriceChange,
   onNotesChange,
 }: {
-  device: KioskRepairDevice;
-  index: number;
-  /**
-   * Remove is offered only on a multi-device visit: with one device on the
-   * counter the trash verb would empty the visit the staffer is mid-way
-   * through, and the picker behind the step band's X is the way to change what
-   * is being repaired.
-   */
-  removable: boolean;
-  onRemove: () => void;
-  onSerialChange: (value: string) => void;
+  group: KioskRepairDeviceGroup;
+  groupIndex: number;
+  /** A unit's index among ALL devices on the visit (for its test id). */
+  unitIndexOf: (lineId: string) => number;
+  onAddUnit: () => void;
+  onDropUnit: (lineId: string) => void;
+  onSerialChange: (lineId: string, value: string) => void;
   onPriceChange: (value: string) => void;
   onNotesChange: (value: string) => void;
 }) {
-  const suffix = index === 0 ? '' : `-${index}`;
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const first = group.units[0]!;
+  const count = group.units.length;
+  const cardSuffix = groupIndex === 0 ? '' : `-${groupIndex}`;
+
+  const step = (delta: 1 | -1) => {
+    const next = stepCartQuantity(count, delta);
+    if (next.kind === 'confirm-remove') {
+      setConfirmRemove(true);
+      return;
+    }
+    if (delta === 1) onAddUnit();
+    else {
+      const unit = repairUnitToDrop(group.units);
+      if (unit) onDropUnit(unit.lineId);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -193,50 +222,63 @@ function KioskRepairDeviceCard({
         MOBILE_SCAN_ROW_CORNER,
       )}
       data-testid="kiosk-repair-device"
-      data-device-index={index}
-      data-line-id={device.lineId}
+      data-device-index={groupIndex}
+      data-line-id={first.lineId}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className={KIOSK_TILE_TITLE}>{device.title}</p>
-          {device.sku ? <p className={cn('mt-0.5', KIOSK_META)}>{device.sku}</p> : null}
+          <p className={KIOSK_TILE_TITLE}>{group.title}</p>
+          {group.sku ? <p className={cn('mt-0.5', KIOSK_META)}>{group.sku}</p> : null}
         </div>
-        {removable ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Trash2 className="h-4 w-4" />}
-            ariaLabel={`Remove ${device.title} from this visit`}
-            onClick={onRemove}
-            data-testid={`kiosk-repair-device-remove${suffix}`}
-          >
-            Remove this device
-          </Button>
-        ) : null}
+        {confirmRemove ? null : (
+          <KioskQuantityStepper
+            title={group.title}
+            quantity={count}
+            onStep={step}
+            canRemove
+            testIdPrefix={`kiosk-repair-device${cardSuffix}`}
+          />
+        )}
       </div>
+      {confirmRemove ? (
+        <KioskRemoveConfirm
+          testIdPrefix={`kiosk-repair-device${cardSuffix}`}
+          onKeep={() => setConfirmRemove(false)}
+          onRemove={() => {
+            setConfirmRemove(false);
+            onDropUnit(first.lineId);
+          }}
+        />
+      ) : null}
 
+      {group.units.map((unit, i) => {
+        const index = unitIndexOf(unit.lineId);
+        return (
+          <KioskEntryField
+            key={unit.lineId}
+            name={count > 1 ? `Serial number ${i + 1}` : 'Serial number'}
+            idScope={unit.lineId}
+            value={unit.serialNumber}
+            testId={`kiosk-repair-serial${index === 0 ? '' : `-${index}`}`}
+            onChange={(value) => onSerialChange(unit.lineId, value)}
+          />
+        );
+      })}
       <KioskEntryField
-        name="Serial number"
-        idScope={device.lineId}
-        value={device.serialNumber}
-        testId={`kiosk-repair-serial${suffix}`}
-        onChange={onSerialChange}
-      />
-      <KioskEntryField
-        name="Price"
-        idScope={device.lineId}
-        value={device.price}
+        name={count > 1 ? 'Price (each)' : 'Price'}
+        idScope={first.lineId}
+        value={first.price}
         inputMode="decimal"
         icon={<Receipt className="h-4 w-4" />}
-        testId={`kiosk-repair-price${suffix}`}
+        testId={`kiosk-repair-price${cardSuffix}`}
         onChange={onPriceChange}
       />
       <KioskEntryField
         name="Notes (optional)"
-        idScope={device.lineId}
-        value={device.notes ?? ''}
+        idScope={first.lineId}
+        value={first.notes ?? ''}
         multiline
-        testId={`kiosk-repair-notes${suffix}`}
+        testId={`kiosk-repair-notes${cardSuffix}`}
         onChange={onNotesChange}
       />
     </div>
@@ -252,7 +294,16 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * render writing this pane's empty reasons over the ones the cart is holding.
    */
   const [formData, setFormData] = useState<RepairFormData>(() =>
-    buildInitialFormData(visitFactsFromLines(session.lines)),
+    buildInitialFormData({
+      ...visitFactsFromLines(session.lines),
+      // The mirror effect below keeps these in step; seeding them here too is
+      // what lets the resume step (below) see a phone already on the visit.
+      customer: {
+        name: session.customerName,
+        phone: session.customerPhone,
+        email: session.customerEmail,
+      },
+    }),
   );
   const [signatureData, setSignatureData] = useState<SignatureData | null>(() =>
     signatureFromLines(session.lines),
@@ -286,6 +337,7 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * device list instead (`repair-intake-logic.ts`).
    */
   const devices = useMemo(() => repairDevicesFromLines(session.lines), [session.lines]);
+  const deviceGroups = useMemo(() => repairDeviceGroups(devices), [devices]);
   const hasDevices = devices.length > 0;
 
   /*
@@ -297,14 +349,20 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * field and must not grow one. Widening a LINE form with a visit-level fact
    * is how two sources of one truth start, and the cart already writes this
    * exact key. So it is read from and written to the session directly.
+   *
+   * An EXACT mirror: every contact write lands on the session first, so the
+   * session is never behind this form. A `session || prev` fallback made a
+   * cleared field un-clearable — this effect, closing over the pre-write
+   * render, put the old name straight back (a phone lookup taking back the
+   * name it filled, 2026-09-24).
    */
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       customer: {
-        name: session.customerName || prev.customer.name,
-        phone: session.customerPhone || prev.customer.phone,
-        email: session.customerEmail || prev.customer.email,
+        name: session.customerName,
+        phone: session.customerPhone,
+        email: session.customerEmail,
       },
     }));
   }, [session.customerName, session.customerPhone, session.customerEmail]);
@@ -333,58 +391,68 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
     [actions, session.lines],
   );
 
+  /*
+   * The phone companion: a signed-in staff phone scans this QR, sees these
+   * units, and every serial it scans lands here through the same line write
+   * the serial field makes (operator 2026-09-24).
+   */
+  const companionDevices = useMemo(
+    () =>
+      devices.map((d) => ({
+        lineId: d.lineId,
+        title: d.title,
+        sku: d.sku,
+        serialNumber: d.serialNumber,
+      })),
+    [devices],
+  );
+  const companion = useKioskCompanionLink({
+    devices: companionDevices,
+    onSerial: ({ lineId, serialNumber }) => patchDevice(lineId, { serialNumber }),
+  });
+
   /**
-   * A device's QUOTE — the text on the paperwork and the money on the line, in
-   * ONE write.
-   *
-   * Mirrors `KioskCartLineEditor`: `repair_service.price` is a text column the
-   * agreement prints, and `unitAmountCents` is what the cart total and the
-   * counter header are built from. Moving one without the other is how the
-   * paperwork comes to disagree with the total.
-   *
-   * The quote step IS where a repair is priced, so a quote typed here replaces
-   * any counter-authorized price on the line (a keypad amount, an editor
-   * re-quote): that approval named the old figure, and submit refuses an
-   * approval that no longer matches its line.
+   * A device's QUOTE — one write through `repairQuotePatch`, the same rule the
+   * cart's line editor uses, so a quote typed in either place is one fact.
    */
   const setDevicePrice = useCallback(
     (lineId: string, value: string) => {
       const line = session.lines.find((l) => l.id === lineId);
       if (!line || !isRepairPayload(line.payload)) return;
-      actions.updateLine(lineId, {
-        unitAmountCents: repairPriceToCents(value),
-        payload: { ...line.payload, price: value, priceAdjustment: null },
-      });
+      actions.updateLine(lineId, repairQuotePatch(line.payload, value));
     },
     [actions, session.lines],
   );
 
-  /**
-   * A second unit of the same product — three identical radios are three
-   * serials, three rows and three quotes, and the picker cannot express that
-   * (one tile, one selection).
-   *
-   * Copies the LAST device's product identity and quote (same model, same
-   * price) and nothing else: a serial belongs to exactly one chassis.
+  /*
+   * `+ Add another device` has no handler of its own: it is `onBack`. The
+   * devices already on screen are cart lines (every edit here writes its
+   * line), so leaving for the catalog loses nothing, and the next device is
+   * picked from the catalog exactly like the first (operator 2026-09-24: "add
+   * another device should save the devices to cart and then pick out another
+   * product"). Another unit of a product ALREADY on the visit is the card's
+   * `+` ({@link addUnit}).
    */
-  const addAnotherDevice = useCallback(() => {
-    const last = devices[devices.length - 1];
-    const line = last ? session.lines.find((l) => l.id === last.lineId) : undefined;
-    const template = line && isRepairPayload(line.payload) ? line.payload : null;
-    const model = template?.productModel || selectedProduct?.model?.trim() || '';
-    if (!model) return;
-    actions.addRepair({
-      title: model,
-      unitAmountCents: line?.unitAmountCents ?? 0,
-      payload: {
-        productType: template?.productType ?? selectedProduct?.type ?? null,
-        productModel: model,
-        sourceSku: template?.sourceSku ?? selectedProduct?.sourceSku ?? null,
-        serialNumber: '',
-        price: template?.price ?? '',
-      },
-    });
-  }, [actions, devices, session.lines, selectedProduct]);
+
+  /**
+   * One more unit of a product on the visit — a new line with the product's
+   * identity and quote, and an empty serial (a serial belongs to exactly one
+   * chassis). Visit facts (reasons, signature) reach it through the mirror
+   * effect that writes them onto every line.
+   */
+  const addUnit = useCallback(
+    (group: KioskRepairDeviceGroup) => {
+      const template = session.lines.find((l) => l.id === group.units[0]!.lineId);
+      if (!template || !isRepairPayload(template.payload)) return;
+      const { productType, productModel, sourceSku, price, notes, custom } = template.payload;
+      actions.addRepair({
+        title: template.title,
+        unitAmountCents: template.unitAmountCents,
+        payload: { productType, productModel, sourceSku, price, notes, custom, serialNumber: '' },
+      });
+    },
+    [actions, session.lines],
+  );
 
   /*
    * `ticketChoice` is a VISIT fact on the session root, not a line fact — one
@@ -417,15 +485,23 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
   // (module scope, above) — "Issue" never appears on screen; the step asks
   // its question in plain words instead.
   const steps = STEP_HEADERS;
-  const [step, setStep] = useState(0);
   const lastStep = steps.length - 1;
-
   // ONE gate table for both consumers: the per-step Continue key and the
   // header's completed count (PG6 — a count of satisfied units, never the
   // index in view). Back-editing an earlier step un-fills its segment. The
   // DEVICE unit reads the cart's devices, so a four-device visit cannot
   // advance on device one's serial.
   const stepGates = repairStepGates(formData, !!signatureData, ticketSettled, devices);
+  /*
+   * RESUME at the first unsatisfied step. This pane remounts every time the
+   * staffer comes back from the catalog — the X, or `+ Add another device` —
+   * and replaying Reason for repair (already answered, stored on the lines)
+   * to reach the new device's serial is a wasted tap per device.
+   */
+  const [step, setStep] = useState(() => {
+    const open = stepGates.findIndex((satisfied) => !satisfied);
+    return open === -1 ? lastStep : open;
+  });
   const stepCanContinue = stepGates[step] ?? canSave;
   const completedSteps = stepGates.filter(Boolean).length;
 
@@ -576,6 +652,7 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
         { idempotencyKey: submissionKey.current, takePayment: false },
       );
       setTransaction(tx);
+      actions.completeCart();
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : 'Could not submit this repair. Please try again.',
@@ -660,9 +737,8 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
               /*
                 ONE key on the review floor. The trailing `Add` (pencil +
                 "Add") is GONE — operator 2026-09-15: *"remove the add bottom
-                right of the review and save."* It existed to start a second
-                device without losing the first, which the step-1 repeater and
-                its `+ Add another device` key now do properly.
+                right of the review and save."* A second device is added from
+                step 1's `+ Add another device`, which returns to the catalog.
 
                 ORANGE, and named for the job: operator 2026-09-15 — *"save to
                 cart CTA button at the most bottom should be an orange submit
@@ -712,28 +788,23 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
               />
             ) : (
               /*
-                Steps 1-3 keep the same bold display header, top-left; step 0
-                owns its own because the Add CTA rides that row.
-
-                It is a ROW with a trailing slot, not a bare heading. Operator
-                2026-09-15: *"button should not display in a second row, it
-                should display in the same row as review and sign."* The print
-                CTA was its own full-width `justify-end` strip below the
-                heading — a second row for one glyph, and vertically unaligned
-                with the title it belongs to. Steps 1 and 2 pass nothing and
-                render exactly as before: same inset, same face, no phantom
-                slot.
+                Steps 1-3 wear the cart's header row exactly — title left,
+                `N · $total` right (operator 2026-09-24: "Device & quote …
+                must be displayed at the top exactly like the cart display").
+                N counts devices: each repair line is one unit. Step 0 owns its
+                own header because the Add CTA rides that row.
 
                 Body content, NOT a band. `KioskPaneForm` has no title face and
                 the pane owns ONE header — the step band. Reaching back for the
                 retired pane-header-band tokens here re-opens the double-band
                 bug (`kiosk-pane-frame.test.ts` guards it, by name).
               */
-              <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-5">
-                <h2 className="min-w-0 text-left text-role-display font-bold text-text-default">
-                  {STEP_HEADERS[step]}
-                </h2>
-              </div>
+              <KioskStepTitleRow
+                title={STEP_HEADERS[step]}
+                count={devices.length}
+                totalCents={repairDevicesTotalCents(devices)}
+                testId="kiosk-repair-summary"
+              />
             )}
 
             {/*
@@ -755,20 +826,31 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
             */}
             {step === 1 && (
               <div className="flex flex-col gap-3 bg-surface-card px-4 pb-4">
-                {devices.map((device, index) => (
+                <KioskCompanionPanel
+                  link={companion.link}
+                  opening={companion.opening}
+                  onOpen={() => void companion.open()}
+                />
+                {deviceGroups.map((group, groupIndex) => (
                   <KioskRepairDeviceCard
-                    key={device.lineId}
-                    device={device}
-                    index={index}
-                    removable={devices.length > 1}
-                    onRemove={() => actions.removeLine(device.lineId)}
-                    onSerialChange={(value) =>
-                      patchDevice(device.lineId, { serialNumber: value })
+                    // The FIRST unit's line, not the group key: a keypad
+                    // device's key is its price, and typing a quote must not
+                    // remount the card under the staffer's cursor.
+                    key={group.units[0]!.lineId}
+                    group={group}
+                    groupIndex={groupIndex}
+                    onAddUnit={() => addUnit(group)}
+                    unitIndexOf={(lineId) => devices.findIndex((d) => d.lineId === lineId)}
+                    onDropUnit={(lineId) => actions.removeLine(lineId)}
+                    onSerialChange={(lineId, value) =>
+                      patchDevice(lineId, { serialNumber: value })
                     }
-                    onPriceChange={(value) => setDevicePrice(device.lineId, value)}
-                    onNotesChange={(value) =>
-                      patchDevice(device.lineId, { notes: value || null })
-                    }
+                    onPriceChange={(value) => {
+                      for (const unit of group.units) setDevicePrice(unit.lineId, value);
+                    }}
+                    onNotesChange={(value) => {
+                      for (const unit of group.units) patchDevice(unit.lineId, { notes: value || null });
+                    }}
                   />
                 ))}
 
@@ -777,30 +859,11 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
                   size="lg"
                   className="w-full"
                   icon={<Plus className="h-4 w-4" />}
-                  onClick={addAnotherDevice}
+                  onClick={onBack}
                   data-testid="kiosk-repair-add-device"
                 >
                   Add another device
                 </Button>
-
-                {/* The visit's quote, once there is more than one unit to sum.
-                    Below one device it would restate the field directly above
-                    it. Reads `repairDevicesTotalCents` — the same integers the
-                    cart totals and the counter header are built from, not a
-                    second parse of the typed quotes. */}
-                {devices.length > 1 ? (
-                  <div className="flex items-baseline justify-between gap-3 border-t border-border-hairline pt-3">
-                    <span className={KIOSK_META}>
-                      Total · {devices.length} devices
-                    </span>
-                    <span
-                      className="text-lg font-semibold tabular-nums text-text-default"
-                      data-testid="kiosk-repair-device-total"
-                    >
-                      {formatCartCents(repairDevicesTotalCents(devices))}
-                    </span>
-                  </div>
-                ) : null}
               </div>
             )}
 

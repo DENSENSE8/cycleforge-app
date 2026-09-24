@@ -70,7 +70,7 @@ function PickerInner() {
   // ── Render
   // The session page hides the bottom nav (HIDDEN_PREFIXES match in
   // MobileBottomNav), so the layout's scroll container is full viewport.
-  // h-full fills it exactly — single scroll context lives inside <main>,
+  // h-full fills it exactly — single scroll context lives inside <div>,
   // and the ConfirmDock anchors to the viewport bottom as a flex sibling.
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
@@ -92,7 +92,7 @@ function PickerInner() {
       />
 
       {/* ─── Task content ──────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
         {/* ─── Tote strip ────────────────────────────────────────────────
             The session's container. Confirming a pick requires an armed
             tote — every picked unit lands in it and the tote carries the
@@ -129,7 +129,7 @@ function PickerInner() {
             onToggleDetails={() => setDetailsExpanded((v) => !v)}
           />
         )}
-      </main>
+      </div>
 
       {/* ─── Bottom dock ───────────────────────────────────────────────── */}
       {!allDone && currentTask && (

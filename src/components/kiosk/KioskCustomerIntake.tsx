@@ -36,19 +36,13 @@
  *   that Name / Email raise never has to be dismissed to find the key.
  */
 
-import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { KioskPhoneKeypad, type PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { useKioskCustomerMatch, type KioskCustomerMatch } from '@/components/kiosk/useKioskCustomerMatch';
 import { TextField } from '@/design-system/primitives';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
-import {
-  KIOSK_POS_ENTRY,
-  KIOSK_POS_ENTRY_AREA,
-  KIOSK_POS_ENTRY_ICON,
-  KIOSK_POS_ENTRY_ICON_HOST,
-  KIOSK_POS_ENTRY_ICON_INSET,
-} from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import {
   useKioskSession,
@@ -82,117 +76,6 @@ export function formatKioskPhoneInput(value: string): string {
   if (digits.length <= 3) return digits;
   if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
-}
-
-/**
- * One entry field for the kiosk step path — shared by the contact trio and
- * any channel `extras`, so every input on every channel answers to ONE token
- * ({@link KIOSK_POS_ENTRY}). Lives HERE (not in a pane) so the trio can never
- * fork again; exported for pane extras that must match. Accessibility rides
- * an sr-only `<label>` element — visible prompt is the placeholder.
- */
-export function KioskEntryField({
-  name,
-  value,
-  onChange,
-  type = 'text',
-  inputMode,
-  autoComplete,
-  maxLength,
-  multiline = false,
-  icon,
-  testId,
-  idScope,
-  onEnter,
-}: {
-  name: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  /** `none` = the caller renders its own glass keys (the phone keypad). */
-  inputMode?: 'text' | 'tel' | 'email' | 'decimal' | 'numeric' | 'none';
-  autoComplete?: string;
-  maxLength?: number;
-  multiline?: boolean;
-  /**
-   * Leading glyph inside the field — states the field's KIND before anyone
-   * reads the placeholder. Mount the house glyph (money is `Receipt`); the
-   * slot supplies position and inset via `KIOSK_POS_ENTRY_ICON*`, so a caller
-   * never hand-positions one. Single-line only: a textarea's first line is not
-   * where a mark belongs.
-   */
-  icon?: ReactNode;
-  testId?: string;
-  /**
-   * Disambiguator for the derived DOM id.
-   *
-   * REQUIRED when the same field NAME repeats on one screen — the repair
-   * pane's device repeater asks every device for its own "Serial number".
-   * Without it every copy after the first shares an id with the first, so its
-   * `<label for>` resolves to the wrong input and a screen reader announces
-   * the wrong device's field.
-   */
-  idScope?: string;
-  /**
-   * Return key → this (single-line only). The iPad key reads `go`, so the
-   * staffer finishes the step from the keyboard that is covering its floor.
-   */
-  onEnter?: () => void;
-}) {
-  const id = ['kiosk-entry', idScope, name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()]
-    .filter(Boolean)
-    .join('-');
-  const withIcon = Boolean(icon) && !multiline;
-  const onKeyDown = onEnter
-    ? (event: KeyboardEvent<HTMLInputElement>) => {
-        if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
-        event.preventDefault();
-        onEnter();
-      }
-    : undefined;
-  return (
-    <div className={withIcon ? KIOSK_POS_ENTRY_ICON_HOST : undefined}>
-      <label htmlFor={id} className="sr-only">
-        {name}
-      </label>
-      {multiline ? (
-        <textarea
-          id={id}
-          rows={3}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={name}
-          autoComplete={autoComplete}
-          maxLength={maxLength}
-          inputMode={inputMode}
-          data-testid={testId}
-          className={KIOSK_POS_ENTRY_AREA}
-        />
-      ) : (
-        <>
-          {withIcon ? (
-            <span className={KIOSK_POS_ENTRY_ICON} aria-hidden>
-              {icon}
-            </span>
-          ) : null}
-          <input
-            id={id}
-            type={type}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={name}
-            autoComplete={autoComplete}
-            maxLength={maxLength}
-            inputMode={inputMode}
-            enterKeyHint={onEnter ? 'go' : undefined}
-            onKeyDown={onKeyDown}
-            data-testid={testId}
-            className={cn(KIOSK_POS_ENTRY, withIcon && KIOSK_POS_ENTRY_ICON_INSET)}
-          />
-        </>
-      )}
-    </div>
-  );
 }
 
 interface KioskCustomerIntakeProps {
@@ -304,10 +187,15 @@ export function KioskCustomerIntake({
   useEffect(() => {
     if (match.status === 'looking') return;
     const { current: now, patch: write } = latest.current;
+    const next = matchedName ?? '';
+    if (now.name === next) {
+      // Already what the lookup says (a resumed visit, a reload): that name is
+      // the lookup's to take back if the number changes.
+      if (next) filledName.current = next;
+      return;
+    }
     const typedByStaff = now.name.trim() !== '' && now.name !== filledName.current;
     if (typedByStaff) return;
-    const next = matchedName ?? '';
-    if (now.name === next) return;
     filledName.current = next || null;
     write({ name: next });
   }, [match.status, matchedName]);

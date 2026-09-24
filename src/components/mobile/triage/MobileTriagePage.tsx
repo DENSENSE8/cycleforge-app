@@ -90,7 +90,7 @@ export function MobileTriagePage({
         `position: relative`, so it is a POSITIONED element, and positioned
         elements with `z-index: auto` paint in the same step as this band did at
         `z-base` (0) — resolved by tree order, which the band loses because it
-        precedes `<main>`. The result was a Zoho product photo sliding OVER the
+        precedes `<div>`. The result was a Zoho product photo sliding OVER the
         pinned search field while the list scrolled under it (the row's title
         and meta are in flow, so they correctly passed beneath). Between
         `raised` (row chrome) and `header` (the top bar above), so the bar still
@@ -119,7 +119,7 @@ export function MobileTriagePage({
         means the sticky search field leaves the viewport the moment results
         arrive — the exact failure this shell exists to prevent.
       */}
-      <main className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         {sections.map((section, index) => {
           if (section.count === 0 && !section.empty) return null;
           return (
@@ -151,7 +151,7 @@ export function MobileTriagePage({
           );
         })}
         {footer && <div className="px-3 py-4">{footer}</div>}
-      </main>
+      </div>
     </div>
   );
 }

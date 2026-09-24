@@ -13,15 +13,32 @@
  * `daily_check_item_links` stores), because that is the number every other
  * surface prints. A non-numeric segment is not a 404 — the thread answers it,
  * so a mistyped link lands on a readable screen with a back chevron.
+ *
+ * `?draft=` seeds the reply box, `?photos=` stages existing photos as
+ * attachments and `?visibility=internal|public` picks the channel
+ * (`lib/composer/ticket-thread-handoff`). All editable, never auto-sent — the
+ * repair workbench hands its customer updates and photos over this way.
  */
 
-import { useParams } from 'next/navigation';
+import { Suspense, useMemo } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { MobileTicketThread } from '@/components/mobile/ticket/MobileTicketThread';
+import { parseTicketThreadHandoff } from '@/lib/composer/ticket-thread-handoff';
 
-export default function MobileTicketPage() {
+function MobileTicketPageInner() {
   const params = useParams<{ ticketId: string }>();
+  const searchParams = useSearchParams();
   const parsed = Number(params?.ticketId);
   const ticketId = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  const handoff = useMemo(() => parseTicketThreadHandoff(searchParams), [searchParams]);
 
-  return <MobileTicketThread ticketId={ticketId} />;
+  return <MobileTicketThread ticketId={ticketId} handoff={handoff} />;
+}
+
+export default function MobileTicketPage() {
+  return (
+    <Suspense fallback={null}>
+      <MobileTicketPageInner />
+    </Suspense>
+  );
 }

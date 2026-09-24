@@ -1,18 +1,13 @@
 'use client';
 
 /**
- * Orders list — `/m/work`.
- *
- * In-warehouse to-ship queue with All / Assigned / Unassigned tabs.
+ * Orders list — `/m/work`, the compatibility alias of `/m/orders`. The queue
+ * root ({@link RedesignedMobileAssignedOrders}) declares its own industrial
+ * region, so both doors resolve the same mode.
  */
 
 import RedesignedMobileAssignedOrders from '@/components/mobile/redesign/AssignedOrders';
-import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default function MobileAssignedOrdersPage() {
-  return (
-    <ModeRegion mode="industrial" className="contents">
-      <RedesignedMobileAssignedOrders />
-    </ModeRegion>
-  );
+  return <RedesignedMobileAssignedOrders />;
 }

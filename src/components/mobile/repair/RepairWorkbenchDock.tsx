@@ -17,11 +17,11 @@ export type RepairDockVerb = 'status' | 'log' | 'pickup';
  * bottom padding, same as `ConfirmDock`.
  */
 export function RepairWorkbenchDock({
-  pickupBlockedReason,
+  pickupEnabled,
   onOpen,
 }: {
-  /** `null` when pickup may start; otherwise the one line saying why not. */
-  pickupBlockedReason: string | null;
+  /** Pickup is live only for eligible statuses (`canStartRepairPickup`). */
+  pickupEnabled: boolean;
   onOpen: (verb: RepairDockVerb) => void;
 }) {
   const cell = 'min-h-mode-hit-cta w-full rounded-mode px-2';
@@ -43,18 +43,12 @@ export function RepairWorkbenchDock({
           size="lg"
           className={cell}
           icon={<PackageCheck />}
-          disabled={pickupBlockedReason !== null}
-          aria-describedby={pickupBlockedReason ? 'rs-pickup-blocked' : undefined}
+          disabled={!pickupEnabled}
           onClick={() => onOpen('pickup')}
         >
           Pickup
         </Button>
       </div>
-      {pickupBlockedReason ? (
-        <p id="rs-pickup-blocked" className="mt-1.5 text-center text-role-caption text-mode-muted">
-          {pickupBlockedReason}
-        </p>
-      ) : null}
     </nav>
   );
 }

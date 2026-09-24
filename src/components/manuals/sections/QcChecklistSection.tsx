@@ -8,6 +8,7 @@ import { microBadge } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { useFailureModes } from '@/hooks/useFailureModes';
+import { isNumericKind, passBandLabel, stepValueUnit } from '@/lib/qc/qc-step';
 
 interface QcCheckRow {
   id: number;
@@ -45,9 +46,6 @@ const VALUE_KIND_LABEL: Record<string, string> = {
   TEXT: 'Free text',
 };
 
-/** Numeric kinds support a pass band (pass_min / pass_max) + a unit. */
-const NUMERIC_KINDS = new Set(['PERCENT', 'NUMBER']);
-
 function stepTypeBadgeClass(type: string): string {
   switch (type) {
     case 'PASS_FAIL': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
@@ -67,16 +65,7 @@ function valueSummary(check: QcCheckRow): string | null {
     const opts = check.value_enum ?? [];
     return opts.length ? opts.join(' / ') : 'choice';
   }
-  if (NUMERIC_KINDS.has(kind)) {
-    const min = check.pass_min == null ? null : Number(check.pass_min);
-    const max = check.pass_max == null ? null : Number(check.pass_max);
-    const unitRaw = check.value_unit || (kind === 'PERCENT' ? '%' : '');
-    const unit = unitRaw ? ` ${unitRaw}` : '';
-    if (min != null && max != null) return `${min}–${max}${unit}`;
-    if (min != null) return `≥ ${min}${unit}`;
-    if (max != null) return `≤ ${max}${unit}`;
-    return kind === 'PERCENT' ? '%' : (check.value_unit || 'number');
-  }
+  if (isNumericKind(kind)) return passBandLabel(check) ?? stepValueUnit(check) ?? 'number';
   return kind === 'TEXT' ? 'text' : null;
 }
 
@@ -131,7 +120,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
    */
   const valuePayload = useCallback(() => {
     const kind = valueKind || null;
-    const numeric = kind != null && NUMERIC_KINDS.has(kind);
+    const numeric = isNumericKind(kind);
     const enumList = valueEnumText
       .split(',')
       .map((s) => s.trim())
@@ -208,7 +197,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
     }
   }, [catalogId, onRefresh]);
 
-  const showNumeric = NUMERIC_KINDS.has(valueKind);
+  const showNumeric = isNumericKind(valueKind);
   const showEnum = valueKind === 'ENUM';
 
   return (

@@ -35,7 +35,7 @@ export function MobileImmersiveLayout({ children }: { children: React.ReactNode 
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-stage font-sans text-white antialiased">
       <ErrorBoundary label="mobile-immersive" fallback={ImmersivePageError}>
-        <main className="relative min-h-0 flex-1 overflow-hidden">{children}</main>
+        <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
       </ErrorBoundary>
       <ReceivingPhoneBridgeMount />
     </div>

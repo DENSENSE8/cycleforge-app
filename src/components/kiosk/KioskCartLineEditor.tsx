@@ -12,21 +12,36 @@
  *   which also threw away the signature. `kioskSessionStore.updateLine` existed
  *   the whole time with no caller — this is that caller.
  *
- * Edits write straight through on change (the cart IS the session root; there
- * is no separate save step to strand work in) — EXCEPT money. A price is
- * Square's item-details screen: a **Price adjustment** switch (keypad + reason,
- * saved behind a `walk_in.adjust_price` PIN; off restores the catalog price
- * with no PIN), a **Comp** switch (the item stays on the bill at $0 with a
- * reason), and an **item note**. The raw `Price ($)` field that used to change
- * a price with no permission, no PIN and no record of the original is gone.
- * Quantity lives on the card's `−  N  +`.
+ * ## One cart system (operator 2026-09-24: "no forks")
+ *
+ * Every field is the kiosk entry field ({@link KioskEntryField}) — the same
+ * face Device & quote and the contact step wear — and every write goes through
+ * the rule its line type already has elsewhere:
+ *
+ * - **Repair**: Serial number, Price and Notes, exactly as on its Device &
+ *   quote card. The quote is typed, not "adjusted": it is the repair's price,
+ *   written by {@link repairQuotePatch}, the one quote rule both surfaces use.
+ *   No PIN — a repair has no catalog price to deviate from.
+ * - **Custom amount** (the Keypad's line): Change amount on the same keypad
+ *   that made it. No PIN, for the reason `+` on the Keypad needs none.
+ * - **Catalog sale**: Square's item-details verbs — a Price adjustment switch
+ *   and a Comp switch, each saved behind a `walk_in.adjust_price` PIN, because
+ *   they move a price the catalog set. Off restores the catalog price, no PIN.
+ * - **Trade-in**: the credit offer, IMEI and grade.
+ *
+ * A linked repair (an existing ticket brought into this visit) states its
+ * facts and edits none of them: its serial and quote live on its own record.
+ *
+ * Removing is one tap, no PIN (operator 2026-09-24). Quantity lives on the
+ * card's `−  N  +`.
  */
 
 import { useState } from 'react';
-import { Button, Switch, TextField } from '@/design-system/primitives';
-import { Trash2 } from '@/components/Icons';
+import { Button, Switch } from '@/design-system/primitives';
+import { Receipt, Trash2 } from '@/components/Icons';
 import { KioskChip } from '@/components/kiosk/KioskChip';
 import { KioskAmountKeypad } from '@/components/kiosk/KioskAmountKeypad';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import {
   KioskPriceApprovalSheet,
   type KioskPriceApproval,
@@ -43,6 +58,7 @@ import {
   type LinePriceAdjustment,
 } from '@/lib/kiosk/cart-line';
 import { formatCartCents } from '@/lib/kiosk/cart-card-view';
+import { repairQuotePatch } from '@/lib/kiosk/repair-line-payload';
 import { PRICE_ADJUST_REASONS } from '@/lib/kiosk/price-approval-kinds';
 import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
@@ -57,8 +73,8 @@ function inputToCents(value: string): number {
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
 }
 
-/** Which money panel is open under the switches. */
-type MoneyPanel = null | 'adjust' | 'comp';
+/** Which money panel is open. `amount` = a custom amount's keypad. */
+type MoneyPanel = null | 'adjust' | 'comp' | 'amount';
 
 /** Preset reasons as touch chips, plus the free-text field for anything else. */
 function ReasonPicker({
@@ -89,14 +105,47 @@ function ReasonPicker({
           </KioskChip>
         ))}
       </div>
-      <TextField
-        label="Other reason"
+      <KioskEntryField
+        name="Other reason"
+        idScope={testId}
         value={presets.includes(value) ? '' : value}
         onChange={onChange}
         maxLength={200}
-        inputClassName="rounded-none"
       />
     </div>
+  );
+}
+
+/** A label-left, switch-right row — Square's item-details toggles. */
+function MoneySwitch({
+  label,
+  detail,
+  checked,
+  disabled,
+  onCheckedChange,
+  testId,
+}: {
+  label: string;
+  detail: string | null;
+  checked: boolean;
+  disabled: boolean;
+  onCheckedChange: (on: boolean) => void;
+  testId: string;
+}) {
+  return (
+    <label className="flex min-h-11 items-center justify-between gap-3">
+      <span className="text-sm font-semibold text-text-default">
+        {label}
+        {detail ? <span className={cn('block font-normal', KIOSK_META)}>{detail}</span> : null}
+      </span>
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+        aria-label={label}
+        data-testid={testId}
+      />
+    </label>
   );
 }
 
@@ -107,14 +156,14 @@ export function KioskCartLineEditor({
 }: {
   line: KioskCartLine;
   onDone: () => void;
-  /** Remove the line. The ledger decides whether that needs a void reason. */
   onRemove: () => void;
 }) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
-  // A desk holding this tablet owns the money verbs — price, comp and void.
+  // A desk holding this tablet owns the money verbs — price, comp and remove.
   const mirrored = session.sharedSessionId !== null;
   const repair = isRepairPayload(line.payload) ? line.payload : null;
+  const linked = repair?.linkedRepairId != null;
   const buyback = isBuybackPayload(line.payload) ? line.payload : null;
   const retail = isRetailPayload(line.payload) ? line.payload : null;
   const custom = lineIsCustom(line);
@@ -132,15 +181,11 @@ export function KioskCartLineEditor({
     });
   };
 
-  /** One write for the price and its provenance; a repair's quote text follows the money. */
+  /** One write for a sale's price and its provenance. */
   const setPrice = (cents: number, priceAdjustment: LinePriceAdjustment | null) => {
     actions.updateLine(line.id, {
       unitAmountCents: cents,
-      payload: {
-        ...line.payload,
-        priceAdjustment,
-        ...(repair ? { price: (cents / 100).toFixed(2) } : {}),
-      } as KioskCartLine['payload'],
+      payload: { ...line.payload, priceAdjustment } as KioskCartLine['payload'],
     });
   };
 
@@ -153,11 +198,11 @@ export function KioskCartLineEditor({
   const openPanel = (next: Exclude<MoneyPanel, null>) => {
     setPanel(next);
     setReason('');
-    setDraftCents(next === 'adjust' ? line.unitAmountCents : 0);
+    setDraftCents(next === 'comp' ? 0 : line.unitAmountCents);
   };
 
   const onApproved = (approved: KioskPriceApproval) => {
-    if (!request || request.kind === 'void') return;
+    if (!request) return;
     setPrice(request.toCents, {
       kind: request.kind,
       originalUnitAmountCents: request.fromCents,
@@ -172,8 +217,6 @@ export function KioskCartLineEditor({
 
   const adjustOn = panel === 'adjust' || adjustment?.kind === 'adjust';
   const compOn = panel === 'comp' || adjustment?.kind === 'comp';
-  // A keypad line has no catalog price to comp from or return to; remove it instead.
-  const canComp = !custom && !buyback;
 
   return (
     <div
@@ -181,31 +224,95 @@ export function KioskCartLineEditor({
       data-testid="kiosk-cart-line-editor"
       data-line-id={line.id}
     >
-      <TextField
-        label="Description"
-        value={line.title}
-        onChange={(v) => actions.updateLine(line.id, { title: v })}
-        inputClassName="rounded-none"
-      />
-
-      {buyback ? (
-        // The trade-in OFFER is typed here; it is what the counter pays out,
-        // not a catalog price being overridden.
-        <TextField
-          label="Credit ($)"
-          value={centsToInput(line.unitAmountCents)}
-          onChange={(v) => actions.updateLine(line.id, { unitAmountCents: -inputToCents(v) })}
-          inputMode="decimal"
-          inputClassName="rounded-none font-semibold tabular-nums text-text-success"
-          data-testid="kiosk-line-price"
-        />
-      ) : mirrored ? (
-        <p className={cn('text-text-soft', KIOSK_META)}>
-          {formatCartCents(line.unitAmountCents)} · Ask staff to change the price
+      {linked ? (
+        <p className="text-sm text-text-soft" data-testid="kiosk-line-linked">
+          Linked repair {repair?.linkedTicketNumber ?? `#${repair?.linkedRepairId}`} · its
+          serial and quote stay on its own record.
         </p>
       ) : (
-        <div className="space-y-3" data-testid="kiosk-line-money">
-          {custom ? (
+        <KioskEntryField
+          name="Description"
+          idScope={line.id}
+          value={line.title}
+          onChange={(v) => actions.updateLine(line.id, { title: v })}
+          testId="kiosk-line-title"
+        />
+      )}
+
+      {repair && !linked ? (
+        // The Device & quote card's fields, in its order, with its writes.
+        <>
+          <KioskEntryField
+            name="Serial number"
+            idScope={line.id}
+            value={repair.serialNumber}
+            onChange={(v) => patchPayload({ serialNumber: v })}
+            testId="kiosk-line-serial"
+          />
+          {mirrored ? (
+            <p className={cn('text-text-soft', KIOSK_META)}>
+              {formatCartCents(line.unitAmountCents)} · Ask staff to change the price
+            </p>
+          ) : (
+            <KioskEntryField
+              name="Price"
+              idScope={line.id}
+              value={repair.price}
+              inputMode="decimal"
+              icon={<Receipt className="h-4 w-4" />}
+              onChange={(v) => actions.updateLine(line.id, repairQuotePatch(repair, v))}
+              testId="kiosk-line-price"
+            />
+          )}
+          <KioskEntryField
+            name="Notes (optional)"
+            idScope={line.id}
+            value={repair.notes ?? ''}
+            multiline
+            onChange={(v) => patchPayload({ notes: v || null })}
+            testId="kiosk-line-notes"
+          />
+        </>
+      ) : null}
+
+      {buyback ? (
+        <>
+          {/* The trade-in OFFER is typed here; it is what the counter pays
+              out, not a catalog price being overridden. */}
+          <KioskEntryField
+            name="Credit"
+            idScope={line.id}
+            value={centsToInput(line.unitAmountCents)}
+            inputMode="decimal"
+            icon={<Receipt className="h-4 w-4" />}
+            onChange={(v) => actions.updateLine(line.id, { unitAmountCents: -inputToCents(v) })}
+            testId="kiosk-line-price"
+          />
+          <KioskEntryField
+            name="IMEI"
+            idScope={line.id}
+            value={buyback.imei}
+            onChange={(v) => patchPayload({ imei: v })}
+            testId="kiosk-line-imei"
+          />
+          <KioskEntryField
+            name="Grade"
+            idScope={line.id}
+            value={buyback.grade ?? ''}
+            onChange={(v) => patchPayload({ grade: v })}
+            testId="kiosk-line-grade"
+          />
+        </>
+      ) : null}
+
+      {retail ? (
+        mirrored ? (
+          <p className={cn('text-text-soft', KIOSK_META)}>
+            {formatCartCents(line.unitAmountCents)} · Ask staff to change the price
+          </p>
+        ) : custom ? (
+          // The Keypad's own line: change it on the keypad that made it, no PIN.
+          <div className="space-y-3" data-testid="kiosk-line-money">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-semibold text-text-default">
                 Custom amount · {formatCartCents(line.unitAmountCents)}
@@ -213,164 +320,127 @@ export function KioskCartLineEditor({
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => (panel === 'adjust' ? setPanel(null) : openPanel('adjust'))}
+                onClick={() => (panel === 'amount' ? setPanel(null) : openPanel('amount'))}
                 data-testid="kiosk-line-change-amount"
               >
-                {panel === 'adjust' ? 'Cancel' : 'Change amount'}
+                {panel === 'amount' ? 'Cancel' : 'Change amount'}
               </Button>
             </div>
-          ) : (
-            <label className="flex min-h-11 items-center justify-between gap-3">
-              <span className="text-sm font-semibold text-text-default">
-                Price adjustment
-                {adjustment?.kind === 'adjust' && catalogCents != null ? (
-                  <span className={cn('block font-normal', KIOSK_META)}>
-                    {formatCartCents(catalogCents)} → {formatCartCents(line.unitAmountCents)} ·{' '}
-                    {adjustment.reason}
-                    {adjustment.staffName ? ` · ${adjustment.staffName}` : ''}
-                  </span>
-                ) : null}
-              </span>
-              <Switch
-                checked={adjustOn}
-                disabled={compOn}
-                onCheckedChange={(on) => (on ? openPanel('adjust') : restoreCatalogPrice())}
-                aria-label="Price adjustment"
-                data-testid="kiosk-line-adjust-switch"
-              />
-            </label>
-          )}
-
-          {panel === 'adjust' ? (
-            <div className="space-y-4 border border-border-hairline p-4" data-testid="kiosk-line-adjust-panel">
-              <KioskAmountKeypad cents={draftCents} onChange={setDraftCents} label="New price" />
-              <ReasonPicker
-                presets={PRICE_ADJUST_REASONS}
-                value={reason}
-                onChange={setReason}
-                testId="kiosk-line-adjust-reason"
-              />
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={!reason.trim() || draftCents === line.unitAmountCents}
-                onClick={() =>
-                  setRequest({
-                    kind: custom ? 'custom' : 'adjust',
-                    fromCents: custom ? null : catalogCents,
-                    toCents: draftCents,
-                    reason: reason.trim(),
-                  })
-                }
-                data-testid="kiosk-line-adjust-save"
-              >
-                Save price · {formatCartCents(draftCents)}
-              </Button>
-            </div>
-          ) : null}
-
-          {canComp ? (
-            <label className="flex min-h-11 items-center justify-between gap-3">
-              <span className="text-sm font-semibold text-text-default">
-                Comp
-                {adjustment?.kind === 'comp' ? (
-                  <span className={cn('block font-normal', KIOSK_META)}>
-                    {adjustment.reason}
-                    {adjustment.staffName ? ` · ${adjustment.staffName}` : ''}
-                  </span>
-                ) : null}
-              </span>
-              <Switch
-                checked={compOn}
-                disabled={adjustOn}
-                onCheckedChange={(on) => (on ? openPanel('comp') : restoreCatalogPrice())}
-                aria-label="Comp"
-                data-testid="kiosk-line-comp-switch"
-              />
-            </label>
-          ) : null}
-
-          {panel === 'comp' ? (
-            <div className="space-y-4 border border-border-hairline p-4" data-testid="kiosk-line-comp-panel">
-              <ReasonPicker
-                presets={session.lineReasons.comp}
-                value={reason}
-                onChange={setReason}
-                testId="kiosk-line-comp-reason"
-              />
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={!reason.trim()}
-                onClick={() =>
-                  setRequest({
-                    kind: 'comp',
-                    fromCents: catalogCents ?? line.unitAmountCents,
-                    toCents: 0,
-                    reason: reason.trim(),
-                  })
-                }
-                data-testid="kiosk-line-comp-save"
-              >
-                Comp item · $0.00
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {retail ? (
-        <TextField
-          label="Note"
-          value={retail.note ?? ''}
-          onChange={(v) => patchPayload({ note: v })}
-          multiline
-          rows={2}
-          maxLength={2000}
-          inputClassName="rounded-none"
-          data-testid="kiosk-line-note"
-        />
+            {panel === 'amount' ? (
+              <div className="space-y-4 border border-border-hairline p-4" data-testid="kiosk-line-amount-panel">
+                <KioskAmountKeypad cents={draftCents} onChange={setDraftCents} label="New amount" />
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={draftCents <= 0 || draftCents === line.unitAmountCents}
+                  onClick={() => {
+                    setPrice(draftCents, null);
+                    setPanel(null);
+                  }}
+                  data-testid="kiosk-line-amount-save"
+                >
+                  Save amount · {formatCartCents(draftCents)}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          // A catalog price: Square's item-details verbs, each behind a PIN.
+          <div className="space-y-3" data-testid="kiosk-line-money">
+            <MoneySwitch
+              label="Price adjustment"
+              detail={
+                adjustment?.kind === 'adjust' && catalogCents != null
+                  ? `${formatCartCents(catalogCents)} → ${formatCartCents(line.unitAmountCents)} · ${adjustment.reason}${
+                      adjustment.staffName ? ` · ${adjustment.staffName}` : ''
+                    }`
+                  : null
+              }
+              checked={adjustOn}
+              disabled={compOn}
+              onCheckedChange={(on) => (on ? openPanel('adjust') : restoreCatalogPrice())}
+              testId="kiosk-line-adjust-switch"
+            />
+            {panel === 'adjust' ? (
+              <div className="space-y-4 border border-border-hairline p-4" data-testid="kiosk-line-adjust-panel">
+                <KioskAmountKeypad cents={draftCents} onChange={setDraftCents} label="New price" />
+                <ReasonPicker
+                  presets={PRICE_ADJUST_REASONS}
+                  value={reason}
+                  onChange={setReason}
+                  testId="kiosk-line-adjust-reason"
+                />
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={!reason.trim() || draftCents === line.unitAmountCents}
+                  onClick={() =>
+                    setRequest({
+                      kind: 'adjust',
+                      fromCents: catalogCents,
+                      toCents: draftCents,
+                      reason: reason.trim(),
+                    })
+                  }
+                  data-testid="kiosk-line-adjust-save"
+                >
+                  Save price · {formatCartCents(draftCents)}
+                </Button>
+              </div>
+            ) : null}
+            <MoneySwitch
+              label="Comp"
+              detail={
+                adjustment?.kind === 'comp'
+                  ? `${adjustment.reason}${adjustment.staffName ? ` · ${adjustment.staffName}` : ''}`
+                  : null
+              }
+              checked={compOn}
+              disabled={adjustOn}
+              onCheckedChange={(on) => (on ? openPanel('comp') : restoreCatalogPrice())}
+              testId="kiosk-line-comp-switch"
+            />
+            {panel === 'comp' ? (
+              <div className="space-y-4 border border-border-hairline p-4" data-testid="kiosk-line-comp-panel">
+                <ReasonPicker
+                  presets={session.lineReasons.comp}
+                  value={reason}
+                  onChange={setReason}
+                  testId="kiosk-line-comp-reason"
+                />
+                <Button
+                  size="lg"
+                  className="w-full"
+                  disabled={!reason.trim()}
+                  onClick={() =>
+                    setRequest({
+                      kind: 'comp',
+                      fromCents: catalogCents ?? line.unitAmountCents,
+                      toCents: 0,
+                      reason: reason.trim(),
+                    })
+                  }
+                  data-testid="kiosk-line-comp-save"
+                >
+                  Comp item · $0.00
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )
       ) : null}
 
-      {repair && (
-        <>
-          <TextField
-            label="Serial number"
-            value={repair.serialNumber}
-            onChange={(v) => patchPayload({ serialNumber: v })}
-            mono
-            inputClassName="rounded-none"
-            data-testid="kiosk-line-serial"
-          />
-          <TextField
-            label="Issue / notes"
-            value={repair.repairNotes ?? ''}
-            onChange={(v) => patchPayload({ repairNotes: v })}
-            multiline
-            rows={2}
-            inputClassName="rounded-none"
-          />
-        </>
-      )}
-
-      {buyback && (
-        <>
-          <TextField
-            label="IMEI"
-            value={buyback.imei}
-            onChange={(v) => patchPayload({ imei: v })}
-            mono
-            inputClassName="rounded-none"
-            data-testid="kiosk-line-imei"
-          />
-          <TextField
-            label="Grade"
-            value={buyback.grade ?? ''}
-            onChange={(v) => patchPayload({ grade: v })}
-            inputClassName="rounded-none"
-          />
-        </>
-      )}
+      {retail ? (
+        <KioskEntryField
+          name="Note"
+          idScope={line.id}
+          value={retail.note ?? ''}
+          multiline
+          maxLength={2000}
+          onChange={(v) => patchPayload({ note: v })}
+          testId="kiosk-line-note"
+        />
+      ) : null}
 
       <div className="flex items-center justify-between gap-3 pt-1">
         {mirrored ? (

@@ -53,10 +53,21 @@ export interface KioskCartMoney {
   takesPaymentNow: boolean;
 }
 
+function lineUnits(line: KioskCartLine): number {
+  return Number.isFinite(line.quantity) ? Math.max(0, Math.trunc(line.quantity)) : 0;
+}
+
 function lineTotalCents(line: KioskCartLine): number {
-  const qty = Number.isFinite(line.quantity) ? Math.max(0, Math.trunc(line.quantity)) : 0;
   const unit = Number.isFinite(line.unitAmountCents) ? Math.trunc(line.unitAmountCents) : 0;
-  return qty * unit;
+  return lineUnits(line) * unit;
+}
+
+/**
+ * Whole units on the cart — the `N` of every `N · $total` header (a line of two
+ * cables counts as two). One count, so the cart and the Keypad cannot differ.
+ */
+export function cartUnitCount(lines: readonly KioskCartLine[]): number {
+  return lines.reduce((sum, line) => sum + lineUnits(line), 0);
 }
 
 export function cartMoneySplit(lines: readonly KioskCartLine[]): KioskCartMoney {

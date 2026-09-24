@@ -2,9 +2,9 @@
  * Editable customer-update prefills for the mobile repair workbench. Keyed on
  * the STORED repair status (queue-compatible values, see `@/lib/repair-status`);
  * a status without a customer-facing moment returns '' so nothing is suggested.
- * These are starting text only — the operator edits and explicitly sends.
+ * These are starting text only — the operator edits and sends them in the
+ * ticket thread (`/m/t/[ticketId]?draft=`).
  */
-import { formatMonthDayTimePST } from '@/utils/date';
 
 export interface CustomerUpdateDraftContext {
   firstName: string;
@@ -32,9 +32,4 @@ export function customerUpdateDraft(status: string | null, ctx: CustomerUpdateDr
       return '';
   }
   return `${greeting}\n\n${body}\n\nThank you!`;
-}
-
-/** Customer-readable Pacific stamp (e.g. `Sep 24, 3:05 PM`) for the insert-timestamp control. */
-export function readableStamp(input: string | Date): string {
-  return formatMonthDayTimePST(input, { hour12: true });
 }

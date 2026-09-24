@@ -71,12 +71,13 @@ const KioskSchema = z.object({
    */
   defaultCommand: z.enum(KIOSK_COMMAND_IDS).optional(),
   /**
-   * The counter's comp and void reasons (Square's owner-editable lists). The
-   * tablet offers them as chips; free text is always allowed beside them.
-   * Unset or empty → `DEFAULT_LINE_REASONS`.
+   * The counter's comp reasons (Square's owner-editable list). The tablet
+   * offers them as chips; free text is always allowed beside them.
+   * Unset or empty → `DEFAULT_LINE_REASONS`. Older bags may still carry a
+   * void-reason list from when removing a line took a PIN; this object is
+   * non-strict, so parsing drops that key and those rows stay readable.
    */
   compReasons: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
-  voidReasons: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and
@@ -498,14 +499,10 @@ export function getKioskDefaultCommand(
   return parseKioskCommandId(settings?.kiosk?.defaultCommand, KIOSK_FALLBACK_COMMAND);
 }
 
-/** The org's comp / void reasons, each list falling back to the defaults when unset or empty. */
+/** The org's comp reasons, falling back to the defaults when unset or empty. */
 export function getKioskLineReasons(settings: OrgSettings | null | undefined): KioskLineReasons {
   const comp = settings?.kiosk?.compReasons?.filter((r) => r.trim()) ?? [];
-  const voids = settings?.kiosk?.voidReasons?.filter((r) => r.trim()) ?? [];
-  return {
-    comp: comp.length > 0 ? comp : DEFAULT_LINE_REASONS.comp,
-    void: voids.length > 0 ? voids : DEFAULT_LINE_REASONS.void,
-  };
+  return { comp: comp.length > 0 ? comp : DEFAULT_LINE_REASONS.comp };
 }
 
 /** Per-org photo-analysis settings (see OrgSettingsSchema.photoAnalysis). */

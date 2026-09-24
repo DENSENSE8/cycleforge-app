@@ -21,7 +21,7 @@
  * saved/unsaved dirty check went with the card rather than being left as dead
  * exports.
  *
- * Callers: `KioskRepairPane`.
+ * Callers: `KioskRepairPane`, `KioskCartLineEditor` (via {@link repairQuotePatch}).
  * Affected API: none. Schemas: `counter_session_lines.payload` (REPAIR).
  */
 
@@ -35,6 +35,29 @@ export function repairPriceToCents(price: string): number {
   const dollars = Number.parseFloat(cleaned);
   if (!Number.isFinite(dollars) || dollars < 0) return 0;
   return Math.round(dollars * 100);
+}
+
+/**
+ * THE write for a repair's QUOTE, wherever it is typed — Device & quote or the
+ * cart's line editor (operator 2026-09-24: "no forks, all under one cart
+ * system"). The text on the paperwork (`payload.price`, printed from
+ * `repair_service.price`) and the money on the line (`unitAmountCents`, what
+ * the totals are built from) move together, or the agreement and the total
+ * disagree.
+ *
+ * A typed quote is the repair's price, not a deviation from a catalog price,
+ * so it needs no PIN (`verifyLinePrices` accepts an unapproved repair quote) —
+ * and it clears any earlier authorized re-quote, whose approval named the old
+ * figure and would be refused at submit.
+ */
+export function repairQuotePatch(
+  payload: RepairPayload,
+  quote: string,
+): { unitAmountCents: number; payload: RepairPayload } {
+  return {
+    unitAmountCents: repairPriceToCents(quote),
+    payload: { ...payload, price: quote, priceAdjustment: null },
+  };
 }
 
 export interface RepairLinePayloadInput {

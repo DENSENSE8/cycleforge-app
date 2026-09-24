@@ -132,6 +132,8 @@ export const AUDIT_ENTITY = {
   STATION_COMMAND_ALIAS: 'station_command_alias',
   RMA: 'rma',
   REPAIR_SERVICE: 'repair_service',
+  /** A `customers` row (buyer contact shared by repairs, orders, counter visits). */
+  CUSTOMER: 'customer',
   QC_CHECK_TEMPLATE: 'qc_check_template',
   CHECKLIST_TEMPLATE: 'checklist_template',
   KIT_PART_TEMPLATE: 'kit_part_template',
@@ -584,6 +586,11 @@ export const AUDIT_ACTION = {
    */
   ORDER_ACKNOWLEDGED: 'order.acknowledged',
   ORDER_UNACKNOWLEDGED: 'order.unacknowledged',
+  /**
+   * A staffer read the order's marketplace buyer note and cleared the pack /
+   * label interlock for its current text (src/lib/orders/buyer-note-interlock.ts).
+   */
+  ORDER_BUYER_NOTE_ACKNOWLEDGED: 'order.buyer_note_acknowledged',
   /** Ready-to-pack packing-station place / move / clear (order_pack_placements). */
   ORDER_PACK_PLACE: 'order.pack_place',
   ORDER_PACK_MOVE: 'order.pack_move',
@@ -626,7 +633,14 @@ export const AUDIT_ACTION = {
   REPAIR_SERVICE_UPDATE: 'repair_service.update',
   REPAIR_SERVICE_LINK:   'repair_service.link',
   REPAIR_SERVICE_UNLINK:   'repair_service.unlink',
+  // Repair ↔ customer record: create + link, change, unlink (never deletes the customer)
+  REPAIR_SERVICE_CUSTOMER_LINK: 'repair_service.customer_link',
+  REPAIR_SERVICE_CUSTOMER_UNLINK: 'repair_service.customer_unlink',
+  // A customer's contact columns corrected (PATCH /api/customers/[id])
+  CUSTOMER_CONTACT_UPDATE: 'customer.contact_update',
   REPAIR_SERVICE_LABEL_PRINTED: 'repair_service.label_printed',
+  // A station printed the repair paper or a manual for a repair (phone → station job).
+  REPAIR_SERVICE_DOCUMENT_PRINTED: 'repair_service.document_printed',
   // Pack / order (existing callers — keep their literals stable)
   PACK_COMPLETED: 'PACK_COMPLETED',
   // Packer Review Station — verification capture + manager review decision

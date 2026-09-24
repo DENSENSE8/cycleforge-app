@@ -54,8 +54,14 @@ export function cartLineIdentifiers(
 ): { primary: CartLineId | null; secondary: CartLineId | null } {
   const p = line.payload;
   if (isRepairPayload(p)) {
+    // A linked repair is identified by the ticket it points at — that is the
+    // number the customer quotes and the desk looks up — so it takes the
+    // primary chip in place of the service SKU.
+    const linked = p.linkedRepairId != null
+      ? id('Linked', p.linkedTicketNumber || `RS-${p.linkedRepairId}`)
+      : null;
     return {
-      primary: id('SKU', p.sourceSku),
+      primary: linked ?? id('SKU', p.sourceSku),
       secondary: id('SN', p.serialNumber) ?? id('IMEI', p.imei),
     };
   }

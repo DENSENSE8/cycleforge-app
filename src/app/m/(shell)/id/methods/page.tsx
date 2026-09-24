@@ -115,7 +115,7 @@ export default function MobileIdentificationMethodsPage() {
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       <MobileDetailTopBar backHref="/m/scan" subtitle="Identify" title="Methods" />
-      <main className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-8">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4 pb-8">
         {!isLoaded || !user ? (
           <p className="text-role-caption text-text-muted">Loading…</p>
         ) : (
@@ -207,7 +207,7 @@ export default function MobileIdentificationMethodsPage() {
             </div>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }

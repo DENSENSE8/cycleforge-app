@@ -70,7 +70,7 @@
 
 import { Check, Link2, Loader2, Plus, Search, Ticket } from '@/components/Icons';
 import { KioskChip, type KioskChipTone } from '@/components/kiosk/KioskChip';
-import { KioskEntryField } from '@/components/kiosk/KioskCustomerIntake';
+import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { useKioskTicketSearch } from '@/components/kiosk/useKioskTicketSearch';
 import type { TicketCandidate } from '@/components/support/link/useTicketSearch';
 import {

@@ -35,6 +35,11 @@ const RepairPayloadSchema = z.object({
   price: z.string().max(32),
   signatureDataUrl: z.string().max(2_000_000).nullish(),
   signatureStrokes: z.unknown().optional(),
+  // An existing ticket brought into the visit. Kept, not stripped: without it a
+  // mirrored linked line reads as a NEW unsigned drop-off and every signature
+  // gate blocks a repair that was signed for when its ticket was written.
+  linkedRepairId: z.number().int().positive().nullish(),
+  linkedTicketNumber: z.string().trim().max(40).nullish(),
 });
 
 const BuybackPayloadSchema = z.object({

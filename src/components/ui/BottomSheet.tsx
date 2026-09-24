@@ -99,7 +99,7 @@ export function BottomSheet({
 
   // Claim keyboard ownership so dashboard capture listeners (queue cursor,
   // nav leader) stand down instead of eating Escape before this sheet.
-  useRegisterOverlay(open);
+  const isTopmost = useRegisterOverlay(open);
 
   // Track portal target — only mount on the client side.
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
@@ -108,13 +108,16 @@ export function BottomSheet({
   }, []);
 
   // Lock body scroll + Escape-to-close while open. Capture so we own the
-  // key even if a late-mounted bubble listener is still live.
+  // key even if a late-mounted bubble listener is still live. Every open sheet
+  // hears the key, so only the topmost overlay acts on it: a confirm stacked
+  // on an action sheet closes alone, and a popover inside a sheet closes
+  // before the sheet does (its own bubble listener must still receive it).
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
+      if (e.key !== 'Escape' || !isTopmost()) return;
       e.preventDefault();
       e.stopPropagation();
       onClose();
@@ -124,7 +127,7 @@ export function BottomSheet({
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey, true);
     };
-  }, [open, onClose]);
+  }, [open, onClose, isTopmost]);
 
   if (!portalNode) return null;
 
@@ -360,6 +363,8 @@ interface ConfirmSheetProps {
   cancelLabel?: string;
   destructive?: boolean;
   onConfirm: () => void;
+  /** Stacking level — pass the parent sheet's level + 1 when confirming from inside a sheet. */
+  level?: number;
 }
 
 export function ConfirmSheet({
@@ -371,9 +376,10 @@ export function ConfirmSheet({
   cancelLabel = 'Cancel',
   destructive = false,
   onConfirm,
+  level = 0,
 }: ConfirmSheetProps) {
   return (
-    <BottomSheet open={open} onClose={onClose} dragDisabled={destructive} title={title}>
+    <BottomSheet open={open} onClose={onClose} dragDisabled={destructive} title={title} level={level}>
       {message && (
         <p className="mb-5 text-center text-sm leading-relaxed text-text-muted">
           {message}

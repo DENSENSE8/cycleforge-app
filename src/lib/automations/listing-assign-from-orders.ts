@@ -1,11 +1,12 @@
 /**
- * Bulk listing→staff from to-ship selection: upsert automation_rules by
- * item_number and/or assign TEST+PACK on the selected orders now.
+ * Bulk listing→staff from to-ship selection: upsert automation_rules keyed on
+ * the (item #, SKU) pair and/or assign TEST+PACK on the selected orders now.
+ * A line with an item # but no SKU keys the item-#-only listing-wide wildcard.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeItemNumber } from '@/lib/automations/listing-match';
+import { normalizeItemNumber, normalizeSku } from '@/lib/automations/listing-match';
 import { LISTING_AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 import { upsertOrderAssignment } from '@/lib/work-assignments/upsert-order-assignment';
 import { applyListingAssignment } from '@/lib/automations/apply-listing-assignment';
@@ -25,15 +26,19 @@ export type ListingAssignInput = {
 export type ListingAssignOrderResult = {
   orderId: number;
   itemNumber: string | null;
+  sku: string | null;
   status: 'assigned' | 'rule_applied' | 'skipped' | 'failed';
   reason?: string;
 };
+
+/** One rule key: normalized item # + normalized SKU (null = item-#-only wildcard). */
+export type ListingSkuPair = { itemNumber: string; sku: string | null };
 
 export type ListingAssignResult = {
   mode: ListingAssignMode;
   orderResults: ListingAssignOrderResult[];
   rulesUpserted: number;
-  listings: Array<{ itemNumber: string; orderCount: number }>;
+  listings: Array<ListingSkuPair & { orderCount: number }>;
   skippedNoItemNumber: number;
 };
 
@@ -66,9 +71,31 @@ async function loadOrderFacts(
   }));
 }
 
-async function upsertRuleForItemNumber(
+/** Group order lines by (normalized item #, normalized SKU); lines without an item # are counted apart. */
+function groupByPair(facts: OrderFact[]): {
+  pairs: Array<ListingSkuPair & { rows: OrderFact[] }>;
+  noItemNumber: OrderFact[];
+} {
+  const byKey = new Map<string, ListingSkuPair & { rows: OrderFact[] }>();
+  const noItemNumber: OrderFact[] = [];
+  for (const row of facts) {
+    const itemNumber = normalizeItemNumber(row.item_number);
+    if (!itemNumber) {
+      noItemNumber.push(row);
+      continue;
+    }
+    const sku = normalizeSku(row.sku) || null;
+    const key = `${itemNumber}\u0000${sku ?? ''}`;
+    const group = byKey.get(key) ?? { itemNumber, sku, rows: [] };
+    group.rows.push(row);
+    byKey.set(key, group);
+  }
+  return { pairs: [...byKey.values()], noItemNumber };
+}
+
+async function upsertRuleForPair(
   organizationId: OrgId,
-  itemNumber: string,
+  pair: ListingSkuPair,
   techId: number,
   packerId: number,
   actorStaffId: number | null,
@@ -77,18 +104,22 @@ async function upsertRuleForItemNumber(
     { type: 'assign_work', work_type: 'TEST', staff_id: techId },
     { type: 'assign_work', work_type: 'PACK', staff_id: packerId },
   ];
-  const whenJson = { item_number: itemNumber };
-  const name = `Listing ${itemNumber}`;
+  const whenJson = pair.sku
+    ? { item_number: pair.itemNumber, sku: pair.sku }
+    : { item_number: pair.itemNumber };
+  const name = pair.sku ? `Listing ${pair.itemNumber} · ${pair.sku}` : `Listing ${pair.itemNumber}`;
 
+  // Same key expressions as ux_automation_rules_org_item_number_sku.
   const existing = await tenantQuery<{ id: number }>(
     organizationId,
     `SELECT id FROM automation_rules
       WHERE organization_id = $1
         AND deleted_at IS NULL
         AND NULLIF(trim(COALESCE(when_json->>'item_number', '')), '') IS NOT NULL
-        AND upper(regexp_replace(trim(when_json->>'item_number'), '[^A-Za-z0-9]', '', 'g')) = $2
+        AND upper(regexp_replace(trim(COALESCE(when_json->>'item_number', '')), '[^A-Za-z0-9]', '', 'g')) = $2
+        AND upper(btrim(COALESCE(when_json->>'sku', ''))) = $3
       LIMIT 1`,
-    [organizationId, itemNumber],
+    [organizationId, pair.itemNumber, pair.sku ?? ''],
   );
 
   if (existing.rows[0]) {
@@ -137,36 +168,26 @@ async function upsertRuleForItemNumber(
 }
 
 /**
- * Preview listings covered by a set of order ids (for the to-ship overlay).
+ * Preview (item #, SKU) pairs covered by a set of order ids (for the to-ship overlay).
  */
 export async function previewListingAssign(
   organizationId: OrgId,
   orderIds: number[],
 ): Promise<{
-  listings: Array<{ itemNumber: string; orderCount: number; orderIds: number[] }>;
+  listings: Array<ListingSkuPair & { orderCount: number; orderIds: number[] }>;
   skippedNoItemNumber: number;
   totalOrders: number;
 }> {
   const facts = await loadOrderFacts(organizationId, orderIds);
-  const byItem = new Map<string, number[]>();
-  let skippedNoItemNumber = 0;
-  for (const row of facts) {
-    const item = normalizeItemNumber(row.item_number);
-    if (!item) {
-      skippedNoItemNumber += 1;
-      continue;
-    }
-    const list = byItem.get(item) ?? [];
-    list.push(row.id);
-    byItem.set(item, list);
-  }
+  const { pairs, noItemNumber } = groupByPair(facts);
   return {
     totalOrders: facts.length,
-    skippedNoItemNumber,
-    listings: [...byItem.entries()].map(([itemNumber, ids]) => ({
+    skippedNoItemNumber: noItemNumber.length,
+    listings: pairs.map(({ itemNumber, sku, rows }) => ({
       itemNumber,
-      orderCount: ids.length,
-      orderIds: ids,
+      sku,
+      orderCount: rows.length,
+      orderIds: rows.map((r) => r.id),
     })),
   };
 }
@@ -185,33 +206,27 @@ export async function listingAssignFromOrders(
       orderResults.push({
         orderId: id,
         itemNumber: null,
+        sku: null,
         status: 'skipped',
         reason: 'order_not_found',
       });
     }
   }
 
-  const byItem = new Map<string, OrderFact[]>();
-  let skippedNoItemNumber = 0;
-  for (const row of facts) {
-    const item = normalizeItemNumber(row.item_number);
-    if (!item) {
-      skippedNoItemNumber += 1;
-      orderResults.push({
-        orderId: row.id,
-        itemNumber: null,
-        status: 'skipped',
-        reason: 'no_item_number',
-      });
-      continue;
-    }
-    const list = byItem.get(item) ?? [];
-    list.push(row);
-    byItem.set(item, list);
+  const { pairs, noItemNumber } = groupByPair(facts);
+  for (const row of noItemNumber) {
+    orderResults.push({
+      orderId: row.id,
+      itemNumber: null,
+      sku: normalizeSku(row.sku) || null,
+      status: 'skipped',
+      reason: 'no_item_number',
+    });
   }
 
-  const listings = [...byItem.entries()].map(([itemNumber, rows]) => ({
+  const listings = pairs.map(({ itemNumber, sku, rows }) => ({
     itemNumber,
+    sku,
     orderCount: rows.length,
   }));
 
@@ -224,31 +239,22 @@ export async function listingAssignFromOrders(
       throw new Error('techId and packerId are required for save_and_assign');
     }
 
-    for (const itemNumber of byItem.keys()) {
-      await upsertRuleForItemNumber(
-        orgId,
-        itemNumber,
-        techId,
-        packerId,
-        input.actorStaffId ?? null,
-      );
+    for (const pair of pairs) {
+      await upsertRuleForPair(orgId, pair, techId, packerId, input.actorStaffId ?? null);
       rulesUpserted += 1;
     }
 
-    for (const [itemNumber, rows] of byItem) {
+    for (const { itemNumber, sku, rows } of pairs) {
       for (const row of rows) {
         try {
           await upsertOrderAssignment(orgId, row.id, 'TEST', techId);
           await upsertOrderAssignment(orgId, row.id, 'PACK', packerId);
-          orderResults.push({
-            orderId: row.id,
-            itemNumber,
-            status: 'assigned',
-          });
+          orderResults.push({ orderId: row.id, itemNumber, sku, status: 'assigned' });
         } catch (err) {
           orderResults.push({
             orderId: row.id,
             itemNumber,
+            sku,
             status: 'failed',
             reason: err instanceof Error ? err.message : String(err),
           });
@@ -256,7 +262,7 @@ export async function listingAssignFromOrders(
       }
     }
   } else {
-    for (const [itemNumber, rows] of byItem) {
+    for (const { itemNumber, sku, rows } of pairs) {
       for (const row of rows) {
         try {
           const result = await applyListingAssignment({
@@ -274,6 +280,7 @@ export async function listingAssignFromOrders(
           orderResults.push({
             orderId: row.id,
             itemNumber,
+            sku,
             status: result.status === 'applied' ? 'rule_applied' : 'skipped',
             reason: result.reason ?? result.error,
           });
@@ -281,6 +288,7 @@ export async function listingAssignFromOrders(
           orderResults.push({
             orderId: row.id,
             itemNumber,
+            sku,
             status: 'failed',
             reason: err instanceof Error ? err.message : String(err),
           });
@@ -294,6 +302,6 @@ export async function listingAssignFromOrders(
     orderResults,
     rulesUpserted,
     listings,
-    skippedNoItemNumber,
+    skippedNoItemNumber: noItemNumber.length,
   };
 }

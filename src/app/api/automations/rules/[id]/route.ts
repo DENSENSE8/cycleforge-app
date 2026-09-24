@@ -84,7 +84,7 @@ export async function PATCH(req: NextRequest) {
     const err = error as { code?: string; message?: string };
     if (err?.code === '23505' || /unique/i.test(err?.message || '')) {
       return NextResponse.json(
-        { success: false, error: 'A rule for this item number already exists' },
+        { success: false, error: 'A rule for this item number and SKU already exists' },
         { status: 409 },
       );
     }

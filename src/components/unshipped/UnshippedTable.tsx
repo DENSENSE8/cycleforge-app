@@ -951,6 +951,7 @@ export function UnshippedTable({
             searchEmptyTitle={searchEmptyTitle}
             searchResultLabel={searchResultLabel}
             clearSearchLabel={clearSearchLabel}
+            onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
           />
         ) : (
         <UnshippedSheet
@@ -977,6 +978,8 @@ export function UnshippedTable({
           <PaperworkWalkHost
             rows={walkRows.length > 0 ? walkRows : records}
             selectedId={paperworkId}
+            loading={query.isLoading}
+            onSelect={patchPaperwork}
             onAdvance={advancePaperworkWalk}
             onPrev={retreatPaperworkWalk}
             onExit={closePaperworkWalk}

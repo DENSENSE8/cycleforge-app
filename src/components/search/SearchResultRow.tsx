@@ -94,7 +94,7 @@ import {
   type SearchRowDensity,
 } from './search-result-faces';
 import { orderIdFromHit } from '@/lib/search/search-result-identity';
-import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
+import { useOrderChannel, usePlatformMeta } from '@/hooks/useCatalog';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 
@@ -320,12 +320,12 @@ function AlignedRow({
   showJourneyAction,
   density,
 }: SearchResultRowProps & { density: 'comfortable' }) {
-  const orderChannelLabel = useOrderChannelLabel();
+  const resolveOrderChannel = useOrderChannel();
   const facets = hit.facets ?? {};
   const { kind: identityKind, orderId, serial, tracking } = identityFor(hit);
   const accountSource = facets.source_platform?.trim() || null;
   const channelLabel =
-    identityKind === 'order' && orderId ? orderChannelLabel(orderId, accountSource) : '';
+    identityKind === 'order' && orderId ? resolveOrderChannel(orderId, accountSource).label : '';
   const channelMeta = sourcePlatformMetaFromLabel(channelLabel);
   const platformLabel =
     identityKind === 'order' && orderId

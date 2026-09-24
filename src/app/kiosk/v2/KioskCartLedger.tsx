@@ -13,15 +13,9 @@ import { Button } from '@/design-system/primitives';
 import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';
 import { KioskCartDoneFace } from './KioskCartDoneFace';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
-import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
-import { KioskCartSwipeRow } from '@/components/kiosk/KioskCartSwipeRow';
-import { KioskCartLineCard } from '@/components/kiosk/KioskCartLineCard';
-import { KioskChip } from '@/components/kiosk/KioskChip';
-import {
-  KioskPriceApprovalSheet,
-  type KioskPriceApproval,
-  type KioskPriceApprovalRequest,
-} from '@/components/kiosk/KioskPriceApprovalSheet';
+import { KioskCartLineList } from '@/components/kiosk/KioskCartLineList';
+import { KioskLinkRepair } from '@/components/kiosk/KioskLinkRepair';
+import { KioskStepTitleRow } from '@/components/kiosk/KioskStepTitleRow';
 import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
@@ -39,7 +33,7 @@ import {
   cartStepGates,
   type KioskCartStep,
 } from '@/lib/kiosk/cart-step-gates';
-import { cartMoneySplit } from '@/lib/kiosk/cart-money';
+import { cartMoneySplit, cartUnitCount } from '@/lib/kiosk/cart-money';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import {
   KioskPaymentStepUpSheet,
@@ -88,7 +82,6 @@ export function KioskCartLedger({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [confirmVoid, setConfirmVoid] = useState(false);
 
   const idemKey = useRef<string | null>(null);
@@ -103,14 +96,7 @@ export function KioskCartLedger({
    * cannot disagree about whether this visit takes payment.
    */
   const money = useMemo(() => cartMoneySplit(session.lines), [session.lines]);
-  const itemCount = useMemo(
-    () =>
-      session.lines.reduce(
-        (sum, line) => sum + (Number.isFinite(line.quantity) ? Math.max(0, Math.trunc(line.quantity)) : 0),
-        0,
-      ),
-    [session.lines],
-  );
+  const itemCount = useMemo(() => cartUnitCount(session.lines), [session.lines]);
 
   /*
    * ONE gate model, three consumers: the stepper's segment count, each step's
@@ -159,7 +145,6 @@ export function KioskCartLedger({
       const tx = await submitKioskVisit(
         {
           lines: session.lines,
-          voidedLines: session.voidedLines,
           customerPhone: session.customerPhone,
           customerName: session.customerName,
           customerEmail: session.customerEmail,
@@ -181,6 +166,7 @@ export function KioskCartLedger({
     try {
       const tx = await postIntake({ takePayment: false });
       setResult(tx);
+      actions.completeCart();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not complete this transaction.');
     } finally {
@@ -199,6 +185,7 @@ export function KioskCartLedger({
         });
         setStepUpOpen(false);
         setResult(tx);
+        actions.completeCart();
         actions.setAwaitingCard(false);
         return { ok: true as const };
       } catch (err) {
@@ -217,48 +204,12 @@ export function KioskCartLedger({
   );
 
   /*
-   * REMOVE vs VOID (Square's comp & void). A line the customer never saw goes
-   * quietly, as it always has. A line that has been on the customer's screen
-   * is evidence: it leaves only with a reason and a `walk_in.adjust_price`
-   * PIN, and the approval route audits it. The reason floor swaps into the
-   * footer (no modal over the work); the PIN is the usual step-up sheet.
+   * Clear cart asks first (the confirm floor below). Removing ONE line needs
+   * no PIN and no reason — see KioskCartLineList.
    */
-  const [voidTarget, setVoidTarget] = useState<{ ids: string[]; clearAll: boolean } | null>(null);
-  const [voidReason, setVoidReason] = useState('');
-  const [voidRequest, setVoidRequest] = useState<KioskPriceApprovalRequest | null>(null);
-  const seenIds = useMemo(() => new Set(session.customerSeenLineIds), [session.customerSeenLineIds]);
-  const voidSeen = voidTarget ? voidTarget.ids.filter((id) => seenIds.has(id)) : [];
-
-  const finishRemoval = (ids: readonly string[], clearAll: boolean) => {
-    if (clearAll) actions.clearCart();
-    else for (const id of ids) actions.removeLine(id);
-    setEditingLineId((prev) => (prev && ids.includes(prev) ? null : prev));
+  const clearCart = () => {
+    actions.clearCart();
     setConfirmVoid(false);
-  };
-
-  const removeOrVoid = (ids: string[], clearAll = false) => {
-    if (!ids.some((id) => seenIds.has(id))) {
-      finishRemoval(ids, clearAll);
-      return;
-    }
-    setVoidReason('');
-    setVoidTarget({ ids, clearAll });
-  };
-
-  const onVoidApproved = (approved: KioskPriceApproval) => {
-    if (!voidTarget || !voidRequest) return;
-    actions.voidLines(voidSeen, {
-      reason: voidRequest.reason,
-      staffId: approved.staffId,
-      staffName: approved.staffName,
-      approval: approved.approval,
-    });
-    finishRemoval(
-      voidTarget.ids.filter((id) => !seenIds.has(id)),
-      voidTarget.clearAll,
-    );
-    setVoidRequest(null);
-    setVoidTarget(null);
   };
 
   /*
@@ -314,63 +265,7 @@ export function KioskCartLedger({
           label: 'Cart progress',
         }}
         footer={
-          step === 0 && voidTarget ? (
-            /*
-             * The VOID floor: why, then the PIN. Same footer-swap shape as
-             * the Clear-cart confirm below.
-             */
-            <>
-              <div className="flex w-full flex-wrap justify-center gap-2" data-testid="kiosk-cart-void-reasons">
-                {session.lineReasons.void.map((reason) => (
-                  <KioskChip
-                    key={reason}
-                    tone={voidReason === reason ? 'accent' : 'idle'}
-                    selected={voidReason === reason}
-                    onClick={() => setVoidReason(reason)}
-                    className="min-h-11 px-4"
-                  >
-                    {reason}
-                  </KioskChip>
-                ))}
-              </div>
-              <Button
-                variant="secondary"
-                size="lg"
-                className={KIOSK_POS_CTA_SECONDARY}
-                data-testid="kiosk-cart-void-keep"
-                onClick={() => {
-                  setVoidTarget(null);
-                  setConfirmVoid(false);
-                }}
-              >
-                Keep
-              </Button>
-              <Button
-                variant="danger"
-                size="lg"
-                className={KIOSK_POS_CTA}
-                disabled={!voidReason}
-                data-testid="kiosk-cart-void-authorize"
-                onClick={() =>
-                  setVoidRequest({
-                    kind: 'void',
-                    fromCents: null,
-                    toCents: 0,
-                    reason: voidReason,
-                    lines: session.lines
-                      .filter((l) => voidSeen.includes(l.id))
-                      .map((l) => ({
-                        title: l.title,
-                        quantity: l.quantity,
-                        unitAmountCents: l.unitAmountCents,
-                      })),
-                  })
-                }
-              >
-                {voidSeen.length === 1 ? 'Void 1 item' : `Void ${voidSeen.length} items`}
-              </Button>
-            </>
-          ) : step === 0 && confirmVoid && session.lines.length > 0 ? (
+          step === 0 && confirmVoid && session.lines.length > 0 ? (
             /*
              * CONFIRM, in place (operator 2026-09-23: "the clear cart button
              * should have a confirmation button to clear all the cart items").
@@ -393,7 +288,7 @@ export function KioskCartLedger({
                 size="lg"
                 className={KIOSK_POS_CTA}
                 data-testid="kiosk-cart-void-confirm"
-                onClick={() => removeOrVoid(session.lines.map((l) => l.id), true)}
+                onClick={clearCart}
               >
                 {itemCount === 1 ? 'Clear 1 item' : `Clear all ${itemCount} items`}
               </Button>
@@ -490,84 +385,35 @@ export function KioskCartLedger({
         }
       >
         <div data-kiosk-cart-step={step}>
-          {/* ONE bold display header per step, top-left — the repair flow's
-              principle, not a second band — with the running total on the
-              SAME row at the right edge (operator 2026-09-23), the list rule
-              for money: right-aligned, in the money token. `qty · total`, no
-              "items" word: a line of two cables counts as two. Only the money
-              is green; the count is black (operator 2026-09-24). */}
-          <div className="flex items-baseline justify-between gap-4 px-4 pb-3 pt-5">
-            <h2 className="min-w-0 truncate text-left text-role-display font-bold text-text-default">
-              {KIOSK_CART_STEPS[step]}
-            </h2>
-            <p
-              className="shrink-0 text-role-title font-semibold tabular-nums"
-              data-testid="kiosk-cart-summary"
-            >
-              <span className="text-text-default">{itemCount} ·</span>{' '}
-              <span className="text-text-success">{formatCents(money.totalCents)}</span>
-            </p>
-          </div>
+          {/* ONE bold display header per step with the running `N · $total`
+              on the same row — see KioskStepTitleRow. */}
+          <KioskStepTitleRow
+            title={KIOSK_CART_STEPS[step]}
+            count={itemCount}
+            totalCents={money.totalCents}
+            meta={step === 0 && session.cartId !== null ? `#${session.cartId}` : null}
+            testId="kiosk-cart-summary"
+          />
 
           {step === 0 && (
-            /*
-              The cart LINE LIST is a stack of TOUCH CARDS, not the desk compound
-              table it used to mount (operator 2026-09-14: the full-width row grid
-              "is a wrong display… should display a mobile-like chip display
-              component"). `SURFACE_LAW` §5 is the law: lists on a phone-shaped
-              surface are cards; a DataTable is never the phone SoT. Facts ride
-              KioskChip pills inside the card; the card is the edit affordance;
-              void stays the swipe verb. The FRAME owns scrolling — this list
-              must not grow its own overflow region.
-            */
-            <div
-              role="list"
-              aria-label="Cart items"
-              className="flex w-full flex-col gap-2 px-3 pb-4"
-            >
-              {session.lines.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
-                  Cart is empty. Scan a barcode or tap an item in the catalog.
-                </p>
-              ) : (
-                session.lines.map((line) => (
-                  <div role="listitem" key={line.id}>
-                    <KioskCartSwipeRow
-                      canVoid={session.sharedSessionId === null}
-                      onEdit={() => {
-                        actions.setPresentation({ lineId: line.id, catalog: null });
-                        setEditingLineId(line.id);
-                      }}
-                      onVoid={() => removeOrVoid([line.id])}
-                    >
-                      <KioskCartLineCard
-                        line={line}
-                        open={editingLineId === line.id}
-                        onOpen={() => {
-                          actions.setPresentation({ lineId: line.id, catalog: null });
-                          setEditingLineId((prev) => (prev === line.id ? null : line.id));
-                        }}
-                        // On a mirror `updateLine` writes through the desk's
-                        // session; a remove there is a staff void, so none.
-                        onQuantityChange={(quantity) => actions.updateLine(line.id, { quantity })}
-                        onRemove={
-                          session.sharedSessionId === null
-                            ? () => removeOrVoid([line.id])
-                            : undefined
-                        }
-                      />
-                      {editingLineId === line.id && (
-                        <KioskCartLineEditor
-                          line={line}
-                          onDone={() => setEditingLineId(null)}
-                          onRemove={() => removeOrVoid([line.id])}
-                        />
-                      )}
-                    </KioskCartSwipeRow>
-                  </div>
-                ))
-              )}
-            </div>
+            <>
+              {/* The FRAME owns scrolling — this list must not grow its own
+                  overflow region. See KioskCartLineList for the card/edit/remove law. */}
+              <KioskCartLineList
+                ariaLabel="Cart items"
+                className="px-3 pb-4"
+                empty={
+                  <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
+                    Cart is empty. Scan a barcode or tap an item in the catalog.
+                  </p>
+                }
+              />
+              {/* An existing ticket joins THIS cart as a linked line — no second
+                  intake, no signature. See KioskLinkRepair. */}
+              <div className="px-3 pb-4">
+                <KioskLinkRepair />
+              </div>
+            </>
           )}
 
           {step === 1 && (
@@ -639,12 +485,6 @@ export function KioskCartLedger({
         open={stepUpOpen}
         onClose={() => setStepUpOpen(false)}
         onAuthorized={onStepUpAuthorized}
-      />
-
-      <KioskPriceApprovalSheet
-        request={voidRequest}
-        onClose={() => setVoidRequest(null)}
-        onApproved={onVoidApproved}
       />
     </div>
   );

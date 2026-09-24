@@ -567,6 +567,16 @@ test('regression: tech.view gates the fulfillment substitution-policy read; the 
   assert.ok(substitute.methods.includes('POST'));
 });
 
+test('regression: buyer-note ack enforces packing.complete_order OR shipping.buy_label in-handler', () => {
+  // The ack releases the pack / label interlock (src/lib/orders/buyer-note-interlock.ts),
+  // so it is open to exactly the two verbs the interlock holds. withAuth can't
+  // express an OR — same in-handler pattern as the substitute POST above.
+  const ack = routeByPath('/api/orders/[id]/buyer-note/ack/route.ts');
+  assert.ok(ack, 'the buyer-note ack route should be in the manifest');
+  assert.equal(ack.gate, 'withAuth (no permission)');
+  assert.ok(ack.methods.includes('POST'));
+});
+
 test('regression: receiving-lines PATCH assign-only accepts tech.qc_pass in-handler', () => {
   // Testing triage ownership (docs/todo/testing-triage-ownership-scope-HANDOFF.md):
   // technicians lack receiving.mark_received; assign-only PATCHes

@@ -60,7 +60,7 @@ export default function MobileScanOutIdentificationPage() {
         title={title}
         mono
       />
-      <main className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
+      <div className="flex flex-1 flex-col items-stretch px-4 pt-4 pb-8">
         {!isLoaded || !user ? (
           <p className="text-role-caption text-text-muted">Loading…</p>
         ) : query.isError ? (
@@ -78,7 +78,7 @@ export default function MobileScanOutIdentificationPage() {
         ) : (
           <p className="text-role-caption text-text-muted">Loading…</p>
         )}
-      </main>
+      </div>
     </div>
   );
 }

@@ -3,14 +3,30 @@
 /**
  * To-ship paperwork walk — table XOR (rail + editor).
  *
- * Clone of the exceptions workbench chrome: compare across rows in the table,
- * then walk one record. This host is the RECORD half. The door is the Labels
- * header CTA (`OrdersDeskLabelsAction`).
+ * Compare across rows in the ledger, then walk one record. This host is the
+ * RECORD half: it covers the desk stage edge to edge (`absolute inset-0` over
+ * the still-mounted ledger — Center Lock Q5, never a body swap and never a
+ * split under the table) in the industrial record face the ledger wears. The
+ * doors are the Labels bar segment (`OrdersDeskLabelsAction`) and the evidence
+ * column's Labels verb.
+ *
+ * While it is up the walk owns the `record` cursor, so the desk's ambient
+ * keyboard (J / K / ↑ / ↓ step, Esc closes) walks these orders instead of the
+ * ledger hidden underneath. Same tier as the ledger; a tie goes to the most
+ * recent publisher, which is always the walk (it mounts over a live ledger).
  */
 
+import { useCallback, useMemo } from 'react';
 import { PaperworkRecentRail } from './PaperworkRecentRail';
 import { PaperworkEditor } from './PaperworkEditor';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { singleBand } from '@/lib/group-rows';
+import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { cn } from '@/utils/_cn';
 import type { ShippedOrder } from '@/types/orders';
+
+const WALK_PLANE_CLASS = 'absolute inset-0 z-panel flex min-h-0 min-w-0 bg-mode-canvas text-mode-ink';
 
 export function PaperworkWalkHost({
   rows,
@@ -25,9 +41,9 @@ export function PaperworkWalkHost({
   rows: ShippedOrder[];
   selectedId: number;
   loading?: boolean;
-  onSelect?: (id: number) => void;
+  onSelect: (id: number) => void;
   onAdvance: () => void;
-  onPrev?: () => void;
+  onPrev: () => void;
   onExit: () => void;
   onFactsChanged: () => void;
 }) {
@@ -37,44 +53,51 @@ export function PaperworkWalkHost({
     ? rows.findIndex((r) => Number(r.id) === Number(selected.id)) + 1
     : 1;
 
+  const order = useMemo(() => singleBand(rows), [rows]);
+  const getId = useCallback((row: ShippedOrder) => Number(row.id), []);
+  usePublishRecordCursor<ShippedOrder>({
+    surfaceId: 'to-ship-paperwork-walk',
+    scope: 'record',
+    enabled: selected != null,
+    priority: RECORD_CURSOR_PRIORITY.grid,
+    order,
+    openId: selected ? Number(selected.id) : null,
+    getId,
+    onOpen: (row) => onSelect(Number(row.id)),
+    onClose: onExit,
+  });
+
   if (!selected) {
     return (
-      <div
-        className="flex h-full min-h-0 items-center justify-center bg-surface-canvas text-role-caption text-text-soft"
-        data-testid="paperwork-walk-empty"
-      >
-        No orders to walk.
+      <div className={cn(WALK_PLANE_CLASS, 'items-center justify-center')} data-testid="paperwork-walk-empty">
+        <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>No orders to walk.</p>
       </div>
     );
   }
 
   return (
-    <div
-      className="flex h-full min-h-0 min-w-0 w-full flex-1 bg-surface-canvas"
-      data-testid="paperwork-walk"
-    >
+    <div className={WALK_PLANE_CLASS} data-testid="paperwork-walk">
       <aside
-        className="flex w-[22rem] shrink-0 flex-col border-r border-border-hairline bg-surface-card"
+        className="flex w-[22rem] shrink-0 flex-col border-r border-mode-ink bg-mode-bar"
         aria-label="Labels queue"
       >
         <PaperworkRecentRail
           rows={rows}
           selectedId={selected.id}
-          onSelect={onSelect ?? (() => {})}
+          onSelect={onSelect}
           loading={loading}
         />
       </aside>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-card">
-        <PaperworkEditor
-          key={selected.id}
-          row={selected}
-          index={index}
-          total={rows.length}
-          onAdvance={onAdvance}
-          onExit={onExit}
-          onFactsChanged={onFactsChanged}
-        />
-      </div>
+      <PaperworkEditor
+        key={selected.id}
+        row={selected}
+        index={index}
+        total={rows.length}
+        onAdvance={onAdvance}
+        onPrev={index > 1 ? onPrev : undefined}
+        onExit={onExit}
+        onFactsChanged={onFactsChanged}
+      />
     </div>
   );
 }

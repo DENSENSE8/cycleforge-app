@@ -11,7 +11,7 @@ import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { StnTicketLinkModal } from '@/components/support/link/StnTicketLinkModal';
-import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
+import { useOrderChannel, usePlatformMeta } from '@/hooks/useCatalog';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -59,9 +59,9 @@ export function ShippingInformationSection({
   prepackedSku,
   replaceTrackingNonce = 0,
 }: ShippingInformationSectionProps) {
-  const orderChannelLabel = useOrderChannelLabel();
+  const resolveOrderChannel = useOrderChannel();
   const resolvePlatformMeta = usePlatformMeta();
-  const channelLabel = orderChannelLabel(shipped.order_id, shipped.account_source);
+  const channelLabel = resolveOrderChannel(shipped.order_id, shipped.account_source).label;
   const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
   const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
 

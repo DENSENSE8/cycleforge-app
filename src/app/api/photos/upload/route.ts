@@ -8,34 +8,16 @@ import {
 } from '@/lib/photos/capture-provenance';
 import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
 import { autoArchiveClaimPhotosAfterCapture } from '@/lib/receiving-claim-archive';
-import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
-import type { PhotoEntityType, PhotoLinkRole } from '@/lib/photos/types';
-import { PHOTO_ENTITY_TYPES, PHOTO_LINK_ROLES } from '@/lib/photos/types';
+import { parseMediaEntityTarget, uploadPermissionFor } from '@/lib/photos/entity-permissions';
+import type { PhotoLinkRole } from '@/lib/photos/types';
+import { PHOTO_LINK_ROLES } from '@/lib/photos/types';
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { isAspectLegalForStage, parsePhotoAspect } from '@/lib/photos/photo-aspects';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
-import {
-  publishReceivingPhotoChanged,
-  publishPackerPhotoChanged,
-  publishUnitPhotoChanged,
-  publishRepairChanged,
-} from '@/lib/realtime/publish';
-import type { OrgId } from '@/lib/tenancy/constants';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
-import { countPackerPhotos } from '@/lib/photos/queries/packer-list';
-import { countReceivingPhotos } from '@/lib/photos/queries/receiving-list';
-import { countUnitPhotos } from '@/lib/photos/queries/unit-list';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
 
 export const dynamic = 'force-dynamic';
-
-function parseEntityType(raw: FormDataEntryValue | null): PhotoEntityType {
-  const value = String(raw || '').trim().toUpperCase();
-  if (!PHOTO_ENTITY_TYPES.includes(value as PhotoEntityType)) {
-    throw ApiError.badRequest(`Invalid entityType: ${value}`);
-  }
-  return value as PhotoEntityType;
-}
 
 /**
  * Read the device-reported capture instant off the multipart body.
@@ -70,11 +52,7 @@ function parseLinkRole(raw: FormDataEntryValue | null): PhotoLinkRole | undefine
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const form = await req.formData();
-    const entityType = parseEntityType(form.get('entityType'));
-    const entityId = Number(form.get('entityId'));
-    if (!Number.isFinite(entityId) || entityId <= 0) {
-      throw ApiError.badRequest('Valid entityId is required');
-    }
+    const { entityType, entityId } = parseMediaEntityTarget(form.get('entityType'), form.get('entityId'));
 
     const requiredPerm = uploadPermissionFor(entityType);
     if (!ctx.permissions.has(requiredPerm)) {
@@ -154,61 +132,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         entityType,
         entityId,
       });
-      const receivingId =
-        entityType === 'RECEIVING'
-          ? entityId
-          : await resolveReceivingId(entityId, ctx.organizationId);
-      if (receivingId) {
-        await publishReceivingPhotoChanged({
-          organizationId: ctx.organizationId as OrgId,
-          action: 'insert',
+    }
+    const { receivingId } = await publishEntityMediaInsert({
+      organizationId: ctx.organizationId,
+      entityType,
+      entityId,
+      orderId: poRef,
+      photoId: result.id,
+      source: 'photos.upload',
+    });
+    if (receivingId && claimTicketId) {
+      const ticketId = claimTicketId;
+      after(() =>
+        autoArchiveClaimPhotosAfterCapture({
+          orgId: ctx.organizationId,
           receivingId,
-          receivingLineId: entityType === 'RECEIVING_LINE' ? entityId : null,
-          photoId: result.id,
-          totalPhotoCount: await countReceivingPhotos(ctx.organizationId, receivingId),
-          source: 'photos.upload',
-        });
-        if (claimTicketId) {
-          const ticketId = claimTicketId;
-          after(() =>
-            autoArchiveClaimPhotosAfterCapture({
-              orgId: ctx.organizationId,
-              receivingId,
-              ticketId,
-            }).catch((err) => {
-              console.warn('[photos.upload] auto NAS archive failed', err);
-            }),
-          );
-        }
-      }
-    } else if (entityType === 'PACKER_LOG') {
-      await publishPackerPhotoChanged({
-        organizationId: ctx.organizationId as OrgId,
-        action: 'insert',
-        packerLogId: entityId,
-        orderId: poRef,
-        photoId: result.id,
-        totalPhotoCount: await countPackerPhotos(ctx.organizationId, entityId),
-        source: 'photos.upload',
-      });
-    } else if (entityType === 'SERIAL_UNIT') {
-      await publishUnitPhotoChanged({
-        organizationId: ctx.organizationId as OrgId,
-        action: 'insert',
-        serialUnitId: entityId,
-        photoId: result.id,
-        totalPhotoCount: await countUnitPhotos(ctx.organizationId, entityId),
-        source: 'photos.upload',
-      });
-    } else if (entityType === 'REPAIR_SERVICE') {
-      // Repair evidence rides the repair channel, not a photo channel: the
-      // /m/rs/{id} page and every repair desk surface already revalidate on
-      // repair.changed, so the strip below the Issue panel paints live.
-      await publishRepairChanged({
-        organizationId: ctx.organizationId as OrgId,
-        repairIds: [entityId],
-        source: 'photos.upload',
-      });
+          ticketId,
+        }).catch((err) => {
+          console.warn('[photos.upload] auto NAS archive failed', err);
+        }),
+      );
     }
 
     return NextResponse.json({
@@ -221,15 +164,3 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return errorResponse(error, 'POST /api/photos/upload');
   }
 }, {});
-
-async function resolveReceivingId(
-  lineId: number,
-  organizationId: string,
-): Promise<number | null> {
-  const r = await tenantQuery<{ receiving_id: number }>(
-    organizationId,
-    `SELECT receiving_id FROM receiving_line WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-    [lineId, organizationId],
-  );
-  return r.rows[0]?.receiving_id ?? null;
-}

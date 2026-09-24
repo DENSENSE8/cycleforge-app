@@ -150,6 +150,9 @@ export const MOBILE_GRAY_GROUND_ZERO = [
   'src/components/mobile/onhold/MobileOnHoldMerge.tsx',
   'src/components/mobile/scan/ProvisionalCreateSheet.tsx',
   'src/components/mobile/redesign/MobileShell.tsx',
+  'src/app/m/(shell)/rs/[id]/page.tsx',
+  'src/app/m/(shell)/rs/[id]/work/page.tsx',
+  'src/app/m/(shell)/rs/[id]/record/page.tsx',
   // NOT DesignSystem.tsx: it declares the ground, but its `Card variant="flat"`
   // still fills with canvas. That is a card face, not a page ground — port it
   // with the rest of the count, not by exempting the file that owns the token.
@@ -208,7 +211,7 @@ export function findMobileGrayGrounds(): MobileGrayGround[] {
  * by what you removed, and add the file to {@link MOBILE_GRAY_GROUND_ZERO} so
  * it can never regress. Raising it is the one edit this module exists to stop.
  */
-export const MOBILE_GRAY_GROUND_BASELINE = 43;
+export const MOBILE_GRAY_GROUND_BASELINE = 40;
 
 export function formatMobileGrayGround(hit: MobileGrayGround): string {
   return `${hit.file}:${hit.line} — ${hit.match}`;
