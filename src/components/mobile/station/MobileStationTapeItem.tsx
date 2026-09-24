@@ -30,24 +30,25 @@
  * It is gone (operator 2026-09-04). At a dock the verb was the same word on
  * every row, so a column of it carried no information while occupying the most
  * scannable position on the card; the identifier the operator actually reads
- * back was demoted to a chip beside it. The outcome still shows — as the tone
- * of the stamp, and as the server's own message on the rows that have one — but
- * it no longer costs a line to say "this went the way it always goes".
+ * back was demoted to a chip beside it. The outcome still shows — as the colour
+ * of the focus row's code, and as the server's own message on the rows that
+ * have one — but it no longer costs a line to say "this went the way it always
+ * goes".
  *
  * ## One component, two emphases
  *
  * `focus` is the thing that just happened; `history` is everything behind it.
  * They were two components with a copy-pasted footer between them, which is four
- * stations x two copies of every future row change. The difference is scale and
- * a tone plate, not structure — so it is a prop.
+ * stations x two copies of every future row change. The difference is scale, the
+ * ink selection outline and a coloured code, not structure — so it is a prop.
  *
- * ## Reversal is two taps, on the row
+ * ## Verbs are two taps, on the row
  *
- * When a station offers an {@link StationItemAction}, the row opens to reveal it
- * rather than carrying a standing button. A dock station's actions are
- * irreversible in the other direction, and a row of always-visible Undo buttons
- * under a gloved thumb aiming at a camera is an accident waiting to be filed. So
- * the first tap opens, and the second commits — both large, both deliberate.
+ * When a station offers {@link StationItemAction}s, the row opens to reveal
+ * them rather than carrying standing buttons. A row of always-visible verbs
+ * under a gloved thumb aiming at a camera is an accident waiting to be filed.
+ * So the first tap opens, and the second commits — both large, both deliberate.
+ * The expected decision is the ink fill; the rest are neutral.
  *
  * ## Why the disclosure is a real button, and the Undo is its sibling
  *
@@ -80,24 +81,58 @@ import {
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { formatRelativeTime } from '@/lib/search/search-recents';
-import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
+import { INTAKE, type IntakeClass } from '@/design-system/tokens/intake';
+import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
+import { useModeFeedbackSeconds } from '@/design-system/providers/useModeFeedback';
 import { cn } from '@/utils/_cn';
 import {
-  STATION_TONE_EDGE,
   STATION_TONE_GROUND,
   STATION_TONE_INK,
-  STATION_TONE_RING,
 } from './station-chrome';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import type { StationItemAction, StationTapeEntry } from './station-tape';
+import type { StationItemAction, StationTapeEntry, StationTone } from './station-tape';
+
+/** A station outcome as the functional state colour it borrows. */
+const TONE_STATE: Record<StationTone, StateName> = {
+  ok: 'success',
+  warn: 'warning',
+  bad: 'danger',
+};
+
+/**
+ * The row's code — what the thing IS, as a 3-letter mono code (BRIEF §4 triage:
+ * "what it is + state code" leads the evidence stack).
+ *
+ * The class carries no colour of its own. The FOCUS row borrows its scan
+ * outcome's colour here (owner 2026-09-24: the outcome moves out of the outline
+ * and into the code); history rows stay neutral ink, because a ledger in which
+ * every row is coloured has no signal. The full word is spoken, not the code
+ * (BRIEF §8: state codes read as full words).
+ */
+function IntakeCode({ intake, tone }: { intake: IntakeClass; tone: StationTone | null }) {
+  const spec = INTAKE[intake];
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center rounded-mode border px-1 font-mono text-role-eyebrow font-bold uppercase',
+        tone
+          ? cn(STATE_TONE_CLASSES[TONE_STATE[tone]].pill, STATE_TONE_CLASSES[TONE_STATE[tone]].border)
+          : 'border-border-subtle text-text-default',
+      )}
+    >
+      <span aria-hidden>{spec.code}</span>
+      <span className="sr-only">{spec.label}</span>
+    </span>
+  );
+}
 
 function MobileStationTapeItemBase({
   entry,
   /** Injected clock so every stamp on screen measures from the same instant. */
   now,
   emphasis = 'history',
-  /** Reversal for this entry, when the station offers one. */
-  action,
+  /** The verbs this entry offers, when the station offers any. */
+  actions,
   /**
    * What line 1 says when the record has no name.
    *
@@ -110,19 +145,18 @@ function MobileStationTapeItemBase({
   entry: StationTapeEntry;
   now: number;
   emphasis?: 'focus' | 'history';
-  action?: StationItemAction | null;
+  actions?: readonly StationItemAction[] | null;
   untitledLabel?: string;
 }) {
   const focus = emphasis === 'focus';
   const ink = STATION_TONE_INK[entry.tone];
   const [open, setOpen] = useState(false);
-  const actionable = action != null;
+  const verbs = actions ?? [];
+  const actionable = verbs.length > 0;
+  const feedback = useModeFeedbackSeconds();
 
   const body = (
     <div className="flex items-start gap-2.5">
-      {/* The tone plate is the focus item's outcome signal — it is why the card
-          does not need the verb the row dropped. History rows carry the tone in
-          the stamp instead: a column of plates would be stripes, not a signal. */}
       {/*
         The thumbnail slot, on EVERY row — reserved even when there is no photo.
 
@@ -130,15 +164,14 @@ function MobileStationTapeItemBase({
         a 74px rail while all 40 history rows sat at 16px. The one row that
         matters was the one row that broke the column, and the eye had to
         re-find the left edge on every scan. A constant slot is worth more than
-        the width it costs.
+        the width it costs. Its corner is the region's (`rounded-mode`), and it
+        no longer carries the outcome as a coloured ring: the outcome is the
+        code's colour, and the only outline a row wears is selection (ink).
       */}
       <span
         className={cn(
-          'relative flex shrink-0 overflow-hidden bg-surface-sunken',
+          'relative flex shrink-0 overflow-hidden rounded-mode bg-surface-sunken',
           focus ? 'h-11 w-11' : 'h-9 w-9',
-          MOBILE_SCAN_ROW_CORNER,
-          // Tone rings the picture rather than replacing it with a glyph.
-          focus && cn('ring-2', STATION_TONE_RING[entry.tone]),
         )}
       >
         {entry.imageUrl && (
@@ -147,28 +180,29 @@ function MobileStationTapeItemBase({
       </span>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-        {/* Line 1 — the name. Omitted, not faked, when the record has none: the
-            identifier on line 2 is then the whole of what is known, and a row
-            that repeated it on both lines would say one fact twice. */}
-        <p
-          className={cn(
-            // One line, both emphases. `truncate`, never `line-clamp-2`: a
-            // two-line focus title changes the row's height and shoves the whole
-            // tape, which is the one thing this layout exists to prevent.
-            'truncate leading-snug',
-            // ONE size for both emphases (MOBILE_MAX_TYPE_ROLES_PER_FILE = 2,
-            // and `role-eyebrow` already spends the second on stamps). The focus
-            // row reads louder through WEIGHT, its tone ground and its ring —
-            // not through a third size. A 10-14px scale cannot build hierarchy
-            // by size anyway; trying pushes the job onto colour, which then has
-            // to carry meaning it cannot carry accessibly.
-            'text-role-caption',
-            focus ? 'font-bold' : 'font-semibold',
-            entry.title ? 'text-text-default' : 'text-text-muted',
-          )}
-        >
-          {entry.title ?? untitledLabel}
-        </p>
+        {/* Line 1 — what it is: the code, then the name. Omitted, not faked,
+            when the record has no name: the identifier on line 2 is then the
+            whole of what is known, and a row that repeated it on both lines
+            would say one fact twice. */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          {entry.intake && <IntakeCode intake={entry.intake} tone={focus ? entry.tone : null} />}
+          <p
+            className={cn(
+              // One line, both emphases. `truncate`, never `line-clamp-2`: a
+              // two-line focus title changes the row's height and shoves the
+              // whole tape, which is the one thing this layout exists to prevent.
+              'min-w-0 truncate',
+              // The region's body size (triage: 14 desk / 16 touch, lh 1.45).
+              // The focus row reads louder through WEIGHT and its outline — not
+              // through a third size.
+              'text-mode-body',
+              focus ? 'font-bold' : 'font-semibold',
+              entry.title ? 'text-text-default' : 'text-text-muted',
+            )}
+          >
+            {entry.title ?? untitledLabel}
+          </p>
+        </div>
 
         {/*
           Line 2 — record, then label, then when.
@@ -257,11 +291,10 @@ function MobileStationTapeItemBase({
             to, and it is the only content that distinguishes a bad row now that
             the verb is gone. */}
         {entry.message && (
-          // `role-caption` with a two-line clamp. At `role-micro` this was a
-          // 78-character sentence at 10px wrapping to three lines, which changed
-          // the row's height and shoved the tape — the exact failure the
-          // truncate-never-wrap rule on line 1 exists to prevent.
-          <p className={cn('line-clamp-2 text-role-caption font-medium', ink)}>{entry.message}</p>
+          // Two-line clamp at the region's body size: a longer refusal wrapping
+          // to three lines would change the row's height and shove the tape —
+          // the exact failure the truncate-never-wrap rule on line 1 prevents.
+          <p className={cn('line-clamp-2 text-mode-body font-medium', ink)}>{entry.message}</p>
         )}
       </div>
 
@@ -273,16 +306,15 @@ function MobileStationTapeItemBase({
       className={cn(
         'flex flex-col px-4',
         STATION_TONE_GROUND[entry.tone],
-        focus
-          ? cn('border-t-2', STATION_TONE_EDGE[entry.tone])
-          // `border-subtle`, not `border-hairline`: the hairline token is
-          // #f1f5f9 on #ffffff — 1.13:1, which the theme file itself calls
-          // "near-invisible". Forty rows of two-line content with no readable
-          // rule between them is one grey block, not a ledger.
-          : 'border-b border-border-subtle',
-        // ONE vertical padding for the list. The focus row was `py-2.5` against
-        // history's `py-2` — an 8/10 split inside a list whose whole premise is
-        // a scannable rhythm.
+        // `border-subtle`, not `border-hairline`: the hairline token is
+        // #f1f5f9 on #ffffff — 1.13:1, which the theme file itself calls
+        // "near-invisible". Forty rows of two-line content with no readable
+        // rule between them is one grey block, not a ledger.
+        'border-b border-border-subtle',
+        // Selection is a 2px INK outline, never a coloured one (BRIEF §4/§5 —
+        // an invariant). Inset so it cannot be clipped by the scroller.
+        focus && 'outline outline-2 -outline-offset-2 outline-text-default',
+        // ONE vertical padding for the list — a scannable rhythm.
         'py-2.5',
       )}
     >
@@ -291,11 +323,10 @@ function MobileStationTapeItemBase({
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          // `min-h-11` floors the target at 44px explicitly rather than trusting
-          // the runtime UI-mode inference: a title-less row is only ~36px of
-          // content and is still tappable.
+          // The region's hit floor (triage touch: 48px), explicitly: a
+          // title-less row is only ~36px of content and is still tappable.
           className={cn(
-            'ds-raw-button flex min-h-11 w-full flex-col justify-center text-left',
+            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-center text-left',
             focusRing('cell', 'accent'),
           )}
         >
@@ -308,28 +339,35 @@ function MobileStationTapeItemBase({
       <AnimatePresence initial={false}>
         {actionable && open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
-            className="overflow-hidden"
+            // Opacity only, at the region's feedback duration (triage ≤120ms;
+            // 0 under reduced motion). The verbs appear in place — no height
+            // tween sliding the tape under a thumb.
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: feedback }}
+            className={cn('mt-2 grid gap-2', verbs.length > 2 ? 'grid-cols-2' : 'grid-cols-1')}
           >
-            <Button
-              // `danger` because this DELETES a committed record, and the house
-              // has one destructive face. It is loud, and that is affordable
-              // here only because it is never standing: it exists solely inside
-              // a row the operator deliberately opened.
-              variant="danger"
-              // `row` rung of MOBILE_CONTROL_LADDER — 36px painted, 44px hit via
-              // the padding below. It was size="lg" (56px), a screen-CTA
-              // footprint for an action that lives inside one row of forty.
-              size="sm"
-              className="mt-2 h-9 min-h-11 w-full justify-center"
-              disabled={action.pending}
-              onClick={action.run}
-            >
-              {action.pending ? action.pendingLabel : action.label}
-            </Button>
+            {verbs.map((action) => (
+              <Button
+                key={action.label}
+                // The expected decision is the ink fill; the rest are neutral
+                // (BRIEF §4 triage: "neutral decisions, primary = ink fill").
+                variant={action.primary ? 'ink' : 'secondary'}
+                size="lg"
+                radius="mode"
+                // An odd count in the two-column grid: the primary takes the
+                // full width, so no neutral verb is left alone on its own row.
+                className={cn(
+                  'min-h-mode-hit w-full justify-center',
+                  action.primary && verbs.length > 2 && verbs.length % 2 === 1 && 'col-span-2',
+                )}
+                disabled={action.pending}
+                onClick={action.run}
+              >
+                {action.pending ? action.pendingLabel : action.label}
+              </Button>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>

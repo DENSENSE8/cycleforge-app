@@ -14,10 +14,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   STATION_EYEBROW_CLASS,
-  STATION_TONE_EDGE,
   STATION_TONE_GROUND,
   STATION_TONE_INK,
-  STATION_TONE_RING,
 } from '@/components/mobile/station/station-chrome';
 
 const TONES = ['ok', 'warn', 'bad'] as const;
@@ -28,7 +26,7 @@ const HEX = /#[0-9a-f]{3,8}/i;
 
 describe('tone maps are total over StationTone', () => {
   it('every map carries exactly ok/warn/bad — a missing key renders undefined classes silently', () => {
-    for (const map of [STATION_TONE_GROUND, STATION_TONE_EDGE, STATION_TONE_RING, STATION_TONE_INK]) {
+    for (const map of [STATION_TONE_GROUND, STATION_TONE_INK]) {
       assert.deepEqual(Object.keys(map).sort(), [...TONES].sort());
       for (const tone of TONES) {
         assert.ok(typeof map[tone] === 'string' && map[tone].length > 0, `${tone} present`);
@@ -58,17 +56,15 @@ describe('tone is a ground, not ink-only', () => {
   });
 });
 
-describe('edge, ring, and ink stay in the semantic token families', () => {
-  it('edge is border-border-*, ring is ring-border-*, ink is text-text-*', () => {
+describe('ink stays in the semantic token families', () => {
+  it('ink is text-text-*', () => {
     for (const tone of TONES) {
-      assert.match(STATION_TONE_EDGE[tone], /^border-border-/);
-      assert.match(STATION_TONE_RING[tone], /^ring-border-/);
       assert.match(STATION_TONE_INK[tone], /^text-text-/);
     }
   });
 
   it('no map value carries a raw palette step or a hex — the two-greens regression', () => {
-    for (const map of [STATION_TONE_GROUND, STATION_TONE_EDGE, STATION_TONE_RING, STATION_TONE_INK]) {
+    for (const map of [STATION_TONE_GROUND, STATION_TONE_INK]) {
       for (const tone of TONES) {
         assert.doesNotMatch(map[tone], RAW_PALETTE, `${tone}: ${map[tone]}`);
         assert.doesNotMatch(map[tone], HEX, `${tone}: ${map[tone]}`);
@@ -76,11 +72,9 @@ describe('edge, ring, and ink stay in the semantic token families', () => {
     }
   });
 
-  it('each tone speaks one hue family across all four maps (ok→success, warn→warning, bad→danger)', () => {
+  it('each tone speaks one hue family (ok→success, warn→warning, bad→danger)', () => {
     const family = { ok: 'success', warn: 'warning', bad: 'danger' } as const;
     for (const tone of TONES) {
-      assert.ok(STATION_TONE_EDGE[tone].includes(family[tone]), `${tone} edge`);
-      assert.ok(STATION_TONE_RING[tone].includes(family[tone]), `${tone} ring`);
       assert.ok(STATION_TONE_INK[tone].includes(family[tone]), `${tone} ink`);
     }
   });

@@ -41,6 +41,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
+import { useModeFeedbackSeconds } from '@/design-system/providers/useModeFeedback';
 import { MobileStationTapeItem } from './MobileStationTapeItem';
 import type { StationItemAction, StationTapeEntry } from './station-tape';
 
@@ -53,14 +54,14 @@ const CLOCK_TICK_MS = 30_000;
 export function MobileStationShell({
   tape,
   /**
-   * Reversal offered per entry, or null where none applies.
+   * Verbs offered per entry, or null where none apply.
    *
-   * MUST return a STABLE object per entry — memoize it on the station side. It
+   * MUST return a STABLE array per entry — memoize it on the station side. It
    * is called for every visible row on every render, and the row is `memo`ized,
-   * so a fresh object each call defeats that memo and re-renders the whole tape
+   * so a fresh array each call defeats that memo and re-renders the whole tape
    * on the 30s clock tick.
    */
-  itemAction,
+  itemActions,
   /** Line 1 for an entry with no name. The station's own word. */
   untitledLabel,
   /** Shown in place of the tape before anything has happened. */
@@ -69,12 +70,14 @@ export function MobileStationShell({
   window: captureWindow,
 }: {
   tape: readonly StationTapeEntry[];
-  itemAction?: (entry: StationTapeEntry) => StationItemAction | null;
+  itemActions?: (entry: StationTapeEntry) => readonly StationItemAction[] | null;
   untitledLabel?: string;
   empty?: React.ReactNode;
   window: React.ReactNode;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  // The region's state-change duration (triage ≤120ms; 0 under reduced motion).
+  const feedback = useModeFeedbackSeconds();
   const tapeRef = useRef<HTMLDivElement | null>(null);
 
   // Relative stamps have to age on their own or the tape reads "just now" for
@@ -162,12 +165,12 @@ export function MobileStationShell({
                   // happen. The entrance fade below is the whole effect.
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.14, ease: [0.23, 1, 0.32, 1] }}
+                  transition={{ duration: feedback }}
                 >
                   <MobileStationTapeItem
                     entry={entry}
                     now={now}
-                    action={itemAction?.(entry) ?? null}
+                    actions={itemActions?.(entry) ?? null}
                     untitledLabel={untitledLabel}
                   />
                 </motion.div>
@@ -192,15 +195,17 @@ export function MobileStationShell({
                   // Keyed by the entry so a re-read of the SAME thing replays
                   // the entrance — the operator's proof the capture fired again.
                   key={focus.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.16, ease: [0.23, 1, 0.32, 1] }}
+                  // Opacity only (BRIEF §4 triage: a ≤120ms crossfade, no travel)
+                  // — the focus position must not move under the operator's eye.
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: feedback }}
                 >
                   <MobileStationTapeItem
                     entry={focus}
                     now={now}
                     emphasis="focus"
-                    action={itemAction?.(focus) ?? null}
+                    actions={itemActions?.(focus) ?? null}
                     untitledLabel={untitledLabel}
                   />
                 </motion.div>

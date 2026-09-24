@@ -13,5 +13,6 @@
 export * from './primitives';
 export * from './state';
 export * from './lifecycle';
+export * from './intake';
 export * from './light';
 export * from './modes';

@@ -51,8 +51,10 @@ export interface ButtonProps
    *   `OmnichannelComposerDock` shell family.
    * - `surface` — `cornerClass('surface')`. Default desk CTA.
    * - `pill` — `cornerClass('pill')`. Header actions.
+   * - `mode` — `rounded-mode`: the enclosing `ModeRegion`'s radius (triage 4,
+   *   counter 12, industrial 0). For controls inside a declared task mode.
    */
-  radius?: 'flush' | 'composer' | 'surface' | 'pill';
+  radius?: 'flush' | 'composer' | 'surface' | 'pill' | 'mode';
 }
 
 // ─── Variant classes ─────────────────────────────────────────────────────────
@@ -66,6 +68,7 @@ const BUTTON_RADIUS: Record<NonNullable<ButtonProps['radius']>, string> = {
   composer: COMPOSER_SHELL_CORNER,
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
+  mode: 'rounded-mode',
 };
 
 // The corner is NOT baked into these — it comes from `radius` below, so the

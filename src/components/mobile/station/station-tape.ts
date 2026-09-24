@@ -31,6 +31,8 @@
  * Pure module: no React, no storage. Unit-tested in `station-tape.test.ts`.
  */
 
+import type { IntakeClass } from '@/design-system/tokens/intake';
+
 /**
  * The three readings a station outcome can have, and the only vocabulary the
  * shared row chrome knows.
@@ -123,6 +125,12 @@ export interface StationTapeEntry {
    * operator can only take back what they just did here.
    */
   live: boolean;
+  /**
+   * What the thing IS, on a station that classifies (arrival triage): an
+   * `INTAKE` class, printed as its code. Omitted by stations that do not
+   * classify. A category, not an outcome — the outcome stays {@link tone}.
+   */
+  intake?: IntakeClass | null;
 }
 
 /**
@@ -155,13 +163,14 @@ export function pushStationTape(
 }
 
 /**
- * A reversal offered on one tape entry.
+ * One verb offered on a tape entry — a reversal, or a triage decision.
  *
  * Lives on the tape, not in a foot slot, because the mistake a station has to
  * recover from is noticed LATE — two or three captures after the one that was
  * wrong. A single "undo the last thing" handle is already gone by then, and a
  * foot button that appears and disappears also shifts the layout under a thumb
- * that is aiming at something else.
+ * that is aiming at something else. A station offers its verbs as a list
+ * (2–4 on a triage station, BRIEF §4); the row opens to reveal them.
  */
 export interface StationItemAction {
   /** What the button says. Name the act, not the direction ("Undo scan-out"). */
@@ -170,6 +179,11 @@ export interface StationItemAction {
   pendingLabel: string;
   run: () => void;
   pending: boolean;
+  /**
+   * The decision the station expects — painted as the ink fill (BRIEF §4
+   * triage). At most one per row; the rest are neutral.
+   */
+  primary?: boolean;
 }
 
 /**

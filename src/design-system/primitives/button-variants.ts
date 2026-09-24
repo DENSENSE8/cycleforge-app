@@ -58,6 +58,13 @@ export const BUTTON_VARIANTS = {
    * sites before it was an intent — the drift this map exists to stop.
    */
   glass: 'text-white hover:bg-glass/20 active:bg-glass/30',
+  /**
+   * `ink` is the triage DECISION fill (BRIEF §4 triage: "neutral decisions,
+   * primary = ink fill"). The region's own ink on its own panel — the neutral
+   * aliases the mode stylesheet remaps — so it follows the mode and the theme
+   * instead of borrowing an accent that already means navigation.
+   */
+  ink: 'bg-text-default text-surface-card hover:bg-text-default/90 active:bg-text-default/80',
 } as const;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;

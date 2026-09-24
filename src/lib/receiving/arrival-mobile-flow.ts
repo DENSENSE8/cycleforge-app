@@ -28,15 +28,31 @@ export function parseArrivalReceivingId(
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/**
+ * The triage decision a row verb carries into the flow (`?type=`). A HINT, not
+ * a write: the Type step marks it as the selection and the operator still taps
+ * to save, so the verb never records anything the flow would not.
+ */
+export const ARRIVAL_TYPE_HINTS = ['RETURN', 'REPAIR'] as const;
+export type ArrivalTypeHint = (typeof ARRIVAL_TYPE_HINTS)[number];
+
+/** Parse `?type=` — anything outside {@link ARRIVAL_TYPE_HINTS} → null. */
+export function parseArrivalTypeHint(raw: string | null | undefined): ArrivalTypeHint | null {
+  const t = String(raw ?? '').trim().toUpperCase();
+  return (ARRIVAL_TYPE_HINTS as readonly string[]).includes(t) ? (t as ArrivalTypeHint) : null;
+}
+
 /** Classify host URL on `/m/scan`. */
 export function mobileArrivalClassifyHref(
   receivingId: number,
   step: ArrivalClassifyStep = 'platform',
+  opts: { type?: ArrivalTypeHint | null } = {},
 ): string {
   const params = new URLSearchParams({
     rid: String(receivingId),
     step,
   });
+  if (opts.type) params.set('type', opts.type);
   return `/m/scan?${params.toString()}`;
 }
 

@@ -26,6 +26,7 @@
  */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { IntakeClass } from '@/design-system/tokens/intake';
 import {
   stationDedupeKey,
   STATION_TAPE_LIMIT,
@@ -96,6 +97,32 @@ const trimmed = (value: unknown): string | null => {
 };
 
 /**
+ * The INTAKE class a carton's server facts name — the arrival-triage answer to
+ * "is it a return? a repair? a ticket?" — or null when the facts name a class
+ * outside that set.
+ *
+ * `carton_intake_type` is the fact: it is what the classify flow's Type step
+ * writes. The line's `receiving_type` is NOT read — it defaults to `'PO'` on
+ * every line, so it answers "never classified" and "classified as PO" alike.
+ *
+ * The type wins over a ticket link: a return that also has a ticket is still a
+ * return, and the ticket is context. Only an untyped carton is a ticket
+ * package. A Zoho-matched PO carton, or one typed PO / trade-in / pick-up, is
+ * not a triage question and gets no class.
+ */
+export function arrivalIntakeClass(
+  row: Pick<ReceivingLineRow, 'carton_intake_type' | 'zendesk_ticket' | 'zoho_purchaseorder_id'>,
+): IntakeClass | null {
+  const type = trimmed(row.carton_intake_type)?.toUpperCase() ?? null;
+  if (type === 'RETURN' || type === 'REPAIR_RETURN') return 'return';
+  if (type === 'REPAIR' || type === 'REPAIR_SERVICE') return 'repair';
+  if (type) return null;
+  if (trimmed(row.zendesk_ticket)) return 'ticket';
+  if (trimmed(row.zoho_purchaseorder_id)) return null;
+  return 'unclassified';
+}
+
+/**
  * Turn one settled scan into a tape entry.
  *
  * `now` is injectable so the test does not race the clock.
@@ -138,6 +165,10 @@ export function arrivalTapeEntry(
     // carton, so they stand alone: two wrong labels are two separate problems.
     dedupeKey: stationDedupeKey(ARRIVAL_DEDUPE_KIND, settled.receivingId),
     live: true,
+    // A box minted by THIS scan is untyped by construction — unless it matched
+    // a PO, which is not a triage question. A re-scan (`known`) does not carry
+    // the carton's type back, so it claims no class rather than guess one.
+    intake: settled.status === 'arrived' && !trimmed(settled.recordId) ? 'unclassified' : null,
   };
 }
 
@@ -190,6 +221,7 @@ export function arrivalHistoryEntries(rows: readonly ReceivingLineRow[]): Statio
       dedupeKey: stationDedupeKey(ARRIVAL_DEDUPE_KIND, receivingId),
       // Seeded, not scanned here: this may be another operator's work.
       live: false,
+      intake: arrivalIntakeClass(row),
     });
   }
 

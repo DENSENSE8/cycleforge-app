@@ -183,4 +183,33 @@ describe('arrivalHistoryEntries', () => {
     // turned up. Listing it as an arrival would say a box is here when it is not.
     assert.deepEqual(arrivalHistoryEntries([row({ receiving_id: null })]), []);
   });
+
+  it('classifies by the carton type, never by the line’s PO default', () => {
+    // receiving_line.receiving_type defaults to 'PO' on every line, so reading
+    // it would call every untouched door box "a PO" and no row would ever say NEW.
+    const cls = (over: Partial<ReceivingLineRow>) =>
+      arrivalHistoryEntries([row({ receiving_type: 'PO', ...over })])[0]!.intake;
+    assert.equal(cls({}), 'unclassified');
+    assert.equal(cls({ carton_intake_type: 'RETURN' }), 'return');
+    assert.equal(cls({ carton_intake_type: 'REPAIR_RETURN' }), 'return');
+    assert.equal(cls({ carton_intake_type: 'REPAIR' }), 'repair');
+    assert.equal(cls({ carton_intake_type: 'REPAIR_SERVICE' }), 'repair');
+    assert.equal(cls({ zendesk_ticket: '#514' }), 'ticket');
+  });
+
+  it('a type beats a ticket link, and a PO or trade-in is not a triage class', () => {
+    const cls = (over: Partial<ReceivingLineRow>) => arrivalHistoryEntries([row(over)])[0]!.intake;
+    assert.equal(cls({ carton_intake_type: 'RETURN', zendesk_ticket: '#514' }), 'return');
+    assert.equal(cls({ carton_intake_type: 'PO' }), null);
+    assert.equal(cls({ carton_intake_type: 'TRADE_IN' }), null);
+    assert.equal(cls({ zoho_purchaseorder_id: 'QA-MOCK-PO-8001' }), null);
+  });
+});
+
+describe('arrivalTapeEntry intake', () => {
+  it('a box minted by this scan is NEW; a PO match or a re-scan claims no class', () => {
+    assert.equal(arrivalTapeEntry(settled(), NOW).intake, 'unclassified');
+    assert.equal(arrivalTapeEntry(settled({ recordId: 'PO-1' }), NOW).intake, null);
+    assert.equal(arrivalTapeEntry(settled({ status: 'known' }), NOW).intake, null);
+  });
 });

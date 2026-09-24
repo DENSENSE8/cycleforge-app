@@ -249,7 +249,7 @@ Declaring a mode changes only the neutral surfaces/rules; each page still needs 
 
 | # | Page | Job | Known gaps from the 2026-09-24 screenshots |
 |---|---|---|---|
-| 1 | `/m/scan` | arrival triage — "return? repair? ticket?" | rounded thumbnail placeholders, green-outlined selected row (selection must be the 2 px ink outline), no state codes |
+| 1 | `/m/scan` | arrival triage — "return? repair? ticket?" | **Done 2026-09-24.** Rows lead with an `INTAKE` code (`NEW`/`RTN`/`REP`/`TKT`, new registry beside `LIFECYCLE` in `packages/design-tokens`, from `carton_intake_type` + the ticket link); the focus row wears the 2 px ink outline, with its outcome colour in the code; radius 4 / 48 px hits / body 16 at 1.45; the opened row offers Photos & classify (ink) · Return · Repair, all into the existing classify flow (Return/Repair pre-select the Type step); opacity-only motion at the mode duration. Open: Ticket verb, copy-chip `<button>` nesting, `BottomSheet` portal loses the mode (sheets re-declare `ModeRegion`). |
 | 2 | `/m/exceptions` → `/m/exceptions/[orderId]` | exception triage (catalog pairing) | industrial-style work rows on a triage page, pink exception spine without a code, `NO SLA ASSIGNED` truncation |
 | 3 | `/m/on-hold` → `/m/on-hold/[sku]` | merge placeholder SKU into real SKU | pill-shaped `Merge` buttons in raw blue (triage decision = ink fill, radius 4), amber `ON HOLD` chip outside `LIFECYCLE` |
 | 4 | `/m/inbox` | decisions waiting on me | raw kind slug shown as text (`support_ticket #450`), every row reads "Handed to you" with no state code or decision affordance |

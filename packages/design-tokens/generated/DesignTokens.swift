@@ -248,4 +248,19 @@ public enum DesignTokens {
         public static let outOfStock = LifecycleState(code: "OOS", label: "Out of stock", tone: State.danger)
         public static let shipped = LifecycleState(code: "SHP", label: "Shipped", tone: State.success)
     }
+
+    /// One intake class: 3-letter mono code and the full word it reads as.
+    /// A category, not a state — neutral ink; colour only from the scan outcome.
+    public struct IntakeClass: Sendable {
+        public let code: String
+        public let label: String
+    }
+
+    /// Intake classes — what an arrived package is (arrival triage).
+    public enum Intake {
+        public static let unclassified = IntakeClass(code: "NEW", label: "Not classified")
+        public static let `return` = IntakeClass(code: "RTN", label: "Return")
+        public static let repair = IntakeClass(code: "REP", label: "Repair")
+        public static let ticket = IntakeClass(code: "TKT", label: "Ticket")
+    }
 }

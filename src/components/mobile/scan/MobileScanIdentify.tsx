@@ -27,9 +27,11 @@ import {
   type StationTapeEntry,
 } from '@/components/mobile/station/station-tape';
 import {
+  mobileArrivalClassifyHref,
   mobileArrivalPhotosThenClassifyHref,
   parseArrivalClassifyStep,
   parseArrivalReceivingId,
+  parseArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { landScanIdentify } from '@/lib/scan/identify-land';
@@ -119,6 +121,7 @@ function MobileScanIdentifyInner() {
   const searchParams = useSearchParams();
   const classifyRid = parseArrivalReceivingId(searchParams.get('rid'));
   const classifyStep = parseArrivalClassifyStep(searchParams.get('step'));
+  const classifyTypeHint = parseArrivalTypeHint(searchParams.get('type'));
 
   const [tape, setTape] = useState<StationTapeEntry[]>([]);
   const { history, isError: historyFailed, retry: retryHistory } = useArrivalHistory();
@@ -264,29 +267,41 @@ function MobileScanIdentifyInner() {
     [resolve, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
   );
 
+  /**
+   * The arrival-triage decisions, per carton row (BRIEF §4 triage: 2–4 verbs;
+   * owner 2026-09-24: in the opened row, not a bar over the camera). Every verb
+   * enters the EXISTING classify flow — no new write path: Return / Repair
+   * carry the decision as a type hint the Type step pre-selects, and the
+   * operator still taps to save. Photos first is the expected path, so it is
+   * the ink fill.
+   */
   const actions = useMemo(() => {
-    const map = new Map<string, StationItemAction>();
+    const map = new Map<string, readonly StationItemAction[]>();
     for (const entry of tape) {
       const receivingId = stationDedupeId(ARRIVAL_DEDUPE_KIND, entry.dedupeKey);
       if (receivingId == null || !entry.dedupeKey) continue;
-      map.set(entry.dedupeKey, {
-        label: 'Photos & classify',
+      const verb = (label: string, href: string, primary = false): StationItemAction => ({
+        label,
         pendingLabel: 'Opening…',
         pending: false,
-        run: () => {
-          router.push(
-            mobileArrivalPhotosThenClassifyHref(receivingId, {
-              title: entry.identifier ?? undefined,
-            }),
-          );
-        },
+        primary,
+        run: () => router.push(href),
       });
+      map.set(entry.dedupeKey, [
+        verb(
+          'Photos & classify',
+          mobileArrivalPhotosThenClassifyHref(receivingId, { title: entry.identifier ?? undefined }),
+          true,
+        ),
+        verb('Return', mobileArrivalClassifyHref(receivingId, 'platform', { type: 'RETURN' })),
+        verb('Repair', mobileArrivalClassifyHref(receivingId, 'platform', { type: 'REPAIR' })),
+      ]);
     }
     return map;
   }, [tape, router]);
 
-  const itemAction = useCallback(
-    (entry: StationTapeEntry): StationItemAction | null =>
+  const itemActions = useCallback(
+    (entry: StationTapeEntry): readonly StationItemAction[] | null =>
       (entry.dedupeKey && actions.get(entry.dedupeKey)) || null,
     [actions],
   );
@@ -318,7 +333,9 @@ function MobileScanIdentifyInner() {
   }, [online, cameraOff, pending, arrived]);
 
   if (classifyRid != null) {
-    return <MobileArrivalClassifyFlow receivingId={classifyRid} step={classifyStep} />;
+    return (
+      <MobileArrivalClassifyFlow receivingId={classifyRid} step={classifyStep} typeHint={classifyTypeHint} />
+    );
   }
 
   return (
@@ -334,8 +351,9 @@ function MobileScanIdentifyInner() {
               </p>
               <Button
                 variant="secondary"
-                size="sm"
-                className="h-9 min-h-11"
+                size="lg"
+                radius="mode"
+                className="min-h-mode-hit"
                 onClick={() => void retryHistory()}
               >
                 Try again
@@ -348,7 +366,7 @@ function MobileScanIdentifyInner() {
           )}
         </div>
       }
-      itemAction={itemAction}
+      itemActions={itemActions}
       window={
         bindRaw ? (
           <MobileLocationBindSheet

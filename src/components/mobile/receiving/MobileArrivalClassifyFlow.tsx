@@ -14,6 +14,7 @@ import { toast } from '@/lib/toast';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ProgressDots } from '@/components/mobile/ProgressDots';
 import { Button, IconButton } from '@/design-system/primitives';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { ChevronLeft } from '@/components/Icons';
 import {
   platformClassifyOptions,
@@ -29,7 +30,9 @@ import {
   nextArrivalClassifyStep,
   prevArrivalClassifyStep,
   type ArrivalClassifyStep,
+  type ArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
+import { cn } from '@/utils/_cn';
 import type { InlinePillOption } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 
 const STEP_TITLE: Record<ArrivalClassifyStep, string> = {
@@ -42,10 +45,16 @@ export function MobileArrivalClassifyFlow({
   receivingId,
   step,
   trackingLabel,
+  typeHint = null,
 }: {
   receivingId: number;
   step: ArrivalClassifyStep;
   trackingLabel?: string | null;
+  /**
+   * The decision the row verb carried in (Return / Repair). Pre-selected on
+   * the Type step, never saved without the operator's tap.
+   */
+  typeHint?: ArrivalTypeHint | null;
 }) {
   const router = useRouter();
   const { options: platformOpts } = usePlatformCatalog();
@@ -60,9 +69,9 @@ export function MobileArrivalClassifyFlow({
 
   const goStep = useCallback(
     (next: ArrivalClassifyStep) => {
-      router.replace(mobileArrivalClassifyHref(receivingId, next));
+      router.replace(mobileArrivalClassifyHref(receivingId, next, { type: typeHint }));
     },
-    [router, receivingId],
+    [router, receivingId, typeHint],
   );
 
   const onBack = useCallback(() => {
@@ -234,13 +243,13 @@ export function MobileArrivalClassifyFlow({
           onClick={onBack}
           ariaLabel="Back"
           icon={<ChevronLeft className="h-5 w-5" />}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-soft bg-surface-card text-text-soft shadow-sm"
+          className="flex aspect-square min-h-mode-hit shrink-0 items-center justify-center rounded-mode border border-border-soft bg-surface-card text-text-soft"
         />
         <div className="min-w-0 flex-1">
           <p className="text-role-micro uppercase tracking-widest text-text-muted">
             Classify
           </p>
-          <p className="truncate text-sm font-semibold text-text-primary">
+          <p className="truncate text-mode-body font-semibold text-text-primary">
             {trackingLabel?.trim() || `RCV-${receivingId}`}
           </p>
         </div>
@@ -252,7 +261,7 @@ export function MobileArrivalClassifyFlow({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-end px-4 pb-6 pt-8">
-        <Button variant="ghost" size="sm" onClick={goList} className="mb-3 text-text-muted">
+        <Button variant="ghost" size="lg" radius="mode" onClick={goList} className="mb-3 min-h-mode-hit text-text-muted">
           Back to scan
         </Button>
       </div>
@@ -264,26 +273,38 @@ export function MobileArrivalClassifyFlow({
         forceVariant="sheet"
         dragDisabled={saving}
       >
-        <div className="space-y-3 px-1 pb-2">
+        {/* BottomSheet portals out of the page's ModeRegion; re-declare triage so
+            the mode radius / padding / hit tokens resolve inside the sheet. */}
+        <ModeRegion mode="triage" className="space-y-3 px-1 pb-2">
           <p className="text-role-caption text-text-muted">
             Step {stepIndex + 1} of {ARRIVAL_CLASSIFY_STEPS.length} · tap to save and continue
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {options.map((opt) => (
-              // ds-allow-title — option face already shows the label; native title is the longer hint.
-              <button
-                key={opt.value || opt.label}
-                type="button"
-                disabled={saving}
-                onClick={() => void onPick(opt.value)}
-                title={opt.title}
-                className={`ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-none border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50 ${opt.inactiveClass}`}
-                style={opt.inactiveStyle}
-              >
-                <span className="flex h-6 items-center justify-center">{opt.face}</span>
-                <span className="text-role-caption font-semibold">{opt.label}</span>
-              </button>
-            ))}
+            {options.map((opt) => {
+              // The row verb's decision, marked as the selection: a 2px INK
+              // outline, never a coloured one (BRIEF §4/§5).
+              const hinted = step === 'type' && typeHint != null && opt.value.toUpperCase() === typeHint;
+              return (
+                // ds-allow-title — option face already shows the label; native title is the longer hint.
+                <button
+                  key={opt.value || opt.label}
+                  type="button"
+                  disabled={saving}
+                  onClick={() => void onPick(opt.value)}
+                  title={opt.title}
+                  aria-pressed={step === 'type' ? hinted : undefined}
+                  className={cn(
+                    'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-mode border px-2 py-3 text-center transition-opacity duration-mode-feedback active:opacity-80 disabled:opacity-50',
+                    opt.inactiveClass,
+                    hinted && 'outline outline-2 -outline-offset-2 outline-text-default',
+                  )}
+                  style={opt.inactiveStyle}
+                >
+                  <span className="flex h-6 items-center justify-center">{opt.face}</span>
+                  <span className="text-role-caption font-semibold">{opt.label}</span>
+                </button>
+              );
+            })}
           </div>
           {nextArrivalClassifyStep(step) ? (
             <p className="text-center text-role-micro uppercase tracking-wider text-text-faint">
@@ -294,7 +315,7 @@ export function MobileArrivalClassifyFlow({
               Finishes arrival for this carton
             </p>
           )}
-        </div>
+        </ModeRegion>
       </BottomSheet>
     </div>
   );

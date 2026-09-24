@@ -47,26 +47,6 @@ export const STATION_TONE_GROUND: Record<StationTone, string> = {
 };
 
 /**
- * The tone's edge — the focus row's top rule and the ring around its photo.
- *
- * `border-success|warning|danger`, not `emerald-500`/`amber-500`. The raw steps
- * were a different hue family from the semantic ink beside them (emerald is
- * teal-leaning against green-600; amber is yellow against orange-600), so one
- * row showed two greens that did not match.
- */
-export const STATION_TONE_EDGE: Record<StationTone, string> = {
-  ok: 'border-border-success',
-  warn: 'border-border-warning',
-  bad: 'border-border-danger',
-};
-
-export const STATION_TONE_RING: Record<StationTone, string> = {
-  ok: 'ring-border-success',
-  warn: 'ring-border-warning',
-  bad: 'ring-border-danger',
-};
-
-/**
  * Ink, for the one place tone still speaks in words: the server's own message.
  *
  * That line is `role-caption` and short, not a 10px stamp, so the semantic

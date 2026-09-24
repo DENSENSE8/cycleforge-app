@@ -14,6 +14,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
+  INTAKE,
+  INTAKE_CLASSES,
   LIFECYCLE,
   LIFECYCLE_STATES,
   LIGHT_THEME,
@@ -77,6 +79,9 @@ function renderJson(): string {
   }
   for (const state of LIFECYCLE_STATES) {
     for (const [field, value] of Object.entries(LIFECYCLE[state])) flat[`lifecycle.${state}.${field}`] = value;
+  }
+  for (const cls of INTAKE_CLASSES) {
+    for (const [field, value] of Object.entries(INTAKE[cls])) flat[`intake.${cls}.${field}`] = value;
   }
   for (const [key, value] of Object.entries(LIGHT_THEME.vars)) flat[`theme.light.${key}`] = value;
   flat['theme.light.page.background'] = LIGHT_THEME.page.background;
@@ -253,8 +258,35 @@ function renderSwift(): string {
       `${I2}public static let ${state} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone})`,
     );
   }
+  out.push(
+    `${I1}}`,
+    '',
+    `${I1}/// One intake class: 3-letter mono code and the full word it reads as.`,
+    `${I1}/// A category, not a state — neutral ink; colour only from the scan outcome.`,
+    `${I1}public struct IntakeClass: Sendable {`,
+    `${I2}public let code: String`,
+    `${I2}public let label: String`,
+    `${I1}}`,
+    '',
+    `${I1}/// Intake classes — what an arrived package is (arrival triage).`,
+    `${I1}public enum Intake {`,
+  );
+  for (const cls of INTAKE_CLASSES) {
+    const { code, label } = INTAKE[cls];
+    out.push(`${I2}public static let ${swiftIdent(cls)} = IntakeClass(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)})`);
+  }
   out.push(`${I1}}`, '}', '');
   return out.join('\n');
+}
+
+/** Swift keywords a registry key may collide with (`return` is an intake class). */
+const SWIFT_KEYWORDS: Record<string, true> = Object.fromEntries(
+  ['return', 'repeat', 'default', 'case', 'in', 'is', 'as', 'do', 'if', 'for', 'while', 'switch', 'where', 'class', 'struct', 'enum', 'protocol', 'let', 'var', 'func', 'import', 'static', 'self', 'Self', 'true', 'false', 'nil', 'throw', 'try', 'catch', 'defer', 'guard', 'else', 'break', 'continue', 'fallthrough', 'internal', 'private', 'public', 'operator', 'init', 'deinit', 'extension', 'subscript', 'typealias', 'associatedtype', 'inout', 'super', 'rethrows', 'throws', 'Any'].map((k) => [k, true as const]),
+);
+
+/** A registry key as a Swift identifier — backticked when it is a keyword. */
+function swiftIdent(name: string): string {
+  return SWIFT_KEYWORDS[name] ? `\`${name}\`` : name;
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
