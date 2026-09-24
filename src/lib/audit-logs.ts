@@ -204,6 +204,9 @@ export const AUDIT_ACTION = {
   // are audited: a serial correction is not an audit event, a price override is.
   COUNTER_LINE_PRICE_OVERRIDE: 'counter_session.line.price_override',
   COUNTER_LINE_VOID:           'counter_session.line.void',
+  // A line kept on the bill at $0 with a reason (Square "comp"). The kiosk
+  // writes it on submit, under the PIN that authorized it.
+  COUNTER_LINE_COMP:           'counter_session.line.comp',
   COUNTER_SESSION_SUBMIT:      'counter_session.submit',
   COUNTER_TERMINAL_CHECKOUT:   'counter_session.terminal_checkout',
   // PO / receiving
@@ -572,6 +575,15 @@ export const AUDIT_ACTION = {
    */
   ORDER_CAGE: 'order.cage',
   ORDER_RELEASE: 'order.release',
+  /** Order created through POST /api/orders/add (intake form / QA test orders). */
+  ORDER_CREATE: 'order.create',
+  /**
+   * Outbound Triage acknowledgment (2026-09-23): the operator identified the
+   * order, routed it (PICK / QC) with one live label on it. UNACKNOWLEDGED is
+   * the undo — it returns the order to the Triage view.
+   */
+  ORDER_ACKNOWLEDGED: 'order.acknowledged',
+  ORDER_UNACKNOWLEDGED: 'order.unacknowledged',
   /** Ready-to-pack packing-station place / move / clear (order_pack_placements). */
   ORDER_PACK_PLACE: 'order.pack_place',
   ORDER_PACK_MOVE: 'order.pack_move',

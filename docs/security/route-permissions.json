@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-23T16:51:13Z",
-  "totalRoutes": 1042,
+  "generatedAt": "2026-09-24T10:35:42Z",
+  "totalRoutes": 1051,
   "summary": {
-    "permissionGated": 854,
-    "authenticatedNoPermission": 105,
+    "permissionGated": 863,
+    "authenticatedNoPermission": 104,
     "anonymousIntentional": 36,
-    "serviceToService": 47,
+    "serviceToService": 48,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -1518,7 +1518,7 @@
         "POST"
       ],
       "gate": "withAuth",
-      "permission": "walk_in.take_payment",
+      "permission": "walk_in.adjust_price",
       "exemptReason": null
     },
     {
@@ -2001,6 +2001,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/cron/zoho/receive-backfill/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/custom-fields/defs/[id]/route.ts",
       "methods": [
         "DELETE"
@@ -2150,6 +2159,15 @@
       ],
       "gate": "withAuth",
       "permission": "admin.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/developer/qa/capabilities/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -3222,16 +3240,7 @@
       "exemptReason": null
     },
     {
-      "path": "/api/kiosk/pickup/collect/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withKioskAuth",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/kiosk/pickup/lookup/route.ts",
+      "path": "/api/kiosk/price-approval/route.ts",
       "methods": [
         "POST"
       ],
@@ -3417,15 +3426,6 @@
       "path": "/api/kiosk/session/stance/route.ts",
       "methods": [
         "POST"
-      ],
-      "gate": "withKioskAuth",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/kiosk/settings/route.ts",
-      "methods": [
-        "GET"
       ],
       "gate": "withKioskAuth",
       "permission": null,
@@ -4179,6 +4179,16 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/acknowledge/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -6519,6 +6529,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/repair-service/[id]/photos/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/repair-service/[id]/reopen/route.ts",
       "methods": [
         "POST"
@@ -6531,6 +6550,15 @@
       "path": "/api/repair-service/[id]/route.ts",
       "methods": [
         "DELETE",
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "repair.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/repair-service/[id]/ticket-link/route.ts",
+      "methods": [
         "GET"
       ],
       "gate": "requireRoutePerm",
@@ -8948,6 +8976,52 @@
       "exemptReason": null
     },
     {
+      "path": "/api/v1/label-ingestions/[id]/apply/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/retry/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.complete_order",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/label-ingestions/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.review",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/outbound/work/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/vision-config/route.ts",
       "methods": [
         "GET"
@@ -9651,6 +9725,16 @@
     {
       "path": "/api/zoho/purchase-receives/sync/route.ts",
       "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "integrations.zoho",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/zoho/receive-backfill/route.ts",
+      "methods": [
+        "GET",
         "POST"
       ],
       "gate": "withAuth",

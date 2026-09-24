@@ -10,6 +10,7 @@
  *
  * Run:  pnpm provision:qa-org
  *       pnpm provision:qa-org -- --fixtures-only   (skip org/staff, re-seed data)
+ *       pnpm provision:qa-org -- --triage-only     (only QA_TRIAGE_FIXTURES; no password/PIN reset)
  *       pnpm provision:qa-org -- --verify          (isolation smoke checks)
  *
  * Requires DATABASE_URL. Safe to re-run.
@@ -62,16 +63,21 @@ import {
   QA_ORG_NAME,
   QA_ORG_SLUG,
   QA_STATION_STAFF,
+  QA_TRIAGE_FIXTURES,
   qaDemoOrderId,
   qaDemoTrackingNumber,
   resolveQaOrgId,
 } from '@/lib/tenancy/qa-org';
 import { upsertIntegrationCredentials } from '@/lib/integrations/credentials';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { tagInboundAsReturn } from '@/lib/inbound/tag-inbound-return';
+import { createProvisionalSku } from '@/lib/neon/provisional-sku-queries';
+import { createTask } from '@/lib/tasks/create-task';
 
 const DATABASE_URL = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 const FIXTURES_ONLY = process.argv.includes('--fixtures-only');
 const VERIFY_ONLY = process.argv.includes('--verify');
+const TRIAGE_ONLY = process.argv.includes('--triage-only');
 
 function log(step: string, detail?: string) {
   console.log(detail ? `✓ ${step} — ${detail}` : `✓ ${step}`);
@@ -1191,6 +1197,239 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   await seedHelpdeskConnection(orgId);
 }
 
+/**
+ * One arrived-but-unboxed package, found again by its door-scan tracking.
+ * Carton + door stamp + one line + the door scan — the rows the /m/scan
+ * arrival tape reads (`scannedViewPredicateSql`). Returns the carton and line.
+ */
+async function ensureArrivedPackage(
+  client: PoolClient,
+  orgId: string,
+  adminStaffId: number,
+  pkg: { tracking: string; itemName: string; sku: string | null; intakeType: 'RETURN' | 'REPAIR' | null; isRepairService?: boolean },
+): Promise<{ receivingId: number; lineId: number }> {
+  const existing = await client.query<{ receiving_id: number }>(
+    `SELECT receiving_id FROM receiving_scans
+      WHERE organization_id = $1 AND tracking_number = $2
+      ORDER BY id LIMIT 1`,
+    [orgId, pkg.tracking],
+  );
+  let receivingId = existing.rows[0]?.receiving_id;
+  if (receivingId == null) {
+    const carton = await client.query<{ id: number }>(
+      `INSERT INTO receiving_carton
+         (organization_id, source, carrier, intake_type, receiving_date_time, qa_status, needs_test, updated_at)
+       VALUES ($1, 'unmatched', 'USPS', $2, NOW(), 'PENDING', true, NOW())
+       RETURNING id`,
+      [orgId, pkg.intakeType],
+    );
+    receivingId = Number(carton.rows[0]!.id);
+    await client.query(
+      `INSERT INTO receiving_scans
+         (organization_id, receiving_id, tracking_number, carrier, scanned_by, source, intake_surface)
+       VALUES ($1, $2, $3, 'USPS', $4, 'unmatched', 'triage')`,
+      [orgId, receivingId, pkg.tracking, adminStaffId],
+    );
+  }
+  await client.query(
+    `INSERT INTO receiving_triage (receiving_id, organization_id, door_received_at, door_received_by)
+     VALUES ($1, $2, NOW(), $3)
+     ON CONFLICT (receiving_id) DO UPDATE
+       SET door_received_at = COALESCE(receiving_triage.door_received_at, EXCLUDED.door_received_at),
+           updated_at = NOW()`,
+    [receivingId, orgId, adminStaffId],
+  );
+  const line = await client.query<{ id: number }>(
+    `SELECT id FROM receiving_line WHERE organization_id = $1 AND receiving_id = $2 ORDER BY id LIMIT 1`,
+    [orgId, receivingId],
+  );
+  const lineId = line.rows[0]
+    ? Number(line.rows[0].id)
+    : Number((await client.query<{ id: number }>(
+        `INSERT INTO receiving_line
+           (organization_id, receiving_id, item_name, sku, quantity_expected, quantity_received,
+            workflow_status, intake_type, is_repair_service, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, 1, 0, 'ARRIVED', $5, $6, NOW(), NOW())
+         RETURNING id`,
+        [orgId, receivingId, pkg.itemName, pkg.sku, pkg.intakeType, pkg.isRepairService ?? false],
+      )).rows[0]!.id);
+  return { receivingId, lineId };
+}
+
+/** Select-then-insert: `orders`' unique key includes a NULL external_line_id, so ON CONFLICT never fires. */
+async function ensureTriageOrder(
+  client: PoolClient,
+  orgId: string,
+  o: { orderId: string; title: string; sku: string; skuCatalogId: number | null; itemNumber: string | null; releaseState: 'caged' | null },
+): Promise<number> {
+  const existing = await client.query<{ id: number }>(
+    `SELECT id FROM orders WHERE organization_id = $1 AND order_id = $2 ORDER BY id LIMIT 1`,
+    [orgId, o.orderId],
+  );
+  if (existing.rows[0]) {
+    // Re-provision restores the decision state a page proof may have changed.
+    await client.query(
+      `UPDATE orders
+          SET sku_catalog_id = $3, item_number = $4, release_state = $5,
+              acknowledged_at = NULL, acknowledged_by = NULL, fulfillment_route = NULL
+        WHERE id = $1 AND organization_id = $2`,
+      [existing.rows[0].id, orgId, o.skuCatalogId, o.itemNumber, o.releaseState],
+    );
+    return Number(existing.rows[0].id);
+  }
+  const r = await client.query<{ id: number }>(
+    `INSERT INTO orders
+       (organization_id, order_id, product_title, sku, sku_catalog_id, item_number, release_state,
+        status, quantity, account_source, order_date, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, 'unassigned', '1', 'QA-TEST', NOW(), NOW())
+     RETURNING id`,
+    [orgId, o.orderId, o.title, o.sku, o.skuCatalogId, o.itemNumber, o.releaseState],
+  );
+  return Number(r.rows[0]!.id);
+}
+
+/**
+ * QA_TRIAGE_FIXTURES — one record per triage decision. Spine rows are written
+ * in one tenant transaction; the decision itself (return tag, placeholder,
+ * ticket handoff) goes through the same domain writers the floor uses, so a
+ * fixture cannot drift from what the app would have written.
+ */
+async function seedTriageFixtures(pool: Pool, orgId: string, adminStaffId: number) {
+  const fx = QA_TRIAGE_FIXTURES;
+  const client = await pool.connect();
+  let returnLineId: number;
+  let ticketId: number;
+  const ids: Record<string, number> = {};
+  try {
+    await client.query('BEGIN');
+    await setOrgGuc(client, orgId);
+
+    // 1. Return package — spine here, RETURN facts via tagInboundAsReturn below.
+    const ret = await ensureArrivedPackage(client, orgId, adminStaffId, {
+      tracking: fx.returnPackage.tracking, itemName: fx.returnPackage.itemName,
+      sku: fx.returnPackage.sku, intakeType: null,
+    });
+    returnLineId = ret.lineId;
+    ids.returnReceivingId = ret.receivingId;
+
+    // 2. Repair intake — the repair ticket plus the package that arrived for it.
+    const rep = await ensureArrivedPackage(client, orgId, adminStaffId, {
+      tracking: fx.repairIntake.tracking, itemName: fx.repairIntake.productTitle,
+      sku: null, intakeType: 'REPAIR', isRepairService: true,
+    });
+    ids.repairReceivingId = rep.receivingId;
+    const repairRow = await client.query<{ id: number }>(
+      `SELECT id FROM repair_service WHERE organization_id = $1 AND ticket_number = $2 LIMIT 1`,
+      [orgId, fx.repairIntake.ticketNumber],
+    );
+    ids.repairServiceId = repairRow.rows[0]
+      ? Number(repairRow.rows[0].id)
+      : Number((await client.query<{ id: number }>(
+          `INSERT INTO repair_service
+             (organization_id, ticket_number, product_title, issue, status, intake_channel,
+              source_tracking_number, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, 'Incoming Shipment', 'shipment', $5, NOW(), NOW())
+           RETURNING id`,
+          [orgId, fx.repairIntake.ticketNumber, fx.repairIntake.productTitle, fx.repairIntake.issue, fx.repairIntake.tracking],
+        )).rows[0]!.id);
+
+    // 3. Support-ticket package — internal ticket anchored to the arrived carton.
+    const tix = await ensureArrivedPackage(client, orgId, adminStaffId, {
+      tracking: fx.supportTicketPackage.tracking, itemName: fx.supportTicketPackage.itemName,
+      sku: fx.supportTicketPackage.sku, intakeType: null,
+    });
+    ids.ticketReceivingId = tix.receivingId;
+    const ticket = await client.query<{ id: number }>(
+      `INSERT INTO support_tickets (organization_id, provider, external_ticket_id, subject_cache, status_cache, created_by)
+       VALUES ($1, 'internal', $2, $3, 'open', $4)
+       ON CONFLICT (organization_id, provider, external_ticket_id) WHERE external_ticket_id IS NOT NULL
+       DO UPDATE SET subject_cache = EXCLUDED.subject_cache, updated_at = NOW()
+       RETURNING id`,
+      [orgId, fx.supportTicketPackage.externalTicketId, fx.supportTicketPackage.subject, adminStaffId],
+    );
+    ticketId = Number(ticket.rows[0]!.id);
+    ids.supportTicketId = ticketId;
+    await client.query(
+      `INSERT INTO ticket_links (organization_id, support_ticket_id, entity_type, entity_id, is_primary, link_role, created_by)
+       VALUES ($1, $2, 'RECEIVING', $3, true, 'anchor', $4)
+       ON CONFLICT (organization_id, support_ticket_id, entity_type, entity_id) DO NOTHING`,
+      [orgId, ticketId, tix.receivingId, adminStaffId],
+    );
+
+    // 4. Order missing catalog pairing — caged, item number, no sku_catalog_id,
+    //    but labelled, so the refusal names pairing alone.
+    ids.unpairedOrderId = await ensureTriageOrder(client, orgId, {
+      orderId: fx.unpairedOrder.orderId, title: fx.unpairedOrder.title, sku: fx.unpairedOrder.sku,
+      skuCatalogId: null, itemNumber: fx.unpairedOrder.itemNumber, releaseState: 'caged',
+    });
+    await assignFixtureTracking(client, orgId, ids.unpairedOrderId, fx.unpairedOrder.tracking);
+
+    // 5. Order missing a label — paired to the QA speaker, no shipment.
+    const paired = await client.query<{ id: number }>(
+      `SELECT id FROM sku_catalog WHERE organization_id = $1 AND sku = $2 LIMIT 1`,
+      [orgId, fx.labelLessOrder.sku],
+    );
+    if (!paired.rows[0]) throw new Error(`triage fixtures: ${fx.labelLessOrder.sku} is not in the QA catalog — run a full provision first`);
+    ids.labelLessOrderId = await ensureTriageOrder(client, orgId, {
+      orderId: fx.labelLessOrder.orderId, title: fx.labelLessOrder.title, sku: fx.labelLessOrder.sku,
+      skuCatalogId: Number(paired.rows[0].id), itemNumber: null, releaseState: null,
+    });
+    await client.query(
+      `UPDATE orders SET shipment_id = NULL WHERE id = $1 AND organization_id = $2`,
+      [ids.labelLessOrderId, orgId],
+    );
+
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  // Decisions through the floor's own writers (each owns its transaction).
+  await tagInboundAsReturn(orgId, {
+    receivingLineId: returnLineId,
+    sourceType: fx.returnPackage.sourceType,
+    sourceOrderId: fx.returnPackage.sourceOrderId,
+    returnReason: fx.returnPackage.returnReason,
+  });
+
+  // 6. On-hold placeholder with stock. createProvisionalSku mints it at 0; the
+  //    fixture's point is stock to merge, so set the on-hand count it reads.
+  const hold = await createProvisionalSku(
+    { barcode: fx.onHoldSku.barcode, productTitle: fx.onHoldSku.productTitle, staffId: adminStaffId },
+    orgId,
+  );
+  await pool.query(
+    `UPDATE sku_stock SET stock = $3, updated_at = NOW()
+      WHERE organization_id = $1 AND sku = $2 AND is_provisional = true`,
+    [orgId, hold.sku, fx.onHoldSku.stock],
+  );
+
+  // Inbox: the ticket handed to the QA admin — once. A system throw (actor
+  // NULL), exactly like the cron ingest, so the self-throw refusal is moot.
+  const openTask = await pool.query<{ id: number }>(
+    `SELECT id FROM work_assignments
+      WHERE organization_id = $1 AND entity_type = 'SUPPORT_TICKET' AND entity_id = $2
+        AND assignee_staff_id = $3 AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+      LIMIT 1`,
+    [orgId, ticketId, adminStaffId],
+  );
+  if (!openTask.rows[0]) {
+    const task = await createTask(orgId as OrgId, {
+      entityType: 'support_ticket',
+      entityId: ticketId,
+      assigneeStaffId: adminStaffId,
+      note: fx.supportTicketPackage.note,
+      actorStaffId: null,
+    });
+    if (!task.ok) throw new Error(`triage fixtures: ticket handoff refused (${task.reason})`);
+  }
+
+  log('Triage fixtures', Object.entries({ ...ids, onHoldSku: hold.sku }).map(([k, v]) => `${k}=${v}`).join(' '));
+}
+
 async function verifyIsolation(pool: Pool, orgId: string) {
   const qaOrders = await pool.query<{ n: number }>(
     `SELECT count(*)::int AS n FROM orders WHERE organization_id = $1::uuid`,
@@ -1244,6 +1483,16 @@ async function main() {
     }
 
     let staffId = 0;
+    if (TRIAGE_ONLY) {
+      // No ensureAdminStaff: it resets the QA admin password/PIN to env defaults.
+      const admin = await pool.query<{ id: number }>(
+        `SELECT id FROM staff WHERE organization_id = $1::uuid AND name = $2 ORDER BY id LIMIT 1`,
+        [orgId, QA_ADMIN_NAME],
+      );
+      if (!admin.rows[0]) throw new Error(`QA admin "${QA_ADMIN_NAME}" not found — run a full provision first`);
+      await seedTriageFixtures(pool, orgId, Number(admin.rows[0].id));
+      return;
+    }
     // Always ensure org + admin (email+password) — fixtures-only still refreshes
     // the QA Admin password so `/signin` stays usable after env changes.
     await ensureOrganization(pool, orgId);
@@ -1255,6 +1504,7 @@ async function main() {
     }
 
     await seedFixtures(pool, orgId, staffId);
+    await seedTriageFixtures(pool, orgId, staffId);
 
     if (process.argv.includes('--verify')) {
       await verifyIsolation(pool, orgId);

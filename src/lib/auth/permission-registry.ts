@@ -42,6 +42,7 @@ export const PERMISSION_CATEGORY_DEFS = [
   { id: 'ops',          label: 'Operations & Reports' },
   { id: 'integrations', label: 'Integrations' },
   { id: 'admin',        label: 'Admin' },
+  { id: 'developer',    label: 'Developer / QA' },
 ] as const;
 
 export type PermissionCategoryId = (typeof PERMISSION_CATEGORY_DEFS)[number]['id'];
@@ -196,6 +197,12 @@ export const PERMISSIONS = [
   // an unattended tablet authorizes a drop-off on its own, but a charge needs a
   // real person who holds this. Checked at the kiosk PIN step-up.
   { id: 'walk_in.take_payment',     category: 'ops', label: 'Take counter payment' },
+  // Changing a price is a different risk from taking one (Square gates "apply
+  // price adjustments", "enter custom amounts" and "comp/void" on their own):
+  // a price adjustment, a keypad amount, a comp and a void of a line the
+  // customer has seen. Checked at the kiosk PIN step-up and on the desk's
+  // line-price override.
+  { id: 'walk_in.adjust_price',     category: 'ops', label: 'Adjust a line price at the counter' },
   { id: 'stations.manage',          category: 'ops', label: 'Customize station pages (blocks, publish)' },
   { id: 'studio.view',              category: 'ops', label: 'View Operations Studio' },
   // Step-up is enforced on the PUBLISH route only (withAuth stepUp: true) so
@@ -259,6 +266,13 @@ export const PERMISSIONS = [
   // (beta_applications is org-less; reviewing it is a platform job, not a
   // tenant-admin job — grant on the platform org's owner roles only).
   { id: 'beta.review',              category: 'admin', label: 'Review beta applications (platform funnel)' },
+
+  // ─ Developer / QA ─
+  // Authorization for QA capability reads — not an organization setting. The
+  // server-side capability resolver ALSO requires organizations.environment
+  // = 'sandbox', so granting this on a customer org is a no-op. Do not add
+  // it to production role templates.
+  { id: 'developer.qa_tools.view',  category: 'developer', label: 'View QA capabilities' },
 ] as const satisfies ReadonlyArray<PermissionDef>;
 
 // ─── Derived shapes ─────────────────────────────────────────────────────────

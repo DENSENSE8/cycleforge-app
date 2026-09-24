@@ -1,0 +1,1059 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CycleForge V1 Label Ingestions",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/label-ingestions": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped ledger list"
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_REQUEST",
+                            "INVALID_PDF",
+                            "PAYLOAD_TOO_LARGE",
+                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                            "INGESTION_NOT_FOUND",
+                            "INGESTION_NOT_ACTIONABLE",
+                            "ROW_VERSION_CONFLICT",
+                            "INGESTION_APPLY_CONFLICT",
+                            "INGESTION_PROCESSING_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "clientEventId",
+                  "observedAt"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "clientEventId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "observedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created or byte-idempotent replay"
+          },
+          "400": {
+            "description": "Rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_REQUEST",
+                            "INVALID_PDF",
+                            "PAYLOAD_TOO_LARGE",
+                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                            "INGESTION_NOT_FOUND",
+                            "INGESTION_NOT_ACTIONABLE",
+                            "ROW_VERSION_CONFLICT",
+                            "INGESTION_APPLY_CONFLICT",
+                            "INGESTION_PROCESSING_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped ledger resource"
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_REQUEST",
+                            "INVALID_PDF",
+                            "PAYLOAD_TOO_LARGE",
+                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                            "INGESTION_NOT_FOUND",
+                            "INGESTION_NOT_ACTIONABLE",
+                            "ROW_VERSION_CONFLICT",
+                            "INGESTION_APPLY_CONFLICT",
+                            "INGESTION_PROCESSING_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/apply": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "expectedRowVersion"
+                ],
+                "properties": {
+                  "expectedRowVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Applied or idempotent replay"
+          },
+          "409": {
+            "description": "State or row-version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_REQUEST",
+                            "INVALID_PDF",
+                            "PAYLOAD_TOO_LARGE",
+                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                            "INGESTION_NOT_FOUND",
+                            "INGESTION_NOT_ACTIONABLE",
+                            "ROW_VERSION_CONFLICT",
+                            "INGESTION_APPLY_CONFLICT",
+                            "INGESTION_PROCESSING_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/label-ingestions/{id}/retry": {
+      "post": {
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Reprocessed staged PDF"
+          },
+          "409": {
+            "description": "Not retryable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "INVALID_REQUEST",
+                            "INVALID_PDF",
+                            "PAYLOAD_TOO_LARGE",
+                            "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                            "INGESTION_NOT_FOUND",
+                            "INGESTION_NOT_ACTIONABLE",
+                            "ROW_VERSION_CONFLICT",
+                            "INGESTION_APPLY_CONFLICT",
+                            "INGESTION_PROCESSING_FAILED"
+                          ]
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/outbound/work": {
+      "get": {
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "Saved work view; membership is server-defined.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "triage",
+                "ready",
+                "pending",
+                "at-risk",
+                "ship-now",
+                "exceptions",
+                "completed"
+              ],
+              "default": "all"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped outbound work projection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutboundWorkPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor, saved view or page size"
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "orders.view permission required"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "LabelIngestionState": {
+        "type": "string",
+        "enum": [
+          "RECEIVED",
+          "STAGED",
+          "PARSED",
+          "MATCHED",
+          "QUARANTINED",
+          "APPLYING",
+          "APPLIED",
+          "FAILED"
+        ]
+      },
+      "LabelMatchMethod": {
+        "type": "string",
+        "enum": [
+          "CYCLEFORGE_REFERENCE",
+          "MARKETPLACE_ORDER_ID"
+        ]
+      },
+      "LabelQuarantineReason": {
+        "type": "string",
+        "enum": [
+          "PARSE_FAILED",
+          "PDF_LIMIT_EXCEEDED",
+          "TRACKING_ONLY",
+          "MISSING_ACCOUNT_CONTEXT",
+          "CYCLEFORGE_REFERENCE_UNMAPPED",
+          "ORDER_NOT_FOUND",
+          "AMBIGUOUS_ORDER_MATCH",
+          "UNSUPPORTED_CARRIER",
+          "MULTI_PACKAGE_EVIDENCE",
+          "STAGING_FAILED"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "INVALID_REQUEST",
+                  "INVALID_PDF",
+                  "PAYLOAD_TOO_LARGE",
+                  "CLIENT_EVENT_PAYLOAD_MISMATCH",
+                  "INGESTION_NOT_FOUND",
+                  "INGESTION_NOT_ACTIONABLE",
+                  "ROW_VERSION_CONFLICT",
+                  "INGESTION_APPLY_CONFLICT",
+                  "INGESTION_PROCESSING_FAILED"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "OutboundWorkItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "reference": {
+            "type": "string"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "sku": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "itemNumber": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "paired": {
+                "type": "boolean"
+              },
+              "condition": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "quantity": {
+                "type": "string"
+              },
+              "price": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "thumbnail": {
+                "type": "object",
+                "properties": {
+                  "alt": {
+                    "type": "string"
+                  },
+                  "url": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "version": {
+                    "type": "null"
+                  }
+                },
+                "required": [
+                  "alt",
+                  "url",
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "title",
+              "sku",
+              "itemNumber",
+              "paired",
+              "condition",
+              "quantity",
+              "price",
+              "thumbnail"
+            ],
+            "additionalProperties": false
+          },
+          "priority": {
+            "type": "object",
+            "properties": {
+              "urgent": {
+                "type": "boolean"
+              },
+              "outOfStock": {
+                "type": "boolean"
+              },
+              "shipBy": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "urgent",
+              "outOfStock",
+              "shipBy"
+            ],
+            "additionalProperties": false
+          },
+          "warehouseStage": {
+            "type": "string",
+            "enum": [
+              "READY",
+              "PICKED",
+              "PACKED",
+              "LABELED",
+              "SCANNED_OUT",
+              "OUT_OF_STOCK"
+            ]
+          },
+          "tracking": {
+            "type": "object",
+            "properties": {
+              "shipmentId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "number": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "carrier": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "category": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "shipmentId",
+              "number",
+              "carrier",
+              "category"
+            ],
+            "additionalProperties": false
+          },
+          "label": {
+            "type": "object",
+            "properties": {
+              "ingestionId": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "NONE",
+                  "RECEIVED",
+                  "STAGED",
+                  "PARSED",
+                  "MATCHED",
+                  "QUARANTINED",
+                  "APPLYING",
+                  "APPLIED",
+                  "FAILED"
+                ]
+              }
+            },
+            "required": [
+              "ingestionId",
+              "state"
+            ],
+            "additionalProperties": false
+          },
+          "documents": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "count"
+            ],
+            "additionalProperties": false
+          },
+          "acknowledgment": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "by": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "byName": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "route": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "PICK",
+                      "QC"
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "at",
+              "by",
+              "byName",
+              "route"
+            ],
+            "additionalProperties": false
+          },
+          "stock": {
+            "type": "object",
+            "properties": {
+              "ready": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "received": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "ready",
+              "received"
+            ],
+            "additionalProperties": false
+          },
+          "shippingLabel": {
+            "type": "object",
+            "properties": {
+              "live": {
+                "type": "boolean"
+              },
+              "documentId": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "source": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tracking": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "carrier": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "shipstationLabelId": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "live",
+              "documentId",
+              "source",
+              "tracking",
+              "carrier",
+              "shipstationLabelId"
+            ],
+            "additionalProperties": false
+          },
+          "rowVersion": {
+            "type": "string",
+            "description": "Display revision: the latest of the order and allocated-unit timestamps. NOT an optimistic-concurrency token — do not use it as an expected row version."
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Send this back as the expected fingerprint when invoking a command on this record. Digest (scheme outbound-work/v2) of the material state of the whole LOGICAL ORDER SET this record belongs to: warehouse stage, label state, latest ingestion id and row version, shipment, the set membership, and every active allocation with its unit status. A digest issued under a different scheme version is never accepted, so refresh after a server upgrade rather than replaying a stored token."
+          },
+          "allowedActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "const": "APPLY_LABEL"
+            }
+          },
+          "views": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "all",
+                "triage",
+                "ready",
+                "pending",
+                "at-risk",
+                "ship-now",
+                "exceptions",
+                "completed"
+              ]
+            }
+          },
+          "nextAction": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "START_PICK",
+                  "CONTINUE_FULFILLMENT",
+                  "APPLY_LABEL",
+                  "RESOLVE_EXCEPTION",
+                  "VIEW_RECEIPT"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "command": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "APPLY_LABEL"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "kind",
+              "label",
+              "command"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "reference",
+          "source",
+          "product",
+          "priority",
+          "warehouseStage",
+          "tracking",
+          "label",
+          "documents",
+          "acknowledgment",
+          "stock",
+          "shippingLabel",
+          "rowVersion",
+          "fingerprint",
+          "allowedActions",
+          "views",
+          "nextAction"
+        ],
+        "additionalProperties": false
+      },
+      "OutboundWorkPage": {
+        "type": "object",
+        "properties": {
+          "view": {
+            "type": "string",
+            "enum": [
+              "all",
+              "triage",
+              "ready",
+              "pending",
+              "at-risk",
+              "ship-now",
+              "exceptions",
+              "completed"
+            ]
+          },
+          "views": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "triage",
+                    "ready",
+                    "pending",
+                    "at-risk",
+                    "ship-now",
+                    "exceptions",
+                    "completed"
+                  ]
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "membership": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "membership"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OutboundWorkItem"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "view",
+          "views",
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

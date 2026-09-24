@@ -695,6 +695,21 @@ test('taking counter payment is NOT a route gate on any DEVICE-authed kiosk rout
   );
 });
 
+test('changing a line price is walk_in.adjust_price: the desk override gates on it, the kiosk step-ups on it', () => {
+  assert.equal(isKnownPermission('walk_in.adjust_price'), true);
+  const paths = routesGatedBy('walk_in.adjust_price').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/counter/session/[id]/lines/[lineUuid]/price/route.ts'),
+    'desk price override gated by walk_in.adjust_price, not take_payment',
+  );
+  // The tablet's approval route is device-authed: the permission is proven by
+  // resolveKioskStepUp on the PIN, never by a staff session it does not have.
+  const approval = routeByPath('/api/kiosk/price-approval/route.ts');
+  assert.ok(approval, 'price-approval route should be in the manifest');
+  assert.equal(approval.permission, null);
+  assert.ok(approval.gate.includes('withKioskAuth'), `expected withKioskAuth gate, got ${approval.gate}`);
+});
+
 test('kiosk pair is public + capability-gated (the pairing code is the capability)', () => {
   const r = routeByPath('/api/kiosk/pair/route.ts');
   assert.ok(r, 'pair route should be in the manifest');
@@ -732,6 +747,20 @@ test('the packer verification submit is a packing.complete_order write', () => {
   const r = routeByPath('/api/packing/verification/route.ts');
   assert.ok(r, 'the verification submit route should be in the manifest');
   assert.equal(r.permission, 'packing.complete_order');
+});
+
+test('V1 label-ingestion apply and retry are packing.complete_order writes', () => {
+  // Apply moves PACKED units to LABELED and attaches tracking; retry re-runs
+  // the server parser. Neither may ride the read gate the ledger list uses.
+  for (const path of [
+    '/api/v1/label-ingestions/[id]/apply/route.ts',
+    '/api/v1/label-ingestions/[id]/retry/route.ts',
+  ]) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.permission, 'packing.complete_order');
+  }
+  assert.equal(routeByPath('/api/v1/label-ingestions/[id]/route.ts')?.permission, 'packing.review');
 });
 
 test('interop.read gates every standards-projection route', () => {
@@ -794,4 +823,17 @@ test('regression: work_orders.claim gates the ticket-target resolver', () => {
   assert.ok(r, 'the ticket-target route should be in the manifest');
   assert.equal(r.permission, 'work_orders.claim');
   assert.deepEqual(r.methods, ['POST']);
+});
+
+test('regression: the Foundation 0 outbound slice keeps its gates', () => {
+  // Acknowledge is an order mutation: it must require the same permission as
+  // creating the order, never a read permission. The work projection is the
+  // native clients' read seam and stays behind order visibility.
+  const ack = routeByPath('/api/orders/[id]/acknowledge/route.ts');
+  assert.ok(ack, 'the acknowledge route should be in the manifest');
+  assert.equal(ack.permission, 'orders.create');
+  assert.deepEqual(ack.methods, ['DELETE', 'POST']);
+  const work = routeByPath('/api/v1/outbound/work/route.ts');
+  assert.ok(work, 'the outbound work route should be in the manifest');
+  assert.equal(work.permission, 'orders.view');
 });

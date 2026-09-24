@@ -257,6 +257,28 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Design tokens',
+    // The committed platform artifacts (desktop tokens.css, iOS
+    // DesignTokens.swift, design-mcp tokens.json) must be exactly what
+    // packages/design-tokens/src renders. `always`: an in-memory render (<1s),
+    // and the increment that breaks it — retouching a colour in the package
+    // without `pnpm tokens:build` — is exactly a `verify:fast` increment.
+    cmd: localBin('tsx'),
+    args: ['packages/design-tokens/scripts/generate.ts', '--check'],
+    profiles: 'always',
+  },
+  {
+    name: 'V1 OpenAPI',
+    // docs/openapi/cycleforge-v1.json must be exactly what the Zod-backed
+    // builders render (label ingestions + outbound work). `always`: an
+    // in-memory render (<1s), and the increment that breaks it — a field added
+    // to a contract schema without regenerating — is a `verify:fast` increment.
+    // Regenerate: pnpm exec tsx scripts/generate-v1-openapi.ts
+    cmd: localBin('tsx'),
+    args: ['scripts/verify-v1-openapi.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Unit tests',
     cmd: 'node',
     args: ['scripts/run-unit-tests.mjs'],

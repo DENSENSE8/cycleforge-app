@@ -418,6 +418,67 @@ export const QA_FIXTURE_PHOTOS = {
 export const QA_FIXTURE_PHOTO_COUNT =
   QA_FIXTURE_PHOTOS.carton.length + QA_FIXTURE_PHOTOS.line.length;
 
+/**
+ * Triage decision fixtures (Foundation 0 item 4, HANDOFF-cross-client-outbound-
+ * foundation.md) — one deterministic record per decision the triage pages make:
+ * `/m/scan` (return? repair? ticket?), `/m/exceptions` (catalog pairing),
+ * `/m/on-hold` (merge a placeholder), `/m/inbox` (a ticket handed to me), and
+ * the acknowledge refusal (`409 NOT_READY`).
+ *
+ * Every fixture is found again by a NATURAL key below (tracking number, order
+ * id, ticket number, barcode), never by a serial id — serial ids differ per
+ * Neon branch; these strings do not. Tracking numbers are USPS-shaped so
+ * carrier detection accepts them, and sit in the same QA range as
+ * QA_FIXTURE_TRACKING_*.
+ */
+export const QA_TRIAGE_FIXTURES = {
+  /** Arrived, door-scanned, not unboxed; tagged RETURN through tagInboundAsReturn. */
+  returnPackage: {
+    tracking: '9400100000000000000304',
+    itemName: 'QA Return — Bose SoundLink Mini II',
+    sku: QA_FIXTURE_SKUS.speaker,
+    sourceType: 'ebay',
+    sourceOrderId: 'QA-TRIAGE-RETURN-1',
+    returnReason: 'Buyer return — changed mind',
+  },
+  /** Arrived package for a repair ticket (`REP-<id>` scans open /m/rs/<id>). */
+  repairIntake: {
+    tracking: '9400100000000000000311',
+    ticketNumber: 'RS-QA-TRIAGE-1',
+    productTitle: 'QA Bose SoundLink Revolve — repair intake',
+    issue: 'Will not charge',
+  },
+  /** Arrived package anchored to a support ticket, handed to the QA admin's inbox. */
+  supportTicketPackage: {
+    tracking: '9400100000000000000328',
+    externalTicketId: 'QA-TRIAGE-TICKET-1',
+    subject: 'QA — customer sent the wrong unit back',
+    itemName: 'QA Apple AirPods Pro — ticket package',
+    sku: QA_FIXTURE_SKUS.earbuds,
+    note: 'QA fixture — ticket package arrived; decide return or repair',
+  },
+  /** Caged, unpaired (item number, no sku_catalog_id) but labelled → missing ['pairing']. */
+  unpairedOrder: {
+    orderId: 'QA-TRIAGE-UNPAIRED',
+    title: 'QA — Order missing catalog pairing',
+    sku: 'QA-UNPAIRED-LISTING-1',
+    itemNumber: 'QA-ITEM-UNPAIRED-1',
+    tracking: '9400100000000000000335',
+  },
+  /** Paired, no shipment, no label document → acknowledge 409 missing ['label']. */
+  labelLessOrder: {
+    orderId: 'QA-TRIAGE-NO-LABEL',
+    title: 'QA — Order missing a shipping label',
+    sku: QA_FIXTURE_SKUS.speaker,
+  },
+  /** Placeholder minted by createProvisionalSku, with stock on hand to merge. */
+  onHoldSku: {
+    barcode: 'QA-HOLD-TRIAGE-1',
+    productTitle: 'QA — On-hold placeholder (unreconciled)',
+    stock: 5,
+  },
+} as const;
+
 export function resolveQaOrgId(): OrgId {
   const fromEnv = process.env.QA_ORG_ID?.trim();
   if (fromEnv && /^[0-9a-f-]{36}$/i.test(fromEnv)) return fromEnv;

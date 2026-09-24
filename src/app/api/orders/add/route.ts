@@ -14,6 +14,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { getOrgTypes } from '@/lib/catalog/org-catalog';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 /**
  * POST /api/orders/add - Add a new order to the system
@@ -269,6 +270,23 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         orderIds: [Number(result.rows[0].id)],
         source: 'orders.add',
         extraTags: ['shipped', 'unshipped'],
+      });
+      // Inside the idempotency claim: a replayed key returns the cached body and
+      // writes no second audit row, exactly as it writes no second order.
+      await recordAudit(pool, ctx, req, {
+        source: 'orders-add-api',
+        action: AUDIT_ACTION.ORDER_CREATE,
+        entityType: AUDIT_ENTITY.ORDER,
+        entityId: Number(result.rows[0].id),
+        before: null,
+        after: {
+          orderId: result.rows[0].order_id,
+          sku: result.rows[0].sku,
+          skuCatalogId,
+          shipmentId,
+          status,
+          idempotencyKey,
+        },
       });
       // A new order can newly match an already-packed scan by tracking — refresh
       // the shipped-table read model for any affected PACK scans (best-effort).
