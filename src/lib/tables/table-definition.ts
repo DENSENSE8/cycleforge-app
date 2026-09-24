@@ -288,12 +288,6 @@ const TABLE_ENTITY_FAMILIES = [
    */
   'sku-ledger',
   /**
-   * Inventory › SKU Exceptions — one row = one floor-minted placeholder SKU
-   * (`TMP-<barcode>`) awaiting its Zoho pairing. Catalog:
-   * field-catalog/sku-exceptions.ts. Row open writes `?sku=` (the record).
-   */
-  'sku-exceptions',
-  /**
    * `/search` find plane — one row = one cross-entity search HIT. Read-only.
    * Catalog: field-catalog/search-hits.ts. ONE family over six entity types
    * on purpose: the row shape is the search wire (`AiSearchHit`), and six

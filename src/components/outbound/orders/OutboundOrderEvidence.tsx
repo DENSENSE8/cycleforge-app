@@ -503,7 +503,7 @@ function OrderEvidence({
 /** Nothing open: the queue read as the floor reads it — what needs hands. */
 function QueueEvidence({ records, todayKey }: OutboundOrderEvidenceProps) {
   const summary = useMemo(() => {
-    const byState: Record<LifecycleState, number> = { ready: 0, urgent: 0, packed: 0, outOfStock: 0, shipped: 0 };
+    const byState: Record<LifecycleState, number> = { ready: 0, urgent: 0, packed: 0, outOfStock: 0, shipped: 0, onHold: 0 };
     let late = 0;
     let unlocated = 0;
     for (const record of records) {

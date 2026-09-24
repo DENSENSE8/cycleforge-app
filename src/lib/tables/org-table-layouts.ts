@@ -98,10 +98,6 @@ import {
   SKU_BINS_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/sku-bins';
 import {
-  SKU_EXCEPTIONS_FIELD_CATALOG,
-  SKU_EXCEPTIONS_TABLE_LAYOUT_ID,
-} from '@/lib/tables/field-catalog/sku-exceptions';
-import {
   SKU_LEDGER_FIELD_CATALOG,
   SKU_LEDGER_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/sku-ledger';
@@ -401,12 +397,6 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // Admin › per-SKU bin distribution — COMPOUND only.
   [SKU_BINS_TABLE_LAYOUT_ID]: {
     catalog: SKU_BINS_FIELD_CATALOG,
-    morphs: ['compound'],
-  },
-  // Inventory › SKU Exceptions — COMPOUND only: the description rides the item
-  // cell's note line, which a `sheet` morph has no place for.
-  [SKU_EXCEPTIONS_TABLE_LAYOUT_ID]: {
-    catalog: SKU_EXCEPTIONS_FIELD_CATALOG,
     morphs: ['compound'],
   },
   // Admin › per-SKU stock ledger — COMPOUND only. The three reference ids the

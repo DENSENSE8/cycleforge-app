@@ -32,7 +32,6 @@ import { ADMIN_DRIFT_ALERTS_COMPOUND_COLUMNS } from '@/components/inventory/drif
 import { ADMIN_SKU_DRIFT_COMPOUND_COLUMNS } from '@/components/inventory/drift-grid/admin-sku-drift-grid-layout';
 import { INVENTORY_EVENTS_COMPOUND_COLUMNS } from '@/components/inventory/events-grid/inventory-events-grid-layout';
 import { ADMINHOLDS_COMPOUND_COLUMNS } from '@/components/inventory/holds-grid/admin-holds-grid-layout';
-import { SKU_EXCEPTIONS_COMPOUND_COLUMNS } from '@/components/inventory/sku-exceptions/sku-exceptions-table-definition';
 import { ADMIN_RETURNS_COMPOUND_COLUMNS } from '@/components/inventory/returns-grid/admin-returns-grid-layout';
 import { SKU_ALLOCATIONS_COMPOUND_COLUMNS } from '@/components/inventory/sku-allocations-grid/sku-allocations-table-definition';
 import { SKU_BINS_COMPOUND_COLUMNS } from '@/components/inventory/sku-bins-grid/sku-bins-table-definition';
@@ -91,7 +90,6 @@ const MATERIALIZATIONS: readonly { name: string; columns: readonly Col[] }[] = [
   { name: 'INVENTORY_EVENTS_COMPOUND_COLUMNS', columns: INVENTORY_EVENTS_COMPOUND_COLUMNS },
   { name: 'ADMINHOLDS_COMPOUND_COLUMNS', columns: ADMINHOLDS_COMPOUND_COLUMNS },
   { name: 'ADMIN_RETURNS_COMPOUND_COLUMNS', columns: ADMIN_RETURNS_COMPOUND_COLUMNS },
-  { name: 'SKU_EXCEPTIONS_COMPOUND_COLUMNS', columns: SKU_EXCEPTIONS_COMPOUND_COLUMNS },
   { name: 'SKU_BINS_COMPOUND_COLUMNS', columns: SKU_BINS_COMPOUND_COLUMNS },
   { name: 'SKU_LEDGER_COMPOUND_COLUMNS', columns: SKU_LEDGER_COMPOUND_COLUMNS },
   { name: 'SKU_ALLOCATIONS_COMPOUND_COLUMNS', columns: SKU_ALLOCATIONS_COMPOUND_COLUMNS },

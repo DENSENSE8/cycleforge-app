@@ -52,7 +52,6 @@ import {
   slotTableSortFactFor,
 } from '@/components/tables/compound/slot-table-columns';
 import { SKU_BINS_FAMILY } from '@/lib/tables/field-catalog/sku-bins';
-import { SKU_EXCEPTIONS_FAMILY } from '@/lib/tables/field-catalog/sku-exceptions';
 import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
 
 const ROOT = join(process.cwd());
@@ -177,7 +176,7 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
   });
 
   it('the engine families own no column module and paint from their record', () => {
-    for (const family of [SKU_BINS_FAMILY, SKU_EXCEPTIONS_FAMILY]) {
+    for (const family of [SKU_BINS_FAMILY]) {
       assert.ok(
         SLOT_TABLE_COLUMN_ENGINE_FAMILIES.includes(
           family.tableId as (typeof SLOT_TABLE_COLUMN_ENGINE_FAMILIES)[number],

@@ -5,7 +5,7 @@
  * (band heights, lanes) stays per client; the FACES are shared.
  */
 
-import { LIFECYCLE_CLASSES, STATE_TONE_CLASSES, type LifecycleState } from './lifecycle';
+import { LIFECYCLE, LIFECYCLE_CLASSES, STATE_TONE_CLASSES, type LifecycleState } from './lifecycle';
 
 /** Mono label face: 10px heavy uppercase, 0.08em (BRIEF §4 industrial). */
 export const RECORD_LABEL_CLASS = 'font-mono text-role-micro font-extrabold uppercase tracking-[0.08em]';
@@ -32,9 +32,12 @@ export const RECORD_TITLE_CLASS = 'min-w-0 truncate text-role-body font-bold';
 export const RECORD_QTY_BADGE_CLASS =
   'inline-flex min-w-7 items-center justify-center border border-current px-1.5 py-0.5 font-mono text-role-body font-black leading-none tabular-nums';
 
-/** State code ink. Urgent reads in the mode's warn ink — amber fails 4.5:1 as text. */
+/**
+ * State code ink. Warning codes (`URG`, `HLD`) read in the mode's warn ink —
+ * amber fails 4.5:1 as text.
+ */
 export function recordStateCodeClass(state: LifecycleState): string {
-  return state === 'urgent' ? 'text-mode-warn' : LIFECYCLE_CLASSES[state].text;
+  return LIFECYCLE[state].tone === 'warning' ? 'text-mode-warn' : LIFECYCLE_CLASSES[state].text;
 }
 
 /**

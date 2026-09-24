@@ -112,6 +112,6 @@ test('the Inventory tabs that work still display — parking is per tab, not per
   const inventory = filterPageChildren(getSidebarPageNav('inventory')!, ALL_PERMISSIONS);
   assert.deepEqual(
     inventory.children?.map((child) => child.id),
-    ['sku-exceptions', 'ledger', 'locations'],
+    ['stock', 'sku-exceptions', 'ledger', 'locations'],
   );
 });

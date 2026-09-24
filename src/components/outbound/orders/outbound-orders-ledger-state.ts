@@ -17,6 +17,7 @@ const STATE_RANK: Readonly<Record<LifecycleState, number>> = {
   packed: 2,
   ready: 3,
   shipped: 4,
+  onHold: 5,
 };
 
 export function recordState(record: ShippedOrder): LifecycleState {

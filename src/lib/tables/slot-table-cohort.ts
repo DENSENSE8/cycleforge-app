@@ -143,7 +143,7 @@ export const STAFF_COMBOBOX_HOSTS = [
  * Two shapes live here while the port runs. The older one is a data-only
  * `use{Family}TableLayout.ts` wrapper; the newer one is a `SlotTableFamily`
  * record in the field catalog, mounted straight from the family's spreadsheet
- * hook (`sku-bins` — 2026-09-15, `sku-exceptions` — 2026-09-24). The record is the target
+ * hook (`sku-bins` — 2026-09-15). The record is the target
  * shape: a wrapper file per family was 47 modules of zero logic, and a family
  * record also feeds the column engine, which the wrapper never could.
  */
@@ -274,7 +274,7 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   },
   /**
    * No wrapper module: the family RECORD is the registration, mounted straight
-   * from the spreadsheet hook (`sku-bins` / `sku-exceptions` precedent).
+   * from the spreadsheet hook (`sku-bins` precedent).
    */
   {
     tableId: 'report-tasks',
@@ -283,10 +283,6 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   {
     tableId: 'sku-bins',
     path: 'src/components/inventory/sku-bins-grid/useSkuBinsSpreadsheet.ts',
-  },
-  {
-    tableId: 'sku-exceptions',
-    path: 'src/components/inventory/sku-exceptions/useSkuExceptionsSpreadsheet.ts',
   },
   {
     tableId: 'sku-ledger',
@@ -336,7 +332,7 @@ export const SLOT_TABLE_GRID_ROW_ALLOWLIST = [
  * byte-identical. That is why a header-sort change used to land 35 times.
  *
  * The replacement is a {@link SlotTableFamily} record read by
- * `slot-table-columns.ts` — `sku-bins` and `sku-exceptions` own no column
+ * `slot-table-columns.ts` — `sku-bins` owns no column
  * module at all. Port a family by writing its record and DELETING its line
  * here.
  *
@@ -391,7 +387,6 @@ export const SLOT_TABLE_COLUMN_MODULE_DEBT = [
 /** Families that own NO column module — the engine paints them from a record. */
 export const SLOT_TABLE_COLUMN_ENGINE_FAMILIES = [
   'sku-bins',
-  'sku-exceptions',
   'tasks',
   'daily',
 ] as const;

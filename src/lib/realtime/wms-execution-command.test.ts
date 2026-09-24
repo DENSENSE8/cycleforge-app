@@ -107,6 +107,30 @@ test('routes a tenant-authenticated putaway adjustment and preserves replay stat
   assert.equal(receipt.data.binQty, 3);
 });
 
+test('accepts the seeded tenant ids, which are not RFC-versioned UUIDs', async () => {
+  // The dogfood and QA orgs are `00000000-0000-0000-0000-00000000000{1,2}`.
+  // A strict RFC `uuid()` check refused every phone putaway for them.
+  for (const organizationId of ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002']) {
+    const receipt = await executeWmsExecutionCommand({
+      ...base('pick.confirm'),
+      organizationId,
+      name: 'putaway.adjust',
+      commandId: `putaway-seeded-${organizationId}`,
+      input: { barcode: 'B02', sku: 'TMP-ABC', direction: 'put', qty: 1, reason: 'BIN_ADD', reasonCodeId: null, notes: null },
+    }, { organizationId, staffId: 7 }, {
+      confirmPick: async () => ({ ok: true, serialUnitId: 1, pickedAt: new Date().toISOString() }),
+      completeSession: async () => ({ ok: true, stagedTotes: [] }),
+      recordShortPick: async () => ({ ok: true, releasedUnitId: null }),
+      executePutawayAdjust: async () => ({
+        replayed: false,
+        data: { success: true, binQty: 1, totalStock: 1, ledgerId: 1, binId: 1 },
+      }),
+      executePackVerification: async () => ({ data: {} as never, replayed: false }),
+    });
+    assert.equal(receipt.name, 'putaway.adjust');
+  }
+});
+
 test('routes an idempotent mobile pack verification through the domain writer', async () => {
   const receipt = await executeWmsExecutionCommand({
     ...base('pick.confirm'),

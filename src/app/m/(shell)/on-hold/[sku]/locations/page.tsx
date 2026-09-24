@@ -64,7 +64,7 @@ function SkuExceptionLocationsInner() {
               )}
             </div>
             <form
-              aria-label="Put in another location"
+              aria-label="Count into another location"
               className="sticky bottom-0 z-sticky flex items-end gap-2 border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
               style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
               onSubmit={(event) => {

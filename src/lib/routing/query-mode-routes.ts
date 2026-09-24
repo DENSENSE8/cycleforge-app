@@ -530,23 +530,47 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
+ * `/inventory/stock` — the warehouse-wide (location, SKU) stock ledger.
+ *
+ * Longer prefix than `/inventory`, so its facets cannot collide with the
+ * Ledger's ownership of `q` (the sidebar search, a different feed) or leak a
+ * room selection into the bucket multi-select the Ledger reads out of
+ * `filter`. `q` and `room` are answered on the SERVER (the loader reads them),
+ * so the find box reaches past the feed's row cap.
+ *
+ * All three keys are declared in `SHARED_OWNED_KEYS`: `q` is "narrow this
+ * list", `room` is the warehouse room facet Locations asks with the same
+ * vocabulary, and `open` is the focused record — here a stock pair's key
+ * (`<locationId|name>:<sku>:<source>`), opened in the evidence column.
+ */
+export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/stock',
+  owns: {
+    /** The one search box, over every fact a record paints (server-side). */
+    q: paramText,
+    /** Room funnel — a comma-separated multi-select over `locations.room`. */
+    room: paramText,
+    /** The open stock pair (its record key) — the evidence column. */
+    open: paramText,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
  * `/inventory/sku-exceptions` — the floor-minted placeholder SKU (`TMP-…`)
- * queue and its record walk.
+ * record ledger.
  *
  * Longer prefix than `/inventory`, so `q` here is this queue's find box, not
  * the Ledger's sidebar search. `sku` is the open RECORD — the URL staff share
  * ("look at this one") — and is the same identifier `SHARED_OWNED_KEYS.sku`
  * already names: a focused SKU string.
- *
- * Column sort rides the ambient `?colsort=` / `?coldir=` carries, which is why
- * neither is named here.
  */
 export const INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/sku-exceptions',
   owns: {
-    /** The one search box, over every fact a row paints. */
+    /** The one search box, over every fact a record paints. */
     q: paramText,
-    /** The open placeholder SKU (`TMP-…`) — swaps the table for its editor. */
+    /** The open placeholder SKU (`TMP-…`) — opens it in the evidence column. */
     sku: paramText,
   },
   carries: WORKBENCH_CARRIES,
@@ -787,6 +811,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   INVENTORY_ROUTE_PARAMS,
   SPECIAL_BIN_PRINT_ROUTE_PARAMS,
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
+  INVENTORY_STOCK_ROUTE_PARAMS,
   INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS,
   // Ex-/admin/inventory desks, re-homed under the Inventory desk.
   INVENTORY_HEALTH_ROUTE_PARAMS,

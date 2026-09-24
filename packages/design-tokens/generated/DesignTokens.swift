@@ -247,6 +247,7 @@ public enum DesignTokens {
         public static let packed = LifecycleState(code: "PKD", label: "Packed", tone: State.fulfillment)
         public static let outOfStock = LifecycleState(code: "OOS", label: "Out of stock", tone: State.danger)
         public static let shipped = LifecycleState(code: "SHP", label: "Shipped", tone: State.success)
+        public static let onHold = LifecycleState(code: "HLD", label: "On hold", tone: State.warning)
     }
 
     /// One intake class: 3-letter mono code and the full word it reads as.

@@ -56,6 +56,14 @@ Mounted on **To ship only**: `DashboardOrdersView` passes `ledger`; `UnshippedTa
 ledger instead of `UnshippedSheet`. Pending, Shipped, Exceptions and the station embeds still run
 the slot `DataTable`.
 
+**Inventory › Stock · SKU Exceptions (2026-09-24)** run the ledger through the shared primitive
+`src/design-system/components/record-ledger/` — `RecordLedger` (toolbar slot · virtual 97px rows
+· evidence column · J/K/Esc), `IndustrialRecord` (spine · photo · 3 bands · one right lane) and
+`RecordEvidence` (triage evidence stack: title · state strip · sections · decision bar keys 1–4 ·
+`EvidenceCountStepper`). Frame: `InventoryDeskFrame` mounts `stage="flush"` in a `triage`
+`ModeRegion` on those two routes only. Placeholder SKUs read `LIFECYCLE.onHold` (`HLD`, warning).
+To ship still runs its own ledger files; it can adopt the primitive in its own page pass.
+
 ## The record — one anatomy on every device
 
 ```

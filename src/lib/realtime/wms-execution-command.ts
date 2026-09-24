@@ -14,7 +14,9 @@ import { executeWmsPackVerification } from '@/lib/realtime/wms-pack-verification
 const CommandBaseSchema = z.object({
   v: z.literal(1),
   commandId: z.string().min(1).max(200),
-  organizationId: z.string().uuid(),
+  // `guid()`, not `uuid()`: the seeded tenants (`…0001` dogfood, `…0002` QA)
+  // carry no RFC version nibble, and the identity check below is the authority.
+  organizationId: z.guid(),
   staffId: z.number().int().positive(),
   issuedAt: z.string().datetime({ offset: true }),
 });

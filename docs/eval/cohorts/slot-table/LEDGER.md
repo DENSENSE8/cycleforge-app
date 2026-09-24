@@ -28,7 +28,7 @@ Pin: `CompoundItem` + `DateRangePickerField` in `src/design-system/pinned.json`
 - Ship-by delay: `DateRangePickerField variant="compact"` (no X, no year, click commits; `useOptimisticMutation`)
 - Tripwire: `src/lib/tables/slot-table-cohort.test.ts`
 - Column model + sort law: the ENGINE's (`slot-table-columns.ts`), read from a
-  `SlotTableFamily` record — `sku-bins` and `sku-exceptions` own no
+  `SlotTableFamily` record — `sku-bins` owns no
   `*-grid-layout.ts` at all (2026-09-15). `SLOT_TABLE_COLUMN_MODULE_DEBT` is
   shrink-only; a new `*-grid-layout.ts` fails the tripwire.
 - Chrome headers BIND catalog facts, so the header's word and the fact its
@@ -122,7 +122,6 @@ _Skipped verify (--skip-verify)._
 | sku-ledger | yes | `src/components/inventory/sku-ledger-grid/useSkuLedgerTableLayout.ts` |
 | sku-allocations | yes | `src/components/inventory/sku-allocations-grid/useSkuAllocationsTableLayout.ts` |
 | search-hits | yes | `src/components/search/hits-grid/useSearchHitsTableLayout.ts` |
-| sku-exceptions | yes | `src/components/inventory/sku-exceptions/useSkuExceptionsSpreadsheet.ts` |
 <!-- /eval-ledger:auto:peer-matrix -->
 
 ## Engine contract
@@ -281,7 +280,6 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `hook:report-packer-day` | `src/components/reports/report-packer-day-grid/useReportPackerDayTableLayout.ts` | Engine opt-in for report-packer-day. Keep the hook; it is not a second Item cell. |
 | `hook:report-tasks` | `src/components/reports/report-tasks-grid/useReportTasksSpreadsheet.ts` | Engine opt-in for report-tasks. Keep the hook; it is not a second Item cell. |
 | `hook:sku-bins` | `src/components/inventory/sku-bins-grid/useSkuBinsSpreadsheet.ts` | Engine opt-in for sku-bins. Keep the hook; it is not a second Item cell. |
-| `hook:sku-exceptions` | `src/components/inventory/sku-exceptions/useSkuExceptionsSpreadsheet.ts` | Engine opt-in for sku-exceptions. Keep the hook; it is not a second Item cell. |
 | `hook:sku-ledger` | `src/components/inventory/sku-ledger-grid/useSkuLedgerTableLayout.ts` | Engine opt-in for sku-ledger. Keep the hook; it is not a second Item cell. |
 | `hook:sku-allocations` | `src/components/inventory/sku-allocations-grid/useSkuAllocationsTableLayout.ts` | Engine opt-in for sku-allocations. Keep the hook; it is not a second Item cell. |
 | `hook:search-hits` | `src/components/search/hits-grid/useSearchHitsTableLayout.ts` | Engine opt-in for search-hits. Keep the hook; it is not a second Item cell. |
@@ -330,7 +328,6 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `catalog:report-packer-day` | `src/lib/tables/field-catalog` | Registered field catalog for report-packer-day. Data only. |
 | `catalog:report-tasks` | `src/lib/tables/field-catalog` | Registered field catalog for report-tasks. Data only. |
 | `catalog:sku-bins` | `src/lib/tables/field-catalog` | Registered field catalog for sku-bins. Data only. |
-| `catalog:sku-exceptions` | `src/lib/tables/field-catalog` | Registered field catalog for sku-exceptions. Data only. |
 | `catalog:sku-ledger` | `src/lib/tables/field-catalog` | Registered field catalog for sku-ledger. Data only. |
 | `catalog:sku-allocations` | `src/lib/tables/field-catalog` | Registered field catalog for sku-allocations. Data only. |
 | `catalog:search-hits` | `src/lib/tables/field-catalog` | Registered field catalog for search-hits. Data only. |
@@ -343,7 +340,6 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 | `materialization:ADMIN_SKU_DRIFT_COMPOUND_COLUMNS` | `src/components/inventory/drift-grid/admin-sku-drift-grid-layout.ts` | ADMIN_SKU_DRIFT_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:INVENTORY_EVENTS_COMPOUND_COLUMNS` | `src/components/inventory/events-grid/inventory-events-grid-layout.ts` | INVENTORY_EVENTS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:ADMINHOLDS_COMPOUND_COLUMNS` | `src/components/inventory/holds-grid/admin-holds-grid-layout.ts` | ADMINHOLDS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
-| `materialization:SKU_EXCEPTIONS_COMPOUND_COLUMNS` | `src/components/inventory/sku-exceptions/sku-exceptions-table-definition.ts` | SKU_EXCEPTIONS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:ADMIN_RETURNS_COMPOUND_COLUMNS` | `src/components/inventory/returns-grid/admin-returns-grid-layout.ts` | ADMIN_RETURNS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:SKU_ALLOCATIONS_COMPOUND_COLUMNS` | `src/components/inventory/sku-allocations-grid/sku-allocations-table-definition.ts` | SKU_ALLOCATIONS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |
 | `materialization:SKU_BINS_COMPOUND_COLUMNS` | `src/components/inventory/sku-bins-grid/sku-bins-table-definition.ts` | SKU_BINS_COMPOUND_COLUMNS is the product-default materialization (not a hand GRID array). Keep; this is what mounts. |

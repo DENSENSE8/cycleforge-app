@@ -26,6 +26,9 @@ export const LIFECYCLE = {
   packed: { tone: 'fulfillment', code: 'PKD', label: 'Packed' },
   outOfStock: { tone: 'danger', code: 'OOS', label: 'Out of stock' },
   shipped: { tone: 'success', code: 'SHP', label: 'Shipped' },
+  // A floor-minted placeholder SKU (`TMP-…`) waiting to be paired to its real
+  // Zoho item — stock that exists but cannot be sold or picked by name yet.
+  onHold: { tone: 'warning', code: 'HLD', label: 'On hold' },
 } as const satisfies Record<string, LifecycleSpec>;
 
 export type LifecycleState = keyof typeof LIFECYCLE;

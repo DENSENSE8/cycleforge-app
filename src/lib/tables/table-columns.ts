@@ -189,8 +189,6 @@ export type TableId =
   | 'sku-bins'
   /** Admin › per-SKU stock ledger (slot-materialized; read-only). */
   | 'sku-ledger'
-  /** Inventory › SKU Exceptions — placeholder `TMP-…` SKUs (slot-materialized). */
-  | 'sku-exceptions'
   /**
    * `/search` cross-entity find plane (slot-materialized; read-only). Its OWN
    * bucket: the rows are six entity families flattened onto one wire shape,
@@ -601,11 +599,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * the two mounts' Fields prefs from fighting, nothing more.
    */
   'sku-allocations': [],
-  /**
-   * SKU exceptions — **deliberately empty**, slot-born. Hiding a fact is
-   * unbinding it from a slot. The KEY stays for the `TableId` union.
-   */
-  'sku-exceptions': [],
 };
 
 export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

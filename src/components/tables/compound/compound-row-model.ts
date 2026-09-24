@@ -826,8 +826,8 @@ export const COMPOUND_DATES_DUE_HOVER = 'Due date';
  * `Counted` / `Never counted` joined the list on 2026-09-15: `sku-bins` puts a
  * CYCLE-COUNT stamp on this line (`startedHover: 'Counted Sep 10 · 3:04 PM'`),
  * and the prefix buried that explicit name under a shipping word, so hovering a
- * shelf read "Start date · Counted …". `Created` (2026-09-24) is the
- * `sku-exceptions` stamp — when the placeholder SKU was minted on the floor.
+ * shelf read "Start date · Counted …". `Created` is the cycle-counts stamp —
+ * when the campaign was opened.
  */
 const DATES_START_TIP_OWNS_NAME =
   /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised|Counted|Never counted|Created)\b/i;

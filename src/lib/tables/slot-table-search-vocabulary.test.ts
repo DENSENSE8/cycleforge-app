@@ -11,9 +11,6 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { SKU_EXCEPTIONS_COMPOUND_COLUMNS } from '@/components/inventory/sku-exceptions/sku-exceptions-table-definition';
-import { slotTableSortFactFor } from '@/components/tables/compound/slot-table-columns';
-import { SKU_EXCEPTIONS_FAMILY } from '@/lib/tables/field-catalog/sku-exceptions';
 import { slotTableSearchFactIds } from './slot-table-search-vocabulary';
 
 /** A compound skeleton in miniature: two chrome tracks, one bound status slot. */
@@ -88,25 +85,5 @@ describe('slot-table search vocabulary', () => {
     assert.ok(ids.includes('fam.sku'), 'the Id second line is not searchable');
     const bare = slotTableSearchFactIds({ columns: COLUMNS, sortFactFor: SORT_FACT_FOR });
     assert.ok(!bare.includes('fam.sku'));
-  });
-
-  it('gives the SKU Exceptions desk every fact it paints', () => {
-    // The real family, its real mounted columns — the find box must answer the
-    // title, both handles, the description and the location codes.
-    const ids = slotTableSearchFactIds({
-      columns: SKU_EXCEPTIONS_COMPOUND_COLUMNS,
-      sortFactFor: (col) => slotTableSortFactFor(SKU_EXCEPTIONS_FAMILY, col),
-      adapterPaintedFieldIds: ['sku-exceptions.barcode', 'sku-exceptions.description'],
-    });
-    for (const fact of [
-      'sku-exceptions.title',
-      'sku-exceptions.sku',
-      'sku-exceptions.barcode',
-      'sku-exceptions.description',
-      'sku-exceptions.locations',
-      'sku-exceptions.created_by',
-    ]) {
-      assert.ok(ids.includes(fact), `${fact} is painted but not searchable`);
-    }
   });
 });

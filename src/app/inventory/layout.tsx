@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { InventoryDeskFrame } from '@/components/inventory/InventoryDeskFrame';
 
 /**
  * `/inventory` — the Inventory **desk**.
@@ -27,12 +27,17 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
  * **Rail-less (operator 2026-09-15).** Inventory is `deskChrome` + `railless`:
  * the left context column does not mount on ledger, triage, pulse, graph,
  * replenish, locations, or the folded `/warehouse` aliases.
+ *
+ * **Stock · SKU Exceptions run flush** (owner 2026-09-24): the record-ledger
+ * tabs wear the industrial bar and a full-width stage in a triage region;
+ * the other tabs keep the card until they adopt the ledger
+ * (`InventoryDeskFrame`).
  */
 export default function InventoryLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <SurfaceParamHygiene />
-      <DeskPageLayout className="h-full">{children}</DeskPageLayout>
+      <InventoryDeskFrame>{children}</InventoryDeskFrame>
     </>
   );
 }
