@@ -1,14 +1,14 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T16:58:37Z",
+  "generatedAt": "2026-09-24T18:14:22Z",
   "totalRoutes": 1070,
   "summary": {
     "permissionGated": 871,
-    "authenticatedNoPermission": 112,
+    "authenticatedNoPermission": 115,
     "anonymousIntentional": 36,
     "serviceToService": 48,
     "ungatedRead": 0,
-    "ungatedWrite": 3
+    "ungatedWrite": 0
   },
   "routes": [
     {
@@ -3201,7 +3201,7 @@
       "methods": [
         "POST"
       ],
-      "gate": "NONE",
+      "gate": "withKioskAuth (via withKioskCart)",
       "permission": null,
       "exemptReason": null
     },
@@ -3210,7 +3210,7 @@
       "methods": [
         "POST"
       ],
-      "gate": "NONE",
+      "gate": "withKioskAuth (via withKioskCart)",
       "permission": null,
       "exemptReason": null
     },
@@ -3220,7 +3220,7 @@
         "DELETE",
         "PATCH"
       ],
-      "gate": "NONE",
+      "gate": "withKioskAuth (via withKioskCart)",
       "permission": null,
       "exemptReason": null
     },
