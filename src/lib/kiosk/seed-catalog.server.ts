@@ -14,16 +14,23 @@ import 'server-only';
  * read. The route stays the client's contract; this is the same function
  * underneath it, with `segment` applied the same way.
  *
+ * The first page is cached per (org, segment) for {@link SEED_REVALIDATE_SEC}.
+ * The seed is PAINT, never truth — `aria-hidden` tiles that the live grid
+ * replaces with its own fetch — so a minute of staleness costs nothing, while
+ * the uncached read (a tenant transaction plus the price join) sat on the
+ * LCP critical path of every page load: the tile photos cannot be requested
+ * until this HTML chunk streams.
+ *
  * Callers: `/kiosk/v2` (server entry). Affected API: none.
  * Schemas: the catalog projection, read-only.
  */
 
-import { cookies } from 'next/headers';
-import { KIOSK_COOKIE_NAME, loadKioskDeviceByToken } from '@/lib/auth/kiosk-device';
+import { unstable_cache } from 'next/cache';
 import { searchKioskCatalog } from '@/lib/kiosk/catalog-search';
 import { toKioskCatalogResponse } from '@/lib/kiosk/catalog-request';
 import type { KioskCatalogWireProduct } from '@/lib/kiosk/catalog-request';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { resolveKioskOrgForRequest } from '@/lib/kiosk/kiosk-request-org.server';
 import {
   KIOSK_SEED_PAGE_SIZE,
   seedKioskCatalog,
@@ -31,14 +38,9 @@ import {
   type KioskSeedSegment,
 } from '@/lib/kiosk/seed-catalog';
 
-async function resolveOrgFromCookie(): Promise<OrgId | null> {
-  const token = (await cookies()).get(KIOSK_COOKIE_NAME)?.value ?? null;
-  if (!token) return null;
-  const device = await loadKioskDeviceByToken(token);
-  return (device?.organizationId as OrgId | undefined) ?? null;
-}
+const SEED_REVALIDATE_SEC = 60;
 
-async function readFirstPage(
+async function readFirstPageUncached(
   orgId: OrgId,
   segment: KioskSeedSegment,
 ): Promise<KioskCatalogWireProduct[]> {
@@ -53,12 +55,19 @@ async function readFirstPage(
   return toKioskCatalogResponse(page).products;
 }
 
+function readFirstPage(orgId: OrgId, segment: KioskSeedSegment): Promise<KioskCatalogWireProduct[]> {
+  return unstable_cache(readFirstPageUncached, ['kiosk-catalog-seed', orgId, segment], {
+    revalidate: SEED_REVALIDATE_SEC,
+    tags: ['kiosk-catalog-seed'],
+  })(orgId, segment);
+}
+
 /** First catalog page for the paired tablet, or null. Never throws. */
 export function seedKioskCatalogForRequest(
   segment: KioskSeedSegment,
 ): Promise<KioskCatalogSeed | null> {
   return seedKioskCatalog(segment, {
-    resolveOrg: resolveOrgFromCookie,
+    resolveOrg: resolveKioskOrgForRequest,
     readPage: readFirstPage,
     onError: (error) => console.warn('seedKioskCatalog failed; client will fetch', error),
   });

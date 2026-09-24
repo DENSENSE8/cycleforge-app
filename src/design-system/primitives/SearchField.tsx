@@ -3,6 +3,7 @@
 import {
   type ClipboardEvent,
   type FormEvent,
+  type KeyboardEvent,
   type ReactNode,
   type Ref,
   useEffect,
@@ -59,6 +60,22 @@ export interface SearchFieldProps {
    */
   onSearch?: (value: string) => void;
   onClear?: () => void;
+  /**
+   * ArrowDown in the input hands focus to the result list the caller owns.
+   *
+   * Arrow keys are otherwise swallowed by the `<input>` (Enter is the only key
+   * with a path — see `handleSubmit`), so an operator who has just typed a
+   * query has to leave the keyboard and reach for the mouse to touch the first
+   * row. Moving focus is NOT submitting: this never flushes the debounce and
+   * never commits the draft, so the in-flight query the operator is still
+   * refining is left exactly as it is.
+   *
+   * Omit it and ArrowDown stays untouched — the keydown is not prevented and
+   * still bubbles, which is what a parent that already runs its own roving
+   * listbox (DataTable's column-filter popover wraps the field in a keydown
+   * host) depends on. Binding both would move focus twice on one press.
+   */
+  onNavigateResults?: () => void;
   inputRef?: Ref<HTMLInputElement>;
   placeholder?: string;
   className?: string;
@@ -113,12 +130,19 @@ export interface SearchFieldProps {
  *  - Parent clears `value` → draft resets immediately.
  *  - Parent sets non-empty `value` → draft syncs only while input is not focused.
  *  - Draft → parent: debounced, so a single DB query fires after typing pauses.
+ *
+ * Keyboard contract:
+ *  - Enter → flush the debounce, commit, fire `onSearch`.
+ *  - ArrowDown → `onNavigateResults` when supplied; focus only, no commit.
+ *  - Every other key is the browser's, so the field never fights a parent
+ *    that runs its own key handling above it.
  */
 export function SearchField({
   value,
   onChange,
   onSearch,
   onClear,
+  onNavigateResults,
   inputRef,
   placeholder = 'Search',
   className = '',
@@ -262,6 +286,15 @@ export function SearchField({
     if (commit) onSearch?.(next);
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    // Focus handoff only. No flush, no commit — the operator is still refining
+    // the query, and stealing the debounce here would fire a DB read for a
+    // half-typed term the moment they reached for the first row.
+    if (event.key !== 'ArrowDown' || !onNavigateResults) return;
+    event.preventDefault(); // otherwise the caret jumps to end-of-input instead
+    onNavigateResults();
+  };
+
   const handleNativePaste = (event: ClipboardEvent<HTMLInputElement>) => {
     if (!onSearch) return; // no commit handler — let the browser fill the draft
     const text = event.clipboardData?.getData('text') ?? '';
@@ -333,6 +366,7 @@ export function SearchField({
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
             onPaste={handleNativePaste}
             placeholder={placeholder}
             autoFocus={autoFocus}

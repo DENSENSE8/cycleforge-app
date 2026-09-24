@@ -15,6 +15,21 @@ import {
 export type ScanMode = 'receiving' | 'testing' | 'cms';
 
 /**
+ * Extract the ID from the repair-service label printed for a specific ticket.
+ *
+ * Repair labels are an entity destination, not a scan mode: after a successful
+ * read, the phone should open that repair's triage screen immediately rather
+ * than attempting an Arrival lookup and leaving the operator in a generic
+ * resolution surface.
+ */
+export function repairIdFromScan(raw: string): number | null {
+  const match = String(raw ?? '').trim().match(/^RS-(\d+)$/i);
+  if (!match) return null;
+  const repairId = Number(match[1]);
+  return Number.isSafeInteger(repairId) && repairId > 0 ? repairId : null;
+}
+
+/**
  * Best-effort mode detection from a scanned value's format. Returns null when
  * the format is ambiguous so the caller can keep the operator's current mode.
  *

@@ -1,35 +1,29 @@
 /**
- * Front-desk service SoT — `/kiosk` welcome tiles + `/kiosk/v2` command rail.
+ * Front-desk service SoT — the `/kiosk/v2` command menu.
  *
  * Two KINDS live here, and the difference is load-bearing:
  *
- * - `kind: 'command'` — the four center work surfaces. These map 1:1 onto
- *   `KioskCommandId`, which is also the CHECK vocabulary on
+ * - `kind: 'command'` — the center work surfaces. These map 1:1 onto
+ *   `KioskCommandId`, which is also a subset of the CHECK vocabulary on
  *   `counter_sessions.active_command`, so a command tile is a session state.
  * - `kind: 'staff'` — a tool the counter STAFF opens on top of whatever
- *   command is running (History). It owns no cart, sets no `active_command`,
+ *   command is running (History, Custom amount). It sets no `active_command`
  *   and survives being closed: the session underneath is untouched. It is
  *   therefore NOT a command id and must never reach `serviceIdToCommand`,
  *   which is why the parameter of that function is the narrow
  *   {@link KioskCommandServiceId} — a staff tile cannot be passed to it
  *   without the compiler saying so.
  *
- * Bringing a WIP tile online is a one-line `status: 'live'` flip.
+ * Buyback and Pickup were deleted 2026-09-23 — see `commands.ts`.
  */
 
-import {
-  History,
-  PackageCheck,
-  ReceivingModeRepair,
-  SalesPrice,
-  RefreshCw,
-} from '@/components/Icons';
+import { History, ReceivingModeRepair, Receipt, SalesPrice } from '@/components/Icons';
 import type { KioskCommandId } from './commands';
 
-/** The four commerce commands — every one of them a `KioskCommandId`. */
-export type KioskCommandServiceId = 'sales' | 'pickup' | 'repair' | 'buyback';
+/** The commerce commands — every one of them a `KioskCommandId`. */
+export type KioskCommandServiceId = 'sales' | 'repair';
 /** Staff tools that ride ON TOP of a command; they own no session state. */
-export type KioskStaffServiceId = 'history';
+export type KioskStaffServiceId = 'history' | 'custom-amount';
 export type KioskServiceId = KioskCommandServiceId | KioskStaffServiceId;
 
 type KioskServiceIcon = (props: { className?: string }) => JSX.Element;
@@ -38,15 +32,9 @@ export interface KioskServiceTile {
   id: KioskServiceId;
   /** `command` swaps the work surface; `staff` opens a tool over it. */
   kind: 'command' | 'staff';
-  label: string;
   blurb: string;
   /** Only `live` services render as actionable; `wip` stay in the SoT for reuse. */
   status: 'live' | 'wip';
-  /**
-   * When false, the proven `/kiosk` welcome tiles omit this command.
-   * Buyback is v2-register only until portrait cutover.
-   */
-  welcome: boolean;
   icon: KioskServiceIcon;
   /**
    * Command ink — ONE semantic text token per command, so the glyph reads as
@@ -59,7 +47,14 @@ export interface KioskServiceTile {
    * stay legible on dark / ember / cyberpunk too.
    */
   iconTone: string;
-  /** Dense sentence-case command label for the v2 rail. */
+  /**
+   * THE name of this command — the one word the mode menu, the Settings
+   * picker and every other surface print. Sales is "Sales" everywhere
+   * (operator 2026-09-23); it used to be `Buy / Sell` on the tile, `Retail`
+   * here and a hard-coded `Sales` override in the menu — three names for one
+   * mode. The tile's separate `label` (the retired welcome-screen caption)
+   * went with it.
+   */
   commandLabel: string;
 }
 
@@ -67,11 +62,9 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
   {
     id: 'repair',
     kind: 'command',
-    label: 'Repair Drop-off',
     commandLabel: 'Repair',
     blurb: 'Check in a device for service',
     status: 'live',
-    welcome: true,
     icon: ReceivingModeRepair,
     // Orange/amber. Same ink `StatCard` already gives the repair lane.
     iconTone: 'text-text-warning',
@@ -79,63 +72,41 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
   {
     id: 'sales',
     kind: 'command',
-    label: 'Buy / Sell',
-    commandLabel: 'Retail',
-    blurb: 'Start a counter sale or trade-in',
+    commandLabel: 'Sales',
+    blurb: 'Start a counter sale',
     status: 'live',
-    welcome: true,
     icon: SalesPrice,
     // Green — money in.
     iconTone: 'text-text-success',
   },
   {
-    id: 'buyback',
-    kind: 'command',
-    label: 'Buyback',
-    commandLabel: 'Buyback',
-    blurb: 'Evaluate a trade-in / buyback',
+    id: 'custom-amount',
+    kind: 'staff',
+    // Square's Keypad (Square's own word). A tool over the running command,
+    // not a product: it adds a line to the ONE cart (a sale in Sales, a
+    // typed-in device in Repair), so it lives in this menu rather than as a
+    // tile in the catalog (operator 2026-09-24).
+    commandLabel: 'Keypad',
+    blurb: 'Ring up an amount the catalog does not carry',
     status: 'live',
-    welcome: false,
-    icon: RefreshCw,
-    // Blue — the inbound/appraise direction, opposite the green sale.
-    iconTone: 'text-text-info',
-  },
-  {
-    id: 'pickup',
-    kind: 'command',
-    label: 'Order Pickup',
-    commandLabel: 'Pickup',
-    blurb: 'Collect a ready order',
-    status: 'live',
-    welcome: true,
-    // PackageCheck — collect a ready order. ShoppingCart is reserved for the
-    // right utility Cart slot; leave ReceivingModePickup alone for receiving.
-    icon: PackageCheck,
-    // Violet — pickup hands over a READY OUTBOUND order, which is the ink the
-    // outbound/ready grid already uses for that work.
-    iconTone: 'text-text-fulfillment',
+    icon: Receipt,
+    iconTone: 'text-text-success',
   },
   {
     id: 'history',
     kind: 'staff',
-    label: 'History',
     commandLabel: 'History',
     blurb: 'Find a past visit and reprint its paperwork',
     status: 'live',
-    // Never a welcome tile: the welcome face is the CUSTOMER's, and History is
-    // the staff book (kiosk-pos-modernization-HANDOFF Phase 4 — "do not expose
-    // History on the attract/open customer face without PIN").
-    welcome: false,
+    // Never on a customer face: History is the staff book
+    // (kiosk-pos-modernization-HANDOFF Phase 4 — "do not expose History on the
+    // attract/open customer face without PIN").
     icon: History,
-    // Quiet ink. The four commerce commands own the saturated colours; a staff
-    // tool that borrowed one would read as a fifth way to take money.
+    // Quiet ink. The commerce commands own the saturated colours; a staff
+    // tool that borrowed one would read as another way to take money.
     iconTone: 'text-text-soft',
   },
 ];
-
-export function liveKioskServices(): KioskServiceTile[] {
-  return KIOSK_SERVICES.filter((s) => s.status === 'live');
-}
 
 /** The live tiles that swap the work surface — staff tools excluded. */
 export function liveKioskCommandServices(): KioskServiceTile[] {
@@ -144,7 +115,7 @@ export function liveKioskCommandServices(): KioskServiceTile[] {
 
 /** Narrow a tile id to the command half, so `serviceIdToCommand` stays total. */
 export function isKioskCommandServiceId(id: KioskServiceId): id is KioskCommandServiceId {
-  return id !== 'history';
+  return id === 'sales' || id === 'repair';
 }
 
 /**
@@ -170,11 +141,6 @@ export function kioskCommandOptions(): {
         ]
       : [],
   );
-}
-
-/** Welcome-tile subset — excludes v2-only commands like buyback. */
-export function welcomeKioskServices(): KioskServiceTile[] {
-  return KIOSK_SERVICES.filter((s) => s.status === 'live' && s.welcome);
 }
 
 /** Map COMMAND tile id → session command id (`sales` → `retail`). */

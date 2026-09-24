@@ -77,6 +77,10 @@
       "schedule": "* * * * *"
     },
     {
+      "path": "/api/cron/zoho/receive-backfill",
+      "schedule": "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
+    },
+    {
       "path": "/api/cron/search-outbox",
       "schedule": "3,8,13,18,23,28,33,38,43,48,53,58 * * * *"
     },

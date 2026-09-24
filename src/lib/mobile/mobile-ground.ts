@@ -59,7 +59,7 @@ export const MOBILE_GROUND_ROOTS = ['src/app/m', 'src/components/mobile'] as con
  *   - `background-canvas` `#fafafa` — the desk page plane (operator 2026-09-15:
  *     *"pin the FAFAFA token for a standard background in light mode"*). It was
  *     `#eef2f7`; the retune, and the hairline-not-elevation consequence, are
- *     documented at the value itself in `themes/light.ts`.
+ *     documented at the value itself in `packages/design-tokens/src/light.ts`.
  *
  * They are read as TEXT rather than imported. `DesignSystem.tsx` is a
  * `'use client'` module that pulls in motion + Button, `kiosk-pos-surface.ts`
@@ -85,12 +85,12 @@ export const GROUND_TOKEN_PINS = [
   },
   {
     what: 'light mode resolves that token to white',
-    file: 'src/design-system/themes/light.ts',
+    file: 'packages/design-tokens/src/light.ts',
     expect: /'background-surface':\s*'#ffffff'/,
   },
   {
     what: 'light mode pins the standard page plane at FAFAFA',
-    file: 'src/design-system/themes/light.ts',
+    file: 'packages/design-tokens/src/light.ts',
     expect: /'background-canvas':\s*'#fafafa'/,
   },
   {
@@ -208,7 +208,7 @@ export function findMobileGrayGrounds(): MobileGrayGround[] {
  * by what you removed, and add the file to {@link MOBILE_GRAY_GROUND_ZERO} so
  * it can never regress. Raising it is the one edit this module exists to stop.
  */
-export const MOBILE_GRAY_GROUND_BASELINE = 45;
+export const MOBILE_GRAY_GROUND_BASELINE = 43;
 
 export function formatMobileGrayGround(hit: MobileGrayGround): string {
   return `${hit.file}:${hit.line} — ${hit.match}`;

@@ -66,6 +66,16 @@ export interface ShippedQueryParams {
   /** Universal staff filter (P1-WORK-02): packed_by OR tested_by this staff. */
   staffId?: number;
   shippedFilter?: string;
+  /**
+   * Desk find text, answered SERVER-side by `/api/packerlogs?q=`.
+   *
+   * Part of the cache key on purpose: a searched window is a DIFFERENT row set
+   * from the same window unsearched, and sharing one entry would let a narrowed
+   * answer overwrite the desk's full week (or the reverse) under the same key.
+   * Empty string ⇒ byte-identical key to the pre-search behaviour, so warmed
+   * and unsearched weeks still hit the entries they always did.
+   */
+  searchTerm?: string;
   /** Row ceiling for this fetch; default {@link SHIPPED_WEEK_PAGE_SIZE}. */
   limit?: number;
   /** Spine-first: 'spine' fetches immediate-paint columns only (deferred fields
@@ -167,13 +177,14 @@ export function dashboardShippedQuery({
   testedBy,
   staffId,
   shippedFilter,
+  searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
 }: ShippedQueryParams = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'shipped', { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, limit, phase }],
+    queryKey: ['dashboard-table', 'shipped', { weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }],
     queryFn: () =>
-      fetchDashboardPackedRecords({ packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, limit, phase }),
+      fetchDashboardPackedRecords({ packedBy, testedBy, staffId, weekStart, weekEnd, shippedFilter, searchTerm, limit, phase }),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
   });
@@ -188,6 +199,8 @@ interface ShippedWeekQueryParams {
   testedBy?: number;
   staffId?: number;
   shippedFilter?: string;
+  /** Desk find text (see {@link ShippedQueryParams.searchTerm}). Part of the key. */
+  searchTerm?: string;
   /** Row ceiling for this week; default {@link SHIPPED_WEEK_PAGE_SIZE}. Part of
    *  the cache key, so a bumped ceiling is its own immutable past-week entry. */
   limit?: number;
@@ -201,6 +214,12 @@ interface ShippedWeekQueryParams {
  * never drift. Past weeks are immutable (`staleTime: Infinity`) so they're
  * fetched once then served from cache forever; the current week stays live and
  * is refreshed by the dashboard refresh/Ably invalidations.
+ *
+ * A SEARCHED week is never treated as immutable even when it is in the past.
+ * `searchTerm` is in the key, so every keystroke mints its own entry; parking
+ * each one for a day would leave a typed-through word's worth of dead week
+ * payloads resident for the session. Search entries keep the live TTLs and get
+ * collected once the operator moves on.
  */
 export function dashboardShippedWeekQuery({
   weekStart,
@@ -209,16 +228,17 @@ export function dashboardShippedWeekQuery({
   testedBy,
   staffId,
   shippedFilter,
+  searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
 }: ShippedWeekQueryParams) {
-  const past = isPastWeekStart(weekStart);
+  const immutable = isPastWeekStart(weekStart) && !searchTerm;
   return queryOptions({
-    queryKey: ['dashboard-table', 'shipped', 'week', weekStart, { packedBy, testedBy, staffId, shippedFilter, limit, phase }],
+    queryKey: ['dashboard-table', 'shipped', 'week', weekStart, { packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }],
     queryFn: () =>
-      fetchDashboardPackedRecords({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, limit, phase }),
-    staleTime: past ? Infinity : 5 * 60 * 1000,
-    gcTime: past ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,
+      fetchDashboardPackedRecords({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }),
+    staleTime: immutable ? Infinity : 5 * 60 * 1000,
+    gcTime: immutable ? 24 * 60 * 60 * 1000 : 15 * 60 * 1000,
   });
 }
 

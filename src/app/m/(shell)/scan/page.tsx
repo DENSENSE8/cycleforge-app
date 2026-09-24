@@ -7,12 +7,15 @@
 import MobileScanIdentify from '@/components/mobile/scan/MobileScanIdentify';
 import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
 import { seedMobileReceivingFeed } from '@/lib/queries/mobile-feed-seed.server';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default async function MobileScanPage() {
   const seed = await seedMobileReceivingFeed('triage');
   return (
     <ShellQuerySeed state={seed}>
-      <MobileScanIdentify />
+      <ModeRegion mode="triage" className="contents">
+        <MobileScanIdentify />
+      </ModeRegion>
     </ShellQuerySeed>
   );
 }

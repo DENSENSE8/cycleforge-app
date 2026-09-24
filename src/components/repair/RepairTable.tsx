@@ -59,6 +59,7 @@ export function RepairTable({ filter }: RepairTableProps) {
   const {
     data: repairs = [],
     isLoading: loading,
+    isFetching: fetching,
     refetch: refetchRepairs,
   } = useRepairsTable(search, filter, searchParams.get('needsLabel') === '1');
 
@@ -216,7 +217,23 @@ export function RepairTable({ filter }: RepairTableProps) {
           }}
           loading={loading}
           emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-          search={{ value: search, onChange: setSearch, placeholder: 'Filter repairs…' }}
+          // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=`
+          // (:27); the route answers it over the CONTACT joins — customer email
+          // and phone — plus source tracking / SKU / serial
+          // (repair-service-queries.ts:188-199), and returns only its top 20.
+          // Email, tracking, SKU and serial have no field in the repair catalog,
+          // so no layout can mount them and only the server can find those rows.
+          // `pending` is the live fix: `useRepairsTable` keeps the PREVIOUS
+          // query's rows through `placeholderData` (useRepairs.ts:36) with
+          // `isLoading` false, so without it the grid presented one search's
+          // repairs as the answer to another.
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: 'Filter repairs…',
+            answeredBy: 'server',
+            pending: fetching,
+          }}
           selectionScope={REPAIR_SELECTION_SCOPE}
           renderGroup={(group, _stripe, { columns: visible }) =>
             renderRepairLeaf(group.rows[0], visible)

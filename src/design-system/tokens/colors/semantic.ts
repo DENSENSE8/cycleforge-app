@@ -1,3 +1,4 @@
+import { LIFECYCLE, STATE_TONES } from '@cycleforge/design-tokens';
 import { baseColors } from './base';
 
 export const semanticColors = {
@@ -7,8 +8,8 @@ export const semanticColors = {
     muted: baseColors.gray[500],
     inverse: baseColors.white,
     accent: baseColors.navy[700],
-    success: baseColors.green[600],
-    warning: baseColors.orange[600],
+    success: STATE_TONES.success.text,
+    warning: STATE_TONES.warning.text,
     danger: baseColors.red[600],
     label: baseColors.gray[500],
     value: baseColors.gray[900],
@@ -68,7 +69,8 @@ export const semanticColors = {
     active: baseColors.green[600],
     inactive: '#6B7280',
     confirmed: baseColors.blue[600],
-    shipped: baseColors.purple[600],
+    // Shipped reads LIFECYCLE (success green) — as TEXT ink (StatusBadge paints it as text).
+    shipped: STATE_TONES[LIFECYCLE.shipped.tone].text,
     delivered: baseColors.green[600],
     invoiced: '#0891B2',
     paid: baseColors.green[600],

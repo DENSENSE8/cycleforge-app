@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { DataTable } from '@/components/tables/DataTable';
 import {
@@ -91,6 +91,21 @@ export interface StationHistoryTableProps<T> {
     /** Deep link: a URL param whose numeric value selects + scrolls to a row. */
     deepLinkParam?: string;
   };
+  /**
+   * The find box, ANSWERED BY THE SERVER. The desk's controller owns the text
+   * because only the controller can spend it on the fetch key — a bench feed
+   * arrives windowed, so a value filtered in React here would search the
+   * newest page and call the rest of the week absent.
+   *
+   * `pending` is the controller's `isFetching` for the CURRENT value: it
+   * lights the field spinner and holds the body in its loading face, so the
+   * operator never reads a stale row set as the answer to what they just typed.
+   */
+  search: {
+    value: string;
+    onChange: (value: string) => void;
+    pending: boolean;
+  };
 }
 
 export function StationHistoryTable<T>({
@@ -109,9 +124,8 @@ export function StationHistoryTable<T>({
   toolbarPortalTarget,
   pipeline,
   selection,
+  search,
 }: StationHistoryTableProps<T>) {
-  const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const totalCount = sumDaySectionCounts(daySections);
 
@@ -151,6 +165,7 @@ export function StationHistoryTable<T>({
     loading,
     emptyMessage,
     onOpenRow: handleOpenRow,
+    search,
   });
 
   /**

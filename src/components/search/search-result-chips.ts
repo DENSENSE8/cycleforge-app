@@ -19,6 +19,7 @@
  */
 
 import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Search } from '@/components/Icons';
+import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
@@ -38,8 +39,8 @@ export const ENTITY_ICONS: Record<string, IconComponent> = {
   import_exception: AlertTriangle,
 };
 
-/** Semantic chip tone vocabulary — matches SearchHitChip.tone. */
-export type ChipTone = 'gray' | 'blue' | 'emerald' | 'amber' | 'rose';
+/** Semantic chip tone vocabulary — matches SearchHitChip.tone (+ `purple`, the fulfillment tone). */
+export type ChipTone = 'gray' | 'blue' | 'emerald' | 'amber' | 'rose' | 'purple';
 
 /**
  * UI entity type → chip / glyph tone. Order + receiving share blue so the
@@ -63,6 +64,7 @@ export const CHIP_TONE_CLASSES: Record<string, string> = {
   emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   amber: 'bg-amber-50 text-amber-700 ring-amber-200',
   rose: 'bg-rose-50 text-rose-700 ring-rose-200',
+  purple: `${STATE_TONE_CLASSES.fulfillment.pill} ${STATE_TONE_CLASSES.fulfillment.ring}`,
 };
 
 /**
@@ -77,6 +79,7 @@ export const GLYPH_TONE_CLASSES: Record<ChipTone, string> = {
   emerald: 'text-emerald-600',
   amber: 'text-amber-600',
   rose: 'text-rose-600',
+  purple: STATE_TONE_CLASSES.fulfillment.text,
 };
 
 /** The glyph + ink for an entity type, in one lookup. */
@@ -97,6 +100,16 @@ const DOT_BY_TONE: Record<ChipTone, string> = {
   emerald: 'bg-emerald-500',
   amber: 'bg-amber-500',
   rose: 'bg-rose-500',
+  purple: STATE_TONE_CLASSES.fulfillment.dot,
+};
+
+/** Functional state tone → this vocabulary's chip tone (lifecycle states resolve here). */
+const CHIP_TONE_FOR_STATE: Record<StateName, ChipTone> = {
+  info: 'blue',
+  warning: 'amber',
+  fulfillment: 'purple',
+  danger: 'rose',
+  success: 'emerald',
 };
 
 /**
@@ -109,8 +122,8 @@ const ORDER_STATUS_TONE: Record<string, ChipTone> = {
   delivered: 'emerald',
   completed: 'emerald',
   closed: 'emerald',
-  shipped: 'blue',
-  packed: 'blue',
+  shipped: CHIP_TONE_FOR_STATE[LIFECYCLE.shipped.tone],
+  packed: CHIP_TONE_FOR_STATE[LIFECYCLE.packed.tone],
   processing: 'blue',
   open: 'amber',
   pending: 'amber',

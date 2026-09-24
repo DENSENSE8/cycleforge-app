@@ -1,12 +1,9 @@
 'use client';
 
 import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
-import { getCurrentPSTDateKey, getDaysLateNullable } from '@/utils/date';
-import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { filterShippedOrdersByQuery } from '@/lib/orders/filter-painted-orders';
 import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
 import {
   ORDER_EXPORT_COLUMNS,
@@ -14,7 +11,6 @@ import {
 } from '@/lib/dashboard/order-export-csv';
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
-import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import {
   ordersCompoundColumnsFor,
   type OrdersQueueColumn,
@@ -24,75 +20,48 @@ import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
 import { OrdersMorphingHost } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
-import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 import {
   COMPOUND_TRACK_SORT_KEYS,
-  QUEUE_DISPLAY_SORT_OPTIONS,
-  flipQueueDisplaySortDir,
   isQueueColumnSort,
   isQueueNamePinSort,
   isQueueSortableColumnKey,
-  queueCarrierSortOptions,
-  queueChannelSortOptions,
-  queueColumnSortOptions,
-  queueDisplaySortFace,
   queueSortForColumnKey,
-  type QueueDisplaySort,
 } from '@/utils/queue-display-sort';
 import {
-  normalizePersonName,
   resolveRowStatus,
   type OrdersQueueMode,
   type QueueRowRecord,
 } from './helpers';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
 import { QueueGroupRow } from './QueueGroupRow';
-import { useOrdersQueueRows } from './useOrdersQueueRows';
-import {
-  catalogIdsFromOrderRecords,
-  emptyKitCompositionMap,
-  kitFaceForCatalogId,
-  useKitCompositionMap,
-} from '@/hooks/useKitCompositionMap';
-import { useOrdersQueuePlane } from './useOrdersQueuePlane';
+import { kitFaceForCatalogId } from '@/hooks/useKitCompositionMap';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
-import { useOrderAssignment } from '@/hooks/useOrderAssignment';
-import { refreshDomain } from '@/lib/refresh/bus';
-import { toast } from '@/lib/toast';
-import { useRecentImportedOrders } from '@/lib/orders/recent-imports';
-
-/**
- * `getDaysLateNullable`, memoized on `(today, deadline)`.
- *
- * The row list called it once per ROW per render, and each call builds TWO
- * `Intl.DateTimeFormat` instances — one to fold the deadline into a PST civil
- * date, one for today's. A 62-row To-ship window therefore constructed ~124
- * formatters on every render of the table, for a value that is a pure function
- * of a string and the civil date.
- *
- * `todayKey` is part of the key rather than captured, so the answer self-heals
- * across a PST midnight instead of pinning a desk left open overnight to
- * yesterday's lateness. The underlying resolver is untouched — this is a cache
- * in front of the date SoT, never a second implementation of the arithmetic.
- */
-const DAYS_LATE_CACHE = new Map<string, number | null>();
-
-function daysLateOn(todayKey: string, deadlineAt: string | null | undefined): number | null {
-  const key = `${todayKey}\u0000${deadlineAt ?? ''}`;
-  const cached = DAYS_LATE_CACHE.get(key);
-  if (cached !== undefined) return cached;
-  const value = getDaysLateNullable(deadlineAt);
-  // Bounded: one entry per distinct deadline string per civil day. Dropping the
-  // whole map on overflow is fine — it is a cache, not state.
-  if (DAYS_LATE_CACHE.size > 4096) DAYS_LATE_CACHE.clear();
-  DAYS_LATE_CACHE.set(key, value);
-  return value;
-}
+import { daysLateOn, queueRowStaff, useOrdersQueueFeed } from './useOrdersQueueFeed';
 
 export interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
+  /**
+   * Who ANSWERED {@link searchValue} — see `DataTableSearch.answeredBy`.
+   *
+   * `'client'` (default) keeps `filterShippedOrdersByQuery` as the narrowing
+   * pass: the caller handed over every order it will ever show.
+   *
+   * `'server'` says `records` ARE the matches. To-ship fetches a BOUNDED page
+   * (`limit: 200`, grown by "load more"), so filtering that page in memory
+   * answered "no orders found" for an order sitting on page 3 — the desk
+   * asserting an absence it could not see. `/api/orders?q=` already searches
+   * the whole in-warehouse scope unbounded
+   * (`dashboard-table-data.ts` drops the page bound when `q` is present), so
+   * the second pass here would only be able to NARROW the server's answer by
+   * rules that read fewer facts.
+   *
+   * Everything else `searchValue` feeds is unchanged and still correct: the
+   * match highlight, the "N results" copy and the typed no-matches state all
+   * describe the query the operator typed, whoever ran it.
+   */
+  searchAnsweredBy?: 'client' | 'server';
   onOpenRecord: (record: ShippedOrder) => void;
   onCloseRecord?: (record: ShippedOrder | null) => void;
   onClearSearch: () => void;
@@ -210,6 +179,7 @@ export function useOrdersSpreadsheet({
   records,
   loading,
   searchValue,
+  searchAnsweredBy = 'client',
   onOpenRecord,
   onCloseRecord,
   onClearSearch,
@@ -230,14 +200,7 @@ export function useOrdersSpreadsheet({
   activeWorkRowId = null,
   renderActiveWorkBand,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
-  // Resolved ONCE per table render and threaded into every row's lateness
-  // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
-  // formatter a per-row cost.
-  const todayKey = getCurrentPSTDateKey();
   const { isMobile } = useUIModeOptional();
-  const { getStaffName } = useStaffNameMap();
-  const { sort, dir, setSort } = useQueueDisplaySort();
-  const recentImportedOrders = useRecentImportedOrders();
 
   // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
   // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
@@ -252,138 +215,52 @@ export function useOrdersSpreadsheet({
     [effectiveLayout, queueMode],
   );
 
-  const painted = useMemo(
-    () => filterShippedOrdersByQuery(records, searchValue),
-    [records, searchValue],
-  );
-  const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
-    records: painted,
+  // The feed — rows, grouping, URL sort, selection plane, inline-edit commits,
+  // sort menu and views. Shared with the To-ship ledger (`useOrdersQueueFeed`).
+  const {
+    todayKey,
+    getStaffName,
     sort,
     dir,
-    queueMode,
-  });
-
-  const kitCatalogIds = useMemo(
-    () => catalogIdsFromOrderRecords(displayedRecords),
-    [displayedRecords],
-  );
-  const { data: kitCompositionMap } = useKitCompositionMap(kitCatalogIds);
-  const compositionMap = kitCompositionMap ?? emptyKitCompositionMap();
-
-  const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
-
-  // Selection / cursor / inspector plane — the page concern (rail-selection SoT,
-  // record cursor, external-open adoption, Labels replace-tracking). Lifted
-  // verbatim into a shared hook so this file stays a presentational adapter.
-  const {
-    selectedIds,
-    selectedRecord,
-    clickSelect,
-    fillsById,
-    handleRowAction,
-    handleRowOpen,
-    handleToggleSelect,
-    handleToggleGroup,
-    handleRequestReplaceTracking,
-  } = useOrdersQueuePlane({
-    displayedRecords,
+    setSort,
+    recentImportedOrders,
+    painted,
     orderGroupsByDate,
+    displayedRecords,
+    compositionMap,
+    plane: {
+      selectedIds,
+      selectedRecord,
+      clickSelect,
+      fillsById,
+      handleRowAction,
+      handleRowOpen,
+      handleToggleSelect,
+      handleToggleGroup,
+      handleRequestReplaceTracking,
+    },
+    handleCommitCondition,
+    handleCommitShipBy,
+    handleCommitStageAssign,
+    handleCommitSubtitleField,
+    sortMenu,
+    views,
+  } = useOrdersQueueFeed({
+    records,
+    searchValue,
+    searchAnsweredBy,
     onOpenRecord,
     onCloseRecord,
     selectionScope,
     railSelection,
-    surfaceId: dataTestId,
+    queueMode,
     tableId,
+    surfaceId: dataTestId,
   });
 
+  const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
+
   const shellRef = useRef<HTMLDivElement>(null);
-
-  // ONE mutation hook for the whole table (not one per row): the compound
-  // item cell's in-place condition edit commits through the same
-  // `useOrderAssignment` waist the flat in-cell editors used — a scalar field
-  // PATCH with the optimistic row update and rollback that hook already owns.
-  const assignOrder = useOrderAssignment();
-  const assignMutate = assignOrder.mutate;
-  const handleCommitCondition = useCallback(
-    (record: ShippedOrder, condition: string | null) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      assignMutate({ orderId: id, condition });
-    },
-    [assignMutate],
-  );
-
-  const handleCommitShipBy = useCallback(
-    (record: ShippedOrder, dateKey: string | null) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      if (!dateKey) return;
-      assignMutate({ orderId: id, shipByDate: dateKey });
-    },
-    [assignMutate],
-  );
-
-  const handleCommitStageAssign = useCallback(
-    (
-      record: ShippedOrder,
-      fieldId: 'orders.picked' | 'orders.packed',
-      staffId: number | null,
-      staffName: string | null,
-    ) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      if (fieldId === 'orders.picked') {
-        assignMutate({ orderId: id, testerId: staffId, testerName: staffName });
-        return;
-      }
-      assignMutate({ orderId: id, packerId: staffId, packerName: staffName });
-    },
-    [assignMutate],
-  );
-
-  /**
-   * The other under-title facts, written through the same waist.
-   *
-   * Keyed by catalog field id so the handler does not have to learn a new name
-   * every time an org binds a different fact under the title.
-   *
-   * `orders.notes` goes to the TRAIL, not through the assign waist. Notes are
-   * append-only: `POST /api/orders/[id]/notes` adds an entry and (since
-   * 2026-08-31) refreshes the denormalized `orders.notes` column the subtitle
-   * paints, so the glyph shows what was just written instead of a stale scalar.
-   * `/api/orders/assign` still has no `notes` branch, and must not grow one —
-   * that would be a second independent author of the same field.
-   */
-  const handleCommitSubtitleField = useCallback(
-    (record: ShippedOrder, fieldId: string, value: string | null) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      if (fieldId === 'orders.notes') {
-        const noteText = (value ?? '').trim();
-        if (!noteText) return; // an append-only trail has no "clear"
-        void fetch(`/api/orders/${id}/notes`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ noteText }),
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error(`note ${res.status}`);
-            refreshDomain('orders.outbound');
-          })
-          .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to save the note'));
-        return;
-      }
-      const patch =
-        fieldId === 'orders.qty'
-          ? { orderId: id, quantity: value }
-          : fieldId === 'orders.item_number'
-            ? { orderId: id, itemNumber: value }
-            : null;
-      if (!patch) return;
-      assignMutate(patch);
-    },
-    [assignMutate],
-  );
 
   /**
    * Header grip → a persisted per-track width.
@@ -409,34 +286,6 @@ export function useOrdersSpreadsheet({
       setSort(resolved, nextDir);
     },
     [setSort, compoundColumns],
-  );
-
-  const handleSortMenuSelect = useCallback(
-    (id: string) => {
-      const next = id as QueueDisplaySort;
-      // A name pin is a face, not a direction. Re-selecting "Amazon" must
-      // keep Amazon on top — flipping would bury the name the operator chose.
-      if (isQueueNamePinSort(next)) {
-        setSort(next);
-        return;
-      }
-      if (isQueueColumnSort(next) && sort === next && dir) {
-        setSort(next, flipQueueDisplaySortDir(dir));
-      } else {
-        setSort(next);
-      }
-    },
-    [sort, dir, setSort],
-  );
-
-  const sortMenuOptions = useMemo(
-    () => [
-      ...QUEUE_DISPLAY_SORT_OPTIONS,
-      ...queueColumnSortOptions(),
-      ...queueChannelSortOptions(),
-      ...queueCarrierSortOptions(),
-    ],
-    [],
   );
 
   const isSearching = Boolean(searchValue.trim());
@@ -469,16 +318,7 @@ export function useOrdersSpreadsheet({
     ) => {
       const r = record as QueueRowRecord;
       const recentImportLabel = recentImportedOrders.get(Number(record.id));
-      const testerName =
-        String(r.tested_by_name ?? '').trim() ||
-        String(r.tester_name ?? '').trim() ||
-        (Number(r.tested_by) > 0 ? getStaffName(Number(r.tested_by)) : '') ||
-        (Number(r.tester_id) > 0 ? getStaffName(Number(r.tester_id)) : '');
-      const packerName =
-        String(r.packed_by_name ?? '').trim() ||
-        String(r.packer_name ?? '').trim() ||
-        (Number(r.packed_by) > 0 ? getStaffName(Number(r.packed_by)) : '') ||
-        (Number(r.packer_id) > 0 ? getStaffName(Number(r.packer_id)) : '');
+      const staff = queueRowStaff(r, getStaffName);
       const rowFillHex =
         clickSelect ? (fillsById[String(record.id)] ?? null) : null;
       return (
@@ -501,22 +341,10 @@ export function useOrdersSpreadsheet({
           kitFace={kitFaceForCatalogId(compositionMap, r.sku_catalog_id)}
           isMobile={isMobile}
           useAlternateStripe={stripeIndex % 2 === 1}
-          testerDisplay={normalizePersonName(testerName)}
-          packerDisplay={normalizePersonName(packerName)}
-          testerId={
-            Number(r.tester_id) > 0
-              ? Number(r.tester_id)
-              : Number(r.tested_by) > 0
-                ? Number(r.tested_by)
-                : null
-          }
-          packerId={
-            Number(r.packer_id) > 0
-              ? Number(r.packer_id)
-              : Number(r.packed_by) > 0
-                ? Number(r.packed_by)
-                : null
-          }
+          testerDisplay={staff.testerDisplay}
+          packerDisplay={staff.packerDisplay}
+          testerId={staff.testerId}
+          packerId={staff.packerId}
           rowStatus={resolveRowStatus(r, queueMode)}
           daysLate={daysLateOn(
             todayKey,
@@ -602,20 +430,9 @@ export function useOrdersSpreadsheet({
       : null,
     dir: columnSortDir,
     onSortChange: handleSortChange,
-    sortMenu: {
-          options: sortMenuOptions,
-          active: sort,
-          hot: sort !== 'deadline',
-          onSelect: handleSortMenuSelect,
-          activeFace: queueDisplaySortFace(sort),
-        },
-    views:
-      queueMode === 'fulfillment'
-        ? {
-            ...outboundSavedViewsConfig('unshipped'),
-            emptyHint: 'Save a filter and sort combination to come back to it.',
-          }
-        : undefined,
+    sortMenu,
+    // The lane's saved views — resolved once in `useOrdersQueueFeed`.
+    views,
     loading,
     emptyMessage,
     emptyState: showFirstRun ? firstRunEmpty : undefined,

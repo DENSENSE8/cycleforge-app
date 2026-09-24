@@ -6,7 +6,12 @@
  */
 
 import RedesignedMobilePickQueue from '@/components/mobile/redesign/PickQueue';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default function MobilePickQueuePage() {
-  return <RedesignedMobilePickQueue />;
+  return (
+    <ModeRegion mode="industrial" className="contents">
+      <RedesignedMobilePickQueue />
+    </ModeRegion>
+  );
 }

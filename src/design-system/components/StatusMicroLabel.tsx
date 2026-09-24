@@ -1,13 +1,24 @@
 'use client';
 
+import { LIFECYCLE, type StateName } from '../tokens/lifecycle';
 import { UnderlineValue } from './UnderlineValue';
 
 type StatusTone = 'neutral' | 'blue' | 'orange' | 'red' | 'green' | 'purple' | 'yellow';
 
+/** Functional state tone → this vocabulary's hue (lifecycle states resolve here). */
+const STATUS_TONE_FOR_STATE: Record<StateName, StatusTone> = {
+  info: 'blue',
+  warning: 'orange',
+  fulfillment: 'purple',
+  danger: 'red',
+  success: 'green',
+};
+
 const statusToneMap: Record<string, StatusTone> = {
   active: 'green',
   confirmed: 'blue',
-  shipped: 'purple',
+  packed: STATUS_TONE_FOR_STATE[LIFECYCLE.packed.tone],
+  shipped: STATUS_TONE_FOR_STATE[LIFECYCLE.shipped.tone],
   delivered: 'green',
   success: 'green',
   warning: 'yellow',

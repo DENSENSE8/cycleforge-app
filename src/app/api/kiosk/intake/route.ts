@@ -39,16 +39,75 @@ import {
   CounterTransactionValidationError,
   submitCounterTransaction,
 } from '@/lib/counter/submit-counter-transaction';
-import type {
-  CounterTransactionInput,
-  CounterTransactionResult,
+import {
+  PRICE_ADJUST_KINDS,
+  serviceLineCents,
+  type CounterPriceAdjustment,
+  type CounterTransactionInput,
+  type CounterTransactionResult,
 } from '@/lib/counter/counter-transaction-types';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
+import {
+  PriceApprovalError,
+  verifyLinePrices,
+  verifyPriceApproval,
+} from '@/lib/kiosk/price-approval';
+import { catalogUnitPrices } from '@/lib/kiosk/catalog-search';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 export const runtime = 'nodejs';
 
 /** RFC 4122 shape — what `client_event_id` (uuid) will accept. */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A committed line whose price the catalog did not set — one audit row each. */
+interface AdjustedLine {
+  title: string;
+  lineType: 'RETAIL' | 'REPAIR';
+  unitAmountCents: number;
+  adjustment: CounterPriceAdjustment;
+}
+
+function adjustedLines(
+  lines: Pick<CounterTransactionInput, 'retailLines' | 'services'>,
+): AdjustedLine[] {
+  const out: AdjustedLine[] = [];
+  for (const l of lines.retailLines ?? []) {
+    if (l.priceAdjustment) {
+      out.push({
+        title: l.productTitle,
+        lineType: 'RETAIL',
+        unitAmountCents: l.unitAmountCents,
+        adjustment: l.priceAdjustment,
+      });
+    }
+  }
+  for (const s of lines.services ?? []) {
+    if (s.priceAdjustment) {
+      out.push({
+        title: s.productModel,
+        lineType: 'REPAIR',
+        unitAmountCents: serviceLineCents(s),
+        adjustment: s.priceAdjustment,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * A price the catalog did not set. Only `approval` is trusted — the route
+ * rebuilds kind, original, reason and staff from its verified claims.
+ */
+const PriceAdjustmentSchema = z
+  .object({
+    kind: z.enum(PRICE_ADJUST_KINDS),
+    originalUnitAmountCents: z.number().int().nullable(),
+    reason: z.string().trim().max(200),
+    staffId: z.number().int().positive(),
+    approval: z.string().min(1).max(4000),
+  })
+  .strict();
 
 const RetailLineSchema = z.object({
   variationId: z.string().trim().min(1).nullable(),
@@ -57,6 +116,9 @@ const RetailLineSchema = z.object({
   quantity: z.number().int().positive().max(999),
   // Negative = buyback / trade-in credit on the staged cart.
   unitAmountCents: z.number().int().min(-100_000_000).max(100_000_000),
+  priceAdjustment: PriceAdjustmentSchema.nullable().optional(),
+  // Square `OrderLineItem.note` caps at 2000.
+  note: z.string().trim().max(2000).nullable().optional(),
 });
 
 const ServiceSchema = z.object({
@@ -71,6 +133,7 @@ const ServiceSchema = z.object({
   assignedTechId: z.number().int().positive().nullable().optional(),
   signatureDataUrl: z.string().nullable().optional(),
   signatureStrokes: z.unknown().optional(),
+  priceAdjustment: PriceAdjustmentSchema.nullable().optional(),
 });
 
 const BodySchema = z.object({
@@ -119,6 +182,25 @@ const BodySchema = z.object({
       z.object({ mode: z.literal('create') }),
       z.object({ mode: z.literal('attach'), ticketId: z.number().int().positive() }),
     ])
+    .optional(),
+  /**
+   * Lines voided during the visit. Each void was authorized — and audited — by
+   * `/api/kiosk/price-approval` when its PIN was entered; they ride the submit
+   * only so the visit's own audit row can list them. Unverifiable ones are
+   * dropped from that list, never trusted.
+   */
+  voidedLines: z
+    .array(
+      z
+        .object({
+          approval: z.string().min(1).max(4000),
+          title: z.string().trim().min(1).max(300),
+          quantity: z.number().int().min(0).max(999),
+          unitAmountCents: z.number().int().min(-100_000_000).max(100_000_000),
+        })
+        .strict(),
+    )
+    .max(200)
     .optional(),
 })
   // STRICT: an unknown key is a stale client, not noise to discard. Without
@@ -182,6 +264,8 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
       (parsed.data.serviceLines?.length ?? 0) > 0);
 
   let result: CounterTransactionResult | null = null;
+  /** The price-proven lines that were committed — what the per-line audits describe. */
+  let committed: Pick<CounterTransactionInput, 'retailLines' | 'services'> | null = null;
   if (hasTransaction) {
     if (!idempotencyKey) {
       // Without a key a network retry would double-charge. Refuse rather than
@@ -196,6 +280,29 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
     if (!UUID_RE.test(idempotencyKey)) {
       return NextResponse.json({ error: 'IDEMPOTENCY_KEY_INVALID' }, { status: 400 });
     }
+    // Every price on the visit, proven: an approval must match its line, a
+    // catalog sale line without one must be at the catalog price, and a keypad
+    // amount must carry one. The adjustments that reach the domain are
+    // rebuilt from verified claims, never taken from the tablet.
+    const verifyToken = (token: string) => verifyPriceApproval(token, ctx.organizationId);
+    let proven: Pick<CounterTransactionInput, 'retailLines' | 'services'>;
+    try {
+      proven = await verifyLinePrices(
+        { retailLines: parsed.data.retailLines ?? [], services: parsed.data.serviceLines ?? [] },
+        {
+          verify: verifyToken,
+          catalogPrices: (ids) => catalogUnitPrices(ctx.organizationId as OrgId, ids),
+        },
+      );
+    } catch (error: unknown) {
+      if (error instanceof PriceApprovalError) {
+        return NextResponse.json(
+          { error: 'PRICE_APPROVAL', message: `${error.lineTitle}: ${error.message}` },
+          { status: 403 },
+        );
+      }
+      throw error;
+    }
     const input: CounterTransactionInput = {
       customer: {
         phone: parsed.data.customer!.phone,
@@ -203,8 +310,8 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
         email: parsed.data.customer!.email ?? null,
         address: parsed.data.customer!.address ?? null,
       },
-      retailLines: parsed.data.retailLines ?? [],
-      services: parsed.data.serviceLines ?? [],
+      retailLines: proven.retailLines,
+      services: proven.services,
       priorOrder: parsed.data.priorOrder ?? null,
       ticketWork: parsed.data.ticketWork ?? { mode: 'none' },
       clientEventId: idempotencyKey,
@@ -221,14 +328,22 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
       const message = error instanceof Error ? error.message : 'Failed to submit';
       return NextResponse.json({ error: message }, { status: 500 });
     }
+    committed = proven;
   }
+
+  // Voids are filed from their verified claims only; an unverifiable one was
+  // either forged or expired, and its approval-time row already stands.
+  const voided = (parsed.data.voidedLines ?? []).flatMap((v) => {
+    const claims = verifyPriceApproval(v.approval, ctx.organizationId);
+    return claims && claims.kind === 'void' ? [{ line: v, claims }] : [];
+  });
 
   // Device-as-`via` attribution. `ctx.staffId` does not exist here — the audit
   // actor is the stepped-up staff (privileged) or nobody (anonymous base
   // intake); the device is always the `via`. Never blocks the response.
   try {
-    await withTenantTransaction(ctx.organizationId, (client) =>
-      recordAudit(client, null, req, {
+    await withTenantTransaction(ctx.organizationId, async (client) => {
+      await recordAudit(client, null, req, {
         source: 'kiosk',
         action: AUDIT_ACTION.KIOSK_INTAKE,
         entityType: AUDIT_ENTITY.KIOSK_DEVICE,
@@ -253,8 +368,63 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
               }
             : {}),
         },
-      }),
-    );
+      });
+
+      // One row per line whose price the catalog did not set, and one per line
+      // voided during the visit — attributed to the staffer whose PIN
+      // authorized it and filed on the VISIT, where History reads its trail
+      // (the tablet had no server session to file them on mid-cart). A void
+      // already has an approval-time row on the device; this one ties it to
+      // the visit it happened in. A replayed submit wrote them the first time.
+      if (result && committed && !result.idempotentReplay && result.counterTransactionId != null) {
+        const visitId = result.counterTransactionId;
+        for (const entry of adjustedLines(committed)) {
+          await recordAudit(client, null, req, {
+            source: 'kiosk',
+            action:
+              entry.adjustment.kind === 'comp'
+                ? AUDIT_ACTION.COUNTER_LINE_COMP
+                : AUDIT_ACTION.COUNTER_LINE_PRICE_OVERRIDE,
+            entityType: AUDIT_ENTITY.COUNTER_TRANSACTION,
+            entityId: visitId,
+            organizationIdOverride: ctx.organizationId,
+            actorStaffIdOverride: entry.adjustment.staffId,
+            reasonCode: entry.adjustment.reason,
+            method: 'manual',
+            before: {
+              title: entry.title,
+              unitAmountCents: entry.adjustment.originalUnitAmountCents,
+            },
+            after: { title: entry.title, unitAmountCents: entry.unitAmountCents },
+            extra: {
+              kind: entry.adjustment.kind,
+              line_type: entry.lineType,
+              via: `kiosk_device:${ctx.deviceId}`,
+              principal: 'kiosk',
+            },
+          });
+        }
+        for (const { line, claims } of voided) {
+          await recordAudit(client, null, req, {
+            source: 'kiosk',
+            action: AUDIT_ACTION.COUNTER_LINE_VOID,
+            entityType: AUDIT_ENTITY.COUNTER_TRANSACTION,
+            entityId: visitId,
+            organizationIdOverride: ctx.organizationId,
+            actorStaffIdOverride: claims.staffId,
+            reasonCode: claims.reason,
+            method: 'manual',
+            before: {
+              title: line.title,
+              quantity: line.quantity,
+              unitAmountCents: line.unitAmountCents,
+            },
+            after: null,
+            extra: { via: `kiosk_device:${ctx.deviceId}`, principal: 'kiosk' },
+          });
+        }
+      }
+    });
   } catch (auditErr) {
     console.warn('kiosk intake audit skipped:', auditErr);
   }

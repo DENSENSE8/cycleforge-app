@@ -9,6 +9,12 @@ import { withAuth } from '@/lib/auth/withAuth';
  * receiving_id, receiving_line_id, actor_staff_id, since, limit.
  *
  * Used by the bin page, the SKU detail timeline, and the future /audit page.
+ *
+ * `?q=` is the ledger's find text, answered in SQL by {@link readTimeline}.
+ * The Pulse feeds are WINDOWS (the org ledger's last 50, one unit's last 200),
+ * so a browser-side filter could only ever search what had already arrived —
+ * and it re-narrowed even that to the facts the mounted tracks paint, so an
+ * event found by its note or its bin name vanished when that column was off.
  */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
@@ -30,6 +36,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       receiving_line_id: num('receiving_line_id'),
       actor_staff_id: num('actor_staff_id'),
       since: searchParams.get('since') || null,
+      q: searchParams.get('q') || null,
       limit: num('limit') ?? 50,
     }, orgId);
 

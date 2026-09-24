@@ -41,6 +41,9 @@
  *    remounts the table. Orders filter painted rows via
  *    `filterShippedOrdersByQuery`; other families filter in
  *    `useCompoundSpreadsheet`. Facets, stage, and `?sort=` remain URL state.
+ *    A SERVER-paged surface still obeys this: `search.answeredBy: 'server'`
+ *    sends the text to a fetch key, never to `router.replace` — see
+ *    {@link DataTableSearch}.
  * 4. **Selection is the only interaction.** A checkbox gutter, a select-all and
  *    a count. Copy acts on the selection (below); row-open comes back when it
  *    is asked for.
@@ -84,7 +87,18 @@
  * the interaction budget (`AGENTS.md`).
  */
 
-import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import {
   Popover,
   PopoverContent,
@@ -277,11 +291,41 @@ export interface DataTableBrandIdentity {
  * The search box, as data. A surface whose search lives on a parent (a table
  * embedded in a workspace that owns the URL) takes this as a prop and forwards
  * it — the field is still drawn once, here.
+ *
+ * ## Who ANSWERS the query ({@link answeredBy})
+ *
+ * The default is `'client'`: the caller hands over every row it will ever show
+ * and a substring pass over the MOUNTED facts is the whole truth.
+ *
+ * That pass is a LIE the moment rows are server-paged. `useCompoundSpreadsheet`
+ * filters `rows` in React memory, so a table holding page 1 of 40 answers
+ * "no results" for a record it has never loaded — the UI asserting an absence
+ * it cannot know. A surface whose rows arrive windowed (a `LIMIT`, a cursor, a
+ * "load more") therefore declares `answeredBy: 'server'`, feeds `value` into
+ * its fetch key, and the engine stops filtering behind its back: one pass, run
+ * by whoever can actually see every row.
+ *
+ * This does NOT move the text into the URL. Rule 3 above stands — `value` is
+ * still session state owned by the caller; a server-answered surface spends it
+ * on a query key, never on `router.replace`.
  */
 export interface DataTableSearch {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /**
+   * `'server'` ⇒ `rows` are ALREADY the answer for `value`; the engine's
+   * client-side substring filter is bypassed rather than run a second time
+   * over a set the server has narrowed. Omitted / `'client'` ⇒ unchanged.
+   */
+  answeredBy?: 'client' | 'server';
+  /**
+   * `'server'` only: a request for the CURRENT `value` is in flight. It lights
+   * the field's spinner AND holds the body in its loading face, because the
+   * rows on screen answer the PREVIOUS query — painting "no matches" over them
+   * is the same false absence one layer down.
+   */
+  pending?: boolean;
 }
 
 
@@ -897,7 +941,7 @@ function DataTableToolbarActions({ actions }: { actions: readonly DataTableToolb
  * the same {@link MenuBrandIdentity} dots as the Order column (left) and
  * keep the check on the right. View rows have no identity.
  */
-function DataTableSortMenu({
+export function DataTableSortMenu({
   options,
   active,
   hot: hotProp,
@@ -1133,7 +1177,7 @@ function DataTableSortMenu({
   );
 }
 
-function DataTablePageSizeMenu({
+export function DataTablePageSizeMenu({
   pageSize,
   pageSizes,
   onPageSizeChange,
@@ -1388,6 +1432,180 @@ function DataTableFieldsMenu({
   );
 }
 
+/**
+ * Rows this grid may hand keyboard focus to.
+ *
+ * There is no single marker, so this is a union of the THREE row shapes the
+ * engine actually mounts — each clause read off the running app, not guessed:
+ *
+ * - `[data-grid-row]` — the neutral leaf marker `LedgerGridLeafRow` stamps (its
+ *   own docblock explains why it is not an orders-named attribute). The
+ *   compound families paint through it and claim no `role="row"` at all
+ *   (`/inventory/stock`: 11 matches, and the page's only `role="row"` is the
+ *   column header).
+ * - `[role="row"][tabindex]` — the orders queue row: `role="row" tabindex="0"
+ *   data-order-row-id`, no `data-grid-row` (`/shipping/orders`).
+ * - `[role="button"][tabindex="0"]` — a family whose whole row IS the control
+ *   (`TrackingExceptionsGridRow`: `role="button" tabindex={0}`, 12 matches on
+ *   `/tracking-exceptions`).
+ *
+ * ## Why the last clause cannot swallow a cell control
+ *
+ * Every interactive thing INSIDE a row is `tabIndex={-1}` by law, and stated as
+ * such in three places — `compound-row-actions.ts`, `CompoundCells.tsx`, the
+ * chevron and the ⋮ menu — precisely so the ROW is the only tab stop rather
+ * than a 500-row grid being 1500 of them. So a `tabindex="0"` inside the grid
+ * body is a row by construction.
+ *
+ * ## Why `[tabindex]` guards the second clause
+ *
+ * The column header, `GridSectionHeader`'s caption, `SlotTableGroupParentRow`'s
+ * box header and `CompoundRowDetailBand` all claim `role="row"` and none is
+ * focusable. Arrowing into a caption is a stop that answers nothing.
+ */
+const DATA_TABLE_ROW_SELECTOR =
+  '[data-grid-row],[role="row"][tabindex],[role="button"][tabindex="0"]';
+
+/** Editors inside a cell own their own arrows; the roving walk must not steal them. */
+const DATA_TABLE_TEXT_ENTRY_SELECTOR =
+  'input,textarea,select,[contenteditable="true"],[role="textbox"],[role="spinbutton"],[role="listbox"],[role="menu"]';
+
+/**
+ * Keyboard travel between the find field and the rows it narrowed.
+ *
+ * ## The defect this closes
+ *
+ * Typing in the find field and then reaching the first result took the mouse:
+ * the only keyboard route out of the input was Tab, which walks the REST of
+ * the toolbar (filter, sort, views, date, page size, fields, zoom, fullscreen)
+ * before it arrives at a row. Eight stops between "I typed it" and "I can act
+ * on it", on a control whose entire job is to get an operator to one record.
+ *
+ * ## Why it lives on the HOST and not on the row
+ *
+ * Rows are family code painted through `renderRow`, and the body is
+ * VIRTUALIZED — only a window of rows is ever in the DOM. A per-row React
+ * handler would have to be added to every family (the cell-map fork
+ * `table-engine-law.ts` forbids), and a rover holding a row INDEX would point
+ * at an unmounted node the moment the list scrolled. One delegated `keydown`
+ * on the grid host reads the rows that exist right now, which is also the only
+ * set focus can legally move to.
+ *
+ * ## The map
+ *
+ * - `ArrowDown` in the find field → the first row (the {@link focusFirstRow}
+ *   half, handed to `SearchField.onNavigateResults`).
+ * - `ArrowDown` / `ArrowUp` on a row → the next / previous row.
+ * - `ArrowUp` on the FIRST row → back to the find field, so the walk is
+ *   reversible by the key that entered it.
+ * - `Escape` on a row → the find field, caret intact.
+ *
+ * Everything else is untouched: Enter / Space still activate through
+ * `compoundRowActivationProps`, a click still selects, and an arrow pressed
+ * inside a cell editor or an open menu is left to that control.
+ *
+ * ## It does NOT become a second arrow-key owner
+ *
+ * `useRecordCursorKeyboard` is the codebase's ambient record keyboard (j/k/↑/↓
+ * step and OPEN, Escape closes) and four surfaces mount it — To-ship, Shipped,
+ * Receiving lines, PO lines. It binds on `window` in the CAPTURE phase and
+ * `stopPropagation()`s, so on those surfaces this handler is never reached and
+ * the richer behaviour (step · reveal fold · open) keeps the keys. Where no
+ * publisher owns the scope it bails at its own `if (!top) return`, and the
+ * event reaches the body — which is every other DataTable, where ↑/↓ did
+ * nothing at all. So this is the floor under that hook, not a rival to it.
+ *
+ * Verified on the running app: `/shipping/orders` (cursor published) steps and
+ * opens records exactly as before; `/inventory/stock` (no publisher) walks
+ * rows through this rover.
+ *
+ * The ambient hook also refuses while focus is in a typing target
+ * (`isTypingTarget`), which is why the ArrowDown HANDOFF out of the find field
+ * needed a home here: that keystroke was nobody's.
+ *
+ * ## Focusability
+ *
+ * A row is only `tabIndex: 0` when its surface declared an activation gesture,
+ * so on a read-only table the rows are not focusable at all. The rover gives
+ * the row it is moving to `tabIndex = -1` — programmatically focusable, still
+ * absent from the Tab order, and invisible to React, which never writes an
+ * attribute it was not given as a prop. The alternative (every row a tab stop)
+ * is the 500-stop grid `compound-row-actions.ts` rejected.
+ */
+function useDataTableRowRoving({
+  gridHostRef,
+  searchInputRef,
+}: {
+  gridHostRef: RefObject<HTMLDivElement | null>;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+}) {
+  const focusRow = useCallback((row: HTMLElement) => {
+    // `tabIndex` is only absent on surfaces with no activation gesture; setting
+    // -1 keeps the Tab order exactly as it was.
+    if (!row.hasAttribute('tabindex')) row.tabIndex = -1;
+    row.focus();
+    row.scrollIntoView({ block: 'nearest' });
+  }, []);
+
+  const focusSearch = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, [searchInputRef]);
+
+  /**
+   * ArrowDown out of the find field. A no-op on an EMPTY table (and while a
+   * server-answered query is still in flight, when the body is painting its
+   * loading face): there is no row to land on, so focus stays in the input
+   * with the caret where the operator left it, rather than vanishing to
+   * `document.body` and stranding the next keystroke.
+   */
+  const focusFirstRow = useCallback(() => {
+    const first = gridHostRef.current?.querySelector<HTMLElement>(DATA_TABLE_ROW_SELECTOR);
+    if (first) focusRow(first);
+  }, [gridHostRef, focusRow]);
+
+  const onBodyKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Escape') return;
+      if (event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      // A cell editor, an open row menu or a listbox owns its own arrows.
+      if (target.closest(DATA_TABLE_TEXT_ENTRY_SELECTOR)) return;
+      const row = target.closest<HTMLElement>(DATA_TABLE_ROW_SELECTOR);
+      if (!row) return;
+
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        focusSearch();
+        return;
+      }
+
+      const host = gridHostRef.current;
+      if (!host) return;
+      const rows = Array.from(host.querySelectorAll<HTMLElement>(DATA_TABLE_ROW_SELECTOR));
+      const index = rows.indexOf(row);
+      if (index < 0) return;
+      const next = event.key === 'ArrowDown' ? rows[index + 1] : rows[index - 1];
+      if (next) {
+        event.preventDefault();
+        focusRow(next);
+        return;
+      }
+      // Off the TOP of the list: the find field is where the walk began.
+      // Off the BOTTOM, focus holds on the last row — the virtualizer may still
+      // be mounting what comes next, and throwing focus at nothing is worse
+      // than standing still.
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        focusSearch();
+      }
+    },
+    [gridHostRef, focusRow, focusSearch],
+  );
+
+  return { focusFirstRow, onBodyKeyDown };
+}
+
 export type { DataTableTab };
 
 export function DataTable<Row, K extends string, C extends LedgerGridColumnModel>({
@@ -1411,6 +1629,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   tabs,
   activeTab,
   onTabChange,
+  totalCount,
   dateMenu,
   onReorderColumn,
   onResizeColumn,
@@ -1511,6 +1730,11 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     if (next != null && next !== pageIndex) setPageIndex(next);
   }, [findScrollToKey, getRowId, orderGroupsByDate, pageIndex, pageSize]);
   const gridHostRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const { focusFirstRow, onBodyKeyDown } = useDataTableRowRoving({
+    gridHostRef,
+    searchInputRef,
+  });
 
   // Sortability is a property of the DESCRIPTOR, not of the page: TanStack's
   // `enableSorting` is already the surface's sort vocabulary, so reading it back
@@ -1605,6 +1829,18 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
 
   const filterChrome = filter ?? DATA_TABLE_FILTER_IDLE;
   const isNarrowed = Boolean(search.value) || Boolean(filterChrome.options.some((o) => o.active));
+  /**
+   * The server is still answering the CURRENT query text.
+   *
+   * Held as one flag rather than read twice, because it has to reach two
+   * places at once: the field's spinner, and the body's `loading` face. Only
+   * the second is a correctness fix — while a server-answered fetch is in
+   * flight the painted rows belong to the PREVIOUS query, so letting the empty
+   * branch run paints "no matches" for a record the server has not been asked
+   * about yet. A client-answered table can never be in this state: its filter
+   * is synchronous, so the flag is inert unless `answeredBy: 'server'`.
+   */
+  const searchPending = search.answeredBy === 'server' && search.pending === true;
 
   const stage = useDeskStageOptional();
   const exportInHeader = Boolean(
@@ -1719,7 +1955,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           value={search.value}
           onChange={search.onChange}
           placeholder={search.placeholder ?? 'Search'}
+          isSearching={searchPending}
+          onNavigateResults={focusFirstRow}
           inputRef={(el) => {
+            searchInputRef.current = el;
             if (!el) return;
             el.setAttribute('aria-label', search.placeholder ?? 'Search');
           }}
@@ -1786,6 +2025,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       <div
         ref={gridHostRef}
         {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
+        onKeyDown={onBodyKeyDown}
         className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col"
       >
         <NonlinearTableHost<Row, K, C>
@@ -1799,7 +2039,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           rows={rows}
           orderGroupsByDate={paged.order}
           getRowId={getRowId}
-          loading={loading}
+          loading={loading || searchPending}
           emptyMessage={emptyMessage}
           searchEmptyMessage={searchEmptyMessage}
           emptyState={emptyState}
@@ -1823,7 +2063,16 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         activeTab={activeTab}
         onTabChange={onTabChange}
         shown={paged.shown}
-        total={paged.total}
+        // `totalCount` was DECLARED and then dropped on the floor: the bar was
+        // handed `paged.total`, which counts the rows React is holding. On a
+        // client-held table those are the same number, which is why ~25 mounts
+        // passing `totalCount={rows.length}` never noticed. On a SERVER-paged
+        // one they are not: Tracking Exceptions hands over its
+        // `COUNT(*) OVER ()`, and the bar printed "200 rows" for a queue of
+        // twelve hundred — the same false claim about a set the client cannot
+        // see that the search filter made one layer up. The caller's number
+        // wins where it has one, because only the caller can know it.
+        total={totalCount ?? paged.total}
         selected={selectedCount}
         pager={{
           pageIndex: paged.pageIndex,

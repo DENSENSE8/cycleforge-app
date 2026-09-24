@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { History, Loader2, MapPin, Package } from '@/components/Icons';
 import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
@@ -15,45 +15,98 @@ interface PulseWorkspaceProps {
     unitId: string | null;
 }
 
+/**
+ * One unit's timeline, newest-first at the caller. `q` is answered by the
+ * ROUTE — `/api/inventory-events?q=` matches across four joined tables (the
+ * catalog title, the serial, both bin names, the actor), none of which a
+ * client-side pass over the mounted tracks could see.
+ *
+ * The `serial_unit_id` scope rides along even under a search because it is
+ * SEMANTIC: it is the unit the operator picked in the sidebar, not a page they
+ * fell off. The 200-row bound is what a search drops — the route opens to its
+ * ceiling when `q` is present, so sending `limit` there would be ignored.
+ */
+async function fetchUnitEvents(
+    unitId: string,
+    q: string,
+    signal: AbortSignal,
+): Promise<PulseEventRow[]> {
+    const params = new URLSearchParams({ serial_unit_id: unitId });
+    if (q) params.set('q', q);
+    else params.set('limit', '200');
+    const res = await fetch(`/api/inventory-events?${params}`, {
+        signal,
+        credentials: 'same-origin',
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const body = (await res.json()) as PulseEventsResponse;
+    return body.events ?? [];
+}
+
+/** The API may return either order; the timeline reads newest-first. */
+function newestFirst(rows: PulseEventRow[] | undefined): PulseEventRow[] {
+    return [...(rows ?? [])].sort(
+        (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
+    );
+}
+
 export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
-    const { data, isLoading, isError, error } = useQuery<PulseEventRow[]>({
-        queryKey: ['pulse-unit-events', unitId],
+    /*
+     * The find text is session-local and rides the FETCH KEY — the sidebar
+     * already owns `?open=`, and a half-typed filter is not a place to link to.
+     * `SearchField` debounces at 320ms, so this is the key as handed over.
+     */
+    const [query, setQuery] = useState('');
+    const q = query.trim();
+
+    const { data, isLoading, isFetching, isError, error } = useQuery<PulseEventRow[]>({
+        queryKey: ['pulse-unit-events', unitId, q],
         enabled: !!unitId,
-        queryFn: async ({ signal }) => {
-            const res = await fetch(`/api/inventory-events?serial_unit_id=${unitId}&limit=200`, {
-                signal,
-                credentials: 'same-origin',
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const body = (await res.json()) as PulseEventsResponse;
-            return body.events ?? [];
-        },
+        queryFn: ({ signal }) => fetchUnitEvents(String(unitId), q, signal),
+        placeholderData: (prev) => prev,
     });
 
-    // The API may return either order; sort newest-first for the timeline and to
-    // derive the unit's current identity from its latest event.
-    const events = useMemo(
-        () =>
-            [...(data ?? [])].sort(
-                (a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime(),
-            ),
-        [data],
-    );
-    const latest = events[0] ?? null;
+    /*
+     * The IDENTITY read, deliberately UNSEARCHED. The header answers "what is
+     * this unit and where is it" and the heading answers "how long is its
+     * chain" — both are facts about the UNIT, so deriving them from a filtered
+     * timeline would let typing in the find box rewrite the unit's serial,
+     * status and last known location. With no query this is the SAME cache key
+     * as the table's, so the ordinary case is still one request.
+     */
+    const { data: unitData } = useQuery<PulseEventRow[]>({
+        queryKey: ['pulse-unit-events', unitId, ''],
+        enabled: !!unitId,
+        queryFn: ({ signal }) => fetchUnitEvents(String(unitId), '', signal),
+    });
+
+    const events = useMemo(() => newestFirst(data), [data]);
+    const unitEvents = useMemo(() => newestFirst(unitData), [unitData]);
+    const latest = unitEvents[0] ?? null;
     const currentStatus = latest?.next_status ?? latest?.prev_status ?? null;
-    const currentLocation = events.find((e) => e.bin_name)?.bin_name ?? null;
+    const currentLocation = unitEvents.find((e) => e.bin_name)?.bin_name ?? null;
     const serial = latest?.serial_number ?? null;
     const sku = latest?.sku ?? null;
-    const productTitle = events.find((e) => e.product_title)?.product_title ?? null;
+    const productTitle = unitEvents.find((e) => e.product_title)?.product_title ?? null;
     const heroTitle = productTitle || serial || `Unit #${unitId}`;
 
     // Above the early returns: the ledger's feed is a hook, and a hook may not
     // sit behind a conditional.
+    const search = useMemo(
+        () => ({
+            value: query,
+            onChange: setQuery,
+            placeholder: "Filter this unit's events…",
+            answeredBy: 'server' as const,
+            pending: isFetching,
+        }),
+        [query, isFetching],
+    );
     const sheet = useInventoryEventsSpreadsheet({
         events,
         loading: isLoading,
         emptyMessage: 'No recorded events for this unit yet.',
-        searchPlaceholder: "Filter this unit's events…",
+        search,
     });
 
     if (!unitId) {
@@ -139,7 +192,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                 {/* Chain of custody */}
                 <h2 className="mb-3 flex items-center gap-2 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">
                     <History className="h-4 w-4" /> Chain of custody
-                    <span className="font-semibold text-text-faint">· {events.length} events</span>
+                    <span className="font-semibold text-text-faint">· {unitEvents.length} events</span>
                 </h2>
 
                 <div className="flex min-h-0 flex-1 flex-col">

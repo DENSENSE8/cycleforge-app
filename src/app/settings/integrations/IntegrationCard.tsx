@@ -22,6 +22,7 @@ import { AmazonConnectModal } from './AmazonConnectModal';
 import { VaultConnectSheet } from './VaultConnectSheet';
 import { EbayConnectPopover, EbayAccountNameChip } from './EbayAccountPopover';
 import { IntegrationConnectSuccess } from './IntegrationConnectSuccess';
+import { ZohoReceiveBackfillControl } from './ZohoReceiveBackfillControl';
 
 const PILL: Record<ProviderState['status'], { dot: string; text: string; bg: string; label: string }> = {
   connected: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
@@ -379,6 +380,13 @@ export function IntegrationCard({
                 )}
               </>
             ) : null}
+
+            {/*
+              Backfill sits LEFT of Check because it is the verb that changes
+              something; Check only reports. Zoho-only: it is the inventory
+              backend, and the purchase-receive push is its backlog alone.
+            */}
+            {def.key === 'zoho' && connected && <ZohoReceiveBackfillControl />}
 
             {def.healthPath && (
               <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runHealth}>Check</Button>

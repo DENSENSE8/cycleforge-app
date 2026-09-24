@@ -21,13 +21,27 @@
  * (`PulseView`) and one unit's chain of custody (`PulseWorkspace`). A third
  * feed is a `rows` prop, not a table.
  *
- * ## Why sort and search are local state here
+ * ## Why sort is local state here — and when the find text is not
  *
- * Both mounts are PANES, not routes: `PulseWorkspace` shows one unit's history
- * beside the sidebar selection that `?open=` already owns, and two ledgers on
- * one screen writing the same `?sort=` would fight. Durability in the URL is
- * the rule for a lane that IS a page (see `useQueueDisplaySort`); it is not a
- * rule for a pane, and a shared param would be the fork.
+ * Sort stays local in every mount: these are PANES as often as routes (the SKU
+ * detail page stacks five of them, and two ledgers on one screen writing the
+ * same `?sort=` would fight). Durability in the URL is the rule for a lane that
+ * IS a page (see `useQueueDisplaySort`); it is not a rule for a pane, and a
+ * shared param would be the fork.
+ *
+ * The find text splits on one question: IS THIS FEED THE WHOLE ANSWER? The SKU
+ * detail timeline and the admin's recent-events strip hold all of their rows,
+ * pass no {@link search}, and get the local box over the feed in hand.
+ *
+ * The three WINDOWED mounts — `/inventory/events` (one offset page of 100 out
+ * of thousands), the Ledger's last-50 org feed (`PulseView`) and one unit's
+ * last-200 chain of custody (`PulseWorkspace`) — pass the whole
+ * `DataTableSearch` instead and carry the text on their own fetch key. The
+ * `answeredBy: 'server'` flag in that object is load-bearing twice over:
+ * without it the engine re-filters a page it cannot see past, AND it re-filters
+ * against the MOUNTED tracks only — which would delete the hits
+ * `/api/inventory-events?q=` finds in the joined tables (the catalog title, the
+ * serial, both bin names, the actor), none of which every layout paints.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -36,6 +50,7 @@ import {
   useCompoundSpreadsheet,
   type CompoundSpreadsheetFeed,
 } from '@/components/tables/useCompoundSpreadsheet';
+import type { DataTableSearch } from '@/components/tables/DataTable';
 import { resolveInventoryEventsSlotValue } from '@/lib/tables/field-catalog/inventory-events-resolve';
 import { inventoryEventCompoundView } from '@/lib/inventory/inventory-events-row-adapter';
 import type { PulseEventRow } from '@/components/inventory/types';
@@ -52,6 +67,20 @@ import { useInventoryEventsTableLayout } from './useInventoryEventsTableLayout';
 export interface UseInventoryEventsSpreadsheetOptions {
   /** The feed. Already ordered by the caller; a header click re-orders it. */
   events: readonly PulseEventRow[];
+  /**
+   * A caller-owned find box, for a mount whose feed is ONE WINDOW of a larger
+   * set. Pass the whole {@link DataTableSearch}, not a three-field subset: the
+   * point of this seam is `answeredBy: 'server'`, and a narrower type would
+   * silently drop the flag that stops the engine re-filtering a set it cannot
+   * see all of.
+   *
+   * Omitted by the two mounts whose feed is already complete in the browser —
+   * the SKU detail timeline and the `/inventory/health` recent-events strip —
+   * which get the local box below; see the module docblock.
+   * `searchPlaceholder` is that local box's wording and is ignored when this is
+   * passed, because the caller's object carries its own.
+   */
+  search?: DataTableSearch;
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
@@ -59,6 +88,7 @@ export interface UseInventoryEventsSpreadsheetOptions {
 
 export function useInventoryEventsSpreadsheet({
   events,
+  search: searchOverride,
   loading = false,
   emptyMessage = 'No inventory events yet.',
   searchPlaceholder = 'Filter activity…',
@@ -85,10 +115,11 @@ export function useInventoryEventsSpreadsheet({
     [],
   );
 
-  const search = useMemo(
+  const localSearch = useMemo<DataTableSearch>(
     () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
     [query, searchPlaceholder],
   );
+  const search = searchOverride ?? localSearch;
 
   return useCompoundSpreadsheet<
     PulseEventRow,

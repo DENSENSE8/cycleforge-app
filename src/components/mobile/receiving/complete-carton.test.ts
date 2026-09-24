@@ -4,7 +4,6 @@ import {
   COMPLETE_CARTON_GENERIC_BLOCKER,
   COMPLETE_CARTON_IDLE,
   completeCartonRequestBody,
-  foldSyncVerdict,
   mapCompleteCartonResponse,
 } from '@/components/mobile/receiving/complete-carton';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -93,9 +92,9 @@ describe('mapCompleteCartonResponse', () => {
 
   it('§4: a waived receive (200 + warnings) completes, but is NOT a clean success', () => {
     // The third outcome. The receive happened, so the phase is `done` and the
-    // sync bookkeeping is unchanged — but `waiver` is set, because the carton
-    // is received carrying an open exception and the bench is the last place
-    // that can still say so.
+    // counts are unchanged — but `waiver` is set, because the carton is
+    // received carrying an open exception and the bench is the last place that
+    // can still say so.
     const out = mapCompleteCartonResponse(200, {
       success: true,
       updated_count: 2,
@@ -113,8 +112,6 @@ describe('mapCompleteCartonResponse', () => {
     assert.equal(out.error, null);
     assert.deepEqual(out.blockers, []);
     assert.equal(out.updatedCount, 2);
-    assert.deepEqual(out.lineIds, [11, 12]);
-    assert.equal(out.awaitsSync, true);
     assert.deepEqual(out.waiver, {
       reasonCode: 'PHOTO_WAIVED_UPLOAD_FAILED',
       blockers: ['carton needs an arrival package photo'],
@@ -186,74 +183,9 @@ describe('mapCompleteCartonResponse', () => {
 
   it('a verify/replay pass still succeeds with no line count', () => {
     // mark-received-po returns updated_count: 0 when every line was already
-    // DONE locally and it only had to verify against Zoho.
+    // DONE locally and it only had to verify the carton.
     const out = mapCompleteCartonResponse(200, { success: true, updated_count: 0 });
     assert.equal(out.phase, 'done');
     assert.equal(out.updatedCount, 0);
-  });
-
-  it('collects the line ids the sync will publish verdicts for', () => {
-    const out = mapCompleteCartonResponse(200, {
-      success: true,
-      receive_intent: 'zoho_receive',
-      updated_count: 2,
-      receiving_lines: [{ id: 11 }, { id: 12 }],
-    });
-    assert.deepEqual(out.lineIds, [11, 12]);
-    assert.equal(out.awaitsSync, true);
-  });
-
-  it('a local receive awaits no verdict — nothing external will publish', () => {
-    // The unfound lane never calls the inventory provider, so waiting on a
-    // verdict would spin forever.
-    const out = mapCompleteCartonResponse(200, {
-      success: true,
-      receive_intent: 'local_receive',
-      receiving_lines: [{ id: 11 }],
-    });
-    assert.equal(out.phase, 'done');
-    assert.equal(out.awaitsSync, false);
-  });
-
-  it('a receive that touched no lines awaits no verdict', () => {
-    const out = mapCompleteCartonResponse(200, {
-      success: true,
-      receive_intent: 'zoho_receive',
-      receiving_lines: [],
-    });
-    assert.equal(out.awaitsSync, false);
-  });
-});
-
-describe('foldSyncVerdict', () => {
-  const lines = [11, 12];
-
-  it('ignores events with no verdict, and the skipped verdict', () => {
-    assert.equal(foldSyncVerdict('pending', lines, { rowId: 11 }), 'pending');
-    assert.equal(foldSyncVerdict('pending', lines, { rowId: 11, zohoReceive: 'skipped' }), 'pending');
-    assert.equal(foldSyncVerdict('pending', lines, null), 'pending');
-  });
-
-  it('ignores a verdict for a line this receive did not touch', () => {
-    assert.equal(foldSyncVerdict('pending', lines, { rowId: 99, zohoReceive: 'failed' }), 'pending');
-  });
-
-  it('accepts a verdict for one of our lines (rowId arrives as a string)', () => {
-    assert.equal(foldSyncVerdict('pending', lines, { rowId: '11', zohoReceive: 'ok' }), 'ok');
-    assert.equal(foldSyncVerdict('pending', lines, { rowId: 12, zohoReceive: 'failed' }), 'failed');
-  });
-
-  it('failure is sticky — a later ok must not paper over a failed line', () => {
-    // A carton gets one verdict per line. First-wins would report a green sync
-    // for a carton that had a line fail.
-    const afterFail = foldSyncVerdict('pending', lines, { rowId: 11, zohoReceive: 'failed' });
-    assert.equal(afterFail, 'failed');
-    assert.equal(foldSyncVerdict(afterFail, lines, { rowId: 12, zohoReceive: 'ok' }), 'failed');
-  });
-
-  it('a failed line still wins when an ok arrived first', () => {
-    const afterOk = foldSyncVerdict('pending', lines, { rowId: 11, zohoReceive: 'ok' });
-    assert.equal(afterOk, 'ok');
-    assert.equal(foldSyncVerdict(afterOk, lines, { rowId: 12, zohoReceive: 'failed' }), 'failed');
   });
 });

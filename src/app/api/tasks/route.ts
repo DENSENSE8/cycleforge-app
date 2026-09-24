@@ -153,6 +153,12 @@ export const POST = withAuth(
  * opt-in rather than the default because the desk an operator opens is THEIR
  * desk, and a screen that opens on everyone's work is a screen nobody acts on.
  *
+ * `?q=` is the find text of whichever surface is reading (the completed-tasks
+ * report today). It is answered in SQL by `listTaskDeskRows` rather than in the
+ * browser, because the page the client holds is a WINDOW: a substring pass over
+ * it can only ever find tasks that already arrived, and it re-narrows the
+ * answer to the facts the mounted columns happen to paint.
+ *
  * No `recordAudit`: reads are covered by the route-level access log, and an
  * audit row per desk refresh would bury the writes it exists to surface.
  */
@@ -161,6 +167,7 @@ const QuerySchema = z.object({
   assignee: z.union([z.literal('me'), z.literal('all'), z.string().regex(/^\d+$/)]).optional(),
   priority: z.enum(['urgent', 'normal']).optional(),
   limit: z.string().regex(/^\d+$/).optional(),
+  q: z.string().max(200).optional(),
 });
 
 export const GET = withAuth(
@@ -188,6 +195,7 @@ export const GET = withAuth(
           assigneeStaffId,
           urgency: query.priority ?? null,
           limit: query.limit ? Number(query.limit) : undefined,
+          q: query.q ?? null,
         },
         taskDeskDbDeps,
       );

@@ -201,6 +201,13 @@ export function OrderExceptionsWorkbench() {
     records,
     loading: query.isLoading,
     searchValue: search,
+    // The find text IS the fetch key (line 147) and `?q=` is answered over the
+    // whole held set before `LIMIT 200` (order-exceptions.ts:250-259), so
+    // `records` ARE the matches. The second pass had a worse input than that:
+    // the fetch is keyed on `debounced` while this pass reads the live `search`,
+    // so every keystroke inside the 250ms window re-judged a correct answer for
+    // the PREFIX against the newer text and emptied the grid under the operator.
+    searchAnsweredBy: 'server',
     onOpenRecord: openRecord,
     onClearSearch: () => patchParams({ search: null }),
     emptyMessage: 'Nothing blocked — every order has what it needs to ship.',
@@ -280,6 +287,13 @@ export function OrderExceptionsWorkbench() {
               value: search,
               onChange: (value) => patchParams({ search: value || null }),
               placeholder: 'Search order #, item #, SKU or title…',
+              // Same declaration as `searchAnsweredBy` above — the engine has to
+              // stand down too, or it re-runs the identical narrowing pass one
+              // layer down. `pending` is true through the debounce as well as the
+              // request, because until `debounced` catches up no fetch for THIS
+              // text exists yet and "no held order found" would be a guess.
+              answeredBy: 'server',
+              pending: query.isFetching || search.trim() !== debounced.trim(),
             }}
           />
         </div>

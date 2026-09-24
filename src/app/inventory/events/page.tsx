@@ -1,6 +1,7 @@
 import { requirePermission } from '@/lib/auth/page-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { escapeLike } from '@/lib/sql-like';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
@@ -24,7 +25,18 @@ export const dynamic = 'force-dynamic';
  *   since        ISO date (YYYY-MM-DD) — inclusive lower bound
  *   until        ISO date — exclusive upper bound (so "today" = today+1)
  *   actor        staff.id (numeric)
+ *   q            the table's find box — substring, over every painted fact
  *   page         zero-indexed page number
+ *
+ * `?q=` is the FETCH KEY for the client island's find box (it writes the param
+ * through `useOptimisticUrlParams` and declares the search server-answered).
+ * Until this loader spent it, the box filtered the HUNDRED rows one offset page
+ * happened to hold, and said so in its placeholder: this tenant has 8.8k
+ * events, `PUTAWAY` first appears at rank 2266 and a "Supplemental serial" note
+ * at rank 7450, so the desk answered "no events match" for thousands of records
+ * that exist. The predicate in {@link loadEvents} runs over the same eleven
+ * facts `inventory-events-resolve.ts` paints, and the COUNT beside it runs over
+ * the matched set so the pager cannot offer a page with nothing on it.
  *
  * Tenant scoping: every read goes through `tenantQuery(orgId, …)` with an
  * explicit `organization_id` predicate, and `orgId` comes from the auth ctx.
@@ -119,6 +131,7 @@ async function loadEvents(opts: {
   actorId: number | null;
   since: string | null;
   until: string | null;
+  query: string | null;
   page: number;
   orgId: OrgId;
 }): Promise<{ rows: EventRow[]; total: number }> {
@@ -153,10 +166,57 @@ async function loadEvents(opts: {
     params.push(opts.until);
     filters.push(`ie.occurred_at < ($${params.length}::date + INTERVAL '1 day')`);
   }
+  if (opts.query) {
+    // escapeLike armours the pattern; backslash is LIKE's default escape char,
+    // so no ESCAPE clause is needed (see `@/lib/sql-like`).
+    params.push(`%${escapeLike(opts.query)}%`);
+    const like = `$${params.length}`;
+    // The facts `inventory-events-resolve.ts` paints, and only those: the SKU
+    // cell prints "SKU · title" so both halves have to answer, the bin and
+    // status cells print a `prev → next` pair so both ends do, and the notes
+    // line is searched raw (the resolver's "Supplemental serial X" rewrite is a
+    // display face; the stored text is what an operator pasted from).
+    filters.push(`(
+           ie.event_type                    ILIKE ${like}
+        OR COALESCE(ie.station, '')         ILIKE ${like}
+        OR COALESCE(ie.sku, '')             ILIKE ${like}
+        OR COALESCE(sc.product_title, '')   ILIKE ${like}
+        OR COALESCE(su.serial_number, '')   ILIKE ${like}
+        OR COALESCE(ie.prev_status, '')     ILIKE ${like}
+        OR COALESCE(ie.next_status, '')     ILIKE ${like}
+        OR COALESCE(l.name, '')             ILIKE ${like}
+        OR COALESCE(pl.name, '')            ILIKE ${like}
+        OR COALESCE(s.name, '')             ILIKE ${like}
+        OR COALESCE(ie.notes, '')           ILIKE ${like}
+      )`);
+  }
   const whereSql = `WHERE ${filters.join(' AND ')}`;
 
+  /**
+   * The five enrichment joins, as ONE string, because the count and the page
+   * must read the same FROM: five of the eleven facts the find predicate
+   * matches live on a joined table, and a count that omitted them would either
+   * fail to parse or answer for a different set than the rows. Every join is
+   * on a unique key (`staff`/`locations`/`serial_units` by id,
+   * `sku_catalog` by `(organization_id, sku)`), so none of them fans a row out
+   * and `COUNT(*)` stays a count of events.
+   */
+  const joinSql = `
+        LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $1
+        LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = $1
+        LEFT JOIN locations pl ON pl.id = ie.prev_bin_id AND pl.organization_id = $1
+        LEFT JOIN serial_units su ON su.id = ie.serial_unit_id AND su.organization_id = $1
+        LEFT JOIN sku_catalog sc ON sc.sku = ie.sku AND sc.organization_id = $1`;
+
   try {
-    const countSql = `SELECT COUNT(*)::int AS n FROM inventory_events ie ${whereSql}`;
+    // Counted over the MATCHED set — this is the number the header prints and
+    // the number `totalPages` divides, so the pager offers a "next →" only when
+    // a next page of MATCHES exists. Without the find predicate there is
+    // nothing on a joined table to filter by, so the count skips the joins and
+    // stays the single-table scan it has always been.
+    const countSql = `SELECT COUNT(*)::int AS n FROM inventory_events ie${
+      opts.query ? joinSql : ''
+    } ${whereSql}`;
     const countParams = [...params];
     const countRes = await tenantQuery<{ n: number }>(opts.orgId, countSql, countParams);
     const total = countRes.rows[0]?.n ?? 0;
@@ -174,12 +234,7 @@ async function loadEvents(opts: {
              ie.bin_id, l.name AS bin_name,
              ie.prev_bin_id, pl.name AS prev_bin_name,
              ie.notes, ie.payload
-        FROM inventory_events ie
-        LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $1
-        LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = $1
-        LEFT JOIN locations pl ON pl.id = ie.prev_bin_id AND pl.organization_id = $1
-        LEFT JOIN serial_units su ON su.id = ie.serial_unit_id AND su.organization_id = $1
-        LEFT JOIN sku_catalog sc ON sc.sku = ie.sku AND sc.organization_id = $1
+        FROM inventory_events ie${joinSql}
         ${whereSql}
        ORDER BY ie.occurred_at DESC, ie.id DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -227,6 +282,7 @@ export default async function EventsExplorerPage({
     actor?: string;
     since?: string;
     until?: string;
+    q?: string;
     page?: string;
   }>;
 }) {
@@ -243,11 +299,17 @@ export default async function EventsExplorerPage({
   const actorId = parseInteger(params.actor);
   const since = parseISODate(params.since);
   const until = parseISODate(params.until);
+  /**
+   * The table's find box, verbatim. Whitespace-only is NO query, not a query
+   * for spaces — the box is cleared by deleting its text, and a lone space left
+   * behind must not empty the log.
+   */
+  const query = (params.q ?? '').trim() || null;
   const page = Math.max(0, parseInteger(params.page) ?? 0);
 
   const [staff, { rows, total }] = await Promise.all([
     loadStaff(orgId),
-    loadEvents({ eventType, station, sku, unitId, actorId, since, until, page, orgId }),
+    loadEvents({ eventType, station, sku, unitId, actorId, since, until, query, page, orgId }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -259,9 +321,12 @@ export default async function EventsExplorerPage({
     actor: actorId != null ? String(actorId) : null,
     since,
     until,
+    // Carried by prev/next: a pager that dropped the find text would walk the
+    // UNFILTERED log from page two on, under a header still counting matches.
+    q: query,
   };
   const isFiltering = Boolean(
-    eventType || station || sku || unitId != null || actorId != null || since || until,
+    eventType || station || sku || unitId != null || actorId != null || since || until || query,
   );
   const events = rows.map(toPulseEvent);
 
@@ -311,6 +376,13 @@ export default async function EventsExplorerPage({
             <label htmlFor="until" className="block text-xs font-medium text-text-muted">Until (inclusive)</label>
             <input id="until" name="until" type="date" defaultValue={until ?? ''} className="mt-1 block w-full rounded-md border border-border-default px-2 py-1.5 text-sm" />
           </div>
+          {/*
+            `?q=` rides a HIDDEN input because a GET form submits its own fields
+            and nothing else: without it, pressing Apply would silently empty the
+            table's find box, which is a param this form does not own. Clear
+            drops it along with everything else — it is the reset.
+          */}
+          <input type="hidden" name="q" value={query ?? ''} />
           <div className="flex items-end gap-2">
             <Button variant="primary" size="sm" type="submit">
               Apply

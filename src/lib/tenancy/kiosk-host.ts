@@ -279,10 +279,10 @@ const KIOSK_HOST_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/visit(?:$|\/)/,
   /^\/api\/kiosk\/repair(?:$|\/)/,
   /^\/api\/kiosk\/sales(?:$|\/)/,
-  /^\/api\/kiosk\/settings(?:$|\/)/,
   /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/,
-  /^\/api\/kiosk\/pickup(?:$|\/)/,
   /^\/api\/kiosk\/session(?:$|\/)/,
+  // Callers: useKioskCustomerMatch. API: GET /api/kiosk/customer. User: "typing a phone number looks up an existing customer"
+  /^\/api\/kiosk\/customer(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,

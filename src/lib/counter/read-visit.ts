@@ -69,10 +69,16 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { normalizePSTTimestamp } from '@/utils/date';
 import type { KioskCartLine, KioskLinePayload } from '@/lib/kiosk/cart-line';
 import {
+  PRICE_ADJUST_KINDS,
   serviceLineCents,
   type CounterTransactionStatus,
+  type PriceAdjustKind,
 } from './counter-transaction-types';
 import type { CounterPaymentState } from './session-events';
+
+function isPriceAdjustKind(value: unknown): value is PriceAdjustKind {
+  return (PRICE_ADJUST_KINDS as readonly unknown[]).includes(value);
+}
 
 // ── The result shape ────────────────────────────────────────────────────────
 
@@ -105,6 +111,15 @@ export interface CounterVisitDevice {
   createdAt: string | null;
 }
 
+/** A line price the catalog did not set, as History and the receipt print it. */
+export interface CounterVisitLineAdjustment {
+  kind: PriceAdjustKind;
+  /** The catalog price it was changed from; null for a custom amount. */
+  originalUnitAmountCents: number | null;
+  reason: string;
+  staffName: string | null;
+}
+
 export interface CounterVisitLine {
   /** The client-minted line id (counter_session_lines.line_uuid). */
   id: string;
@@ -124,6 +139,10 @@ export interface CounterVisitLine {
   voidReason: string | null;
   voidedByStaffId: number | null;
   voidedByStaffName: string | null;
+  /** `Adjusted from $5.59 · Price match`, `Comp · Goodwill`, `Custom`. Null = catalog price. */
+  adjustment: CounterVisitLineAdjustment | null;
+  /** The item note typed at the counter. */
+  note: string | null;
 }
 
 export interface CounterVisitSquareTransaction {
@@ -156,7 +175,7 @@ export interface CounterVisitPayment {
 
 export interface CounterVisitAuditEntry {
   id: number;
-  /** One of AUDIT_ACTION.COUNTER_{LINE_PRICE_OVERRIDE,LINE_VOID,SESSION_SUBMIT,TERMINAL_CHECKOUT}. */
+  /** One of VISIT_AUDIT_ACTIONS: price override, comp, void, submit, terminal checkout. */
   action: string;
   createdAt: string | null;
   actorStaffId: number | null;
@@ -164,7 +183,7 @@ export interface CounterVisitAuditEntry {
   actorRole: string | null;
   before: unknown;
   after: unknown;
-  /** audit_logs.metadata.note, when the actor left one (e.g. a void reason). */
+  /** Why — `metadata.note`, else `metadata.reason_code` (a kiosk adjustment / comp / void reason). */
   note: string | null;
 }
 
@@ -240,13 +259,23 @@ export interface ReadVisitDeps {
     orgId: OrgId,
     counterTransactionId: number,
   ): Promise<CounterVisitSquareTransaction | null>;
-  /** The money-moving/finality audit rows for this visit's session(s), in one query. Empty input → empty output, no round trip. */
-  findAuditTrail(tx: ReadVisitTx, orgId: OrgId, sessionIds: number[]): Promise<CounterVisitAuditEntry[]>;
+  /**
+   * The money-moving/finality audit rows for this visit, in one query: rows
+   * filed on its session(s) by the desk, and rows filed on the visit itself by
+   * the kiosk submit (a price adjustment, a comp, a void — the tablet has no
+   * server session to file them on).
+   */
+  findAuditTrail(
+    tx: ReadVisitTx,
+    orgId: OrgId,
+    scope: { sessionIds: number[]; counterTransactionId: number },
+  ): Promise<CounterVisitAuditEntry[]>;
 }
 
-/** The four counter-session actions this reader surfaces. Everything else on `counter_session` (claim, release, customer edits) is not money or finality — see AUDIT_ACTION's own comment. */
+/** The counter actions this reader surfaces. Everything else on `counter_session` (claim, release, customer edits) is not money or finality — see AUDIT_ACTION's own comment. */
 const VISIT_AUDIT_ACTIONS: readonly string[] = [
   AUDIT_ACTION.COUNTER_LINE_PRICE_OVERRIDE,
+  AUDIT_ACTION.COUNTER_LINE_COMP,
   AUDIT_ACTION.COUNTER_LINE_VOID,
   AUDIT_ACTION.COUNTER_SESSION_SUBMIT,
   AUDIT_ACTION.COUNTER_TERMINAL_CHECKOUT,
@@ -260,11 +289,12 @@ function pstOrNull(value: unknown): string | null {
   return normalizePSTTimestamp(value as string | Date | null | undefined);
 }
 
-/** audit_logs.metadata.note, defensively — metadata is jsonb and its shape is not enforced. */
+/** audit_logs.metadata.note, else reason_code, defensively — metadata is jsonb and its shape is not enforced. */
 function extractNote(metadata: unknown): string | null {
   if (!metadata || typeof metadata !== 'object') return null;
-  const note = (metadata as Record<string, unknown>).note;
-  return typeof note === 'string' ? note : null;
+  const m = metadata as Record<string, unknown>;
+  if (typeof m.note === 'string') return m.note;
+  return typeof m.reason_code === 'string' ? m.reason_code : null;
 }
 
 const defaultDeps: ReadVisitDeps = {
@@ -396,49 +426,84 @@ const defaultDeps: ReadVisitDeps = {
         ORDER BY l.sort_index ASC, l.id ASC`,
       [orgId, sessionId],
     );
-    return res.rows.map((row) => ({
-      id: String(row.line_uuid),
-      type: row.type as KioskCartLine['type'],
-      title: (row.title as string | null) ?? '',
-      quantity: Number(row.quantity ?? 0),
-      unitAmountCents: Number(row.unit_amount_cents ?? 0),
-      payload: (row.payload ?? {}) as KioskLinePayload,
-      sortIndex: Number(row.sort_index ?? 0),
-      voidedAt: pstOrNull(row.voided_at),
-      voidReason: (row.void_reason as string | null) ?? null,
-      voidedByStaffId: row.voided_by_staff_id == null ? null : Number(row.voided_by_staff_id),
-      voidedByStaffName: (row.voided_by_staff_name as string | null) ?? null,
-    }));
+    return res.rows.map((row) => {
+      const payload = (row.payload ?? {}) as KioskLinePayload & {
+        priceAdjustment?: (CounterVisitLineAdjustment & { staffName?: string | null }) | null;
+        note?: string | null;
+      };
+      const a = payload.priceAdjustment;
+      return {
+        id: String(row.line_uuid),
+        type: row.type as KioskCartLine['type'],
+        title: (row.title as string | null) ?? '',
+        quantity: Number(row.quantity ?? 0),
+        unitAmountCents: Number(row.unit_amount_cents ?? 0),
+        payload,
+        sortIndex: Number(row.sort_index ?? 0),
+        voidedAt: pstOrNull(row.voided_at),
+        voidReason: (row.void_reason as string | null) ?? null,
+        voidedByStaffId: row.voided_by_staff_id == null ? null : Number(row.voided_by_staff_id),
+        voidedByStaffName: (row.voided_by_staff_name as string | null) ?? null,
+        adjustment:
+          a && isPriceAdjustKind(a.kind)
+            ? {
+                kind: a.kind,
+                originalUnitAmountCents: a.originalUnitAmountCents ?? null,
+                reason: String(a.reason ?? ''),
+                staffName: a.staffName ?? null,
+              }
+            : null,
+        note: typeof payload.note === 'string' && payload.note.trim() ? payload.note.trim() : null,
+      };
+    });
   },
 
   async findTransactionLines(tx, orgId, counterTransactionId) {
     // Mirror of findLines over counter_transaction_lines. No void columns —
     // these lines are written once, atomically with the header, and a direct
     // kiosk submit has no staff session to void from; a refund is a new visit.
+    // (A line voided BEFORE submit never reaches this table; its audit row is
+    // on the visit — see findAuditTrail.)
     const res = await asClient(tx).query<Record<string, unknown>>(
-      `SELECT line_uuid, line_type, title, sku, variation_id, quantity,
-              unit_amount_cents, sort_index
-         FROM counter_transaction_lines
-        WHERE organization_id = $1 AND counter_transaction_id = $2
-        ORDER BY sort_index ASC, id ASC`,
+      `SELECT l.line_uuid, l.line_type, l.title, l.sku, l.variation_id, l.quantity,
+              l.unit_amount_cents, l.sort_index, l.original_unit_amount_cents,
+              l.price_adjust_kind, l.price_adjust_reason, l.note,
+              st.name AS price_adjusted_by_staff_name
+         FROM counter_transaction_lines l
+         LEFT JOIN staff st ON st.id = l.price_adjusted_by_staff_id
+        WHERE l.organization_id = $1 AND l.counter_transaction_id = $2
+        ORDER BY l.sort_index ASC, l.id ASC`,
       [orgId, counterTransactionId],
     );
-    return res.rows.map((row) => ({
-      id: String(row.line_uuid),
-      type: String(row.line_type) as KioskCartLine['type'],
-      title: (row.title as string | null) ?? '',
-      quantity: Number(row.quantity ?? 0),
-      unitAmountCents: Number(row.unit_amount_cents ?? 0),
-      payload: {
-        variationId: (row.variation_id as string | null) ?? null,
-        sku: (row.sku as string | null) ?? '',
-      } as KioskLinePayload,
-      sortIndex: Number(row.sort_index ?? 0),
-      voidedAt: null,
-      voidReason: null,
-      voidedByStaffId: null,
-      voidedByStaffName: null,
-    }));
+    return res.rows.map((row) => {
+      const kind = row.price_adjust_kind;
+      return {
+        id: String(row.line_uuid),
+        type: String(row.line_type) as KioskCartLine['type'],
+        title: (row.title as string | null) ?? '',
+        quantity: Number(row.quantity ?? 0),
+        unitAmountCents: Number(row.unit_amount_cents ?? 0),
+        payload: {
+          variationId: (row.variation_id as string | null) ?? null,
+          sku: (row.sku as string | null) ?? '',
+        } as KioskLinePayload,
+        sortIndex: Number(row.sort_index ?? 0),
+        voidedAt: null,
+        voidReason: null,
+        voidedByStaffId: null,
+        voidedByStaffName: null,
+        adjustment: isPriceAdjustKind(kind)
+          ? {
+              kind,
+              originalUnitAmountCents:
+                row.original_unit_amount_cents == null ? null : Number(row.original_unit_amount_cents),
+              reason: (row.price_adjust_reason as string | null) ?? '',
+              staffName: (row.price_adjusted_by_staff_name as string | null) ?? null,
+            }
+          : null,
+        note: (row.note as string | null) ?? null,
+      };
+    });
   },
 
   async findSquareTransaction(tx, orgId, counterTransactionId) {
@@ -468,19 +533,27 @@ const defaultDeps: ReadVisitDeps = {
     };
   },
 
-  async findAuditTrail(tx, orgId, sessionIds) {
-    if (sessionIds.length === 0) return [];
+  async findAuditTrail(tx, orgId, { sessionIds, counterTransactionId }) {
     const res = await asClient(tx).query<Record<string, unknown>>(
       `SELECT a.id, a.action, a.created_at, a.actor_staff_id, st.name AS actor_staff_name,
               a.actor_role, a.before_data, a.after_data, a.metadata
          FROM audit_logs a
          LEFT JOIN staff st ON st.id = a.actor_staff_id
         WHERE a.organization_id = $1
-          AND a.entity_type = $2
-          AND a.entity_id = ANY($3::text[])
+          AND (
+            (a.entity_type = $2 AND a.entity_id = ANY($3::text[]))
+            OR (a.entity_type = $5 AND a.entity_id = $6)
+          )
           AND a.action = ANY($4::text[])
         ORDER BY a.created_at ASC, a.id ASC`,
-      [orgId, AUDIT_ENTITY.COUNTER_SESSION, sessionIds.map(String), VISIT_AUDIT_ACTIONS],
+      [
+        orgId,
+        AUDIT_ENTITY.COUNTER_SESSION,
+        sessionIds.map(String),
+        VISIT_AUDIT_ACTIONS,
+        AUDIT_ENTITY.COUNTER_TRANSACTION,
+        String(counterTransactionId),
+      ],
     );
     return res.rows.map((row) => ({
       id: Number(row.id),
@@ -532,7 +605,10 @@ export async function loadCounterVisit(
       ? await deps.findLines(tx, orgId, session.sessionId)
       : await deps.findTransactionLines(tx, orgId, header.id);
 
-    const auditTrail = await deps.findAuditTrail(tx, orgId, session ? [session.sessionId] : []);
+    const auditTrail = await deps.findAuditTrail(tx, orgId, {
+      sessionIds: session ? [session.sessionId] : [],
+      counterTransactionId: header.id,
+    });
 
     return {
       id: header.id,

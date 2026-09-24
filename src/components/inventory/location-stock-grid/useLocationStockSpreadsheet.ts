@@ -24,7 +24,10 @@
  *
  * SEARCH stays the caller's, because the page owns the URL key it writes and
  * the room funnel narrows the same list from the same place — the chrome half
- * of the split `useCompoundSpreadsheet` documents.
+ * of the split `useCompoundSpreadsheet` documents. On `/inventory/stock` that
+ * caller hands down a SERVER-answered search (`answeredBy: 'server'`): the
+ * feed is windowed, so the rows it passes are already the answer and the
+ * engine's own substring pass stands down.
  */
 
 import { useMemo } from 'react';
@@ -32,6 +35,7 @@ import {
   useCompoundSpreadsheet,
   type CompoundSpreadsheetFeed,
 } from '@/components/tables/useCompoundSpreadsheet';
+import type { DataTableSearch } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import {
   locationStockRowId,
@@ -57,13 +61,19 @@ import { LOCATION_STOCK_SELECTION_SCOPE } from './useLocationStockSelection';
 
 export interface UseLocationStockSpreadsheetOptions {
   /**
-   * The rows to paint — ALREADY narrowed by the room funnel. The search box is
-   * the engine's (it matches every fact the operator can read off a row); the
-   * room selection is a facet the page owns, so it arrives pre-applied.
+   * The rows to paint — ALREADY narrowed by the room funnel, and already
+   * MATCHED by the caller's search when that search is server-answered.
    */
   rows: readonly LocationStockTableRow[];
-  /** Caller-owned so the page can keep it in the URL. Never a constant. */
-  search: { value: string; onChange: (next: string) => void; placeholder?: string };
+  /**
+   * Caller-owned so the page can keep it in the URL. Never a constant.
+   *
+   * The full {@link DataTableSearch}, not a three-field subset: a windowed
+   * caller has to be able to say `answeredBy: 'server'` through this seam, and
+   * a narrower type here would silently drop the flag that stops the engine
+   * re-filtering a set it cannot see all of.
+   */
+  search: DataTableSearch;
   loading?: boolean;
   /**
    * The desk's row selection ({@link useLocationStockSelection}) — the gutter
@@ -117,10 +127,9 @@ export function useLocationStockSpreadsheet({
     // face, same width, different question.
     lineQtyMeaning: 'on-hand',
     // The SKU is painted by the adapter on the Id track's SECOND line
-    // (`identitySubFace`), so no track names it and the search box would not
-    // match a typed SKU without this. The operator asked for search over the
-    // product title AND the qty; a visible, copyable handle that the box
-    // ignores is the same defect one field over.
+    // (`identitySubFace`), so no track names it. It stays declared here for the
+    // engine's client-side pass — the mounts of this family that answer their
+    // own search — even though `/inventory/stock` now matches the SKU in SQL.
     adapterPaintedFieldIds: ['location-stock.sku'],
     resolve: resolveLocationStockSlotValue,
     sortFactFor: (col) => slotTableSortFactFor(LOCATION_STOCK_FAMILY, col),

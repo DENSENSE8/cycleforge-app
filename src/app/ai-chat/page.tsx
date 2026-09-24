@@ -1,5 +1,6 @@
 import AiChatWorkspace from '@/components/ai/AiChatWorkspace';
 import { PRODUCT_NAME } from '@/lib/branding/constants';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export const metadata = { title: `Chat · ${PRODUCT_NAME}` };
 
@@ -10,8 +11,8 @@ export const metadata = { title: `Chat · ${PRODUCT_NAME}` };
  */
 export default function AiChatPage() {
   return (
-    <div className="h-full w-full overflow-hidden bg-surface-card">
+    <ModeRegion mode="assistant" className="h-full w-full overflow-hidden bg-surface-card">
       <AiChatWorkspace />
-    </div>
+    </ModeRegion>
   );
 }

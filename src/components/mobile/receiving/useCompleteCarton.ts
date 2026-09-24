@@ -5,11 +5,11 @@
  *
  * Posts ONE carton-scoped request to `/api/receiving/mark-received-po`
  * (`receiving_id`), not a per-line loop. That route already owns the whole
- * receive: every open line under the carton, the photo-policy gate, the Zoho
- * purchase receive, audit, and the realtime fan-out the desktop bench listens
- * to. `ReceivingQaActionSheet` loops `mark-received` per line because its job
- * is a per-line QA VERDICT (pass / fail); receiving a carton is a different
- * job, so it composes the bulk route instead of forking that loop.
+ * receive: every open line under the carton, the photo-policy gate, audit, and
+ * the realtime fan-out the desktop bench listens to. `ReceivingQaActionSheet`
+ * loops `mark-received` per line because its job is a per-line QA VERDICT
+ * (pass / fail); receiving a carton is a different job, so it composes the bulk
+ * route instead of forking that loop.
  *
  * Two things this shell exists to get right (the request/response decisions
  * themselves live in `./complete-carton`, pure and tested):
@@ -21,26 +21,20 @@
  *    claim server-side precisely so the same key can retry once the operator
  *    adds the missing photos. It resets only after a success.
  *
- * 2. **A 200 means the LOCAL receive committed — not that Zoho is done.** The
- *    Zoho purchase receive, and the UNBOXED→DONE promotion that stamps
- *    `received_done_at`, both run in the route's `after()`. So success copy must
- *    say the carton is received, never that the external sync finished. The
- *    desktop bench flips its Receive CTA to Print when that promotion lands and
- *    the station channel publishes `receiving-log.changed`.
+ * 2. **A 200 means the receive committed.** The inventory purchase receive is
+ *    no longer part of this request: the scheduled receive backfill drains it
+ *    and owns its own backlog surface. So the carton settles the moment the
+ *    response lands — there is nothing external left to wait on, and no
+ *    per-line sync signal to render.
  */
 
 import { useCallback, useRef, useState } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { useAblyChannel } from '@/hooks/useAblyChannel';
-import { useAuth } from '@/contexts/AuthContext';
-import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import {
   COMPLETE_CARTON_IDLE,
   completeCartonRequestBody,
-  foldSyncVerdict,
   mapCompleteCartonResponse,
   type CompleteCartonOutcome,
-  type CompleteCartonSyncStatus,
 } from '@/components/mobile/receiving/complete-carton';
 import { photoPolicyOverrideField } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
@@ -48,34 +42,14 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export function useCompleteCarton(row: ReceivingLineRow | null) {
   const [state, setState] = useState<CompleteCartonOutcome>(COMPLETE_CARTON_IDLE);
-  const [syncStatus, setSyncStatus] = useState<CompleteCartonSyncStatus>('pending');
   // Held across retries — see (1) in the module doc.
   const idempotencyKeyRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
 
-  const { user } = useAuth();
-  const orgId = user?.organizationId;
-  const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
-
   const reset = useCallback(() => {
     idempotencyKeyRef.current = null;
     setState(COMPLETE_CARTON_IDLE);
-    setSyncStatus('pending');
   }, []);
-
-  // Terminal inventory-sync verdict. The route's `after()` publishes one
-  // `receiving-log.changed` per received line once the external purchase
-  // receive settles — the same event the desktop bench reconciles against, so
-  // both surfaces agree instead of the phone claiming success the bench hasn't
-  // seen. Subscribed only while a verdict is genuinely outstanding.
-  useAblyChannel(
-    stationChannel,
-    'receiving-log.changed',
-    (msg: { data?: { rowId?: unknown; zohoReceive?: unknown } }) => {
-      setSyncStatus((current) => foldSyncVerdict(current, state.lineIds, msg?.data));
-    },
-    Boolean(stationChannel) && state.phase === 'done' && state.awaitsSync,
-  );
 
   /**
    * Receive the carton.
@@ -112,8 +86,6 @@ export function useCompleteCarton(row: ReceivingLineRow | null) {
       // Only a success retires the key; a block or error keeps it so the retry
       // replays rather than re-running the receive.
       if (outcome.phase === 'done') idempotencyKeyRef.current = null;
-      // A retry after a failed sync must not inherit the old verdict.
-      setSyncStatus('pending');
       setState(outcome);
     } catch {
       setState({
@@ -126,5 +98,5 @@ export function useCompleteCarton(row: ReceivingLineRow | null) {
     }
   }, [row]);
 
-  return { ...state, syncStatus, run, reset };
+  return { ...state, run, reset };
 }

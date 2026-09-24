@@ -1,0 +1,299 @@
+/**
+ * Mode registry — the single source of truth for the four TASK modes, on
+ * every platform (web, bundled desktop via generated/tokens.css, iOS via
+ * generated/DesignTokens.swift).
+ *
+ * A mode is what the operator is DOING in a region, not what they prefer to
+ * look at (that is the theme axis, `themes/registry.ts`). It is stamped by a
+ * region root as `data-mode="<name>"` — through `ModeRegion`
+ * (`design-system/providers/ModeRegion.tsx`), never by hand — and nests by
+ * REGION, one level deep: a page region plus at most one nested region (the
+ * right rail). The scan bar and every state/functional colour
+ * (success/warning/danger/info/fulfillment, `state.ts`) are mode-independent.
+ *
+ * This module owns the values and the CSS generator; the web re-exports it
+ * from `src/design-system/modes/registry.ts`, whose `modeRegistryStyleText`
+ * app/layout.tsx injects as `<style id="app-mode-registry">`, directly after
+ * the theme palettes.
+ *
+ * What the stylesheet does, per mode:
+ *   1. `[data-mode='<name>']` declares every `--mode-*` variable. Colour vars
+ *      resolve THROUGH the neutral theme vars, so under a dark theme a mode's
+ *      surfaces are that theme's surfaces (the mode palettes are light-only).
+ *   2. `html:not([data-color-scheme='dark']) [data-mode='<name>']` remaps the
+ *      NEUTRAL `--ds-color-*` vars (see {@link MODE_NEUTRAL_REMAP}) to the
+ *      mode palette, so existing `bg-surface-*` / `text-text-*` /
+ *      `border-border-*` utilities adopt the mode inside the region with no
+ *      per-component change.
+ *   3. `@media (pointer: coarse)` raises hit floors, padding and body text.
+ *   4. `prefers-reduced-motion` collapses every mode duration to 0.
+ *
+ * Tailwind reads the vars as `rounded-mode`, `rounded-mode-pill`,
+ * `p-mode-page`, `min-h-mode-hit`, `bg-mode-well`, `text-mode-warn`,
+ * `duration-mode-feedback`, `text-mode-body` … (tailwind.config.mjs).
+ */
+
+// ── Contract ────────────────────────────────────────────────────────────────
+
+export type ModeName = 'industrial' | 'triage' | 'counter' | 'assistant';
+
+/** Light-scheme palette of a mode. Plain CSS colours. */
+export interface ModeSurfaces {
+  /** Page plane. */
+  canvas: string;
+  /** Bar / header band. */
+  bar: string;
+  /** Panel / row plane. */
+  panel: string;
+  /** Sunken well. */
+  well: string;
+  /** Row / interaction wash. */
+  hover: string;
+  /** Primary ink. */
+  ink: string;
+  /** Secondary text. */
+  muted: string;
+  /** Faint text — the lightest text a mode allows. */
+  faint: string;
+  /** Inner dividers. */
+  rule: string;
+  /** Edge / hairline around a surface. */
+  edge: string;
+  /** Border of an input / control. */
+  control: string;
+}
+
+/** A value that changes under `@media (pointer: coarse)`. */
+export interface ModeMeasure {
+  base: string;
+  coarse: string;
+}
+
+export interface ModeSpec {
+  name: ModeName;
+  label: string;
+  /** The job this mode serves — one line. */
+  hint: string;
+  surfaces: ModeSurfaces;
+  radius: string;
+  radiusPill: string;
+  pagePad: ModeMeasure;
+  /** Minimum hit target. */
+  hit: ModeMeasure;
+  /** Primary-action hit target (defaults to `hit`). */
+  hitCta?: ModeMeasure;
+  bodyText: ModeMeasure;
+  motion: {
+    /** State-change feedback (step, enter, scan-status spot). */
+    feedback: string;
+    /** Press response (defaults to `feedback`). */
+    press?: string;
+    /** Indeterminate pulse (defaults to none). */
+    pulse?: string;
+  };
+  /** Warning ink as TEXT (defaults to the theme's `text-warning`). */
+  warnText?: string;
+  /** Tenant brand colour; overridden per org at the region root. */
+  brand?: string;
+}
+
+// ── Registry ────────────────────────────────────────────────────────────────
+
+/** The shared slate palette triage / counter / assistant sit on (light theme). */
+export const SLATE_SURFACES: ModeSurfaces = {
+  canvas: '#fafafa',
+  bar: '#ffffff',
+  panel: '#ffffff',
+  well: '#f1f5f9',
+  hover: '#f8fafc',
+  ink: '#0f172a',
+  muted: '#475569',
+  faint: '#64748b',
+  rule: '#e2e8f0',
+  edge: '#cbd5e1',
+  control: '#7b8aa0',
+};
+
+export const MODE_REGISTRY = {
+  industrial: {
+    name: 'industrial',
+    label: 'Industrial',
+    hint: 'Floor queues and scan stations — #fafafa canvas, white rows, flush corners, dense 13px.',
+    surfaces: {
+      canvas: '#fafafa',
+      bar: '#f8f8f4',
+      panel: '#ffffff',
+      well: '#e6e7e1',
+      hover: '#f4f4ef',
+      ink: '#10110f',
+      muted: '#535650',
+      // No light-grey text on the floor: faint is muted.
+      faint: '#535650',
+      rule: '#cacbc5',
+      edge: '#b7b8b0',
+      control: '#10110f',
+    },
+    radius: '0',
+    radiusPill: '0',
+    pagePad: { base: '0', coarse: '0' },
+    hit: { base: '32px', coarse: '48px' },
+    bodyText: { base: '13px', coarse: '13px' },
+    // 150ms is the scan-status spot only; nothing else on the floor moves.
+    motion: { feedback: '150ms' },
+    // #d39200 fails contrast as text; this is its readable ink.
+    warnText: '#8a5f00',
+  },
+  triage: {
+    name: 'triage',
+    label: 'Triage',
+    hint: 'Decide-and-route work — record detail, arrival triage.',
+    surfaces: SLATE_SURFACES,
+    radius: '4px',
+    radiusPill: '4px',
+    pagePad: { base: '12px', coarse: '16px' },
+    hit: { base: '32px', coarse: '48px' },
+    bodyText: { base: '14px', coarse: '16px' },
+    motion: { feedback: '120ms' },
+  },
+  counter: {
+    name: 'counter',
+    label: 'Counter',
+    hint: 'Customer-facing counter tablet — soft corners, 16px, big targets.',
+    surfaces: SLATE_SURFACES,
+    radius: '12px',
+    radiusPill: '9999px',
+    pagePad: { base: '16px', coarse: '24px' },
+    hit: { base: '40px', coarse: '48px' },
+    hitCta: { base: '56px', coarse: '56px' },
+    bodyText: { base: '16px', coarse: '16px' },
+    motion: { feedback: '200ms', press: '100ms' },
+    // Default tenant ink (USAV navy, sampled from public/images/usav-logo.png).
+    // The org's `settings.brand.primaryColor` overrides it at the region root.
+    brand: '#1f316d',
+  },
+  assistant: {
+    name: 'assistant',
+    label: 'Assistant',
+    hint: 'Conversational AI surfaces — the assistant dock and /ai-chat.',
+    surfaces: SLATE_SURFACES,
+    radius: '12px',
+    radiusPill: '9999px',
+    pagePad: { base: '16px', coarse: '16px' },
+    hit: { base: '32px', coarse: '48px' },
+    bodyText: { base: '15px', coarse: '16px' },
+    motion: { feedback: '200ms', pulse: '1200ms' },
+  },
+} satisfies Record<ModeName, ModeSpec>;
+
+export const MODE_NAMES = Object.keys(MODE_REGISTRY) as ModeName[];
+
+/**
+ * Neutral theme var (`--ds-color-<key>`) → the mode surface that replaces it
+ * inside a light-scheme region. NEUTRALS ONLY: functional/state tones are
+ * never remapped by a mode.
+ */
+export const MODE_NEUTRAL_REMAP = {
+  'background-canvas': 'canvas',
+  'background-surface': 'panel',
+  'surface-sunken': 'well',
+  'surface-hover': 'hover',
+  'text-primary': 'ink',
+  'text-secondary': 'muted',
+  'text-soft': 'faint',
+  'text-faint': 'faint',
+  'border-hairline': 'rule',
+  'border-subtle': 'rule',
+  'border-default': 'edge',
+} as const satisfies Record<string, keyof ModeSurfaces>;
+
+// ── CSS generation ──────────────────────────────────────────────────────────
+
+/**
+ * Colour vars resolve through the theme so a dark theme keeps its own planes.
+ * `bar` / `control` / `warn` have no neutral twin; their dark fallbacks are the
+ * nearest theme role, and the light block below pins the mode literal.
+ */
+const MODE_COLOR_VAR_FALLBACK: Record<keyof ModeSurfaces, string> = {
+  canvas: 'var(--ds-color-background-canvas)',
+  bar: 'var(--ds-color-background-surface)',
+  panel: 'var(--ds-color-background-surface)',
+  well: 'var(--ds-color-surface-sunken)',
+  hover: 'var(--ds-color-surface-hover)',
+  ink: 'var(--ds-color-text-primary)',
+  muted: 'var(--ds-color-text-secondary)',
+  faint: 'var(--ds-color-text-soft)',
+  rule: 'var(--ds-color-border-subtle)',
+  edge: 'var(--ds-color-border-default)',
+  control: 'var(--ds-color-border-emphasis)',
+};
+
+const SURFACE_KEYS = Object.keys(MODE_COLOR_VAR_FALLBACK) as (keyof ModeSurfaces)[];
+
+function modeSelector(name: ModeName): string {
+  return `[data-mode='${name}']`;
+}
+
+function baseDeclarations(spec: ModeSpec): string[] {
+  const hitCta = spec.hitCta ?? spec.hit;
+  const lines = SURFACE_KEYS.map((key) => `  --mode-${key}: ${MODE_COLOR_VAR_FALLBACK[key]};`);
+  lines.push(
+    `  --mode-warn-text: var(--ds-color-text-warning);`,
+    `  --mode-radius: ${spec.radius};`,
+    `  --mode-radius-pill: ${spec.radiusPill};`,
+    `  --mode-page-pad: ${spec.pagePad.base};`,
+    `  --mode-hit: ${spec.hit.base};`,
+    `  --mode-hit-cta: ${hitCta.base};`,
+    `  --mode-text-body: ${spec.bodyText.base};`,
+    `  --mode-motion-feedback: ${spec.motion.feedback};`,
+    `  --mode-motion-press: ${spec.motion.press ?? spec.motion.feedback};`,
+    `  --mode-motion-pulse: ${spec.motion.pulse ?? '0s'};`,
+  );
+  if (spec.brand) lines.push(`  --mode-brand: ${spec.brand};`);
+  lines.push('  color: var(--mode-ink);');
+  return lines;
+}
+
+function lightDeclarations(spec: ModeSpec): string[] {
+  const lines = Object.entries(MODE_NEUTRAL_REMAP).map(
+    ([themeKey, surface]) => `  --ds-color-${themeKey}: ${spec.surfaces[surface]};`,
+  );
+  // The theme-less roles pin their literal on light; the rest follow the remap.
+  lines.push(`  --mode-bar: ${spec.surfaces.bar};`, `  --mode-control: ${spec.surfaces.control};`);
+  if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
+  return lines;
+}
+
+function coarseDeclarations(spec: ModeSpec): string[] {
+  const hitCta = spec.hitCta ?? spec.hit;
+  return [
+    `    --mode-page-pad: ${spec.pagePad.coarse};`,
+    `    --mode-hit: ${spec.hit.coarse};`,
+    `    --mode-hit-cta: ${hitCta.coarse};`,
+    `    --mode-text-body: ${spec.bodyText.coarse};`,
+  ];
+}
+
+/**
+ * The generated mode stylesheet — injected once by the web's app/layout.tsx
+ * as `<style id="app-mode-registry">` and written into generated/tokens.css
+ * for the desktop bundle. A nested region re-declares every var on its own
+ * root, so the innermost region always wins by inheritance.
+ */
+export function modeRegistryCssText(): string {
+  const blocks: string[] = [];
+  for (const name of MODE_NAMES) {
+    const spec = MODE_REGISTRY[name];
+    blocks.push(`${modeSelector(name)} {\n${baseDeclarations(spec).join('\n')}\n}`);
+    blocks.push(
+      `html:not([data-color-scheme='dark']) ${modeSelector(name)} {\n${lightDeclarations(spec).join('\n')}\n}`,
+    );
+  }
+  const coarse = MODE_NAMES.map(
+    (name) => `  ${modeSelector(name)} {\n${coarseDeclarations(MODE_REGISTRY[name]).join('\n')}\n  }`,
+  );
+  blocks.push(`@media (pointer: coarse) {\n${coarse.join('\n')}\n}`);
+  blocks.push(
+    `@media (prefers-reduced-motion: reduce) {\n  [data-mode] {\n    --mode-motion-feedback: 0ms;\n    --mode-motion-press: 0ms;\n    --mode-motion-pulse: 0s;\n  }\n}`,
+  );
+  return blocks.join('\n\n');
+}

@@ -49,8 +49,6 @@ const KIOSK_VIEWS = [
   'src/app/kiosk/v2/KioskCartLedger.tsx',
   'src/app/kiosk/v2/KioskCustomerFace.tsx',
   'src/app/kiosk/v2/KioskRepairPane.tsx',
-  'src/app/kiosk/v2/KioskBuybackPane.tsx',
-  'src/app/kiosk/v2/KioskPickupPane.tsx',
   'src/components/kiosk/KioskCartLineCard.tsx',
   'src/components/repair/ReasonSelector.tsx',
 ] as const;
@@ -148,12 +146,11 @@ test('the read-mostly panels are a bounded rounded sheet, not a full-width slab'
   assert.match(chrome, /MOBILE_SCAN_CARD_CORNER/);
   assert.match(chrome, /max-w-2xl/, 'the sheet is bounded — that is the whole point');
 
-  for (const panel of [
-    'src/app/kiosk/v2/KioskPaperworkPanel.tsx',
-    'src/app/kiosk/v2/KioskTriagePanel.tsx',
-  ]) {
-    assert.match(read(panel), /KIOSK_UTILITY_SHEET/, `${panel} is not on the sheet face`);
-  }
+  assert.match(
+    read('src/app/kiosk/v2/KioskPaperworkPanel.tsx'),
+    /KIOSK_UTILITY_SHEET/,
+    'the paperwork panel is not on the sheet face',
+  );
 });
 
 /**
@@ -187,17 +184,11 @@ test('every kiosk FORM is one white full-bleed centre surface', () => {
   assert.match(frame, /KIOSK_POS_FORM_MEASURE/);
   assert.doesNotMatch(chrome, /KIOSK_CENTRE_SURFACE[\s\S]{0,120}max-w/, 'the plane is not measured');
 
-  // One skeleton, propagated: every centre pane mounts the same plane.
-  //
-  // A FLOOR, not an exact count. The number was `3` and a fourth pane that
-  // correctly mounts the shared plane failed this line — the test punished the
-  // law being obeyed more widely. What the law actually forbids is a pane that
-  // hand-rolls its own white column, and the assertion below pins exactly that.
+  // One skeleton, propagated: every centre pane mounts the same plane. Since
+  // Buyback and Pickup were deleted (2026-09-23) the shell hosts ONE centre
+  // pane of its own — the repair stage.
   const shell = read('src/app/kiosk/KioskShell.tsx');
-  assert.ok(
-    (shell.match(/className=\{KIOSK_CENTRE_SURFACE\}/g) ?? []).length >= 3,
-    'repair stage, buyback and pickup each mount the shared plane',
-  );
+  assert.match(shell, /className=\{KIOSK_CENTRE_SURFACE\}/, 'the repair stage mounts the shared plane');
   assert.doesNotMatch(
     stripComments(shell),
     /"flex min-h-0 flex-1 flex-col bg-surface-card"/,

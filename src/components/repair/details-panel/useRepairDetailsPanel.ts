@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
+import { canStartRepairPickup } from '@/lib/repair-status';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import { zendeskTicketUrl as buildZendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
@@ -55,11 +56,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     onUpdate();
   };
 
-  const PICKUP_STATUSES = useMemo(
-    () => new Set(['Repaired, Contact Customer', 'Awaiting Pickup', 'Awaiting Payment', 'Done']),
-    [],
-  );
-  const canStartPickup = PICKUP_STATUSES.has((repair.status || '').trim());
+  const canStartPickup = canStartRepairPickup(repair.status);
 
   useEffect(() => {
     setNotes(repair.notes || '');

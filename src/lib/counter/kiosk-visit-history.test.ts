@@ -16,6 +16,7 @@ import {
   parseKioskHistoryKey,
   parseKioskVisitCursor,
   parseKioskVisitSearch,
+  relaxableNameTerm,
   KIOSK_VISIT_PAGE_MAX,
 } from './list-kiosk-visits';
 import { collectDisallowedEditFields } from './edit-visit';
@@ -57,6 +58,25 @@ describe('search parsing — one box, every axis the counter might mean', () => 
   });
 });
 
+describe('relaxation — which axis a near match is allowed to widen', () => {
+  it('relaxes a typed name', () => {
+    assert.equal(relaxableNameTerm(parseKioskVisitSearch('Jane Doe')), 'Jane Doe');
+  });
+
+  // An identifier that wears letters is still an identifier. RS-1042 reaching
+  // RS-1043 through a similarity match hands the counter the wrong device.
+  it('never relaxes a ticket, an id or a phone', () => {
+    assert.equal(relaxableNameTerm(parseKioskVisitSearch('RS-1042')), null);
+    assert.equal(relaxableNameTerm(parseKioskVisitSearch('1042')), null);
+    assert.equal(relaxableNameTerm(parseKioskVisitSearch('(555) 867-5309')), null);
+    assert.equal(relaxableNameTerm(parseKioskVisitSearch('#9998')), null);
+  });
+
+  it('has nothing to relax without a search', () => {
+    assert.equal(relaxableNameTerm(null), null);
+  });
+});
+
 describe('keyset cursor — a page boundary the counter can trust', () => {
   it('round-trips an instant, a book and an id', () => {
     const cursor = encodeKioskVisitCursor('2026-09-22T18:04:05.000Z', 'repair', 4412);
@@ -64,7 +84,18 @@ describe('keyset cursor — a page boundary the counter can trust', () => {
       createdAt: '2026-09-22T18:04:05.000Z',
       source: 'repair',
       id: 4412,
+      relaxed: false,
     });
+  });
+
+  // Page 2 of a near-name result must read the SAME row set page 1 was cut
+  // from. A cursor that dropped the marker would resume with the strict query,
+  // which by definition matched nothing — the rail's "load older" would go
+  // blank under rows that are visibly there.
+  it('carries the relaxed marker across the page boundary', () => {
+    const cursor = encodeKioskVisitCursor('2026-09-22T18:04:05.000Z', 'visit', 19, true);
+    assert.equal(parseKioskVisitCursor(cursor)?.relaxed, true);
+    assert.equal(parseKioskVisitCursor(cursor)?.id, 19);
   });
 
   it('refuses a malformed cursor instead of throwing', () => {

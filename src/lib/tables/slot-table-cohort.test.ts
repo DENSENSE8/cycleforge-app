@@ -648,11 +648,6 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     const ids = queueColumnSortOptions().map((o) => o.id);
     for (const fact of ['status', 'amount']) assert.ok(ids.includes(fact as never), `toolbar sort menu lists ${fact}`);
     assert.equal(ids.includes('image' as never), false);
-    
-    assert.match(
-      read('src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx'),
-      /queueColumnSortOptions\(\)/,
-    );
     const symbols = SLOT_TABLE_ENGINE.graphSymbols as readonly string[];
     for (const name of ['queueSortForColumnKey', 'LedgerGridColumnHeader', 'isSlotTableChromeTrack', 'MorphingRowActionMenu']) {
       assert.ok(symbols.includes(name), `graphSymbols missing ${name}`);

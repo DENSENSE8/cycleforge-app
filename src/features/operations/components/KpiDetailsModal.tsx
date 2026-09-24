@@ -12,6 +12,7 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import type { DashboardData } from '@/features/operations/types';
 import { useRepairsTable } from '@/hooks/useRepairs';
 import { repairStatusChipClass } from '@/lib/repair-status';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 export type KpiKind = 'velocity' | 'tested' | 'fba' | 'repair';
 
@@ -69,7 +70,7 @@ const ACTIVITY_DOT: Record<string, string> = {
   TRACKING_SCANNED: 'bg-blue-500',
   FNSKU_SCANNED: 'bg-amber-500',
   PACK_SCAN: 'bg-purple-500',
-  PACK_COMPLETED: 'bg-emerald-500',
+  PACK_COMPLETED: LIFECYCLE_CLASSES.packed.dot,
   FBA_READY: 'bg-emerald-600',
 };
 

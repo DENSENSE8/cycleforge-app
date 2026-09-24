@@ -29,6 +29,9 @@
  *      subtotal, tax, total, then the TENDER. The old pane printed a flat
  *      `Total  $161.00` fact row with no itemization above it, which is the one
  *      thing a counter dispute is always about.
+ *      The way BACK to the listing rides on the LINE it describes: each repair
+ *      line carries its own storefront link, keyed on that device's own SKU, so
+ *      a two-device visit links each device to the listing it was sold from.
  *   3. **WHO** — the customer block.
  *   4. **WHAT HAPPENED TO IT** — the device cards: status, technician, parts,
  *      both signatures. This is the part a general POS does not have, and it is
@@ -71,6 +74,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import {
   DropdownMenu,
@@ -80,7 +84,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { Badge } from '@/components/ui/badge';
+import { KioskChip } from '@/components/kiosk/KioskChip';
 import {
   Barcode,
   Copy,
@@ -90,9 +94,8 @@ import {
   MoreVertical,
   Printer,
 } from '@/components/Icons';
-import { SkuScanRefChip, SourceOrderChip, TrackingChip } from '@/components/ui/CopyChip';
-import { getLast8 } from '@/lib/copy-chip-format';
 import { repairStorefrontUrl } from '@/lib/repair/repair-storefront-url';
+import { visitLineAdjustmentText, visitMoneyEvents } from '@/lib/counter/visit-line-adjustment';
 import { SignatureStrokesView } from '@/components/repair/SignatureStrokesView';
 import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';
 import { toast } from '@/lib/toast';
@@ -108,6 +111,47 @@ import { kioskHistoryStatusTone } from './kiosk-history-status';
 import { cn } from '@/utils/_cn';
 
 /**
+ * The phone handoff code. Loaded on demand and never on the server — the
+ * counter face is already the heaviest client bundle on the tablet, and a QR
+ * renderer is dead weight on every OTHER kiosk command.
+ */
+const QRCode = dynamic(() => import('react-qr-code'), {
+  ssr: false,
+  loading: () => <div className="h-[84px] w-[84px] animate-pulse rounded bg-surface-sunken" />,
+});
+
+/**
+ * Scan the record onto the phone in your hand.
+ *
+ * Destination is `/m/rs/<repairId>` — the mobile repair-service detail that
+ * already exists (`src/app/m/(shell)/rs/[id]/page.tsx`), not a print route: a
+ * phone has no device cookie, and `/api/kiosk/**` answers 401 to it. `/m/rs`
+ * is staff-authed, so an unsigned phone lands on `signin?next=…` and arrives
+ * on the record one tap later.
+ *
+ * The origin is the DESK'S OWN (`window.location.origin`), never
+ * `NEXT_PUBLIC_APP_URL`. That variable pins one canonical host, so on a lane —
+ * or on localhost — it would send the phone to a different server than the one
+ * the tablet is talking to. `/api/auth/qr/handoff/begin` learned this the hard
+ * way; the note is in its route.
+ */
+function PhoneQr({ repairId, label }: { repairId: number; label: string }) {
+  const [href, setHref] = useState<string | null>(null);
+  useEffect(() => {
+    setHref(`${window.location.origin}/m/rs/${repairId}`);
+  }, [repairId]);
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-1" data-testid="kiosk-history-qr">
+      <div className="rounded bg-white p-1.5" aria-hidden>
+        {href ? <QRCode value={href} size={84} level="M" /> : null}
+      </div>
+      <span className="text-role-caption text-text-soft">Scan for phone</span>
+      <span className="sr-only">{`Scan to open ${label} on your phone`}</span>
+    </div>
+  );
+}
+
+/**
  * Money, or an em dash. Null is "not quoted" — printing `$0.00` there claims
  * the shop agreed to do the repair for nothing, which is a different fact and
  * one nobody recorded.
@@ -116,6 +160,45 @@ function formatCents(cents: number | null | undefined): string {
   if (cents == null) return '—';
   const sign = cents < 0 ? '-' : '';
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
+}
+
+/**
+ * The intake chip, in the counter's words — or nothing.
+ *
+ * The header used to print the raw enums `pickup` and `ecwid`, and both
+ * misread at a glance. `pickup` is the DB's word for "carried in at the
+ * counter", but beside `Pending Repair` it reads as "waiting for the customer
+ * to collect it". `ecwid` only means the repair was priced from a catalog
+ * `-RS` SKU (`submit-repair-intake.ts` sets it whenever a SKU is present),
+ * yet it reads as "this customer ordered online" — measured 2026-09-23, none
+ * of the 43 `ecwid` walk-ins has a `source_order_id`, and the storefront has
+ * no order under their tickets or buyers. The SKU and its storefront link
+ * already ride the item line, so the source chip is gone.
+ *
+ * History is scoped to walk-ins (`list-kiosk-visits.ts`), so a `Walk-in` chip
+ * would be printed on every record and tell the operator nothing. A chip
+ * appears only for an intake that CHANGES what happens at the counter; an
+ * unknown channel prints humanized rather than vanishing.
+ */
+function intakeChip(channel: string | null | undefined): string | null {
+  const key = (channel ?? '').trim().toLowerCase();
+  switch (key) {
+    case '':
+    case 'pickup':
+    case 'walk_in':
+    case 'manual':
+      return null;
+    case 'shipment':
+      return 'Mail-in';
+    case 'warranty_logger':
+      return 'Warranty';
+    case 'warranty_paid_repair':
+      return 'Paid warranty repair';
+    default: {
+      const words = key.replace(/_/g, ' ');
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
+  }
 }
 
 /**
@@ -332,6 +415,10 @@ export function KioskHistoryDetail({
     () => detail?.visit?.lines.filter((line) => line.voidedAt === null) ?? [],
     [detail],
   );
+  const moneyEvents = useMemo(
+    () => visitMoneyEvents(detail?.visit?.auditTrail ?? []),
+    [detail],
+  );
 
   if (loading) {
     return (
@@ -350,11 +437,17 @@ export function KioskHistoryDetail({
     );
   }
 
+  /**
+   * This is no longer "select a record" — the pane auto-opens the newest row
+   * and re-points on every result set, so a null detail can only mean the rail
+   * itself has nothing to open. Saying "select a record" there asked the
+   * operator to do something the face had already made impossible.
+   */
   if (!detail) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center px-6">
         <p className="text-role-body text-text-soft" data-testid="kiosk-history-detail-empty">
-          Select a record to see its paperwork.
+          No records to open.
         </p>
       </div>
     );
@@ -376,24 +469,7 @@ export function KioskHistoryDetail({
   // nobody has taken money for. Saying "Total" over both would be a lie on one.
   const amountCaption = visit ? 'Total' : 'Quoted';
   const soleDevice = provenance.length === 1 ? provenance[0] : null;
-  /**
-   * WHERE IT CAME FROM, whichever spine this record is on.
-   *
-   * A standalone ticket carries its own source columns; a VISIT-backed repair
-   * carries them on its device row. Reading only `repair` meant a drop-off
-   * rung up at the counter AND linked to an Ecwid order showed no link back to
-   * the storefront — the provenance is a fact about the DEVICE, not about
-   * which of the two spines the reader arrived on.
-   *
-   * `soleDevice` only: with two devices there are two different orders, and a
-   * single "Where it came from" block would silently attribute one device's
-   * order to both.
-   */
-  const origin = repair ?? soleDevice;
-  // Full reversibility: the ticket's `-RS` SKU is the way back to the listing
-  // it was sold from (operator 2026-09-23). `-RS` → `-W` happens in the shared
-  // helper, not here, so the desk's link and this one land on the same page.
-  const storefrontHref = repairStorefrontUrl(origin?.sourceSku);
+  const intakeLabel = intakeChip(repair?.intakeChannel);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-testid="kiosk-history-detail">
@@ -432,20 +508,15 @@ export function KioskHistoryDetail({
             </p>
           </div>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5" data-testid="kiosk-history-chips">
-          {visit ? <Badge variant={kioskHistoryStatusTone(visit.status)}>{visit.status}</Badge> : null}
+          {visit ? <KioskChip tone={kioskHistoryStatusTone(visit.status)}>{visit.status}</KioskChip> : null}
           {provenance.map((device) =>
             device.status ? (
-              <Badge key={device.repairId} variant={kioskHistoryStatusTone(device.status)}>
+              <KioskChip key={device.repairId} tone={kioskHistoryStatusTone(device.status)}>
                 {device.status}
-              </Badge>
+              </KioskChip>
             ) : null,
           )}
-          {repair?.intakeChannel ? (
-            <Badge variant="outline">{repair.intakeChannel}</Badge>
-          ) : null}
-          {!visit && repair?.sourceSystem ? (
-            <Badge variant="outline">{repair.sourceSystem}</Badge>
-          ) : null}
+          {intakeLabel ? <KioskChip tone="accent">{intakeLabel}</KioskChip> : null}
           </div>
         </div>
       </header>
@@ -467,6 +538,17 @@ export function KioskHistoryDetail({
                 <p className="text-role-caption text-text-soft">
                   {line.type} · ×{line.quantity}
                 </p>
+                {line.adjustment ? (
+                  <p className="text-role-caption text-text-soft" data-testid="kiosk-history-line-adjustment">
+                    {visitLineAdjustmentText(line.adjustment)}
+                    {line.adjustment.staffName ? ` · ${line.adjustment.staffName}` : ''}
+                  </p>
+                ) : null}
+                {line.note ? (
+                  <p className="text-role-caption italic text-text-soft" data-testid="kiosk-history-line-note">
+                    {line.note}
+                  </p>
+                ) : null}
               </div>
               <span className="shrink-0 text-role-body tabular-nums text-text-default">
                 {formatCents(line.unitAmountCents * Math.max(1, line.quantity))}
@@ -474,27 +556,52 @@ export function KioskHistoryDetail({
             </div>
           ))}
 
-          {provenance.map((device) => (
-            <div
-              key={`quote-${device.repairId}`}
-              className="flex items-start justify-between gap-6 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-role-body font-semibold text-text-default">
-                  {device.productTitle || 'Repair'}
-                </p>
-                <p className="text-role-caption text-text-soft">
-                  Repair service · {device.rsNumber || `RS-${device.repairId}`}
-                </p>
+          {provenance.map((device) => {
+            // Full reversibility, on the line it belongs to (operator
+            // 2026-09-23: *"you should be able to have full reversibility in
+            // terms of a link to the Ecwid website via the SKU"*). Per DEVICE,
+            // not per record: a repair's SKU is a fact about that unit, and
+            // hanging one link off the record would attribute one device's
+            // listing to both. The SKU is used AS TYPED — see
+            // `repair-storefront-url` for why the old `-RS` → `-W` rewrite
+            // pointed at a white unit nobody bought.
+            const storefrontHref = repairStorefrontUrl(device.sourceSku);
+            return (
+              <div
+                key={`quote-${device.repairId}`}
+                className="flex items-start justify-between gap-6 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-role-body font-semibold text-text-default">
+                    {device.productTitle || 'Repair'}
+                  </p>
+                  <p className="flex items-center gap-1 text-role-caption text-text-soft">
+                    <span className="truncate">
+                      Repair service
+                      {device.sourceSku ? ` · ${device.sourceSku}` : ''}
+                    </span>
+                    {storefrontHref ? (
+                      <IconButton
+                        icon={<ExternalLink className="h-3.5 w-3.5" />}
+                        tone="accent"
+                        ariaLabel={`Open the storefront listing for ${device.sourceSku ?? 'this repair'} in a new tab`}
+                        onClick={() =>
+                          window.open(storefrontHref, '_blank', 'noopener,noreferrer')
+                        }
+                        className="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded hover:bg-surface-sunken"
+                      />
+                    ) : null}
+                  </p>
+                </div>
+                <span className="shrink-0 text-role-body tabular-nums text-text-default">
+                  {formatCents(
+                    visit?.devices.find((d) => d.id === device.repairId)?.quoteCents ??
+                      (visit ? 0 : (repair?.priceCents ?? null)),
+                  )}
+                </span>
               </div>
-              <span className="shrink-0 text-role-body tabular-nums text-text-default">
-                {formatCents(
-                  visit?.devices.find((d) => d.id === device.repairId)?.quoteCents ??
-                    (visit ? 0 : (repair?.priceCents ?? null)),
-                )}
-              </span>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Same width as the itemization above it. A narrower totals block
               reads as a different table and breaks the column the figures are
@@ -502,12 +609,13 @@ export function KioskHistoryDetail({
           <div className="pb-4 pt-2">
             {visit ? (
               <>
-                {/* `subtotalCents` is the RETAIL subtotal — the counter models
+                {/* `subtotalCents` is the SALES subtotal — the counter models
                     device quotes as their own summand, and a bare "Subtotal
                     $24.00" under a $149.00 device line reads as an arithmetic
-                    error to the person holding the paper. Name both summands. */}
+                    error to the person holding the paper. Name both summands,
+                    in the mode's own word (Sales, not Retail). */}
                 {lines.length > 0 ? (
-                  <MoneyRow label="Retail" value={formatCents(visit.subtotalCents)} />
+                  <MoneyRow label="Sales" value={formatCents(visit.subtotalCents)} />
                 ) : null}
                 {visit.devices.length > 0 ? (
                   <MoneyRow
@@ -542,6 +650,31 @@ export function KioskHistoryDetail({
             )}
           </div>
         </section>
+
+        {moneyEvents.length > 0 ? (
+          /* Square's comp & void report, for this visit: every price change,
+             comp and void, with the reason and whose PIN authorized it. A
+             void never prints on the receipt — this is where it is recorded. */
+          <section className={RECEIPT_MEASURE} data-testid="kiosk-history-money-events">
+            <h3 className={cn(KIOSK_SECTION_LABEL_ROW, 'px-0')}>Adjustments</h3>
+            {moneyEvents.map((event) => (
+              <div key={event.id} className="flex items-start justify-between gap-6 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-role-body font-semibold text-text-default">
+                    {event.label}
+                    {event.lineTitle ? ` · ${event.lineTitle}` : ''}
+                  </p>
+                  <p className="text-role-caption text-text-soft">
+                    {[event.reason, event.staffName].filter(Boolean).join(' · ') || '—'}
+                  </p>
+                </div>
+                <span className="shrink-0 text-role-caption tabular-nums text-text-soft">
+                  {kioskHistoryStamp(event.at)}
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null}
 
         <section className={RECEIPT_MEASURE}>
           <h3 className={cn(KIOSK_SECTION_LABEL_ROW, 'px-0')}>Customer</h3>
@@ -582,74 +715,30 @@ export function KioskHistoryDetail({
           )}
         </section>
 
-        {origin && (origin.sourceOrderId || origin.sourceTrackingNumber || origin.sourceSku) ? (
-          <section className={RECEIPT_MEASURE}>
-            <h3 className={cn(KIOSK_SECTION_LABEL_ROW, 'px-0')}>Where it came from</h3>
-            {/* Identifiers are CHIPS, not text: last-eight so they fit the
-                column, one tap to copy the WHOLE value, and the SKU carries the
-                way back to the listing it was sold from. */}
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 py-3">
-              {origin.sourceOrderId ? (
-                <div className="min-w-0">
-                  <dt className="text-role-caption uppercase tracking-wide text-text-soft">
-                    {origin.sourceSystem ? `${origin.sourceSystem} order` : 'Order'}
-                  </dt>
-                  <dd className="mt-0.5">
-                    <SourceOrderChip
-                      value={origin.sourceOrderId}
-                      display={getLast8(origin.sourceOrderId)}
-                    />
-                  </dd>
-                </div>
-              ) : null}
-              {origin.sourceTrackingNumber ? (
-                <div className="min-w-0">
-                  <dt className="text-role-caption uppercase tracking-wide text-text-soft">
-                    Tracking
-                  </dt>
-                  <dd className="mt-0.5">
-                    <TrackingChip value={origin.sourceTrackingNumber} showIcon />
-                  </dd>
-                </div>
-              ) : null}
-              {origin.sourceSku ? (
-                <div className="min-w-0">
-                  <dt className="text-role-caption uppercase tracking-wide text-text-soft">
-                    Listing SKU
-                  </dt>
-                  <dd className="mt-0.5 flex items-center gap-1">
-                    <SkuScanRefChip
-                      value={origin.sourceSku}
-                      display={origin.sourceSku}
-                    />
-                    {storefrontHref ? (
-                      <IconButton
-                        icon={<ExternalLink className="h-3.5 w-3.5" />}
-                        tone="accent"
-                        ariaLabel="Open the storefront listing in a new tab"
-                        onClick={() =>
-                          window.open(storefrontHref, '_blank', 'noopener,noreferrer')
-                        }
-                        className="inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded hover:bg-surface-sunken"
-                      />
-                    ) : null}
-                  </dd>
-                </div>
-              ) : null}
-            </dl>
-          </section>
-        ) : null}
-
         {provenance.map((device) => {
           const draft = deviceDrafts[device.repairId];
           const technician =
             device.technicianSource && device.technicianName
               ? `${TECHNICIAN_PREFIX[device.technicianSource]} ${device.technicianName}`
               : 'No technician recorded';
+          const rsNumber = device.rsNumber || `RS-${device.repairId}`;
+          /**
+           * THE TICKET NUMBER IS PRINTED ONCE (operator 2026-09-23). It is the
+           * record's identity and it lives in the header, in display type. It
+           * was also the itemization's caption and this section's label, so a
+           * one-device ticket said `RS-4548` three times on one screen and none
+           * of the repeats answered a question the header had not.
+           *
+           * It survives HERE only when it is not a repeat: a visit carrying two
+           * devices has two different RS numbers and the header can only show
+           * one, so the section label is the only thing telling the operator
+           * which unit the parts and signatures below belong to.
+           */
+          const repeatsHeader = provenance.length === 1 && rsNumber === title;
           return (
             <section key={device.repairId} className={RECEIPT_MEASURE} data-testid="kiosk-history-device">
               <h3 className={cn(KIOSK_SECTION_LABEL_ROW, 'px-0')}>
-                {device.rsNumber || `RS-${device.repairId}`}
+                {repeatsHeader ? 'Device' : rsNumber}
               </h3>
               <div className="flex items-start justify-between gap-4 py-2">
                 <div className="min-w-0 flex-1">
@@ -661,6 +750,10 @@ export function KioskHistoryDetail({
                 {/* The status chip lives ONCE, in the header band. Repeating it
                     here put `Incoming Shipment` on screen twice, two hand-spans
                     apart, saying nothing new the second time. */}
+                {/* One code PER DEVICE, for the same reason the storefront link
+                    is: `/m/rs/<id>` names one repair, and a visit with two units
+                    has two of them. */}
+                <PhoneQr repairId={device.repairId} label={rsNumber} />
               </div>
 
               {editing && draft ? (

@@ -32,6 +32,8 @@ import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
 
 export type KioskPaymentStepUpResult = {
   staffId: number;
+  /** The picked staffer's display name — what an approval's "by …" line prints. */
+  staffName: string;
   pin: string;
 };
 
@@ -54,6 +56,13 @@ interface KioskPaymentStepUpSheetProps {
    * consent prompt that names the wrong act.
    */
   blurb?: string;
+  /**
+   * Which roster the pad offers: payment holders (default) or holders of
+   * `walk_in.adjust_price` for a line's price verbs. The server re-checks the
+   * permission on the PIN either way; this only keeps a pad from offering a
+   * staffer whose PIN would be refused.
+   */
+  scope?: 'payment' | 'adjust_price';
 }
 
 export function KioskPaymentStepUpSheet({
@@ -62,13 +71,14 @@ export function KioskPaymentStepUpSheet({
   onAuthorized,
   title = 'Authorize payment',
   blurb = 'A manager PIN authorizes payment at the register. Card details stay off this tablet.',
+  scope = 'payment',
 }: KioskPaymentStepUpSheetProps) {
   const [picked, setPicked] = useState<StaffPickerRow | null>(null);
 
   const submitPin = useCallback(
     async (pin: string) => {
       if (!picked) return { ok: false as const, error: 'Pick a staff member first.' };
-      return onAuthorized({ staffId: picked.id, pin });
+      return onAuthorized({ staffId: picked.id, staffName: picked.name, pin });
     },
     [picked, onAuthorized],
   );
@@ -99,7 +109,7 @@ export function KioskPaymentStepUpSheet({
                 re-reads the roster rather than painting a stale one. */}
             <StaffPickerList
               key={open ? 'open' : 'closed'}
-              endpoint="/api/kiosk/staff-for-stepup"
+              endpoint={`/api/kiosk/staff-for-stepup?scope=${scope}`}
               fetcher={kioskFetchHealed}
               emptyMessage="No staff with a PIN are available. Ask a manager."
               pickVerb="Continue as"

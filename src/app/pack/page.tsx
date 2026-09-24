@@ -1,5 +1,6 @@
 import { PackerSurfacePage } from '@/components/packer/PackerSurfacePage';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /**
  * `/pack` — the Packing operator surface as a first-class, semantic route
@@ -11,7 +12,9 @@ export default function PackPage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <PackerSurfacePage fallbackPath="/pack" />
+      <ModeRegion mode="industrial" className="contents">
+        <PackerSurfacePage fallbackPath="/pack" />
+      </ModeRegion>
     </>
   );
 }

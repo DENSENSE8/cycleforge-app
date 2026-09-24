@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import type { RepairActionRecord } from '@/lib/repair/repair-actions';
 
 const VALID_ACTION_TYPES = new Set<string>([
   'replaced',
@@ -12,22 +13,6 @@ const VALID_ACTION_TYPES = new Set<string>([
   'no_fix',
   'awaiting_part',
 ]);
-
-export interface RepairActionRecord {
-  id: number;
-  repair_id: number;
-  action_type: string;
-  part_name: string | null;
-  old_sku: string | null;
-  new_sku: string | null;
-  old_serial: string | null;
-  new_serial: string | null;
-  duration_min: number | null;
-  notes: string | null;
-  staff_id: number | null;
-  staff_name: string | null;
-  created_at: string;
-}
 
 function normString(v: unknown): string | null {
   const s = String(v ?? '').trim();

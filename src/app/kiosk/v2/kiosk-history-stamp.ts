@@ -26,23 +26,36 @@
 
 const HOURS_PER_MERIDIEM = 12;
 
+/**
+ * The clock half, alone: `1:56 PM`, or `''` when the string carries no time.
+ *
+ * This is what a row under a DAY BAND prints. The band already says which day
+ * the rows below it belong to, so repeating `9/17/26` down forty rows spends
+ * the operator's reading on the one fact that does not change inside the group
+ * — the same redundancy the ticket number was printing three times.
+ */
+export function kioskHistoryTime(raw: string | null | undefined): string {
+  const [, timePart] = (raw ?? '').trim().split(/[ T]/, 2);
+  if (!timePart) return '';
+  const [hourRaw, minute] = timePart.split(':');
+  const hour = Number(hourRaw);
+  if (!Number.isFinite(hour) || !minute) return '';
+  const meridiem = hour >= HOURS_PER_MERIDIEM ? 'PM' : 'AM';
+  const hour12 = hour % HOURS_PER_MERIDIEM === 0 ? HOURS_PER_MERIDIEM : hour % HOURS_PER_MERIDIEM;
+  return `${hour12}:${minute} ${meridiem}`;
+}
+
 export function kioskHistoryStamp(raw: string | null | undefined): string {
   const value = (raw ?? '').trim();
   if (!value) return '—';
 
-  const [datePart, timePart] = value.split(/[ T]/, 2);
+  const [datePart] = value.split(/[ T]/, 2);
   const [year, month, day] = (datePart ?? '').split('-');
   const date =
     year && month && day
       ? `${Number(month)}/${Number(day)}/${year.slice(-2)}`
       : (datePart ?? value);
 
-  if (!timePart) return date;
-  const [hourRaw, minute] = timePart.split(':');
-  const hour = Number(hourRaw);
-  if (!Number.isFinite(hour) || !minute) return date;
-
-  const meridiem = hour >= HOURS_PER_MERIDIEM ? 'PM' : 'AM';
-  const hour12 = hour % HOURS_PER_MERIDIEM === 0 ? HOURS_PER_MERIDIEM : hour % HOURS_PER_MERIDIEM;
-  return `${hour12}:${minute} ${meridiem} · ${date}`;
+  const time = kioskHistoryTime(value);
+  return time ? `${time} · ${date}` : date;
 }

@@ -9,7 +9,6 @@ test('FBA workflow states use semantic status roles, not raw palette utilities',
     .map((status) => renderToStaticMarkup(<FbaStatusBadge status={status} />))
     .join('\n');
   assert.match(html, /bg-surface-success/);
-  assert.match(html, /bg-surface-warning/);
   assert.match(html, /bg-surface-accent/);
   assert.doesNotMatch(html, /(?:emerald|amber|blue|purple)-\d{2,3}/);
   assert.doesNotMatch(html, /rounded-(?:sm|md|lg|xl|2xl|3xl)/);

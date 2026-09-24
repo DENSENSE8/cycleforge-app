@@ -24,6 +24,7 @@ import { recordInventoryEvent } from '@/lib/inventory/events';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { Queryable } from '@/lib/neon/serial-units-queries';
+import { parseToteScan, toteBindRefusal } from '@/lib/picking/tote-scan';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -392,9 +393,10 @@ type ToteRead =
   | { ok: false; status: 404 | 409; error: string };
 
 /**
- * Resolve the tote a picker scanned — `H-{id}`, numeric id, or an external
- * barcode (`handling_units.code`) — lock it (FOR UPDATE), and guard it for
- * THIS order. One tote carries one order: a tote already paired to a
+ * Resolve the tote a picker scanned — `H-{id}`, the `/m/h/{id}` QR, a numeric
+ * id, or an external barcode (`handling_units.code`) — lock it (FOR UPDATE),
+ * and guard it for THIS order with the shared bind rule (`toteBindRefusal`:
+ * OPEN/STAGED only, one tote carries one order). A tote already paired to a
  * different order 409s instead of silently merging two orders' units into
  * one box, which would break the pack-side "scan opens THE order" contract.
  */
@@ -405,46 +407,32 @@ async function readToteForOrder(
   orderId: number,
 ): Promise<ToteRead> {
   const raw = rawScan.trim();
-  if (!raw) return { ok: false, status: 404, error: 'empty tote scan' };
-  const hMatch = /^H-(\d+)$/i.exec(raw);
+  const parsed = parseToteScan(raw);
+  if (!parsed) return { ok: false, status: 404, error: 'empty tote scan' };
+  // A bare positive integer is a plate id on the pick side (the picker only
+  // ever scans totes here); the pack side keeps it a barcode candidate.
   const numeric = Number(raw);
-  const ref = hMatch
-    ? Number(hMatch[1])
-    : Number.isInteger(numeric) && numeric > 0
-      ? numeric
-      : null;
+  const ref = Number.isInteger(numeric) && numeric > 0 ? { id: numeric } : parsed;
   const toteQ =
-    ref != null
+    'id' in ref
       ? await client.query<ToteRow>(
           `SELECT id, code, status, paired_order_id AS "pairedOrderId"
              FROM handling_units
             WHERE id = $1 AND organization_id = $2
             FOR UPDATE`,
-          [ref, orgId],
+          [ref.id, orgId],
         )
       : await client.query<ToteRow>(
           `SELECT id, code, status, paired_order_id AS "pairedOrderId"
              FROM handling_units
             WHERE code = $1 AND organization_id = $2
             FOR UPDATE`,
-          [raw, orgId],
+          [ref.code, orgId],
         );
   const tote = toteQ.rows[0];
   if (!tote) return { ok: false, status: 404, error: `tote ${raw} not found` };
-  if (tote.status !== 'OPEN' && tote.status !== 'STAGED') {
-    return {
-      ok: false,
-      status: 409,
-      error: `tote ${tote.code} is ${tote.status} — use an open tote`,
-    };
-  }
-  if (tote.pairedOrderId != null && tote.pairedOrderId !== orderId) {
-    return {
-      ok: false,
-      status: 409,
-      error: `tote ${tote.code} already carries another order — use a fresh tote`,
-    };
-  }
+  const refusal = toteBindRefusal(tote, orderId);
+  if (refusal) return { ok: false, ...refusal };
   return { ok: true, tote };
 }
 

@@ -185,6 +185,14 @@ export interface DeskPageChromeProps {
   tabsLead?: ReactNode;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  /**
+   * `'card'` (default): the 1152px centred card on the page ground.
+   * `'flush'`: an industrial desk (BRIEF §4) — the body runs edge to edge on
+   * the mode canvas with no gutter, no floor and no radius; only the header
+   * and tab rows keep the gutter so their text does not touch the viewport
+   * edge. Adopted page by page: To ship is the first.
+   */
+  stage?: 'card' | 'flush';
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
   children: ReactNode;
   className?: string;
@@ -200,10 +208,13 @@ export function DeskPageChrome({
   tabsLead,
   fullscreen,
   onToggleFullscreen,
+  stage = 'card',
   children,
   className,
 }: DeskPageChromeProps) {
-  const measure = fullscreen ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
+  const flush = stage === 'flush' && !fullscreen;
+  const measure = fullscreen || flush ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
+  const rowGutter = flush && DESK_STAGE_GUTTER_CLASS;
 
   // Escape is the keyboard half of the one-click-out budget. Bubble phase and a
   // `defaultPrevented` check so a dialog or menu that owns Escape closes itself
@@ -223,11 +234,12 @@ export function DeskPageChrome({
       <div
         className={cn(
           'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-          // Gutters wrap every row so they cannot drift apart.
-          !fullscreen && DESK_STAGE_GUTTER_CLASS,
-          !fullscreen && DESK_STAGE_GROUND_CLASS,
+          // Gutters wrap every row so they cannot drift apart. A flush stage
+          // moves the gutter onto the header + tab rows (below) instead.
+          !fullscreen && !flush && DESK_STAGE_GUTTER_CLASS,
+          !fullscreen && (flush ? 'bg-mode-canvas' : DESK_STAGE_GROUND_CLASS),
           !fullscreen && 'pt-2',
-          !fullscreen && DESK_STAGE_FLOOR_CLASS,
+          !fullscreen && !flush && DESK_STAGE_FLOOR_CLASS,
           className,
         )}
       >
@@ -244,6 +256,7 @@ export function DeskPageChrome({
               className={cn(
                 'flex min-w-0 shrink-0 items-center justify-between gap-3',
                 measure,
+                rowGutter,
                 DESK_PAGE_HEADER_ROW_CLASS,
               )}
             >
@@ -269,6 +282,7 @@ export function DeskPageChrome({
               className={cn(
                 'flex min-w-0 shrink-0 items-stretch',
                 measure,
+                rowGutter,
                 DESK_TAB_ROW_CLASS,
               )}
             >
@@ -359,7 +373,9 @@ export function DeskPageChrome({
               ? // Flush + square: a rounded card floating on a canvas it
                 // completely fills is a corner radius with nothing behind it.
                 'bg-surface-card'
-              : cn(DESK_CHROME_STAGE_BODY_CLASS, DESK_STAGE_DETACH_CLASS),
+              : flush
+                ? 'bg-mode-canvas'
+                : cn(DESK_CHROME_STAGE_BODY_CLASS, DESK_STAGE_DETACH_CLASS),
           )}
         >
           {children}

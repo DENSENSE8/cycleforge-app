@@ -56,11 +56,27 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     enabled: tab === 'packed',
   });
 
+  /*
+   * The find text, as the Shipped lane's fetch key.
+   *
+   * This lane reads the SAME windowed packer-log feed the Shipped desk does —
+   * one week, newest 500 scans — so narrowing it in memory searched page one
+   * and reported the rest of the week as absent. `/api/packerlogs?q=` keeps the
+   * week bounds and drops the page bound, which is the only pass that can see
+   * the whole window.
+   *
+   * Packed and History are NOT this feed (staged orders / the verification
+   * queue), and neither takes a text param, so their find stays client-answered
+   * below. The answerer follows the feed, never the field.
+   */
+  const shippedSearchTerm = searchQuery.trim().toLowerCase();
+
   const shippedQuery = useQuery({
     ...dashboardShippedQuery({
       weekStart: week.startStr,
       weekEnd: week.endStr,
       staffId,
+      searchTerm: shippedSearchTerm,
       limit: 500,
       phase: 'full',
     }),
@@ -146,11 +162,15 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
         ? 'No shipped orders this week'
         : 'No review history yet';
 
+  /** Only the Shipped lane's feed answered the find in SQL — see above. */
+  const searchAnsweredBy = tab === 'shipped' ? ('server' as const) : ('client' as const);
+
   const sheet = useOrdersSpreadsheet({
     ariaLabel: 'Orders awaiting packing review',
     records: records as ShippedOrder[],
     loading,
     searchValue: searchQuery,
+    searchAnsweredBy,
     onClearSearch: clearSearch,
     emptyMessage: emptyCopy,
     searchEmptyTitle: `No ${tab} rows found`,
@@ -173,7 +193,13 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
               tabs={PACKING_TABS.filter((t) => t.id !== 'packed')}
               activeTab={tab === 'packed' ? undefined : tab}
               onTabChange={(id) => setTab(id === tab ? 'packed' : id)}
-              search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, tracking…' }}
+              search={{
+                value: searchQuery,
+                onChange: setSearch,
+                placeholder: 'Filter order #, SKU, tracking…',
+                answeredBy: searchAnsweredBy,
+                pending: tab === 'shipped' && shippedQuery.isFetching,
+              }}
             />
           </OrderStatusTrailStage>
         </div>

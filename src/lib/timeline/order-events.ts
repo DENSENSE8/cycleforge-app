@@ -1,3 +1,4 @@
+import { LIFECYCLE } from '@cycleforge/design-tokens';
 import type { TimelineItem, TimelineTone } from './types';
 import { diffChanges } from './audit-diff';
 
@@ -23,8 +24,8 @@ export interface OrderAuditRow {
 const ACTION_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   'orders.tracking.added': { title: 'Tracking added', tone: 'info' },
   'orders.label.printed': { title: 'Label printed', tone: 'success' },
-  PACK_COMPLETED: { title: 'Packed', tone: 'success' },
-  'shipment.scan_out': { title: 'Shipped — scanned out', tone: 'success' },
+  PACK_COMPLETED: { title: 'Packed', tone: LIFECYCLE.packed.tone },
+  'shipment.scan_out': { title: 'Shipped — scanned out', tone: LIFECYCLE.shipped.tone },
   'orders.update': { title: 'Order edited', tone: 'muted' },
   ORDER_ASSIGNMENT_UPDATED: { title: 'Order updated', tone: 'muted' },
   'orders.delete': { title: 'Order deleted', tone: 'danger' },

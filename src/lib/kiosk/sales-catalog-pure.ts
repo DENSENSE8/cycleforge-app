@@ -82,7 +82,7 @@ export function resolveRetailCategoryLevelFrom(
           fullPath: String(category.name ?? '').trim() || id,
         };
       }),
-      message: 'Repair categories are not available in Buy / Sell.',
+      message: 'Repair categories are not available in Sales.',
     };
   }
 

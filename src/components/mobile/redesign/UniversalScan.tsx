@@ -22,7 +22,7 @@ import { ScanTestingPanel } from '@/components/mobile/redesign/ScanTestingPanel'
 import { ScanInput } from '@/components/mobile/redesign/ScanInput';
 import { PrepackedProductSheet } from '@/components/mobile/redesign/PrepackedProductSheet';
 import { ReceivingTriagePanel, TestingRecentPanel } from '@/components/mobile/redesign/ScanModeFeeds';
-import { detectScanMode, type ScanMode } from '@/components/mobile/redesign/scan-mode';
+import { detectScanMode, repairIdFromScan, type ScanMode } from '@/components/mobile/redesign/scan-mode';
 import { MobileScanVerdictBanner } from '@/components/mobile/redesign/MobileScanVerdictBanner';
 import {
   buildScanVerdict,
@@ -175,6 +175,16 @@ export default function RedesignedMobileUniversalScan() {
       if (!raw || inFlight.current) return;
       inFlight.current = true;
 
+      // A repair-service label identifies one editable job. It must bypass the
+      // generic Arrival / AI resolver entirely: a tech who scans RS-123 needs
+      // the repair's status, facts, and action log, not a classification slab.
+      const repairId = repairIdFromScan(raw);
+      if (repairId) {
+        router.push(`/m/rs/${repairId}`);
+        inFlight.current = false;
+        return;
+      }
+
       const detected = detectScanMode(raw);
       const target: ScanMode = detected ?? mode;
       if (target !== mode) {
@@ -215,7 +225,7 @@ export default function RedesignedMobileUniversalScan() {
         inFlight.current = false;
       }
     },
-    [mode, runReceiving, changeMode],
+    [mode, runReceiving, changeMode, router],
   );
 
   /**

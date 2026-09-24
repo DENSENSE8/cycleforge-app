@@ -2,9 +2,9 @@
  * POST /api/counter/session/{id}/lines/{lineUuid}/price — override a line price.
  *
  * Its own verb because it is its own risk. A price change (a discount, a
- * re-quote, a goodwill zero) moves money, so it carries what money-moving edits
- * carry here: `walk_in.take_payment`, a fresh PIN step-up, and an audit row with
- * the before and after amounts.
+ * re-quote, a goodwill zero) moves money, so it carries `walk_in.adjust_price`
+ * — changing a price, not taking one — a fresh PIN step-up, and an audit row
+ * with the before and after amounts.
  *
  * Splitting it off the general line PATCH is the load-bearing part. With one
  * endpoint, the step-up gate would depend on which optional field the caller
@@ -72,5 +72,5 @@ export const POST = withAuth(
 
     return deskResult(result);
   },
-  { permission: 'walk_in.take_payment', stepUp: true },
+  { permission: 'walk_in.adjust_price', stepUp: true },
 );

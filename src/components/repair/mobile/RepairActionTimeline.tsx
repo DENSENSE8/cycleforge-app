@@ -2,60 +2,31 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { repairActionTypeToneClass } from '@/lib/repair-action-type-tone';
-
-interface RepairAction {
-  id: number;
-  repair_id: number;
-  action_type: string;
-  part_name: string | null;
-  old_sku: string | null;
-  new_sku: string | null;
-  old_serial: string | null;
-  new_serial: string | null;
-  duration_min: number | null;
-  notes: string | null;
-  staff_id: number | null;
-  staff_name: string | null;
-  created_at: string;
-}
+import { repairActionLabel, type RepairActionRecord } from '@/lib/repair/repair-actions';
+import { formatMonthDayTimePST } from '@/utils/date';
+import { Check, Clock, RefreshCw, Tool, Wrench, X } from '@/components/Icons';
 
 interface Props {
   repairId: number;
   /** Bump this to force a refetch (e.g. after Add sheet saves). */
   refreshKey: number;
+  /** Newest-first actions after every load — the page reads saved stamps from here. */
+  onLoaded?: (actions: RepairActionRecord[]) => void;
+  /** Action id to mark as just saved (the page passes the id the POST returned). */
+  highlightId?: number | null;
 }
 
-const TYPE_LABEL: Record<string, string> = {
-  replaced: 'Replaced',
-  repaired: 'Repaired',
-  cleaned: 'Cleaned',
-  tested: 'Tested',
-  no_fix: 'No fix',
-  awaiting_part: 'Awaiting part',
+const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  replaced: RefreshCw,
+  repaired: Wrench,
+  cleaned: Tool,
+  tested: Check,
+  no_fix: X,
+  awaiting_part: Clock,
 };
 
-const TYPE_EMOJI: Record<string, string> = {
-  replaced: '🔁',
-  repaired: '🔧',
-  cleaned: '🧼',
-  tested: '✅',
-  no_fix: '❌',
-  awaiting_part: '⏸',
-};
-
-function formatAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const s = Math.max(0, Math.floor(ms / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-export function RepairActionTimeline({ repairId, refreshKey }: Props) {
-  const [actions, setActions] = useState<RepairAction[]>([]);
+export function RepairActionTimeline({ repairId, refreshKey, onLoaded, highlightId = null }: Props) {
+  const [actions, setActions] = useState<RepairActionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -65,14 +36,16 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
       const res = await fetch(`/api/repair/actions?repairId=${repairId}`, { cache: 'no-store' });
       const body = await res.json();
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
-      setActions(Array.isArray(body?.actions) ? body.actions : []);
+      const next: RepairActionRecord[] = Array.isArray(body?.actions) ? body.actions : [];
+      setActions(next);
+      onLoaded?.(next);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load actions');
     } finally {
       setLoading(false);
     }
-  }, [repairId]);
+  }, [repairId, onLoaded]);
 
   useEffect(() => {
     void load();
@@ -103,7 +76,7 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
         <div className="rounded-lg border border-dashed border-border-default bg-surface-card p-6 text-center">
           <p className="text-sm font-semibold text-text-muted">No actions logged yet.</p>
           <p className="mt-1 text-role-caption text-text-soft">
-            Tap the + button to record the first one.
+            Use Log work in the dock to record the first one.
           </p>
         </div>
       )}
@@ -112,28 +85,28 @@ export function RepairActionTimeline({ repairId, refreshKey }: Props) {
         <ul className="space-y-2">
           {actions.map((a) => {
             const tone = repairActionTypeToneClass(a.action_type);
+            const ActionIcon = TYPE_ICON[a.action_type] ?? Tool;
             const hasReplacement =
               a.action_type === 'replaced' && (a.old_sku || a.new_sku || a.old_serial || a.new_serial);
             return (
               <li
                 key={a.id}
-                className={`rounded-lg border ${tone} p-3 shadow-sm`}
+                className={`rounded-mode border ${tone} p-mode-page shadow-none ${a.id === highlightId ? 'ring-2 ring-emerald-400' : ''}`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="text-xl leading-none shrink-0" aria-hidden>
-                    {TYPE_EMOJI[a.action_type] || '•'}
-                  </span>
+                  <ActionIcon className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="text-sm font-semibold text-text-default">
-                        {TYPE_LABEL[a.action_type] || a.action_type}
+                        {repairActionLabel(a.action_type)}
                         {a.part_name ? (
                           <span className="ml-1.5 font-semibold text-text-muted">— {a.part_name}</span>
                         ) : null}
                       </p>
-                      <span className="text-role-micro text-text-soft shrink-0">
-                        {formatAgo(a.created_at)}
-                      </span>
+                      {/* Server-stamped on insert — never a typed or client-clock date. */}
+                      <time dateTime={a.created_at} className="text-role-micro text-text-soft shrink-0">
+                        {formatMonthDayTimePST(a.created_at)}
+                      </time>
                     </div>
 
                     {hasReplacement && (

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Wrench, X, Check, Printer } from '../Icons';
 import { ProductSelector, type SelectedItem } from './ProductSelector';
 import { ReasonSelector } from './ReasonSelector';
 import { CustomerInfoForm, CONTACT_FIELDS } from './CustomerInfoForm';
-import { SignaturePad, type SignatureData } from './SignaturePad';
+import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import RepairServiceForm from './RepairServiceForm';
 import { RepairPaperworkCanvas } from './RepairPaperworkCanvas';
 import {

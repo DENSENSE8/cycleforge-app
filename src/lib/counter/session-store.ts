@@ -46,7 +46,11 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { submitCounterTransaction } from './submit-counter-transaction';
 import { createTerminalCheckout } from './terminal-checkout';
 import type { CounterTransactionResult } from './counter-transaction-types';
-import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
+import {
+  KIOSK_FALLBACK_COMMAND,
+  parseKioskCommandId,
+  type KioskCommandId,
+} from '@/lib/kiosk/commands';
 import {
   emptySessionSnapshot,
   isTerminalPaymentOutcome,
@@ -1203,7 +1207,9 @@ const defaultDeps: CounterSessionDeps = {
       claimedByStaffId: row.claimed_by_staff_id === null ? null : Number(row.claimed_by_staff_id),
       claimedByStaffName: row.claimed_by_staff_name ?? null,
       claimExpiresAtMs: msOrNull(row.claim_expires_at),
-      activeCommand: row.active_command as KioskCommandId,
+      // The CHECK still admits the retired `buyback` / `pickup`; parse, never
+      // cast, so a stray row opens the fallback instead of a deleted pane.
+      activeCommand: parseKioskCommandId(row.active_command),
       face: row.face as CounterSessionFace,
       consultStance: (row.consult_stance as ConsultStance | null) ?? consultStanceFromFace(row.face as CounterSessionFace),
       presentation: parseConsultPresentation(row.consult_presentation),

@@ -18,6 +18,7 @@ import { AmazonConnectModal } from '../AmazonConnectModal';
 import { EbayConnectPopover, EbayAccountNameChip } from '../EbayAccountPopover';
 import { IntegrationConnectSuccess } from '../IntegrationConnectSuccess';
 import { parseHealthResult } from '../integration-health';
+import { ZohoReceiveBackfillControl } from '../ZohoReceiveBackfillControl';
 
 const STATUS_PILL: Record<string, { dot: string; text: string; bg: string; label: string }> = {
   active: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
@@ -345,6 +346,8 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
               <Button variant="primary" size="sm" onClick={() => setVaultOpen(true)}>Connect</Button>
             )
           )}
+          {/* Same order as the card: the verb that changes state leads Check. */}
+          {def.key === 'zoho' && summary.connected && <ZohoReceiveBackfillControl />}
           {summary.healthPath && (
             <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runHealth}>Check</Button>
           )}

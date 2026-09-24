@@ -740,19 +740,47 @@ test('buildStageOrderBody sends the ORG location_id and currency — was missing
   });
 });
 
-test('buildStageOrderBody charges a catalog line by variation id, not name+price', () => {
+test('buildStageOrderBody stages a catalog line ad-hoc at its edited price, never by the Ecwid id', () => {
+  // The variationId is the Ecwid listing id. Square cannot resolve it, and a
+  // `catalog_object_id` line would charge Square's price instead of the counter's.
   const cfg = { locationId: 'LOC-1', currency: 'USD' };
-  const catalogLine: CounterRetailLine = {
-    variationId: 'VAR-9',
-    sku: 'SKU9',
+  const edited: CounterRetailLine = {
+    variationId: '812345678',
+    sku: '00162',
     productTitle: 'Case',
-    quantity: 1,
-    unitAmountCents: 1999,
+    quantity: 2,
+    unitAmountCents: 400,
   };
-  const body = buildStageOrderBody([catalogLine], cfg, 'idem-2') as {
+  const body = buildStageOrderBody([edited], cfg, 'idem-2') as {
     order: { line_items: Array<Record<string, unknown>> };
   };
-  assert.deepEqual(body.order.line_items[0], { catalog_object_id: 'VAR-9', quantity: '1' });
+  assert.deepEqual(body.order.line_items[0], {
+    name: 'Case',
+    quantity: '2',
+    base_price_money: { amount: 400, currency: 'USD' },
+  });
+  assert.ok(!JSON.stringify(body).includes('catalog_object_id'));
+});
+
+test('buildStageOrderBody carries the item note, and a comp says why it is $0', () => {
+  const cfg = { locationId: 'LOC-1', currency: 'USD' };
+  const body = buildStageOrderBody(
+    [
+      { variationId: null, sku: '', productTitle: 'Cable', quantity: 1, unitAmountCents: 500, note: 'Gift wrap' },
+      {
+        variationId: '1',
+        sku: 'A',
+        productTitle: 'Case',
+        quantity: 1,
+        unitAmountCents: 0,
+        priceAdjustment: { kind: 'comp', originalUnitAmountCents: 1999, reason: 'Goodwill', staffId: 7 },
+      },
+    ],
+    cfg,
+    'idem-3',
+  ) as { order: { line_items: Array<Record<string, unknown>> } };
+  assert.equal(body.order.line_items[0].note, 'Gift wrap');
+  assert.equal(body.order.line_items[1].note, 'Comp · Goodwill');
 });
 
 test('interpretStageOrderResponse surfaces the REAL Square error rather than swallowing it', () => {

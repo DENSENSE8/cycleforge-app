@@ -16,6 +16,7 @@ import {
   parseKioskCommandId,
   type KioskCommandId,
 } from '@/lib/kiosk/commands';
+import { DEFAULT_LINE_REASONS, type KioskLineReasons } from '@/lib/kiosk/price-approval-kinds';
 
 const BrandSchema = z.object({
   name: z.string().min(1).max(80).optional(),
@@ -45,12 +46,12 @@ const BrandSchema = z.object({
 });
 
 // Counter-tablet BEHAVIOUR, kept out of `brand` on purpose: brand is identity
-// (name, logo, colour, lock-screen media). Consult idle is off in
-// `resolveKioskIdleTiming` — a leftover number here cannot turn it back on.
+// (name, logo, colour, lock-screen media). Consult idle is off — nothing on
+// the counter reads an idle number, so a leftover one cannot turn it back on.
 const KioskSchema = z.object({
   /**
    * Leftover tenant JSON. The consult shell ignores this — idle/attract are
-   * off (`resolveKioskIdleTiming`). Kept so existing org bags still parse.
+   * off and nothing reads it. Kept so existing org bags still parse.
    */
   idleTimeoutSeconds: z.number().int().optional(),
   /**
@@ -65,10 +66,17 @@ const KioskSchema = z.object({
    * `KIOSK_FALLBACK_COMMAND` (repair) via {@link getKioskDefaultCommand} — a
    * shop whose counter is mostly retail sets `retail` here and gets it.
    *
-   * Same four strings as `counter_sessions.active_command`'s CHECK; the list
-   * is `KIOSK_COMMAND_IDS`, so the column and this field cannot drift apart.
+   * The list is `KIOSK_COMMAND_IDS` — a subset of `counter_sessions.active_command`'s
+   * CHECK — so this field can never hold a value the column would reject.
    */
   defaultCommand: z.enum(KIOSK_COMMAND_IDS).optional(),
+  /**
+   * The counter's comp and void reasons (Square's owner-editable lists). The
+   * tablet offers them as chips; free text is always allowed beside them.
+   * Unset or empty → `DEFAULT_LINE_REASONS`.
+   */
+  compReasons: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
+  voidReasons: z.array(z.string().trim().min(1).max(60)).max(12).optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and
@@ -488,6 +496,16 @@ export function getKioskDefaultCommand(
   settings: OrgSettings | null | undefined,
 ): KioskCommandId {
   return parseKioskCommandId(settings?.kiosk?.defaultCommand, KIOSK_FALLBACK_COMMAND);
+}
+
+/** The org's comp / void reasons, each list falling back to the defaults when unset or empty. */
+export function getKioskLineReasons(settings: OrgSettings | null | undefined): KioskLineReasons {
+  const comp = settings?.kiosk?.compReasons?.filter((r) => r.trim()) ?? [];
+  const voids = settings?.kiosk?.voidReasons?.filter((r) => r.trim()) ?? [];
+  return {
+    comp: comp.length > 0 ? comp : DEFAULT_LINE_REASONS.comp,
+    void: voids.length > 0 ? voids : DEFAULT_LINE_REASONS.void,
+  };
 }
 
 /** Per-org photo-analysis settings (see OrgSettingsSchema.photoAnalysis). */

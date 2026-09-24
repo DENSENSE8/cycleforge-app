@@ -78,8 +78,8 @@ import {
   type KioskTicketChoice,
 } from '@/lib/kiosk/repair-ticket-choice';
 import { MOBILE_SCAN_ROW_CORNER, cornerClass } from '@/design-system/tokens/radius';
-// No inset here: the host step body already carries KIOSK_BODY_INSET's px-4,
-// and a second inset inside it would step the slider in from the paperwork.
+// No inset here: the host step body already carries its px-4, and a second
+// inset inside it would step the slider in from the paperwork.
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 

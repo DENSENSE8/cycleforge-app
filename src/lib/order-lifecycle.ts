@@ -21,6 +21,8 @@
  * `*_STATE_META`; this module is logic + vocabulary only.
  */
 
+import type { LifecycleState } from '@cycleforge/design-tokens';
+
 /** The full pre‑dock pipeline stage vocabulary. */
 export type OrderLifecycleStage =
   | 'AWAITING_LABEL' // sold, no tracking/label yet (shipment_id is null)
@@ -105,6 +107,29 @@ export function resolveFulfillmentLane(signals: OrderLifecycleSignals): Fulfillm
   if (isOutOfStock(signals)) return 'BLOCKED';
   if (signals.hasTechScan) return 'TESTED';
   return 'PENDING';
+}
+
+/**
+ * Pre‑dock stage (+ the order's expedite flag) → the cross‑platform
+ * {@link LifecycleState} key whose code, word and tone every industrial row
+ * paints (`LIFECYCLE` in `@cycleforge/design-tokens`). The ONE place an order
+ * is mapped onto that vocabulary.
+ *
+ * Precedence follows the stage rules above, then the floor terminal's
+ * (`v1-outbound` desktop `workState`): a hold outranks everything, an
+ * expedite outranks progress, a packed carton reads packed. AWAITING_LABEL,
+ * PENDING and TESTED all read `ready` — `LIFECYCLE` has no finer word for
+ * "in the building, not packed", and the row's next action (→ Label / → Pick
+ * / → Pack) carries the difference.
+ */
+export function orderLifecycleState(
+  stage: OrderLifecycleStage,
+  flags: { urgent?: boolean | null } = {},
+): LifecycleState {
+  if (stage === 'BLOCKED') return 'outOfStock';
+  if (flags.urgent) return 'urgent';
+  if (stage === 'PACKED_STAGED') return 'packed';
+  return 'ready';
 }
 
 // ─── Board descriptor (lane order + icon binding, as data — no React) ───────────

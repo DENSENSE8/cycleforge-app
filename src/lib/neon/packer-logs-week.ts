@@ -7,6 +7,7 @@ import {
   setCachedJson,
 } from '@/lib/cache/upstash-cache';
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { escapeLike } from '@/lib/sql-like';
 import { queryWithRetry } from '@/lib/db-retry';
 import { isPackerLogEnrichmentRead } from '@/lib/feature-flags';
 import { computePackerLogEnrichment } from '@/lib/neon/packer-log-enrichment';
@@ -34,6 +35,17 @@ export interface FetchPackerLogRowsOptions {
   weekEnd?: string;
   trackingTypeFilter?: PackerLogsTrackingFilter;
   /**
+   * The bench find box, ANSWERED HERE. Case-insensitive substring over the
+   * facts a packer bench row paints (`bench-row-view.ts` + `packer-resolve.ts`):
+   * title, order number, tracking / scan ref / FNSKU, SKU, item number, note,
+   * serial, and BOTH staff names the row prints (the packer who scanned it and
+   * the upstream tester).
+   *
+   * Present ⇒ the caller's `limit` / `offset` page bound is dropped (see the
+   * `searching` note in the body). Absent/empty ⇒ nothing changes.
+   */
+  searchTerm?: string;
+  /**
    * Spine-first render (immediate paint). When true, the two per-row
    * `work_assignments` laterals (ship-by deadline + assigned tester) are dropped
    * and the photos round-trip is skipped, so the page returns from cheap joins
@@ -55,6 +67,12 @@ export interface FetchPackerLogRowsResult {
 const CACHE_NAMESPACE = 'api:packing-logs-v8';
 const CACHE_TAGS = ['packing-logs'];
 
+// Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
+// Not a window in the defect's sense: a week of PACK scans is two orders of
+// magnitude under it, so it never decides an operator's answer, it only keeps
+// a pathological single-character query from streaming history at the box.
+const SEARCH_ROW_CEILING = 5000;
+
 // Set once if `packer_log_enrichment` is absent (a DB that hasn't run the
 // 2026-06-29f migration — e.g. a fresh preview/branch). Lets the default-ON read
 // model degrade to the legacy query for the rest of the process instead of
@@ -75,8 +93,25 @@ let enrichmentTableMissing = false;
 export async function fetchPackerLogRows(
   opts: FetchPackerLogRowsOptions,
 ): Promise<FetchPackerLogRowsResult> {
-  const limit = opts.limit ?? 500;
-  const offset = opts.offset ?? 0;
+  const searchTerm = (opts.searchTerm ?? '').trim();
+  /**
+   * A searching read drops the page bound and covers the whole week.
+   *
+   * The defect this prevents: the bench feed asks for `limit=1000` and the find
+   * box used to filter those mounted rows in React, so a pack that happened
+   * outside the newest thousand scans of the week answered "no results" for a
+   * tracking number the operator was holding in their hand. A window the
+   * operator cannot see must not decide whether their query has an answer —
+   * the orders desk already settled this (`src/lib/dashboard-table-data.ts:141-151`,
+   * where a `q` drops `listShape`/`limit`).
+   *
+   * The WEEK survives it. It is a scope the operator CHOSE and reads off the
+   * period pill, and `usePackerTableController` re-bands the answer to
+   * `weekRange` on arrival — rows from outside it would be fetched, paid for,
+   * and then dropped on the floor.
+   */
+  const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
+  const offset = searchTerm ? 0 : (opts.offset ?? 0);
   const weekStart = opts.weekStart ?? '';
   const weekEnd = opts.weekEnd ?? '';
   const trackingTypeFilter: PackerLogsTrackingFilter = opts.trackingTypeFilter ?? 'all';
@@ -101,6 +136,10 @@ export async function fetchPackerLogRows(
     weekStart,
     weekEnd,
     trackingTypeFilter,
+    // The query text is part of the ANSWER, so it belongs in the key — without
+    // it a searched page and the unfiltered week collide on one entry and the
+    // first to land is served to the other.
+    q: searchTerm,
     // Spine and full responses have different column payloads — keep them in
     // separate cache entries so one can never be served for the other.
     phase: spineOnly ? 'spine' : 'full',
@@ -177,6 +216,76 @@ export async function fetchPackerLogRows(
     );
   } else if (trackingTypeFilter === 'sku') {
     conditions.push(`COALESCE(pl.tracking_type, '') = 'SKU'`);
+  }
+
+  /**
+   * The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's
+   * WHERE, above the LIMIT. Applied to the outer SELECT instead it would filter
+   * the very window that caused the defect and change nothing.
+   *
+   * The legs are the facts a packer bench row paints, one EXISTS per table so
+   * the common (unsearched) page keeps its two-table plan:
+   *   · `sal.scan_ref` / `sal.fnsku` — what the scanner actually read.
+   *   · `stn.tracking_number_raw` — the carrier tracking the Tracking cell shows.
+   *   · `packed_staff.name` — this bench's own actor; `packedStep` prints it.
+   *   · the matched order — title, order number, SKU, item number, note.
+   *   · `tech_serial_numbers` — the serial cell, and with it the upstream
+   *     tester's name, which `testedStep` also prints. Matched by shipment
+   *     rather than by order id because the order is not resolved this early;
+   *     that is the same shipment fallback `test_data` uses downstream.
+   *
+   * Every EXISTS re-states `organization_id = sal.organization_id`. The CTE is
+   * already tenant-scoped, but a subquery joining a second table on a shared id
+   * would otherwise be free to read another tenant's row to decide this
+   * tenant's match.
+   */
+  if (searchTerm) {
+    params.push(`%${escapeLike(searchTerm)}%`);
+    const q = `$${params.length}`;
+    conditions.push(`(
+        sal.scan_ref ILIKE ${q}
+        OR sal.fnsku ILIKE ${q}
+        OR EXISTS (
+            SELECT 1 FROM shipping_tracking_numbers stn_q
+            WHERE stn_q.id = sal.shipment_id
+              AND stn_q.tracking_number_raw ILIKE ${q}
+        )
+        OR EXISTS (
+            SELECT 1 FROM staff packed_staff_q
+            WHERE packed_staff_q.id = sal.staff_id
+              AND packed_staff_q.organization_id = sal.organization_id
+              AND packed_staff_q.name ILIKE ${q}
+        )
+        OR EXISTS (
+            SELECT 1 FROM fba_fnskus ff_q
+            WHERE ff_q.fnsku = sal.fnsku
+              AND ff_q.organization_id = sal.organization_id
+              AND (ff_q.product_title ILIKE ${q} OR ff_q.sku ILIKE ${q})
+        )
+        OR EXISTS (
+            SELECT 1 FROM orders o_q
+            LEFT JOIN shipment_links osl_q
+              ON osl_q.owner_id = o_q.id AND osl_q.owner_type = 'ORDER'
+            WHERE sal.shipment_id IS NOT NULL
+              AND o_q.organization_id = sal.organization_id
+              AND (osl_q.shipment_id = sal.shipment_id OR o_q.shipment_id = sal.shipment_id)
+              AND (
+                o_q.order_id ILIKE ${q}
+                OR o_q.product_title ILIKE ${q}
+                OR o_q.sku ILIKE ${q}
+                OR o_q.item_number ILIKE ${q}
+                OR o_q.notes ILIKE ${q}
+              )
+        )
+        OR EXISTS (
+            SELECT 1 FROM tech_serial_numbers tsn_q
+            LEFT JOIN staff tester_q ON tester_q.id = tsn_q.tested_by
+            WHERE sal.shipment_id IS NOT NULL
+              AND tsn_q.organization_id = sal.organization_id
+              AND tsn_q.shipment_id = sal.shipment_id
+              AND (tsn_q.serial_number ILIKE ${q} OR tester_q.name ILIKE ${q})
+        )
+    )`);
   }
 
   const whereClause = `WHERE ${conditions.join(' AND ')}`;

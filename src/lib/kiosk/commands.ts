@@ -1,5 +1,5 @@
 /**
- * Kiosk COMMAND vocabulary — the four center work surfaces, and which one a
+ * Kiosk COMMAND vocabulary — the center work surfaces, and which one a
  * counter opens on. Pure; no React, no icons, no DB.
  *
  * ## Why this is its own module
@@ -8,10 +8,24 @@
  * module, and imported as a type by two SERVER files (`counter/session-events`,
  * `counter/session-store`) plus the settings schema would have been a third.
  * The vocabulary is not a client concern — `counter_sessions.active_command`
- * carries the same four strings under a CHECK constraint
+ * carries these strings under a CHECK constraint
  * (`migrations/2026-08-20a_counter_sessions.sql:134`) — so it lives here and
  * both sides import it. The store keeps its public API by importing, not by
  * re-declaring.
+ *
+ * ## Two commands, not four
+ *
+ * Buyback and Pickup were deleted 2026-09-23 (operator: *"delete all of the
+ * components that are not currently adhering to the rules … I will build it
+ * up by what exactly I'm doing at each step"*). Neither face met the kiosk
+ * law — each stacked a title that repeated the mode name, Pickup ran its
+ * lookup as body fields instead of the header search — and neither had ever
+ * recorded anything: 0 `pickup_signed_at`, 0 buyback lines on a transaction.
+ * The column's CHECK still ADMITS `buyback` / `pickup`; a wider CHECK is
+ * harmless, and every read goes through {@link parseKioskCommandId}, so a
+ * stray stored value opens the fallback instead of a pane that no longer
+ * exists. Re-adding a command is one entry here plus its tile in
+ * `services.ts`.
  *
  * `KIOSK_SERVICES` (`services.ts`) stays the presentation SoT: labels, glyphs,
  * ink, `status: 'live'`. That file pulls JSX, which is exactly why the ids are
@@ -35,15 +49,15 @@
  *
  * Callers: `kiosk-session-store`, `services`, `tenancy/settings`,
  * `counter/session-events`, `counter/session-store`, `/kiosk/v2`.
- * Affected API: none. Schemas: `counter_sessions.active_command` (same four).
+ * Affected API: none. Schemas: `counter_sessions.active_command` (a subset).
  */
 
 /**
  * Every command id, in the order a counter menu reads them. Also the zod enum
- * behind `OrgSettings.kiosk.defaultCommand` and the CHECK vocabulary on
- * `counter_sessions.active_command` — one list, three consumers.
+ * behind `OrgSettings.kiosk.defaultCommand`, and a subset of the CHECK
+ * vocabulary on `counter_sessions.active_command`.
  */
-export const KIOSK_COMMAND_IDS = ['repair', 'retail', 'buyback', 'pickup'] as const;
+export const KIOSK_COMMAND_IDS = ['repair', 'retail'] as const;
 
 /** Center work command — not a siloed mode that owns the session. */
 export type KioskCommandId = (typeof KIOSK_COMMAND_IDS)[number];

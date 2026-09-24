@@ -5,24 +5,25 @@ import { useBodyScrollLock } from '@/design-system/hooks';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-
-
-
-type ActionType = 'replaced' | 'repaired' | 'cleaned' | 'tested' | 'no_fix' | 'awaiting_part';
+import { Check, Clock, RefreshCw, Tool, Wrench, X } from '@/components/Icons';
+import type { RepairActionType } from '@/lib/repair-action-type-tone';
+import { REPAIR_ACTION_COPY, type RepairActionRecord } from '@/lib/repair/repair-actions';
 
 interface Props {
   repairId: number;
   onClose: () => void;
-  onSaved: () => void;
+  /** Receives the row the server stored — its `created_at` is the work stamp. */
+  onSaved: (action: RepairActionRecord) => void;
 }
 
-const TYPES: { id: ActionType; emoji: string; label: string; sub: string }[] = [
-  { id: 'replaced',      emoji: '🔁', label: 'Replaced',      sub: 'Swapped a part' },
-  { id: 'repaired',      emoji: '🔧', label: 'Repaired',      sub: 'Fixed without swap' },
-  { id: 'cleaned',       emoji: '🧼', label: 'Cleaned',       sub: 'Contacts / ports' },
-  { id: 'tested',        emoji: '✅', label: 'Tested',        sub: 'Verified working' },
-  { id: 'no_fix',        emoji: '❌', label: 'No fix',        sub: 'Cannot be repaired' },
-  { id: 'awaiting_part', emoji: '⏸', label: 'Awaiting part', sub: 'Ordered, waiting' },
+// Bench order: the physical fix first, the waiting states last.
+const TYPES: { id: RepairActionType; icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: 'repaired', icon: Wrench },
+  { id: 'replaced', icon: RefreshCw },
+  { id: 'cleaned', icon: Tool },
+  { id: 'tested', icon: Check },
+  { id: 'awaiting_part', icon: Clock },
+  { id: 'no_fix', icon: X },
 ];
 
 interface FormState {
@@ -47,14 +48,14 @@ const EMPTY_FORM: FormState = {
 
 export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
   const [step, setStep] = useState<'type' | 'details'>('type');
-  const [actionType, setActionType] = useState<ActionType | null>(null);
+  const [actionType, setActionType] = useState<RepairActionType | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useBodyScrollLock(true);
 
-  const pick = (t: ActionType) => {
+  const pick = (t: RepairActionType) => {
     setActionType(t);
     setStep('details');
   };
@@ -83,7 +84,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
       if (!res.ok || !body?.success) {
         throw new Error(body?.details || body?.error || `HTTP ${res.status}`);
       }
-      onSaved();
+      onSaved(body.action as RepairActionRecord);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -100,12 +101,12 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
     actionType === 'replaced';
 
   return (
-    <div className="fixed inset-0 z-modal flex flex-col bg-surface-card">
-      <header className="shrink-0 flex items-center justify-between border-b border-border-soft px-4 py-3">
+    <div className="fixed inset-0 z-modal flex flex-col bg-mode-panel">
+      <header className="flex shrink-0 items-center justify-between border-b border-mode-rule bg-mode-bar px-mode-page py-3">
         {step === 'type' ? (
           <>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-text-default">
-              Add action
+              Log work
             </h2>
             <Button variant="ghost" size="sm" onClick={onClose}>
               Cancel
@@ -117,7 +118,7 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
               ← Back
             </Button>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-text-default">
-              {actionType && TYPES.find((t) => t.id === actionType)?.label}
+              {actionType && REPAIR_ACTION_COPY[actionType].label}
             </h2>
             {/* ds-raw-button: solid-orange repair-theme save CTA — no orange DS Button variant */}
             <button
@@ -132,22 +133,20 @@ export function AddRepairActionSheet({ repairId, onClose, onSaved }: Props) {
         )}
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-4">
+      <main className="flex-1 overflow-y-auto px-mode-page py-mode-page">
         {step === 'type' && (
           <div className="grid grid-cols-2 gap-3">
             {TYPES.map((t) => (
-              // ds-raw-button: multi-line text-left card tile (emoji + label + sub), not a standard action button
+              // ds-raw-button: multi-line text-left card tile (icon + label + sub), not a standard action button
               <button
                 key={t.id}
                 type="button"
                 onClick={() => pick(t.id)}
-                className="flex flex-col items-start gap-1 rounded-xl border border-border-soft bg-surface-card p-4 shadow-sm active:bg-surface-hover active:scale-[0.98] transition-transform"
+                className="flex min-h-mode-hit flex-col items-start gap-1 rounded-mode border border-mode-edge bg-mode-panel p-mode-page active:bg-mode-hover active:scale-[0.98] transition-transform"
               >
-                <span className="text-3xl leading-none" aria-hidden>
-                  {t.emoji}
-                </span>
-                <p className="mt-1 text-sm font-semibold text-text-default">{t.label}</p>
-                <p className="text-role-micro font-semibold text-text-soft leading-snug">{t.sub}</p>
+                <t.icon className="h-5 w-5 text-text-muted" aria-hidden />
+                <p className="mt-1 text-sm font-semibold text-text-default">{REPAIR_ACTION_COPY[t.id].label}</p>
+                <p className="text-role-micro font-semibold text-text-soft leading-snug">{REPAIR_ACTION_COPY[t.id].sub}</p>
               </button>
             ))}
           </div>
@@ -262,7 +261,7 @@ function Field({
         autoFocus={autoFocus}
         autoComplete="off"
         spellCheck={false}
-        className={`w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 ${
+        className={`min-h-mode-hit w-full rounded-mode border border-mode-control bg-mode-panel px-3 text-mode-body font-semibold text-mode-ink outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 ${
           mono ? 'font-mono' : ''
         }`}
       />
@@ -291,7 +290,7 @@ function FieldTextarea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={4}
-        className={cn("w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-medium text-text-default resize-none", focusRing('field', 'warning'))}
+        className={cn("w-full rounded-mode border border-mode-control bg-mode-panel px-3 py-2.5 text-mode-body font-medium text-mode-ink resize-none", focusRing('field', 'warning'))}
       />
     </label>
   );

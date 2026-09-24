@@ -1,7 +1,8 @@
 import 'server-only';
 
 /**
- * Which command a counter tablet OPENS on, resolved at request time.
+ * What a counter tablet OPENS with, resolved at request time: the command it
+ * lands on and the org's comp / void reason lists.
  *
  * ## Why this is server-side and not a fetch
  *
@@ -30,34 +31,47 @@ import 'server-only';
  * that guard, shared rather than re-derived.
  *
  * Callers: `/kiosk/v2/page.tsx`. Affected API: none.
- * Schemas: `organizations.settings.kiosk.defaultCommand`, read-only.
+ * Schemas: `organizations.settings.kiosk.{defaultCommand,compReasons,voidReasons}`
+ * and `organizations.settings.brand.primaryColor`, read-only.
  */
 
-import { cookies } from 'next/headers';
-import { KIOSK_COOKIE_NAME, loadKioskDeviceByToken } from '@/lib/auth/kiosk-device';
 import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
+import { DEFAULT_LINE_REASONS, type KioskLineReasons } from '@/lib/kiosk/price-approval-kinds';
 import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
+import { resolveKioskOrgForRequest } from '@/lib/kiosk/kiosk-request-org.server';
 import { getOrganization } from '@/lib/tenancy/organizations';
-import { getKioskDefaultCommand } from '@/lib/tenancy/settings';
-import type { OrgId } from '@/lib/tenancy/constants';
+import { getKioskDefaultCommand, getKioskLineReasons } from '@/lib/tenancy/settings';
 
-/** The paired tablet's org, or null when this device is not bound. */
-async function resolveOrgFromCookie(): Promise<OrgId | null> {
-  const token = (await cookies()).get(KIOSK_COOKIE_NAME)?.value ?? null;
-  if (!token) return null;
-  const device = await loadKioskDeviceByToken(token);
-  return (device?.organizationId as OrgId | undefined) ?? null;
+export interface CounterBoot {
+  defaultCommand: KioskCommandId;
+  lineReasons: KioskLineReasons;
+  /**
+   * The org's brand colour (`settings.brand.primaryColor`, hex-validated by
+   * the settings schema) — the counter mode's `--mode-brand`. Null ⇒ the
+   * registry default (`MODE_REGISTRY.counter.brand`).
+   */
+  brandColor: string | null;
 }
 
-export async function resolveCounterDefaultCommand(): Promise<KioskCommandId> {
+const FALLBACK_BOOT: CounterBoot = {
+  defaultCommand: KIOSK_FALLBACK_COMMAND,
+  lineReasons: DEFAULT_LINE_REASONS,
+  brandColor: null,
+};
+
+export async function resolveCounterBoot(): Promise<CounterBoot> {
   try {
-    const orgId = await resolveOrgFromCookie();
-    if (!orgId) return KIOSK_FALLBACK_COMMAND;
+    const orgId = await resolveKioskOrgForRequest();
+    if (!orgId) return FALLBACK_BOOT;
     const org = await getOrganization(orgId);
-    return getKioskDefaultCommand(org?.settings);
+    return {
+      defaultCommand: getKioskDefaultCommand(org?.settings),
+      lineReasons: getKioskLineReasons(org?.settings),
+      brandColor: org?.settings.brand.primaryColor ?? null,
+    };
   } catch (error) {
     if (isNextDynamicUsage(error)) throw error;
-    console.warn('resolveCounterDefaultCommand failed; opening on the fallback', error);
-    return KIOSK_FALLBACK_COMMAND;
+    console.warn('resolveCounterBoot failed; opening on the fallbacks', error);
+    return FALLBACK_BOOT;
   }
 }

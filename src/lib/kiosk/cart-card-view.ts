@@ -14,8 +14,11 @@
  */
 
 import {
+  KIOSK_LINE_MAX_QUANTITY,
   isBuybackPayload,
   isRepairPayload,
+  lineIsCustom,
+  linePriceAdjustment,
   type KioskCartLine,
 } from './cart-line';
 
@@ -25,27 +28,43 @@ export function formatCartCents(cents: number): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
+/** One identifier, NAMED — a bare `670156893` chip is a number nobody can place. */
+export interface CartLineId {
+  label: string;
+  value: string;
+}
+
+function id(label: string, value: string | null | undefined): CartLineId | null {
+  const v = value?.trim();
+  return v ? { label, value: v } : null;
+}
+
 /**
- * The line's IDENTIFIERS.
+ * The line's IDENTIFIERS, each with the word that says what it is.
  *
- * A retail line has a SKU, a repair has the device serial, a buyback has the
- * IMEI — the numbers a dispute is settled with, so they get a chip rather than
- * a buried note.
+ * A sale has the catalog SKU, a repair has its
+ * service SKU and the device serial, a trade-in has the IMEI — the numbers a
+ * dispute is settled with, so they get a chip rather than a buried note. The
+ * chips used to print the bare values (`04767`, `670156893`), which left the
+ * operator guessing which was the SKU (operator 2026-09-23: *"the numbers
+ * should have an identification what numbers they are"*).
  */
 export function cartLineIdentifiers(
   line: KioskCartLine,
-): { primary: string | null; secondary: string | null } {
+): { primary: CartLineId | null; secondary: CartLineId | null } {
   const p = line.payload;
   if (isRepairPayload(p)) {
     return {
-      primary: p.sourceSku?.trim() || null,
-      secondary: p.serialNumber?.trim() || p.imei?.trim() || null,
+      primary: id('SKU', p.sourceSku),
+      secondary: id('SN', p.serialNumber) ?? id('IMEI', p.imei),
     };
   }
   if (isBuybackPayload(p)) {
-    return { primary: null, secondary: p.imei?.trim() || null };
+    return { primary: null, secondary: id('IMEI', p.imei) };
   }
-  return { primary: p.sku?.trim() || null, secondary: p.variationId?.trim() || null };
+  // The storefront listing id is not printed: nobody at the counter reads it
+  // (operator 2026-09-23: "Remove the item ID").
+  return { primary: id('SKU', p.sku), secondary: null };
 }
 
 /** The qualifier under the title — what makes THIS line different. */
@@ -58,7 +77,8 @@ export function cartLineDetail(line: KioskCartLine): string | null {
   if (isBuybackPayload(p)) {
     return p.grade ? `Grade ${p.grade}` : (p.notes?.trim() || null);
   }
-  return null;
+  // A sale's qualifier is its item note (Square prints it under the item).
+  return p.note?.trim() || null;
 }
 
 /**
@@ -72,9 +92,28 @@ export function cartLineState(
   voided: boolean,
 ): { label: string; voided: boolean } {
   if (voided) return { label: 'Voided', voided: true };
+  // A comp is still on the bill, at $0 with its reason — that is what it IS
+  // now, so it outranks the line type (Square prints "Comp").
+  if (linePriceAdjustment(line)?.kind === 'comp') return { label: 'Comp', voided: false };
   if (line.type === 'REPAIR') return { label: 'Repair', voided: false };
-  if (line.type === 'BUYBACK') return { label: 'Buyback', voided: false };
-  return { label: 'Retail', voided: false };
+  // Shown as "Trade-in" — the retail word (Best Buy, Apple, GameStop) a
+  // customer recognises; BUYBACK stays the stored line type.
+  if (line.type === 'BUYBACK') return { label: 'Trade-in', voided: false };
+  // "Sale", matching the Sales mode and History's per-record Sale chip.
+  return { label: 'Sale', voided: false };
+}
+
+/** What one press of the card's `−` / `+` does. */
+export type CartQuantityStep =
+  | { kind: 'set'; quantity: number }
+  /** `−` at 1: ask before the line goes (Square's qty 0 → Remove). */
+  | { kind: 'confirm-remove' };
+
+export function stepCartQuantity(current: number, delta: 1 | -1): CartQuantityStep {
+  const from = Number.isFinite(current) ? Math.max(1, Math.trunc(current)) : 1;
+  const next = from + delta;
+  if (next < 1) return { kind: 'confirm-remove' };
+  return { kind: 'set', quantity: Math.min(KIOSK_LINE_MAX_QUANTITY, next) };
 }
 
 export interface CartCardView {
@@ -82,17 +121,30 @@ export interface CartCardView {
   title: string;
   /** Reasons / model / grade — the line's qualifier, or null. */
   detail: string | null;
-  /** State chip text: Repair · Retail · Buyback, or Voided. */
+  /** State chip text: Repair · Sale · Trade-in, or Voided. */
   stateLabel: string;
   voided: boolean;
-  /** SKU-ish identifier chip, or null. */
-  primaryId: string | null;
+  /** SKU identifier chip, or null. */
+  primaryId: CartLineId | null;
   /** Serial / IMEI chip, or null. */
-  secondaryId: string | null;
-  /** Clamped whole units. */
+  secondaryId: CartLineId | null;
+  /** A keypad line: the card wears a `Custom` chip so it reads apart from the catalog. */
+  custom: boolean;
+  /**
+   * The catalog unit price, struck beside the new amount (`~~$5.59~~ 1 · $4.00`),
+   * when a price adjustment changed it. Null otherwise — a comp names its
+   * reason instead, and a custom amount had no catalog price.
+   */
+  adjustedFrom: string | null;
+  /** Why a comped line is $0 (`Comp · Goodwill`), or null. */
+  compReason: string | null;
+  /**
+   * A sale line carries the `−  N  +` stepper. A repair is one device and a
+   * trade-in one IMEI, so neither ever has a quantity (handoff Law 6).
+   */
+  steppable: boolean;
+  /** Clamped whole units — printed as `qty · amount` at the card's right. */
   quantity: number;
-  /** `×N @ $u` — only when it is not a restatement of the total. */
-  unitNote: string | null;
   /** Line total, formatted. */
   amount: string;
   /** A trade-in is money going the other way; the minus sign alone is missable. */
@@ -108,6 +160,7 @@ export function cartLineCardView(
   const total = quantity * unit;
   const ids = cartLineIdentifiers(line);
   const state = cartLineState(line, Boolean(parts.voided));
+  const adjustment = linePriceAdjustment(line);
 
   return {
     id: line.id,
@@ -117,8 +170,14 @@ export function cartLineCardView(
     voided: state.voided,
     primaryId: ids.primary,
     secondaryId: ids.secondary,
+    custom: lineIsCustom(line),
+    adjustedFrom:
+      adjustment?.kind === 'adjust' && adjustment.originalUnitAmountCents != null
+        ? formatCartCents(adjustment.originalUnitAmountCents)
+        : null,
+    compReason: adjustment?.kind === 'comp' ? adjustment.reason : null,
+    steppable: line.type === 'RETAIL' && !state.voided,
     quantity,
-    unitNote: quantity > 1 ? `×${quantity} @ ${formatCartCents(unit)}` : null,
     amount: formatCartCents(total),
     credit: total < 0,
   };

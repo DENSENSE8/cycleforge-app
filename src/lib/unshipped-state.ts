@@ -16,7 +16,8 @@
  * `PACKED_STAGED` dot/pill colors here are re‑used from the outbound meta.
  *
  * Color rule: no two status dots across BOTH models share a hue. The unshipped
- * states claim slate / yellow / teal / red; `PACKED_STAGED` is the shared amber;
+ * states claim slate / yellow / teal / red; `PACKED_STAGED` is the shared packed
+ * purple (LIFECYCLE.packed → fulfillment);
  * the outbound states own blue / indigo / emerald / rose / orange / pink.
  *
  * Pure + isomorphic (no React, no DOM, no Date.now): safe on client and server.
@@ -147,7 +148,7 @@ interface UnshippedStateMeta {
 // Presentation now flows from the one label registry (`src/lib/labels`) — the
 // label/description/tone are seeded defaults there and are tenant‑overridable
 // (Phase 2). The no‑two‑dots‑share‑a‑hue invariant + the PACKED_STAGED seam
-// (shared amber with outbound) are preserved by the registry's distinct tones;
+// (shared packed purple with outbound) are preserved by the registry's distinct tones;
 // `labels/resolve.test.ts` pins this map byte‑identical to the former literals.
 export const UNSHIPPED_STATE_META = buildStateMeta('unshipped') as Record<UnshippedState, UnshippedStateMeta>;
 

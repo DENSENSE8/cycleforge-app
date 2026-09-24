@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { timeAgo } from '@/utils/_date';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { conditionBadgeTone } from '@/lib/receiving/receiving-constants';
 import { SerialChip, SkuSerialChip } from '@/components/ui/CopyChip';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
@@ -466,8 +467,8 @@ const ICON_FOR_EVENT: Record<string, { icon: React.ComponentType<{ className?: s
   TEST_PASS:  { icon: Check,          tone: 'bg-emerald-100 text-emerald-700' },
   TEST_FAIL:  { icon: AlertTriangle,  tone: 'bg-rose-100 text-rose-700' },
   PICKED:     { icon: Package,        tone: 'bg-indigo-100 text-indigo-700' },
-  PACKED:     { icon: Package,        tone: 'bg-indigo-100 text-indigo-700' },
-  SHIPPED:    { icon: Truck,          tone: 'bg-violet-100 text-violet-700' },
+  PACKED:     { icon: Package,        tone: LIFECYCLE_CLASSES.packed.pill },
+  SHIPPED:    { icon: Truck,          tone: LIFECYCLE_CLASSES.shipped.pill },
   RETURNED:   { icon: ChevronRight,   tone: 'bg-rose-100 text-rose-700' },
   SCRAPPED:   { icon: AlertTriangle,  tone: 'bg-red-100 text-red-700' },
   LISTED:     { icon: ClipboardList,  tone: 'bg-blue-100 text-blue-700' },

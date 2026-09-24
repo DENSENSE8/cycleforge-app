@@ -37,9 +37,9 @@
  * Existing rows are untouched — an old, tall PNG still `contain`s into the
  * band, it just keeps its old floating look. No migration, no backfill.
  *
- * Callers: `src/components/repair/SignaturePad.tsx` (capture),
+ * Callers: `src/components/ui/SignaturePad.tsx` (capture),
  * `src/lib/repair/repair-paper-html.ts` (print band),
- * `src/components/repair/SignaturePad.tsx` (capture surface classes).
+ * `src/components/ui/SignaturePad.tsx` (capture surface classes).
  * Affected API: none. Schemas: none (the stored `signatureDataUrl` gets
  * tighter, not differently shaped).
  */

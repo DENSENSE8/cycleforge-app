@@ -25,6 +25,7 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { useDebounce } from '@/hooks';
 
 
 
@@ -35,6 +36,23 @@ interface ApiResponse {
 
 type FilterKey = 'all' | 'open' | 'received' | 'today';
 type SortKey = 'scanned_newest' | 'scanned_oldest' | 'unboxed_newest';
+
+/**
+ * Keystroke settle before the search reaches `/api/receiving-lines`.
+ *
+ * The raw box value used to be the query key, so a 10-character PO number was
+ * ten `GET /api/receiving-lines?limit=200&include=serials` round trips — on a
+ * warehouse phone over LAN, ten 200-row payloads for nine queries nobody ever
+ * read. The DRAFT stays instant (it is still plain `search` state bound to the
+ * input, so typing never stutters); only the value that feeds the query key is
+ * settled.
+ *
+ * 250ms is not a new number: it is `SEARCH_DEBOUNCE_MS` from
+ * `src/lib/kiosk/history/useKioskVisitHistory.ts`, the repo's other
+ * type-to-filter-a-list surface. A third interval beside 250 (list search) and
+ * `SearchField`'s 320 (field default) would be a convention, not a tuning.
+ */
+const SEARCH_DEBOUNCE_MS = 250;
 
 const FILTERS: HorizontalSliderItem[] = [
   { id: 'all',      label: 'All',      icon: Box },
@@ -71,9 +89,29 @@ export default function MobileReceivingPipelinePage() {
 
   const queryView = filter === 'received' ? 'received' : 'all';
 
+  /**
+   * The settled query — the ONLY thing that may enter the query key.
+   *
+   * Stale-response guard, split by who owns which half:
+   *
+   *  - **React Query gives the sequence guard for free.** Cache identity IS the
+   *    key, so a response for `…'PO-12'` is written to that key's entry and can
+   *    never land in `…'PO-123'`; the component only ever reads `data` for the
+   *    key it is currently rendering. That is what `useKioskVisitHistory`'s
+   *    `requestSeq` ref hand-rolls, and re-adding it here would be the third
+   *    variant.
+   *  - **The abort had to be wired.** React Query only cancels a superseded
+   *    request if the `queryFn` actually CONSUMES the `signal` it is handed —
+   *    threading it into `fetch` is what takes the dead prefix off the wire
+   *    instead of leaving a 200-row response to decode into a cache entry
+   *    nothing will read. Same `AbortController` contract as the kiosk hook,
+   *    owned by the query client rather than by a ref.
+   */
+  const debouncedSearch = useDebounce(search, SEARCH_DEBOUNCE_MS);
+
   const { data, isLoading, error } = useQuery<ApiResponse>({
-    queryKey: ['mobile-receiving-search', queryView, sort, search],
-    queryFn: async () => {
+    queryKey: ['mobile-receiving-search', queryView, sort, debouncedSearch],
+    queryFn: async ({ signal }) => {
       const params = new URLSearchParams({
         limit: '200',
         offset: '0',
@@ -81,9 +119,10 @@ export default function MobileReceivingPipelinePage() {
         sort,
         include: 'serials',
       });
-      if (search.trim()) params.set('search', search.trim());
+      if (debouncedSearch.trim()) params.set('search', debouncedSearch.trim());
       const res = await fetch(`/api/receiving-lines?${params.toString()}`, {
         cache: 'no-store',
+        signal,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();

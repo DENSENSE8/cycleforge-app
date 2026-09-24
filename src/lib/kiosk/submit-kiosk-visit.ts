@@ -31,12 +31,15 @@ import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
 import { kioskTicketWork } from '@/lib/kiosk/repair-ticket-choice';
 import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
+import type { KioskVoidedLine } from '@/lib/kiosk/kiosk-session-store';
 import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 
 /** The visit facts the submit reads — a structural slice of the session root. */
 export interface KioskVisitSubmitSession {
   lines: readonly KioskCartLine[];
+  /** Lines voided during this visit — recorded with it, never charged or printed. */
+  voidedLines?: readonly KioskVoidedLine[];
   customerPhone: string;
   customerName: string;
   customerEmail: string;
@@ -85,7 +88,17 @@ export async function submitKioskVisit(
            */
           ticketWork: kioskTicketWork(session.ticketChoice, services.length > 0),
         },
-        { takePayment: options.takePayment, staffId: options.staffId, pin: options.pin },
+        {
+          takePayment: options.takePayment,
+          staffId: options.staffId,
+          pin: options.pin,
+          voidedLines: (session.voidedLines ?? []).map((v) => ({
+            approval: v.approval,
+            title: v.title,
+            quantity: v.quantity,
+            unitAmountCents: v.unitAmountCents,
+          })),
+        },
       ),
     ),
   });
@@ -93,12 +106,18 @@ export async function submitKioskVisit(
   const body = (await res.json().catch(() => ({}))) as {
     transaction?: CounterTransactionResult;
     error?: string;
+    message?: string;
   };
 
   // Step-up is a DIFFERENT failure from a rejected transaction: the operator can
   // fix a PIN in place, so it must not read as "transaction failed".
   if (res.status === 403 && body.error === 'STEPUP_FAILED') {
     throw new Error('PIN incorrect. Try again.');
+  }
+  // A line whose price no longer matches its manager approval: name the line
+  // so the operator knows which one to re-authorize.
+  if (res.status === 403 && body.error === 'PRICE_APPROVAL') {
+    throw new Error(body.message?.trim() || 'A price on this cart needs a manager PIN again.');
   }
   if (res.status === 403 && body.error?.includes('STEPUP')) {
     throw new Error('A manager needs to authorize payment on this tablet.');

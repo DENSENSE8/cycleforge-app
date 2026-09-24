@@ -178,7 +178,7 @@
   "StepProgressHeader": {
     "useWhen": "step-flow header band, mobile-first wizard header, X close left + progress segments middle + n/N count right, kiosk pane form header, /m step flow header, Duolingo-style progress header",
     "doNot": "Do not compose a step-flow header from a title band plus an inline meter — this band IS the header (operator 2026-09-14: 'all in one header, X top left, progress bar, one-out-of-ten top right'). Do not hand-roll the bar: it composes ProgressBar with `segments={total}`. The count counts COMPLETED units (PG6), never the index of the step in view. Do not add a pane title inside this band — the step eyebrow in the body names the current step. Back affordances inside a fixed-width form measure use this X when 'exit the flow' is the semantic; paged back-steps belong to the body, not this band.",
-    "law": "Operator 2026-09-14 — 'think Duolingo instead of text'; kiosk DS unification Phase 1. Composes ProgressBar (PG12/PG6/M1). Mounts: KioskRepairPane and KioskCartLedger, both via KioskPaneForm `progress`. Buyback and pickup deliberately have NO progress — the shell paints their header, and a pane cannot own two. Every mount's segment count is a gate table (repairStepGates, cartStepGates), never a step index."
+    "law": "Operator 2026-09-14 — 'think Duolingo instead of text'; kiosk DS unification Phase 1. Composes ProgressBar (PG12/PG6/M1). Mounts: KioskRepairPane and KioskCartLedger, both via KioskPaneForm `progress`. Every mount's segment count is a gate table (repairStepGates, cartStepGates), never a step index."
   },
   "ProcedureDeck": {
     "useWhen": "station work surface, procedure steps, step column, work list, guided procedure, unbox steps, the surface an operator works a station from",
@@ -351,9 +351,9 @@
     "law": "src/components/ui/BottomSheet.tsx · docs/mobile-first/SURFACE_LAW.md §5 (flat work rows + task-local detail)."
   },
   "KioskPaneForm": {
-    "useWhen": "kiosk centre pane frame, kiosk pane shell, counter tablet pane column, kiosk step flow frame, kiosk repair/buyback/pickup/cart pane, kiosk action floor",
+    "useWhen": "kiosk centre pane frame, kiosk pane shell, counter tablet pane column, kiosk step flow frame, kiosk repair/cart pane, kiosk action floor",
     "doNot": "There is NO title face, and adding one re-opens the double-band bug (two stacked chromes on pickup, 2026-09-14). `progress` present → this pane owns its header and it IS StepProgressHeader; `progress` absent → the SHELL painted the header and the pane paints nothing. Never reach back for KIOSK_PANE_HEADER_BAND / KIOSK_PANE_HEADER_TITLE inside a pane, and never re-grow a `hideHeader` flag. The footer hairline is DERIVED from `progress` (step flows float their key, shell-titled panes carry the floor band) — never a per-pane knob. Do not hand-roll `flex h-full flex-col` → `overflow-y-auto` → footer row; that is this frame, and re-assembling it is how the repair footer lost its hairline. `hero` REPLACES the scroll body for a done/empty face; it is never a third band.",
-    "law": "src/components/kiosk/KioskPaneForm.tsx + kiosk-pane-frame.test.ts (4 contracts). Kiosk DS unification Phase 1, 2026-09-14. Mounts: KioskRepairPane, KioskBuybackPane, KioskPickupPane, KioskCartLedger (cart ported 2026-09-15 with `progress`)."
+    "law": "src/components/kiosk/KioskPaneForm.tsx + kiosk-pane-frame.test.ts (4 contracts). Kiosk DS unification Phase 1, 2026-09-14. Mounts: KioskRepairPane, KioskCartLedger (cart ported 2026-09-15 with `progress`), KioskCartDoneFace. Buyback/Pickup panes deleted 2026-09-23."
   },
   "KioskChip": {
     "useWhen": "kiosk chip, counter tablet pill, touch chip, selectable reason pill, fact chip on a kiosk card, kiosk cart line facts, rounded pill for a tablet",

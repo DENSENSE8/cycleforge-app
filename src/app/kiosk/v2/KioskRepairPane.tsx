@@ -40,7 +40,7 @@ import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { KioskCartDoneFace } from './KioskCartDoneFace';
 import { repairReceiptPropsForDevice } from '@/lib/repair/repair-intake-receipt';
-import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
+import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import type { ProductSelection } from '@/components/repair/ProductSelector';
 import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
 import {
@@ -341,6 +341,11 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * agreement prints, and `unitAmountCents` is what the cart total and the
    * counter header are built from. Moving one without the other is how the
    * paperwork comes to disagree with the total.
+   *
+   * The quote step IS where a repair is priced, so a quote typed here replaces
+   * any counter-authorized price on the line (a keypad amount, an editor
+   * re-quote): that approval named the old figure, and submit refuses an
+   * approval that no longer matches its line.
    */
   const setDevicePrice = useCallback(
     (lineId: string, value: string) => {
@@ -348,7 +353,7 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
       if (!line || !isRepairPayload(line.payload)) return;
       actions.updateLine(lineId, {
         unitAmountCents: repairPriceToCents(value),
-        payload: { ...line.payload, price: value },
+        payload: { ...line.payload, price: value, priceAdjustment: null },
       });
     },
     [actions, session.lines],
@@ -810,6 +815,9 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
                 fields={['phone', 'name', 'email', 'address']}
                 heading={null}
                 className="bg-surface-card pb-4"
+                onSubmit={() => {
+                  if (stepCanContinue) setStep((s) => Math.min(lastStep, s + 1));
+                }}
                 value={{
                   phone: formData.customer.phone,
                   name: formData.customer.name,

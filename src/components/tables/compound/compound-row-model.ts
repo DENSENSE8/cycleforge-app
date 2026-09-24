@@ -1,3 +1,4 @@
+import type { LifecycleState } from '@cycleforge/design-tokens';
 import { formatOpsStageTime } from '@/utils/date';
 
 /**
@@ -308,6 +309,13 @@ export interface CompoundRowView {
   /** Column 5 top — the state pill. */
   stateLabel: string;
   stateTone: CompoundStateTone;
+  /**
+   * The lifecycle state the pill names, when it is one (`packed`, `shipped`, …).
+   * The tone above stays the grid's small no-colour vocabulary; this only
+   * lets the pill's DOT wear the state's own LIFECYCLE colour (packed purple,
+   * shipped green) so the same state never reads two hues across surfaces.
+   */
+  stateLifecycle?: LifecycleState;
   /**
    * Hover detail for the state pill.
    *

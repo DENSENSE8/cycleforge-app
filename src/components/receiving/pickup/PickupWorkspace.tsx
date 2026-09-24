@@ -99,12 +99,6 @@ function comparePickupRows(
   }
 }
 
-function rowMatchesQuery(line: PickupLine, q: string): boolean {
-  if (!q) return true;
-  const hay = `${line.product_title} ${line.sku ?? ''} ${line.po_number ?? ''} ${line.customer_name ?? ''} ${line.reference_number ?? ''}`.toLowerCase();
-  return hay.includes(q);
-}
-
 interface PickupWorkspaceProps {
   /** Highlight the rows of this order (sidebar selection, `?lcpu=`). */
   selectedOrderId?: number | null;
@@ -118,9 +112,15 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
 
   const statusTab = parsePickupStatusTab(searchParams.get('status'));
   const query = searchParams.get('q') ?? '';
-  const normalizedQuery = query.trim().toLowerCase();
 
-  const { data: lines, isLoading, isError } = usePickupLines();
+  // The find text rides the FETCH KEY, not a client pass. `/pickup` already
+  // writes it to `?q=` (this surface keeps that — the URL is where its find
+  // text has always lived), and the route now ANSWERS it. The in-memory
+  // substring pass that used to stand here re-filtered the server's answer
+  // against the mounted tracks only, so a line the server matched on its
+  // reference number vanished before it reached the grid — and nothing past
+  // the 500-row window could be found at all.
+  const { data: lines, isLoading, isError, isFetching } = usePickupLines(query);
   const allRows = useMemo(() => lines ?? [], [lines]);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -157,19 +157,21 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   );
 
   // Status-scoped rows (drives the visible grid) and the counts for each tab.
+  // Status is the only CLIENT narrowing left: it is a filter over the answer,
+  // not a second search.
   const statusRows = useMemo(
     () => allRows.filter((l) => pickupLineMatchesStatus(l, statusTab)),
     [allRows, statusTab],
-  );
-  const visibleRows = useMemo(
-    () => statusRows.filter((l) => rowMatchesQuery(l, normalizedQuery)),
-    [statusRows, normalizedQuery],
   );
 
   // Status lives in the ONE filter control (operator ruling 2026-08-30 —
   // selection tabs are filters; the bottom strip carries counts only). The
   // options stay mutually exclusive on ?status; picking the active one clears
   // — "all" is the absence of a filter, never an option.
+  //
+  // Under a search these counts are counts OF THE MATCHES, because `allRows` is
+  // now the server's answer for `?q=`. That is the promise a faceted count has
+  // to keep: a tab reading 3 has to produce 3 rows when clicked.
   const statusFilter = useMemo(
     () => ({
       options: [
@@ -198,12 +200,6 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     }),
     [allRows, statusTab, setParam],
   );
-
-  const openCreate = useCallback(() => {
-    setCustomerName('');
-    setCreateError(null);
-    setCreateOpen(true);
-  }, []);
 
   const submitCreate = useCallback(async () => {
     const name = customerName.trim();
@@ -273,7 +269,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   // and its re-measure can miss on first paint when nothing else re-renders this
   // subtree, leaving the body blank until the first interaction.
   const [, settleTick] = useState(0);
-  const hasRows = visibleRows.length > 0;
+  const hasRows = statusRows.length > 0;
   useEffect(() => {
     if (isLoading || !hasRows) return;
     const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
@@ -284,10 +280,10 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
       sortFact && sortDir
-        ? [...visibleRows].sort((a, b) => comparePickupRows(a, b, sortFact, sortDir))
-        : visibleRows;
+        ? [...statusRows].sort((a, b) => comparePickupRows(a, b, sortFact, sortDir))
+        : statusRows;
     return [['', groupRowsBy(ordered, pickupFoldKey)]];
-  }, [visibleRows, columnSort, sortFactByKey, sortDir]);
+  }, [statusRows, columnSort, sortFactByKey, sortDir]);
 
   return (
     <>
@@ -298,7 +294,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             columns={columns}
             fields={fields}
             orderGroupsByDate={orderGroupsByDate}
-            rows={visibleRows}
+            rows={statusRows}
             getRowId={(r) => String(r.id)}
             sort={columnSort}
             dir={sortDir}
@@ -310,6 +306,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
               value: query,
               onChange: (v) => setParam('q', v.trim() ? v : null),
               placeholder: 'Filter pickup items…',
+              answeredBy: 'server',
+              pending: isFetching,
             }}
             filter={statusFilter}
             totalCount={allRows.length}

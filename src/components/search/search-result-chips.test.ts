@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { orderStatusTone, CHIP_TONE_CLASSES } from './search-result-chips';
 
 test('orderStatusTone: known statuses map to their tone + dot class', () => {
-  assert.equal(orderStatusTone('shipped').tone, 'blue');
-  assert.equal(orderStatusTone('shipped').dot, 'bg-blue-500');
+  assert.equal(orderStatusTone('shipped').tone, 'emerald');
+  assert.equal(orderStatusTone('shipped').dot, 'bg-emerald-500');
   assert.equal(orderStatusTone('delivered').tone, 'emerald');
   assert.equal(orderStatusTone('delivered').dot, 'bg-emerald-500');
   assert.equal(orderStatusTone('pending').tone, 'amber');
@@ -15,7 +15,7 @@ test('orderStatusTone: known statuses map to their tone + dot class', () => {
 });
 
 test('orderStatusTone: case-insensitive (DB vocabulary is mixed case)', () => {
-  assert.equal(orderStatusTone('SHIPPED').tone, 'blue');
+  assert.equal(orderStatusTone('SHIPPED').tone, 'emerald');
   assert.equal(orderStatusTone('Delivered').tone, 'emerald');
   assert.equal(orderStatusTone('  Cancelled  ').tone, 'rose'); // trims too
 });

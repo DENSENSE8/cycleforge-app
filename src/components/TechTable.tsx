@@ -80,7 +80,8 @@ export function TechTable({
 
   const {
     weekOffset, setWeekOffset, weekRange,
-    groupedRecords, loading,
+    groupedRecords, loading, isRefreshing,
+    query, setQuery,
     setRemovedRowKeys,
   } = useTechTableController({ staffId });
   const techLayout = useTechTableLayout();
@@ -152,6 +153,11 @@ export function TechTable({
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
+      // The find box is answered by `/api/tech-logs?q=`, not by a pass over the
+      // mounted week. `isRefreshing` is the in-flight flag for the CURRENT
+      // text, so the body holds its loading face instead of presenting the
+      // previous query's rows as this query's answer.
+      search={{ value: query, onChange: setQuery, pending: isRefreshing }}
       pipeline={{
         records: orderedRecords,
         lanes: TECH_LANES,

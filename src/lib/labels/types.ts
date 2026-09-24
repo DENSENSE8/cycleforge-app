@@ -34,7 +34,9 @@ export type LabelTone =
   | 'emerald'
   | 'rose'
   | 'orange'
-  | 'pink';
+  | 'pink'
+  /** The fulfillment state tone (theme-aware) — packed's colour via LIFECYCLE. */
+  | 'purple';
 
 /**
  * The default presentation for one code within a kind (the seeded system row).

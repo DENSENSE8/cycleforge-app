@@ -29,8 +29,8 @@ export const STATION_EYEBROW_CLASS = 'uppercase';
  * Tone as a GROUND, not as ink.
  *
  * The signal used to live in a 10px coloured stamp. Measured on the default
- * light theme over `bg-surface-card` #ffffff, `text-text-success` #16a34a is
- * 3.26:1 and `text-text-warning` #ea580c is 3.54:1 — both under the 4.5:1 floor
+ * light theme over `bg-surface-card` #ffffff, `text-text-success` (then #16a34a) was
+ * 3.26:1 and `text-text-warning` (then #ea580c) 3.54:1 — both under the 4.5:1 floor
  * for text this size, and the outcome verb had already been removed from the
  * row, so that ink WAS the entire distinction between "the job" and "stop and
  * look". A signal nobody can read is not a signal.

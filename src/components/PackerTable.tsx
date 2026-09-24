@@ -60,6 +60,9 @@ export function PackerTable({ packedBy }: PackerTableProps) {
     filteredGroupedRecords,
     orderedRecords,
     loading,
+    isRefreshing,
+    query,
+    setQuery,
   } = usePackerTableController({ staffId: staffFilterId ?? packedBy });
   const packerLayout = usePackerTableLayout();
 
@@ -117,6 +120,11 @@ export function PackerTable({ packedBy }: PackerTableProps) {
       // emptyMessage branch), and the state it passed was the Home task-inbox
       // "No work assigned" — work-assignment copy on a scan-history surface.
       emptyMessage="No packs recorded this week"
+      // The find box is answered by `/api/packerlogs?q=`, not by a pass over
+      // the mounted week. `isRefreshing` is the in-flight flag for the CURRENT
+      // text, so the body holds its loading face instead of presenting the
+      // previous query's rows as this query's answer.
+      search={{ value: query, onChange: setQuery, pending: isRefreshing }}
       pipeline={{
         records: orderedRecords,
         lanes: PACKER_LANES,

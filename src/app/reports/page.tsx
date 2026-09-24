@@ -109,6 +109,38 @@ const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks'>, s
 const TASKS_REPORT_URL = '/api/tasks?lane=done&assignee=all&limit=200';
 
 /**
+ * Which tabs ANSWER the find text at the server (`?q=`), and therefore ride it
+ * on their fetch instead of filtering the page in hand.
+ *
+ * Both entries are here because their page is a WINDOW the operator can fall
+ * off: Bin utilization returns 500 of the warehouse's bins ORDERED BY FILL, and
+ * Tasks returns the desk's most recent 200 finished follow-ups. A browser-side
+ * filter over either can only ever find what already arrived — and it narrows
+ * even that to the facts the MOUNTED columns paint, so a task found by its note
+ * or a bin found by its barcode disappears when that column is off.
+ *
+ * Velocity (138 rows against a 200 cap), Dead stock (117 against 500) and
+ * Packer day (one civil day against a 10,000 cap) are NOT here: their caps are
+ * unreachable at this warehouse's volume, so the page in hand IS the whole
+ * answer and their engine-side filter tells no lie. Staff day is a full report
+ * for one date and has no cap at all.
+ */
+const FIND_ANSWERED_BY_SERVER: Readonly<Record<Tab, boolean>> = {
+  staff: false,
+  packer: false,
+  utilization: true,
+  velocity: false,
+  dead: false,
+  tasks: true,
+};
+
+/** `base` + the find text, for the tabs whose route answers it. */
+function withFind(base: string, tab: Tab, find: string): string {
+  const q = find.trim();
+  return FIND_ANSWERED_BY_SERVER[tab] && q ? `${base}&q=${encodeURIComponent(q)}` : base;
+}
+
+/**
  * One fetched report page, TAGGED with the tab that asked for it.
  *
  * The tag is what keeps the three row shapes apart through one state slot: a
@@ -127,7 +159,7 @@ type ReportFeed =
 /** Shared empty page — a fresh `[]` per render would rebuild every row memo. */
 const NO_ROWS: readonly never[] = [];
 
-async function fetchReportFeed(tab: Tab, dateKey: string): Promise<ReportFeed> {
+async function fetchReportFeed(tab: Tab, dateKey: string, find: string): Promise<ReportFeed> {
   // The staff tab is a different SOURCE, not a fourth REST shape: the
   // daily-check report the phone already reads, flattened by the projection
   // both surfaces share — one truth, two presentations.
@@ -167,12 +199,12 @@ async function fetchReportFeed(tab: Tab, dateKey: string): Promise<ReportFeed> {
    * rather than by `reportRouteFailure`.
    */
   if (tab === 'tasks') {
-    const res = await fetch(TASKS_REPORT_URL, { cache: 'no-store' });
+    const res = await fetch(withFind(TASKS_REPORT_URL, tab, find), { cache: 'no-store' });
     const body: unknown = await res.json();
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { tab, rows: parseTaskDeskReportRows(body) };
   }
-  const res = await fetch(REPORT_URLS[tab], { cache: 'no-store' });
+  const res = await fetch(withFind(REPORT_URLS[tab], tab, find), { cache: 'no-store' });
   const payload: unknown = await res.json();
   const failure = reportRouteFailure(payload);
   if (!res.ok || failure) throw new Error(failure ?? `HTTP ${res.status}`);
@@ -185,14 +217,35 @@ async function fetchReportFeed(tab: Tab, dateKey: string): Promise<ReportFeed> {
   return { tab, rows: parseDeadStockReportRows(payload) };
 }
 
+/**
+ * What a SERVER-ANSWERED find hands its table: the text, its setter, and
+ * whether a request for THAT text is still in flight. The last one is what
+ * keeps the body in its loading face, so "no matches" is never painted over
+ * the previous report's rows.
+ */
+interface ServerFind {
+  find: string;
+  onFindChange: (next: string) => void;
+  finding: boolean;
+}
+
 function BinUtilizationReportTable({
   rows,
   loading,
+  find,
+  onFindChange,
+  finding,
 }: {
   rows: readonly BinUtilizationReportRow[];
   loading: boolean;
-}) {
-  const sheet = useReportBinUtilizationSpreadsheet({ rows, loading });
+} & ServerFind) {
+  const sheet = useReportBinUtilizationSpreadsheet({
+    rows,
+    loading,
+    searchValue: find,
+    onSearchChange: onFindChange,
+    searchPending: finding,
+  });
   return <DataTable {...sheet} totalCount={rows.length} />;
 }
 
@@ -233,11 +286,20 @@ function DeadStockReportTable({
 function TasksReportTable({
   rows,
   loading,
+  find,
+  onFindChange,
+  finding,
 }: {
   rows: readonly TaskDeskRow[];
   loading: boolean;
-}) {
-  const sheet = useReportTasksSpreadsheet({ rows, loading });
+} & ServerFind) {
+  const sheet = useReportTasksSpreadsheet({
+    rows,
+    loading,
+    searchValue: find,
+    onSearchChange: onFindChange,
+    searchPending: finding,
+  });
   const late = rows.filter(
     (r) => r.deadlineAtMs !== null && r.completedAtMs !== null && r.completedAtMs > r.deadlineAtMs,
   ).length;
@@ -384,13 +446,16 @@ function ReportBody({
   loading,
   dateKey,
   onDateChange,
+  find,
+  onFindChange,
+  finding,
 }: {
   tab: Tab;
   feed: ReportFeed | null;
   loading: boolean;
   dateKey: string;
   onDateChange: (next: string) => void;
-}) {
+} & ServerFind) {
   if (tab === 'staff') {
     return (
       <StaffDayReportTable
@@ -416,6 +481,9 @@ function ReportBody({
       <BinUtilizationReportTable
         rows={feed?.tab === 'utilization' ? feed.rows : NO_ROWS}
         loading={loading}
+        find={find}
+        onFindChange={onFindChange}
+        finding={finding}
       />
     );
   }
@@ -432,6 +500,9 @@ function ReportBody({
       <TasksReportTable
         rows={feed?.tab === 'tasks' ? feed.rows : NO_ROWS}
         loading={loading}
+        find={find}
+        onFindChange={onFindChange}
+        finding={finding}
       />
     );
   }
@@ -460,31 +531,48 @@ function ReportsPageInner() {
   const dateParam = searchParams.get('date');
   const dateKey = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getCurrentPSTDateKey();
 
+  /*
+   * The find text is SESSION-LOCAL and rides the FETCH KEY — it is deliberately
+   * NOT a third URL param. `?tab=` and `?date=` are a place a lead can link to;
+   * a half-typed filter is not, and re-rendering the desk through the router on
+   * every settled keystroke would be a round trip for nothing.
+   *
+   * A tab flip CLEARS it. Each tab is a different report with a different
+   * vocabulary, and carrying "C-03-18" from Bin utilization into Tasks would
+   * open that tab on an empty table the operator never asked for.
+   *
+   * `SearchField` already debounces at 320ms, so this value is the key as-is.
+   */
+  const [find, setFind] = useState('');
+
   const setParams = useCallback(
     (next: { tab?: Tab; date?: string }) => {
       const params = new URLSearchParams(searchParams.toString());
       if (next.tab) params.set('tab', next.tab);
       if (next.date) params.set('date', next.date);
+      if (next.tab && next.tab !== tab) setFind('');
       router.replace(`/reports?${params.toString()}`, { scroll: false });
     },
-    [router, searchParams],
+    [router, searchParams, tab],
   );
 
   const [feed, setFeed] = useState<ReportFeed | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // `find` is part of the fetch KEY, not a filter applied after it: for the
+  // tabs in `FIND_ANSWERED_BY_SERVER` the rows that come back ARE the answer.
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setFeed(await fetchReportFeed(tab, dateKey));
+      setFeed(await fetchReportFeed(tab, dateKey, find));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, [tab, dateKey]);
+  }, [tab, dateKey, find]);
 
   useEffect(() => {
     load();
@@ -524,7 +612,16 @@ function ReportsPageInner() {
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
         {!error && (
-          <ReportBody tab={tab} feed={feed} loading={loading} dateKey={dateKey} onDateChange={(d) => setParams({ date: d })} />
+          <ReportBody
+            tab={tab}
+            feed={feed}
+            loading={loading}
+            dateKey={dateKey}
+            onDateChange={(d) => setParams({ date: d })}
+            find={find}
+            onFindChange={setFind}
+            finding={loading}
+          />
         )}
       </main>
     </DeskPageLayout>

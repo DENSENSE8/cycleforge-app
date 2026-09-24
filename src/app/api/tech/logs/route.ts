@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { withAuth } from '@/lib/auth/withAuth';
+import { escapeLike } from '@/lib/sql-like';
 
 /**
  * Simplified tech-logs query.
@@ -13,7 +14,28 @@ import { withAuth } from '@/lib/auth/withAuth';
  *   — admin.view_logs holders can pass ?techId=N to view another tech.
  *   — tech.view holders can pass ?techId=all for org-wide TECH scan history
  *     (Shipping workspace History tab).
+ *   — `?q=` is the bench find box, ANSWERED HERE. See {@link SEARCH_ROW_CEILING}.
  */
+
+/**
+ * A searching fetch ignores the caller's page bound and reads the whole week.
+ *
+ * The defect this prevents: the bench feed asks for `limit=1000` and the find
+ * box used to filter those mounted rows in React. A tech who scanned more than
+ * a thousand times in a week could type a tracking number that IS in the week
+ * and read "no results", because the matching row was never in the window. A
+ * page bound the operator cannot see must not decide whether their query has
+ * an answer — so `q` drops it, exactly as the orders desk does
+ * (`src/lib/dashboard-table-data.ts:141-151`).
+ *
+ * The WEEK is not dropped with it. Unlike the orders desk's `inWarehouse`
+ * facet, the week is a scope the operator CHOSE and can read off the period
+ * pill, and `TechTable` re-bands the answer by `weekRange` on the client — so
+ * rows fetched from outside the requested week would be discarded on arrival
+ * and cost a wider scan for nothing.
+ */
+const SEARCH_ROW_CEILING = 5000;
+
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const techIdRaw = String(searchParams.get('techId') || '').trim().toLowerCase();
@@ -25,10 +47,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   const weekStart = searchParams.get('weekStart') || '';
   const weekEnd = searchParams.get('weekEnd') || '';
+  const searchTerm = (searchParams.get('q') || '').trim();
   const requestedLimit = Number.parseInt(searchParams.get('limit') || '500', 10);
   const requestedOffset = Number.parseInt(searchParams.get('offset') || '0', 10);
-  const limit = Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 500, 1), 2000);
-  const offset = Math.max(Number.isFinite(requestedOffset) ? requestedOffset : 0, 0);
+  const limit = searchTerm
+    ? SEARCH_ROW_CEILING
+    : Math.min(Math.max(Number.isFinite(requestedLimit) ? requestedLimit : 500, 1), 2000);
+  const offset = searchTerm ? 0 : Math.max(Number.isFinite(requestedOffset) ? requestedOffset : 0, 0);
 
   if (!wantAll && !techId) {
     return NextResponse.json({ error: 'techId is required' }, { status: 400 });
@@ -41,6 +66,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     weekEnd,
     limit,
     offset,
+    // The query text is part of the ANSWER, so it has to be part of the key —
+    // without it a searched page and the unfiltered week share one entry and
+    // whichever lands first is served to the other.
+    q: searchTerm,
   });
   const isLiveScope = !weekStart;
   const cacheTtl = isLiveScope ? 60 : 3600;
@@ -79,6 +108,65 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ? `AND ${dateConditions.join(' AND ')}`
       : '';
 
+    /**
+     * The find box, as SQL — and it lives INSIDE the page CTE, above the
+     * LIMIT, which is the whole point. Bolted onto the outer SELECT it would
+     * filter the same truncated window React was filtering and fix nothing.
+     *
+     * The columns are the facts a bench row actually paints
+     * (`bench-row-view.ts` + `tech-resolve.ts`): title, order number, tracking,
+     * serial, SKU, item number, note. NOT the tester's name — `testedStep`
+     * resolves `who: null` on this bench and draws an avatar from the staff id,
+     * so a name is not on screen to be searched for; matching one would return
+     * rows whose every visible cell disagrees with the query.
+     *
+     * Each correlated EXISTS re-states `organization_id = sal.organization_id`:
+     * the outer CTE is already tenant-scoped, but a subquery that joins a
+     * second table on a shared id (tracking, fnsku) would otherwise be free to
+     * read another tenant's row to decide this tenant's match.
+     */
+    let searchClause = '';
+    if (searchTerm) {
+      params.push(`%${escapeLike(searchTerm)}%`);
+      const q = `$${params.length}`;
+      searchClause = `AND (
+            sal.scan_ref ILIKE ${q}
+            OR sal.fnsku ILIKE ${q}
+            OR EXISTS (
+              SELECT 1 FROM shipping_tracking_numbers stn_q
+              WHERE stn_q.id = sal.shipment_id
+                AND stn_q.tracking_number_raw ILIKE ${q}
+            )
+            OR EXISTS (
+              SELECT 1 FROM tech_serial_numbers tsn_q
+              WHERE tsn_q.context_station_activity_log_id = sal.id
+                AND tsn_q.organization_id = sal.organization_id
+                AND tsn_q.serial_number ILIKE ${q}
+            )
+            OR EXISTS (
+              SELECT 1 FROM fba_fnskus ff_q
+              WHERE ff_q.fnsku = sal.fnsku
+                AND ff_q.organization_id = sal.organization_id
+                AND (ff_q.product_title ILIKE ${q} OR ff_q.sku ILIKE ${q})
+            )
+            OR EXISTS (
+              SELECT 1 FROM orders o_q
+              LEFT JOIN shipment_links osl_q
+                ON osl_q.owner_id = o_q.id AND osl_q.owner_type = 'ORDER'
+              WHERE sal.shipment_id IS NOT NULL
+                AND o_q.organization_id = sal.organization_id
+                AND (osl_q.shipment_id = sal.shipment_id OR o_q.shipment_id = sal.shipment_id)
+                AND (
+                  o_q.order_id ILIKE ${q}
+                  OR o_q.product_title ILIKE ${q}
+                  OR o_q.sku ILIKE ${q}
+                  OR o_q.item_number ILIKE ${q}
+                  OR o_q.notes ILIKE ${q}
+                )
+            )
+          )`;
+    }
+
     params.push(limit, offset);
     const limitIdx = params.length - 1;
     const offsetIdx = params.length;
@@ -100,6 +188,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           ${staffClause}
           AND sal.organization_id = $${orgIdx}
           ${dateWhere}
+          ${searchClause}
         ORDER BY sal.created_at DESC NULLS LAST
         LIMIT $${limitIdx} OFFSET $${offsetIdx}
       )

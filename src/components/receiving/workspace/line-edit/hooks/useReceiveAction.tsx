@@ -17,8 +17,6 @@ import {
   type PhotoPolicyWaiver,
 } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
-import { enqueuePendingZohoSync } from '@/lib/receiving/zoho-sync-toast-tracker';
-import { useAuth } from '@/contexts/AuthContext';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
@@ -42,20 +40,15 @@ export type ReceiveResponseRecord = {
   ok: boolean;
   /** Raw JSON body returned from the API. */
   body: unknown;
-  /** Network-level error message (thrown before/after the fetch). */
+  /** Network-level / client-abort error message (thrown before or after the fetch). */
   networkError?: string;
-  /**
-   * Client AbortSignal.timeout fired while waiting for mark-received-po.
-   * Local receive often already committed; Zoho push continues detached —
-   * surface as amber pending sync, not a rose "network error".
-   */
-  syncTimeoutPending?: boolean;
 };
 
 /**
  * The per-action breakdown the inline ReceiveSuccessChecklist renders as
- * staggered green checks. Optimistic — the Zoho writes run server-side in
- * after(); the realtime `zohoReceive` verdict reconciles a background failure.
+ * staggered green checks. It describes what THIS request committed. The
+ * inventory purchase receive is no longer part of the round trip — the
+ * scheduled receive backfill drains it and owns its own backlog surface.
  */
 export type ReceiveSummary = {
   /** Zoho purchase receive was attempted against a linked PO. */
@@ -96,10 +89,6 @@ export type ReceiveResult =
       at: number;
       summary: ReceiveSummary;
       receivingId: number;
-      /** receiving_line ids touched — used to match the realtime reconcile. */
-      lineIds: number[];
-      /** Watch the realtime `zohoReceive` verdict to confirm/flip on failure. */
-      reconcile: boolean;
       /** Raw API response — surfaced in the success card's details dropdown. */
       response: ReceiveResponseRecord;
     }
@@ -117,10 +106,10 @@ export type ReceiveResult =
 export type ReceiveInFlight = { startedAt: number; intent: ReceiveIntent };
 
 /**
- * The Receive / Mark-as-scanned action for a single line. Runs as a
- * fire-and-forget background task (the local commit returns in a few seconds;
- * Zoho is synced server-side in after()) — the button does NOT visually lock; a
- * ref guards against double-clicks. All feedback is inline below the label:
+ * The Receive / Mark-as-scanned action for a single line. The local commit is
+ * the whole request now — the inventory purchase receive is drained later by
+ * the scheduled receive backfill — and the button does NOT visually lock; a ref
+ * guards against double-clicks. All feedback is inline below the label:
  * `receiving` drives a compact progress strip, `receiveResult` the success
  * checklist or the diagnostic panel.
  */
@@ -154,8 +143,6 @@ export function useReceiveAction(
   const receiveInFlightRef = useRef(false);
   const [receiving, setReceiving] = useState<ReceiveInFlight | null>(null);
   const [receiveResult, setReceiveResult] = useState<ReceiveResult | null>(null);
-  const { user } = useAuth();
-  const orgId = user?.organizationId ?? null;
   // Kept only for the diagnostic panel's raw-response expander.
   const [responseExpanded, setResponseExpanded] = useState(false);
 
@@ -252,10 +239,9 @@ export function useReceiveAction(
               ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
             }),
             // Hard ceiling so a wedged handler cannot spin the progress strip
-            // forever. Local commit should return in a few seconds now that
-            // Zoho runs via scheduleAfterResponse (detached on local Next).
-            // If this still fires, treat as sync-pending — not a rose network
-            // error — because the push may still finish in the background.
+            // forever. The request does local work only, so a timeout here is a
+            // genuine request failure — there is no detached push left to wait
+            // on.
             signal: AbortSignal.timeout(30_000),
           });
           const markData = await markRes.json().catch(() => null);
@@ -361,11 +347,6 @@ export function useReceiveAction(
               };
               const attempted = Number(zoho.attempted ?? 0);
               const alreadyReceived = zoho.skip_reason === 'zoho_already_fully_received';
-              const lineIds = Array.isArray(markData?.receiving_lines)
-                ? (markData.receiving_lines as Array<{ id?: unknown }>)
-                    .map((r) => Number(r?.id))
-                    .filter((n) => Number.isFinite(n) && n > 0)
-                : [];
 
               const summary: ReceiveSummary = {
                 markedReceived:
@@ -394,22 +375,9 @@ export function useReceiveAction(
                 at: respRecord.at,
                 summary,
                 receivingId: row.receiving_id!,
-                lineIds,
-                reconcile: receiveIntent === 'zoho_receive' && attempted > 0 && !alreadyReceived,
                 response: respRecord,
               });
 
-              const reconcile =
-                receiveIntent === 'zoho_receive' && attempted > 0 && !alreadyReceived;
-              if (reconcile && orgId) {
-                enqueuePendingZohoSync({
-                  id: `zoho-sync:${orgId}:${clientEventId}`,
-                  orgId,
-                  lineIds,
-                  createdAt: respRecord.at,
-                  label: 'Syncing to inventory…',
-                });
-              }
               playScanFeedback('success');
               pulseScanLine(row.id);
             } else {
@@ -462,59 +430,20 @@ export function useReceiveAction(
         } catch (err) {
           console.error('receiving/mark-received-po threw', err);
           const message = err instanceof Error ? err.message : 'Receive failed';
-          const errName = err instanceof Error ? err.name : '';
-          const isClientTimeout =
-            errName === 'TimeoutError' ||
-            errName === 'AbortError' ||
-            /timed?\s*out|aborted/i.test(message);
-
-          // Unbox AbortSignal.timeout(30s) — local DB commit often finished and
-          // Zoho is still running in scheduleAfterResponse. Do not paint a rose
-          // "Network error"; enqueue the same pending-sync toast as a 200-pending
-          // and let Ably reconcile UNBOXED → DONE.
-          if (isClientTimeout && receiveIntent === 'zoho_receive' && row.receiving_id) {
-            const lineIds = row.id > 0 ? [row.id] : [];
-            if (orgId && lineIds.length > 0) {
-              enqueuePendingZohoSync({
-                id: `zoho-sync:${orgId}:${clientEventId}`,
-                orgId,
-                lineIds,
-                createdAt: Date.now(),
-                label: 'Syncing to inventory…',
-              });
-            }
-            setReceiveResult({
-              kind: 'diagnostic',
-              intent: receiveIntent,
-              response: {
-                at: Date.now(),
-                durationMs: Date.now() - startedAt,
-                httpStatus: 0,
-                ok: false,
-                body: null,
-                syncTimeoutPending: true,
-              },
-            });
-            setResponseExpanded(true);
-            playScanFeedback('success');
-            deferInvalidateReceivingFeeds(queryClient);
-            refreshDomains(REFRESH_BUNDLES.receivingWrite);
-          } else {
-            setReceiveResult({
-              kind: 'diagnostic',
-              intent: receiveIntent,
-              response: {
-                at: Date.now(),
-                durationMs: Date.now() - startedAt,
-                httpStatus: 0,
-                ok: false,
-                body: null,
-                networkError: message,
-              },
-            });
-            setResponseExpanded(true);
-            playScanFeedback('reject');
-          }
+          setReceiveResult({
+            kind: 'diagnostic',
+            intent: receiveIntent,
+            response: {
+              at: Date.now(),
+              durationMs: Date.now() - startedAt,
+              httpStatus: 0,
+              ok: false,
+              body: null,
+              networkError: message,
+            },
+          });
+          setResponseExpanded(true);
+          playScanFeedback('reject');
         } finally {
           receiveInFlightRef.current = false;
           setReceiving(null);
@@ -526,7 +455,6 @@ export function useReceiveAction(
       row.receiving_id,
       row.id,
       row.staged_location_id,
-      orgId,
       isUnfound,
       qa,
       disp,

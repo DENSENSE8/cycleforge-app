@@ -10,9 +10,12 @@
  * (RECEIVED…SHIPPED…RETURNED).
  *
  * Tones reuse the already-generated semantic shades (no new hues): gray = inert,
- * blue = in-process, amber = attention/hold, emerald = stocked/done,
- * rose = terminal-bad, violet = post-sale (returned/RMA/repair).
+ * blue = in-process, amber = attention/hold, emerald = stocked, rose =
+ * terminal-bad, violet = post-sale (returned/RMA/repair). PACKED / SHIPPED read
+ * LIFECYCLE (packed = fulfillment, shipped = success).
  */
+
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 interface SerialStatusMeta {
   /** Short, glanceable label. */
@@ -32,11 +35,11 @@ const SERIAL_STATUS_META: Record<string, SerialStatusMeta> = {
   PICKING: { label: 'Picking', dot: 'bg-blue-500' },
   PICKED: { label: 'Picked', dot: 'bg-blue-500' },
   PACKING: { label: 'Packing', dot: 'bg-blue-500' },
-  PACKED: { label: 'Packed', dot: 'bg-blue-500' },
+  PACKED: { label: 'Packed', dot: LIFECYCLE_CLASSES.packed.dot },
   LABELED: { label: 'Labeled', dot: 'bg-blue-500' },
   STAGED: { label: 'Staged', dot: 'bg-blue-500' },
   LOADING: { label: 'Loading', dot: 'bg-blue-500' },
-  SHIPPED: { label: 'Shipped', dot: 'bg-emerald-600' },
+  SHIPPED: { label: 'Shipped', dot: LIFECYCLE_CLASSES.shipped.dot },
   RETURNED: { label: 'Returned', dot: 'bg-violet-500' },
   RMA: { label: 'RMA', dot: 'bg-violet-500' },
   IN_REPAIR: { label: 'In repair', dot: 'bg-violet-500' },

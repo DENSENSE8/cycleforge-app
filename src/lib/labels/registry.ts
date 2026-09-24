@@ -11,6 +11,8 @@
  * here is zero visual change. Every class below already appears in the codebase,
  * so Tailwind's content scan still generates them.
  */
+import { STATE_TONES } from '@cycleforge/design-tokens';
+import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
 import type { LabelKind, LabelPresentation, LabelTone } from './types';
 
 /** Runtime guard: is `v` a known tone token? (validates API input). */
@@ -31,6 +33,11 @@ export const TONE_CLASSES: Record<LabelTone, { pill: string; dot: string }> = {
   rose: { pill: 'bg-rose-50 text-rose-700 ring-rose-200', dot: 'bg-rose-500' },
   orange: { pill: 'bg-orange-50 text-orange-700 ring-orange-200', dot: 'bg-orange-500' },
   pink: { pill: 'bg-pink-50 text-pink-700 ring-pink-200', dot: 'bg-pink-500' },
+  // The fulfillment state tone: theme-registry classes, not a raw palette step.
+  purple: {
+    pill: `${STATE_TONE_CLASSES.fulfillment.pill} ${STATE_TONE_CLASSES.fulfillment.ring}`,
+    dot: STATE_TONE_CLASSES.fulfillment.dot,
+  },
 };
 
 /**
@@ -53,7 +60,19 @@ export const TONE_SVG_HEX: Record<LabelTone, string> = {
   rose: '#f43f5e',
   orange: '#f97316',
   pink: '#ec4899',
+  purple: STATE_TONES.fulfillment.fill,
 };
+
+/** Functional state tone → this palette's token (lifecycle states resolve here). */
+const LABEL_TONE_FOR_STATE: Record<StateName, LabelTone> = {
+  info: 'blue',
+  warning: 'orange',
+  fulfillment: 'purple',
+  danger: 'red',
+  success: 'emerald',
+};
+
+const PACKED_TONE = LABEL_TONE_FOR_STATE[LIFECYCLE.packed.tone];
 
 /**
  * System‑default presentation per (kind, code). PACKED_STAGED appears in BOTH
@@ -75,11 +94,11 @@ export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>
     AWAITING_LABEL: { label: 'Needs label', description: 'Sold — no tracking or label attached yet. Buy or link a label to move it into the queue.', tone: 'slate' },
     PENDING: { label: 'Pending', description: 'Labeled and queued — waiting for test/pack.', tone: 'yellow' },
     TESTED: { label: 'Tested', description: 'Passed the tech scan — ready to pack.', tone: 'teal' },
-    PACKED_STAGED: { label: 'Packed', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: 'amber' },
+    PACKED_STAGED: { label: 'Packed', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: PACKED_TONE },
     BLOCKED: { label: 'Out of stock', description: 'Can’t fulfill until restocked — needs attention.', tone: 'red' },
   },
   outbound: {
-    PACKED_STAGED: { label: 'In Staging', description: 'Packed and waiting at the dock — not scanned out yet.', tone: 'amber' },
+    PACKED_STAGED: { label: 'In Staging', description: 'Packed and waiting at the dock — not scanned out yet.', tone: PACKED_TONE },
     SCANNED_OUT: { label: 'Scanned Out', description: 'Scanned out at the dock — left the building; carrier hasn’t confirmed custody.', tone: 'blue' },
     IN_CUSTODY: { label: 'In Custody', description: 'Carrier has it — accepted, in transit, or out for delivery.', tone: 'indigo' },
     DELIVERED: { label: 'Delivered', description: 'Carrier confirmed delivery (terminal).', tone: 'emerald' },

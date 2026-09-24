@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from '@/design-system/motion';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { MONITOR_SECTION_CARD_CLASS } from '@/design-system/components/monitor';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { cn } from '@/utils/_cn';
 
 interface FbaStageCountsResponse {
@@ -118,8 +119,8 @@ export function PipelineRow() {
   const fbaStages = [
     { label: 'Planned',      count: fbaCounts.PLANNED       ?? 0, color: 'bg-surface-strong' },
     { label: 'Tested',       count: fbaCounts.TESTED        ?? 0, color: 'bg-fill-success' },
-    { label: 'Packed',       count: fbaCounts.PACKED        ?? 0, color: 'bg-fill-warning' },
-    { label: 'Out of stock', count: fbaCounts.OUT_OF_STOCK  ?? 0, color: 'bg-fill-danger' },
+    { label: 'Packed',       count: fbaCounts.PACKED        ?? 0, color: LIFECYCLE_CLASSES.packed.dot },
+    { label: 'Out of stock', count: fbaCounts.OUT_OF_STOCK  ?? 0, color: LIFECYCLE_CLASSES.outOfStock.dot },
   ];
 
   const rmaList = rma.data?.authorizations ?? [];

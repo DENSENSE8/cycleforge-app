@@ -19,22 +19,31 @@
  * state belongs in the URL, because a desk's view has to survive a reload and
  * travel in a shared link:
  *
- * - **Search** (`?q=`). The box is `DataTable`'s own, and the matching is the
- *   engine's: a row matches when any fact it PAINTS contains the query, which
- *   on this desk is the product title, the location, the room, the SKU, the
- *   level, the count stamp **and the qty riding under the title**. Nothing here
- *   re-implements that; the desk only decides where the string is kept.
+ * - **Search** (`?q=`). The box is `DataTable`'s own, but the MATCHING is the
+ *   SERVER's. This desk is windowed (`LOCATION_STOCK_ROW_CAP` = 5 000 pairs),
+ *   and the engine's substring pass only ever saw the rows that survived that
+ *   window — so a pair standing past the cap was unfindable however exactly an
+ *   operator typed its SKU. The feed declares
+ *   {@link DataTableSearch.answeredBy} `'server'`, the engine stands down, and
+ *   `?q=` is spent as the RSC FETCH KEY by `page.tsx`.
+ *
+ *   The URL write below is this desk's PRE-EXISTING one and stays exactly as
+ *   it was: rows arrive from a server component, so the URL IS the fetch key
+ *   here and there is nothing else to spend. (`DataTable`'s standing rule —
+ *   search never touches `router.replace` — is about client-fetched peers,
+ *   where a replace per keystroke would remount a surface for nothing.)
  * - **Rooms** (`?room=`). `DataTableFilterMenu` — the one funnel, beside the
  *   search box (`DataTable` mounts it always; `FilterRefinementBar` and a hunt
  *   tile strip are the forks the law names). Multi-select, counted, grouped
  *   under one `Room` heading, and offering exactly the rooms present in the
  *   feed so the menu can never advertise a room the body cannot show.
  *
- * Narrowing order is ROOM then SEARCH, and it matters: the funnel's counts are
- * computed over the unfiltered feed (an operator has to see what selecting
- * `Annex` would get them before they select it), while the search box runs
- * inside whatever rooms are selected, which is what "search within this
- * narrowing" means everywhere else in the product.
+ * Narrowing order is SEARCH (in SQL, before a row ever boards the wire) then
+ * ROOM (here, over what matched). The funnel stays in the browser deliberately:
+ * it offers the rooms PRESENT in the feed and counts them, which is a fact
+ * about rows already in hand and worth no second round-trip. Its counts are
+ * therefore counts WITHIN the current match — which is what an operator
+ * reading `Annex 3` under a typed query expects the number to mean.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -43,6 +52,7 @@ import { Plus } from '@/components/Icons';
 import {
   DataTable,
   type DataTableFilterChrome,
+  type DataTableSearch,
   type DataTableToolbarAction,
 } from '@/components/tables/DataTable';
 import {
@@ -159,18 +169,43 @@ export function StockByLocationView({
     [facets, setFacets],
   );
 
-  const search = useMemo(
+  /**
+   * Is the server still answering the text in the box?
+   *
+   * `facets.q` is the OPTIMISTIC value (painted the instant the operator
+   * types); `urlValues.q` only catches up when the soft-replace lands, which
+   * for this `force-dynamic` page means the new rows have arrived — that is
+   * the whole contract of `useOptimisticUrlParams`. The gap between them is
+   * therefore an honest "a request for this value is in flight", and it is the
+   * only such signal the RSC path offers: there is no client fetch to ask.
+   *
+   * Compared TRIMMED because {@link write} drops a whitespace-only query
+   * rather than writing it. Comparing raw, a box holding a single space would
+   * never match the URL's empty string, and the body would hang in its loading
+   * face forever over rows that are in fact the answer.
+   */
+  const searchPending = facets.q.trim() !== urlValues.q.trim();
+
+  const search = useMemo<DataTableSearch>(
     () => ({
       value: facets.q,
       onChange: onSearchChange,
-      // Names the three facts an operator reaches for by hand. The engine
-      // matches every painted fact, so this is the invitation, not the limit.
+      // Names the three facts an operator reaches for by hand. The SQL matches
+      // those plus the SKU and every part of the location handle, so this is
+      // the invitation, not the limit.
       placeholder: 'Search product, qty, location…',
+      // The rows this desk was handed ARE the answer for `value`; see the
+      // module docblock on why the cap makes a client pass a lie.
+      answeredBy: 'server',
+      pending: searchPending,
     }),
-    [facets.q, onSearchChange],
+    [facets.q, onSearchChange, searchPending],
   );
 
-  /** Counted over the WHOLE feed — see the docblock on narrowing order. */
+  /**
+   * Counted over the whole feed the server returned — i.e. the MATCHED set,
+   * before the room funnel narrows it. See the docblock on narrowing order.
+   */
   const roomFacets = useMemo(() => locationStockRoomFacets(rows), [rows]);
 
   const onToggleRoom = useCallback(

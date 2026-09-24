@@ -38,7 +38,7 @@ test('unknown code degrades to a neutral slate chip, never throws', () => {
 test('PACKED_STAGED is the shared seam — identical dot hue across both kinds', () => {
   const u = resolveLabel('unshipped', 'PACKED_STAGED');
   const o = resolveLabel('outbound', 'PACKED_STAGED');
-  assert.equal(u.dot, o.dot); // same amber dot = the locked seam
+  assert.equal(u.dot, o.dot); // same packed dot = the locked seam
   assert.notEqual(u.label, o.label); // but distinct labels ('Packed' vs 'In Staging')
 });
 
@@ -61,9 +61,10 @@ test('every tone token maps to a pill + dot class pair', () => {
   // the exact semantic strings here (still full literals — Tailwind-scannable).
   assert.equal(TONE_CLASSES.slate.pill, 'bg-surface-canvas text-text-muted ring-border-soft');
   assert.equal(TONE_CLASSES.slate.dot, 'bg-border-emphasis');
-  // Every CHROMATIC tone keeps the literal 3-layer chip contract (bg-x-50 text-x-N ring-x-200).
+  // Every CHROMATIC palette tone keeps the literal 3-layer chip contract (bg-x-50 text-x-N ring-x-200).
+  // `purple` is the fulfillment STATE tone — theme-registry classes, like slate.
   for (const tone of Object.keys(TONE_CLASSES) as Array<keyof typeof TONE_CLASSES>) {
-    if (tone === 'slate') continue;
+    if (tone === 'slate' || tone === 'purple') continue;
     assert.match(TONE_CLASSES[tone].pill, /^bg-\w+-50 text-\w+-\d+ ring-\w+-200$/);
     assert.match(TONE_CLASSES[tone].dot, /^bg-\w+-\d+$/);
   }

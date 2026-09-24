@@ -83,6 +83,23 @@ export interface UseBenchSpreadsheetOptions {
   emptyMessage: string;
   /** Present ⇒ the title hover carries "Open" and a row click reports it. */
   onOpenRow?: (row: QueueRowRecord) => void;
+  /**
+   * The find box, ANSWERED BY THE SERVER — owned by the desk, not by this hook.
+   *
+   * It used to be `useState('')` right here, and the engine filtered the
+   * mounted rows with it. Bench rows arrive WINDOWED (`/api/packerlogs`,
+   * `/api/tech/logs`), so that pass could only ever search the newest page: a
+   * pack or a test from earlier in the same week answered "no results" for a
+   * tracking number the operator was holding. The state now lives in the
+   * controller, where it can reach the fetch key — which is why `value` and
+   * `onChange` arrive from outside and `answeredBy` below is not negotiable.
+   */
+  search: {
+    value: string;
+    onChange: (value: string) => void;
+    /** A request for the CURRENT `value` is in flight (`query.isFetching`). */
+    pending: boolean;
+  };
 }
 
 export function useBenchSpreadsheet({
@@ -92,6 +109,7 @@ export function useBenchSpreadsheet({
   loading,
   emptyMessage,
   onOpenRow,
+  search: searchInput,
 }: UseBenchSpreadsheetOptions): CompoundSpreadsheetFeed<
   QueueRowRecord,
   OrdersQueueColumnKey,
@@ -100,7 +118,6 @@ export function useBenchSpreadsheet({
   const registration = BENCH_REGISTRATION[family];
   const [sort, setSort] = useState<OrdersQueueColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const columns = useMemo(
     () => registration.columnsFor(layout.effectiveLayout) ?? registration.productColumns,
@@ -113,8 +130,16 @@ export function useBenchSpreadsheet({
   }, []);
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: registration.searchPlaceholder }),
-    [query, registration.searchPlaceholder],
+    () => ({
+      value: searchInput.value,
+      onChange: searchInput.onChange,
+      placeholder: registration.searchPlaceholder,
+      // `rows` ARE the answer for `value`, so the engine's substring pass is
+      // bypassed rather than run a second, narrower time over a windowed set.
+      answeredBy: 'server' as const,
+      pending: searchInput.pending,
+    }),
+    [searchInput.value, searchInput.onChange, searchInput.pending, registration.searchPlaceholder],
   );
 
   return useCompoundSpreadsheet<QueueRowRecord, OrdersQueueColumnKey, OrdersQueueColumn>({

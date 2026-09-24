@@ -1,16 +1,35 @@
 /**
  * SSR first-paint stand-in for the To-ship Unshipped queue.
  *
- * Owns LCP when the interactive LedgerGrid has not hydrated yet. Geometry
- * mirrors `'relative flex min-h-0 min-w-0 flex-1 flex-col'` + dense queue rows so the swap to
- * `UnshippedTable` does not register as a layout shift.
+ * Owns LCP when the interactive queue has not hydrated yet. Two faces:
+ *
+ * - `variant="ledger"` (`/shipping/orders`): the industrial record ledger's
+ *   Medium geometry — toolbar strip, 5px spine, 96px photo lane, three 32px
+ *   bands, 1px ink rules — from the same geometry module the live
+ *   `OutboundOrdersLedger` reads, so the swap does not register as a shift.
+ * - `variant="table"` (default, the Pending desk): dense rows under the slot
+ *   table's host class.
  *
  * Server-safe — no `'use client'`, no motion, no TanStack. Class string is
- * inlined (same as `'relative flex min-h-0 min-w-0 flex-1 flex-col'`) so this module stays RSC-importable
- * without pulling the client workbench-shell graph.
+ * inlined (same as `'relative flex min-h-0 min-w-0 flex-1 flex-col'`) so this
+ * module stays RSC-importable without pulling the client workbench-shell graph.
  */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { resolveRowWorkflowStage, type QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import { orderLifecycleState } from '@/lib/order-lifecycle';
+import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+import {
+  LEDGER_BAND_CLASS,
+  LEDGER_ID_CLASS,
+  LEDGER_LABEL_CLASS,
+  LEDGER_PHOTO_CLASS,
+  LEDGER_ROW_CLASS,
+  LEDGER_SPINE_CLASS,
+  LEDGER_TITLE_CLASS,
+  LEDGER_TOOLBAR_CLASS,
+  type LedgerRowZoom,
+} from '@/components/outbound/orders/outbound-orders-ledger-geometry';
 import { cn } from '@/utils/_cn';
 
 /** Byte-identical to `'relative flex min-h-0 min-w-0 flex-1 flex-col'` in workbench-shell.tsx. */
@@ -21,11 +40,30 @@ const FIRST_PAINT_ROW_CAP = 24;
 export function OrdersQueueFirstPaint({
   rows,
   className,
+  variant = 'table',
 }: {
   rows: readonly ShippedOrder[];
   className?: string;
+  variant?: 'table' | 'ledger';
 }) {
   const visible = rows.slice(0, FIRST_PAINT_ROW_CAP);
+
+  if (variant === 'ledger') {
+    return (
+      <div
+        className={cn(SHEET_HOST, 'overflow-hidden bg-mode-canvas text-mode-ink', className)}
+        aria-busy={visible.length === 0}
+        aria-label="Orders queue"
+        data-paint-surface="orders:primary"
+      >
+        {/* Same box as the live toolbar: a 32px hit row + its 1px ink rule. */}
+        <div className={LEDGER_TOOLBAR_CLASS} aria-hidden>
+          <span className="min-h-mode-hit" />
+        </div>
+        <OrdersLedgerStandIn rows={visible} zoom="M" />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -69,5 +107,97 @@ export function OrdersQueueFirstPaint({
             })}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Static ledger records at a zoom step — the SSR stand-in's body and the live
+ * ledger's loading face. Empty `rows` paints blank records (no pulse: the
+ * industrial floor has no motion).
+ */
+export function OrdersLedgerStandIn({
+  rows,
+  zoom,
+  blankRows = 12,
+}: {
+  rows: readonly ShippedOrder[];
+  zoom: LedgerRowZoom;
+  blankRows?: number;
+}) {
+  const bands = zoom === 'S' ? [0] : [0, 1, 2];
+  if (rows.length === 0) {
+    return (
+      <div aria-hidden>
+        {Array.from({ length: blankRows }, (_, i) => (
+          <div key={i} className={cn('flex border-b border-mode-ink bg-mode-panel', LEDGER_ROW_CLASS[zoom])}>
+            <span className={cn(LEDGER_SPINE_CLASS, 'bg-mode-rule')} />
+            <span className={cn('shrink-0 border-r border-mode-rule bg-mode-well', LEDGER_PHOTO_CLASS[zoom])} />
+            <span className="flex min-w-0 flex-1 flex-col">
+              {bands.map((band) => (
+                <span
+                  key={band}
+                  className={cn(
+                    'flex items-center px-2',
+                    LEDGER_BAND_CLASS[zoom],
+                    band < bands.length - 1 && 'border-b border-mode-rule',
+                  )}
+                >
+                  <span className="h-2 w-24 bg-mode-well" />
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <ul>
+      {rows.map((row) => {
+        const state = orderLifecycleState(resolveRowWorkflowStage(row as QueueRowRecord), {
+          urgent: Boolean((row as QueueRowRecord).is_urgent),
+        });
+        const orderId = String(row.order_id || row.id || '').trim();
+        const title = String(row.product_title || row.sku || 'Order').trim();
+        return (
+          <li
+            key={`${row.id}-${orderId}`}
+            className={cn('flex border-b border-mode-ink bg-mode-panel', LEDGER_ROW_CLASS[zoom])}
+          >
+            <span className={cn(LEDGER_SPINE_CLASS, LIFECYCLE_CLASSES[state].dot)} aria-hidden />
+            <span
+              className={cn('shrink-0 border-r border-mode-rule bg-mode-well', LEDGER_PHOTO_CLASS[zoom])}
+              aria-hidden
+            />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span
+                className={cn(
+                  'flex min-w-0 items-center gap-3 pl-2',
+                  LEDGER_BAND_CLASS[zoom],
+                  bands.length > 1 && 'border-b border-mode-rule',
+                )}
+              >
+                <span className={cn(LEDGER_LABEL_CLASS, 'w-9 shrink-0', state === 'urgent' ? 'text-mode-warn' : LIFECYCLE_CLASSES[state].text)}>
+                  {LIFECYCLE[state].code}
+                </span>
+                <span className={cn(LEDGER_ID_CLASS, 'truncate')}>{orderId || '—'}</span>
+              </span>
+              {bands.length > 1 ? (
+                <>
+                  <span className={cn('flex min-w-0 items-center border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
+                    <span className={LEDGER_TITLE_CLASS}>{title}</span>
+                  </span>
+                  <span className={cn('flex min-w-0 items-center pl-2', LEDGER_BAND_CLASS[zoom])}>
+                    <span className={cn(LEDGER_LABEL_CLASS, 'text-mode-muted')}>
+                      SKU {String(row.sku || '—')}
+                    </span>
+                  </span>
+                </>
+              ) : null}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

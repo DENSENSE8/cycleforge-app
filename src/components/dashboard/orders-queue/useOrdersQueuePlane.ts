@@ -55,7 +55,7 @@ interface OrdersQueuePlaneArgs {
   tableId: TableId;
 }
 
-interface OrdersQueuePlane {
+export interface OrdersQueuePlane {
   selectedIds: ReadonlySet<number>;
   selectedRecord: ShippedOrder | null;
   clickSelect: boolean;

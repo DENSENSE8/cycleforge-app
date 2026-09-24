@@ -37,16 +37,18 @@
 
 import type { ReactNode } from 'react';
 import { ChevronRight } from '@/components/Icons';
+import { Reorder } from '@/design-system/motion';
+import { AgendaBandSection } from '@/components/mobile/daily/AgendaBandHeader';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { StruckLabel } from '@/design-system/components/StruckLabel';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import {
-  DAILY_AGENDA_TYPE_LABEL,
   bandDailyAgendaRows,
   isDailyAgendaWork,
   type DailyAgendaRow,
+  type DailyAgendaType,
 } from '@/lib/daily/daily-agenda-row';
 import { dailyAgendaCaption } from '@/lib/daily/daily-agenda-caption';
 
@@ -74,6 +76,9 @@ export interface DailyRemindersListProps {
   error: string | null;
   /** Settled-with-no-rows: the sentence that teaches the next action. */
   emptyMessage: string;
+  /** Band arrangement — the operator drags a band title to change it. */
+  order: readonly DailyAgendaType[];
+  onReorder: (order: readonly DailyAgendaType[]) => void;
 }
 
 export function DailyRemindersList({
@@ -86,8 +91,14 @@ export function DailyRemindersList({
   loading,
   error,
   emptyMessage,
+  order,
+  onReorder,
 }: DailyRemindersListProps) {
   const bands = bandDailyAgendaRows(rows);
+  const byOrder = new Map(bands);
+  const ordered = order
+    .map((band) => [band, byOrder.get(band)] as const)
+    .filter((entry): entry is readonly [DailyAgendaType, DailyAgendaRow[]] => entry[1] != null);
 
   // The three settled-with-nothing states stay DISTINCT: a failure is not an
   // empty day, and a list still arriving is neither. One shared "no rows" face
@@ -101,42 +112,43 @@ export function DailyRemindersList({
   if (bands.length === 0) {
     return <ListNotice tone="muted">{emptyMessage}</ListNotice>;
   }
-
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-surface-card" data-testid="daily-reminders">
       <div className={cn(LIST_MEASURE, 'px-4 py-5')}>
-        {bands.map(([band, banded]) => (
-          <section key={band} aria-labelledby={`daily-band-${band}`} className="mb-7 last:mb-0">
-            <h2
-              id={`daily-band-${band}`}
-              className="flex items-baseline justify-between px-1 pb-1.5 text-role-eyebrow uppercase tracking-wider text-text-muted"
-            >
-              <span>{DAILY_AGENDA_TYPE_LABEL[band]}</span>
-              {/* The count is the band's whole weight — how much is left in it. */}
-              <span className="tabular-nums" data-band-count={band}>
-                {banded.length}
-              </span>
-            </h2>
-            {/* No card frame: the ground is white and so is the list, so a
-                border here would draw a box around nothing (operator
-                2026-09-23 — "remove the gray background … white on white is
-                perfectly fine"). The hairlines BETWEEN rows are what separates
-                one job from the next. */}
-            <ul className="divide-y divide-border-hairline">
-              {banded.map((row) => (
-                <DailyReminderRow
-                  key={row.key}
-                  row={row}
-                  nowMs={nowMs}
-                  selected={isDailyAgendaWork(row) && selectedTaskId === row.id}
-                  tickable={canTick(row)}
-                  onToggle={() => onToggle(row)}
-                  onOpen={() => onOpen(row)}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
+        {/*
+         * Bands render in the OPERATOR'S dragged order, and a band TITLE is
+         * the drag handle (operator 2026-09-23: grip left of the title, not
+         * in the kind dropdown). One declaration shared with the phone.
+         */}
+        <Reorder.Group
+          axis="y"
+          values={[...order]}
+          onReorder={onReorder}
+          as="div"
+          className="flex flex-col"
+        >
+          {ordered.map(([band, banded]) => (
+            <AgendaBandSection key={band} band={band} count={banded.length}>
+              {/* No card frame: the ground is white and so is the list, so a
+                  border here would draw a box around nothing (operator
+                  2026-09-23). The hairlines BETWEEN rows are what separates
+                  one job from the next. */}
+              <ul className="divide-y divide-border-hairline">
+                {banded.map((row) => (
+                  <DailyReminderRow
+                    key={row.key}
+                    row={row}
+                    nowMs={nowMs}
+                    selected={isDailyAgendaWork(row) && selectedTaskId === row.id}
+                    tickable={canTick(row)}
+                    onToggle={() => onToggle(row)}
+                    onOpen={() => onOpen(row)}
+                  />
+                ))}
+              </ul>
+            </AgendaBandSection>
+          ))}
+        </Reorder.Group>
       </div>
     </div>
   );

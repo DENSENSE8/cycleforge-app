@@ -129,8 +129,15 @@ const barButtons = (host: Element) =>
     (b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim(),
   );
 
+/**
+ * The scan CTA's accessible name. It carries BOTH of the control's acts since
+ * the press-and-hold Find door landed (2026-09-23) — the tap is unchanged, but
+ * a secondary gesture nobody announces is a secret, so the name states it.
+ */
+const SCAN_LABEL = 'Go to scan. Press and hold, or Alt+Enter, to open Find.';
+
 const scanCtas = (host: Element) =>
-  host.querySelectorAll('header button[aria-label="Go to scan"]').length;
+  host.querySelectorAll(`header button[aria-label="${SCAN_LABEL}"]`).length;
 
 /** A page that registers one memoized action — the documented call shape. */
 function PageWithAction({ label }: { label: string }) {
@@ -143,7 +150,7 @@ function PageWithAction({ label }: { label: string }) {
 
 test('with no page action the right cluster is SCAN alone', () => {
   const m = mountShell(null);
-  assert.deepEqual(barButtons(m.host), ['Open menu', 'Go to scan']);
+  assert.deepEqual(barButtons(m.host), ['Open menu', SCAN_LABEL]);
   assert.equal(scanCtas(m.host), 1);
   m.unmount();
 });
@@ -152,7 +159,7 @@ test("a page's verb reaches the host bar, and paints LEFT of scan", () => {
   const m = mountShell(h(PageWithAction, { label: 'Add order' }));
   // DOM order is the geometry: the action precedes scan, so scan keeps the
   // top-right corner it has owned since 2026-08-21.
-  assert.deepEqual(barButtons(m.host), ['Open menu', 'Add order', 'Go to scan']);
+  assert.deepEqual(barButtons(m.host), ['Open menu', 'Add order', SCAN_LABEL]);
   assert.equal(scanCtas(m.host), 1, 'a page action must never be a second scan CTA');
   m.unmount();
 });
@@ -177,14 +184,14 @@ test('the action LEAVES with its page — no stale verb in the corner', () => {
   assert.ok(barButtons(m.host).includes('Add order'));
   // Route swap to a page that registers nothing (e.g. Picks).
   m.render(null);
-  assert.deepEqual(barButtons(m.host), ['Open menu', 'Go to scan']);
+  assert.deepEqual(barButtons(m.host), ['Open menu', SCAN_LABEL]);
   m.unmount();
 });
 
 test('last writer wins — a route swap replaces the verb, never stacks it', () => {
   const m = mountShell(h(PageWithAction, { label: 'Add order' }));
   m.render(h(PageWithAction, { label: 'Sync' }));
-  assert.deepEqual(barButtons(m.host), ['Open menu', 'Sync', 'Go to scan']);
+  assert.deepEqual(barButtons(m.host), ['Open menu', 'Sync', SCAN_LABEL]);
   m.unmount();
 });
 
@@ -195,7 +202,7 @@ test('the pair is one control ladder: the action paints at scan height', () => {
   const m = mountShell(h(PageWithAction, { label: 'Add order' }));
   const header = m.host.querySelector('header')!;
   const action = header.querySelector('button[aria-label="Add order"]')!;
-  const scan = header.querySelector('button[aria-label="Go to scan"]')!;
+  const scan = header.querySelector(`button[aria-label="${SCAN_LABEL}"]`)!;
   for (const el of [action, scan]) {
     const cls = el.getAttribute('class') ?? '';
     assert.match(cls, /\bh-8\b/, '32px painted control');

@@ -20,6 +20,7 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { MobileInboxView } from '@/components/mobile/inbox/MobileInboxView';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default function MobileInboxPage() {
   const { has, isLoaded } = useAuth();
@@ -36,5 +37,9 @@ export default function MobileInboxPage() {
     );
   }
 
-  return <MobileInboxView />;
+  return (
+    <ModeRegion mode="triage" className="contents">
+      <MobileInboxView />
+    </ModeRegion>
+  );
 }

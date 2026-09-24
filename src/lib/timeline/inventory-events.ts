@@ -1,3 +1,4 @@
+import { LIFECYCLE } from '@cycleforge/design-tokens';
 import type { TimelineItem, TimelineTone } from './types';
 
 /**
@@ -57,8 +58,8 @@ const EVENT_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   ALLOCATED: { title: 'Allocated to order', tone: 'info' },
   RELEASED: { title: 'Allocation released', tone: 'warning' },
   PICKED: { title: 'Picked', tone: 'info' },
-  PACKED: { title: 'Packed', tone: 'success' },
-  SHIPPED: { title: 'Shipped', tone: 'success' },
+  PACKED: { title: 'Packed', tone: LIFECYCLE.packed.tone },
+  SHIPPED: { title: 'Shipped', tone: LIFECYCLE.shipped.tone },
   RETURNED: { title: 'Returned', tone: 'warning' },
   SCRAPPED: { title: 'Scrapped', tone: 'danger' },
   ADJUSTED: { title: 'Adjusted', tone: 'muted' },

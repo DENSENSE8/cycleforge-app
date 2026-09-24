@@ -630,7 +630,7 @@ const INVENTORY_THROUGHPUT_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
+export const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/events',
   owns: {
     event_type: paramText,
@@ -640,6 +640,16 @@ const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
     actor: paramText,
     since: paramDateKey,
     until: paramDateKey,
+    /**
+     * The table's find box — the same "narrow this list" question `q` already
+     * answers on `/inventory/stock`, over every fact an event row paints.
+     * Declared because the desk mounts `SurfaceParamHygiene` (via
+     * `app/inventory/layout.tsx`): an undeclared key is stripped on the next
+     * param change, which would empty the box mid-search.
+     *
+     * Distinct from `sku` above, which is the form's EXACT-match facet.
+     */
+    q: paramText,
     /** Zero-indexed offset page. */
     page: paramText,
   },

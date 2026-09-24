@@ -3,6 +3,7 @@
 import { Suspense, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { RouteShell } from '@/design-system/components/RouteShell';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
@@ -59,7 +60,9 @@ function ShippingFrame({ children }: { children: ReactNode }) {
 
   return (
     <SurfaceGate surfaceKey="outbound">
-      <div className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
+      {/* Industrial task mode: the To-ship desk, FBA and the scan-out station
+          all live under this frame. */}
+      <ModeRegion mode="industrial" className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
         <RouteShell
           actions={<OutboundSidebarPanel />}
           history={(
@@ -68,7 +71,7 @@ function ShippingFrame({ children }: { children: ReactNode }) {
             </RightPaneOverlayHost>
           )}
         />
-      </div>
+      </ModeRegion>
     </SurfaceGate>
   );
 }

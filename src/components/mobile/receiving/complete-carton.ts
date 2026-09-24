@@ -26,19 +26,6 @@ export interface CompleteCartonOutcome {
   /** Lines the route reported as received (0 on a verify/replay pass). */
   updatedCount: number;
   /**
-   * Receiving-line ids the route touched. The background sync publishes one
-   * `receiving-log.changed` per line carrying its terminal `zohoReceive`
-   * verdict, keyed by `rowId` = line id — this is the set to match against.
-   */
-  lineIds: number[];
-  /**
-   * A terminal inventory-sync verdict is still coming. True only for a real
-   * `zoho_receive` that actually touched lines: a `local_receive` (unfound /
-   * return carton) has no external receive to reconcile and a verify-only
-   * replay publishes nothing, so neither may leave the UI waiting forever.
-   */
-  awaitsSync: boolean;
-  /**
    * Set when this receive went through on a photo-policy WAIVER (the operator
    * picked a `PHOTO_WAIVED_*` reason). A waived receive must never render as a
    * clean success — the carton is received carrying an open exception, and the
@@ -52,42 +39,12 @@ export const COMPLETE_CARTON_IDLE: CompleteCartonOutcome = {
   blockers: [],
   error: null,
   updatedCount: 0,
-  lineIds: [],
-  awaitsSync: false,
   waiver: null,
 };
 
 /** Shown when the gate blocks but sends no readable reason (shouldn't happen). */
 export const COMPLETE_CARTON_GENERIC_BLOCKER =
   'This carton still needs photos before it can be received.';
-
-/** Terminal inventory-sync verdict for the receive, folded across its lines. */
-export type CompleteCartonSyncStatus = 'pending' | 'ok' | 'failed';
-
-/**
- * Fold one incoming `receiving-log.changed` verdict into the running status.
- *
- * Mirrors the desktop reconciler (`ReceiveFeedbackRegion`): ignore anything
- * that is not an `ok` / `failed` verdict for a line we received — `'skipped'`
- * and ordinary row updates carry no verdict and must not move the state.
- *
- * Diverges in one deliberate way: **failure is sticky**. A carton receives N
- * lines and gets N verdicts, so "whichever arrived first wins" can report a
- * green sync for a carton that had a line fail. Once anything fails, it stays
- * failed until the operator retries.
- */
-export function foldSyncVerdict(
-  current: CompleteCartonSyncStatus,
-  lineIds: readonly number[],
-  event: { rowId?: unknown; zohoReceive?: unknown } | null | undefined,
-): CompleteCartonSyncStatus {
-  const verdict = event?.zohoReceive;
-  if (verdict !== 'ok' && verdict !== 'failed') return current;
-  const rowId = Number(event?.rowId);
-  if (!Number.isFinite(rowId) || !lineIds.includes(rowId)) return current;
-  if (current === 'failed') return current;
-  return verdict === 'ok' ? 'ok' : 'failed';
-}
 
 export interface CompleteCartonRequest {
   receiving_id: number;
@@ -119,17 +76,6 @@ export function completeCartonRequestBody(
   };
 }
 
-/** `receiving_lines[].id` → the ids the sync will publish verdicts for. */
-function readLineIds(value: unknown): number[] {
-  if (!Array.isArray(value)) return [];
-  const ids: number[] = [];
-  for (const raw of value) {
-    const id = Number((raw as { id?: unknown } | null)?.id);
-    if (Number.isFinite(id) && id > 0) ids.push(id);
-  }
-  return ids;
-}
-
 /**
  * Map a `mark-received-po` response onto the operator-facing state.
  *
@@ -152,8 +98,6 @@ export function mapCompleteCartonResponse(
     success?: boolean;
     error?: string;
     updated_count?: unknown;
-    receive_intent?: unknown;
-    receiving_lines?: unknown;
   };
 
   const block = readPhotoPolicyBlock(status, body);
@@ -175,16 +119,11 @@ export function mapCompleteCartonResponse(
   }
 
   const updated = Number(payload.updated_count);
-  const lineIds = readLineIds(payload.receiving_lines);
   return {
     phase: 'done',
     blockers: [],
     error: null,
     updatedCount: Number.isFinite(updated) && updated > 0 ? updated : 0,
-    lineIds,
-    // Only a real external receive publishes a verdict, and only for lines it
-    // actually touched.
-    awaitsSync: payload.receive_intent === 'zoho_receive' && lineIds.length > 0,
     waiver: readPhotoPolicyWaiver(body),
   };
 }

@@ -28,7 +28,7 @@ export default async function ShippingOrdersPage() {
           OutboundOrdersDeskShell's absolute overlay).
         */}
         <div className="sr-only" aria-hidden>
-          <OrdersQueueFirstPaint rows={seed.rows} />
+          <OrdersQueueFirstPaint rows={seed.rows} variant="ledger" />
         </div>
         <OutboundOrdersDeskShell firstPaintRows={seed.rows} />
       </HydrationBoundary>

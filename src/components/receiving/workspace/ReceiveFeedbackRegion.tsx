@@ -16,20 +16,18 @@
  * FOUR STATES, one panel, from the shared machine in
  * {@link INLINE_ACTION_FEEDBACK_TONE}:
  *
- *   loading  → request in flight, OR the local commit landed and the realtime
- *              `zohoReceive` verdict has not. The status line cycles steps
- *              from {@link receivePhaseSteps} — every one derived from state
- *              the client actually holds, never a scripted ticker.
+ *   loading  → the request is in flight. The status line cycles steps from
+ *              {@link receivePhaseSteps} — every one derived from state the
+ *              client actually holds, never a scripted ticker.
  *   success  → the receive is settled and clean.
  *   warning  → it committed, but carrying something: a photo-policy waiver, a
- *              skipped inventory push, a cooldown, a background sync failure.
- *   error    → it did not go through.
+ *              skipped inventory push, a cooldown.
+ *   error    → the request did not go through.
  *
- * The success checklist is OPTIMISTIC: the three Zoho writes (purchase receive,
- * per-line description PUT, PO notes PUT) run server-side in after(), so the
- * checks render immediately from the response summary. A background failure is
- * reconciled via the realtime `zohoReceive` verdict on the station channel —
- * the panel flips to a retryable warning rather than leaving false checks.
+ * The panel SETTLES ON THE RESPONSE. The inventory purchase receive is no
+ * longer part of this request — the scheduled receive backfill drains it, and
+ * its backlog (Settings → Integrations) is the only place that signal lives.
+ * So there is nothing here that waits, and nothing to reconcile against.
  *
  * WHAT THE ROW HOLDS is one truncated line plus the actions. Everything else —
  * the staggered checklist, the per-PO outcomes, the raw response — lives behind
@@ -37,12 +35,9 @@
  * operator is about to type in, so it must cost one line at rest.
  * ────────────────────────────────────────────────────────────────────────── */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
 import { AlertTriangle, Check, Loader2 } from '@/components/Icons';
-import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
-import { useAblyChannel } from '@/hooks/useAblyChannel';
-import { useAuth } from '@/contexts/AuthContext';
 import { PhotoPolicyOverrideSheet } from '@/components/receiving/PhotoPolicyOverrideSheet';
 import { readPhotoPolicyBlock } from '@/lib/receiving/photo-policy-override-wire';
 import { InlineActionFeedbackChecklist } from './InlineActionFeedbackCard';
@@ -63,16 +58,6 @@ import type {
   ReceiveSummary,
 } from './line-edit/hooks/useReceiveAction';
 
-/**
- * The reconcile verdict for a `zoho_receive`. It is LIFTED out of the panel
- * (2026-08-21) because the panel unmounts on dismiss and the verdict has to
- * outlive it: the header ⓘ replays the last receive, and a replay that forgot
- * whether inventory confirmed would either re-subscribe to a settled event
- * that will never fire again, or silently re-run the 45s ceiling and paint a
- * failure that never happened.
- */
-export type ReceiveReconcileStatus = 'pending' | 'confirmed' | 'failed';
-
 /* ── The settled-success view ────────────────────────────────────────────── */
 
 type ChecklistView = {
@@ -84,12 +69,12 @@ type ChecklistView = {
   note?: string;
 };
 
-export function buildView(summary: ReceiveSummary, failed: boolean): ChecklistView {
+export function buildView(summary: ReceiveSummary): ChecklistView {
   // A waived receive outranks every success headline below: the lines really
   // did commit, but they committed carrying an open exception, and the bench is
   // where the operator who took that call can still read it back. Warning, and
   // the reason is named — never the plain green "Receive complete".
-  if (!failed && summary.photoPolicyWaiver) {
+  if (summary.photoPolicyWaiver) {
     const { blockers } = summary.photoPolicyWaiver;
     return {
       tone: 'warning',
@@ -98,14 +83,6 @@ export function buildView(summary: ReceiveSummary, failed: boolean): ChecklistVi
       note: blockers.length > 0
         ? `Photo policy waived — ${blockers.join(' · ')}. Logged as a receiving exception.`
         : 'Photo policy waived. Logged as a receiving exception.',
-    };
-  }
-  if (failed) {
-    return {
-      tone: 'warning',
-      headline: 'Inventory receive didn’t go through',
-      items: [],
-      note: 'Saved locally — lines stay Scanned and will retry. Re-run Receive if it doesn’t clear.',
     };
   }
   if (summary.alreadyReceived) {
@@ -179,7 +156,7 @@ function ReceiveInFlightPanel({
     return () => window.clearInterval(t);
   }, [startedAt]);
 
-  const steps = receivePhaseSteps({ phase: 'in_flight', intent, elapsedMs });
+  const steps = receivePhaseSteps({ intent, elapsedMs });
 
   return (
     <WeldedFeedbackPanel
@@ -196,113 +173,37 @@ function ReceiveInFlightPanel({
           so a close control would only hide a running mutation. */}
       <p className="text-role-micro font-medium leading-snug text-text-muted">
         POST /api/receiving/mark-received-po · intent {intent}. The lines commit
-        locally first; the inventory purchase receive runs server-side after the
-        response and confirms over the station channel.
+        locally; the inventory purchase receive is drained afterwards by the
+        scheduled receive backfill.
       </p>
     </WeldedFeedbackPanel>
   );
 }
 
-/* ── Settled success (with realtime reconcile) ───────────────────────────── */
+/* ── Settled success ─────────────────────────────────────────────────────── */
 
 function ReceiveSuccessPanel({
   result,
   onDismiss,
-  onRetry,
   moreOpen,
   onToggleMore,
   replay = false,
-  reconcileStatus,
-  onReconcileStatus,
 }: {
   result: Extract<ReceiveResult, { kind: 'success' }>;
   onDismiss: () => void;
-  onRetry?: () => void;
   moreOpen: boolean;
   onToggleMore: () => void;
-  /** Replaying a remembered verdict rather than one that just happened. */
+  /** Replaying a remembered result rather than one that just happened. */
   replay?: boolean;
-  /** The verdict as it stood when this result was last live. */
-  reconcileStatus?: ReceiveReconcileStatus;
-  /** Report the verdict up so a later replay can restore it. */
-  onReconcileStatus?: (status: ReceiveReconcileStatus) => void;
 }) {
-  // Reconcile the optimistic checks against the real background verdict. The
-  // mark-received-po after() publishes `zohoReceive: 'ok' | 'failed'` per line
-  // on the org station channel once the Zoho purchase receive settles.
-  const { user } = useAuth();
-  const orgId = user?.organizationId;
-  const channel = safeChannelName(() => getStationChannelName(orgId!));
-  const [status, setStatus] = useState<ReceiveReconcileStatus>(reconcileStatus ?? 'pending');
-  // A replay watches nothing: the Ably event it was waiting for has already
-  // been and gone, and re-arming the ceiling below would invent a failure.
-  const live = result.reconcile && !replay;
+  const view = buildView(result.summary);
 
-  // The verdict is reported up at each transition rather than from an effect —
-  // an effect that pushed state into the parent on every render would loop
-  // through the parent's own re-render.
-  const settle = useCallback(
-    (next: ReceiveReconcileStatus) => {
-      setStatus(next);
-      onReconcileStatus?.(next);
-    },
-    [onReconcileStatus],
-  );
-
-  // Hard ceiling — if Ably never delivers zohoReceive (or after() hangs on a
-  // slow Zoho already-received path), flip to retryable failure instead of
-  // holding "waiting for the inventory system" forever.
-  useEffect(() => {
-    if (!live || status !== 'pending') return;
-    const t = window.setTimeout(() => settle('failed'), 45_000);
-    return () => window.clearTimeout(t);
-  }, [live, status, settle]);
-
-  useAblyChannel(
-    channel,
-    'receiving-log.changed',
-    (msg: { data?: { rowId?: unknown; zohoReceive?: unknown } }) => {
-      const data = msg?.data;
-      const verdict = data?.zohoReceive;
-      if (verdict !== 'ok' && verdict !== 'failed') return;
-      const rowId = Number(data?.rowId);
-      if (!Number.isFinite(rowId) || !result.lineIds.includes(rowId)) return;
-      settle(verdict === 'ok' ? 'confirmed' : 'failed');
-    },
-    live && Boolean(orgId) && Boolean(channel),
-  );
-
-  /**
-   * A replayed receive whose confirmation never landed while it was on screen.
-   * It is NOT a failure and NOT a confirmation — the honest render is the
-   * settled success plus a line saying the confirmation was still outstanding.
-   */
-  const replayUnsettled = replay && result.reconcile && status === 'pending';
-
-  const view = buildView(result.summary, status === 'failed');
-
-  // Still waiting on the inventory verdict: this is genuinely a loading state,
-  // not a green one. The ticker cycles the writes the server ALREADY reported —
-  // facts, held while the confirmation is outstanding.
-  const reconciling = result.reconcile && status === 'pending' && view.tone === 'success';
-
-  const tone: InlineActionFeedbackTone = reconciling ? 'loading' : view.tone;
-  const steps = reconciling
-    ? receivePhaseSteps({ phase: 'reconciling', summary: result.summary })
-    : [status === 'confirmed' ? 'Confirmed in inventory' : view.headline];
-
-  const cta: WeldedFeedbackCta | undefined =
-    status === 'failed' && onRetry
-      ? { label: 'Retry', onClick: onRetry, ariaLabel: 'Re-run receive' }
-      : undefined;
-
-  const leading = reconciling ? (
-    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-  ) : tone === 'warning' ? (
-    <AlertTriangle className="h-3.5 w-3.5" />
-  ) : (
-    <Check className="h-4 w-4" />
-  );
+  const leading =
+    view.tone === 'warning' ? (
+      <AlertTriangle className="h-3.5 w-3.5" />
+    ) : (
+      <Check className="h-4 w-4" />
+    );
 
   // Key/value rows for the disclosure — real note/description text when
   // present; internal ids (receiving / line ids) stay out.
@@ -315,21 +216,17 @@ function ReceiveSuccessPanel({
       ? [['PO notes', result.summary.poNotes] as [string, string]]
       : []),
     ['Marked received', result.summary.markedReceived ? 'Yes' : 'No'],
-    ['Sync', result.reconcile ? status : 'n/a'],
     ['Response', `HTTP ${result.response.httpStatus || '—'} · ${result.response.durationMs}ms`],
   ];
 
   return (
     <WeldedFeedbackPanel
-      tone={tone}
-      steps={steps}
-      cycling={reconciling}
-      edgeProgress={reconciling}
+      tone={view.tone}
+      steps={[view.headline]}
       leading={leading}
       // A replay is history, so the time it happened is the fact worth showing
       // — labelled, so it never reads as something that just occurred.
       meta={replay ? `Last · ${clockLabel(result.at)}` : clockLabel(result.at)}
-      cta={cta}
       moreOpen={moreOpen}
       onToggleMore={onToggleMore}
       onDismiss={onDismiss}
@@ -337,12 +234,6 @@ function ReceiveSuccessPanel({
       {/* The checklist keeps its stagger — it just replays inside the
           disclosure now instead of costing three lines above the composer. */}
       <InlineActionFeedbackChecklist tone={view.tone} items={view.items} />
-      {replayUnsettled ? (
-        <p className="mt-1.5 text-role-micro font-medium leading-snug text-text-muted">
-          Inventory confirmation was still outstanding the last time this was on
-          screen. Re-run Receive if the line has not cleared.
-        </p>
-      ) : null}
       {view.note ? (
         <p className="mt-1.5 flex items-start gap-1.5 text-role-micro font-medium leading-snug text-text-muted">
           {view.tone === 'warning' ? (
@@ -457,8 +348,6 @@ export function ReceiveFeedbackRegion({
   onRetry,
   onPhotoPolicyOverride,
   replay = false,
-  reconcileStatus,
-  onReconcileStatus,
 }: {
   receiving: ReceiveInFlight | null;
   receiveResult: ReceiveResult | null;
@@ -480,14 +369,9 @@ export function ReceiveFeedbackRegion({
   onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
   /**
    * This result is a REPLAY of the last receive (the composer's ⓘ), not one
-   * that just happened. It suppresses the realtime subscription and the
-   * reconcile ceiling, and labels the timestamp as history.
+   * that just happened. It labels the timestamp as history.
    */
   replay?: boolean;
-  /** The reconcile verdict as it stood when the result was last live. */
-  reconcileStatus?: ReceiveReconcileStatus;
-  /** Report the verdict up so a later replay can restore it. */
-  onReconcileStatus?: (status: ReceiveReconcileStatus) => void;
 }) {
   const phase: 'progress' | 'success' | 'diagnostic' | 'none' = receiving
     ? 'progress'
@@ -500,8 +384,8 @@ export function ReceiveFeedbackRegion({
   // Key the SUCCESS child by its timestamp so a fresh receive replays the
   // stagger; progress / diagnostic are stable. The panel peels once per key,
   // and its status line crossfades within a key — so a receive that moves
-  // in-flight → reconciling → confirmed hinges up once and then narrates,
-  // rather than slamming the composer's top radius open and shut three times.
+  // in-flight → settled hinges up once and then narrates, rather than slamming
+  // the composer's top radius open and shut twice.
   const childKey =
     phase === 'success' && receiveResult?.kind === 'success'
       ? `success-${receiveResult.at}${replay ? '-replay' : ''}`
@@ -523,12 +407,9 @@ export function ReceiveFeedbackRegion({
           key={childKey}
           result={receiveResult}
           onDismiss={onDismiss}
-          onRetry={onRetry}
           moreOpen={responseExpanded}
           onToggleMore={toggleMore}
           replay={replay}
-          reconcileStatus={reconcileStatus}
-          onReconcileStatus={onReconcileStatus}
         />
       ) : phase === 'diagnostic' && receiveResult?.kind === 'diagnostic' ? (
         <ReceiveDiagnosticPanel

@@ -115,10 +115,6 @@ function SidebarFallback({ reset }: { reset: () => void }) {
 
 interface DesktopRouteShellProps {
   children: ReactNode;
-  /** True on a tenant kiosk host — see AuthContext's `kioskHost` prop. The
-   *  device page (`/` → `/kiosk`) owns its own full-bleed chrome; it must
-   *  never render the staff sidebar/header shell. */
-  kioskHost?: boolean;
 }
 
 // ─── Drawer animation ────────────────────────────────────────────────────────
@@ -150,7 +146,7 @@ const drawerTransition = {
  * `/m/*` routes are selected by `WarehouseShell` before this component mounts
  * and are owned by `MobileRouteShell`.
  */
-export function DesktopRouteShell({ children, kioskHost = false }: DesktopRouteShellProps) {
+export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   const { isMobile } = useUIMode();
   const pathname = usePathname();
   const router = useRouter();
@@ -197,8 +193,9 @@ export function DesktopRouteShell({ children, kioskHost = false }: DesktopRouteS
   // `/m` paths as mobile deterministically so SSR + first paint match the final
   // layout (no blank gate, no desktop→mobile flip).
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
-  /** Auth / enroll / offline / kiosk-host — no permanent sidebar; page owns full-bleed chrome. */
-  const chromeless = isClientPublicPath(pathname) || kioskHost;
+  /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome.
+   *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.) */
+  const chromeless = isClientPublicPath(pathname);
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 

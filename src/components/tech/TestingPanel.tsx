@@ -526,7 +526,6 @@ export function TestingPanel({
                     onCloseClaim={() => setComposerMode('unbox')}
                     onClaimTicketCreated={onClaimTicketCreated}
                     onClaimTicketUnlinked={onClaimTicketUnlinked}
-                    showReplyPresets
                   />
                 ) : null}
               </StationWorkbench>

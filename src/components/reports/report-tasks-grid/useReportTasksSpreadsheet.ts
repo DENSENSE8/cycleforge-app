@@ -15,13 +15,19 @@
  * adapter and a family RECORD — and nothing else. `/reports` mounts one such
  * hook per tab and never a component that swaps column sets.
  *
- * ## Why sort and search are local state here
+ * ## Why sort is local state and the FIND TEXT is not
  *
  * `/reports` owns two search params (`?tab=`, `?date=`) and nothing else. A
- * header click writing `?sort=` would round-trip a URL nothing else reads, and
- * `?search=` per keystroke would re-render the desk to filter rows the client
- * already holds. The server query's own narrowing (`?lane=`, `?assignee=`,
- * `?limit=`) is untouched; the header sorts the page in hand.
+ * header click writing `?sort=` would round-trip a URL nothing else reads, so
+ * the header sorts the page in hand.
+ *
+ * The find text is different in kind, because the page in hand is a WINDOW:
+ * `GET /api/tasks?limit=` returns the desk's most recent finished work, not
+ * every finished task. A substring pass here could therefore only ever find
+ * tasks that already arrived, and it re-narrowed even those to the facts the
+ * MOUNTED columns paint — a task found by its note or its ticket subject
+ * vanished when neither column was on. So the text lives with the fetch
+ * (`?q=`), and the engine is told the rows are already the answer.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -52,6 +58,11 @@ export interface UseReportTasksSpreadsheetOptions {
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
+  /** The find text, owned by the page because it rides the report's fetch. */
+  searchValue: string;
+  onSearchChange: (next: string) => void;
+  /** A request for the CURRENT text is in flight — holds the loading face. */
+  searchPending?: boolean;
 }
 
 export function useReportTasksSpreadsheet({
@@ -62,6 +73,9 @@ export function useReportTasksSpreadsheet({
   // operator forgot they set.
   emptyMessage = 'No finished tasks for any staffer in this window.',
   searchPlaceholder = 'Filter this report…',
+  searchValue,
+  onSearchChange,
+  searchPending = false,
 }: UseReportTasksSpreadsheetOptions): CompoundSpreadsheetFeed<
   TaskDeskRow,
   SlotTableColumnKey,
@@ -69,7 +83,6 @@ export function useReportTasksSpreadsheet({
 > {
   const [sort, setSort] = useState<SlotTableColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useSlotTableLayout(REPORT_TASKS_FAMILY);
   const columns = useMemo(
@@ -83,8 +96,14 @@ export function useReportTasksSpreadsheet({
   }, []);
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({
+      value: searchValue,
+      onChange: onSearchChange,
+      placeholder: searchPlaceholder,
+      answeredBy: 'server' as const,
+      pending: searchPending,
+    }),
+    [searchValue, onSearchChange, searchPlaceholder, searchPending],
   );
 
   return useCompoundSpreadsheet<TaskDeskRow, SlotTableColumnKey, SlotTableColumn>({

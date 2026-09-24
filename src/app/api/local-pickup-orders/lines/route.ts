@@ -16,11 +16,20 @@ import { tenantQuery } from '@/lib/tenancy/db';
  *
  * `?status=` narrows to one order status (default: every status except VOIDED,
  * so the current DRAFT pickup orders appear). `?limit=` caps rows (default 500).
+ *
+ * `?q=` is the workbench's find text, ANSWERED HERE. The `/pickup` field used
+ * to filter the loaded page in the browser, so a product whose PO sat past row
+ * 500 could not be found at all, and one whose only match was a reference
+ * number the mounted tracks do not paint was dropped by the client pass even
+ * when this feed had returned it. The columns below are exactly the facts a
+ * pickup row paints (title, SKU, PO#, reference, customer), so a hit is always
+ * a row the operator can see is a hit.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
     const status = (searchParams.get('status') || '').trim().toUpperCase();
+    const q = (searchParams.get('q') || '').trim();
     const limit = Math.min(Math.max(Number(searchParams.get('limit') || 500), 1), 1000);
 
     const params: unknown[] = [ctx.organizationId];
@@ -29,7 +38,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       params.push(status);
       clauses.push(`o.status = $${params.length}`);
     }
-    params.push(limit);
+    if (q) {
+      params.push(`%${q}%`);
+      const qIdx = params.length;
+      clauses.push(
+        `(i.product_title ILIKE $${qIdx}
+           OR i.sku ILIKE $${qIdx}
+           OR o.zoho_purchaseorder_number ILIKE $${qIdx}
+           OR o.zoho_reference_number ILIKE $${qIdx}
+           OR o.customer_name ILIKE $${qIdx})`,
+      );
+    }
+    // A SEARCH IS NOT A PAGE. `?limit=` is the display window the workbench
+    // scrolls; honouring it under `q` would answer "no match" for a row sitting
+    // one past the bound — the same lie one layer down that the client-side
+    // filter told. A searching read opens to this endpoint's hard ceiling.
+    params.push(q ? 1000 : limit);
     const limitIdx = params.length;
 
     const rows = await tenantQuery(

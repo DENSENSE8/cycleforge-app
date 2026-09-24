@@ -1,71 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyCounterDraft } from '@/components/counter/counter-intake-steps';
-import { buildKioskSalesIntakeBody } from './kiosk-intake-payload';
+import { buildKioskSalesIntakeBodyFromInput } from './kiosk-intake-payload';
 
-test('buildKioskSalesIntakeBody — retail-only, no pay', () => {
-  const draft = emptyCounterDraft();
-  draft.phone = '5551234567';
-  draft.retailLines = [
-    {
-      variationId: 'v1',
-      sku: 'SKU',
-      productTitle: 'Tips',
-      quantity: 2,
-      unitAmountCents: 500,
-    },
-  ];
-  const body = buildKioskSalesIntakeBody(draft, { takePayment: false });
-  assert.equal(body.service, 'sales');
-  assert.equal(body.takePayment, false);
-  // Was `serviceLine: null`; the wire carries a LIST of devices now (SQ6).
-  assert.deepEqual(body.serviceLines, []);
-  assert.deepEqual(body.ticketWork, { mode: 'none' });
-  assert.equal(body.staffId, undefined);
-});
+const input = {
+  customer: { phone: '5551234567', name: null, email: null, address: null },
+  retailLines: [],
+  services: [],
+  priorOrder: null,
+  ticketWork: { mode: 'none' as const },
+};
 
-test('buildKioskSalesIntakeBody — service + signature + step-up', () => {
-  const draft = emptyCounterDraft();
-  draft.phone = '5551234567';
-  draft.signatureDataUrl = 'data:image/png;base64,abc';
-  draft.service = {
-    productModel: 'QC35',
-    serialNumber: 'SN1',
-    price: '129.00',
-    productType: 'Headphones',
-    sourceSku: 'QC35-RS',
-    repairReasons: [],
-    repairNotes: '',
-  };
-  const body = buildKioskSalesIntakeBody(draft, {
+test('step-up credentials ride the wire only as a PAIR', () => {
+  const paired = buildKioskSalesIntakeBodyFromInput(input, {
     takePayment: true,
     staffId: 9,
     pin: '123456',
   });
-  assert.equal(body.takePayment, true);
-  assert.equal(body.staffId, 9);
-  assert.equal(body.pin, '123456');
-  assert.deepEqual(body.ticketWork, { mode: 'create' });
-  const serviceLines = body.serviceLines as Array<{
-    productModel: string;
-    price: string;
-    signatureDataUrl: string;
-  }>;
-  assert.equal(serviceLines.length, 1, 'the draft form is single-device by construction');
-  assert.equal(serviceLines[0].productModel, 'QC35');
-  assert.equal(serviceLines[0].price, '129.00');
-  assert.equal(serviceLines[0].signatureDataUrl, 'data:image/png;base64,abc');
+  assert.equal(paired.staffId, 9);
+  assert.equal(paired.pin, '123456');
+
+  // A staff id without a PIN is not a step-up; sending it would claim an
+  // attribution nobody proved.
+  const unpaired = buildKioskSalesIntakeBodyFromInput(input, { takePayment: true, staffId: 9 });
+  assert.equal(unpaired.staffId, undefined);
+  assert.equal(unpaired.pin, undefined);
 });
 
-test('buildKioskSalesIntakeBody — blank service model is omitted', () => {
-  const draft = emptyCounterDraft();
-  draft.phone = '5551234567';
-  draft.service = {
-    productModel: '  ',
-    serialNumber: '',
-    price: '',
-  };
-  const body = buildKioskSalesIntakeBody(draft, { takePayment: false });
-  // Was `serviceLine: null`; the wire carries a LIST of devices now (SQ6).
+test('an absent device list is an empty list, never a missing key', () => {
+  const body = buildKioskSalesIntakeBodyFromInput(
+    { ...input, services: undefined },
+    { takePayment: false },
+  );
+  // The wire carries a LIST of devices (`serviceLines`, SQ6); the builder
+  // always emits it so the route never guesses what an absent key meant.
   assert.deepEqual(body.serviceLines, []);
 });

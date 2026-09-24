@@ -32,7 +32,7 @@ import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { StruckLabel } from '@/design-system/components/StruckLabel';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
-import { MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass, MOBILE_ROW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 export interface MobileDailyRowOwner {
@@ -110,11 +110,14 @@ export function MobileDailyRow({
         MOBILE_ROW_CORNER,
       )}
     >
+      {/* Round, matching the desk's Reminders list — ONE shape for one list
+          (operator 2026-09-23): the phone painted the DS Checkbox's default
+          square while the desk painted `cornerClass('pill')`. */}
       <Checkbox
         id={checkboxId}
         checked={done}
         onCheckedChange={(next) => onToggle(next === true)}
-        className={caption ? 'mt-0.5 size-5' : 'size-5'}
+        className={cn('size-5 border-border-emphasis', cornerClass('pill'), caption && 'mt-0.5')}
       />
       <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer select-none">
         <StruckLabel struck={done}>

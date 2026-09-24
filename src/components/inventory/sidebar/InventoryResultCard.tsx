@@ -5,6 +5,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { InventoryResultRow } from '@/hooks/useInventorySearch';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 interface InventoryResultCardProps {
     row: InventoryResultRow;
@@ -14,8 +15,12 @@ interface InventoryResultCardProps {
     copied: boolean;
 }
 
-function statusBadgeClass(tone: 'gray' | 'emerald' | 'amber' | 'red' | 'blue'): string {
+/** `shipped` paints the lifecycle state's own tone (LIFECYCLE → success green). */
+type BadgeTone = 'gray' | 'emerald' | 'amber' | 'red' | 'blue' | 'shipped';
+
+function statusBadgeClass(tone: BadgeTone): string {
     switch (tone) {
+        case 'shipped': return LIFECYCLE_CLASSES.shipped.pill;
         case 'emerald': return 'bg-emerald-100 text-emerald-700';
         case 'amber':   return 'bg-amber-100 text-amber-700';
         case 'red':     return 'bg-red-100 text-red-700';
@@ -28,7 +33,7 @@ function renderBody(row: InventoryResultRow): {
     title: string;
     subtitle: string;
     meta: string;
-    badge: { label: string; tone: 'gray' | 'emerald' | 'amber' | 'red' | 'blue' } | null;
+    badge: { label: string; tone: BadgeTone } | null;
     copyText: string;
 } {
     switch (row.kind) {
@@ -69,8 +74,8 @@ function renderBody(row: InventoryResultRow): {
         }
         case 'unit': {
             const r = row.row;
-            const tone: 'gray' | 'emerald' | 'amber' | 'red' | 'blue' =
-                r.current_status === 'SHIPPED' ? 'gray' :
+            const tone: BadgeTone =
+                r.current_status === 'SHIPPED' ? 'shipped' :
                 r.current_status === 'ON_HOLD' ? 'amber' :
                 r.current_status === 'STOCKED' ? 'emerald' :
                 r.current_status === 'ALLOCATED' || r.current_status === 'PICKED' ? 'blue' : 'gray';

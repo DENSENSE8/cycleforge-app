@@ -240,26 +240,40 @@ function repairLineItemName(service: CounterServiceLine, rsNumber: string): stri
  * can be asserted without a network call. Mirrors `buildTerminalCheckoutBody`
  * in `terminal-checkout.ts`.
  *
- * Two line shapes, same as the walk-in route this was modeled on
- * (`/api/walk-in/orders`): a catalog line charges by `catalog_object_id` (the
- * provider's price is authoritative at charge time), a manual line — every
- * repair line, and any retail line with no catalog id — as an ad-hoc name +
- * `base_price_money` in the ORG's currency, never a hardcoded one.
+ * Every line stages ad-hoc: `name` + `base_price_money` (the line's own unit
+ * price) in the ORG's currency, never a hardcoded one.
+ *
+ * Until 2026-09-23 a retail line with a `variationId` was sent as
+ * `{ catalog_object_id }` alone, so Square would have charged its own catalog
+ * price. But that id is the **Ecwid** listing id (`catalog-search.ts`
+ * `PROJECTION_PLATFORM = 'ecwid'`), and this org stores no Square catalog ids
+ * anywhere. Square could not resolve it, and a price edited at the counter
+ * would have been ignored at the reader. The id stays on
+ * `counter_transaction_lines.variation_id` for reporting and never reaches Square.
+ *
+ * An item note rides as `OrderLineItem.note` (Square caps it at 2000), and a
+ * comp names itself there too, so the $0 line on the Square receipt says why.
  */
 export function buildStageOrderBody(
   lines: CounterRetailLine[],
   cfg: Pick<SquareConfig, 'locationId' | 'currency'>,
   idempotencyKey: string,
 ): Record<string, unknown> {
-  const line_items = lines.map((l) =>
-    l.variationId
-      ? { catalog_object_id: l.variationId, quantity: String(l.quantity) }
-      : {
-          name: l.productTitle,
-          quantity: String(l.quantity),
-          base_price_money: { amount: l.unitAmountCents, currency: cfg.currency },
-        },
-  );
+  const line_items = lines.map((l) => {
+    const note = [
+      l.priceAdjustment?.kind === 'comp' ? `Comp · ${l.priceAdjustment.reason}` : null,
+      l.note?.trim() || null,
+    ]
+      .filter(Boolean)
+      .join(' — ')
+      .slice(0, 2000);
+    return {
+      name: l.productTitle,
+      quantity: String(l.quantity),
+      base_price_money: { amount: l.unitAmountCents, currency: cfg.currency },
+      ...(note ? { note } : {}),
+    };
+  });
   return {
     idempotency_key: idempotencyKey,
     order: { location_id: cfg.locationId, line_items },
@@ -295,30 +309,41 @@ export function interpretStageOrderResponse(res: {
   };
 }
 
+/**
+ * The ONE phone → customer match: trailing 10 digits, org-scoped, newest row
+ * wins. Exported so the kiosk's live lookup (`GET /api/kiosk/customer`) shows
+ * the staffer exactly the customer submit will attach — two queries would be
+ * two answers to "who is this phone".
+ */
+export async function findCounterCustomerByPhoneDigits(
+  orgId: OrgId,
+  phoneDigits: string,
+): Promise<ResolvedCustomer | null> {
+  const res = await tenantQuery<{ id: number; phone: string | null; name: string | null }>(
+    orgId,
+    `SELECT id,
+            phone,
+            COALESCE(
+              NULLIF(display_name, ''),
+              NULLIF(customer_name, ''),
+              NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '')
+            ) AS name
+       FROM customers
+      WHERE organization_id = $1
+        AND phone IS NOT NULL
+        AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $2
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 1`,
+    [orgId, phoneDigits],
+  );
+  const row = res.rows[0];
+  return row
+    ? { id: Number(row.id), storedPhone: row.phone ?? '', storedName: row.name ?? '' }
+    : null;
+}
+
 const defaultDeps: SubmitCounterTransactionDeps = {
-  async findCustomerByPhoneDigits(orgId, phoneDigits) {
-    const res = await tenantQuery<{ id: number; phone: string | null; name: string | null }>(
-      orgId,
-      `SELECT id,
-              phone,
-              COALESCE(
-                NULLIF(display_name, ''),
-                NULLIF(customer_name, ''),
-                NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '')
-              ) AS name
-         FROM customers
-        WHERE organization_id = $1
-          AND phone IS NOT NULL
-          AND RIGHT(REGEXP_REPLACE(phone, '\\D', '', 'g'), 10) = $2
-        ORDER BY updated_at DESC NULLS LAST
-        LIMIT 1`,
-      [orgId, phoneDigits],
-    );
-    const row = res.rows[0];
-    return row
-      ? { id: Number(row.id), storedPhone: row.phone ?? '', storedName: row.name ?? '' }
-      : null;
-  },
+  findCustomerByPhoneDigits: findCounterCustomerByPhoneDigits,
 
   async createCustomer(orgId, args) {
     const created = await createRepairCustomer(args, orgId);
@@ -378,11 +403,14 @@ const defaultDeps: SubmitCounterTransactionDeps = {
         const headerId = Number(res.rows[0]!.id);
         for (let i = 0; i < args.retailLines.length; i += 1) {
           const line = args.retailLines[i]!;
+          const adjustment = line.priceAdjustment ?? null;
           await client.query(
             `INSERT INTO counter_transaction_lines
                (organization_id, counter_transaction_id, line_uuid, line_type,
-                title, sku, variation_id, quantity, unit_amount_cents, sort_index)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                title, sku, variation_id, quantity, unit_amount_cents, sort_index,
+                original_unit_amount_cents, price_adjust_kind, price_adjust_reason,
+                price_adjusted_by_staff_id, note)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
              ON CONFLICT (counter_transaction_id, line_uuid) DO NOTHING`,
             [
               orgId,
@@ -395,6 +423,11 @@ const defaultDeps: SubmitCounterTransactionDeps = {
               line.quantity,
               line.unitAmountCents,
               i,
+              adjustment?.originalUnitAmountCents ?? null,
+              adjustment?.kind ?? null,
+              adjustment?.reason ?? null,
+              adjustment?.staffId ?? null,
+              line.note?.trim() || null,
             ],
           );
         }

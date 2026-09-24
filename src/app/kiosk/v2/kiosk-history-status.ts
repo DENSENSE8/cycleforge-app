@@ -12,18 +12,19 @@
  *
  * Both books share it on purpose: a repair's `Awaiting Parts` and a
  * transaction's `staged` say the same thing to the person at the counter —
- * *not finished* — so they get the same tone. The return values are `Badge`
- * variants (`src/components/ui/badge.tsx`).
+ * *not finished* — so they get the same tone. The return values are
+ * `KioskChip` tones: the desk `badge` is square and 18px tall, and the kiosk
+ * chip law (`design-system/pinned.json` → KioskChip) bans it on a tablet face.
  */
 
-export type KioskHistoryStatusTone = 'success' | 'warning' | 'destructive' | 'secondary';
+import type { KioskChipTone } from '@/components/kiosk/KioskChip';
 
-export function kioskHistoryStatusTone(status: string): KioskHistoryStatusTone {
+export function kioskHistoryStatusTone(status: string): KioskChipTone {
   const s = status.trim().toLowerCase();
   if (s === 'picked up' || s === 'shipped' || s === 'done' || s === 'paid') return 'success';
-  if (s === 'cancelled' || s === 'voided' || s === 'refunded') return 'destructive';
+  if (s === 'cancelled' || s === 'voided' || s === 'refunded') return 'danger';
   if (s.startsWith('awaiting') || s === 'incoming shipment' || s === 'repaired, contact customer') {
     return 'warning';
   }
-  return 'secondary';
+  return 'idle';
 }

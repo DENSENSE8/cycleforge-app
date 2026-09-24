@@ -20,11 +20,35 @@ interface CounterSaleSqlRow {
   staged_square_order_id: string | null;
 }
 
+/**
+ * `search` is the Sales board's find text, and it is answered HERE for the same
+ * reason `getSquareTransactions` answers it: the board merges these rows with
+ * the Square mirror's, so a search the Square half honoured and this half
+ * ignored would paint every counter visit as a "match" beside the real ones.
+ * The columns are the facts a counter row actually paints — its `ct-<id>`
+ * handle, the customer it is billed to, and its status.
+ */
 export async function listCounterSalesAsSaleRows(
   orgId: OrgId,
   limit: number,
   existingSquareOrderIds: ReadonlySet<string>,
+  search?: string,
 ): Promise<SaleRow[]> {
+  const q = search?.trim();
+  const params: unknown[] = [orgId];
+  const clauses = ['ct.organization_id = $1'];
+  if (q) {
+    params.push(`%${q}%`);
+    const i = params.length;
+    clauses.push(
+      `(ct.id::text ILIKE $${i}
+         OR ct.status ILIKE $${i}
+         OR c.display_name ILIKE $${i}
+         OR c.customer_name ILIKE $${i})`,
+    );
+  }
+  params.push(limit);
+
   const res = await tenantQuery<CounterSaleSqlRow>(
     orgId,
     `SELECT ct.id::text AS id,
@@ -40,10 +64,10 @@ export async function listCounterSalesAsSaleRows(
        FROM counter_transactions ct
        LEFT JOIN customers c
          ON c.id = ct.customer_id AND c.organization_id = ct.organization_id
-      WHERE ct.organization_id = $1
+      WHERE ${clauses.join(' AND ')}
       ORDER BY ct.created_at DESC
-      LIMIT $2`,
-    [orgId, limit],
+      LIMIT $${params.length}`,
+    params,
   );
 
   return res.rows

@@ -110,16 +110,25 @@ import {
   subscribeRightRail,
 } from '@/lib/right-rail/store';
 import { cn } from '@/utils/_cn';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
+import type { ModeName } from '@/design-system/modes/registry';
 
-function RightRailOccupantBody({ node }: { node: ReactNode }) {
+/**
+ * The occupant's body is the rail's task-mode region: the assistant dock is
+ * `assistant`, every detail occupant (`RIGHT_RAIL_PRIORITY.detail`) is
+ * `triage`. The host is a sibling of the route content, so this is always a
+ * page-level region, never a third nesting level.
+ */
+function RightRailOccupantBody({ node, mode }: { node: ReactNode; mode: ModeName }) {
   const restored = usePanelDraft();
   return (
-    <div
+    <ModeRegion
+      mode={mode}
       className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0"
       data-right-rail-has-draft={restored != null ? '' : undefined}
     >
       {node}
-    </div>
+    </ModeRegion>
   );
 }
 
@@ -394,7 +403,9 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     !isPush;
   const showModalBackdrop = !!renderable?.onClose && isModal && !isPush;
 
-  const body = renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null;
+  const occupantMode: ModeName = isAssistantDock ? 'assistant' : 'triage';
+  const body =
+    renderable?.node != null ? <RightRailOccupantBody node={renderable.node} mode={occupantMode} /> : null;
 
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
@@ -456,7 +467,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
                 onToggleMaximize={maximizeWidthPx != null ? toggleMaximize : undefined}
               />
             ) : null}
-            {renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null}
+            {body}
           </aside>
         ) : null}
       </>

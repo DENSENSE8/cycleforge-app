@@ -13,6 +13,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Clock,
   Box,
+  ChevronRight,
+  Search,
 } from '@/components/Icons';
 import {
   Command,
@@ -101,6 +103,15 @@ const RECENT_KEY = 'command-bar-recent';
  * How many hits the palette fetches AND shows. One number, because they are the
  * same number: everything retrieved is rendered, so a result can never be
  * fetched and then hidden behind a control.
+ *
+ * It is still a cap on the SERVER side, and that is the other half of the
+ * contract: a query matching forty records returns twelve, and the palette used
+ * to say nothing about the other twenty-eight. The operator read twelve rows as
+ * "that is all there is" and retyped the query narrower to find a record that
+ * was already matched. The overflow row below is the fix — it never hides a
+ * fetched hit (that was the old per-type "See all", deliberately deleted), it
+ * announces the hits the fetch never asked for and hands them to `/search`,
+ * which asks for fifty.
  */
 const PALETTE_LIMIT = 12;
 const MAX_RECENT = 6;
@@ -475,6 +486,29 @@ export function CommandBar() {
     [navigate],
   );
 
+  /**
+   * Hand the typed query to the full find surface.
+   *
+   * Deliberately NOT routed through `navigate`: that writer stamps a
+   * `RecentItem` into `localStorage['command-bar-recent']`, and the recents
+   * rail is a list of RECORDS the operator opened. A "See all results for …"
+   * entry there is not a record — it would push a real order off the six-slot
+   * rail and then reopen as a query, not a thing.
+   *
+   * `?q=` is `/search`'s own published contract (`SearchFindSurface` reads it,
+   * `SearchResultsSurface` refetches at limit 50), so this is an entry point
+   * that already exists rather than a new one.
+   */
+  const seeAllResults = useCallback(() => {
+    const href = `/search?q=${encodeURIComponent(trimmedQuery)}`;
+    setDialogOpen(false);
+    // Same ordering as every other exit from this palette: unmount the portal
+    // first, then push, or React 19 races removeChild on the overlay.
+    window.requestAnimationFrame(() => {
+      router.push(href);
+    });
+  }, [router, setDialogOpen, trimmedQuery]);
+
 
   useFindFieldScan(inputRef, {
     enabled: open,
@@ -503,6 +537,26 @@ export function CommandBar() {
   const showRecents = open && !trimmedQuery && recents.length > 0;
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
+  /**
+   * The fetch came back FULL, so the server had at least one more it was not
+   * asked for. Three conjuncts, each stopping a specific wrong row:
+   *
+   *  - `trimmedQuery` — the empty/recents state must stay exactly as it was;
+   *    there is no query to see all of.
+   *  - `!searching` — mid-keystroke the previous query's saturated set is
+   *    still in state, so the row would flicker in under a query it does not
+   *    describe.
+   *  - `searchResults.length >= PALETTE_LIMIT` — a three-hit query shows all
+   *    three; offering a trip to `/search` for the same three rows is the
+   *    "ask twice for what is already in memory" defect the per-type "See all"
+   *    was deleted for.
+   *
+   * Measured on the RAW fetch, not `previewHits`: the type/channel facets are
+   * client-side narrowing of this same set, and whether the server truncated
+   * is a fact about the fetch, not about which chip is lit.
+   */
+  const showAllResultsRow =
+    Boolean(trimmedQuery) && !searching && searchResults.length >= PALETTE_LIMIT;
 
   return (
     <CommandDialog open={open} onOpenChange={setDialogOpen}>
@@ -697,6 +751,30 @@ export function CommandBar() {
               ))}
             </CommandGroup>
           ))}
+          {/* Overflow exit. A CommandItem, not a footer button, because the
+              whole palette is driven from the keyboard: ArrowDown off the last
+              hit lands here and Enter takes it. A control parked outside
+              `CommandList` is unreachable without leaving the home row, which
+              is the same as not existing for the operator this surface is for.
+              Last in DOM order so it is last in the ring. */}
+          {showAllResultsRow ? (
+            <CommandGroup>
+              <CommandItem
+                value={`see-all ${trimmedQuery}`}
+                onSelect={seeAllResults}
+                data-testid="palette-see-all-results"
+              >
+                <Search className="size-4 text-text-faint" />
+                <span className="min-w-0 flex-1 truncate text-text-muted">
+                  See all results for{' '}
+                  <span className="text-text-default">
+                    &ldquo;{trimmedQuery}&rdquo;
+                  </span>
+                </span>
+                <ChevronRight className="size-4 text-text-faint" />
+              </CommandItem>
+            </CommandGroup>
+          ) : null}
         </CommandList>
       </Command>
     </CommandDialog>

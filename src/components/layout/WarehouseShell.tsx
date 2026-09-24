@@ -83,7 +83,6 @@ import { InstallPrompt } from '@/components/station/InstallPrompt';
  */
 import { ReducedMotionProvider } from '@/components/providers/ReducedMotionProvider';
 import { AppearanceApplier } from '@/components/settings/AppearanceApplier';
-import { ReceivingZohoSyncToaster } from '@/components/receiving/ReceivingZohoSyncToaster';
 import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolvedToaster';
 import { WatchedArrivalToaster } from '@/components/providers/WatchedArrivalToaster';
 import { PostHogProvider } from '@/components/analytics/PostHogProvider';
@@ -91,13 +90,11 @@ import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
 
 export function WarehouseShell({
   initialUser,
-  kioskHost,
   mobileTree,
   shellSeed,
   children,
 }: {
   initialUser: AuthSessionUser | null;
-  kioskHost: boolean;
   mobileTree: boolean;
   shellSeed: DehydratedState | null;
   children: ReactNode;
@@ -107,7 +104,7 @@ export function WarehouseShell({
       <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
         <PostHogProvider>
           <Providers>
-            <AuthProvider initial={initialUser} kioskHost={kioskHost}>
+            <AuthProvider initial={initialUser}>
               <AuthenticatedAblyProvider>
                 <ActivityInboxProvider>
                   <StaffColorsProvider>
@@ -125,7 +122,7 @@ export function WarehouseShell({
                                 {mobileTree ? (
                                   <MobileRouteShell>{children}</MobileRouteShell>
                                 ) : (
-                                  <DesktopRouteShell kioskHost={kioskHost}>
+                                  <DesktopRouteShell>
                                     {children}
                                   </DesktopRouteShell>
                                 )}
@@ -134,7 +131,6 @@ export function WarehouseShell({
                           </StudioWorkspaceProvider>
                         </FbaWorkspaceProvider>
                       </HeaderProvider>
-                      <ReceivingZohoSyncToaster />
                       <UserIssueResolvedToaster />
                       <WatchedArrivalToaster />
                       <SwitchStaffSheet />

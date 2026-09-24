@@ -38,15 +38,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CornerDownLeft, Images, Upload } from '@/components/Icons';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { SupportPhotoLibraryPicker } from '@/components/support/zendesk/chat/SupportPhotoLibraryPicker';
-import { TicketReplyPresetsBar } from '@/components/support/zendesk/chat/TicketReplyPresetsBar';
-import type { TicketReplyPreset } from '@/lib/support/ticket-reply-presets';
 import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { seedComposerDraft } from '@/lib/threads/composer-draft';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import { stationComposerTicketCommitLabel } from '@/lib/composer/station-composer-mode';
-import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
 import { ComposerDrillMenu } from './ComposerDrillMenu';
 import { ComposerStagedPhotoStrip } from './ComposerStagedPhotoStrip';
@@ -66,7 +62,6 @@ export function TicketComposer({
   receivingId,
   onBridgeChange,
   trailingAction,
-  showReplyPresets = true,
   className,
 }: {
   ticketId: number;
@@ -78,27 +73,11 @@ export function TicketComposer({
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   /** Terminal CTA in the footer's trailing edge (replaces the commit CTA). */
   trailingAction?: ReactNode;
-  /** All-good / QC chip row. Unbox Ticket Displays passes `false`. */
-  showReplyPresets?: boolean;
   className?: string;
 }) {
   const c = useTicketComposer({ ticketId, receivingId, staging, insertIcons: INSERT_ICONS });
   const [plusOpen, setPlusOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const { user } = useAuth();
-
-  /** One-click presets — REST only (never VendorView DOM macros). */
-  const applyPreset = (preset: TicketReplyPreset) => {
-    if (c.busy) return;
-    const vars = buildComposerReplyVars({
-      ticketId,
-      body: preset.body,
-      isPublic: preset.isPublic,
-      staffName: user?.name?.trim() || '',
-      staffId: user?.staffId ?? null,
-    });
-    if (vars) c.reply.mutate(vars);
-  };
 
   // A draft reaches this editor through ONE door: `bridge.setDraft`, which
   // routes every insert through `seedComposerDraft`'s overwrite rule. Do not
@@ -136,9 +115,6 @@ export function TicketComposer({
 
   return (
     <div className={cn('w-full', className)} data-composer-channel={c.isPublic ? 'public' : 'internal'}>
-      {showReplyPresets ? (
-        <TicketReplyPresetsBar disabled={c.busy} onPick={applyPreset} />
-      ) : null}
       <OmnichannelComposerDock
         value={c.body}
         onChange={c.setBody}

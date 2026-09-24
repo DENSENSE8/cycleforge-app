@@ -31,9 +31,6 @@ describe('kiosk customer intake — one form for every channel', () => {
   it('every kiosk channel composes it — no pane hand-rolls a contact trio', () => {
     const panes = [
       'src/app/kiosk/v2/KioskRepairPane.tsx',
-      'src/app/kiosk/v2/KioskCounterPane.tsx',
-      'src/app/kiosk/v2/KioskBuybackPane.tsx',
-      'src/app/kiosk/v2/KioskPickupPane.tsx',
       'src/app/kiosk/v2/KioskCartLedger.tsx',
     ];
     for (const pane of panes) {

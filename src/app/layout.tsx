@@ -14,6 +14,7 @@ import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
 import { stationDepthStyleText } from '@/design-system/themes/station-depths';
+import { modeRegistryStyleText } from '@/design-system/modes/registry';
 // NOTE: `ReducedMotionProvider` is deliberately NOT imported here. It renders
 // `MotionConfig`, so a static import in this file shipped the framer runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
@@ -118,6 +119,10 @@ export default async function RootLayout({
                 <style id="app-theme-palettes">{themePaletteStyleText}</style>
                 <style id="app-station-skins">{stationSkinStyleText}</style>
                 <style id="app-station-depths">{stationDepthStyleText}</style>
+                {/* Task-mode regions (`data-mode`, via ModeRegion) — after the
+                    theme palettes because a light-scheme region remaps their
+                    neutral --ds-color-* vars. */}
+                <style id="app-mode-registry">{modeRegistryStyleText}</style>
                 {/* Applies the cached theme before paint (no light→dark flash). */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: STATION_SKIN_BOOT_SCRIPT }} />

@@ -71,9 +71,13 @@ export async function getSquareTransactions(params: {
   const values: unknown[] = [orgId];
   let paramIndex = 2;
 
+  // The columns a Sales-board row PAINTS, plus the contact facts an operator
+  // reaches a sale by. `id` is here because the board's identity slot paints
+  // the local uuid, not `square_order_id` — a search that could not find a row
+  // by the handle printed on it would be the narrowing bug wearing a WHERE.
   if (search) {
     conditions.push(
-      `(customer_name ILIKE $${paramIndex} OR customer_phone ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR square_order_id ILIKE $${paramIndex} OR line_items::text ILIKE $${paramIndex})`,
+      `(customer_name ILIKE $${paramIndex} OR customer_phone ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR square_order_id ILIKE $${paramIndex} OR id::text ILIKE $${paramIndex} OR status ILIKE $${paramIndex} OR line_items::text ILIKE $${paramIndex})`,
     );
     values.push(`%${search}%`);
     paramIndex++;

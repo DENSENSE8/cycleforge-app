@@ -5403,6 +5403,148 @@ export const kioskDevices = pgTable('kiosk_devices', {
 export type KioskDevice = typeof kioskDevices.$inferSelect;
 export type NewKioskDevice = typeof kioskDevices.$inferInsert;
 
+// desktop_devices — enrolled Tauri desktop principal. Deliberately separate
+// from kiosk_devices: a desktop may watch a user-chosen folder and request a
+// named print, while a kiosk is an unattended customer-facing tablet. Composite
+// tenant FKs and CHECK constraints live in the birth migration because several
+// referenced legacy tables do not expose composite keys in this Drizzle model.
+// Migration: 2026-09-18_v1_label_ingestions.sql.
+export const desktopDevices = pgTable('desktop_devices', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  publicId: uuid('public_id').notNull().defaultRandom(),
+  label: text('label').notNull(),
+  /** ENROLLED | ACTIVE | REVOKED */
+  status: text('status').notNull().default('ENROLLED'),
+  /** LINUX | MACOS | WINDOWS */
+  platform: text('platform').notNull(),
+  appVersion: varchar('app_version', { length: 64 }),
+  enrollCodeHash: varchar('enroll_code_hash', { length: 64 }),
+  enrollCodeExpiresAt: timestamp('enroll_code_expires_at', { withTimezone: true }),
+  deviceTokenHash: varchar('device_token_hash', { length: 64 }),
+  enrolledByStaffId: integer('enrolled_by_staff_id'),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgPublicIdUniq: uniqueIndex('desktop_devices_org_public_uniq').on(table.organizationId, table.publicId),
+  orgIdUniq: uniqueIndex('desktop_devices_org_id_uniq').on(table.organizationId, table.id),
+  orgEnrollHashUniq: uniqueIndex('ux_desktop_devices_org_enroll_hash')
+    .on(table.organizationId, table.enrollCodeHash)
+    .where(sql`enroll_code_hash IS NOT NULL`),
+  orgTokenHashUniq: uniqueIndex('ux_desktop_devices_org_token_hash')
+    .on(table.organizationId, table.deviceTokenHash)
+    .where(sql`device_token_hash IS NOT NULL`),
+  orgStatusIdx: index('idx_desktop_devices_org_status').on(table.organizationId, table.status, table.id),
+  orgSeenIdx: index('idx_desktop_devices_org_seen').on(
+    table.organizationId,
+    table.lastSeenAt.desc(),
+    table.id.desc(),
+  ),
+}));
+
+export type DesktopDevice = typeof desktopDevices.$inferSelect;
+export type NewDesktopDevice = typeof desktopDevices.$inferInsert;
+
+// label_ingestions — immutable source-file ledger for the V1 outbound label
+// pipeline. Resolution evidence is exact-only. The application transition that
+// writes shipmentId/documentId also moves every eligible serial unit from
+// PACKED to LABELED in the same PostgreSQL transaction.
+export const labelIngestions = pgTable('label_ingestions', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  deviceId: bigint('device_id', { mode: 'number' }),
+  actorStaffId: integer('actor_staff_id'),
+  clientEventId: uuid('client_event_id').notNull(),
+  sha256: varchar('sha256', { length: 64 }).notNull(),
+  fileBasename: text('file_basename').notNull(),
+  byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
+  observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
+  /** WATCHED_FOLDER | BROWSER_FIXTURE | MANUAL_UPLOAD */
+  source: text('source').notNull(),
+  /** RECEIVED | STAGED | PARSED | MATCHED | QUARANTINED | APPLYING | APPLIED | FAILED */
+  state: text('state').notNull().default('RECEIVED'),
+  parserVersion: text('parser_version'),
+  /** CYCLEFORGE_REFERENCE | MARKETPLACE_ORDER_ID */
+  matchMethod: text('match_method'),
+  detectedCycleforgeReference: text('detected_cycleforge_reference'),
+  matchedAccountSource: text('matched_account_source'),
+  matchedMarketplaceOrderId: text('matched_marketplace_order_id'),
+  trackingNumberRaw: text('tracking_number_raw'),
+  trackingNumberNormalized: text('tracking_number_normalized'),
+  carrier: text('carrier'),
+  stagedStorageProvider: text('staged_storage_provider'),
+  stagedObjectKey: text('staged_object_key'),
+  mimeType: text('mime_type').notNull().default('application/pdf'),
+  matchedOrderId: integer('matched_order_id'),
+  shipmentId: bigint('shipment_id', { mode: 'number' }),
+  documentId: integer('document_id'),
+  quarantineReasonCode: text('quarantine_reason_code'),
+  attemptCount: integer('attempt_count').notNull().default(0),
+  rowVersion: integer('row_version').notNull().default(0),
+  errorCode: text('error_code'),
+  errorDetail: text('error_detail'),
+  appliedAt: timestamp('applied_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgIdUniq: uniqueIndex('label_ingestions_org_id_uniq').on(table.organizationId, table.id),
+  orgShaUniq: uniqueIndex('ux_label_ingestions_org_sha256').on(table.organizationId, table.sha256),
+  orgClientEventUniq: uniqueIndex('ux_label_ingestions_org_client_event')
+    .on(table.organizationId, table.clientEventId),
+  orgStateObservedIdx: index('idx_label_ingestions_org_state_observed').on(
+    table.organizationId,
+    table.state,
+    table.observedAt.desc(),
+    table.id.desc(),
+  ),
+  orgOrderIdentityIdx: index('idx_label_ingestions_org_order_identity')
+    .on(
+      table.organizationId,
+      table.matchedAccountSource,
+      table.matchedMarketplaceOrderId,
+      table.id.desc(),
+    )
+    .where(sql`matched_account_source IS NOT NULL AND matched_marketplace_order_id IS NOT NULL`),
+  orgDeviceObservedIdx: index('idx_label_ingestions_org_device_observed')
+    .on(table.organizationId, table.deviceId, table.observedAt.desc(), table.id.desc())
+    .where(sql`device_id IS NOT NULL`),
+}));
+
+export type LabelIngestion = typeof labelIngestions.$inferSelect;
+export type NewLabelIngestion = typeof labelIngestions.$inferInsert;
+
+// Every orders row belonging to the resolved logical marketplace order. A
+// multi-line order must have every row here; using a representative LIMIT 1 is
+// forbidden by the V1 contract.
+export const labelIngestionOrders = pgTable('label_ingestion_orders', {
+  organizationId: orgIdCol(),
+  ingestionId: bigint('ingestion_id', { mode: 'number' }).notNull(),
+  orderId: integer('order_id').notNull(),
+  ordinal: integer('ordinal').notNull(),
+  /** MATCHED_LINE (the only V1 role). */
+  linkRole: text('link_role').notNull().default('MATCHED_LINE'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.ingestionId, table.orderId], name: 'label_ingestion_orders_pk' }),
+  ingestionOrdinalUniq: uniqueIndex('label_ingestion_orders_ingestion_ordinal_uniq')
+    .on(table.ingestionId, table.ordinal),
+  orgOrderIdx: index('idx_label_ingestion_orders_org_order').on(
+    table.organizationId,
+    table.orderId,
+    table.ingestionId,
+  ),
+  orgIngestionIdx: index('idx_label_ingestion_orders_org_ingestion').on(
+    table.organizationId,
+    table.ingestionId,
+    table.ordinal,
+  ),
+}));
+
+export type LabelIngestionOrder = typeof labelIngestionOrders.$inferSelect;
+export type NewLabelIngestionOrder = typeof labelIngestionOrders.$inferInsert;
+
 // search_recents — per-staff "most recently searched" history (Dashboard Search
 // mode). MRU by (org, staff, scope, lower(query)); newest-first, capped in the
 // domain helper. Tenant-scoped from birth. See
@@ -5680,8 +5822,9 @@ export const counterSessions = pgTable('counter_sessions', {
   version: integer('version').notNull().default(0),
   /** CHECK counter_sessions_active_command_chk: retail | repair | buyback |
    *  pickup — which pane is on screen. Vocabulary SoT is `KIOSK_COMMAND_IDS`
-   *  in `@/lib/kiosk/commands`; the CHECK and that list must stay identical
-   *  (`commands.test.ts` pins it). The column DEFAULT is legacy: opening a
+   *  in `@/lib/kiosk/commands`, a SUBSET of the CHECK since buyback/pickup
+   *  were deleted 2026-09-23; reads go through `parseKioskCommandId`
+   *  (`commands.test.ts` pins the subset). The column DEFAULT is legacy: opening a
    *  session passes `active_command` explicitly from the org's choice
    *  (`OrgSettings.kiosk.defaultCommand` → `getKioskDefaultCommand`), because
    *  a column default cannot express a per-tenant preference. */

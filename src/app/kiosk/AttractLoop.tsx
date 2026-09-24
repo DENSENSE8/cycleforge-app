@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion } from '@/design-system/motion';
+import { MODE_REGISTRY } from '@/design-system/modes/registry';
 
 /**
  * The wordmark field for the `plain` screensaver. The tenant's brand ground is
@@ -15,15 +16,14 @@ import { motion } from '@/design-system/motion';
 const PLAIN_ATTRACT_FIELD = 'fixed inset-0 z-panel flex cursor-pointer items-center justify-center bg-white px-8';
 
 /**
- * The tenant's navy, sampled from the dominant pixel of `public/images/
- * usav-logo.png` (6,141px of it; everything else in that band is antialiasing).
- *
- * This is brand DATA, not a theme token — it is one tenant's ink and must not
- * shift with `data-theme`, so it deliberately does not resolve through
- * `@/design-system/tokens`. Do not promote it into the theme registry: the next
- * tenant on this screensaver brings a different navy.
+ * Default wordmark ink = the counter mode's `brand` (USAV navy, sampled from
+ * `public/images/usav-logo.png`). It is tenant brand DATA, not a theme token —
+ * it never shifts with `data-theme`; the org's `brand.primaryColor` replaces
+ * it (passed as `inkColor` here, and as `--mode-brand` on the counter region).
+ * Read as a literal rather than `var(--mode-brand)` because the Settings
+ * preview mounts this outside any counter region.
  */
-const USAV_BRAND_NAVY = '#1f316d';
+const DEFAULT_BRAND_INK = MODE_REGISTRY.counter.brand;
 
 /** Dogfood defaults — overridden by `brand.attractHeadline` / `attractSubline`. */
 const DEFAULT_HEADLINE = 'USAV';
@@ -118,7 +118,7 @@ export function AttractLoop({
           <PlainWordmark
             headline={headline?.trim() || DEFAULT_HEADLINE}
             subline={subline?.trim() || DEFAULT_SUBLINE}
-            ink={inkColor?.trim() || USAV_BRAND_NAVY}
+            ink={inkColor?.trim() || DEFAULT_BRAND_INK}
             reducedMotion={reducedMotion}
           />
         )}

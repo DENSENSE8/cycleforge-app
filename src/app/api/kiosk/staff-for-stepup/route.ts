@@ -1,11 +1,13 @@
 /**
- * GET /api/kiosk/staff-for-stepup?scope=payment|signin
+ * GET /api/kiosk/staff-for-stepup?scope=payment|adjust_price|signin
  *
- * The counter tablet's staff roster, resolved from the DEVICE's org. Two
- * scopes, because the tablet asks two different questions:
+ * The counter tablet's staff roster, resolved from the DEVICE's org. Three
+ * scopes, because the tablet asks three different questions:
  *
  *   • `payment` (default) — who can AUTHORIZE money. PIN-holders who hold
  *     `walk_in.take_payment`; the pad behind this pick verifies the PIN.
+ *   • `adjust_price` — who can change a line's price (adjust, keypad, comp,
+ *     void). PIN-holders who hold `walk_in.adjust_price`.
  *   • `signin` — who is STANDING HERE. Every active staffer, PIN or not,
  *     because the History face signs in pinlessly (operator 2026-09-22:
  *     *"remove the pin, use the same pinless sign in for the switching
@@ -25,7 +27,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { effectivePermissionsForStaff } from '@/lib/auth/role-store';
+import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
+
+/** The permission each PIN-pad scope's roster must hold. `signin` has none. */
+const SCOPE_PERMISSION: Record<string, PermissionString> = {
+  payment: 'walk_in.take_payment',
+  adjust_price: 'walk_in.adjust_price',
+};
 
 export const runtime = 'nodejs';
 
@@ -40,7 +49,9 @@ interface StaffRow {
 
 export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId as OrgId;
-  const signin = req.nextUrl.searchParams.get('scope') === 'signin';
+  const scope = req.nextUrl.searchParams.get('scope') ?? 'payment';
+  const signin = scope === 'signin';
+  const required = SCOPE_PERMISSION[scope] ?? SCOPE_PERMISSION.payment;
 
   const rows = await withTenantTransaction(orgId, async (client) => {
     const r = await client.query<StaffRow>(
@@ -59,12 +70,12 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
 
   const eligible = [];
   for (const row of rows) {
-    // The permission walk is the PAYMENT scope's question only. A sign-in
-    // roster that hid staff without `walk_in.take_payment` would refuse to name
-    // the technician who is actually holding the tablet.
+    // The permission walk is the PIN scopes' question only. A sign-in roster
+    // that hid staff without a money permission would refuse to name the
+    // technician who is actually holding the tablet.
     if (!signin) {
       const perms = await effectivePermissionsForStaff(Number(row.id), {}, orgId);
-      if (!perms.has('walk_in.take_payment')) continue;
+      if (!perms.has(required)) continue;
     }
     eligible.push({
       id: Number(row.id),

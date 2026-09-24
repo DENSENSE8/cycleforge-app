@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Search, Star } from '../Icons';
+import { ChevronLeft, ChevronRight, Plus, Search, Star } from '../Icons';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
@@ -177,6 +177,24 @@ interface ProductSelectorProps {
    * and no pip, exactly as before.
    */
   favoritesWorkspace?: FavoriteWorkspaceKey;
+  /**
+   * COUNT mode (Sales, Square "Consolidate identical items"): a tile tap calls
+   * `onTap` instead of toggling the picker's own selection, and the tile's
+   * picked state is `quantities` — the cart's units on that catalog id. A
+   * repeat tap therefore adds one and the corner reads `×2`; it never
+   * deselects. Omitted = the picker toggles a selection (Repair picks a
+   * device, it does not count one).
+   */
+  countPicks?: {
+    quantities: ReadonlyMap<string, number>;
+    onTap: (item: SelectedItem) => void;
+  };
+  /**
+   * Whether the kiosk continue key shows. Defaults to "the picker has a
+   * selection"; a count-mode host passes its own cart state, since its picks
+   * never enter the picker's selection.
+   */
+  continueVisible?: boolean;
 }
 
 interface CategoryNode {
@@ -322,6 +340,8 @@ export function ProductSelector({
   hideCartTray = false,
   catalogSearchMode = 'client',
   favoritesWorkspace,
+  countPicks,
+  continueVisible,
 }: ProductSelectorProps) {
   const kioskSplit = layout === 'kiosk-split';
   /** Flush POS chrome — only the kiosk-split catalog path. */
@@ -386,6 +406,16 @@ export function ProductSelector({
   const [favoriteKeys, setFavoriteKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
   /** SKU whose pip is mid-flight; its own tile is the only one disabled. */
   const [pendingFavoriteSku, setPendingFavoriteSku] = useState<string | null>(null);
+  /**
+   * PIN MODE — the "Add favorite" tile's job. A tile tap pins or unpins the
+   * product instead of putting it on the cart, the way Square's "add tile"
+   * flow makes an item-library tap mean "place this here", never "sell this".
+   * Without it, curating Favorites meant hunting a 32px star on a catalog whose
+   * every other tap adds a line to a live cart.
+   *
+   * Ends on `Done`, or whenever the Favorites scope loads again.
+   */
+  const [pinning, setPinning] = useState(false);
   const [productsOffset, setProductsOffset] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
@@ -548,6 +578,7 @@ export function ProductSelector({
       const rows = Array.isArray(payload.products) ? payload.products : [];
       setProducts((prev) => (append ? [...prev, ...rows] : rows));
       setShowFavorites(true);
+      setPinning(false);
       setShowAllProducts(false);
       setProductsOffset(offset + rows.length);
       setHasMoreProducts(Boolean(payload.hasMore));
@@ -613,6 +644,12 @@ export function ProductSelector({
     } finally {
       setPendingFavoriteSku(null);
     }
+  };
+
+  /** The "Add favorite" tile: open the whole catalog with taps pinning. */
+  const startPinning = () => {
+    setPinning(true);
+    void fetchAllProducts(0, false);
   };
 
   /**
@@ -837,7 +874,23 @@ export function ProductSelector({
     openCatalogSearch();
   };
 
-  const isSelected = (id: string) => selectedItems.some((i) => i.id === id);
+  /** Units of this product on the host's cart (count mode), else 1/0 for a selection. */
+  const pickedCount = (id: string): number =>
+    countPicks
+      ? (countPicks.quantities.get(id) ?? 0)
+      : selectedItems.some((i) => i.id === id)
+        ? 1
+        : 0;
+  const isSelected = (id: string) => pickedCount(id) > 0;
+
+  const tapProduct = (product: EcwidProduct) => {
+    if (!countPicks) {
+      toggleProduct(product);
+      return;
+    }
+    setShowOther(false);
+    countPicks.onTap({ id: product.id, name: product.name, price: product.price, sku: product.sku });
+  };
   const isAtRoot = !currentCategoryId;
   const loading = loadingCategories;
 
@@ -1001,9 +1054,39 @@ export function ProductSelector({
         : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
   );
 
+  /**
+   * The "Add favorite" tile closes the Favorites grid — the last rectangle in
+   * the same card shape as every pinned product, so curating the list happens
+   * where the list is. Not while searching (the grid is then a result set, not
+   * the curated list) and not while already pinning.
+   */
+  const showAddFavoriteTile =
+    pos && favoritesEnabled && showFavorites && !pinning && search.trim() === '';
+
   const renderProductsGrid = () => (
     <>
-      {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
+      {pos && pinning ? (
+        <div
+          className="flex items-center justify-between gap-3 bg-surface-accent px-4 py-2.5"
+          data-testid="catalog-pinning-notice"
+        >
+          <p className="min-w-0 text-sm font-semibold text-text-default">
+            Tap a product to add it to Favorites. Tap again to remove it.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void fetchFavoriteProducts(0, false)}
+            data-testid="catalog-pinning-done"
+          >
+            Done
+          </Button>
+        </div>
+      ) : null}
+      {(loadingProducts ||
+        loadingRootSearch ||
+        filteredProducts.length > 0 ||
+        showAddFavoriteTile) && (
         <div
           className={cn(pos ? 'gap-0' : flush ? 'gap-0' : 'space-y-2')}
           data-kiosk-product-browse
@@ -1044,7 +1127,7 @@ export function ProductSelector({
               </div>
             )}
           {/* Keep the prior grid mounted while a fetch is in flight — never blank the stage. */}
-          {filteredProducts.length > 0 && (
+          {(filteredProducts.length > 0 || showAddFavoriteTile) && (
             <div
               className={cn(
                 pos
@@ -1059,7 +1142,8 @@ export function ProductSelector({
               }}
             >
               {filteredProducts.map((product, index) => {
-                const selected = isSelected(product.id);
+                const picked = pickedCount(product.id);
+                const selected = picked > 0;
                 /*
                  * LCP is a catalog tile photo, and Lighthouse measured its
                  * resource-load DELAY at 4.2s: the grid is client-fetched, so
@@ -1085,7 +1169,11 @@ export function ProductSelector({
                   <button
                     type="button"
                     data-testid="product-tile"
-                    onClick={() => toggleProduct(product)}
+                    aria-pressed={pinning ? favorited : undefined}
+                    aria-label={
+                      !pinning && picked > 1 ? `${product.name}, ${picked} in cart` : undefined
+                    }
+                    onClick={() => (pinning ? void toggleFavorite(product) : tapProduct(product))}
                     className={
                       pos
                         ? cn(KIOSK_POS_CARD, 'h-full', selected && KIOSK_POS_CARD_SELECTED)
@@ -1148,18 +1236,29 @@ export function ProductSelector({
                       */}
                       {pos && selected && (
                         <span
-                          className={cn(KIOSK_POS_CARD_SELECT_DOT, KIOSK_POS_CARD_SELECT_DOT_ON)}
+                          className={cn(
+                            KIOSK_POS_CARD_SELECT_DOT,
+                            KIOSK_POS_CARD_SELECT_DOT_ON,
+                            // `×12` outgrows the 24px disc; it becomes a pill.
+                            picked > 1 && 'w-auto min-w-6 px-1.5',
+                          )}
                           aria-hidden
+                          data-testid="product-tile-count"
                         >
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={3}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                          {picked > 1 ? (
+                            // Count mode: the units on the cart, in place of the check.
+                            <span className="text-xs font-bold tabular-nums">×{picked}</span>
+                          ) : (
+                            <svg
+                              className="h-3.5 w-3.5"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
                         </span>
                       )}
                       {selected && !pos && (
@@ -1258,6 +1357,34 @@ export function ProductSelector({
                   </div>
                 );
               })}
+              {showAddFavoriteTile ? (
+                <div className={KIOSK_POS_CARD_CELL}>
+                  {/* ds-raw-button: the same card rectangle as a product tile,
+                      so the list's own "add" reads as one more tile. */}
+                  <button
+                    type="button"
+                    data-testid="product-add-favorite"
+                    onClick={startPinning}
+                    className={cn(KIOSK_POS_CARD, 'h-full w-full', focusRing('control', 'neutral'))}
+                  >
+                    <div className={cn(KIOSK_POS_IMAGE_WELL, 'flex items-center justify-center')}>
+                      <span
+                        className={cn(
+                          'flex h-14 w-14 items-center justify-center bg-surface-sunken text-text-soft',
+                          cornerClass('pill'),
+                        )}
+                        aria-hidden
+                      >
+                        <Plus className="h-7 w-7" />
+                      </span>
+                    </div>
+                    <div className={KIOSK_POS_CARD_CAPTION}>
+                      <p className={KIOSK_TILE_TITLE}>Add favorite</p>
+                      <span className={KIOSK_META}>Pin a product to this list</span>
+                    </div>
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
           {!loadingProducts && hasMoreProducts && (
@@ -1284,6 +1411,7 @@ export function ProductSelector({
           would face a blank stage after unpinning the last SKU. */}
       {!loadingProducts &&
         filteredProducts.length === 0 &&
+        !showAddFavoriteTile &&
         (search.trim() !== '' || showFavorites || filteredCategories.length === 0) && (
           <div className={gridNoticeClass} data-testid="catalog-grid-notice">
             {search.trim()
@@ -1729,7 +1857,8 @@ export function ProductSelector({
               {trailEnd}
             </div>
     );
-    const showKioskCta = hideCartTray && selectedItems.length > 0 && !!onContinue;
+    const showKioskCta =
+      hideCartTray && (continueVisible ?? selectedItems.length > 0) && !!onContinue;
     const browseColumn = (
       // `relative` anchors every floating dock: the glass header (top) and the
       // key (bottom). The product field is the ONLY in-flow element — both

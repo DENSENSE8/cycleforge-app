@@ -32,7 +32,6 @@ describe('item-record mobile tokens', () => {
   it('maps workflow state rails to semantic color roles', () => {
     assert.match(ITEM_RECORD_MOBILE_STATE_RAIL.ready, /border-l-4 border-border-accent/);
     assert.match(ITEM_RECORD_MOBILE_STATE_RAIL.exception, /border-l-4 border-border-danger/);
-    assert.match(ITEM_RECORD_MOBILE_STATE_RAIL.packed, /border-l-4 border-border-success/);
     assert.doesNotMatch(
       Object.values(ITEM_RECORD_MOBILE_STATE_RAIL).join(' '),
       /(?:blue|orange|green|red)-\d{2,3}/,

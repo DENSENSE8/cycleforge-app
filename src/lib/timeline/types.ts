@@ -4,9 +4,11 @@ import type React from 'react';
  * Semantic color for timeline *badges* (exception / signed-by pills). The rail
  * no longer uses tone dots — {@link EventTimeline} resolves mode glyphs via
  * `sourceEventType` + `resolveTimelineGlyph`. Callers choose tones for badges,
- * never raw classes.
+ * never raw classes. A lifecycle event (packed, shipped) takes its tone from
+ * `LIFECYCLE[state].tone` (`@cycleforge/design-tokens`) — `fulfillment` is
+ * packed's.
  */
-export type TimelineTone = 'default' | 'info' | 'success' | 'warning' | 'danger' | 'muted';
+export type TimelineTone = 'default' | 'info' | 'success' | 'warning' | 'danger' | 'fulfillment' | 'muted';
 
 export interface TimelineItemBadge {
   label: string;

@@ -73,6 +73,8 @@ import {
   parseDailyStatusFilter,
   type DailyStatusFilter,
 } from './daily-check-filter';
+import { AgendaKindFilter, useAgendaKindPrefs } from '@/components/mobile/daily/AgendaKindFilter';
+import { filterAgendaByKinds } from '@/lib/daily/agenda-kind-filter';
 
 /**
  * The status refinements, as the segmented switch a list wears (the funnel menu
@@ -107,6 +109,9 @@ export function DailyAgenda() {
   const selectedTaskId = rawTask && /^\d+$/.test(rawTask) ? Number(rawTask) : null;
   const query = searchParams.get('q') ?? '';
   const status = parseDailyStatusFilter(searchParams.get('filter'));
+  /** Kind chips (multi-select + drag order) — device-local, not a URL param:
+   *  curation is an operator preference, not a shareable view. */
+  const kindPrefs = useAgendaKindPrefs();
 
   const writeParams = useCallback(
     (mutate: (next: URLSearchParams) => void) => {
@@ -155,15 +160,18 @@ export function DailyAgenda() {
     );
   }, [rows, query]);
 
+  /** Kind chips narrow before the status switch, so counts describe the list. */
+  const kindered = useMemo(() => filterAgendaByKinds(searched, kindPrefs.prefs), [searched, kindPrefs.prefs]);
+
   const counts = useMemo(() => {
     const done = searched.filter((row) => row.done).length;
     return { all: searched.length, open: searched.length - done, done };
   }, [searched]);
 
   const visible = useMemo(() => {
-    if (status === 'all') return searched;
-    return searched.filter((row) => (status === 'done' ? row.done : !row.done));
-  }, [searched, status]);
+    if (status === 'all') return kindered;
+    return kindered.filter((row) => (status === 'done' ? row.done : !row.done));
+  }, [kindered, status]);
 
   const setQuery = useCallback(
     (next: string) => {
@@ -331,16 +339,18 @@ export function DailyAgenda() {
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
       <div className="shrink-0 border-b border-border-hairline bg-surface-card">
-        {/* The find/refine row rides the same 46rem measure as the list, so the
-            search caret sits over the first circle instead of at the window
-            edge on a wide desk. */}
-        <div className="mx-auto flex w-full max-w-[46rem] items-center gap-3 px-4 py-2.5">
+        {/* Reading order (operator 2026-09-23): SEARCH leads from the far
+            left, the KIND chips sit immediately right of it (multi-select,
+            drag to rearrange), and the status tabs stay boxed exactly as they
+            were. The chips are the same component the phone mounts. */}
+        <div className="mx-auto flex w-full max-w-[46rem] flex-wrap items-center gap-3 px-4 py-2.5">
           <SearchField
             value={query}
             onChange={setQuery}
             placeholder="Filter the agenda…"
-            className="min-w-0 flex-1"
+            className="min-w-[9rem] flex-1"
           />
+          <AgendaKindFilter prefs={kindPrefs.prefs} onToggle={kindPrefs.toggle} />
           <TabSwitch
             size="sm"
             fit="hug"
@@ -358,6 +368,8 @@ export function DailyAgenda() {
 
       <DailyRemindersList
         rows={visible}
+        order={kindPrefs.prefs.order}
+        onReorder={kindPrefs.reorder}
         nowMs={tasks.nowMs}
         selectedTaskId={selectedTaskId}
         canTick={canTick}

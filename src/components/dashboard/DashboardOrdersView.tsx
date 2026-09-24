@@ -32,6 +32,11 @@ import {
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { OrderSyncRunView } from '@/features/orders/sync/OrderSyncRunView';
 import { useOrdersSyncRunOptional } from '@/features/orders/sync/orders-sync-run-context';
+import {
+  ORDERS_DESK_CONTEXT_KEY,
+  ORDERS_DESK_SUPPORT_CONTEXT,
+  parseOrdersDeskContext,
+} from '@/lib/shipping/orders-desk';
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
@@ -61,6 +66,9 @@ export function DashboardOrdersView({
   const showCsvStaging = importCsvActive && Boolean(csvDraft);
   const { setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
+  const isSupportContext =
+    parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
+    ORDERS_DESK_SUPPORT_CONTEXT;
 
   useEffect(() => {
     if (!importCsvActive || csvDraft) return;
@@ -118,6 +126,9 @@ export function DashboardOrdersView({
       selectMode={selectMode}
       railSelection
       onPrimaryPainted={onPrimaryPainted}
+      // To ship paints the industrial record ledger (BRIEF §11, first slice).
+      // Support › Inquiries aliases this desk and keeps the slot table.
+      ledger={!isSupportContext}
     />
   );
 

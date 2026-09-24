@@ -146,12 +146,9 @@ test('isKioskHostAllowedPath allowlist', () => {
   strictEqual(isKioskHostAllowedPath('/api/kiosk/visit/12/receipt'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/repair/ticket-candidates'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/repair/favorites'), true);
-  strictEqual(isKioskHostAllowedPath('/api/kiosk/settings'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/sales/ecwid-products'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/sales/ecwid-categories'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/staff-for-stepup'), true);
-  strictEqual(isKioskHostAllowedPath('/api/kiosk/pickup/lookup'), true);
-  strictEqual(isKioskHostAllowedPath('/api/kiosk/pickup/collect'), true);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/enroll'), false);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/revoke'), false);
   strictEqual(isKioskHostAllowedPath('/api/kiosk/devices'), false);

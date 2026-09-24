@@ -68,6 +68,13 @@ export interface ListTaskDeskOptions {
   /** Binary urgency rung, mapped onto the stored `priority` int. */
   urgency?: 'urgent' | 'normal' | null;
   limit?: number;
+  /**
+   * The desk/report find text, answered in SQL. The columns are the facts a
+   * task row paints (its id, the note, the record phrase and its ticket
+   * subject, both people, the status) — a search that matched columns the row
+   * does not show would be as wrong as one that missed the ones it does.
+   */
+  q?: string | null;
   /** Narrow to one row — how the patch re-reads its own result. */
   taskId?: number | null;
 }
@@ -137,6 +144,16 @@ const TASK_DESK_SQL = `
      AND ($6::int IS NULL OR wa.priority <= $6)
      AND ($7::int IS NULL OR wa.priority > $7)
      AND ($8::bigint IS NULL OR wa.id = $8)
+     AND ($10::text IS NULL OR (
+            wa.id::text ILIKE $10
+         OR wa.notes ILIKE $10
+         OR wa.status::text ILIKE $10
+         OR wa.entity_type::text ILIKE $10
+         OR sa.name ILIKE $10
+         OR sb.name ILIKE $10
+         OR st.subject_cache ILIKE $10
+         OR st.external_ticket_id ILIKE $10
+        ))
    ORDER BY wa.priority ASC, wa.deadline_at ASC NULLS LAST, wa.assigned_at DESC
    LIMIT $9`;
 
@@ -243,7 +260,12 @@ export async function listTaskDeskRows(
   const taskId =
     typeof opts.taskId === 'number' && opts.taskId > 0 ? Math.floor(opts.taskId) : null;
   const { atMost, above } = priorityBounds(opts.urgency ?? null);
+  const q = opts.q?.trim() || null;
 
+  // A SEARCH IS NOT A PAGE. `limit` is the display window a caller asked for;
+  // honouring it while `q` narrows would answer "no match" for a task sitting
+  // one row past the bound — a bounded search is the same lie one layer down.
+  // A searching read opens to the desk's ceiling instead.
   const result = await deps.query(orgId, TASK_DESK_SQL, [
     orgId,
     taskEntityEnum('support_ticket'),
@@ -253,7 +275,8 @@ export async function listTaskDeskRows(
     atMost,
     above,
     taskId,
-    clampTaskDeskLimit(opts.limit),
+    clampTaskDeskLimit(q ? TASK_DESK_MAX_LIMIT : opts.limit),
+    q ? `%${q}%` : null,
   ]);
 
   const rows: TaskDeskWireRow[] = [];

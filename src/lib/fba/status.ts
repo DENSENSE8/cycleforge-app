@@ -23,6 +23,8 @@
  * components/fba/shared/FbaStatusBadge.tsx, which sources labels + order here.
  */
 
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
+
 /** Board sort order — lowest sorts first. Side states sit after the path. */
 export const FBA_STATUS_ORDER: Record<string, number> = {
   PACKED: 0, // combiner's queue surfaces first
@@ -48,14 +50,16 @@ export const FBA_STATUS_LABEL: Record<string, string> = {
 /**
  * Status-pill background+text classes (single source of truth, beside the
  * labels). Consolidates the inline `STATUS_PILL_COLOR` map formerly in
- * FbaBoardTable. SHIPPED/CLOSED intentionally fall back to neutral gray
- * (matching prior behavior). Classes are plain strings so this module stays
+ * FbaBoardTable. PACKED / SHIPPED read LIFECYCLE (packed = fulfillment,
+ * shipped = success); CLOSED intentionally falls back
+ * to neutral gray (matching prior behavior). Classes are plain strings so this module stays
  * framework-agnostic; src/lib is in Tailwind's content globs.
  */
 const FBA_STATUS_PILL: Record<string, string> = {
   PLANNED: 'bg-amber-100 text-amber-700',
   TESTED: 'bg-emerald-100 text-emerald-700',
-  PACKED: 'bg-blue-100 text-blue-700',
+  PACKED: LIFECYCLE_CLASSES.packed.pill,
+  SHIPPED: LIFECYCLE_CLASSES.shipped.pill,
   OUT_OF_STOCK: 'bg-red-100 text-red-700',
   LABEL_ASSIGNED: 'bg-green-100 text-green-700',
 };

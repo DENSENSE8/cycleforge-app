@@ -1,6 +1,7 @@
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /**
  * `/triage` — the Arrival operator surface (dock scan/identify before
@@ -20,7 +21,9 @@ export default function TriagePage() {
     <>
       <SurfaceParamHygiene />
       <SurfaceGate surfaceKey="triage">
-        <ReceivingSurfacePage />
+        <ModeRegion mode="triage" className="contents">
+          <ReceivingSurfacePage />
+        </ModeRegion>
       </SurfaceGate>
     </>
   );

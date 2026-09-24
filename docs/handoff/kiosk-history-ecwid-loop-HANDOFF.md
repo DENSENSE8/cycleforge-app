@@ -34,12 +34,22 @@ and the printed paper — without anybody retyping a name.
 `listKioskVisits` (`src/lib/counter/list-kiosk-visits.ts`) UNIONs
 
 - `counter_transactions` — a counter visit, and
-- `repair_service WHERE counter_transaction_id IS NULL` — a standalone ticket
+- `repair_service WHERE counter_transaction_id IS NULL` — a standalone ticket,
+  **excluding `intake_channel = 'shipment'`**
 
-ordered on the keyset `(created_at, source, id)`. **81 of 85 repairs have no
+ordered on the keyset `(created_at, source, id)`. **All 85 repairs have no
 counter transaction**, so a reader over transactions alone answers the wrong
 question. Every row carries `key` — `visit:19` / `repair:4799` — minted by
 `src/lib/counter/kiosk-history-key.ts`.
+
+**History is scoped to WALK-INS** (operator 2026-09-23). A `shipment` ticket is
+a unit that arrived in a box and is worked in receiving — it never stood at this
+counter. 17 of 85 repairs are `shipment`, 44 are `pickup` (an Ecwid order the
+buyer carries in — a walk-in) and 24 have a null channel (hand-entered at the
+desk — also a walk-in), so the rail reads **68**. The predicate sits in the SQL
+`repairWhere`, not in the client, so the list, its search and its keyset pages
+all agree; filtering in the rail would have made "load more" append hidden rows
+and "nothing matches that search" lie.
 
 > That helper is its own module ON PURPOSE. Importing it from
 > `list-kiosk-visits` pulls `tenantQuery` → `server-only` into the kiosk client
@@ -76,8 +86,8 @@ Laws, each of which was a defect once:
 ### 1.3 The detail pane
 
 Anatomy is Square's transaction detail + Shopify's order card, in this order:
-identity → itemization → money roll-up → customer → provenance → device cards →
-signatures → action bar.
+identity → itemization → money roll-up → customer → device cards → signatures →
+action bar.
 
 - **`RECEIPT_MEASURE = 'mx-auto w-full max-w-[34rem]'`** on header, every section,
   and the action bar. Unconstrained the pane renders ~750px rows and a label at
@@ -88,12 +98,13 @@ signatures → action bar.
   `$24.00` on the line it came from.
 - **The header is: ticket left, stamp right.** The amount sits under the ticket
   at caption size in the money token.
-- **Identifiers are copy chips, last-eight** — `SourceOrderChip`, `TrackingChip`,
-  `SkuScanRefChip` from `@/components/ui/CopyChip`, `getLast8` from
-  `@/lib/copy-chip-format`. Never a hand-rolled copyable span.
-- **The SKU carries the way back** to the storefront via
-  `repairStorefrontUrl()` (`src/lib/repair/repair-storefront-url.ts`), which
-  swaps `-RS` → `-W`. Shared with `/api/ecwid/recent-repair-orders`; one rule.
+- **The SKU carries the way back**, on the repair ITEM line itself: a storefront
+  button per device, built by `repairStorefrontUrl()`
+  (`src/lib/repair/repair-storefront-url.ts`), which uses the SKU **as typed**.
+  The old `-RS` → `-W` rewrite is GONE: `-W` is a colourway, not "working", so
+  it pointed 11 of 23 SKUs at nothing and the other 12 at a white unit nobody
+  bought. Shared with `/api/ecwid/recent-repair-orders`; one rule. There is no
+  separate provenance band — see §2.2-F for what was removed and why.
 - **Signatures are their own group**, each stamped with when it was gathered.
 - **Never print `Walk-in`.** It asserts an intake channel; on a ticket whose
   channel is `shipment` the name row then contradicts the chip above it. Unknown
@@ -215,13 +226,24 @@ direction (`orders` → repairs) yields **0 rows on its own**: only 1 of the 17
 `mapEcwidOrdersToCanonicalLines:152` skips `-RS` SKUs, so a repair-only Ecwid
 order never lands there. Pass 1 is worth running only after a wide-window sync.
 
-**F. Visit-backed provenance — done, but it fixed ZERO live rows.**
+**F. The "Where it came from" section is GONE; the storefront link moved onto
+the item line.** Operator call, 2026-09-23. The band existed to hold three
+facts (source order id chip, tracking chip, listing SKU + storefront button)
+for the 60/85 repairs that carry any of them; the order id and tracking chips
+went with it, and the only fact that survives is the one an operator acts on —
+the way BACK to the listing. It now rides on the repair ITEM line inside
+`Items`, one link **per device**, built from that device's own `sourceSku`
+through `repairStorefrontUrl`. That also retires the `soleDevice` guard this
+section used to need: a two-device visit now links each device to the unit it
+was sold against instead of suppressing the block entirely.
+
+The visit-backed half of this item fixed ZERO live rows and still does:
 `count(*) FILTER (WHERE counter_transaction_id IS NOT NULL)` is **0** across all
-85 repairs: no visit-backed repair exists yet, so nothing rendered differently.
-`VisitRepairProvenance` now selects the four source columns and
-`KioskHistoryDetail` reads a unified `origin` (`repair ?? soleDevice`) — guarded
-to a SINGLE device, because two devices mean two different orders and one
-"Where it came from" block would attribute one device's order to both.
+85 repairs. `VisitRepairProvenance` keeps selecting the four source columns —
+`sourceSku` is what the new link reads, and `read-repair-ticket` still exposes
+the other three — but nothing in the detail pane renders `sourceOrderId` or
+`sourceTrackingNumber` any more. The status/`sourceSystem` badges in the header
+band are unchanged.
 
 **G. The eight `contact_info` parsers are now ONE rule.**
 `src/lib/repair/contact-info.ts` — joined `customers` row first, index-free
@@ -244,12 +266,58 @@ value off-box was `square-payment-link`, which sent `parts[1]` into Square's
 it consulted the fallback only when **all three** fields were empty, so a linked
 customer with a blank phone printed no phone even when the intake string held one.
 
-**Still open.** Three creation paths this handoff never listed still leave
-`customer_id` NULL: `POST /api/repair-service` (the desk's manual create, which
-calls `createRepair` with no `customerId` at all — the path an operator uses
-daily), and the warranty handoffs in `warranty/linkage.ts:313` and
-`warranty/quotes.ts:302,403`, which inherit NULL whenever the parent claim is
-unlinked. §4's "kiosk cart, Ecwid sync, receiving link flow" is three of six.
+**H. The fullscreen signature pad drew nothing — an ORDERING bug, not styling.**
+`@radix-ui/react-portal@1.1.14` renders `null` on its first render and mounts its
+children from a layout effect (`const [mounted, setMounted] = useState(false)`).
+So the commit that flipped `expanded` unmounted the inline canvas and mounted
+nothing; `SignaturePad`'s init effect — keyed `[expanded]` — ran against a null
+`canvasRef`, hit `if (!canvas || !container) return;` and never ran again,
+because `expanded` does not change when the portal's SECOND commit finally
+attaches the canvas. The fullscreen canvas had no `signature_pad` instance bound
+to it at all: no ink, dead `Clear`, no stroke restore.
+Fixed in `src/components/repair/SignaturePad.tsx` by keying the pad's lifecycle
+on the canvas NODE (element state + `useCallback`-stable callback refs) instead
+of on `expanded`, which was only a proxy for "a canvas exists" — and a wrong one.
+
+> `useCallback` identity is load-bearing. An inline `ref={(n) => …}` detaches and
+> re-attaches on every render and would tear the pad down mid-signature.
+> `onSignatureChange` moved into a ref for the same reason: a caller passing an
+> inline arrow (`RepairIntakeForm.tsx:748` does) must not rebuild the pad.
+
+**Still open — SIX creation paths, three orphan rows, and one runbook gap.**
+
+1. **Three creation paths this handoff never listed** still leave `customer_id`
+   NULL: `POST /api/repair-service` (the desk's manual create, which calls
+   `createRepair` with no `customerId` at all — the path an operator uses daily),
+   and the warranty handoffs in `warranty/linkage.ts:313` and
+   `warranty/quotes.ts:302,403`, which inherit NULL whenever the parent claim is
+   unlinked. §4's "kiosk cart, Ecwid sync, receiving link flow" is three of six.
+
+2. **Three orphan repairs NOTHING shipped can link.** Measured 2026-09-23:
+
+   | repair | `source_order_id` | in `orders`? | linkable by |
+   |---|---|---|---|
+   | 4547 | 5001 | no | one-shot pass only |
+   | 4548 | 4998 | no | one-shot pass only |
+   | 4780 | 5018 | no | one-shot pass only |
+   | 4798 | 5011 | yes (`customer_id` NULL) | backfill Pass 1, after a wide sync |
+
+   5001 / 4998 / 5018 are **repair-only Ecwid orders**, and
+   `mapEcwidOrdersToCanonicalLines:152` skips `-RS` SKUs, so no sync will ever
+   put them in `orders` — Pass 1 has nothing to join and Passes 2–3 have nothing
+   to parse (`contact_info` is empty on all four). The ONLY thing that closes
+   them is a one-shot `tsx` pass: `fetchEcwidOrderContact(source_order_id)` →
+   `resolveProviderCustomerId` → `attachRepairCustomer`, i.e. exactly what
+   `add-unmatched-line` now does at creation time, run backwards over these
+   three ids. Until that runs, §4's "the count is reported, not silently
+   non-zero" is carrying the whole definition of done.
+
+3. **`scripts/backfill-repair-service-customer-id.sql` bypasses law 6.** It is
+   raw SQL: no `invalidateCacheTags(orgId, ['repair-service'])`, no
+   `publishRepairChanged`. Rows it links sit STALE in cached reads (History rail,
+   detail, paper) until the next write through the domain layer touches them.
+   Whoever runs it must fire both by hand afterwards, or run the pass through
+   `tsx` against the domain functions instead. Say so wherever the runbook lives.
 
 ---
 

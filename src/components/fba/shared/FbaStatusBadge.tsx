@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Barcode, Check, ClipboardList, Lock, PackageCheck, Truck } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 /**
  * Single source of truth for FBA status display. Labels + vocabulary mirror
@@ -47,8 +48,8 @@ const TOKENS: Record<FbaStatus, StatusToken> = {
   PACKED: {
     label: 'Packed',
     icon: PackageCheck,
-    pill: 'bg-surface-warning text-text-warning border-border-warning',
-    icon_tone: 'text-text-warning',
+    pill: `${LIFECYCLE_CLASSES.packed.pill} ${LIFECYCLE_CLASSES.packed.border}`,
+    icon_tone: LIFECYCLE_CLASSES.packed.text,
   },
   LABEL_ASSIGNED: {
     label: 'Combined',
@@ -59,8 +60,8 @@ const TOKENS: Record<FbaStatus, StatusToken> = {
   SHIPPED: {
     label: 'Shipped',
     icon: Truck,
-    pill: 'bg-surface-success text-text-success border-border-success',
-    icon_tone: 'text-text-success',
+    pill: `${LIFECYCLE_CLASSES.shipped.pill} ${LIFECYCLE_CLASSES.shipped.border}`,
+    icon_tone: LIFECYCLE_CLASSES.shipped.text,
   },
   CLOSED: {
     label: 'Closed',

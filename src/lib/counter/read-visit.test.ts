@@ -51,7 +51,13 @@ interface VisitFixture {
 
 interface Fake {
   deps: ReadVisitDeps;
-  calls: { findHeader: number; findDevices: number; findLines: number; findAuditTrail: number };
+  calls: {
+    findHeader: number;
+    findDevices: number;
+    findLines: number;
+    findAuditTrail: number;
+    auditScopes: Array<{ sessionIds: number[]; counterTransactionId: number }>;
+  };
 }
 
 /** Registers visits by (orgId, id) — a lookup by id alone under the wrong org must miss. */
@@ -60,7 +66,13 @@ function fakes(fixtures: VisitFixture[]): Fake {
   const bySessionId = new Map(
     fixtures.filter((f) => f.session).map((f) => [f.session!.sessionId, f]),
   );
-  const calls = { findHeader: 0, findDevices: 0, findLines: 0, findAuditTrail: 0 };
+  const calls: Fake['calls'] = {
+    findHeader: 0,
+    findDevices: 0,
+    findLines: 0,
+    findAuditTrail: 0,
+    auditScopes: [],
+  };
 
   const deps: ReadVisitDeps = {
     async runInTransaction(_orgId, fn) {
@@ -114,8 +126,9 @@ function fakes(fixtures: VisitFixture[]): Fake {
       const f = byKey.get(`${orgId}:${counterTransactionId}`);
       return f?.squareTransaction ?? null;
     },
-    async findAuditTrail(_tx, _orgId, sessionIds) {
+    async findAuditTrail(_tx, _orgId, { sessionIds, counterTransactionId }) {
       calls.findAuditTrail += 1;
+      calls.auditScopes.push({ sessionIds, counterTransactionId });
       if (sessionIds.length === 0) return [];
       const f = bySessionId.get(sessionIds[0]);
       return f?.session?.auditTrail ?? [];
@@ -376,15 +389,15 @@ describe('loadCounterVisit', () => {
     assert.equal(visit!.claimedByStaffName, 'Alex Desk');
   });
 
-  it('skips the audit-trail round trip entirely when the visit has no session', async () => {
+  it('asks for the visit-filed trail (kiosk comps and voids) even when the visit has no session', async () => {
     const f = fakes([
       { orgId: ORG, id: 70, status: 'paid', subtotalCents: 100, totalCents: 100 },
     ]);
     const visit = await loadCounterVisit(ORG, 70, f.deps);
     assert.ok(visit);
-    assert.deepEqual(visit!.auditTrail, []);
-    // findAuditTrail is still called once (to decide there's nothing), but
-    // with an empty id list — it must not attempt to resolve a null session.
-    assert.equal(f.calls.findAuditTrail, 1);
+    // A null session must not be resolved into an id, but the visit's own
+    // rows — where a kiosk submit files its price changes, comps and voids —
+    // are still read.
+    assert.deepEqual(f.calls.auditScopes, [{ sessionIds: [], counterTransactionId: 70 }]);
   });
 });

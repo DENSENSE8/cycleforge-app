@@ -5,8 +5,11 @@
  * (RECEIVED, TESTED, STOCKED, SHIPPED, …) is colored across the app. It was
  * first centralized for the inventory views; the labels views (unit history,
  * recently-printed) now align to it too so the same status reads the same
- * color everywhere.
+ * color everywhere. PACKED / SHIPPED read LIFECYCLE (packed = fulfillment,
+ * shipped = success) — never a colour picked here.
  */
+
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 const STATUS_BADGES: Record<string, string> = {
     UNKNOWN: 'bg-surface-sunken text-text-muted',
@@ -20,10 +23,10 @@ const STATUS_BADGES: Record<string, string> = {
     STOCKED: 'bg-green-50 text-green-700',
     ALLOCATED: 'bg-purple-50 text-purple-700',
     PICKED: 'bg-purple-50 text-purple-700',
-    PACKED: 'bg-purple-50 text-purple-700',
+    PACKED: LIFECYCLE_CLASSES.packed.pill,
     LABELED: 'bg-purple-50 text-purple-700',
     STAGED: 'bg-purple-50 text-purple-700',
-    SHIPPED: 'bg-surface-sunken text-text-muted',
+    SHIPPED: LIFECYCLE_CLASSES.shipped.pill,
     RETURNED: 'bg-orange-50 text-orange-700',
     RMA: 'bg-orange-50 text-orange-700',
     ON_HOLD: 'bg-red-50 text-red-700',
@@ -51,10 +54,10 @@ const STATUS_DOTS: Record<string, string> = {
     STOCKED: 'bg-green-500',
     ALLOCATED: 'bg-purple-500',
     PICKED: 'bg-purple-500',
-    PACKED: 'bg-purple-500',
+    PACKED: LIFECYCLE_CLASSES.packed.dot,
     LABELED: 'bg-purple-500',
     STAGED: 'bg-purple-500',
-    SHIPPED: 'bg-text-faint',
+    SHIPPED: LIFECYCLE_CLASSES.shipped.dot,
     RETURNED: 'bg-orange-500',
     RMA: 'bg-orange-500',
     ON_HOLD: 'bg-red-500',

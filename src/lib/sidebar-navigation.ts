@@ -59,7 +59,7 @@ import { isTabParked } from '@/lib/nav/parked-tabs';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_LABEL_INTAKE_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -489,6 +489,11 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // door the retired ruling was about. `fba.view` gates it, so a role without
   // Amazon Prep sees Outbound collapse back to a single Shipping row.
   { id: 'fba',               label: 'FBA',         href: OUTBOUND_MODE_PATHS.fba, icon: SHIPPING_NAV_ICONS.fba, kind: 'domain', domainGroup: 'fulfillment', requires: 'fba.view' },
+  // Label intake rides the Outbound lane beside Shipping and FBA (V1 outbound
+  // plan, 2026-09-23). Its queue is label INGESTIONS — exact-match or
+  // quarantine, then apply to packed units — which To ship cannot express, so
+  // it is a row, not a tab. `packing.review` is the route's own read gate.
+  { id: 'label-intake',      label: 'Label intake', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review', keywords: ['labels', 'label pdf', 'quarantine', 'tracking', 'ingestion'] },
   // ── Sales ─────────────────────────────────────────────────────────────────
   // Own root (D4) — front-desk history, not a fulfillment lane. Feeds live on
   // `/dashboard` (`?mode=sales|pickup|repairs`); the row is gated on the ROUTE
@@ -867,6 +872,7 @@ export function getSidebarNavPageId(
   // desk frame reads its title and rail policy from the `fba` entry. The route
   // KEY stays `outbound` (`getSidebarRouteKey`) — panel chrome is unchanged.
   if (outboundMode === 'fba') return 'fba';
+  if (pathname === SHIPPING_LABEL_INTAKE_PATH || pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return 'label-intake';
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   // Testing family promoted: Quality Control vs Ready to Pack share `/test`
@@ -1060,6 +1066,7 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/review',             permission: 'packing.review' },
   // To-ship desk is orders-entity gated (shared with Support › Inquiries).
   // Longer prefix must beat `/shipping` → shipping.view.
+  { prefix: SHIPPING_LABEL_INTAKE_PATH, permission: 'packing.review' },
   { prefix: '/shipping/orders',    permission: 'orders.view' },
   { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
@@ -1599,6 +1606,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return v === 'plan' || v === 'shipped' ? v : 'combine';
     },
   },
+  // ── Label intake (Outbound lane, beside Shipping) ─────────────────────────
+  // The V1 label-ingestion ledger. Edge-to-edge terminal surface outside the
+  // `(desk)` group; no children — its views (Needs action · All · Applied) are
+  // drawn by the ledger itself. Phone twin: `/m/label-intake`.
+  {
+    id: 'label-intake', label: 'Label intake', href: SHIPPING_LABEL_INTAKE_PATH, icon: SHIPPING_NAV_ICONS.labels, kind: 'domain', domainGroup: 'fulfillment', requires: 'packing.review',
+    railless: true,
+  },
   // ── Shipping (Manage Shipping — Fulfillment) ──────────────────────────────
   // Pending · To ship · Shipped · Exceptions. Packing Review lives under
   // Operations; Scan out is a Scan Stations L1. Nav id stays `outbound` for
@@ -1661,6 +1676,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     resolveChild: ({ pathname, params }) => {
       // Packing Review is a Scan Stations L1 — never a Shipping child highlight.
       if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) return null;
+      // Label intake is a SIBLING row in the Outbound lane — it lights nothing
+      // here rather than falling through to the `orders` catch-all.
+      if (pathname === SHIPPING_LABEL_INTAKE_PATH || pathname.startsWith(`${SHIPPING_LABEL_INTAKE_PATH}/`)) return null;
       // Shipped is a path, so it resolves before the orders clause — the final
       // `return 'orders'` below is a catch-all, and without this the history
       // desk would light To ship on a page the operator is not on.

@@ -42,12 +42,6 @@ import {
 
 export type KioskUtilitySlotId = 'cart' | 'paperwork';
 
-function commandMenuLabel(id: KioskServiceId): string {
-  if (id === 'sales') return 'Sales';
-  const tile = KIOSK_SERVICES.find((s) => s.id === id);
-  return tile?.commandLabel ?? id;
-}
-
 export function KioskCommandMenu({
   activeMode,
   onModeSwitch,
@@ -56,7 +50,7 @@ export function KioskCommandMenu({
   activeMode: KioskServiceId;
   onModeSwitch: (mode: KioskServiceId) => void;
   /**
-   * Staff tools (History) are listed under the four commerce commands. The
+   * Staff tools (History) are listed under the commerce commands. The
    * CUSTOMER face passes false: that surface is turned toward the person
    * paying, and a door to every past customer's paperwork does not belong on
    * it — not even a PIN-gated one, because the door itself is the leak.
@@ -81,7 +75,7 @@ export function KioskCommandMenu({
         const Icon = s.icon;
         return {
           value: s.id,
-          label: commandMenuLabel(s.id),
+          label: s.commandLabel,
           // The combobox wraps every glyph in a `text-text-soft` span; a
           // colour ON the svg beats that inherited ink, so one class here
           // paints both the trigger (selected command) and the option row.

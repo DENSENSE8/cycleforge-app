@@ -62,6 +62,50 @@ describe('local transport — unchanged by the shared one', () => {
   });
 });
 
+describe('addRetail — Square "Consolidate identical items"', () => {
+  const tap = (unitAmountCents = 856, variationId: string | null = '812345') =>
+    kioskSessionStore.addRetail({
+      title: 'Cable',
+      unitAmountCents,
+      payload: { variationId, sku: '00162' },
+    });
+
+  it('a repeat add of the same catalog item is one line at quantity 2', () => {
+    const first = tap();
+    const second = tap();
+    const lines = kioskSessionStore.getSnapshot().lines;
+    assert.equal(lines.length, 1);
+    assert.equal(lines[0].quantity, 2);
+    assert.equal(second.id, first.id, 'the caller is handed the line it grew');
+  });
+
+  it('a line at a different price is not identical, so the tap starts a new line', () => {
+    tap(856);
+    tap(400);
+    assert.deepEqual(
+      kioskSessionStore.getSnapshot().lines.map((l) => [l.unitAmountCents, l.quantity]),
+      [[856, 1], [400, 1]],
+    );
+  });
+
+  it('never merges manual lines, which have no catalog identity', () => {
+    tap(500, null);
+    tap(500, null);
+    assert.equal(kioskSessionStore.getSnapshot().lines.length, 2);
+  });
+
+  it('stops at the intake maximum', () => {
+    kioskSessionStore.addRetail({
+      title: 'Cable',
+      unitAmountCents: 856,
+      quantity: 999,
+      payload: { variationId: '812345', sku: '00162' },
+    });
+    tap();
+    assert.equal(kioskSessionStore.getSnapshot().lines[0].quantity, 999);
+  });
+});
+
 describe('shared transport — the tablet mirrors the desk', () => {
   it('writes the server projection into the cart every pane already reads', () => {
     mirrorOnce(3, [line(), line({ id: 'srv-2', title: 'Screen protector', quantity: 2 })]);
@@ -301,14 +345,14 @@ describe('the org’s opening command', () => {
   });
 
   it('adopts the org’s choice on a pristine counter', () => {
-    kioskSessionStore.applyDefaultCommand('pickup');
-    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'pickup');
+    kioskSessionStore.applyDefaultCommand('retail');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'retail');
   });
 
   it('never overrides a staffer who has already picked', () => {
-    kioskSessionStore.setActiveCommand('buyback');
-    kioskSessionStore.applyDefaultCommand('retail');
-    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'buyback');
+    kioskSessionStore.setActiveCommand('retail');
+    kioskSessionStore.applyDefaultCommand('repair');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'retail');
   });
 
   it('never yanks a counter that already has lines', () => {
@@ -317,20 +361,20 @@ describe('the org’s opening command', () => {
       unitAmountCents: 999,
       payload: { variationId: null, sku: 'CBL-1' },
     });
-    kioskSessionStore.applyDefaultCommand('pickup');
+    kioskSessionStore.applyDefaultCommand('retail');
     assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair');
   });
 
   it('never overrides a desk-held mirror — that command is the server’s', () => {
     mirrorOnce(1, [line()]);
     assert.notEqual(kioskSessionStore.getSnapshot().sharedSessionId, null, 'mirror not attached');
-    kioskSessionStore.applyDefaultCommand('pickup');
+    kioskSessionStore.applyDefaultCommand('retail');
     assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair');
   });
 
   it('returns to the org’s choice on Next Customer, not to the fallback', () => {
     kioskSessionStore.applyDefaultCommand('retail');
-    kioskSessionStore.setActiveCommand('buyback');
+    kioskSessionStore.setActiveCommand('repair');
     kioskSessionStore.resetSession();
     // Both the pick AND the fallback lose to the org's setting here: a fresh
     // visit is a fresh counter, and the counter opens where the org says.
@@ -343,10 +387,10 @@ describe('the org’s opening command', () => {
       unitAmountCents: 999,
       payload: { variationId: null, sku: 'CBL-1' },
     });
-    kioskSessionStore.applyDefaultCommand('pickup');
+    kioskSessionStore.applyDefaultCommand('retail');
     assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'repair', 'must not yank');
     kioskSessionStore.resetSession();
-    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'pickup');
+    assert.equal(kioskSessionStore.getSnapshot().activeCommand, 'retail');
   });
 });
 

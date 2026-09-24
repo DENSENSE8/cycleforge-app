@@ -26,12 +26,16 @@ test('the fallback is REPAIR — the counter’s most common job', () => {
 });
 
 /**
- * The same four strings are the CHECK vocabulary on
- * `counter_sessions.active_command` (migrations/2026-08-20a_counter_sessions.sql).
- * Drift here is a row the column would reject.
+ * Every command must be a value `counter_sessions.active_command`'s CHECK
+ * admits (migrations/2026-08-20a_counter_sessions.sql:135). A command outside
+ * it is a session row the column would reject. The CHECK is allowed to be
+ * WIDER — it still admits the retired `buyback` / `pickup`.
  */
-test('the vocabulary is exactly the four the session column allows', () => {
-  assert.deepEqual([...KIOSK_COMMAND_IDS].sort(), ['buyback', 'pickup', 'repair', 'retail']);
+test('every command is one the session column admits', () => {
+  const admitted = ['retail', 'repair', 'buyback', 'pickup'];
+  for (const command of KIOSK_COMMAND_IDS) {
+    assert.ok(admitted.includes(command), `${command} would be rejected by the CHECK`);
+  }
 });
 
 test('unrecognised input coerces instead of throwing', () => {
@@ -39,8 +43,11 @@ test('unrecognised input coerces instead of throwing', () => {
   for (const bad of [undefined, null, '', 'sales', 'Repair', 42, {}, ['repair']]) {
     assert.equal(parseKioskCommandId(bad), KIOSK_FALLBACK_COMMAND);
   }
-  assert.equal(parseKioskCommandId('nonsense', 'pickup'), 'pickup');
-  assert.equal(parseKioskCommandId('buyback'), 'buyback');
+  assert.equal(parseKioskCommandId('nonsense', 'retail'), 'retail');
+  // A RETIRED command the column still admits opens the fallback, never a
+  // pane that no longer exists.
+  assert.equal(parseKioskCommandId('buyback'), KIOSK_FALLBACK_COMMAND);
+  assert.equal(parseKioskCommandId('pickup'), KIOSK_FALLBACK_COMMAND);
 });
 
 /**
@@ -84,9 +91,11 @@ test('an org that chooses gets its choice, and garbage never wins', () => {
     getKioskDefaultCommand(parseOrgSettings({ kiosk: { defaultCommand: 'retail' } })),
     'retail',
   );
+  // A retired command stored as a default is dropped, not carried into a
+  // counter that has no pane for it.
   assert.equal(
     getKioskDefaultCommand(parseOrgSettings({ kiosk: { defaultCommand: 'pickup' } })),
-    'pickup',
+    'repair',
   );
   // An invalid value is DROPPED by the schema, not carried into the counter.
   assert.equal(

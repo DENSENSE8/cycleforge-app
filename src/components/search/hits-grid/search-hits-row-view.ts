@@ -48,6 +48,7 @@ const STATE_TONE_BY_CHIP: Readonly<Record<ChipTone, CompoundStateTone>> = {
   emerald: 'done',
   blue: 'neutral',
   gray: 'neutral',
+  purple: 'neutral',
   amber: 'alert',
   rose: 'alert',
 };

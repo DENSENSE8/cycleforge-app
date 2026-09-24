@@ -37,6 +37,7 @@ const P = {
   priorityAbove: 6,
   taskId: 7,
   limit: 8,
+  q: 9,
 } as const;
 
 interface Captured {
@@ -147,6 +148,23 @@ test('limit: defaults to 200, clamps to 500, and never asks for zero rows', asyn
   const { deps, calls } = fakes();
   await listTaskDeskRows(ORG, { limit: 10_000 }, deps);
   assert.equal(calls[0].params[P.limit], TASK_DESK_MAX_LIMIT);
+});
+
+test('a search is not a page: `q` binds a pattern and opens the row window', async () => {
+  // The defect this pins: a searching read that honoured the caller's `limit`
+  // would answer "no match" for a task one row past that bound — the same lie
+  // as the browser-side filter it replaced, one layer down.
+  const searching = fakes();
+  await listTaskDeskRows(ORG, { limit: 10, q: '  printer ' }, searching.deps);
+  assert.equal(searching.calls[0].params[P.q], '%printer%');
+  assert.equal(searching.calls[0].params[P.limit], TASK_DESK_MAX_LIMIT);
+
+  // No text (and whitespace is no text) leaves the predicate standing down and
+  // the caller's window intact.
+  const plain = fakes();
+  await listTaskDeskRows(ORG, { limit: 10, q: '   ' }, plain.deps);
+  assert.equal(plain.calls[0].params[P.q], null);
+  assert.equal(plain.calls[0].params[P.limit], 10);
 });
 
 test('the assignee filter is bound as an int, and absent means everyone', async () => {

@@ -34,6 +34,14 @@ export interface KioskVisitHistoryState {
   loadingMore: boolean;
   error: string | null;
   hasMore: boolean;
+  /**
+   * The strict search found nothing and the rows below are NEAR-name matches.
+   * The rail prints this; an operator who cannot tell the two apart reprints
+   * the wrong customer's ticket.
+   */
+  relaxed: boolean;
+  /** What was relaxed — the term as typed. Null unless `relaxed`. */
+  relaxedTerm: string | null;
   search: string;
   setSearch: (next: string) => void;
   /** All · Sales · Repair service — the rail's routing. */
@@ -52,6 +60,8 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [relaxed, setRelaxed] = useState(false);
+  const [relaxedTerm, setRelaxedTerm] = useState<string | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
 
   const requestSeq = useRef(0);
@@ -78,6 +88,8 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
         if (seq !== requestSeq.current) return;
         setRows(page.visits);
         setCursor(page.nextCursor);
+        setRelaxed(page.relaxed);
+        setRelaxedTerm(page.relaxedTerm);
         cursorQuery.current = { search, kind };
         setError(null);
       } catch (err) {
@@ -85,6 +97,8 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
         setError(err instanceof Error ? err.message : 'Could not load visit history.');
         setRows([]);
         setCursor(null);
+        setRelaxed(false);
+        setRelaxedTerm(null);
       } finally {
         if (seq === requestSeq.current) setLoading(false);
       }
@@ -107,6 +121,9 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
       if (seq !== requestSeq.current) return;
       setRows((prev) => [...prev, ...page.visits]);
       setCursor(page.nextCursor);
+      // The cursor carries the relaxation, so the tail is the same kind of
+      // match set as the head — but read it back rather than assuming it.
+      setRelaxed(page.relaxed);
     } catch (err) {
       if (seq !== requestSeq.current) return;
       setError(err instanceof Error ? err.message : 'Could not load more visits.');
@@ -121,6 +138,8 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
     loadingMore,
     error,
     hasMore: cursor !== null,
+    relaxed,
+    relaxedTerm,
     search,
     setSearch,
     kind,

@@ -133,15 +133,32 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
   /*
    * KIOSK behaviour. `idleTimeoutSeconds` is deliberately NOT accepted as an
-   * input — idle and attract are off in `resolveKioskIdleTiming`, and
+   * input — idle and attract are off on the counter and nothing reads it, and
    * re-opening a write for a number nothing reads is how that leftover got
    * there — but it is CARRIED so a `defaultCommand` save does not drop it.
    */
   if (b.kiosk != null && typeof b.kiosk === 'object' && !Array.isArray(b.kiosk)) {
     const kiosk = b.kiosk as Record<string, unknown>;
+    const nextKiosk = { ...(current.kiosk ?? {}) };
+    let touched = false;
     if (isKioskCommandId(kiosk.defaultCommand)) {
-      patch.kiosk = { ...(current.kiosk ?? {}), defaultCommand: kiosk.defaultCommand };
+      nextKiosk.defaultCommand = kiosk.defaultCommand;
+      touched = true;
     }
+    // Comp / void reason lists: trimmed, de-duplicated, capped like the schema.
+    for (const key of ['compReasons', 'voidReasons'] as const) {
+      if (!Array.isArray(kiosk[key])) continue;
+      nextKiosk[key] = [
+        ...new Set(
+          (kiosk[key] as unknown[])
+            .filter((r): r is string => typeof r === 'string')
+            .map((r) => r.trim().slice(0, 60))
+            .filter(Boolean),
+        ),
+      ].slice(0, 12);
+      touched = true;
+    }
+    if (touched) patch.kiosk = nextKiosk;
   }
 
   if (Object.keys(patch).length === 0) {

@@ -182,6 +182,24 @@ const config = {
                 'fill-warning': 'var(--ds-color-fill-warning)',
                 'fill-danger': 'var(--ds-color-fill-danger)',
                 'fill-fulfillment': 'var(--ds-color-fill-fulfillment)',
+                // Task-mode surfaces (src/design-system/modes/registry.ts).
+                // Resolve inside a `data-mode` region only; the neutral
+                // `surface-*` / `text-*` / `border-*` aliases above already
+                // adopt the mode there, so reach for these only for roles the
+                // theme has no twin for (bar, control border, warn ink, brand).
+                'mode-canvas': 'var(--mode-canvas)',
+                'mode-bar': 'var(--mode-bar)',
+                'mode-panel': 'var(--mode-panel)',
+                'mode-well': 'var(--mode-well)',
+                'mode-hover': 'var(--mode-hover)',
+                'mode-ink': 'var(--mode-ink)',
+                'mode-muted': 'var(--mode-muted)',
+                'mode-faint': 'var(--mode-faint)',
+                'mode-rule': 'var(--mode-rule)',
+                'mode-edge': 'var(--mode-edge)',
+                'mode-control': 'var(--mode-control)',
+                'mode-warn': 'var(--mode-warn-text)',
+                'mode-brand': 'var(--mode-brand)',
             },
             fontFamily: {
                 sans: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
@@ -250,6 +268,9 @@ const config = {
                 // Register in CUSTOM_FONT_SIZES (src/utils/_cn.ts) or twMerge
                 // drops it. Pinned by src/design-system/tokens/touch-field.test.ts.
                 'role-field': ['1rem', { lineHeight: '1.4', letterSpacing: '0', fontWeight: '450' }],
+                // Task-mode body text (modes/registry.ts) — size follows the
+                // region's mode and pointer; registered in CUSTOM_FONT_SIZES.
+                'mode-body': ['var(--mode-text-body)', { lineHeight: '1.45' }],
             },
             // Density-aware spacing (spacing-token-leakage plan Phase 1) —
             // the same calc(× --cf-density) treatment as the role-* type
@@ -258,14 +279,28 @@ const config = {
             // additive; inside [data-density='compact'] padding/margin/gap
             // tighten together with type. `extend` merges per key: keys in
             // spacing.mjs become density-aware, unlisted keys stay stock.
-            spacing: spacingScale,
-            // borderRadius is deliberately NOT extended — the radius scale stays
-            // 100% Tailwind stock. The one alias that lived here (`station: 8px`)
-            // was an exact duplicate of `rounded-lg`, and being an unregistered
-            // custom key it could not conflict-resolve in `cn()` (see _cn.ts),
-            // so it and a primitive's own `rounded-*` both survived and CSS order
-            // picked silently. Semantic corners come from `cornerClass(role)`
+            spacing: { ...spacingScale, 'mode-page': 'var(--mode-page-pad)' },
+            // borderRadius stays 100% Tailwind stock for every NAMED step — the
+            // one alias that lived here (`station: 8px`) duplicated `rounded-lg`.
+            // Semantic corners come from `cornerClass(role)`
             // (src/design-system/tokens/radius.ts), which returns stock classes.
+            // The only extension is the task-mode pair, which is not a step but
+            // a var the region's mode resolves (`rounded-mode`, `-mode-pill`);
+            // both are registered in the `rounded` group in src/utils/_cn.ts so
+            // they conflict-resolve against stock `rounded-*`.
+            borderRadius: {
+                mode: 'var(--mode-radius)',
+                'mode-pill': 'var(--mode-radius-pill)',
+            },
+            minHeight: {
+                'mode-hit': 'var(--mode-hit)',
+                'mode-hit-cta': 'var(--mode-hit-cta)',
+            },
+            transitionDuration: {
+                'mode-feedback': 'var(--mode-motion-feedback)',
+                'mode-press': 'var(--mode-motion-press)',
+                'mode-pulse': 'var(--mode-motion-pulse)',
+            },
             // Elevation ladder — the role → box-shadow SoT consumed via
             // elevationClass() (src/design-system/tokens/shadows.ts). Values
             // are CSS vars (globals.css) so dark-family themes ramp the alpha

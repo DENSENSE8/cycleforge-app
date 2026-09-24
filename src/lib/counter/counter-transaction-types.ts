@@ -18,11 +18,36 @@
  */
 
 /**
+ * A line price the catalog did not set (Square "Price adjustment", "Keypad"
+ * and "Comp"). Every one is authorized by a staff PIN holding
+ * `walk_in.adjust_price`.
+ *
+ *   - `adjust` — a catalog price changed (`originalUnitAmountCents` = catalog).
+ *   - `custom` — a keypad amount; there was no catalog price (`null`).
+ *   - `comp`   — kept on the bill at $0 with a reason (a comped item).
+ */
+export const PRICE_ADJUST_KINDS = ['adjust', 'custom', 'comp'] as const;
+export type PriceAdjustKind = (typeof PRICE_ADJUST_KINDS)[number];
+
+export interface CounterPriceAdjustment {
+  kind: PriceAdjustKind;
+  /** The catalog price before the change; `null` for a custom amount. */
+  originalUnitAmountCents: number | null;
+  reason: string;
+  staffId: number;
+  /**
+   * The server-signed approval the kiosk route verifies (`kiosk/price-approval`).
+   * The kiosk route REBUILDS this whole object from the verified claims, so
+   * nothing else in it is trusted from a tablet.
+   */
+  approval?: string | null;
+}
+
+/**
  * One retail line staged at the counter.
  *
- * Two line shapes: a catalog line charges by `catalog_object_id` (the
- * provider's price is authoritative at charge time), and a manual line charges
- * as an ad-hoc name + amount.
+ * Every line stages to Square ad-hoc (name + amount): `variationId` is the
+ * Ecwid listing id, which Square cannot resolve (see `buildStageOrderBody`).
  *
  * This shape was modelled on the walk-in `SalesCartLine`, and the docblock used
  * to claim the kiosk *composed* that store "rather than forking a second cart".
@@ -32,13 +57,17 @@
  * original claim was reaching for.
  */
 export interface CounterRetailLine {
-  /** Provider catalog variation id. `null` = ad-hoc manual line. */
+  /** Ecwid listing id, kept for reporting only; never sent to Square. `null` = manual line. */
   variationId: string | null;
   sku: string;
   productTitle: string;
   quantity: number;
   /** Unit price in minor units (cents). Negative = buyback / trade-in credit. */
   unitAmountCents: number;
+  /** Set when the price is not the catalog's; see {@link CounterPriceAdjustment}. */
+  priceAdjustment?: CounterPriceAdjustment | null;
+  /** Item note (Square `OrderLineItem.note`, ≤ 2000). Prints on the receipt. */
+  note?: string | null;
 }
 
 /**
@@ -77,6 +106,8 @@ export interface CounterServiceLine {
   assignedTechId?: number | null;
   signatureDataUrl?: string | null;
   signatureStrokes?: unknown;
+  /** A re-quote authorized at the counter; the adjusted quote is `price`. */
+  priceAdjustment?: CounterPriceAdjustment | null;
 }
 
 /**

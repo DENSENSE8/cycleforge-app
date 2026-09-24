@@ -161,6 +161,8 @@ export interface StaffPreferences {
       >;
       /** Per-row fill hex / legacy wash, keyed by stringified row id. */
       rowFills?: Record<string, string>;
+      /** Industrial ledger row zoom — S / M (default) / L. */
+      rowZoom?: 'S' | 'M' | 'L';
     }
   > | null;
   /**

@@ -74,6 +74,15 @@ export interface PackerRecord {
 export interface UsePackerLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
+  /**
+   * The bench find box, already debounced by `SearchField` (320ms) — this hook
+   * adds no second debounce, it just spends the text on the fetch key.
+   *
+   * It rides the KEY, not the URL: `DataTable`'s standing law is that the
+   * search value is session-local, because `router.replace` per keystroke
+   * soft-navigates and remounts the table under the operator's cursor.
+   */
+  search?: string;
 }
 
 /** Compute PST Sun–Sat range for the current week (matches computeWeekRange + API cache key). */
@@ -90,23 +99,33 @@ function computeCurrentPSTWeek(): { startStr: string; endStr: string } {
 }
 
 export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = {}) {
-  const { weekOffset = 0, weekRange } = options;
+  const { weekOffset = 0, weekRange, search = '' } = options;
+  const searchTerm = search.trim();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
   // Global per-org station broadcast (packer logs are filtered by packerId in
   // the handler) — NOT a per-staff bridge.
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
+  // `q` sits INSIDE the third segment rather than as a fourth: the surgical
+  // prepend paths below address an exact key, and a searched feed is a
+  // different answer that a fresh scan has no right to be spliced into — they
+  // keep targeting `q: ''`, the unfiltered week.
   const queryKey = [
     'packer-logs',
     packerId,
-    { weekStart: weekRange?.startStr ?? '', weekEnd: weekRange?.endStr ?? '' },
+    { weekStart: weekRange?.startStr ?? '', weekEnd: weekRange?.endStr ?? '', q: searchTerm },
   ] as const;
 
   const query = useQuery<PackerRecord[]>({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({ packerId: String(packerId), limit: '1000' });
+      const params = new URLSearchParams({ packerId: String(packerId) });
+      // A searching fetch sends no page bound: the route drops it so a match
+      // outside the newest thousand scans is still found (the defect this
+      // whole path exists to close).
+      if (!searchTerm) params.set('limit', '1000');
+      else params.set('q', searchTerm);
       if (weekRange) {
         params.set('weekStart', weekRange.startStr);
         params.set('weekEnd', weekRange.endStr);
@@ -134,7 +153,7 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
       if (action === 'insert' && row) {
         const currentWeek = computeCurrentPSTWeek();
         queryClient.setQueryData<PackerRecord[]>(
-          ['packer-logs', packerId, { weekStart: currentWeek.startStr, weekEnd: currentWeek.endStr }],
+          ['packer-logs', packerId, { weekStart: currentWeek.startStr, weekEnd: currentWeek.endStr, q: '' }],
           (prev) => {
             if (!prev) return undefined;
             if (prev.some((r) => r.id === (row as PackerRecord).id)) return prev;
@@ -159,7 +178,7 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
 
       const currentWeek = computeCurrentPSTWeek();
       queryClient.setQueryData<PackerRecord[]>(
-        ['packer-logs', packerId, { weekStart: currentWeek.startStr, weekEnd: currentWeek.endStr }],
+        ['packer-logs', packerId, { weekStart: currentWeek.startStr, weekEnd: currentWeek.endStr, q: '' }],
         (prev) => {
           if (!prev) return undefined;
           if (prev.some((r) => r.id === record.id)) return prev;

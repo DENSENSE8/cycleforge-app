@@ -65,6 +65,10 @@ export interface KioskVisitDetail {
 export interface KioskVisitListResult {
   visits: KioskVisitRow[];
   nextCursor: string | null;
+  /** The strict search found nothing; these rows are near-name matches. */
+  relaxed: boolean;
+  /** The name that was relaxed, for the rail's notice. Null unless `relaxed`. */
+  relaxedTerm: string | null;
 }
 
 export interface KioskVisitEditInput {

@@ -108,7 +108,6 @@ export function SupportTicketDetail({
    * Forwarded to {@link TicketComposer}. Unbox Ticket Displays passes
    * `false`; Testing · `/support` keep the default on.
    */
-  showReplyPresets = true,
 }: {
   ticketId: number;
   onBack?: () => void;
@@ -129,7 +128,6 @@ export function SupportTicketDetail({
    */
   photoStaging?: TicketPhotoStaging;
   mergeFloorTimeline?: boolean;
-  showReplyPresets?: boolean;
 }) {
   const hideRequester = hideRequesterBand ?? embedded;
   const { data: bundle, isLoading, error } = useZendeskTicketBundle(ticketId);
@@ -286,7 +284,6 @@ export function SupportTicketDetail({
               staging={staging}
               receivingId={receivingId}
               onBridgeChange={onComposerBridgeChange}
-              showReplyPresets={showReplyPresets}
               className={CONVERSATION_COMPOSER_PAD}
             />
           </div>

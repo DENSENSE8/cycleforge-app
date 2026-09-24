@@ -92,7 +92,9 @@ function lineItemRowHtml(item: VisitReceiptLineItem): string {
   const qty = item.kind === 'buyback' ? '1' : String(item.quantity);
   return `
         <tr>
-          <td class="desc">${escapeHtml(item.title)}${item.kind === 'buyback' ? ' <span class="tag">(buyback)</span>' : ''}</td>
+          <td class="desc">${escapeHtml(item.title)}${item.kind === 'buyback' ? ' <span class="tag">(trade-in)</span>' : ''}${
+            item.adjustment ? `<br><span class="meta">${escapeHtml(item.adjustment)}</span>` : ''
+          }${item.note ? `<br><span class="meta">${escapeHtml(item.note)}</span>` : ''}</td>
           <td class="num">${qty}</td>
           <td class="num">${formatCents(item.unitAmountCents)}</td>
           <td class="num">${formatCents(item.extendedAmountCents)}</td>

@@ -25,7 +25,6 @@ export function StationTicketPane({
   onClaimTicketCreated,
   onClaimTicketUnlinked,
   returnClaimPrefill,
-  showReplyPresets = false,
   className,
 }: {
   row: ReceivingLineRow;
@@ -35,7 +34,6 @@ export function StationTicketPane({
   onClaimTicketCreated?: (ticketNumber: string) => void;
   onClaimTicketUnlinked?: () => void;
   returnClaimPrefill?: string | null;
-  showReplyPresets?: boolean;
   className?: string;
 }) {
   const hasTicket = ticketId != null;
@@ -60,7 +58,6 @@ export function StationTicketPane({
           hideRequesterBand={false}
           mergeFloorTimeline={false}
           composerPlacement="host"
-          showReplyPresets={showReplyPresets}
         />
       ) : (
         <ReceivingClaimPanel

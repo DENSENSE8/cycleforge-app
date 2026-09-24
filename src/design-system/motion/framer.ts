@@ -37,6 +37,7 @@ export {
   useAnimationFrame,
   useMotionValue,
   useTransform,
+  useDragControls,
 } from 'motion/react';
 
 export type {
@@ -44,4 +45,5 @@ export type {
   Variants,
   PanInfo,
   HTMLMotionProps,
+  DragControls,
 } from 'motion/react';

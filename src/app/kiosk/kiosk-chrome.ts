@@ -47,15 +47,10 @@ export const KIOSK_PANE_FOOTER_BAND = cn(
   'border-t border-border-soft',
 );
 
-/** Pane title face inside {@link KIOSK_PANE_HEADER_BAND}. */
-export const KIOSK_PANE_HEADER_TITLE =
-  // In-band type inset only — the host band stays edge-to-edge with column seams.
-  'min-w-0 flex-1 px-3 text-lg font-semibold tracking-tight text-text-default';
-
-// (KIOSK_BAND_SEARCH_ROW deleted 2026-09-14 — zero consumers since the trail
-// search moved into the glass dock's inline field; recorded in the Phase 0
-// ledger above.)
-
+// (KIOSK_PANE_HEADER_TITLE deleted 2026-09-23 — its last mounts were the
+// Buyback / Pickup band titles and the Paperwork / customer-face second bands.
+// A pane title under the one header band is the double-band bug; the mode
+// dropdown already names the face. KIOSK_BAND_SEARCH_ROW went 2026-09-14.)
 
 /**
  * In-body section label row — the `KIOSK_SECTION_LABEL` + divider + inset
@@ -71,15 +66,6 @@ export const KIOSK_SECTION_LABEL_ROW = cn(
   'border-b border-border-hairline px-4 py-2',
   'text-role-micro uppercase tracking-[0.16em] text-text-soft',
 );
-
-/**
- * The one horizontal inset for pane bodies.
- *
- * The surface carried four (`px-4` ×25, `px-6` ×7, `px-3` ×2, `px-8` ×1). Bands
- * are full-bleed and their titles inset themselves; bodies use this.
- */
-export const KIOSK_BODY_INSET = 'px-4';
-
 /**
  * Dense meta chrome — SKU, category row labels, quiet status (not form fields).
  * Keep body/input type at tablet-readable size so iOS does not zoom.

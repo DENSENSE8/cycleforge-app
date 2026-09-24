@@ -324,6 +324,7 @@ export async function fetchDashboardPackedRecords({
   weekStart,
   weekEnd,
   shippedFilter,
+  searchTerm = '',
   limit = 1000,
   offset = 0,
   phase = 'full',
@@ -334,6 +335,17 @@ export async function fetchDashboardPackedRecords({
   weekStart?: string;
   weekEnd?: string;
   shippedFilter?: string;
+  /**
+   * The desk's find text, answered in SQL by `/api/packerlogs?q=`.
+   *
+   * It rides the fetch, not a post-fetch pass, because this feed is WINDOWED:
+   * the week query asks for the newest `limit` scans and nothing else. Filtering
+   * that page in memory let the desk answer "no shipped orders found" for a row
+   * it had simply never been sent — an absence it could not see. The route drops
+   * its page bound whenever `q` is present (keeping the week bounds), so the
+   * answer is every match in the window, not every match on page one.
+   */
+  searchTerm?: string;
   limit?: number;
   offset?: number;
   /** Spine-first: 'spine' returns immediate-paint columns only (deferred fields
@@ -348,6 +360,7 @@ export async function fetchDashboardPackedRecords({
   if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   if (shippedFilter) params.set('shippedFilter', shippedFilter);
+  if (searchTerm.trim()) params.set('q', searchTerm.trim());
   if (phase === 'spine') params.set('phase', 'spine');
 
   const res = await fetch(`/api/packerlogs?${params.toString()}`, FRESH_FETCH_OPTIONS);

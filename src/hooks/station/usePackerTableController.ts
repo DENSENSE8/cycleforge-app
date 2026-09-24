@@ -20,16 +20,32 @@ export interface GroupedPackerRecords {
 
 interface UsePackerTableControllerOptions {
   staffId: number;
-  /** Optional external search string (desktop uses URL params). */
-  searchTerm?: string;
 }
 
-export function usePackerTableController({ staffId, searchTerm = '' }: UsePackerTableControllerOptions) {
+export function usePackerTableController({ staffId }: UsePackerTableControllerOptions) {
   const [weekOffset, setWeekOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * The find box text, ANSWERED BY THE SERVER — it rides `usePackerLogs`'
+   * fetch key, so `records` already ARE the answer for it.
+   *
+   * This used to be a `searchTerm` PROP filtered in memory a few lines down,
+   * over whatever the `limit=1000` week fetch had mounted. That is how a pack
+   * from earlier in the same week returned "no results" for a tracking number
+   * the operator was holding. Owning the state here is what lets it reach the
+   * fetch key at all; the substring pass is gone rather than kept as a second,
+   * narrower opinion (it never saw the serial, the tester's name, the FNSKU
+   * title, or anything past row 1000).
+   */
+  const [query, setQuery] = useState('');
+
   const weekRange = computeWeekRange(weekOffset);
-  const { data: records = [], isLoading, isFetching } = usePackerLogs(staffId, { weekOffset, weekRange });
+  const { data: records = [], isLoading, isFetching } = usePackerLogs(staffId, {
+    weekOffset,
+    weekRange,
+    search: query,
+  });
   const loading = isLoading && records.length === 0;
   const isRefreshing = isFetching && !isLoading;
 
@@ -48,32 +64,16 @@ export function usePackerTableController({ staffId, searchTerm = '' }: UsePacker
     return Array.from(seenTracking.values());
   }, [records]);
 
-  // ── Search filtering ──────────────────────────────────────────────────────
-
-  const visibleRecords = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    if (!normalizedSearch) return dedupedRecords;
-    return dedupedRecords.filter((record) => {
-      const haystack = [
-        record.product_title,
-        record.order_id,
-        record.shipping_tracking_number,
-        record.scan_ref,
-        record.sku,
-        record.condition,
-        record.account_source,
-      ]
-        .map((value) => String(value || '').toLowerCase())
-        .join(' ');
-      return haystack.includes(normalizedSearch);
-    });
-  }, [dedupedRecords, searchTerm]);
-
   // ── Day grouping ──────────────────────────────────────────────────────────
+  //
+  // Straight off the deduped rows. There is no search pass between the two any
+  // more: the query text was spent on the fetch key, so `records` are already
+  // the server's answer for it, and the substring filter that used to sit here
+  // could only ever see the mounted `limit=1000` window.
 
   const groupedRecords = useMemo(() => {
     const groups: GroupedPackerRecords = {};
-    visibleRecords.forEach((record) => {
+    dedupedRecords.forEach((record) => {
       if (!record.created_at) return;
       let date = '';
       try {
@@ -85,7 +85,7 @@ export function usePackerTableController({ staffId, searchTerm = '' }: UsePacker
       groups[date].push(record);
     });
     return groups;
-  }, [visibleRecords]);
+  }, [dedupedRecords]);
 
   const filteredGroupedRecords = useMemo(() =>
     Object.fromEntries(
@@ -113,12 +113,13 @@ export function usePackerTableController({ staffId, searchTerm = '' }: UsePacker
     weekRange,
     records,
     dedupedRecords,
-    visibleRecords,
     groupedRecords,
     filteredGroupedRecords,
     orderedRecords,
     loading,
     isRefreshing,
+    query,
+    setQuery,
     scrollRef,
   };
 }

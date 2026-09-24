@@ -22,9 +22,23 @@
  * `entry` is the mobile-native step path (placeholder-in-box via
  * {@link KioskEntryField}, no floating label, no divider, the kiosk's one
  * corner radius). The trio itself never forks — only its paint does.
+ *
+ * ## Square's phone-first contact step (operator 2026-09-24)
+ *
+ * - The phone is typed on a glass keypad ({@link KioskPhoneKeypad}), never the
+ *   OS keyboard: an iPad has no phone pad, and its full keyboard covered the
+ *   step's Continue key. The input stays (`inputMode="none"`) so a desk
+ *   keyboard still types into it.
+ * - The tenth digit asks whether the number is on file
+ *   ({@link useKioskCustomerMatch}); a match fills an empty Name, so a repeat
+ *   customer is one keypad entry and Continue.
+ * - Return in any field is the step's Continue (`onSubmit`), so the keyboard
+ *   that Name / Email raise never has to be dismissed to find the key.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { KioskPhoneKeypad, type PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
+import { useKioskCustomerMatch, type KioskCustomerMatch } from '@/components/kiosk/useKioskCustomerMatch';
 import { TextField } from '@/design-system/primitives';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
@@ -89,12 +103,14 @@ export function KioskEntryField({
   icon,
   testId,
   idScope,
+  onEnter,
 }: {
   name: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
-  inputMode?: 'text' | 'tel' | 'email' | 'decimal' | 'numeric';
+  /** `none` = the caller renders its own glass keys (the phone keypad). */
+  inputMode?: 'text' | 'tel' | 'email' | 'decimal' | 'numeric' | 'none';
   autoComplete?: string;
   maxLength?: number;
   multiline?: boolean;
@@ -117,11 +133,23 @@ export function KioskEntryField({
    * the wrong device's field.
    */
   idScope?: string;
+  /**
+   * Return key → this (single-line only). The iPad key reads `go`, so the
+   * staffer finishes the step from the keyboard that is covering its floor.
+   */
+  onEnter?: () => void;
 }) {
   const id = ['kiosk-entry', idScope, name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()]
     .filter(Boolean)
     .join('-');
   const withIcon = Boolean(icon) && !multiline;
+  const onKeyDown = onEnter
+    ? (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        onEnter();
+      }
+    : undefined;
   return (
     <div className={withIcon ? KIOSK_POS_ENTRY_ICON_HOST : undefined}>
       <label htmlFor={id} className="sr-only">
@@ -156,6 +184,8 @@ export function KioskEntryField({
             autoComplete={autoComplete}
             maxLength={maxLength}
             inputMode={inputMode}
+            enterKeyHint={onEnter ? 'go' : undefined}
+            onKeyDown={onKeyDown}
             data-testid={testId}
             className={cn(KIOSK_POS_ENTRY, withIcon && KIOSK_POS_ENTRY_ICON_INSET)}
           />
@@ -186,6 +216,39 @@ interface KioskCustomerIntakeProps {
   /** Controlled mode — panes that own a local draft. */
   value?: KioskCustomerValue;
   onChange?: (next: KioskCustomerValue) => void;
+  /** The step's Continue — Return in any field runs it. */
+  onSubmit?: () => void;
+}
+
+const PHONE_DIGITS = 10;
+
+/** One glass key → the next phone string, in the one kiosk phone shape. */
+function pressPhone(phone: string, key: PhoneKeypadPress): string {
+  const digits = phone.replace(/\D/g, '');
+  if (key === 'C') return '';
+  if (key === 'back') return formatKioskPhoneInput(digits.slice(0, -1));
+  return digits.length >= PHONE_DIGITS ? phone : formatKioskPhoneInput(digits + key);
+}
+
+/** The line under the phone: who this number is, before anyone asks a name. */
+function CustomerMatchLine({ match }: { match: KioskCustomerMatch }) {
+  // Always one line tall, so a lookup landing never shifts the keys under a thumb.
+  return (
+    <p
+      className="min-h-5 px-1 text-sm font-semibold text-text-soft"
+      aria-live="polite"
+      data-testid="kiosk-customer-match"
+      data-match={match.status}
+    >
+      {match.status === 'looking' && 'Looking up…'}
+      {match.status === 'found' && (
+        <>
+          On file · <span className="text-text-default">{match.name || 'no name on file'}</span>
+        </>
+      )}
+      {match.status === 'new' && 'New customer · add their name'}
+    </p>
+  );
 }
 
 export function KioskCustomerIntake({
@@ -197,6 +260,7 @@ export function KioskCustomerIntake({
   extras,
   className,
   entry = false,
+  onSubmit,
   'data-testid': dataTestId = 'kiosk-customer-intake',
 }: KioskCustomerIntakeProps) {
   const session = useKioskSession();
@@ -222,6 +286,32 @@ export function KioskCustomerIntake({
 
   const show = (field: KioskCustomerField) => fields.includes(field);
 
+  // Two glass taps inside one React batch must both land: press against the
+  // number the LAST press produced, not the one this render painted.
+  const latest = useRef({ current, patch });
+  latest.current = { current, patch };
+  const pressKey = (key: PhoneKeypadPress) => {
+    const phone = pressPhone(latest.current.current.phone, key);
+    latest.current.current = { ...latest.current.current, phone };
+    latest.current.patch({ phone });
+  };
+
+  const match = useKioskCustomerMatch(show('phone') ? current.phone : '');
+  const matchedName = match.status === 'found' ? match.name : null;
+  // The name WE wrote. Only that name is ours to replace or take back — a name
+  // the staffer typed is never overwritten by a lookup.
+  const filledName = useRef<string | null>(null);
+  useEffect(() => {
+    if (match.status === 'looking') return;
+    const { current: now, patch: write } = latest.current;
+    const typedByStaff = now.name.trim() !== '' && now.name !== filledName.current;
+    if (typedByStaff) return;
+    const next = matchedName ?? '';
+    if (now.name === next) return;
+    filledName.current = next || null;
+    write({ name: next });
+  }, [match.status, matchedName]);
+
   return (
     <section className={className} data-testid={dataTestId}>
       {heading !== null && (
@@ -233,28 +323,36 @@ export function KioskCustomerIntake({
         {lead}
         {show('phone') &&
           (entry ? (
-            <KioskEntryField
-              name="Phone number"
-              value={current.phone}
-              onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={12}
-              testId="kiosk-customer-phone"
-            />
+            <div className="space-y-2">
+              <KioskEntryField
+                name="Phone number"
+                value={current.phone}
+                onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
+                type="tel"
+                inputMode="none"
+                autoComplete="tel"
+                maxLength={12}
+                testId="kiosk-customer-phone"
+                onEnter={onSubmit}
+              />
+              <CustomerMatchLine match={match} />
+              <KioskPhoneKeypad onPress={pressKey} />
+            </div>
           ) : (
-            <TextField
-              label="Phone number"
-              value={current.phone}
-              onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={12}
-              inputClassName={cn(counterCorner('field'))}
-              data-testid="kiosk-customer-phone"
-            />
+            <div className="space-y-2">
+              <TextField
+                label="Phone number"
+                value={current.phone}
+                onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={12}
+                inputClassName={cn(counterCorner('field'))}
+                data-testid="kiosk-customer-phone"
+              />
+              <CustomerMatchLine match={match} />
+            </div>
           ))}
         {show('name') &&
           (entry ? (
@@ -264,6 +362,7 @@ export function KioskCustomerIntake({
               onChange={(v) => patch({ name: v })}
               autoComplete="name"
               testId="kiosk-customer-name"
+              onEnter={onSubmit}
             />
           ) : (
             <TextField
@@ -285,6 +384,7 @@ export function KioskCustomerIntake({
               inputMode="email"
               autoComplete="email"
               testId="kiosk-customer-email"
+              onEnter={onSubmit}
             />
           ) : (
             <TextField
@@ -306,6 +406,7 @@ export function KioskCustomerIntake({
               onChange={(v) => patch({ address: v })}
               autoComplete="street-address"
               testId="kiosk-customer-address"
+              onEnter={onSubmit}
             />
           ) : (
             <TextField

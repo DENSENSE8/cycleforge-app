@@ -42,6 +42,7 @@ export {
   useAnimationFrame,
   useMotionValue,
   useTransform,
+  useDragControls,
 } from './framer';
 
 export type {
@@ -49,6 +50,7 @@ export type {
   Variants,
   PanInfo,
   HTMLMotionProps,
+  DragControls,
 } from './framer';
 
 export { motionRole } from './roles';

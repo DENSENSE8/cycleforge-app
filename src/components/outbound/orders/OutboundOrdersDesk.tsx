@@ -317,6 +317,9 @@ function OutboundOrdersDeskContent({
                 selectedContext={selectedContext}
                 onClose={requestCloseSelectedOrder}
                 onUpdate={refreshDashboard}
+                // To ship: the record opens in the right rail (triage) beside
+                // the ledger, never on top of it.
+                placement="rail"
               />
             )
           ) : null

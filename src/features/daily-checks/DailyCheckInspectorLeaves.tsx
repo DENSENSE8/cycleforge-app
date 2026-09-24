@@ -255,7 +255,6 @@ export function TicketLeaf({
               embedded
               hideRequesterBand={false}
               mergeFloorTimeline={false}
-              showReplyPresets={false}
             />
           </div>
         </div>

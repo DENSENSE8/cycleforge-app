@@ -16,14 +16,18 @@
  * THREE such hooks per tab and never a component that swaps column sets; a
  * single host taking three column arrays is the fork this port removed.
  *
- * ## Why sort and search are local state here
+ * ## Why sort is local state and the FIND TEXT is not
  *
- * `/reports` owns no search params at all — the tab is `useState` and the
- * three feeds are client `fetch`es of up to 500 rows. Writing `?sort=` would
- * make a header click round-trip a URL nothing else reads, and `?search=` per
- * keystroke would re-render the whole desk for a filter over rows the client
- * already holds. The server query's own narrowing (`?room=`, `?minFill=`) is
- * untouched; the header sorts the page in hand.
+ * A header click writing `?sort=` would round-trip a URL nothing else reads,
+ * so the header sorts the page in hand. The server query's own narrowing
+ * (`?room=`, `?minFill=`) is untouched.
+ *
+ * The find text is different in kind, because the page in hand is a WINDOW:
+ * this warehouse has more bins than the route's 500-row page, and the page is
+ * ordered by FILL — so a browser-side filter could never reach the emptiest
+ * bins, which are exactly the ones an operator goes looking for by name. The
+ * text therefore rides the fetch (`?q=`) and the engine is told the rows it
+ * receives are already the answer.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -53,6 +57,11 @@ export interface UseReportBinUtilizationSpreadsheetOptions {
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
+  /** The find text, owned by the page because it rides the report's fetch. */
+  searchValue: string;
+  onSearchChange: (next: string) => void;
+  /** A request for the CURRENT text is in flight — holds the loading face. */
+  searchPending?: boolean;
 }
 
 export function useReportBinUtilizationSpreadsheet({
@@ -60,6 +69,9 @@ export function useReportBinUtilizationSpreadsheet({
   loading = false,
   emptyMessage = 'No data — try the daily refresh cron, or write some movement.',
   searchPlaceholder = 'Filter this report…',
+  searchValue,
+  onSearchChange,
+  searchPending = false,
 }: UseReportBinUtilizationSpreadsheetOptions): CompoundSpreadsheetFeed<
   BinUtilizationReportRow,
   ReportBinUtilizationGridColumnKey,
@@ -67,7 +79,6 @@ export function useReportBinUtilizationSpreadsheet({
 > {
   const [sort, setSort] = useState<ReportBinUtilizationGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useReportBinUtilizationTableLayout();
   const columns = useMemo(
@@ -84,8 +95,14 @@ export function useReportBinUtilizationSpreadsheet({
   );
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({
+      value: searchValue,
+      onChange: onSearchChange,
+      placeholder: searchPlaceholder,
+      answeredBy: 'server' as const,
+      pending: searchPending,
+    }),
+    [searchValue, onSearchChange, searchPlaceholder, searchPending],
   );
 
   return useCompoundSpreadsheet<

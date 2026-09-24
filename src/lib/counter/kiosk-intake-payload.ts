@@ -1,13 +1,10 @@
 /**
- * Shared kiosk counter → `/api/kiosk/intake` body builder.
+ * Kiosk cart → `/api/kiosk/intake` body builder.
  *
- * Portrait `CounterIntakeForm` hosts and landscape `KioskCounterPane` must
- * post the same shape so landscape/portrait cannot drift on retailLines /
- * serviceLine / priorOrder / ticketWork / takePayment.
+ * Caller: `submitKioskVisit` (the cart's Save / Pay). Affected API:
+ * POST `/api/kiosk/intake`. Schemas: `CounterTransactionInput`.
  */
 
-import type { CounterDraft } from '@/components/counter/counter-intake-steps';
-import { activeServiceLine } from '@/components/counter/counter-intake-steps';
 import type { CounterTransactionInput } from '@/lib/counter/counter-transaction-types';
 
 interface KioskIntakeBodyOpts {
@@ -15,6 +12,11 @@ interface KioskIntakeBodyOpts {
   takePayment: boolean;
   staffId?: number;
   pin?: string;
+  /**
+   * Lines voided during the visit, each with the signed approval the void
+   * was authorized (and audited) under. The route lists them on the visit.
+   */
+  voidedLines?: Array<{ approval: string; title: string; quantity: number; unitAmountCents: number }>;
 }
 
 type SalesIntakeParts = Pick<
@@ -39,45 +41,12 @@ export function buildKioskSalesIntakeBodyFromInput(
     ticketWork: input.ticketWork,
     takePayment: opts.takePayment,
   };
+  if (opts.voidedLines && opts.voidedLines.length > 0) {
+    body.voidedLines = opts.voidedLines;
+  }
   if (opts.staffId != null && opts.pin) {
     body.staffId = opts.staffId;
     body.pin = opts.pin;
   }
   return body;
-}
-
-/** Draft → intake body (landscape `KioskCounterPane`). */
-export function buildKioskSalesIntakeBody(
-  draft: CounterDraft,
-  opts: KioskIntakeBodyOpts,
-): Record<string, unknown> {
-  // The draft form is structurally single-device (one `service`, one
-  // signature), so it contributes at most one entry. Widening THAT model is a
-  // separate surface — see counter-intake-steps.ts.
-  const service = activeServiceLine(draft);
-  return buildKioskSalesIntakeBodyFromInput(
-    {
-      customer: {
-        phone: draft.phone,
-        name: draft.name || null,
-        email: draft.email || null,
-        address: draft.address.trim() || null,
-      },
-      retailLines: draft.retailLines,
-      services: service
-        ? [
-            {
-              ...service,
-              signatureDataUrl: draft.signatureDataUrl,
-              signatureStrokes: draft.signatureStrokes,
-            },
-          ]
-        : [],
-      priorOrder: draft.priorOrderNumber.trim()
-        ? { orderNumber: draft.priorOrderNumber.trim(), phone: draft.phone }
-        : null,
-      ticketWork: service ? { mode: 'create' } : { mode: 'none' },
-    },
-    opts,
-  );
 }

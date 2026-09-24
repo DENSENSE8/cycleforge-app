@@ -2,10 +2,21 @@
 
 **Owner:** CycleForge Engineering  
 **Created:** 2026-09-18  
-**Status:** PLAN READY — implementation has not started  
+**Status:** M1–M4 BUILT INTO `prod` (2026-09-23) — hosted slice live at `/shipping/label-intake` and `/m/label-intake`; M5 (Tauri/SwiftUI/Linux bundle) out of scope  
 **Canonical research input:** [`docs/research/gemini-deep-research-v1-outbound-native-browser-verification.md`](../research/gemini-deep-research-v1-outbound-native-browser-verification.md)  
 **Primary local acceptance platform:** Linux, Tauri AppImage and Debian package  
 **Only application origin:** `http://localhost:3050`
+
+> **Scope update — 2026-09-23 (operator).** *"Build it all into prod, not the
+> tauri app at all."* Milestones 1–4 now live in the `prod` Next app itself,
+> ported from the `codex/v1-outbound` worktree (`a639b6c34`, M1–M3 domain/API
+> code; adapter fix from its HEAD). There is no `apps/ops-web` package and no
+> `/ops/outbound` gateway mount: the ledger is a route of the hosted app, which
+> removes the switchboard path-prefix blocker. The UI is **not** the slot
+> `DataTable` — it is the edge-to-edge tactical record list proven in the Tauri
+> terminal (state spine · carrier lane · context/identity/facts bands, hairline
+> separators, no gutters), mounted identically on the desk and the phone.
+> Milestone 5 is not pursued.
 
 This file is the execution contract, progress ledger, and fresh-context handoff for the CycleForge V1 outbound slice. It deliberately separates business-rule verification from native integration verification. A browser must be able to prove the entire hosted workflow with real APIs and a replaceable native adapter; the Linux Tauri package must then prove only the OS capabilities a browser cannot supply.
 
@@ -471,11 +482,11 @@ Status values are exactly `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, or `COMPLETE`
 
 | Milestone | Status | Commit | Gate result | Evidence/artifact | Date |
 | --- | --- | --- | --- | --- | --- |
-| 0 — clean frozen worktree | BLOCKED | — | current checkout dirty | Record clean baseline here | — |
-| 1 — immutable data core | NOT STARTED | — | — | — | — |
-| 2 — API and ingestion engine | NOT STARTED | — | — | — | — |
-| 3 — browser adapter and B01–B22 | NOT STARTED | — | — | — | — |
-| 4 — isolated `/ops/outbound` | NOT STARTED | — | — | — | — |
+| 0 — clean frozen worktree | COMPLETE (superseded) | — | operator directed the build into the live `prod` tree; unrelated user edits left untouched | this ledger | 2026-09-23 |
+| 1 — immutable data core | COMPLETE | uncommitted in `prod` | `verify:v1:schema` PASS (3 tables, 54 columns, 36 constraints, 18 indexes, forced RLS); `test:v1:data` 23/23 | `src/lib/migrations/2026-09-18_v1_label_ingestions.sql` (already on record in shared Neon, `db:migrate --dry` → 0 pending), `src/lib/drizzle/schema.ts`, `src/lib/label-ingestions/`, `scripts/v1-disposable-db.sh` | 2026-09-23 |
+| 2 — API and ingestion engine | COMPLETE | uncommitted in `prod` | `test:v1:ingestion` 8/8; `test:v1:api` 10/10; `verify:v1:openapi` current; route manifest re-emitted + regression test | `src/app/api/v1/label-ingestions/**`, `docs/openapi/cycleforge-v1.json`, `docs/security/route-permissions.json` | 2026-09-23 |
+| 3 — browser adapter and B01–B22 | IN PROGRESS | uncommitted in `prod` | B03/B04/B08 exercised by hand at `:3050` (QA org); Playwright B01–B22 suite not written | B03: ingestion 48 → `APPLIED`, shipment 179906, document 1013, allocated unit `LABELED`, `orders.status` untouched. B04: ingestion 49 `QUARANTINED/TRACKING_ONLY`, no mutation. B08: same bytes re-uploaded → replayed, no new row | 2026-09-23 |
+| 4 — hosted label-intake ledger | COMPLETE | uncommitted in `prod` | `verify:fast` PASS (lint, typecheck, boundary, nav names, mobile-first, industrial translation) | `src/features/label-intake/LabelIntakeLedger.tsx`, `src/app/shipping/label-intake/page.tsx`, `src/app/m/(shell)/label-intake/page.tsx`, nav rows in `sidebar-navigation.ts` + `mobile/nav-registry.ts` | 2026-09-23 |
 | 5 — Tauri, SwiftUI contract, Linux bundle | NOT STARTED | — | — | — | — |
 | Final Linux dogfood | NOT STARTED | — | — | — | — |
 
@@ -490,12 +501,16 @@ Append decisions; never silently rewrite a completed decision.
 | 2026-09-18 | Pre-stage bytes before atomic apply. | External storage cannot participate in a PostgreSQL rollback. | Plan |
 | 2026-09-18 | Build an independent `apps/ops-web`. | A worktree alone does not remove legacy build-graph drag. | Plan |
 | 2026-09-18 | Separate Linux desktop proof from macOS iOS proof. | Linux cannot honestly prove SwiftUI/XCUITest runtime behavior. | Plan |
+| 2026-09-23 | Build M1–M4 into the `prod` app; drop `apps/ops-web` and the `/ops/outbound` mount; skip M5. | Operator: "build it all into prod not the tauri app at all". A route of the hosted app needs no switchboard path-prefix mount. | Operator |
+| 2026-09-23 | Ledger routes are `/shipping/label-intake` (desk, Outbound lane row beside Shipping/FBA) and `/m/label-intake` (phone). | Ingestions are a queue To ship cannot express (FBA precedent); outside the `(desk)` group so the surface is edge-to-edge, not a capped desk stage. | Operator (table/edge-to-edge), agent (placement) |
+| 2026-09-23 | Replace the slot `DataTable` with the Tauri tactical record list; one component serves both surfaces (evidence pane is a fixed column at ≥64rem container width, a bottom sheet below). | Operator: "a different kind of table not the slot data table — instant industrial edge to edge". SURFACE_LAW §5: phone lists are flat hairline work rows. | Operator |
 
 ### Blocker log
 
 | Date | Milestone | Blocker | Required resolution |
 | --- | --- | --- | --- |
-| 2026-09-18 | 0 | The current `prod` checkout contains extensive user-owned modifications. | User supplies or identifies a clean frozen commit/worktree; agent must not stash or discard it. |
+| 2026-09-18 | 0 | The current `prod` checkout contains extensive user-owned modifications. | Superseded 2026-09-23: operator directed the build into `prod`; unrelated user edits were not touched. |
+| 2026-09-23 | 3 | The resolver files a label with NO readable tracking as `TRACKING_ONLY` (`exact-resolver.ts:10`), which names the wrong fact. The UI states the truth from the record's tracking field; the taxonomy itself is unchanged. | Add a distinct reason code (DB check-constraint migration + contract/OpenAPI) in a reviewed increment. |
 
 ---
 

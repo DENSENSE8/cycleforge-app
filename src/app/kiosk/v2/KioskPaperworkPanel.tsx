@@ -8,31 +8,27 @@
  * @density floor
  * @justification The repair agreement was reachable only from inside the
  *   Repair pane and only ever described ONE serialized product, so a visit that
- *   mixed a repair, a retail line and a buyback printed nothing that named the
- *   other two. This panel is the visit-level face: customer identification
- *   once, then one identified row per cart line, with the repair agreement
- *   sheet underneath while a repair line exists.
+ *   mixed a repair and a retail line printed nothing that named the other.
+ *   This panel is the visit-level face: customer identification once, then one
+ *   identified row per cart line, with the repair agreement sheet underneath
+ *   while a repair line exists.
+ *
+ * NO TITLE BAND of its own (2026-09-23). The shell paints the ONE header band
+ * above this sheet while it is open, and that band's paperwork toggle is both
+ * the name of this panel and its way back — a `Paperwork` title and a close X
+ * under it were a second band repeating the toggle's own name.
  *
  * Staged toward the unified walk-in document — plan:
  * `docs/todo/kiosk-walkin-paperwork-PLAN.md`. The legal sheet below is still
- * `RepairServiceForm` (unchanged wording); only the identification header is
- * new, so nothing a customer signs changes shape in this step.
+ * `RepairServiceForm` (unchanged wording).
  */
 
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { isRepairPayload } from '@/lib/kiosk/cart-line';
-import { X } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
 import { lineIdentification } from '@/lib/kiosk/line-identification';
 import { useKioskSession } from '@/lib/kiosk/kiosk-session-store';
-import {
-  KIOSK_UTILITY_SHEET,
-  KIOSK_META,
-  KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL_ROW,
-} from '@/app/kiosk/kiosk-chrome';
+import { KIOSK_UTILITY_SHEET, KIOSK_META, KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
 function formatCents(cents: number): string {
@@ -40,9 +36,7 @@ function formatCents(cents: number): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-export { lineIdentification } from '@/lib/kiosk/line-identification';
-
-export function KioskPaperworkPanel({ onClose }: { onClose?: () => void }) {
+export function KioskPaperworkPanel() {
   const session = useKioskSession();
   const repairLine = session.lines.find((l) => isRepairPayload(l.payload));
   const repairPayload =
@@ -53,26 +47,6 @@ export function KioskPaperworkPanel({ onClose }: { onClose?: () => void }) {
 
   return (
     <aside className={KIOSK_UTILITY_SHEET} data-testid="kiosk-paperwork-panel">
-      <div className={KIOSK_PANE_HEADER_BAND}>
-        <h2 className={KIOSK_PANE_HEADER_TITLE}>Paperwork</h2>
-        {/*
-          The panel owns its own close. The catalog's glass trail — which holds
-          the paperwork toggle — stays mounted but hidden while a utility slot
-          is open, so without this the panel had no way back to the catalog
-          (the header never realigns by design; it also never traps).
-        */}
-        {onClose ? (
-          <IconButton
-            icon={<X className="h-5 w-5" />}
-            ariaLabel="Close paperwork"
-            size="touch"
-            onClick={onClose}
-            className="ml-auto shrink-0 hover:bg-surface-hover"
-            data-testid="kiosk-paperwork-close"
-          />
-        ) : null}
-      </div>
-
       <div className="min-h-0 flex-1 overflow-y-auto">
         <section>
           <h3 className={KIOSK_SECTION_LABEL_ROW}>
@@ -98,11 +72,11 @@ export function KioskPaperworkPanel({ onClose }: { onClose?: () => void }) {
 
         <section>
           <h3 className={KIOSK_SECTION_LABEL_ROW}>
-            Items on this visit
+            Items
           </h3>
           {session.lines.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm font-semibold text-text-soft">
-              Nothing on the ticket yet.
+              No items yet.
             </p>
           ) : (
             <ul className="divide-y divide-border-hairline">

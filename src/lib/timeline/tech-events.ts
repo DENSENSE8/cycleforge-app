@@ -1,3 +1,4 @@
+import { LIFECYCLE } from '@cycleforge/design-tokens';
 import type { TimelineItem, TimelineTone } from './types';
 
 /**
@@ -41,9 +42,9 @@ const KIND_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   FNSKU_SCANNED: { title: 'Amazon SKU scanned', tone: 'info' },
   TRACKING_SCANNED: { title: 'Tracking scanned', tone: 'info' },
   LABEL_PRINTED: { title: 'Label printed', tone: 'info' },
-  PACK_COMPLETED: { title: 'Packed', tone: 'success' },
+  PACK_COMPLETED: { title: 'Packed', tone: LIFECYCLE.packed.tone },
   PACK_SCAN: { title: 'Pack scan', tone: 'muted' },
-  SHIP_CONFIRM: { title: 'Scanned out', tone: 'success' },
+  SHIP_CONFIRM: { title: 'Scanned out', tone: LIFECYCLE.shipped.tone },
   // audit_logs qc verdict actions
   'tech.qc.pass': { title: 'Tested — Pass', tone: 'success' },
   'tech.qc.fail': { title: 'Tested — Fail', tone: 'danger' },

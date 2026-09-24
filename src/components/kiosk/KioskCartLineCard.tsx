@@ -13,9 +13,16 @@
  * are cards, never a DataTable.
  *
  * So: a rounded row card (`MOBILE_SCAN_ROW_CORNER`, the same corner the mobile
- * scan rows wear), title + amount on the top line, facts as {@link KioskChip}
- * meta chips under it. The card IS the edit affordance — tap to correct, the
- * gesture the row had. Void stays on the swipe wrapper.
+ * scan rows wear), the title on top, then {@link KioskChip} meta chips on the
+ * left of the last line with `qty · amount` at its right edge (the amount
+ * alone when the stepper already shows the quantity). The card IS the
+ * edit affordance — tap to correct, the gesture the row had. Void stays on the
+ * swipe wrapper.
+ *
+ * A SALE line also carries `−  N  +` on that last row (Square's cart stepper,
+ * brought onto the card: on a counter tablet the extra item-details screen is
+ * the cost being removed). `−` at 1 asks first by swapping the row to
+ * `Keep` / `Remove` in place — never a modal over the work.
  *
  * FLAT (2026-09-15). This carried `elevationClass('raised','soft')` per line,
  * which was a soft lift on a white card sitting on a white sheet — depth you
@@ -25,34 +32,49 @@
  * down. Separation is `border-border-hairline` plus the sunken stage behind the
  * sheet — planes, never blur.
  *
- * Callers: `KioskCartLedger`. Affected API: none.
+ * Callers: `KioskCartLedger`, `KioskKeypadFace`, `KioskCustomerFace`. Affected API: none.
  * Schemas: `counter_session_lines` via {@link cartLineCardView}.
  */
 
-import { Wrench, ShoppingCart, RefreshCw } from '@/components/Icons';
+import { useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { Wrench, SalesPrice, RefreshCw, Minus, Plus } from '@/components/Icons';
 import { KioskChip } from '@/components/kiosk/KioskChip';
-import { cartLineCardView } from '@/lib/kiosk/cart-card-view';
+import { Button, IconButton } from '@/design-system/primitives';
+import { cartLineCardView, stepCartQuantity } from '@/lib/kiosk/cart-card-view';
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
 /**
- * Line-type glyph + ink, matching the command ink on the mode selector
- * (`KioskServiceTile.iconTone`): repair amber, retail green, buyback blue. A
- * chip states its kind with a glyph AND a colour, never colour alone.
+ * Line-type glyph + ink, matching the command on the mode selector
+ * (`KioskServiceTile.icon` / `iconTone`): repair amber, sale green, trade-in
+ * blue. A chip states its kind with a glyph AND a colour, never colour alone.
+ * A sale wears the Sales mode's own tag glyph — not the shopping cart, which
+ * is the header's Cart key and would read as "open the cart" on every line.
  */
 const TYPE_FACE = {
   REPAIR: { Icon: Wrench, tone: 'warning' as const },
   BUYBACK: { Icon: RefreshCw, tone: 'info' as const },
-  RETAIL: { Icon: ShoppingCart, tone: 'success' as const },
+  RETAIL: { Icon: SalesPrice, tone: 'success' as const },
 };
+
+/**
+ * The stepper's presses belong to the stepper: a click must not open the
+ * editor, Enter must not reach the card's key handler, and a press must not
+ * start the swipe row's pointer capture.
+ */
+function keepPressHere(event: MouseEvent | KeyboardEvent | PointerEvent): void {
+  event.stopPropagation();
+}
 
 export function KioskCartLineCard({
   line,
   voided = false,
   open = false,
   onOpen,
+  onQuantityChange,
+  onRemove,
   readOnly = false,
 }: {
   line: KioskCartLine;
@@ -61,6 +83,13 @@ export function KioskCartLineCard({
   /** This line's editor is showing. */
   open?: boolean;
   onOpen?: () => void;
+  /** Sale lines: the `−` / `+` stepper writes the new quantity here. */
+  onQuantityChange?: (quantity: number) => void;
+  /**
+   * `−` at 1 removes after a confirm. Omitted on a desk-held mirror, where a
+   * remove is a staff void the tablet may not make; `−` then stops at 1.
+   */
+  onRemove?: () => void;
   /**
    * Customer-facing mount: the same card, no verb. The customer's screen
    * states the line; it never edits it (that is the staff face's job), so the
@@ -72,6 +101,18 @@ export function KioskCartLineCard({
   const face = TYPE_FACE[line.type === 'REPAIR' ? 'REPAIR' : line.type === 'BUYBACK' ? 'BUYBACK' : 'RETAIL'];
   const TypeIcon = face.Icon;
   const interactive = !readOnly && typeof onOpen === 'function';
+  const stepper = interactive && view.steppable && typeof onQuantityChange === 'function';
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  const step = (delta: 1 | -1) => {
+    const next = stepCartQuantity(line.quantity, delta);
+    if (next.kind === 'confirm-remove') {
+      if (onRemove) setConfirmRemove(true);
+      return;
+    }
+    onQuantityChange?.(next.quantity);
+  };
+
   return (
     <div
       role={interactive ? 'button' : undefined}
@@ -99,41 +140,147 @@ export function KioskCartLineCard({
         open && 'bg-surface-accent',
       )}
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-sm font-semibold text-text-default',
-            view.voided && 'line-through text-text-soft',
-          )}
-        >
-          {view.title}
-        </span>
-        <span
-          className={cn(
-            'shrink-0 text-base font-semibold tabular-nums',
-            view.credit ? 'text-text-success' : 'text-text-default',
-            view.voided && 'line-through text-text-soft',
-          )}
-        >
-          {view.amount}
-        </span>
-      </div>
+      <span
+        className={cn(
+          'min-w-0 truncate text-sm font-semibold text-text-default',
+          view.voided && 'line-through text-text-soft',
+        )}
+      >
+        {view.title}
+      </span>
 
       {view.detail ? (
         <p className={cn('truncate', KIOSK_META)}>{view.detail}</p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        <KioskChip
-          tone={view.voided ? 'danger' : face.tone}
-          icon={<TypeIcon className="h-3.5 w-3.5" />}
+      {/* FACTS left, MONEY right, on the card's last line — the list rule
+          (operator 2026-09-23): in a list, money sits on the right edge so
+          the eye can run down one column of figures, and ONLY the money wears
+          the money token; the quantity is black, `text-text-default` (operator
+          2026-09-24: "the number … right next to the price must be black not
+          green"). A stepper line's `−  N  +` IS its
+          quantity, so the right edge prints the total alone — never N twice. */}
+      {confirmRemove ? (
+        <div
+          className="flex items-center justify-between gap-3"
+          onClick={keepPressHere}
+          onKeyDown={keepPressHere}
+          onPointerDown={keepPressHere}
+          data-testid="kiosk-cart-line-remove-confirm"
         >
-          {view.stateLabel}
-        </KioskChip>
-        {view.unitNote ? <KioskChip>{view.unitNote}</KioskChip> : null}
-        {view.primaryId ? <KioskChip>{view.primaryId}</KioskChip> : null}
-        {view.secondaryId ? <KioskChip>{view.secondaryId}</KioskChip> : null}
-      </div>
+          <span className="text-sm font-semibold text-text-default">Remove this item?</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => setConfirmRemove(false)}
+              data-testid="kiosk-cart-line-keep"
+            >
+              Keep
+            </Button>
+            <Button
+              variant="danger"
+              size="lg"
+              onClick={() => {
+                setConfirmRemove(false);
+                onRemove?.();
+              }}
+              data-testid="kiosk-cart-line-remove"
+            >
+              Remove
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <KioskChip
+              tone={view.voided ? 'danger' : face.tone}
+              icon={<TypeIcon className="h-3.5 w-3.5" />}
+            >
+              {view.stateLabel}
+            </KioskChip>
+            {view.compReason ? (
+              <KioskChip testId="kiosk-cart-line-comp-reason">{view.compReason}</KioskChip>
+            ) : null}
+            {view.custom ? <KioskChip testId="kiosk-cart-line-custom">Custom</KioskChip> : null}
+            {[view.primaryId, view.secondaryId].map((fact) =>
+              fact ? (
+                <KioskChip key={fact.label}>
+                  <span className="font-normal">{fact.label}</span> {fact.value}
+                </KioskChip>
+              ) : null,
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {stepper ? (
+              <div
+                role="group"
+                aria-label={`Quantity of ${view.title}`}
+                className="flex items-center gap-1"
+                onClick={keepPressHere}
+                onKeyDown={keepPressHere}
+                onPointerDown={keepPressHere}
+                data-testid="kiosk-cart-line-stepper"
+              >
+                <IconButton
+                  size="touch"
+                  radius="pill"
+                  className="border border-border-hairline"
+                  icon={<Minus className="h-5 w-5" />}
+                  ariaLabel={view.quantity <= 1 ? `Remove ${view.title}` : `One fewer ${view.title}`}
+                  disabled={view.quantity <= 1 && !onRemove}
+                  onClick={() => step(-1)}
+                  data-testid="kiosk-cart-line-minus"
+                />
+                <span
+                  className="min-w-8 text-center text-base font-semibold tabular-nums text-text-default"
+                  aria-live="polite"
+                  data-testid="kiosk-cart-line-qty"
+                >
+                  {view.quantity}
+                </span>
+                <IconButton
+                  size="touch"
+                  radius="pill"
+                  className="border border-border-hairline"
+                  icon={<Plus className="h-5 w-5" />}
+                  ariaLabel={`One more ${view.title}`}
+                  onClick={() => step(1)}
+                  data-testid="kiosk-cart-line-plus"
+                />
+              </div>
+            ) : null}
+            {view.adjustedFrom ? (
+              // The catalog price, struck — the amount beside it is what the
+              // customer pays (Square shows the same on an adjusted item).
+              <s
+                className="text-sm tabular-nums text-text-soft"
+                aria-label={`was ${view.adjustedFrom}`}
+                data-testid="kiosk-cart-line-adjusted-from"
+              >
+                {view.adjustedFrom}
+              </s>
+            ) : null}
+            <span className="flex items-baseline gap-1 text-base font-semibold tabular-nums">
+              {stepper ? null : (
+                <span
+                  className={cn('text-text-default', view.voided && 'line-through text-text-soft')}
+                  data-testid="kiosk-cart-line-qty-prefix"
+                >
+                  {view.quantity} ·
+                </span>
+              )}
+              <span
+                className={cn('text-text-success', view.voided && 'line-through text-text-soft')}
+                data-testid="kiosk-cart-line-amount"
+              >
+                {view.amount}
+              </span>
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

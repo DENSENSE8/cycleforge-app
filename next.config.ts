@@ -102,6 +102,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
     turbopack: {},
+    // Workspace package shipped as TypeScript source (main: src/index.ts).
+    transpilePackages: ["@cycleforge/design-tokens"],
     // Vercel sets this on platform builds. Explicit so Skew Protection can
     // pin framework-managed assets/RSC to the deployment that served the
     // page (floor stations stay open across a ship). Do not remove the

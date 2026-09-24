@@ -50,7 +50,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { ProductSelector, type ProductSelection, type SelectedItem } from '@/components/repair/ProductSelector';
-import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
+import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import {
   computeCounterTotals,
   type CounterTransactionInput,

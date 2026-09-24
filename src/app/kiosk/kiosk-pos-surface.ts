@@ -60,20 +60,6 @@ export const KIOSK_POS_AT_MD = {
 export const KIOSK_POS_CANVAS = 'bg-surface-card';
 
 /**
- * Landscape category column — fixed width, never flex leftover space.
- * Portrait stays full-bleed above the product stage.
- */
-export const KIOSK_POS_SIDEBAR = cn(
-  'max-h-[40vh] w-full border-b border-border-soft',
-  'md:max-h-none md:w-64 md:shrink-0 md:border-b-0 md:border-r',
-);
-
-/**
- * Category accordion scroll body — flush list, no inset pill padding.
- */
-export const KIOSK_POS_SIDEBAR_BODY = cn(KIOSK_POS_CANVAS, 'p-0');
-
-/**
  * Category nav item — flush row (no rounded-xl POS exception).
  */
 export const KIOSK_POS_CATEGORY = cn(
@@ -85,10 +71,6 @@ export const KIOSK_POS_CATEGORY_ACTIVE = KIOSK_PILL_ACTIVE;
 /** Idle category — hairline hover wash on the shared card plane. */
 export const KIOSK_POS_CATEGORY_IDLE =
   'bg-surface-card text-text-default hover:bg-surface-hover active:bg-surface-hover';
-
-/** Wrapping category title — tight leading so long Bose names do not balloon. */
-export const KIOSK_POS_CATEGORY_LABEL =
-  'min-w-0 flex-1 text-sm font-semibold leading-snug text-text-default';
 
 /** Nested sibling stack — divide-y hairlines, not gap cards. */
 export const KIOSK_POS_CATEGORY_STACK = 'flex flex-col divide-y divide-border-hairline';
@@ -204,8 +186,13 @@ export const KIOSK_POS_CARD_SELECT_DOT_ON = 'bg-blue-600 text-white';
  * context, and `h-full` keeps the card stretched to the grid row the way it was
  * when it WAS the grid child — without it, one long product title makes a
  * short-captioned neighbour float at its own height.
+ *
+ * `isolate` makes each cell its own stacking context. The pip and the select
+ * dot are `z-20` to clear the card's selection frame, and without a context
+ * of their own they out-ranked the catalog's `z-10` glass header: scrolling
+ * the grid slid every star OVER the mode dropdown and the cart key.
  */
-export const KIOSK_POS_CARD_CELL = 'relative h-full';
+export const KIOSK_POS_CARD_CELL = 'relative isolate h-full';
 
 /**
  * Favorite pip — top-RIGHT of the cell, opposite the selection dot.
@@ -481,14 +468,12 @@ export const KIOSK_POS_CTA_SECONDARY = cn(
 );
 
 /**
- * The History face's master rail — the twin of {@link KIOSK_POS_SIDEBAR}, one
- * step wider.
+ * The History face's master rail — a fixed-width left column from `md`.
  *
- * A catalog category is one or two words, so 16rem fits it. A history row is
- * four facts on two lines (ticket · customer, then model · when), and at
- * `w-64` the customer name truncates on almost every real visit — the one
- * field an operator scans the rail FOR. The rail stacks above the detail on a
- * phone and becomes the left column from `md`, exactly like the catalog.
+ * A history row is four facts on two lines (ticket · customer, then model ·
+ * when), and at `w-64` the customer name truncated on almost every real
+ * visit — the one field an operator scans the rail FOR. The rail stacks above
+ * the detail on a phone and becomes the left column from `md`.
  */
 export const KIOSK_POS_HISTORY_RAIL = cn(
   'flex min-h-0 w-full flex-col border-b border-border-soft',

@@ -345,3 +345,27 @@ export async function searchKioskCatalog(
     hasMore: options.offset + hits.length < total,
   };
 }
+
+/**
+ * The catalog unit price (cents) of each listing id — the price a counter
+ * tile charged when it put the item on the cart. `/api/kiosk/intake` holds a
+ * submitted sale line to it unless the line carries a manager approval. An id
+ * with no row, or no price, is absent.
+ */
+export async function catalogUnitPrices(
+  orgId: OrgId,
+  listingIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (listingIds.length === 0) return new Map();
+  const res = await tenantQuery<{ external_ref_id: string; listing_price_cents: number }>(
+    orgId,
+    `SELECT external_ref_id, listing_price_cents
+       FROM platform_listings
+      WHERE organization_id = $1
+        AND platform = $2
+        AND external_ref_id = ANY($3::text[])
+        AND listing_price_cents IS NOT NULL`,
+    [orgId, PROJECTION_PLATFORM, [...listingIds]],
+  );
+  return new Map(res.rows.map((r) => [String(r.external_ref_id), Number(r.listing_price_cents)]));
+}

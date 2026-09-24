@@ -8,16 +8,33 @@
  * BUYBACK → retail lines with negative `unitAmountCents` (credit).
  */
 
-import type { KioskCartLine } from '@/lib/kiosk/cart-line';
+import type { KioskCartLine, LinePriceAdjustment } from '@/lib/kiosk/cart-line';
 import {
   isBuybackPayload,
   isRepairPayload,
   isRetailPayload,
 } from '@/lib/kiosk/cart-line';
 import type {
+  CounterPriceAdjustment,
   CounterRetailLine,
   CounterServiceLine,
 } from '@/lib/counter/counter-transaction-types';
+
+/**
+ * The adjustment as the counter carries it: the display-only staff name stays
+ * on the tablet, the signed approval travels (the kiosk route verifies it and
+ * rebuilds the rest from its claims).
+ */
+function counterAdjustment(a: LinePriceAdjustment | null | undefined): CounterPriceAdjustment | null {
+  if (!a) return null;
+  return {
+    kind: a.kind,
+    originalUnitAmountCents: a.originalUnitAmountCents,
+    reason: a.reason,
+    staffId: a.staffId,
+    approval: a.approval,
+  };
+}
 
 interface KioskCartMappedParts {
   retailLines: CounterRetailLine[];
@@ -46,6 +63,8 @@ export function mapKioskCartToCounterParts(
         productTitle: line.title,
         quantity: Math.max(1, Math.trunc(line.quantity) || 1),
         unitAmountCents: Math.max(0, Math.trunc(line.unitAmountCents)),
+        priceAdjustment: counterAdjustment(line.payload.priceAdjustment),
+        note: line.payload.note?.trim() || null,
       });
       continue;
     }
@@ -86,6 +105,7 @@ export function mapKioskCartToCounterParts(
         notes: p.notes ?? null,
         signatureDataUrl: p.signatureDataUrl ?? null,
         signatureStrokes: p.signatureStrokes,
+        priceAdjustment: counterAdjustment(p.priceAdjustment),
       };
       services.push(mapped);
     }

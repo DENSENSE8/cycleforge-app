@@ -80,7 +80,12 @@ export function WarrantyClaimsTable() {
   const { status, expiringSoon, openClaimId, openClaim } = useWarrantyUrlState();
   const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
 
-  const { data: claims = [], isLoading, error } = useWarrantyClaims({ status, search, expiringSoon });
+  const {
+    data: claims = [],
+    isLoading,
+    isFetching,
+    error,
+  } = useWarrantyClaims({ status, search, expiringSoon });
 
   // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -174,7 +179,23 @@ export function WarrantyClaimsTable() {
           emptyMessage="No warranty claims logged yet."
           searchEmptyMessage="No warranty claims match these filters."
           scrollRef={scrollRef}
-          search={{ value: search, onChange: setSearch, placeholder: 'Search claims…' }}
+          // `search` rides the React Query key (dashboard-queries.ts:235) and
+          // goes out as `?search=`; `listClaims` matches the claim's SKU and its
+          // source ORDER id as well as claim number / serial / title
+          // (warranty/claims.ts:130-134), inside `LIMIT 200`. Neither `sku` nor
+          // `source_order_id` exists in WARRANTY_FIELD_CATALOG, so no layout can
+          // mount them and only the server can find a claim by the order it came
+          // off. `pending` is the live fix: `useWarrantyClaims` holds the
+          // PREVIOUS query's claims through `placeholderData`
+          // (useWarrantyClaims.ts:128) with `isLoading` false, so the map used to
+          // present one search's claims as the answer to another.
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: 'Search claims…',
+            answeredBy: 'server',
+            pending: isFetching,
+          }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
           )}

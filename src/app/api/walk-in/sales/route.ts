@@ -10,6 +10,11 @@ import { withAuth } from '@/lib/auth/withAuth';
 /**
  * GET /api/walk-in/sales?q=&status=&weekStart=&weekEnd=&orderSource=&limit=
  * Query local square_transactions table. Defaults to walk_in_sale orders only.
+ *
+ * `?q=` is the Sales board's find text and BOTH halves of the merge answer it
+ * (`getSquareTransactions` and `listCounterSalesAsSaleRows`). Handing the text
+ * to only one half would let every counter visit through as a "match" beside
+ * the Square rows that really matched.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -27,9 +32,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const orderSource = orderSourceRaw && orderSourceRaw !== 'all' ? orderSourceRaw : undefined;
     const limitRaw = Number(searchParams.get('limit') || 200);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, limitRaw)) : 200;
+    // A SEARCH IS NOT A PAGE. `?limit=` is the board's display window; honouring
+    // it while `q` narrows would answer "no match" for a sale sitting one row
+    // past the bound — a bounded search is the same lie one layer down. A
+    // searching read opens to this endpoint's ceiling instead.
+    const rowLimit = search ? 500 : limit;
 
     const rows = await getSquareTransactions(
-      { search, status, weekStart, weekEnd, orderSource, limit },
+      { search, status, weekStart, weekEnd, orderSource, limit: rowLimit },
       ctx.organizationId,
     );
     const squareOrderIds = new Set(
@@ -37,12 +47,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
     const counterRows = await listCounterSalesAsSaleRows(
       ctx.organizationId,
-      limit,
+      rowLimit,
       squareOrderIds,
+      search,
     );
     const merged = [...rows, ...counterRows]
       .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
-      .slice(0, limit);
+      .slice(0, rowLimit);
 
     return NextResponse.json({ rows: merged });
   } catch (error: unknown) {

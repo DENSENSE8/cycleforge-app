@@ -11,6 +11,15 @@
  *
  * Refresh is the desk header CTA (`DeskHeaderAction`), same altitude as every
  * other page verb — not a second title row under Inventory.
+ *
+ * ## The find text is part of the FETCH, not a pass over what arrived
+ *
+ * 50 rows is a window onto a ledger with hundreds of thousands of events, so a
+ * browser-side filter answered "no match" for anything older than about an
+ * hour, and it narrowed even the rows it had to the facts the mounted tracks
+ * paint. `?q=` is answered in SQL across the joined catalog title, serial, bin
+ * names and actor; a searching read also drops the 50-row page bound, because
+ * a bounded search is the same lie one layer down.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,11 +40,19 @@ export function PulseView() {
   const [error, setError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
 
-  const fetchEvents = useCallback(async () => {
+  const [query, setQuery] = useState('');
+
+  const fetchEvents = useCallback(async (find: string) => {
     setFetching(true);
     setError(null);
     try {
-      const res = await fetch(`/api/inventory-events?limit=${PULSE_LIMIT}`, {
+      const params = new URLSearchParams();
+      const q = find.trim();
+      // The route opens to its ceiling when `q` is present, so a `limit` under
+      // a search would only be ignored.
+      if (q) params.set('q', q);
+      else params.set('limit', String(PULSE_LIMIT));
+      const res = await fetch(`/api/inventory-events?${params}`, {
         credentials: 'same-origin',
       });
       if (!res.ok) {
@@ -58,18 +75,32 @@ export function PulseView() {
     }
   }, []);
 
+  // `query` is a FETCH KEY here. `SearchField` already debounces at 320ms, so
+  // this re-reads once per settled keystroke and adds no second timer.
   useEffect(() => {
-    void fetchEvents();
+    void fetchEvents(query);
     const handle = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void fetchEvents();
+      if (document.visibilityState === 'visible') void fetchEvents(query);
     }, REFRESH_INTERVAL_MS);
     return () => window.clearInterval(handle);
-  }, [fetchEvents]);
+  }, [fetchEvents, query]);
+
+  const search = useMemo(
+    () => ({
+      value: query,
+      onChange: setQuery,
+      placeholder: 'Filter activity…',
+      answeredBy: 'server' as const,
+      pending: fetching,
+    }),
+    [query, fetching],
+  );
 
   const sheet = useInventoryEventsSpreadsheet({
     events: events ?? [],
     loading: events === null && fetching,
     emptyMessage: error ?? 'No inventory events yet.',
+    search,
   });
 
   const refreshAction = useMemo(
@@ -79,12 +110,12 @@ export function PulseView() {
         size="sm"
         icon={<RefreshCw />}
         loading={fetching}
-        onClick={() => void fetchEvents()}
+        onClick={() => void fetchEvents(query)}
       >
         Refresh
       </DeskHeaderAction>
     ),
-    [fetchEvents, fetching],
+    [fetchEvents, fetching, query],
   );
 
   return (

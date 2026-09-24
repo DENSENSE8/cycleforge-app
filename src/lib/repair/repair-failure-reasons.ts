@@ -18,8 +18,8 @@ interface RepairFailureReason {
 }
 
 export const REPAIR_FAILURE_REASONS: readonly RepairFailureReason[] = [
-  { code: 'PLEASE_WAIT', label: 'Please wait' },
-  { code: 'SKIP', label: 'Skip' },
+  // PLEASE_WAIT ("Please wait") and SKIP ("Skip") retired 2026-09-24 — placeholder
+  // seeds, not repair reasons (migration 2026-09-24_retire_placeholder_repair_reasons.sql).
   { code: 'NO_SOUND', label: 'No sound' },
   { code: 'SPEAKER_BUZZ', label: 'Speaker Buzz' },
   { code: 'CD_ISSUES', label: 'CD Issues' },

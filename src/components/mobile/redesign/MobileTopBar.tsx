@@ -66,6 +66,12 @@ function MobilePageTitle() {
  * {@link MobileActionSlotRegistrar}, which paints immediately LEFT of scan; a
  * page must never mount a second scan CTA of its own.
  *
+ * That control carries a SECOND act — press-and-hold (or `Alt+Enter`) routes to
+ * `/m/search`. It lives on the gesture rather than in this bar because the bar's
+ * whole rule is "two controls, and that is the whole bar"; Find earns no third
+ * seat here and, per the `nav-registry` ruling of 2026-09-14, no drawer row
+ * either. See `mobile-scan-cta.tsx` for the ruling and the gesture's guards.
+ *
  * That slot replaced an `actions` **prop** (removed 2026-09-15). The prop was
  * unreachable for its whole life: the only mount site is the host shell, which
  * renders the page as `children` and cannot know its verbs, so no caller could

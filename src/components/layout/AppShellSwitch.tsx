@@ -37,6 +37,14 @@ import type { AuthSessionUser } from '@/contexts/AuthContext';
 const WarehouseShell = dynamic(() =>
   import('@/components/layout/WarehouseShell').then((m) => m.WarehouseShell),
 );
+/**
+ * The counter tablet's floor — its own chunk for the same reason as the
+ * warehouse one: a kiosk path must not download the operator client it never
+ * renders. See `KioskAppShell`.
+ */
+const KioskAppShell = dynamic(() =>
+  import('@/components/layout/KioskAppShell').then((m) => m.KioskAppShell),
+);
 
 export function AppShellSwitch({
   publicChrome,
@@ -67,10 +75,13 @@ export function AppShellSwitch({
     );
   }
 
+  if (kioskHost) {
+    return <KioskAppShell initialUser={initialUser}>{children}</KioskAppShell>;
+  }
+
   return (
     <WarehouseShell
       initialUser={initialUser}
-      kioskHost={kioskHost}
       mobileTree={mobileTree}
       shellSeed={shellSeed}
     >

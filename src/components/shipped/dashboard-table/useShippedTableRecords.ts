@@ -31,9 +31,23 @@ const SPINE_FIRST = process.env.NEXT_PUBLIC_SHIPPED_SPINE_FIRST === 'true';
 const SHIPPED_PHASE: 'spine' | 'full' = SPINE_FIRST ? 'spine' : 'full';
 
 /**
- * Fetches the shipped records (week query or search), runs the type +
+ * Fetches the shipped records (week buckets or all-time), runs the type +
  * carrier/status/exception/outbound filter pipeline, and attaches the derived
  * outbound state. Also wires the dashboard refresh events to query invalidation.
+ *
+ * ## The find is the SERVER's answer, not a pass over the page
+ *
+ * `normalizedSearch` rides the fetch key (`/api/packerlogs?q=`). It has to: this
+ * feed is a WINDOW — each week bucket asks for the newest `SHIPPED_WEEK_PAGE_SIZE`
+ * scans and nothing more. Narrowing that page in memory made the desk answer
+ * "no shipped orders found" for a scan that merely sat below the ceiling, which
+ * is the desk asserting an absence it was never shown. The route keeps the week
+ * bounds and drops only the page bound when `q` is present, so the reply is
+ * every match INSIDE the operator's period.
+ *
+ * Everything after the fetch still runs: type, carrier, status, exceptions and
+ * `?ostatus` are FACETS over whatever came back, and the week clip below still
+ * trims the route's ±1-day timezone padding. Only the free-text pass moved.
  *
  * Returns the raw `query` (for loading/fetching flags) alongside the fully
  * filtered, derived records that the grouping + view consume.
@@ -51,6 +65,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     statusFilter,
     obStatus,
     matchesOutbound,
+    normalizedSearch,
   } = filters;
 
   const queryClient = useQueryClient();
@@ -62,14 +77,29 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   // week-bucketed, so that mode stays a single query.
   const allTimeMode = !effectiveWeekStart || !effectiveWeekEnd;
 
-  // "Load more" paging: each step raises the per-week (and all-time) row ceiling
-  // by one page. Reset to page 1 whenever the window / filters change so a new
-  // view never inherits a stale expanded ceiling.
+  /*
+   * "Load more" paging: each step raises the per-week (and all-time) row ceiling
+   * by one page. Reset to page 1 whenever the window / filters change so a new
+   * view never inherits a stale expanded ceiling.
+   *
+   * `normalizedSearch` is in that reset list because a search REPLACES the page
+   * it was typed over: the searched fetch drops the page bound entirely, so a
+   * multiplier grown on the unsearched week would survive into the cleared
+   * search and silently re-ask for pages nobody pressed for.
+   */
   const [pageMultiplier, setPageMultiplier] = useState(1);
   const fetchLimit = pageMultiplier * SHIPPED_WEEK_PAGE_SIZE;
   useEffect(() => {
     setPageMultiplier(1);
-  }, [effectiveWeekStart, effectiveWeekEnd, effPackedBy, effTestedBy, effStaffId, shippedFilter]);
+  }, [
+    effectiveWeekStart,
+    effectiveWeekEnd,
+    effPackedBy,
+    effTestedBy,
+    effStaffId,
+    shippedFilter,
+    normalizedSearch,
+  ]);
   const loadMore = useCallback(() => setPageMultiplier((m) => m + 1), []);
 
   const weekBuckets = useShippedWeekBuckets({
@@ -79,6 +109,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     testedBy: effTestedBy,
     staffId: effStaffId ?? undefined,
     shippedFilter,
+    searchTerm: normalizedSearch,
     enabled: !allTimeMode,
     limit: fetchLimit,
     phase: SHIPPED_PHASE,
@@ -92,6 +123,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       testedBy: effTestedBy,
       staffId: effStaffId ?? undefined,
       shippedFilter,
+      searchTerm: normalizedSearch,
       limit: fetchLimit,
       phase: SHIPPED_PHASE,
     }),
@@ -255,12 +287,23 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   const searchMeta = null;
   const isResolvingSearch = false;
 
-  // Truncation surfacing: a week/all-time fetch that filled its
-  // ceiling has more rows on the server. Expose it + a loader so the table can
-  // offer an explicit "Load more" instead of silently dropping the older tail.
-  const isTruncated = allTimeMode
-    ? (allTimeQuery.data?.length ?? 0) >= fetchLimit
-    : weekBuckets.truncated;
+  /*
+   * Truncation surfacing: a week/all-time fetch that filled its ceiling has more
+   * rows on the server. Expose it + a loader so the table can offer an explicit
+   * "Load more" instead of silently dropping the older tail.
+   *
+   * A SEARCH retires the pager. `/api/packerlogs?q=` answers without a page
+   * bound, so the rows on screen are already every match in the window — but
+   * `length >= fetchLimit` cannot tell that apart from a filled page, and would
+   * offer "Load more" over a complete set. Worse, pressing it re-fetches the
+   * SEARCHED window at a doubled ceiling the route ignores: a pager advertising
+   * pages of a row set that no longer exists.
+   */
+  const isTruncated = normalizedSearch
+    ? false
+    : allTimeMode
+      ? (allTimeQuery.data?.length ?? 0) >= fetchLimit
+      : weekBuckets.truncated;
   const pagination = {
     isTruncated,
     loadMore,

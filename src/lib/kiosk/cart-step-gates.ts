@@ -49,12 +49,18 @@ import {
  * way the repair flow asks its three. No eyebrow, no duplicate label inside the
  * body: ONE bold display header per step, top-left.
  *
+ * The first is "Cart", not "Items on the ticket" (operator 2026-09-23). The
+ * header's own icon, tooltip and close label already say cart — the retail
+ * word Best Buy, Shopify POS and the Apple Store app all use — and "ticket"
+ * already means two other things on this counter: the RS repair ticket and
+ * the support ticket. A third meaning is how the operator stops trusting it.
+ *
  * The last one is "Review", not "Review & pay": a drop-off takes no money at
  * all (operator 2026-09-15 — it "just prints out a receipt"), so the verb
  * belongs on the key, which `cartMoneySplit` chooses, not on a fixed header
  * that would promise a payment half these visits never make.
  */
-export const KIOSK_CART_STEPS = ['Items on the ticket', 'Contact information', 'Review'] as const;
+export const KIOSK_CART_STEPS = ['Cart', 'Contact information', 'Review'] as const;
 
 export type KioskCartStep = 0 | 1 | 2;
 

@@ -92,6 +92,8 @@ export interface DeskPageLayoutProps {
    * {@link DeskPageChromeProps.tabsLead}. Not a second CTA slot.
    */
   tabsLead?: ReactNode;
+  /** Stage shape — see `DeskPageChromeProps.stage`. */
+  stage?: 'card' | 'flush';
   className?: string;
 }
 
@@ -113,6 +115,7 @@ function DeskPageFrame({
   activeTab: activeTabOverride,
   onTabChange: onTabChangeOverride,
   tabsLead,
+  stage,
   className,
 }: DeskPageLayoutProps) {
   const nav = useDeskPageChromeTabs();
@@ -140,6 +143,7 @@ function DeskPageFrame({
       tabsLead={tabsLead}
       fullscreen={fullscreen}
       onToggleFullscreen={toggleFullscreen}
+      stage={stage}
       className={className}
     >
       {children}

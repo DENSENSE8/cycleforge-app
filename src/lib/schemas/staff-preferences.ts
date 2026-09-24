@@ -280,6 +280,12 @@ export const StaffPreferencesPutBody = z
                 ]),
               )
               .optional(),
+            /**
+             * Industrial ledger row zoom (BRIEF §4 industrial: row zoom per
+             * list, per staff). S = one 32px line, M = 3 × 32px bands
+             * (default), L = 3 × 36px bands.
+             */
+            rowZoom: z.enum(['S', 'M', 'L']).optional(),
           })
           .strict(),
       )

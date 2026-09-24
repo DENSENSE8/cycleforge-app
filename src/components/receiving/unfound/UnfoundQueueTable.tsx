@@ -192,7 +192,21 @@ export function UnfoundQueueTable() {
           loading={loading}
           emptyMessage={error ? '—' : 'Nothing in the unfound queue. Nice.'}
           searchEmptyMessage="No unfound items match these filters."
-          search={{ value: search, onChange: setUnfoundSearch, placeholder: 'Filter queue…' }}
+          // `uf_q` is the fetch input (useUnfoundQueueTable.ts:61) and the route
+          // matches it over `context` as well as the notes and the ticket id
+          // (unfound-queue/route.ts:82). NO field in UNFOUND_FIELD_CATALOG names
+          // `context` — it is the email subject / carton label the row was
+          // raised from — so the server's answer is the ONLY one that can see
+          // those rows and nothing here may re-judge it. `pending: loading`
+          // holds the body while the debounced refetch runs, so "No unfound
+          // items match" is never painted over the previous query's rows.
+          search={{
+            value: search,
+            onChange: setUnfoundSearch,
+            placeholder: 'Filter queue…',
+            answeredBy: 'server',
+            pending: loading,
+          }}
           scrollRef={scrollRef}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((row) => renderLeaf(row, visible))}</>

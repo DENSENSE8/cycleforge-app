@@ -153,7 +153,8 @@ describe('search-hits adapter', () => {
     assert.equal(view.orderId, '113-1397006-0292212');
     assert.equal(view.title, 'Bose QC45 remote');
     assert.equal(view.stateLabel, 'Shipped');
-    assert.equal(view.stateTone, 'neutral');
+    // Shipped is LIFECYCLE success — a finished row, not ordinary progress.
+    assert.equal(view.stateTone, 'done');
     assert.equal(view.tracking, '9405508106244533289572');
     assert.equal(view.platformValue, 'amazon');
     assert.equal(view.carrier, 'usps');

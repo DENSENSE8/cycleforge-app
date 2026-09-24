@@ -7,7 +7,12 @@
  */
 
 import RedesignedMobileAssignedOrders from '@/components/mobile/redesign/AssignedOrders';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 export default function MobileAssignedOrdersPage() {
-  return <RedesignedMobileAssignedOrders />;
+  return (
+    <ModeRegion mode="industrial" className="contents">
+      <RedesignedMobileAssignedOrders />
+    </ModeRegion>
+  );
 }

@@ -33,8 +33,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
-// The `-RS` → `-W` storefront rule is shared with the counter tablet's History
-// face (operator 2026-09-23: "full reversibility … a link to the Ecwid website
+// The storefront-link rule is shared with the counter tablet's History face
+// (operator 2026-09-23: "full reversibility … a link to the Ecwid website
 // via the SKU"). One rule, one module, two callers.
 import { repairStorefrontUrl } from '@/lib/repair/repair-storefront-url';
 

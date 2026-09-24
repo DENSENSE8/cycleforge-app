@@ -28,8 +28,10 @@
  * instance survives a row step.
  */
 
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from '@/components/Icons';
+import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { DateTimeValue } from '@/design-system/components/DateTimeValue';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -38,6 +40,7 @@ import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { useRegisterRightPanel } from '@/components/right-rail/useRegisterRightPanel';
 import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
+import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { workStatusChipClass, workStatusLabel } from '@/lib/work-orders/work-status-display';
 import { TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
@@ -98,122 +101,198 @@ function TaskInspectorBody({
    */
   const ticketNumber = taskDeskTicketNumber(row);
 
+  /** Task | Ticket — which face of the picked work the rail shows. */
+  const [face, setFace] = useState<'task' | 'ticket'>('task');
+  /** A new pick resets to the task record; the ticket is a deliberate view. */
+  useEffect(() => {
+    setFace('task');
+  }, [row.id]);
+  const [handoffOpen, setHandoffOpen] = useState(false);
+  const handoffRef = useRef<HTMLButtonElement>(null);
+
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="task-inspector">
       <DeskRailChromeRow onClose={onClose} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+      {/*
+       * The body scrolls ONLY on the task face. `SupportTicketDetail` owns an
+       * internal scroll port + a floating composer it measures against its
+       * host's height — inside an `overflow-y-auto` parent that height is
+       * indefinite, and measure → inset → autoscroll chased itself into
+       * "Maximum update depth exceeded" (operator report 2026-09-23). On the
+       * ticket face the rail hands over a bounded column and does not scroll.
+       */}
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col gap-3 px-4 pb-4',
+          face === 'ticket' ? 'overflow-hidden' : 'overflow-y-auto',
+        )}
+      >
         <PaneHeaderLabel
           eyebrow={taskDeskRecordLabel(row)}
           value={row.note || taskDeskRecordLabel(row)}
           valueTitle={row.note || taskDeskRecordLabel(row)}
         />
 
-        <div className="flex flex-wrap gap-2">
-          <Chip
-            label={workStatusLabel(row.status) ?? row.status}
-            toneClass={workStatusChipClass(row.status)}
-          />
-          {row.urgency === 'urgent' ? (
-            <Chip label="Urgent" toneClass="bg-surface-warning text-text-warning ring-border-soft" />
-          ) : null}
-          {overdue ? (
-            <Chip label="Past due" toneClass="bg-surface-danger text-text-danger ring-border-soft" />
-          ) : null}
-        </div>
-
-        <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
-          <Field label="Assignee">
-            <LedgerValue value={row.assignee?.name ?? null} />
-          </Field>
-          {/* NULL on every row written before `assigned_by_staff_id` existed
-              (2026-08-08d, deliberately never backfilled) — the honest face is
-              a dash, not the current user. */}
-          <Field label="Assigned by">
-            <LedgerValue value={row.assignedBy?.name ?? null} />
-          </Field>
-          <Field label="Handed over">
-            <DateTimeValue value={new Date(row.assignedAtMs).toISOString()} />
-          </Field>
-          <Field label="Started">
-            <DateTimeValue
-              value={row.startedAtMs != null ? new Date(row.startedAtMs).toISOString() : null}
-              fallback="Not started"
-            />
-          </Field>
-          <Field label="Completed">
-            <DateTimeValue
-              value={row.completedAtMs != null ? new Date(row.completedAtMs).toISOString() : null}
-              fallback="—"
-            />
-          </Field>
-        </Panel>
-
-        <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
-          <Field label="Deadline">
-            <DateRangePickerField
-              variant="compact"
-              value={row.deadlineAtMs != null ? new Date(row.deadlineAtMs) : undefined}
-              onChange={(next) => onPatch(row.id, { deadlineAt: next.toISOString() })}
-              ariaLabel="Task deadline"
-              disabled={pending}
-            />
-          </Field>
-          <Field label="Priority">
-            <div className="flex flex-wrap gap-1">
-              <Button
-                variant={row.urgency === 'urgent' ? 'primary' : 'secondary'}
-                size="sm"
-                disabled={pending}
-                onClick={() => onPatch(row.id, { priority: TASK_PRIORITY.urgent })}
-              >
-                Urgent
-              </Button>
-              <Button
-                variant={row.urgency === 'normal' ? 'primary' : 'secondary'}
-                size="sm"
-                disabled={pending}
-                onClick={() => onPatch(row.id, { priority: TASK_PRIORITY.normal })}
-              >
-                Normal
-              </Button>
-            </div>
-          </Field>
-        </Panel>
-
-        {/* The paired ticket, in the SAME renderer the scan stations mount.
-            A ticket with no provider mirror has no thread to show — the rail
-            stays a task record rather than mounting a lookup that 404s. */}
+        {/*
+         * Task · Ticket (operator 2026-09-23). The two are DIFFERENT jobs and
+         * used to share one column: a 64px-tall slice of live ticket editor
+         * crammed under the task facts, too small to read a thread in and
+         * exactly tall enough to invite an edit you cannot see. Now the rail is
+         * either the task's record OR the ticket's whole face — never both,
+         * never a miniature.
+         */}
         {ticketNumber != null ? (
-          <Panel padding="none" radius="xl" elevation="none" className="min-h-64">
-            <SupportTicketDetail ticketId={ticketNumber} embedded hideTitle />
-          </Panel>
+          <TabSwitch
+            tabs={[
+              { id: 'task', label: 'Task' },
+              { id: 'ticket', label: 'Ticket' },
+            ]}
+            activeTab={face}
+            onTabChange={(id) => setFace(id === 'ticket' ? 'ticket' : 'task')}
+          />
         ) : null}
 
-        <div className="flex flex-col gap-2">
-          <Button
-            variant="secondary"
-            disabled={pending}
-            icon={pending ? <Loader2 className="animate-spin" /> : undefined}
-            onClick={() => onPatch(row.id, { status: open ? 'DONE' : 'OPEN' })}
-          >
-            {open ? 'Mark done' : 'Reopen'}
-          </Button>
-          {open && row.startedAtMs == null ? (
-            <Button
-              variant="secondary"
-              disabled={pending}
-              onClick={() => onPatch(row.id, { status: 'IN_PROGRESS' })}
-            >
-              Start it
-            </Button>
-          ) : null}
-          {recordHref ? (
-            <Button variant="ghost" onClick={() => router.push(recordHref)}>
-              Open {taskDeskRecordLabel(row)}
-            </Button>
-          ) : null}
-        </div>
+        {face === 'ticket' && ticketNumber != null ? (
+          // The ticket takes the WHOLE body — a reading surface, not an
+          // accessory under the facts. Direct flex child with a bounded
+          // height: its root is `h-full min-h-0`, which is only honest when
+          // the host actually has a height (see the body comment above).
+          <div className="min-h-0 flex-1">
+            <SupportTicketDetail ticketId={ticketNumber} embedded />
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Chip
+                label={workStatusLabel(row.status) ?? row.status}
+                toneClass={workStatusChipClass(row.status)}
+              />
+              {row.urgency === 'urgent' ? (
+                <Chip label="Urgent" toneClass="bg-surface-warning text-text-warning ring-border-soft" />
+              ) : null}
+              {overdue ? (
+                <Chip label="Past due" toneClass="bg-surface-danger text-text-danger ring-border-soft" />
+              ) : null}
+            </div>
+
+            <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
+              <Field label="Assignee">
+                <LedgerValue value={row.assignee?.name ?? null} />
+              </Field>
+              {/* NULL on every row written before `assigned_by_staff_id` existed
+                  (2026-08-08d, deliberately never backfilled) — the honest face is
+                  a dash, not the current user. */}
+              <Field label="Assigned by">
+                <LedgerValue value={row.assignedBy?.name ?? null} />
+              </Field>
+              <Field label="Handed over">
+                <DateTimeValue value={new Date(row.assignedAtMs).toISOString()} />
+              </Field>
+              <Field label="Started">
+                <DateTimeValue
+                  value={row.startedAtMs != null ? new Date(row.startedAtMs).toISOString() : null}
+                  fallback="Not started"
+                />
+              </Field>
+              <Field label="Completed">
+                <DateTimeValue
+                  value={row.completedAtMs != null ? new Date(row.completedAtMs).toISOString() : null}
+                  fallback="—"
+                />
+              </Field>
+            </Panel>
+
+            <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
+              {/*
+               * HAND OFF — re-point the task at a different staffer. The
+               * picker is the same StageStaffAssignPopover the roster columns
+               * use, committing through the PATCH allowlist's
+               * `assigneeStaffId`, so a hand-off here is the same write the
+               * desk composer makes and lands in the new assignee's Daily.
+               */}
+              <Field label="Hand off">
+                <div>
+                  <Button
+                    ref={handoffRef as never}
+                    variant="secondary"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => setHandoffOpen(true)}
+                  >
+                    {row.assignee ? `Reassign — ${row.assignee.name}` : 'Assign to staff'}
+                  </Button>
+                  <StageStaffAssignPopover
+                    open={handoffOpen}
+                    onClose={() => setHandoffOpen(false)}
+                    anchorRef={handoffRef}
+                    label="Hand this task to"
+                    role="all"
+                    selectedStaffId={row.assignee?.id ?? null}
+                    onCommit={(staffId) => {
+                      setHandoffOpen(false);
+                      if (staffId != null) onPatch(row.id, { assigneeStaffId: staffId });
+                    }}
+                  />
+                </div>
+              </Field>
+              <Field label="Deadline">
+                <DateRangePickerField
+                  variant="compact"
+                  value={row.deadlineAtMs != null ? new Date(row.deadlineAtMs) : undefined}
+                  onChange={(next) => onPatch(row.id, { deadlineAt: next.toISOString() })}
+                  ariaLabel="Task deadline"
+                  disabled={pending}
+                />
+              </Field>
+              <Field label="Priority">
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    variant={row.urgency === 'urgent' ? 'primary' : 'secondary'}
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => onPatch(row.id, { priority: TASK_PRIORITY.urgent })}
+                  >
+                    Urgent
+                  </Button>
+                  <Button
+                    variant={row.urgency === 'normal' ? 'primary' : 'secondary'}
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => onPatch(row.id, { priority: TASK_PRIORITY.normal })}
+                  >
+                    Normal
+                  </Button>
+                </div>
+              </Field>
+            </Panel>
+
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                disabled={pending}
+                icon={pending ? <Loader2 className="animate-spin" /> : undefined}
+                onClick={() => onPatch(row.id, { status: open ? 'DONE' : 'OPEN' })}
+              >
+                {open ? 'Mark done' : 'Reopen'}
+              </Button>
+              {open && row.startedAtMs == null ? (
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={() => onPatch(row.id, { status: 'IN_PROGRESS' })}
+                >
+                  Start it
+                </Button>
+              ) : null}
+              {recordHref ? (
+                <Button variant="ghost" onClick={() => router.push(recordHref)}>
+                  Open {taskDeskRecordLabel(row)}
+                </Button>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

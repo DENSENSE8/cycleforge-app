@@ -22,6 +22,14 @@
  * The well is the WINDOW, and the window is the point: history opens on the
  * current week, never on an unbounded archive.
  *
+ * A window is exactly what makes the find a SERVER question. The week arrives
+ * as a page of the newest scans, so a substring pass over what landed could
+ * only ever search page one — and it answered "no shipped orders found" for
+ * rows it had never been handed. The text rides the fetch key instead
+ * (`/api/packerlogs?q=`, week bounds kept, page bound dropped) and the desk
+ * declares `answeredBy: 'server'` so nothing re-narrows that reply. It stays
+ * session-local state either way: a find is never a navigation.
+ *
  * `embedded` (mobile tech / packer) keeps the bare table — those hosts draw
  * their own chrome and scope the feed by props, not by URL.
  */
@@ -302,6 +310,13 @@ export function DashboardShippedTable({
     records: gridRecords,
     loading: query.isLoading,
     searchValue: filters.search,
+    /*
+     * The week fetch already answered this text in SQL (`?q=`), so the engine's
+     * substring pass must stand down. Left on, it would re-run a narrower rule
+     * over the server's reply — fewer facts, one window — and could only take
+     * rows AWAY from an answer that had already looked past the page bound.
+     */
+    searchAnsweredBy: 'server',
     onOpenRecord,
     onCloseRecord: () => undefined,
     onClearSearch: filters.clearSearch,
@@ -324,7 +339,16 @@ export function DashboardShippedTable({
         <OrderStatusTrailStage>
           <DataTable
             {...sheet}
-            search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped…' }}
+            search={{
+              value: filters.search,
+              onChange: filters.setSearch,
+              placeholder: 'Filter shipped…',
+              answeredBy: 'server',
+              // Hold the body while the searched week is in flight: the rows on
+              // screen still answer the PREVIOUS text, and painting them under
+              // the new one reads as a result set, not as a stale frame.
+              pending: query.isFetching,
+            }}
             filter={shippedFilter}
             dateMenu={dateMenu}
             exportFilename="shipped.csv"

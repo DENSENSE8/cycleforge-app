@@ -35,16 +35,32 @@ Right-pane unit work (Unbox / Testing / Triage / Shipping / Packing / Repair int
 `SectionTabsSlider` → tab-aware `StationTerminalDock`. Region contract:
 [`.claude/rules/display/station-workbench.md`](../../.claude/rules/display/station-workbench.md).
 
-### Density modes (map to spacing density tokens when building)
+### Task modes (`modes/registry.ts`)
 
-| Mode | When | Feel |
+A mode is what the operator is DOING in a region; it is orthogonal to theme.
+
+| Mode | Where | Feel |
 |---|---|---|
-| `floor` | Station / mobile scan | One focus, big state, fail loud |
-| `ops` | Daily pick+edit, boards, tables | Dense rows, inline actions |
-| `rollup` | Analytics / goals | KPI heroes, named SectionCard zones |
-| `studio` | Graph authoring | Spatial canvas; inspector secondary |
+| `industrial` | `/shipping` (desk + scan-out), `/pack`, `/m/pick`, `/m/work` | Canvas `#fafafa`, white rows, flush corners, 13px, 32px hit; motion only on the scan-status spot |
+| `triage` | `/triage`, right-rail detail occupants | Slate, 4px corners, 14px, 12px page pad |
+| `counter` | Kiosk shell (`/kiosk`, `/kiosk/v2`, `/m/consult`) | 12px corners + pill chips, 16px, 40px hit / 56px CTA, tenant `--mode-brand` |
+| `assistant` | Right-rail assistant dock, `/ai-chat` | 12px corners, 15px, 200ms enter + 1200ms pulse |
 
-Token density presets also exist as `compact` / `standard` / `spacious` in `tokens/spacing.ts` — use them under the mode above.
+Coarse pointers raise hit floors to 48px, and page padding and body text where the registry says so.
+
+- **Nesting is by REGION, one level deep:** a page region plus at most one nested
+  region (e.g. the right rail). `ModeRegion` reports a third level in development.
+  The scan bar and state colours (success/warning/danger/info/fulfillment) never change by mode.
+- **Mechanism:** wrap the region root in `<ModeRegion mode="…">`
+  (`providers/ModeRegion.tsx`; `useMode()` reads it). The registry generates
+  `[data-mode]` CSS, injected by `app/layout.tsx` as `<style id="app-mode-registry">`.
+  On light schemes the region remaps the neutral `--ds-color-*` vars, so existing
+  `bg-surface-*` / `text-text-*` / `border-border-*` adopt the mode for free. Mode-only
+  roles come from `rounded-mode(-pill)`, `p(x)-mode-page`, `min-h-mode-hit(-cta)`,
+  `bg-mode-well` / `bg-mode-bar`, `border-mode-control`, `text-mode-warn`,
+  `text-mode-body`, `duration-mode-feedback`. Look them up with `ds_tokens mode`.
+
+Token density presets (`compact` / `standard` / `spacious` in `tokens/spacing.ts`) still apply inside a mode.
 
 ### Visual principles
 
@@ -58,8 +74,24 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
 
 ### Tokens
 
+- **Cross-platform source:** `packages/design-tokens` (`@cycleforge/design-tokens`)
+  owns the colour primitives, the state tones (`STATE_TONES`: info · warning ·
+  fulfillment · danger · success), the light theme's values (`LIGHT_THEME`) and
+  the task-mode registry. `tokens/colors/base.ts`, `themes/light.ts` and
+  `modes/registry.ts` import from it — never restate a value here.
+  `pnpm tokens:build` renders `generated/tokens.css` (desktop bundle),
+  `generated/DesignTokens.swift` (iOS) and `generated/tokens.json` (design-mcp);
+  verify gate `Design tokens` (`pnpm tokens:check`) fails on any drift.
+- **Lifecycle states:** `LIFECYCLE` (package `lifecycle.ts`) is the one meaning,
+  code, word and tone of ready · urgent · packed · out of stock · shipped —
+  packed is `fulfillment` purple, shipped `success` green, everywhere. Web class
+  maps read `LIFECYCLE_CLASSES` / `STATE_TONE_CLASSES`
+  (`tokens/lifecycle.ts`); tone vocabularies read `LIFECYCLE[state].tone`.
+  `tokens/lifecycle.guard.test.ts` fails any packed/shipped entry that picks
+  its own colour. Success/warning TEXT is the -700 step (≥ 4.5:1); their fills
+  stay -600/-500.
 - Color base and semantic maps:
-  - `tokens/colors/base.ts`
+  - `tokens/colors/base.ts` (re-exports `baseColors` from the package)
   - `tokens/colors/semantic.ts` — includes `condition` palette (used/new/parts/quantity)
 - Typography:
   - `tokens/typography/families.ts`
@@ -97,7 +129,8 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   `ThemePalette` contract, the `STAFF_ACCENTS` table, and the CSS generator
   (`themeRegistryCssText()` → injected by `app/layout.tsx` as
   `<style id="app-theme-palettes">`).
-- Palettes: `themes/light.ts` (default), `themes/dark.ts`, `themes/mono.ts`
+- Palettes: `themes/light.ts` (default; values from `LIGHT_THEME` in the
+  token package), `themes/dark.ts`, `themes/mono.ts`
   (strict grayscale; collapses staff accents; keeps a muted
   success/warning/danger safety triad), `themes/slate.ts` (cool industrial).
 - Two `<html>` attributes, stamped by `src/lib/theme/theme.ts`:
@@ -289,7 +322,7 @@ value from the token SoT (`tokens/colors/semantic.ts`) — never eyeball a shade
 | Inventory alert / blocked | Red | `functional.inventoryAlert` |
 | System identifiers | Gray | `functional.identifier` |
 | Logistics / Tracking / info | Blue | `functional.logistics` |
-| Success / Inbound / passed | Green | `functional.successInbound` |
+| Success / Inbound / passed / **shipped** | Green | `functional.successInbound` |
 | Fulfillment channel | Purple | `functional.fulfillment` |
 | Queued / Pending | Yellow | `functional.queued` |
 | Brand / primary accent | Navy | `text.accent`, `background.accent` |
@@ -302,7 +335,7 @@ of one tone. These are wired as semantic Tailwind utilities (CSS vars curated in
 
 | Tone | Pill recipe | Meaning |
 |---|---|---|
-| Success | `bg-surface-success text-text-success border border-border-success` | passed / inbound / done |
+| Success | `bg-surface-success text-text-success border border-border-success` | passed / inbound / shipped / done |
 | Warning | `bg-surface-warning text-text-warning border border-border-warning` | caution / pending-late / repair |
 | Danger | `bg-surface-danger text-text-danger border border-border-danger` | failed / blocked / overdue |
 | Accent | `bg-surface-accent text-text-accent border border-border-accent` | brand / selected |

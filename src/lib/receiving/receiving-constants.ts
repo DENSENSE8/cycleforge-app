@@ -5,6 +5,7 @@ import type { ComponentType } from 'react';
 import { WORKFLOW_STAGES, workflowStageLabel } from '@/lib/receiving/workflow-stages';
 import { PackageCheck, Clock, Truck, Package } from '@/components/Icons';
 import { CONDITION_LABELS, conditionGradeTableLabel } from '@/lib/conditions';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 // Condition-grade labels live in one place now — see src/lib/conditions.ts.
 // Re-exported here so existing `from '@/lib/receiving/receiving-constants'`
@@ -76,7 +77,7 @@ const UNIT_STATUS_BADGE: Record<string, string> = {
   TESTED:   'bg-blue-100 text-blue-700',
   STOCKED:  'bg-emerald-100 text-emerald-700',
   PICKED:   'bg-indigo-100 text-indigo-700',
-  SHIPPED:  'bg-violet-100 text-violet-700',
+  SHIPPED:  LIFECYCLE_CLASSES.shipped.pill,
   RETURNED: 'bg-rose-100 text-rose-700',
   RMA:      'bg-rose-100 text-rose-700',
   SCRAPPED: 'bg-red-100 text-red-700',

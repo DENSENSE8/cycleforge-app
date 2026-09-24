@@ -2,7 +2,7 @@
  * Kiosk v2 session store — cart is the session root.
  *
  * Module-scoped `useSyncExternalStore` singleton (same idiom as the deleted
- * `salesCartStore`). Commands (Repair / Retail / Buyback / Pickup) swap the
+ * `salesCartStore`). Commands (Repair / Retail) swap the
  * center work surface only — they never clear lines. Customer face is a view
  * layer over the same snapshot.
  *
@@ -47,17 +47,34 @@ import {
   type ConsultStance,
   EMPTY_CONSULT_PRESENTATION,
 } from '@/lib/counter/consult-stance';
-import type {
-  BuybackPayload,
-  KioskCartLine,
-  KioskLineType,
-  RepairPayload,
-  RetailPayload,
+import {
+  KIOSK_LINE_MAX_QUANTITY,
+  findConsolidatableRetailLine,
+  type KioskCartLine,
+  type KioskLineType,
+  type RepairPayload,
+  type RetailPayload,
 } from '@/lib/kiosk/cart-line';
 import { KIOSK_FALLBACK_COMMAND, type KioskCommandId } from '@/lib/kiosk/commands';
 import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
+import { DEFAULT_LINE_REASONS, type KioskLineReasons } from '@/lib/kiosk/price-approval-kinds';
 
 type KioskFace = 'staff' | 'customer';
+
+/**
+ * A line removed after the customer saw it — Square's "void": it never prints,
+ * but it is recorded. The approval route audited it when the PIN was entered;
+ * the visit's submit lists it again so History can show it on the visit.
+ */
+export interface KioskVoidedLine {
+  title: string;
+  quantity: number;
+  unitAmountCents: number;
+  reason: string;
+  staffId: number;
+  staffName: string | null;
+  approval: string;
+}
 
 interface KioskSessionSnapshot {
   lines: KioskCartLine[];
@@ -70,10 +87,6 @@ interface KioskSessionSnapshot {
    * must not fight them until they clear the override.
    */
   faceManualOverride: boolean;
-  /** Prefill for pickup lookup from an RS# wedge scan. */
-  pickupPrefill: string | null;
-  /** Prefill IMEI for buyback evaluate from wedge. */
-  buybackImeiPrefill: string | null;
   /** Customer identity shared across the visit (phone unlocks create-or-match). */
   customerPhone: string;
   customerName: string;
@@ -108,6 +121,16 @@ interface KioskSessionSnapshot {
    * mirror cannot round-trip.
    */
   ticketChoice: KioskTicketChoice | null;
+  /**
+   * Lines the customer has had on their screen (Show / Verify). Removing one
+   * of these is a VOID — reason + PIN — not a quiet delete: "a line the
+   * customer already saw is evidence". Local only, like `ticketChoice`.
+   */
+  customerSeenLineIds: string[];
+  /** This visit's voids, submitted with it. Cleared with the cart. */
+  voidedLines: KioskVoidedLine[];
+  /** The org's comp / void reason lists (`OrgSettings.kiosk`). Survives a reset. */
+  lineReasons: KioskLineReasons;
 }
 
 const INITIAL: KioskSessionSnapshot = {
@@ -117,8 +140,6 @@ const INITIAL: KioskSessionSnapshot = {
   consultStance: 'work',
   presentation: { ...EMPTY_CONSULT_PRESENTATION },
   faceManualOverride: false,
-  pickupPrefill: null,
-  buybackImeiPrefill: null,
   customerPhone: '',
   customerName: '',
   customerEmail: '',
@@ -129,7 +150,22 @@ const INITIAL: KioskSessionSnapshot = {
   sharedCustomerPhoneMasked: '',
   sharedAwaitingSignatureLineIds: [],
   ticketChoice: null,
+  customerSeenLineIds: [],
+  voidedLines: [],
+  lineReasons: DEFAULT_LINE_REASONS,
 };
+
+/** `prev`, plus every line in `lines` when a customer-facing stance shows them. */
+function seenAfter(
+  prev: readonly string[],
+  stance: ConsultStance,
+  lines: readonly KioskCartLine[],
+): string[] {
+  if (stance === 'work') return [...prev];
+  const seen = new Set(prev);
+  for (const line of lines) seen.add(line.id);
+  return [...seen];
+}
 
 let snapshot: KioskSessionSnapshot = INITIAL;
 const listeners = new Set<() => void>();
@@ -167,6 +203,9 @@ let commandChosen = false;
  */
 let defaultCommand: KioskCommandId = KIOSK_FALLBACK_COMMAND;
 
+/** The org's comp / void reasons once the server has stated them; see `applyLineReasons`. */
+let lineReasons: KioskLineReasons = DEFAULT_LINE_REASONS;
+
 function emit(): void {
   for (const l of listeners) l();
 }
@@ -198,7 +237,7 @@ export const kioskSessionStore = {
   /** Reset the whole visit (Done / Next Customer). */
   resetSession(): void {
     commandChosen = false;
-    setSnapshot({ ...INITIAL, lines: [], activeCommand: defaultCommand });
+    setSnapshot({ ...INITIAL, lines: [], activeCommand: defaultCommand, lineReasons });
   },
   /** Clear lines + identity but keep the active command. */
   clearCart(): void {
@@ -210,11 +249,47 @@ export const kioskSessionStore = {
       customerEmail: '',
       customerAddress: '',
       awaitingCardSinceMs: null,
-      pickupPrefill: null,
-      buybackImeiPrefill: null,
       // The decision belongs to the VISIT it was made for; the next customer's
       // drop-off must not inherit a link to the last one's ticket.
       ticketChoice: null,
+      customerSeenLineIds: [],
+      voidedLines: [],
+    });
+  },
+  /**
+   * Adopt the ORG's comp / void reason lists (`OrgSettings.kiosk`), delivered
+   * with the `/kiosk/v2` HTML like the default command. Held module-side so a
+   * reset keeps them.
+   */
+  applyLineReasons(next: KioskLineReasons): void {
+    lineReasons = next;
+    if (snapshot.lineReasons === next) return;
+    setSnapshot({ ...snapshot, lineReasons: next });
+  },
+  /**
+   * VOID lines the customer has seen: they leave the cart, and the void
+   * (reason, who, the signed approval that already audited it) stays with the
+   * visit so its submit can list it. A mirror never gets here — removal on a
+   * desk-held session is the desk's.
+   */
+  voidLines(
+    ids: readonly string[],
+    authorized: Pick<KioskVoidedLine, 'reason' | 'staffId' | 'staffName' | 'approval'>,
+  ): void {
+    const drop = new Set(ids);
+    const voided = snapshot.lines
+      .filter((line) => drop.has(line.id))
+      .map((line) => ({
+        title: line.title,
+        quantity: line.quantity,
+        unitAmountCents: line.unitAmountCents,
+        ...authorized,
+      }));
+    setSnapshot({
+      ...snapshot,
+      lines: snapshot.lines.filter((line) => !drop.has(line.id)),
+      customerSeenLineIds: snapshot.customerSeenLineIds.filter((id) => !drop.has(id)),
+      voidedLines: [...snapshot.voidedLines, ...voided],
     });
   },
   setActiveCommand(command: KioskCommandId): void {
@@ -255,6 +330,7 @@ export const kioskSessionStore = {
       consultStance: stance,
       face,
       faceManualOverride: manual ? true : snapshot.faceManualOverride,
+      customerSeenLineIds: seenAfter(snapshot.customerSeenLineIds, stance, snapshot.lines),
     });
     if (bound && sharedWriter?.setConsultStance) {
       void sharedWriter.setConsultStance(stance);
@@ -298,12 +374,6 @@ export const kioskSessionStore = {
    */
   setTicketChoice(choice: KioskTicketChoice | null): void {
     setSnapshot({ ...snapshot, ticketChoice: choice });
-  },
-  setPickupPrefill(value: string | null): void {
-    setSnapshot({ ...snapshot, pickupPrefill: value });
-  },
-  setBuybackImeiPrefill(value: string | null): void {
-    setSnapshot({ ...snapshot, buybackImeiPrefill: value });
   },
   setAwaitingCard(active: boolean): void {
     setSnapshot({
@@ -391,6 +461,7 @@ export const kioskSessionStore = {
       consultStance: snapshot.consultStance,
       presentation: snapshot.presentation,
       faceManualOverride: snapshot.faceManualOverride,
+      lineReasons,
     });
   },
 
@@ -404,23 +475,44 @@ export const kioskSessionStore = {
     };
     // Optimistic either way; when mirrored, the edit also goes to the server and
     // the next projection reconciles it.
-    setSnapshot({ ...snapshot, lines: [...snapshot.lines, line] });
+    const lines = [...snapshot.lines, line];
+    setSnapshot({
+      ...snapshot,
+      lines,
+      // Added while the customer is looking = seen the moment it lands.
+      customerSeenLineIds: seenAfter(snapshot.customerSeenLineIds, snapshot.consultStance, [line]),
+    });
     if (snapshot.sharedSessionId !== null && sharedWriter) {
       void sharedWriter.addLine(line);
     }
     return line;
   },
+  /**
+   * Add a sale. A catalog item already on the cart at the same price gains a
+   * unit instead of a twin line (Square "Consolidate identical items"), so a
+   * repeat tile tap and a repeat barcode scan both read `2 · $8.56`.
+   */
   addRetail(input: {
     title: string;
     unitAmountCents: number;
     quantity?: number;
     payload: RetailPayload;
   }): KioskCartLine {
+    const unitAmountCents = Math.max(0, Math.trunc(input.unitAmountCents));
+    const quantity = Math.max(1, Math.trunc(input.quantity ?? 1) || 1);
+    const twin = input.payload.variationId
+      ? findConsolidatableRetailLine(snapshot.lines, input.payload.variationId, unitAmountCents)
+      : null;
+    if (twin) {
+      const next = Math.min(KIOSK_LINE_MAX_QUANTITY, twin.quantity + quantity);
+      kioskSessionStore.updateLine(twin.id, { quantity: next });
+      return { ...twin, quantity: next };
+    }
     return kioskSessionStore.addLine({
       type: 'RETAIL',
       title: input.title,
-      unitAmountCents: Math.max(0, Math.trunc(input.unitAmountCents)),
-      quantity: input.quantity ?? 1,
+      unitAmountCents,
+      quantity,
       payload: input.payload,
     });
   },
@@ -433,21 +525,6 @@ export const kioskSessionStore = {
       type: 'REPAIR',
       title: input.title,
       unitAmountCents: Math.max(0, Math.trunc(input.unitAmountCents)),
-      quantity: 1,
-      payload: input.payload,
-    });
-  },
-  addBuyback(input: {
-    title: string;
-    /** Positive offer amount — stored as negative unitAmountCents. */
-    offerCents: number;
-    payload: BuybackPayload;
-  }): KioskCartLine {
-    const offer = Math.max(0, Math.trunc(input.offerCents));
-    return kioskSessionStore.addLine({
-      type: 'BUYBACK',
-      title: input.title,
-      unitAmountCents: -offer,
       quantity: 1,
       payload: input.payload,
     });
@@ -537,14 +614,6 @@ export function useKioskSessionActions() {
       (choice: KioskTicketChoice | null) => kioskSessionStore.setTicketChoice(choice),
       [],
     ),
-    setPickupPrefill: useCallback(
-      (v: string | null) => kioskSessionStore.setPickupPrefill(v),
-      [],
-    ),
-    setBuybackImeiPrefill: useCallback(
-      (v: string | null) => kioskSessionStore.setBuybackImeiPrefill(v),
-      [],
-    ),
     setAwaitingCard: useCallback(
       (active: boolean) => kioskSessionStore.setAwaitingCard(active),
       [],
@@ -566,14 +635,6 @@ export function useKioskSessionActions() {
       }) => kioskSessionStore.addRepair(input),
       [],
     ),
-    addBuyback: useCallback(
-      (input: {
-        title: string;
-        offerCents: number;
-        payload: BuybackPayload;
-      }) => kioskSessionStore.addBuyback(input),
-      [],
-    ),
     updateLine: useCallback(
       (id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>) =>
         kioskSessionStore.updateLine(id, patch),
@@ -587,6 +648,13 @@ export function useKioskSessionActions() {
       [],
     ),
     removeLine: useCallback((id: string) => kioskSessionStore.removeLine(id), []),
+    voidLines: useCallback(
+      (
+        ids: readonly string[],
+        authorized: Pick<KioskVoidedLine, 'reason' | 'staffId' | 'staffName' | 'approval'>,
+      ) => kioskSessionStore.voidLines(ids, authorized),
+      [],
+    ),
     addLine: useCallback(
       (input: Omit<KioskCartLine, 'id'> & { id?: string }) =>
         kioskSessionStore.addLine(input),
@@ -597,6 +665,6 @@ export function useKioskSessionActions() {
 
 export function lineTypeLabel(type: KioskLineType): string {
   if (type === 'REPAIR') return 'Repair';
-  if (type === 'BUYBACK') return 'Buyback';
-  return 'Retail';
+  if (type === 'BUYBACK') return 'Trade-in';
+  return 'Sale';
 }

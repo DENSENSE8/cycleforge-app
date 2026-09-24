@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/utils/_cn';
+import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import type { TimelineTone } from '@/lib/timeline/types';
 
 /**
@@ -32,6 +33,11 @@ const TONE_CHIP: Record<TimelineTone, { base: string; selected: string }> = {
   warning: { base: 'bg-amber-50 text-amber-700 ring-amber-200', selected: 'bg-amber-100 ring-amber-400' },
   danger: { base: 'bg-rose-50 text-rose-700 ring-rose-200', selected: 'bg-rose-100 ring-rose-400' },
   success: { base: 'bg-emerald-50 text-emerald-700 ring-emerald-200', selected: 'bg-emerald-100 ring-emerald-400' },
+  fulfillment: {
+    base: `${STATE_TONE_CLASSES.fulfillment.pill} ${STATE_TONE_CLASSES.fulfillment.ring}`,
+    // Selected keeps the /10 ground (text stays ≥ 4.5:1) and strengthens the ring.
+    selected: 'ring-fill-fulfillment',
+  },
   muted: { base: 'bg-surface-canvas text-text-muted ring-border-soft', selected: 'bg-surface-sunken ring-border-emphasis' },
   default: { base: 'bg-surface-canvas text-text-muted ring-border-soft', selected: 'bg-surface-sunken ring-border-emphasis' },
 };

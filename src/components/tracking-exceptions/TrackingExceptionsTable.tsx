@@ -214,7 +214,18 @@ export function TrackingExceptionsTable() {
           emptyMessage="No exceptions in this view."
           searchEmptyMessage="No exceptions match this search."
           scrollRef={scrollRef}
-          search={{ value: search, onChange: setSearch, placeholder: 'Search tracking…' }}
+          // ALREADY server-answered: `useTrackingExceptions` spends this text
+          // on `/api/tracking-exceptions?q=`, which matches in SQL across the
+          // whole queue rather than across the 200-row page it returns.
+          // Declaring it keeps the engine from ever adding a second, narrower
+          // client pass on top, and lights the field while the fetch runs.
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: 'Search tracking…',
+            answeredBy: 'server',
+            pending: loading,
+          }}
           filter={{
             options: STATUS_OPTIONS.map((o) => ({ ...o, active: statusTab === o.id })),
             onToggle: (id) =>

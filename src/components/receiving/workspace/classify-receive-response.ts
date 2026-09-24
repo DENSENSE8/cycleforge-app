@@ -12,8 +12,6 @@ export type ReceiveResponseClassifyInput = {
   ok: boolean;
   body: unknown;
   networkError?: string;
-  /** Client 30s abort while Zoho push may still be running detached. */
-  syncTimeoutPending?: boolean;
 };
 
 type ZohoResultRow = {
@@ -32,8 +30,7 @@ type ReceiveResponseClassification = {
     | 'api_error'
     | 'http_error'
     | 'network'
-    | 'photo_policy'
-    | 'sync_pending';
+    | 'photo_policy';
   headline: string;
   detail: string;
   tone: 'emerald' | 'amber' | 'rose';
@@ -42,15 +39,6 @@ type ReceiveResponseClassification = {
 export function classifyReceiveResponse(
   r: ReceiveResponseClassifyInput,
 ): ReceiveResponseClassification {
-  if (r.syncTimeoutPending) {
-    return {
-      verdict: 'sync_pending',
-      headline: 'Inventory sync still running',
-      tone: 'amber',
-      detail:
-        'Local receive likely saved — refresh if the line stays Unboxed. Do not click Receive again.',
-    };
-  }
   if (r.networkError) {
     return {
       verdict: 'network',

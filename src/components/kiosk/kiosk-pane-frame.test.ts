@@ -29,8 +29,6 @@ const FRAME = 'src/components/kiosk/KioskPaneForm.tsx';
 /** Every center pane that wears the frame. Add a pane here when you add one. */
 const PANES = [
   'src/app/kiosk/v2/KioskRepairPane.tsx',
-  'src/app/kiosk/v2/KioskBuybackPane.tsx',
-  'src/app/kiosk/v2/KioskPickupPane.tsx',
   // Ported 2026-09-15. The cart hand-rolled the whole shape — title band,
   // line count, Void and an X on the RIGHT — which is the build the operator
   // rejected: "displaying without the header and then the X button top left
@@ -57,8 +55,19 @@ test('every kiosk pane mounts the frame instead of re-assembling one', () => {
   }
 });
 
+/**
+ * Every kiosk face below the ONE shell header band. The paperwork sheet and
+ * the customer face are not frame panes, but they sit under that same band and
+ * each once painted a titled band of its own beneath it (2026-09-23).
+ */
+const UNDER_THE_BAND = [
+  ...PANES,
+  'src/app/kiosk/v2/KioskPaperworkPanel.tsx',
+  'src/app/kiosk/v2/KioskCustomerFace.tsx',
+] as const;
+
 test('no pane can paint a second header band', () => {
-  for (const pane of PANES) {
+  for (const pane of UNDER_THE_BAND) {
     const src = read(pane);
     for (const banned of ['KIOSK_PANE_HEADER_BAND', 'KIOSK_PANE_HEADER_TITLE', 'hideHeader']) {
       assert.doesNotMatch(

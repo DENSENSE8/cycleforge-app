@@ -15,8 +15,12 @@ interface UseShippedWeekBucketsParams {
   testedBy?: number;
   staffId?: number;
   shippedFilter: ShippedTypeFilter;
-  /** False while searching / in all-time carrier-filter mode (no bucketing). */
+  /** False in all-time mode (empty window ⇒ there is nothing to bucket). */
   enabled: boolean;
+  /** Desk find text. Rides the fetch (`/api/packerlogs?q=`), never a pass over
+   *  the merged rows — a bucket is a WINDOW, so an in-memory narrowing could
+   *  only ever narrow the page, never reach the week's older matches. */
+  searchTerm?: string;
   /** Per-week row ceiling; default {@link SHIPPED_WEEK_PAGE_SIZE}. */
   limit?: number;
   /** Spine-first phase; 'spine' fetches immediate-paint columns only. */
@@ -27,7 +31,14 @@ interface ShippedWeekBucketsResult {
   rows: PackerRecord[];
   isLoading: boolean;
   isFetching: boolean;
-  /** True when any fetched week filled its ceiling (more rows exist → Load more). */
+  /**
+   * True when any fetched week filled its ceiling (more rows exist → Load more).
+   *
+   * Always false under a search: `/api/packerlogs?q=` drops its page bound, so
+   * the answer is already the whole week's matches. Reading `length >= limit`
+   * there would light "Load more" on a COMPLETE set and hand the operator a
+   * button that re-asks for a page of rows the search already superseded.
+   */
   truncated: boolean;
 }
 
@@ -50,6 +61,7 @@ export function useShippedWeekBuckets({
   staffId,
   shippedFilter,
   enabled,
+  searchTerm = '',
   limit = SHIPPED_WEEK_PAGE_SIZE,
   phase = 'full',
 }: UseShippedWeekBucketsParams): ShippedWeekBucketsResult {
@@ -59,7 +71,7 @@ export function useShippedWeekBuckets({
     queries: buckets.map(({ weekStart, weekEnd }) => ({
       // Key + fetch + TTLs come from the shared factory (SoT) so the warm-up
       // prefetch and this live query can never drift apart.
-      ...dashboardShippedWeekQuery({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, limit, phase }),
+      ...dashboardShippedWeekQuery({ weekStart, weekEnd, packedBy, testedBy, staffId, shippedFilter, searchTerm, limit, phase }),
       placeholderData: (prev: PackerRecord[] | undefined) => prev,
       enabled,
     })),
@@ -70,7 +82,8 @@ export function useShippedWeekBuckets({
       isLoading: results.some((r) => r.isLoading),
       isFetching: results.some((r) => r.isFetching),
       // A week that returned exactly `limit` rows hit the ceiling → more exist.
-      truncated: results.some((r) => (r.data?.length ?? 0) >= limit),
+      // A searched week has no ceiling to hit (the route drops it for `q`).
+      truncated: !searchTerm && results.some((r) => (r.data?.length ?? 0) >= limit),
     }),
   });
 }

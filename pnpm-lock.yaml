@@ -35,6 +35,9 @@ importers:
       '@chenglou/pretext':
         specifier: 0.0.8
         version: 0.0.8
+      '@cycleforge/design-tokens':
+        specifier: workspace:*
+        version: link:packages/design-tokens
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -460,6 +463,12 @@ importers:
         version: 5.9.3
 
   apps/web: {}
+
+  packages/design-tokens:
+    devDependencies:
+      typescript:
+        specifier: ~5.9.2
+        version: 5.9.3
 
   packages/shared:
     dependencies:

@@ -160,8 +160,10 @@ Machine checklist: `src/lib/mobile/mobile-first-surface.ts`.
 
 `OUTBOUND_WORKFLOW_SURFACES` and `OUTBOUND_WORKFLOW_STAGES` in the machine
 checklist are the root contract for Shipping / Outbound. Mobile owns the job
-sequence and completion paths. Desktop consumes the same workflow facts but
-renders a dense `DataTable`; it does **not** import mobile work rows. Stations
+sequence and completion paths. Desktop consumes the same workflow facts.
+Industrial desk pages render the industrial record ledger
+([BRIEF.md](../design-system/BRIEF.md) §4 industrial). `DataTable` remains for
+triage and admin tables. Adoption is page by page. Stations
 consume the same stage/action contract through their station host. A legacy
 route may mount the canonical mobile component, but may not gain a second nav
 door or a second status/filter implementation.

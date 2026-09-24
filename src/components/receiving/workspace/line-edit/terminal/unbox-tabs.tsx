@@ -468,7 +468,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             onClaimTicketUnlinked={onClaimTicketUnlinked}
             returnClaimPrefill={c.returnClaimPrefill ?? null}
             // Intake Ticket Displays — no All-good / QC pass·fail chips.
-            showReplyPresets={false}
           />
         ) : null,
     },

@@ -32,6 +32,8 @@ const CUSTOM_FONT_SIZES = [
   'role-micro',
   // Touch text-entry (16px, density-proof) — see tailwind.config.mjs.
   'role-field',
+  // Task-mode body text (modes/registry.ts) — size follows the region's mode.
+  'mode-body',
 ] as const;
 
 const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
@@ -55,6 +57,15 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
           ],
         },
       ],
+      // Task-mode vars (src/design-system/modes/registry.ts). Not named steps,
+      // so twMerge cannot place them unaided; registered so `rounded-mode`
+      // vs `rounded-lg` (etc.) resolve last-wins instead of both surviving.
+      rounded: [{ rounded: ['mode', 'mode-pill'] }],
+      p: [{ p: ['mode-page'] }],
+      px: [{ px: ['mode-page'] }],
+      py: [{ py: ['mode-page'] }],
+      'min-h': [{ 'min-h': ['mode-hit', 'mode-hit-cta'] }],
+      duration: [{ duration: ['mode-feedback', 'mode-press', 'mode-pulse'] }],
       // Spacing intents (tailwind.config.mjs plugin — spacing plan Phase 2).
       // Own groups so two intents of one kind conflict-resolve (last wins);
       // unregistered, twMerge would treat them as unknown classes and keep

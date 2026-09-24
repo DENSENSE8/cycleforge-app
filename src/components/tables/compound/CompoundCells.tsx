@@ -53,6 +53,7 @@ import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { ITEM_RECORD_MOBILE_STAGE } from '@/design-system/tokens/item-record-mobile';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import {
   GridRowCheckbox,
   GridSelectSquareFace,
@@ -1218,6 +1219,8 @@ export function CompoundState({
   onOpen?: () => void;
 }) {
   const tone = STATE_TONE_CLASS[view.stateTone];
+  // A lifecycle state's dot wears its LIFECYCLE colour (packed purple, shipped green).
+  const dot = view.stateLifecycle ? LIFECYCLE_CLASSES[view.stateLifecycle].dot : tone.dot;
   const next = view.nextStep ?? null;
 
   const nextNode = next ? (
@@ -1242,7 +1245,7 @@ export function CompoundState({
         tone.pill,
       )}
     >
-      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden />
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot)} aria-hidden />
       <CompoundLine>{view.stateLabel}</CompoundLine>
     </span>
   );

@@ -28,8 +28,8 @@ import {
   SIGNATURE_CAPTURE_ASPECT,
 } from '@/lib/repair/signature-geometry';
 
-const PAD = 'src/components/repair/SignaturePad.tsx';
-const CANVAS = 'src/components/repair/signature-canvas.ts';
+const PAD = 'src/components/ui/SignaturePad.tsx';
+const CANVAS = 'src/components/ui/signature-canvas.ts';
 const read = (p: string) => readFileSync(p, 'utf8');
 
 test('the aspect class is exactly the geometry law it mirrors', () => {
@@ -72,8 +72,8 @@ test('the pad owns no height of its own, and exports the ink', () => {
 /**
  * The deliberate half of the decision the handoff asked for: fullscreen is
  * NOT exempt from the aspect law, and `fillHeight` is not an escape hatch
- * from it either — it survives only so the two fixed-height STAFF wrappers
- * (`RepairIntakeForm`, `RepairPickupFlow`) keep their own layout, which this
+ * from it either — it survives only so the fixed-height STAFF wrappers
+ * (`RepairIntakeForm`, `RepairPickupFlow`, `RepairPickupSheet`) keep their own layout, which this
  * change was not about. Widening `fill` back to `|| expanded` re-creates the
  * viewport-tall canvas.
  */
@@ -90,6 +90,7 @@ test('fullscreen takes the aspect law; only the staff wrappers still fill', () =
   for (const mount of [
     'src/components/repair/RepairIntakeForm.tsx',
     'src/components/repair/RepairPickupFlow.tsx',
+    'src/components/mobile/repair/RepairPickupSheet.tsx',
   ]) {
     assert.match(read(mount), /fillHeight/, `${mount} is why the prop still exists`);
   }

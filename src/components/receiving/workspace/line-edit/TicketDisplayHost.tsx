@@ -41,7 +41,6 @@ export function TicketDisplayHost({
    * QC / All-good reply presets on the composer. Unbox and Testing Ticket
    * Displays pass `false`; Arrival / Support keep the default on.
    */
-  showReplyPresets = true,
 }: {
   row: ReceivingLineRow;
   ticketId: number | null | undefined;
@@ -51,7 +50,6 @@ export function TicketDisplayHost({
   onClaimTicketCreated: (ticketNumber: string) => void;
   onClaimTicketUnlinked: () => void;
   returnClaimPrefill?: string | null;
-  showReplyPresets?: boolean;
 }) {
   const hasTicket = ticketId != null;
   // This is the mount the operator actually clicks — the Displays column — so
@@ -88,7 +86,6 @@ export function TicketDisplayHost({
               // Ticket chat is messages-only (no floor timeline merge).
               mergeFloorTimeline={false}
               composerPlacement="host"
-              showReplyPresets={showReplyPresets}
             />
           </div>
         ) : (

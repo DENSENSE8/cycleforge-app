@@ -18,6 +18,7 @@ import type { MobileNavTabId } from '@/lib/auth/mobile-display-config';
 import { BarChart3, Inbox, ListChecks, PackageOpen, Printer } from '@/components/Icons';
 import { domainLane } from '@/lib/nav/lanes';
 import { OUTBOUND_WORKFLOW_SURFACES } from '@/lib/mobile/mobile-first-surface';
+import { MOBILE_LABEL_INTAKE_PATH } from '@/lib/shipping/orders-desk';
 import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 
 // ─── Destination tree (sidebar drawer) ───────────────────────────────────────
@@ -183,7 +184,7 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
     // `matchPrefixes` describes ROUTES, not rows: `/m/orders/[orderId]` still
     // resolves and belongs to this lane, so a deep-link there marks Outbound
     // active even though no row points at it.
-    matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/exceptions'],
+    matchPrefixes: ['/m/work', '/m/pick', '/m/pack', '/m/orders', '/m/shipping', '/m/exceptions', MOBILE_LABEL_INTAKE_PATH],
     children: [
       {
         kind: 'leaf',
@@ -214,6 +215,16 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
         id: 'exceptions',
         label: OUTBOUND_WORKFLOW_SURFACES.exceptions.label,
         href: OUTBOUND_WORKFLOW_SURFACES.exceptions.canonicalMobilePath,
+      },
+      // Label intake — the V1 label-ingestion ledger; the SAME component the
+      // desk row `/shipping/label-intake` mounts, so upload, reprocess and
+      // apply are all phone-completable.
+      {
+        kind: 'leaf',
+        id: 'label-intake',
+        label: 'Label intake',
+        href: MOBILE_LABEL_INTAKE_PATH,
+        requires: 'packing.review',
       },
     ],
   },

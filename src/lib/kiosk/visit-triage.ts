@@ -46,7 +46,7 @@ export interface KioskTriageSession {
   customerPhone: string;
   customerName: string;
   customerEmail: string;
-  /** Callers: KioskCartLedger, KioskShell, KioskTriagePanel. API: none (pure). Schema: session snapshot. User: "intake their information like name, email address, phone number, address". */
+  /** Callers: KioskCartLedger, KioskShell. API: none (pure). Schema: session snapshot. User: "intake their information like name, email address, phone number, address". */
   customerAddress?: string;
 }
 
@@ -164,7 +164,7 @@ export function collectKioskTriage(session: KioskTriageSession): KioskTriageItem
       id: 'cart:empty',
       severity: 'block',
       target: 'cart',
-      message: 'Nothing on the ticket — scan a UPC or pick from the catalog.',
+      message: 'Cart is empty — scan a barcode or tap an item in the catalog.',
     });
   }
 

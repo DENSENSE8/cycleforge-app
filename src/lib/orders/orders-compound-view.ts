@@ -11,6 +11,7 @@
  * ORDERS_QUEUE_COLUMNS.
  */
 
+import type { LifecycleState } from '@cycleforge/design-tokens';
 import {
   firstNote,
   type CompoundDelay,
@@ -62,6 +63,18 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
     return 'done';
   }
   return 'neutral';
+}
+
+/**
+ * The lifecycle state an orders lane label names, if any — lets the pill's dot
+ * wear LIFECYCLE's colour (packed purple, shipped green) while the tone above
+ * stays the grid's no-colour vocabulary.
+ */
+export function ordersStateLifecycle(stateLabel: string | null | undefined): LifecycleState | undefined {
+  const s = String(stateLabel || '').toUpperCase();
+  if (s.includes('PACKED')) return 'packed';
+  if (s.includes('SHIPPED')) return 'shipped';
+  return undefined;
 }
 
 export interface OrdersCompoundParts {
@@ -514,6 +527,7 @@ export function ordersCompoundView(
     // surface to say what `''` already says here.
     stateLabel: parts.stateLabel ?? '',
     stateTone: ordersStateTone(parts.stateLabel),
+    stateLifecycle: ordersStateLifecycle(parts.stateLabel),
     stateTip: stateTipParts.length > 0 ? stateTipParts.join(' · ') : undefined,
     orderedAt: ordersOrderedAt(record),
     delay,

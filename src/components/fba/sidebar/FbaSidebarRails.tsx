@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { Button } from '@/design-system/primitives';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { SidebarRailShell } from '@/components/sidebar/SidebarRailShell';
 import { FbaActiveShipments } from '@/components/fba/sidebar/FbaActiveShipments';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
@@ -65,11 +66,13 @@ export function fbaRailIdentity(row: Pick<FbaItemRow, 'item_id' | 'fnsku' | 'sku
   };
 }
 
+// PACKED reads LIFECYCLE (fulfillment purple); LABEL_ASSIGNED ("Combined") is
+// info so the two adjacent stages never share a hue — the badge's tone too.
 const ITEM_DOT: Record<string, string> = {
   PLANNED: 'bg-fill-warning',
   TESTED: 'bg-fill-success',
-  PACKED: 'bg-fill-info',
-  LABEL_ASSIGNED: 'bg-fill-fulfillment',
+  PACKED: LIFECYCLE_CLASSES.packed.dot,
+  LABEL_ASSIGNED: 'bg-fill-info',
 };
 
 function FbaItemRail({ statuses, eyebrowTitle }: { statuses: string[]; eyebrowTitle: string }) {

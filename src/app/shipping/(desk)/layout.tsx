@@ -1,8 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
+import {
+  ORDERS_DESK_CONTEXT_KEY,
+  ORDERS_DESK_SUPPORT_CONTEXT,
+  SHIPPING_ORDERS_PATH,
+  parseOrdersDeskContext,
+} from '@/lib/shipping/orders-desk';
 
 /**
  * The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions.
@@ -68,5 +75,20 @@ export default function ShippingDeskLayout({ children }: { children: ReactNode }
     [cagedCount],
   );
 
-  return <DeskPageLayout decorateTabs={decorateTabs}>{children}</DeskPageLayout>;
+  // To ship is the first industrial desk (BRIEF §11): its record ledger runs
+  // edge to edge on the mode canvas. Every other tab keeps the card until it
+  // adopts the ledger itself. Support › Inquiries aliases this route with the
+  // slot table, so it keeps the card too.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const flush =
+    pathname === SHIPPING_ORDERS_PATH &&
+    parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) !==
+      ORDERS_DESK_SUPPORT_CONTEXT;
+
+  return (
+    <DeskPageLayout decorateTabs={decorateTabs} stage={flush ? 'flush' : 'card'}>
+      {children}
+    </DeskPageLayout>
+  );
 }

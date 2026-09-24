@@ -35,8 +35,16 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
     kind: parseKioskVisitKind(params.get('kind')),
   });
 
+  // `relaxed` rides with the rows, never as a separate lookup: a client that
+  // has to ask a second question to learn whether these are near matches is a
+  // client that will paint them as exact ones for a frame.
   return NextResponse.json(
-    { visits: page.rows, nextCursor: page.nextCursor },
+    {
+      visits: page.rows,
+      nextCursor: page.nextCursor,
+      relaxed: page.relaxed,
+      relaxedTerm: page.relaxedTerm,
+    },
     { headers: NO_STORE },
   );
 });

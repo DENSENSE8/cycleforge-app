@@ -9,7 +9,7 @@ import { DataTable, downloadDataTableCsv, type DataTableExport } from '@/compone
 import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
-import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
+import { useToShipChrome, type ToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import {
   ORDER_EXPORT_COLUMNS,
@@ -55,6 +55,7 @@ import { PaperworkWalkHost } from '@/components/outbound/orders/paperwork/Paperw
 import { DeskExportMenuRegistrar } from '@/design-system/components/DeskActionSlot';
 import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
+import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
 
 /**
  * Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping
@@ -105,6 +106,13 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
+  /**
+   * Paint the rows as the industrial record ledger (`OutboundOrdersLedger`)
+   * instead of the slot `DataTable`. Only the To-ship desk sets it
+   * (`DashboardOrdersView`); every other mount keeps the slot table. The feed,
+   * filters, fetch and overlays above the sheet are identical either way.
+   */
+  ledger?: boolean;
 }
 
 /** Stable empty page. `query.data || []` minted a fresh array on every render
@@ -180,6 +188,7 @@ export function UnshippedTable({
   lockedFulfillmentState,
   awaitingMessage,
   onPrimaryPainted,
+  ledger = false,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -272,15 +281,41 @@ export function UnshippedTable({
   ]);
 
 
+  /**
+   * The desk's chrome — lifted HERE, above the sheet that draws it, because the
+   * find field is now part of the QUERY.
+   *
+   * It used to be resolved inside `UnshippedSheet`, one component below the
+   * fetch, which is exactly why the search could only ever narrow the page in
+   * memory: the value never reached the thing that decides which orders arrive.
+   * To-ship holds a bounded page (`limit: 200` + "load more") of ~4.8k orders,
+   * so an order on page 3 answered "No orders found" while sitting in the
+   * warehouse. `/api/orders?q=` already searches the whole in-warehouse scope
+   * UNBOUNDED (`fetchUnshippedOrdersData` drops `listShape` / `stage` / `limit`
+   * when `q` is present) — the plumbing was there, unplugged.
+   *
+   * The value stays session-local state (`useDashboardSearchController`); it is
+   * spent on a react-query key, never on `router.replace`, so the table is not
+   * remounted per keystroke (DataTable rule 3).
+   */
+  const chrome = useToShipChrome({ blockedQueue: lockedFulfillmentState === 'BLOCKED' });
+  const searchQuery = chrome.search.value;
+
   const query = useQuery({
     ...unshippedOrdersQuery({
+      // The find text IS part of the fetch now. `fetchUnshippedOrdersData`
+      // reads it as `?q=` and, while it is set, drops `listShape` / `stage` /
+      // `limit` so the match runs over the whole in-warehouse scope instead of
+      // over whichever 200 rows happened to be loaded.
+      searchQuery,
       packedBy,
       testedBy,
       staffId,
       strictSearchScope,
       // Coarse stage facet now filtered SERVER-side (Phase 1). Absent = all.
       stage: stageFilter === 'all' ? undefined : stageFilter,
-      // Bounded page (Phase 2). Find-bar filters the painted page client-side.
+      // Bounded page (Phase 2) — the unsearched queue only. The fetch ignores
+      // it while a query is present, and so does the "load more" control below.
       limit: rowLimit,
       // A desk locked to BLOCKED asks the server for the blocked scope — the
       // To-ship scope would never hand it a label-less blocked row to filter.
@@ -861,7 +896,10 @@ export function UnshippedTable({
   // denominator than the bar's — two answers to "how many are left", stacked.
   // It also mounted after first paint, shoving the last data row down while the
   // operator was already reading.
-  const showLoadMore = !cagedOnly && stageTotal > rowLimit;
+  // A SEARCH is already unbounded, so there is no next page to fetch — and
+  // `stageTotal` counts the unsearched lane, so leaving the control up would
+  // offer "load more" against a denominator the search does not use.
+  const showLoadMore = !cagedOnly && !searchQuery.trim() && stageTotal > rowLimit;
   const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + fetchWindow) : undefined;
 
   const labelsCta = onToShipDesk ? (
@@ -899,7 +937,25 @@ export function UnshippedTable({
         the table flash `tests/e2e/to-ship-paperwork-walk.spec.ts` pins.
       */}
       <OrderStatusTrailStage>
+        {ledger ? (
+          <OutboundOrdersLedger
+            chrome={chrome}
+            searchPending={!cagedOnly && query.isFetching}
+            records={records}
+            loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
+            onOpenRecord={handleOpenRecord}
+            onCloseRecord={dispatchCloseShippedDetails}
+            railSelection={railSelection}
+            onLoadMore={onLoadMore}
+            banner={queueError ? <QueueStaleBand onRetry={retryQueue} /> : null}
+            searchEmptyTitle={searchEmptyTitle}
+            searchResultLabel={searchResultLabel}
+            clearSearchLabel={clearSearchLabel}
+          />
+        ) : (
         <UnshippedSheet
+          chrome={chrome}
+          searchPending={!cagedOnly && query.isFetching}
           records={records}
           loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
           selectMode={selectMode}
@@ -916,6 +972,7 @@ export function UnshippedTable({
           onRetryStale={retryQueue}
           shortageDesk={lockedFulfillmentState === 'BLOCKED'}
         />
+        )}
         {paperworkId != null && onToShipDesk ? (
           <PaperworkWalkHost
             rows={walkRows.length > 0 ? walkRows : records}
@@ -980,6 +1037,8 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
  * calc. Column header sticks inside the grid; no page-level sticky.
  */
 function UnshippedSheet({
+  chrome,
+  searchPending,
   records,
   loading,
   onOpenRecord,
@@ -996,6 +1055,14 @@ function UnshippedSheet({
   onRetryStale,
   shortageDesk = false,
 }: {
+  /**
+   * Resolved by the FEED above, not here: the find field is an input to the
+   * fetch, so the component that owns the fetch has to own the value. See the
+   * docblock on the `useToShipChrome` call in {@link UnshippedTable}.
+   */
+  chrome: ToShipChrome;
+  /** The queue fetch for the CURRENT find text is still running. */
+  searchPending: boolean;
   records: ShippedOrder[];
   loading: boolean;
   onOpenRecord: (record: ShippedOrder) => void;
@@ -1018,12 +1085,15 @@ function UnshippedSheet({
   /** Pending (ex-Shortage) desk — coverage column, blocked chrome total. */
   shortageDesk?: boolean;
 }) {
-  const chrome = useToShipChrome({ blockedQueue: shortageDesk });
   const sheet = useOrdersSpreadsheet({
     ariaLabel: shortageDesk ? 'Pending out-of-stock orders' : 'Shelved unshipped orders',
     records,
     loading,
     searchValue: chrome.search.value,
+    // `/api/orders?q=` ran the match over the whole scope; `records` ARE the
+    // hits. Re-running `filterShippedOrdersByQuery` over them would narrow the
+    // server's answer by a rule that reads fewer facts.
+    searchAnsweredBy: 'server',
     onOpenRecord,
     onCloseRecord: () => {
       dispatchCloseShippedDetails();
@@ -1051,6 +1121,7 @@ function UnshippedSheet({
       <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
         {...sheet}
         {...chrome}
+        search={{ ...chrome.search, answeredBy: 'server', pending: searchPending }}
         copyExport={copyExport}
         copyExportPlacement={copyExportPlacement}
         exportFilename="to-ship.csv"

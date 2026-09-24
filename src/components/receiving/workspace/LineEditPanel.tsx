@@ -31,10 +31,7 @@ import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
-import {
-  ReceiveFeedbackRegion,
-  type ReceiveReconcileStatus,
-} from './ReceiveFeedbackRegion';
+import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
 import { WeldedStack } from './WeldedFeedbackPanel';
 import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
@@ -799,20 +796,13 @@ export function LineEditPanel({
   const [remembered, setRemembered] = useState<{
     lineId: number;
     result: ReceiveResult;
-    reconcileStatus: ReceiveReconcileStatus;
   } | null>(null);
   const [replayFor, setReplayFor] = useState<number | null>(null);
 
   useEffect(() => {
     if (!c.receiveResult) return;
-    setRemembered({ lineId: row.id, result: c.receiveResult, reconcileStatus: 'pending' });
+    setRemembered({ lineId: row.id, result: c.receiveResult });
   }, [c.receiveResult, row.id]);
-
-  const rememberReconcile = useCallback((status: ReceiveReconcileStatus) => {
-    setRemembered((prev) =>
-      prev && prev.reconcileStatus !== status ? { ...prev, reconcileStatus: status } : prev,
-    );
-  }, []);
 
   // The line guard, not a reset effect: switching cartons makes the remembered
   // verdict unreadable rather than racing an effect to clear it.
@@ -1117,8 +1107,6 @@ export function LineEditPanel({
                           receiving={c.receiving}
                           receiveResult={feedbackResult}
                           replay={replaying}
-                          reconcileStatus={recentVerdict?.reconcileStatus}
-                          onReconcileStatus={rememberReconcile}
                           responseExpanded={c.responseExpanded}
                           setResponseExpanded={c.setResponseExpanded}
                           onDismiss={() => {
@@ -1228,7 +1216,6 @@ export function LineEditPanel({
                     onClaimTicketCreated={onClaimTicketCreated}
                     onClaimTicketUnlinked={onClaimTicketUnlinked}
                     returnClaimPrefill={c.returnClaimPrefill}
-                    showReplyPresets={false}
                   />
                 ) : null}
               </StationWorkbench>

@@ -80,7 +80,7 @@ test('an empty ticket un-fills Items, not just Pay', () => {
   // leave the Items segment filled on a visit with no items in it.
   const noLines = clean({ lines: [] });
   assert.deepEqual(cartStepGates(noLines), [false, true, false]);
-  assert.match(cartStepBlockReason(noLines, 0) ?? '', /Nothing on the ticket/);
+  assert.match(cartStepBlockReason(noLines, 0) ?? '', /Cart is empty/);
 });
 
 test('a line blocker gates Items and Pay, never Customer', () => {

@@ -56,6 +56,15 @@ export interface UseTechLogsOptions {
   limit?: number;
   /** When false, skip the fetch (consumer reads from a shared feed instead). */
   enabled?: boolean;
+  /**
+   * The bench find box, already debounced by `SearchField` (320ms) — no second
+   * debounce here, the text just becomes part of the fetch key.
+   *
+   * It rides the KEY, not the URL: `DataTable`'s standing law is that the
+   * search value is session-local, because a `router.replace` per keystroke
+   * soft-navigates and remounts the table under the operator's cursor.
+   */
+  search?: string;
 }
 
 export type TechLogsScope = number | 'all';
@@ -75,11 +84,21 @@ function prependTechRecordToMatchingWeekCaches(
   const queries = queryClient.getQueriesData<TechRecord[]>({
     queryKey: ['tech-logs', techId],
   });
+  /**
+   * `q: ''` — the FEED caches, the only ones a fresh scan may be spliced into.
+   * A searched cache is the server's answer to a query TEXT; this record has
+   * never been matched against it, so prepending would paint a row the find
+   * box says should not be there. Counting them in `singleWeekCache` would
+   * also silently turn off the single-cache shortcut below.
+   */
+  const feedQueries = queries.filter(
+    ([key]) => !String((key[2] as { q?: string } | undefined)?.q ?? '').trim(),
+  );
 
   /** Only one week cache mounted — week bounds can disagree with PST (timezone); always prepend. */
-  const singleWeekCache = queries.length === 1;
+  const singleWeekCache = feedQueries.length === 1;
 
-  for (const [queryKey, prev] of queries) {
+  for (const [queryKey, prev] of feedQueries) {
     if (!prev || !Array.isArray(prev)) continue;
     const weekPart = queryKey[2] as { weekStart?: string; weekEnd?: string } | undefined;
     const start = String(weekPart?.weekStart ?? '').trim();
@@ -108,7 +127,9 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
     weekRange,
     limit = 1000,
     enabled: enabledOption = true,
+    search = '',
   } = options;
+  const searchTerm = search.trim();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
@@ -122,6 +143,7 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
       weekStart: weekRange?.startStr ?? '',
       weekEnd: weekRange?.endStr ?? '',
       limit,
+      q: searchTerm,
     },
   ] as const;
 
@@ -130,8 +152,12 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
     queryFn: async () => {
       const params = new URLSearchParams({
         techId: techId === 'all' ? 'all' : String(techId),
-        limit: String(limit),
       });
+      // A searching fetch sends no page bound: the route drops it so a match
+      // outside the newest `limit` scans of the week is still found — the
+      // defect this path exists to close.
+      if (searchTerm) params.set('q', searchTerm);
+      else params.set('limit', String(limit));
       if (weekRange) {
         params.set('weekStart', weekRange.startStr);
         params.set('weekEnd', weekRange.endStr);

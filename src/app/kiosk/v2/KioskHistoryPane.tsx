@@ -124,6 +124,38 @@ export function KioskHistoryPane({
   }, [actor, touch]);
 
   /**
+   * THE RIGHT PANE IS NEVER BLANK (operator 2026-09-23: *"it must never display
+   * empty states like this — it should always display a selection of the most
+   * recent one"*).
+   *
+   * A master/detail face that opens on "select a record" spends the operator's
+   * first tap on a question the list already answers: the newest record is what
+   * they want in nine cases out of ten, and it is row one. Square's iPad
+   * transaction list and Polaris' index/detail pages both open on the first
+   * row for exactly this reason.
+   *
+   * It re-points, not just seeds: after a search the previously open record is
+   * usually not in the result set any more, and leaving it open beside a rail
+   * that no longer lists it is the same blank-stare problem wearing a record.
+   * So the rule is "the selection is always a row the rail is showing", which
+   * is also why this watches `history.rows` and not just the first load.
+   *
+   * `history.loading` gates it: during the refetch the rail holds the PREVIOUS
+   * page, and re-pointing at its row one would open a record the operator is
+   * about to stop seeing.
+   */
+  useEffect(() => {
+    if (!actor || history.loading) return;
+    const first = history.rows[0];
+    if (!first) {
+      if (selectedKey !== null) setSelectedKey(null);
+      return;
+    }
+    if (selectedKey != null && history.rows.some((row) => row.key === selectedKey)) return;
+    setSelectedKey(first.key);
+  }, [actor, history.loading, history.rows, selectedKey]);
+
+  /**
    * The counter transaction behind the open row, when there is one. A
    * standalone repair has none — receipt, edit and label stamp all hang off the
    * VISIT routes, so they are unavailable rather than aimed at an id that
@@ -270,6 +302,8 @@ export function KioskHistoryPane({
           hasMore={history.hasMore}
           error={history.error}
           search={history.search}
+          relaxed={history.relaxed}
+          relaxedTerm={history.relaxedTerm}
           onLoadMore={history.loadMore}
           selectedKey={selectedKey}
           onSelect={setSelectedKey}

@@ -43,7 +43,7 @@
 import { useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { CompoundPlaneRow } from '@/components/tables/compound/CompoundPlaneRow';
 import { compoundRowActivationProps } from '@/components/tables/compound/compound-row-activation';
-import type { DataTableProps } from '@/components/tables/DataTable';
+import type { DataTableProps, DataTableSearch } from '@/components/tables/DataTable';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import type { SlotTableFieldsMenu } from '@/components/tables/useSlotTableLayout';
 import type {
@@ -125,7 +125,7 @@ export interface UseCompoundSpreadsheetOptions<
   sort: K | null;
   dir: GridSortDir | null;
   onSortChange: (key: K, dir: 'asc' | 'desc') => void;
-  search: { value: string; onChange: (next: string) => void; placeholder?: string };
+  search: DataTableSearch;
   loading: boolean;
   emptyMessage: string;
   ariaLabel?: string;
@@ -330,14 +330,30 @@ export function useCompoundSpreadsheet<
    * The one search box: a row matches when any readable fact's resolved text
    * contains the query. One resolver feeds this and the comparator, so the
    * search can never read different text than the sort orders by.
+   *
+   * ## Why `answeredBy: 'server'` skips it entirely
+   *
+   * This pass can only see the rows React is holding. On a surface whose rows
+   * arrive WINDOWED — `/api/packerlogs?limit=1000`, `LIMIT 200` on To-ship,
+   * a cursor page — a query that matches a record on an unloaded page finds
+   * nothing here, and the table renders its no-results state for a record that
+   * exists. That is the engine asserting an absence it has no standing to
+   * assert.
+   *
+   * Such a surface declares {@link DataTableSearch.answeredBy} `'server'` and
+   * spends `search.value` on its fetch key instead. `rows` are then ALREADY
+   * the answer, and re-filtering them here would be a second, narrower pass
+   * over a set that was matched by different (and better) rules — the server's
+   * `ILIKE` over columns no track mounts. So the engine stands down.
    */
   const filtered = useMemo(() => {
+    if (search.answeredBy === 'server') return [...rows];
     const q = search.value.trim().toLowerCase();
     if (!q) return [...rows];
     return rows.filter((row) =>
       searchFactIds.some((fact) => factText(resolve, row, fact).toLowerCase().includes(q)),
     );
-  }, [rows, search.value, searchFactIds, resolve]);
+  }, [rows, search.answeredBy, search.value, searchFactIds, resolve]);
 
   /**
    * Order by the SORTED FACT, never by the column key: track keys are slot

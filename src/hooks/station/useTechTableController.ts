@@ -26,10 +26,27 @@ export function useTechTableController({ staffId }: UseTechTableControllerOption
   const weekOffset = useSharedScope ? sharedFeed.weekOffset : localWeekOffset;
   const setWeekOffset = useSharedScope ? sharedFeed.setWeekOffset : setLocalWeekOffset;
 
+  /**
+   * The find box text, ANSWERED BY THE SERVER — it rides `useTechLogs`' fetch
+   * key, so `records` already ARE the answer for it and nothing filters them
+   * again here. It follows `weekOffset`'s ownership rule exactly: under the
+   * Shipping History provider the rail and the tab share ONE feed, so they
+   * must share the query too — a local copy would send this table's text to a
+   * fetch this hook does not own and the box would answer with the rail's rows.
+   */
+  const [localQuery, setLocalQuery] = useState('');
+  const query = useSharedScope ? sharedFeed.query : localQuery;
+  const setQuery = useSharedScope ? sharedFeed.setQuery : setLocalQuery;
+
   const localWeekRange = useMemo(() => computeWeekRange(localWeekOffset), [localWeekOffset]);
   const { data: localRecords = [], isLoading: localLoading, isFetching: localFetching } = useTechLogs(
     staffId,
-    { weekOffset: localWeekOffset, weekRange: localWeekRange, enabled: !useSharedScope },
+    {
+      weekOffset: localWeekOffset,
+      weekRange: localWeekRange,
+      search: localQuery,
+      enabled: !useSharedScope,
+    },
   );
 
   const [removedRowKeys, setRemovedRowKeys] = useState<Set<string>>(new Set());
@@ -79,6 +96,8 @@ export function useTechTableController({ staffId }: UseTechTableControllerOption
     getRowKey,
     removedRowKeys,
     setRemovedRowKeys,
+    query,
+    setQuery,
     scrollRef,
   };
 }

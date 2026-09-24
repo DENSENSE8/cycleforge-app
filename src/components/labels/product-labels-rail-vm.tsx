@@ -5,6 +5,7 @@
 
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
+import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
 /** Coarse unit lifecycle → Unbox-style rail status dot. */
 const STATUS_DOT: Record<string, string> = {
@@ -18,10 +19,10 @@ const STATUS_DOT: Record<string, string> = {
   STOCKED: 'bg-emerald-500',
   ALLOCATED: 'bg-purple-500',
   PICKED: 'bg-purple-500',
-  PACKED: 'bg-purple-500',
+  PACKED: LIFECYCLE_CLASSES.packed.dot,
   LABELED: 'bg-purple-500',
   STAGED: 'bg-purple-500',
-  SHIPPED: 'bg-zinc-400', // ds-allow-raw-neutral: identity status hue on the print rail
+  SHIPPED: LIFECYCLE_CLASSES.shipped.dot,
   RETURNED: 'bg-orange-500',
   RMA: 'bg-orange-500',
   ON_HOLD: 'bg-red-500',

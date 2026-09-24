@@ -37,6 +37,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Universal staff filter (P1-WORK-02): packed OR tested by this staff.
     const staffParam = searchParams.get('staff');
     const staffNum = staffParam ? parseInt(staffParam) : null;
+    // The bench find box. Forwarded to the loader, which answers it in SQL —
+    // see `FetchPackerLogRowsOptions.searchTerm`. Present ⇒ the loader also
+    // drops the `limit`/`offset` page bound, so a match outside the newest
+    // thousand scans of the week is still found.
+    const searchTerm = (searchParams.get('q') || '').trim();
     // Spine-first: `phase=spine` returns the immediate-paint columns only; the
     // deferred fields are filled via POST /api/packerlogs/hydrate.
     const spineOnly = searchParams.get('phase') === 'spine';
@@ -53,6 +58,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             weekEnd,
             trackingTypeFilter,
             spineOnly,
+            searchTerm,
         });
         const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=30` };
         return NextResponse.json(rows, {

@@ -5,10 +5,13 @@
  *
  * Hides void / discount / cost notes. Read-only ledger + signature if a REPAIR
  * line needs one + calm Terminal wait (decaying timestamp, no bounce/glow).
+ *
+ * No title band of its own: the shell paints the ONE header band above this
+ * face. A `Your order` band under it was a second chrome (2026-09-23).
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
+import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import {
   computeKioskCartTotals,
   cartHasRepairLine,
@@ -16,12 +19,7 @@ import {
 } from '@/lib/kiosk/cart-line';
 import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
 import { KioskCartLineCard } from '@/components/kiosk/KioskCartLineCard';
-import {
-  KIOSK_CUSTOMER_FACE,
-  KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL_ROW,
-} from '@/app/kiosk/kiosk-chrome';
+import { KIOSK_CUSTOMER_FACE, KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 
 function formatCents(cents: number): string {
   const sign = cents < 0 ? '-' : '';
@@ -86,10 +84,6 @@ export function KioskCustomerFace() {
 
   return (
     <div className={KIOSK_CUSTOMER_FACE} data-testid="kiosk-customer-face">
-      <div className={KIOSK_PANE_HEADER_BAND}>
-        <h2 className={KIOSK_PANE_HEADER_TITLE}>Your order</h2>
-      </div>
-
       {/* The customer sees the SAME line card the staff face shows (Phase 2):
           one card family, so the two screens cannot describe a line
           differently. Read-only here — the customer taps nothing. */}

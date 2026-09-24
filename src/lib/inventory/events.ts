@@ -216,6 +216,15 @@ export interface TimelineFilter {
   actor_staff_id?: number | null;
   since?: string | null;        // ISO timestamp
   limit?: number;
+  /**
+   * Find text, answered in SQL. The columns are the facts a LEDGER ROW PAINTS
+   * (`inventory-events-resolve.ts`): the SKU and its catalog title, the serial,
+   * both bin names, the actor, the station, the event type, the status
+   * transition and the note. Four of those live in other tables, which is why
+   * a searching read joins — matching only the columns `inventory_events`
+   * happens to carry would miss the product title the row uses as its TITLE.
+   */
+  q?: string | null;
 }
 
 export async function readTimeline(
@@ -243,8 +252,44 @@ export async function readTimeline(
   if (filter.actor_staff_id != null)     push('ie.actor_staff_id = $?',      filter.actor_staff_id);
   if (filter.since)                      push('ie.occurred_at >= $?',        filter.since);
 
+  // Joined ONLY for a search: the common read pays nothing for them.
+  const q = filter.q?.trim() || null;
+  const searchJoins = q
+    ? `LEFT JOIN sku_catalog sc
+           ON sc.sku = ie.sku AND sc.organization_id = ie.organization_id
+         LEFT JOIN serial_units su
+           ON su.id = ie.serial_unit_id AND su.organization_id = ie.organization_id
+         LEFT JOIN locations lb
+           ON lb.id = ie.bin_id AND lb.organization_id = ie.organization_id
+         LEFT JOIN locations lp
+           ON lp.id = ie.prev_bin_id AND lp.organization_id = ie.organization_id`
+    : '';
+  if (q) {
+    params.push(`%${q}%`);
+    const i = `$${params.length}`;
+    clauses.push(
+      `(ie.sku ILIKE ${i}
+         OR ie.notes ILIKE ${i}
+         OR ie.event_type ILIKE ${i}
+         OR ie.station ILIKE ${i}
+         OR ie.prev_status ILIKE ${i}
+         OR ie.next_status ILIKE ${i}
+         OR s.name ILIKE ${i}
+         OR sc.product_title ILIKE ${i}
+         OR su.serial_number ILIKE ${i}
+         OR lb.name ILIKE ${i}
+         OR lp.name ILIKE ${i})`,
+    );
+  }
+
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-  const limit = Math.min(Math.max(filter.limit ?? 100, 1), 1000);
+  // A SEARCH IS NOT A PAGE. `limit` is the caller's display window; honouring
+  // it while `q` narrows would answer "no match" for an event one row past the
+  // bound — a bounded search is the same lie one layer down. A searching read
+  // opens to this reader's hard ceiling. The SUBJECT filters above are not
+  // touched: `serial_unit_id` is the unit the operator picked, which is a scope
+  // they chose rather than a page they fell off.
+  const limit = q ? 1000 : Math.min(Math.max(filter.limit ?? 100, 1), 1000);
   params.push(limit);
 
   // Resolve the actor display name in the read (the table has no actor_name
@@ -255,6 +300,7 @@ export async function readTimeline(
   const sql = `SELECT ie.*, s.name AS actor_name
        FROM inventory_events ie
        LEFT JOIN staff s ON s.id = ie.actor_staff_id
+       ${searchJoins}
      ${where}
      ORDER BY ie.occurred_at DESC, ie.id DESC
      LIMIT $${params.length}`;

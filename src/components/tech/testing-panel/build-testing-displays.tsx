@@ -131,7 +131,6 @@ export function buildTestingDisplayTabs({
             onCloseTicket={onCloseTicket}
             onClaimTicketCreated={onClaimTicketCreated}
             onClaimTicketUnlinked={onClaimTicketUnlinked}
-            showReplyPresets={false}
           />
         ) : null,
     },

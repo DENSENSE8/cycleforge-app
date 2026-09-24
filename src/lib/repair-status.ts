@@ -54,3 +54,47 @@ export function repairStatusBadgeClass(status: string): string {
 export function repairStatusChipClass(status: string): string {
   return HUE_CHIP[hueFor(status)];
 }
+
+/**
+ * Stored statuses from which a customer pickup may start. Shared by the desk
+ * details panel and the mobile workbench dock so the two cannot disagree about
+ * when "Pickup" is live. `Done` stays eligible so staff can reopen the receipt.
+ */
+const REPAIR_PICKUP_STATUSES: Record<string, true> = {
+  'Repaired, Contact Customer': true,
+  'Awaiting Pickup': true,
+  'Awaiting Payment': true,
+  Done: true,
+};
+
+export function canStartRepairPickup(status: string | null | undefined): boolean {
+  return REPAIR_PICKUP_STATUSES[(status || '').trim()] === true;
+}
+
+/**
+ * Operator wording for the controlled stored values. The stored values are
+ * shared with the repair queue, next-job selection, and AI intent routing —
+ * surfaces may reword them, never invent incompatible ones.
+ */
+const REPAIR_STATUS_OPERATOR_LABEL: Record<string, string> = {
+  'Pending Repair': 'In repair',
+  'Awaiting Parts': 'Waiting on parts',
+  'Repaired, Contact Customer': 'Repair complete — contact customer',
+  'Awaiting Pickup': 'Ready for pickup',
+  'Awaiting Payment': 'Waiting on payment',
+  Done: 'Closed',
+};
+
+/** Stored values the mobile workbench offers, in bench order. */
+export const REPAIR_WORKBENCH_STATUSES = [
+  'Pending Repair',
+  'Awaiting Parts',
+  'Repaired, Contact Customer',
+  'Awaiting Pickup',
+  'Awaiting Payment',
+  'Done',
+] as const;
+
+export function repairStatusOperatorLabel(status: string): string {
+  return REPAIR_STATUS_OPERATOR_LABEL[status] ?? status;
+}

@@ -1,3 +1,5 @@
+import { LIFECYCLE_CLASSES } from './lifecycle';
+
 /**
  * Phone item-record faces — photo + context row, title row, and an operational facts row. Desk compound order under the title: qty · amount · condition.
  */
@@ -24,7 +26,7 @@ export const ITEM_RECORD_MOBILE_ROW = {
 export const ITEM_RECORD_MOBILE_STATE_RAIL = {
   ready: 'border-l-4 border-border-accent',
   exception: 'border-l-4 border-border-danger',
-  packed: 'border-l-4 border-border-success',
+  packed: `border-l-4 ${LIFECYCLE_CLASSES.packed.spine}`,
 } as const;
 
 export const ITEM_RECORD_MOBILE_THUMB = {

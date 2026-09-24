@@ -10,7 +10,7 @@
  * / "execute now"
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/tables/DataTable';
 import { Button } from '@/design-system/primitives';
@@ -20,16 +20,33 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import type { SalesTab } from '@/lib/walk-in/history-modes';
 
 export function SalesHistoryTable({ tab }: { tab: SalesTab }) {
-  const { data, isLoading, isError, refetch } = useQuery<SaleRow[]>({
-    queryKey: ['walk-in-sales'],
+  /*
+   * The find text is SESSION-LOCAL and rides the FETCH KEY. It is not a URL
+   * param (the Sales board's tabs own the URL here), and it is not a client
+   * substring pass either: `/api/walk-in/sales` answers `?q=` over the whole
+   * merged feed, and re-filtering that answer against the five painted facts
+   * would drop a sale the server matched on its phone number or a line item
+   * beyond the two the detail cell summarises.
+   *
+   * `SearchField` already debounces at 320ms, so the raw value is the key.
+   */
+  const [query, setQuery] = useState('');
+  const q = query.trim();
+
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<SaleRow[]>({
+    queryKey: ['walk-in-sales', q],
     queryFn: async () => {
-      const res = await fetch('/api/walk-in/sales?orderSource=walk_in_sale&limit=100', {
-        cache: 'no-store',
-      });
+      const params = new URLSearchParams({ orderSource: 'walk_in_sale' });
+      // A searching read drops the page bound — the route opens to its ceiling
+      // when `q` is present, so a `limit` here would only be ignored.
+      if (q) params.set('q', q);
+      else params.set('limit', '100');
+      const res = await fetch(`/api/walk-in/sales?${params}`, { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load sales');
       const json = (await res.json()) as { rows?: SaleRow[] };
       return json.rows ?? [];
     },
+    placeholderData: (prev) => prev,
     staleTime: 60_000,
   });
 
@@ -49,6 +66,9 @@ export function SalesHistoryTable({ tab }: { tab: SalesTab }) {
         ? 'No sales yet today.'
         : 'No walk-in sales yet.',
     searchPlaceholder: tab === 'today' ? 'Search today’s sales…' : 'Search sales…',
+    searchValue: query,
+    onSearchChange: setQuery,
+    searchPending: isFetching,
   });
 
   return (

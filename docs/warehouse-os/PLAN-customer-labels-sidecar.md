@@ -8,6 +8,51 @@ column left, shipments below, actions right) with Shopify-admin card hierarchy (
 fact per card, title-case headers, secondary data as caption rows). Nothing is copied
 from their code; every primitive below is one this repo already ships.
 
+### Target surface: build it **web-only**. Tauri inherits it for free.
+
+**Today:** no `tauri.conf.json`, no `src-tauri/`, no `Cargo.toml`, no `apps/desktop/`
+in the tree (`apps/web` and the Expo `apps/mobile` exist). `README.md:255` —
+"Distribution is **browser web app only** … There is no Electron desktop shell." The
+Electron host that used to exist was retired. So this plan targets the Next.js app
+served through the `:3050` switchboard onto the pinned lane, and "mobile" means the
+**`/m/*` mobile-web routes** in this same app (`src/app/m/(shell)/…`) — §6 is React
+routes, §7 is browser/curl on `:3050`.
+
+**Roadmap:** Tauri v2 *is* the planned desktop client
+(`docs/roadmap/CYCLEFORGE_V1_OUTBOUND_EXECUTION_PLAN.md`, phase 5, `NOT STARTED`).
+Critically, it is a **capability host around this same web origin**, not a second UI:
+
+- ":152" — "The **Tauri webview consumes the hosted operational application.**"
+- ":24" — "The hosted `/api/v1` implementation is the only business implementation.
+  Browser fixtures, Tauri, and SwiftUI are **clients** of that implementation rather
+  than parallel rule engines."
+- ":349" — the production webview accepts only the exact configured origin; dev accepts
+  only `http://localhost:3050`. No wildcard remote content policy.
+- ":340-347" — the **entire** native command surface is seven domain calls:
+  `native_capabilities`, `choose_label_folder`, `start/stop_label_watch`,
+  `retry_label_observation`, `list_printers`, `print_document(ticket)`. Generic
+  `read_file` / `print_path` / `fetch_url` commands are explicitly **forbidden** (:76).
+
+**Therefore there is no port step for this card.** React/TSX written here renders
+inside the Tauri webview unchanged the day that shell lands; it is the same origin, the
+same bundle, the same `/api/*` routes. Building it "for Tauri" today would mean
+building nothing different — and building it twice would violate the one-implementation
+rule above.
+
+**The two things that would ever be Tauri-specific**, neither in this scope:
+
+1. **Named silent printing of the label PDF.** Today the history row's PDF link opens
+   `/api/documents/<id>/content` in the browser's viewer/print dialog — correct on web
+   and correct in the webview. A desktop-only upgrade would call
+   `print_document({ ticket })` with a **server-minted short-lived ticket** (never a
+   local path), behind a `native_capabilities()` feature check so the web build keeps
+   the link. That is a later, additive branch at one call site.
+2. **SwiftUI mobile** (same roadmap) is a genuine native rewrite — but it is a client of
+   `/api/v1`, a different surface from the legacy `/api/*` routes this card reads. If
+   that track lands, the port cost is **API contract** (add these reads to the V1
+   OpenAPI contract), not React. `/m/*` remains the mobile SoT until then
+   (`SURFACE_LAW.md` §1).
+
 ---
 
 ## 0. What already exists — read this before touching anything
@@ -123,6 +168,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   DB-free (`skill://domain-unit-test`). Handler stays validate → delegate → map.
 - Regression row in `src/lib/auth/route-permission-manifest.test.ts`:
   `routesGatedBy('orders.view')` includes `/api/orders/[id]/shipments/route.ts`.
+- **Checked for an existing query to reuse — there is none.** `src/app/api/shipping/labels/route.ts`
+  is **POST-only** (buy a quoted rate, no order anchor, `:16-34`); `listDocumentsForOrder`
+  (`outbound-documents.ts:154-175`) returns live documents only; `listLinksForOwner`
+  (`shipment-links.ts:158-177`) returns live links only. No repo query unites live and
+  voided labels, so this route's SQL is genuinely net-new — and it is the **only**
+  net-new code path in the plan.
 
 **SQL** (two CTEs; `tenantQuery(orgId, …)` so RLS GUC scoping holds):
 
@@ -221,6 +272,14 @@ export interface OrderShipmentRow {
 `src/app/api/customers/[id]/route.ts:20-24`: append `shipstation_customer_id` to the
 SELECT list. Nothing else changes (already `withAuth` + `orders.view` + `tenantQuery`,
 orgId from ctx).
+
+That route already returns `channel_refs` (`:24`), and the buyer resolver does stamp
+`shipstation_customer_id` into that jsonb as well (`resolve-buyer-customers.test.ts:140`).
+The chip still reads the **dedicated column**: it is the deduping identity with the
+per-org partial unique index (`ux_customers_org_shipstation_id`) and the resolver's
+tier-1 match key, whereas the jsonb copy is a denormalized echo with no constraint.
+One SoT, one read — and no extra query either way, since the chip rides the customer
+fetch the card already makes.
 
 ### 2.4 Query factories — one file, shared keys (no ad-hoc `fetch` in components)
 

@@ -16,22 +16,36 @@
  * client island `./AuditLogTable`: the guard, the query and the pagination
  * stay here on the server, and only the rows cross the boundary.
  *
- * Tenant scoping: audit_logs doesn't have organization_id yet (next
- * migration wave). For now we filter by actor_staff_id ∈ staff of this
- * tenant — which is correct because every audit row is attributable to a
- * staff member, and staff are already tenant-scoped. Once audit_logs
- * carries org_id directly we'll switch.
+ * `?q=` is the FETCH KEY for that island's find box, which is why it is read
+ * here. The island writes it (optimistically, through `useOptimisticUrlParam`)
+ * and declares the search server-answered, so the engine runs no second pass.
+ * Until this page spent the round-trip, the box filtered the FIFTY rows the
+ * keyset page happened to hold: `audit_logs` carries 25k rows for this tenant,
+ * `scan_out` first appears at rank 274 and `sku_catalog` at rank 17018, so the
+ * desk answered "no audit entries match" for hundreds of writes that exist.
+ * The predicate below runs over the same eight facts the row adapter paints.
+ *
+ * Tenant scoping: `orgId` comes from the auth ctx (`requirePermission` →
+ * `user.organizationId`), never from a param, and the read goes through
+ * `tenantQuery` — which sets `app.current_org` for the statement, so
+ * `audit_logs`' `tenant_isolation` RLS policy bites — with an explicit
+ * `a.organization_id = $1` predicate beside it, because RLS does not bite on
+ * the owner pool. The actor-side `s.organization_id = $1` stays: it is this
+ * feed's membership rule (an audited write is shown to the tenant whose staff
+ * made it), not its tenant scope, and widening the feed to actorless system
+ * rows is a different brief.
  *
  * Gated by admin.view_logs.
  */
 
 import { requirePermission } from '@/lib/auth/page-guard';
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
 import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { escapeLike } from '@/lib/sql-like';
 import { toAuditLogRow, type AuditLogQueryRow } from '@/lib/audit/audit-log-row';
 import { AuditLogTable } from './AuditLogTable';
 
@@ -46,7 +60,7 @@ const PAGE_SIZE = 50;
 */
 
 interface PageProps {
-  searchParams: Promise<{ source?: string; action?: string; cursor?: string }>;
+  searchParams: Promise<{ source?: string; action?: string; cursor?: string; q?: string }>;
 }
 
 export default async function AuditPage({ searchParams }: PageProps) {
@@ -55,19 +69,51 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const source = params.source?.trim() || null;
   const action = params.action?.trim() || null;
   const cursor = Number(params.cursor) || null;
+  /**
+   * The island's find box, verbatim. Whitespace-only is NO query, not a query
+   * for spaces — the box is cleared by deleting its text, and a lone space left
+   * behind must not empty the log.
+   */
+  const query = params.q?.trim() || null;
 
   // Filter by actors who belong to this tenant. JOIN staff to display the
   // actor name + role at the time of read (the audit row caches role at
   // write time, but the name is on staff).
-  const whereParts: string[] = ['s.organization_id = $1'];
+  const whereParts: string[] = ['a.organization_id = $1', 's.organization_id = $1'];
   const args: unknown[] = [user.organizationId];
   if (source) { args.push(source); whereParts.push(`a.source = $${args.length}`); }
   if (action) { args.push(action); whereParts.push(`a.action = $${args.length}`); }
+  if (query) {
+    // escapeLike armours the pattern; backslash is LIKE's default escape char,
+    // so no ESCAPE clause is needed (see `@/lib/sql-like`).
+    args.push(`%${escapeLike(query)}%`);
+    const like = `$${args.length}`;
+    // The eight facts `audit-log-resolve.ts` paints, and nothing else: matching
+    // a column the desk does not show would hand back rows whose match is
+    // invisible. `created_at` is absent on purpose — the cell paints "Sep 22" /
+    // "14:03:07", so ILIKE over its ISO text would answer for a string no row
+    // on screen contains. The four NOT NULL columns skip COALESCE.
+    whereParts.push(`(
+           a.action                     ILIKE ${like}
+        OR a.source                     ILIKE ${like}
+        OR a.entity_type                ILIKE ${like}
+        OR a.entity_id                  ILIKE ${like}
+        OR COALESCE(s.name, '')         ILIKE ${like}
+        OR COALESCE(a.actor_role, '')   ILIKE ${like}
+        OR COALESCE(a.ip_address, '')   ILIKE ${like}
+      )`);
+  }
+  // LAST, after the find predicate: the cursor walks the MATCHED set, so a
+  // page of fifty is fifty matches rather than fifty rows that were then
+  // thinned. The island deletes `?cursor=` whenever the query text changes —
+  // otherwise the operator would search from the middle of a list that no
+  // longer exists.
   if (cursor) { args.push(cursor); whereParts.push(`a.id < $${args.length}`); }
 
   args.push(PAGE_SIZE + 1); // +1 so we know if there's a next page
 
-  const r = await pool.query<AuditLogQueryRow>(
+  const r = await tenantQuery<AuditLogQueryRow>(
+    user.organizationId,
     `SELECT a.id, a.created_at, a.actor_staff_id, s.name AS actor_name, a.actor_role,
             a.source, a.action, a.entity_type, a.entity_id, a.ip_address,
             a.metadata, a.before_data, a.after_data
@@ -80,8 +126,11 @@ export default async function AuditPage({ searchParams }: PageProps) {
   );
   const page = r.rows.slice(0, PAGE_SIZE);
   const hasMore = r.rows.length > PAGE_SIZE;
+  // Over the MATCHED set: the LIMIT+1 probe runs after the WHERE, so "Older →"
+  // is offered only when a fifty-first MATCH exists. A pager built on the
+  // unfiltered count would offer a page with nothing on it.
   const nextCursor = hasMore ? page[page.length - 1]?.id : null;
-  const isSearching = Boolean(source || action);
+  const isSearching = Boolean(source || action || query);
   // Narrow to the wire row at the boundary: `created_at` becomes an ISO string
   // and the three unpainted JSONB blobs are dropped rather than shipped to the
   // client fifty times over. See `@/lib/audit/audit-log-row`.
@@ -92,7 +141,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
       <div className="mx-auto max-w-5xl space-y-4 px-6 py-6">
         <SettingsSectionHeader title="Audit log" />
         <p className="text-sm text-text-soft">
-          Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
+          Every privileged write, every permission denial. Last {PAGE_SIZE} rows{isSearching ? ' matching filter' : ''}.
         </p>
 
         {/*
@@ -101,6 +150,10 @@ export default async function AuditPage({ searchParams }: PageProps) {
           table's own filter menu cannot do — it filters the fifty rows in hand.
           Folding these two into the Fields/filter menu means teaching that menu
           to write server params, and that is its own brief. FOLLOW-UP.
+
+          `?q=` rides a HIDDEN input because a GET form submits its own fields
+          and nothing else: without it, pressing Apply would silently empty the
+          table's find box, which is a param this form does not own.
         */}
         <form className="flex flex-wrap items-center gap-2 rounded-none border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
           <label className="flex items-center gap-2">
@@ -121,9 +174,17 @@ export default async function AuditPage({ searchParams }: PageProps) {
               className={cn("rounded-lg border border-border-soft bg-surface-card px-2.5 py-1 text-role-caption", focusRing('field', 'neutral'))}
             />
           </label>
+          <input type="hidden" name="q" value={query ?? ''} />
           <Button variant="brand" size="sm" type="submit">Apply</Button>
           {(source || action) && (
-            <a href="/settings/audit" className="font-medium text-text-soft hover:text-text-default">Clear</a>
+            // Clears the two params this FORM owns and keeps the find text —
+            // the box has its own clear affordance.
+            <a
+              href={query ? `/settings/audit?${new URLSearchParams({ q: query }).toString()}` : '/settings/audit'}
+              className="font-medium text-text-soft hover:text-text-default"
+            >
+              Clear
+            </a>
           )}
         </form>
 
@@ -139,6 +200,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
               href={`?${new URLSearchParams({
                 ...(source ? { source } : {}),
                 ...(action ? { action } : {}),
+                ...(query ? { q: query } : {}),
                 cursor: String(nextCursor),
               }).toString()}`}
             >

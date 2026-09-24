@@ -51,6 +51,7 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
       'src/components/dashboard/DashboardOrdersView.tsx',
       'src/components/unshipped/UnshippedTable.tsx',
       'src/components/outbound/orders/OutboundOrdersDesk.tsx',
+      'src/components/outbound/orders/OutboundOrdersLedger.tsx',
     ],
     markRoute: 'orders',
   },

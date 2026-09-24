@@ -53,6 +53,8 @@ import { MobileDailyRow } from './MobileDailyRow';
 import { MobileDailyDetailSheet } from './MobileDailySheets';
 import { MobileDailyComposerSheet } from './MobileDailyComposerSheet';
 import { MobileCurrentSession } from '@/components/mobile/session/MobileCurrentSession';
+import { AgendaKindFilter as AgendaKindFilterRow, useAgendaKindPrefs } from './AgendaKindFilter';
+import { agendaKindVisible } from '@/lib/daily/agenda-kind-filter';
 import { useMyTasks, useToggleTaskDone } from '@/lib/tasks/use-my-tasks';
 import { taskDeadlineFact, taskRecordLabel } from '@/lib/tasks/task-row-facts';
 import {
@@ -113,6 +115,8 @@ export function MobileDailyChecklist() {
   const dateKey = getCurrentPSTDateKey();
   const { data, isLoading, isError } = useDailyChecks(dateKey);
   const toggle = useToggleCheck(dateKey);
+  /** Kind chips — multi-select + drag order, persisted on this device. */
+  const kindPrefs = useAgendaKindPrefs();
   const { addItem, updateItem, retireItem } = useItemActions(dateKey);
 
   const [status, setStatus] = useState<MobileDailyStatus>('all');
@@ -173,14 +177,20 @@ export function MobileDailyChecklist() {
           href: taskDeskRecordHref(row, 'phone'),
         };
       })
-      .filter((task) => (status === 'all' ? true : status === 'open' ? !task.done : task.done));
-  }, [myTasks, nowMs, status]);
+      .filter((task) => (status === 'all' ? true : status === 'open' ? !task.done : task.done))
+      // Kind chips: `task` keeps record work, `ticket` keeps threads; both
+      // may be on at once.
+      .filter((task) =>
+        agendaKindVisible(kindPrefs.prefs, task.row.entityType === 'support_ticket' ? 'ticket' : 'task'),
+      )
+  }, [myTasks, nowMs, status, kindPrefs.prefs]);
 
   // Recurring first, one-offs under their band — the same order the desk's
   // authored branch keeps, so both faces answer "what does the shift owe"
   // before "what is exceptional today".
-  const recurring = byAuthored.filter((i) => i.kind !== 'once' && passesFilter(i.id));
-  const onceItems = byAuthored.filter((i) => i.kind === 'once' && passesFilter(i.id));
+  const showChecks = agendaKindVisible(kindPrefs.prefs, 'checklist');
+  const recurring = showChecks ? byAuthored.filter((i) => i.kind !== 'once' && passesFilter(i.id)) : [];
+  const onceItems = showChecks ? byAuthored.filter((i) => i.kind === 'once' && passesFilter(i.id)) : [];
 
   const openItem = useMemo(
     () => data?.items.find((i) => i.id === openItemId) ?? null,
@@ -272,38 +282,58 @@ export function MobileDailyChecklist() {
     />
   );
 
+  // Band order follows the shared dragged order: whichever of checklist vs
+  // assigned-work leads there leads here.
+  const checksFirst =
+    (kindPrefs.prefs.order.indexOf('checklist') ?? 0) <=
+    Math.min(...['task', 'ticket'].map((k) => kindPrefs.prefs.order.indexOf(k as never)));
+  const checklistSection = (
+    <>
+      <ul className="flex flex-col gap-2 pt-3">{recurring.map(renderRow)}</ul>
+      {onceItems.length > 0 ? (
+        <>
+          <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+            Today only
+          </p>
+          <ul className="flex flex-col gap-2">{onceItems.map(renderRow)}</ul>
+        </>
+      ) : null}
+    </>
+  );
+  const assignedSection = (
+    <>
+      <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
+        Assigned to me
+      </p>
+      <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>
+    </>
+  );
+
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       {/* `pb-28` clears the sticky CTA — the last row must stay tappable. */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-3">
         <MobileCurrentSession />
-        <TabSwitch
-          tabs={STATUS_TABS.map((t) => ({ id: t.id, label: t.label }))}
-          activeTab={status}
-          onTabChange={(id) => setStatus(id as MobileDailyStatus)}
-        />
+        {/* Kind dropdown, then status — the same component the desk toolbar
+            mounts. Band ARRANGEMENT follows the same dragged order the desk
+            wrote (the grip lives on the desk's band titles; a phone screen
+            reads top-down and keeps the shared order). */}
+        <div className="flex flex-wrap items-center gap-2 pb-3">
+          <AgendaKindFilterRow prefs={kindPrefs.prefs} onToggle={kindPrefs.toggle} />
+          <TabSwitch
+            tabs={STATUS_TABS.map((t) => ({ id: t.id, label: t.label }))}
+            activeTab={status}
+            onTabChange={(id) => setStatus(id as MobileDailyStatus)}
+            className="min-w-0 flex-1"
+          />
+        </div>
 
-        <ul className="flex flex-col gap-2 pt-3">{recurring.map(renderRow)}</ul>
+        {checksFirst
+          ? checklistSection
+          : null}
+        {taskRows.length > 0 ? assignedSection : null}
+        {checksFirst ? null : checklistSection}
 
-        {onceItems.length > 0 ? (
-          <>
-            <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
-              Today only
-            </p>
-            <ul className="flex flex-col gap-2">{onceItems.map(renderRow)}</ul>
-          </>
-        ) : null}
-
-        {/* Assigned work, under the shift's own list: what the org owes every
-            day comes first, then what a colleague handed to this person. */}
-        {taskRows.length > 0 ? (
-          <>
-            <p className="pb-2 pt-5 text-role-micro font-semibold uppercase tracking-wide text-text-muted">
-              Assigned to me
-            </p>
-            <ul className="flex flex-col gap-2">{taskRows.map(renderTaskRow)}</ul>
-          </>
-        ) : null}
 
         {isLoading ? (
           <p className="pt-6 text-role-caption text-text-muted">Loading the checklist…</p>

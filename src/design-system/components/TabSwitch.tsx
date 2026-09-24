@@ -1,15 +1,22 @@
 'use client';
 
 /**
- * TabSwitch — Apple-like segmented pill slider (one face only).
+ * TabSwitch — the segmented tab box (one face only).
  *
  * Callers: KioskDevicesWorkspace, LabelPrinterWorkHeader, DocumentSlideOver,
- * settings/me. No data schemas.
+ * settings/me, the Daily lists' All/Open/Done, the task inspector's Task/Ticket.
  * User: "For the tab switch component remove all the other variants and just
- * keep the segmented"
+ * keep the segmented" (2026-09-11).
+ *
+ * INDUSTRIAL (operator 2026-09-23): *"box it off, no corner radius, industrial
+ * tabs, smaller and easier to use."* The track and the sliding face are
+ * flush-square (`rounded-none`) like the rest of the ops ladder — the old
+ * capsule was a soft-ladder exemption this ruling retired — and the faces
+ * dropped a size step (caption text, tighter pads) so the box reads as a
+ * compact instrument, not a hero control.
  *
  * Former `default` / `upNext` / `solid` faces were deleted 2026-09-11. Tone is
- * only `solidTone` (white capsule vs accent fill).
+ * only `solidTone` (inverse fill vs accent fill).
  */
 
 import type { ReactNode } from 'react';
@@ -94,8 +101,8 @@ export function TabSwitch({
   const hug = fit === 'hug';
   const compact = size === 'sm';
   const defaultRailClass = cn(
-    cornerClass('pill'),
-    'border border-border-hairline bg-surface-sunken',
+    cornerClass('flush'),
+    'border border-border-soft bg-surface-sunken',
     compact ? 'h-8 p-0.5' : 'p-1',
   );
   const railCombined = railClassName ?? defaultRailClass;
@@ -111,7 +118,7 @@ export function TabSwitch({
   // {left:0,width:0}. Snap once, then spring on every later tab change.
   const hasPlacedPillRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
-  const faceCorner = cornerClass('pill');
+  const faceCorner = cornerClass('flush');
 
   const measurePill = useCallback(() => {
     const track = trackRef.current;
@@ -241,16 +248,16 @@ export function TabSwitch({
                 }}
                 onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  'relative z-10 min-w-[3rem] whitespace-nowrap font-medium tracking-normal transition-colors duration-150',
+                  'relative z-10 min-w-[2.5rem] whitespace-nowrap font-medium tracking-normal transition-colors duration-150',
                   tabFlexClass,
                   faceCorner,
                   hug
                     ? compact
-                      ? 'flex h-full items-center px-3 text-role-caption'
-                      : 'px-4 py-1.5 text-role-data'
+                      ? 'flex h-full items-center px-2.5 text-role-caption'
+                      : 'px-3.5 py-1.5 text-role-caption'
                     : compact
-                      ? 'flex h-full items-center px-3 text-role-caption'
-                      : 'px-4 py-2 text-role-data',
+                      ? 'flex h-full items-center px-2.5 text-role-caption'
+                      : 'px-3.5 py-1.5 text-role-caption',
                   isActive
                     ? 'text-text-inverse'
                     : 'text-text-soft hover:text-text-default',

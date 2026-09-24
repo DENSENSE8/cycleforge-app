@@ -2,12 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { ChevronLeft, Loader2, X, Camera } from '../Icons';
-import { SignaturePad, type SignatureData } from './SignaturePad';
+import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { getSidebarIntakeSubmitButtonClass } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { refreshDomains } from '@/lib/refresh/bus';
+import { PICKUP_TERMS, submitRepairPickup } from '@/lib/repair/pickup-submit';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 
 interface RepairPickupFlowProps {
@@ -19,9 +20,6 @@ interface RepairPickupFlowProps {
 }
 
 type Step = 'sign' | 'receipt';
-
-const PICKUP_TERMS =
-  'I confirm I am picking up this repaired item and acknowledge the 30-day warranty on the repair.';
 
 /**
  * The signer's first name. Reads the shared buyer rule rather than
@@ -55,21 +53,12 @@ export function RepairPickupFlow({ repair, onUpdate, onClose }: RepairPickupFlow
   ): Promise<boolean> => {
     setError(null);
     try {
-      const response = await fetch('/api/repair-service/pickup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          repairId: repair.id,
-          signatureDataUrl: payload.signature?.dataUrl ?? null,
-          signatureStrokes: payload.signature?.strokes ?? null,
-          signerName: customerName || null,
-          declinedReason: payload.declinedReason ?? null,
-        }),
+      await submitRepairPickup({
+        repairId: repair.id,
+        signerName: customerName || null,
+        signature: payload.signature,
+        declinedReason: payload.declinedReason ?? null,
       });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result?.success) {
-        throw new Error(result?.details || result?.error || 'Pickup failed');
-      }
       refreshDomains(['repairs']);
       onUpdate();
       return true;

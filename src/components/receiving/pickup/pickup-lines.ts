@@ -75,16 +75,33 @@ export function pickupLineMatchesStatus(line: PickupLine, tab: PickupStatusTab):
   return !pickupOrderIsDone(line.order_status);
 }
 
-/** React-query feed of every LCPU product line (newest pickup date first). */
-export function usePickupLines() {
+/**
+ * React-query feed of every LCPU product line (newest pickup date first).
+ *
+ * `query` is the workbench's find text and it rides the FETCH KEY: the server
+ * answers it (`?q=`), which is the only way a find can reach a PO past the 500
+ * row window or a reference number no mounted track paints. `SearchField`
+ * already debounces at 320ms, so this keys on the value it is handed and adds
+ * no second timer. `placeholderData` holds the last answer on screen while the
+ * next one is in flight — the caller lights the spinner from `isFetching`
+ * instead of blanking the grid between keystrokes.
+ */
+export function usePickupLines(query = '') {
+  const q = query.trim();
   return useQuery({
-    queryKey: ['local-pickup-lines'],
+    queryKey: ['local-pickup-lines', q],
     queryFn: async (): Promise<PickupLine[]> => {
-      const res = await fetch('/api/local-pickup-orders/lines?limit=500', { cache: 'no-store' });
+      const params = new URLSearchParams();
+      // A searching read drops the page bound — the route opens to its ceiling
+      // when `q` is present, so sending `limit` here would be ignored anyway.
+      if (q) params.set('q', q);
+      else params.set('limit', '500');
+      const res = await fetch(`/api/local-pickup-orders/lines?${params}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`Pickup lines failed (HTTP ${res.status})`);
       const data = (await res.json()) as { lines?: PickupLine[] };
       return Array.isArray(data.lines) ? data.lines : [];
     },
+    placeholderData: (prev) => prev,
     staleTime: 30_000,
   });
 }

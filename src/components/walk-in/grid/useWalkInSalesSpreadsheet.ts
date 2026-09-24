@@ -33,6 +33,22 @@ export interface UseWalkInSalesSpreadsheetOptions {
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
+  /**
+   * The find text, OWNED BY THE MOUNT because it rides that mount's fetch key.
+   *
+   * It is not local state here on purpose. `/api/walk-in/sales` answers `?q=`
+   * across the whole merged feed — Square mirror and counter visits, by
+   * customer, phone, email, handle, status and line items — while this table
+   * paints five of those facts. A second in-memory substring pass over the
+   * painted facts would therefore DELETE rows the server had already found: a
+   * sale matched by its phone number would arrive and then vanish. So the value
+   * lives with the fetch and the engine is told the answer is already correct
+   * (`answeredBy: 'server'`).
+   */
+  searchValue: string;
+  onSearchChange: (next: string) => void;
+  /** A request for the CURRENT text is in flight — holds the loading face. */
+  searchPending?: boolean;
 }
 
 export function useWalkInSalesSpreadsheet({
@@ -40,6 +56,9 @@ export function useWalkInSalesSpreadsheet({
   loading = false,
   emptyMessage = 'No walk-in sales yet.',
   searchPlaceholder = 'Search sales…',
+  searchValue,
+  onSearchChange,
+  searchPending = false,
 }: UseWalkInSalesSpreadsheetOptions): CompoundSpreadsheetFeed<
   SaleRow,
   WalkInSalesGridColumnKey,
@@ -47,7 +66,6 @@ export function useWalkInSalesSpreadsheet({
 > {
   const [sort, setSort] = useState<WalkInSalesGridColumnKey | null>(null);
   const [dir, setDir] = useState<GridSortDir | null>(null);
-  const [query, setQuery] = useState('');
 
   const { effectiveLayout, subtitleFieldIds, fields } = useWalkInSalesTableLayout();
   const columns = useMemo(
@@ -61,8 +79,14 @@ export function useWalkInSalesSpreadsheet({
   }, []);
 
   const search = useMemo(
-    () => ({ value: query, onChange: setQuery, placeholder: searchPlaceholder }),
-    [query, searchPlaceholder],
+    () => ({
+      value: searchValue,
+      onChange: onSearchChange,
+      placeholder: searchPlaceholder,
+      answeredBy: 'server' as const,
+      pending: searchPending,
+    }),
+    [searchValue, onSearchChange, searchPlaceholder, searchPending],
   );
 
   return useCompoundSpreadsheet<SaleRow, WalkInSalesGridColumnKey, WalkInSalesGridColumn>({

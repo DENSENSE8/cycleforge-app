@@ -32,6 +32,7 @@
 import type { OrgLetterhead } from '@/lib/branding/letterhead';
 import type { CounterTransactionStatus } from './counter-transaction-types';
 import type { CounterVisit, CounterVisitCustomer, CounterVisitLine } from './read-visit';
+import { visitLineAdjustmentText } from './visit-line-adjustment';
 
 // ── The document model ──────────────────────────────────────────────────────
 
@@ -46,6 +47,10 @@ export interface VisitReceiptLineItem {
   unitAmountCents: number;
   /** quantity × unitAmountCents. */
   extendedAmountCents: number;
+  /** `Comp · Goodwill` / `Adjusted from $5.59 · Price match`; null for a catalog price or a custom amount. */
+  adjustment: string | null;
+  /** The item note typed at the counter. */
+  note: string | null;
 }
 
 /** One device taken in for repair, as printed. Sourced from `visit.devices` only. */
@@ -126,6 +131,13 @@ function toLineItem(line: CounterVisitLine): VisitReceiptLineItem {
     quantity,
     unitAmountCents,
     extendedAmountCents: quantity * unitAmountCents,
+    // A custom amount is simply its price on paper; only a CHANGED catalog
+    // price or a comp explains itself to the customer.
+    adjustment:
+      line.adjustment && line.adjustment.kind !== 'custom'
+        ? visitLineAdjustmentText(line.adjustment)
+        : null,
+    note: line.note?.trim() || null,
   };
 }
 
