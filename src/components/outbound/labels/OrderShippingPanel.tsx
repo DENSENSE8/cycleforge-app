@@ -169,11 +169,21 @@ export function OrderShippingPanel({
   /** Named reason ShipStation cannot buy right now (`null` = none known). */
   const [shipstationDown, setShipstationDown] = useState<string | null>(null);
   const handleRatesError = useCallback((info: { code: string | null; message: string }) => {
-    if (info.code !== 'SHIPSTATION_NOT_CONNECTED') return;
-    setShipstationDown(
-      'ShipStation is not connected — connect it in Settings → Integrations, or attach an existing label below.',
-    );
+    if (info.code === 'SHIPSTATION_NOT_CONNECTED') {
+      setShipstationDown(
+        'ShipStation is not connected — connect it in Settings → Integrations, or attach an existing label instead.',
+      );
+    } else if (info.code === 'SHIP_FROM_NOT_CONFIGURED') {
+      setShipstationDown(
+        'No warehouse ship-from address is set for this organization, so carriers cannot rate the parcel. Ask an admin to set the organization ship-from address (or the SHIPSTATION_SHIP_FROM_* env vars), or attach an existing label instead.',
+      );
+    }
   }, []);
+
+  // A ShipStation-sourced order carries its own weight on the ShipStation
+  // order; `POST /api/shipping/order-rates` falls back to it, so the panel
+  // must not refuse to rate just because no local weight was typed.
+  const shipstationSourced = record?.accountSource === 'shipstation';
 
   const stateLine = record?.shippingLabelPurchased
     ? 'Label bought through the existing label path.'
@@ -253,7 +263,7 @@ export function OrderShippingPanel({
             {shipstationDown}
           </p>
         ) : null}
-        {currentWeightOz == null ? (
+        {currentWeightOz == null && !shipstationSourced ? (
           <p className="text-role-caption text-text-warning" role="status">
             Add a parcel weight — carriers cannot rate a 0 oz parcel.
           </p>
@@ -262,6 +272,11 @@ export function OrderShippingPanel({
             className="border border-border-hairline p-3"
             data-testid={`${testIdPrefix}-label-buy`}
           >
+            {currentWeightOz == null ? (
+              <p className="mb-2 text-role-caption text-text-soft" role="status">
+                No weight entered — rates use the weight on the ShipStation order.
+              </p>
+            ) : null}
             <BuyLabelSection
               orderId={orderId}
               orderRef={orderRef}

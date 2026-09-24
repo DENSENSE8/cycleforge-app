@@ -4,6 +4,7 @@ import {
   UNKNOWN_CARRIER,
   normalizeCarrierToken,
   resolveStoredCarrier,
+  shipStationCarrierToStored,
   toStoredCarrier,
 } from '@/lib/shipping/carrier-resolution';
 import { isCarrierSyncEnabled } from '@/lib/shipping/enabled-carriers';
@@ -77,5 +78,31 @@ describe('isCarrierSyncEnabled', () => {
     assert.equal(isCarrierSyncEnabled('UNKNOWN'), false);
     assert.equal(isCarrierSyncEnabled(''), false);
     assert.equal(isCarrierSyncEnabled(null), false);
+  });
+});
+
+describe('shipStationCarrierToStored', () => {
+  it('shipStationCarrierToStored: account codes map to the carrier that moves the parcel', () => {
+    assert.equal(shipStationCarrierToStored('stamps_com'), 'USPS');
+    assert.equal(shipStationCarrierToStored('usps'), 'USPS');
+    assert.equal(shipStationCarrierToStored('ups_walleted'), 'UPS');
+    assert.equal(shipStationCarrierToStored('fedex'), 'FEDEX');
+    assert.equal(shipStationCarrierToStored('dhl_express_worldwide'), 'DHL_EXPRESS');
+    assert.equal(shipStationCarrierToStored('ontrac'), 'ONTRAC');
+  });
+
+  it('shipStationCarrierToStored: unknown codes report nothing (the detector decides)', () => {
+    assert.equal(shipStationCarrierToStored('some_regional_courier'), null);
+    assert.equal(shipStationCarrierToStored(''), null);
+    assert.equal(shipStationCarrierToStored(null), null);
+  });
+
+  it('a Stamps.com label on a USPS number resolves USPS with no conflict', () => {
+    const r = resolveStoredCarrier({
+      tracking: '9400111899223197428490',
+      reported: shipStationCarrierToStored('stamps_com'),
+    });
+    assert.equal(r.carrier, 'USPS');
+    assert.equal(r.conflict, false);
   });
 });

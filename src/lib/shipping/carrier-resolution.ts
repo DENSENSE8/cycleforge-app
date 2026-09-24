@@ -43,6 +43,31 @@ export function toStoredCarrier(code: CarrierCode | null | undefined): string {
   return code === 'UPS_MI' ? 'UPS' : code;
 }
 
+/**
+ * A ShipStation v2 `carrier_code` in the stored vocabulary, or `null` when the
+ * code names no carrier we store.
+ *
+ * ShipStation reports the ACCOUNT the label was bought through, not the
+ * carrier that moves it: `stamps_com` / `endicia` are USPS resellers,
+ * `ups_walleted` is UPS. Passing those raw as a `reported` carrier would
+ * store `STAMPS_COM` and flag every USPS label as a conflict — so unmapped
+ * codes report nothing and the tracking-number detector decides alone.
+ */
+export function shipStationCarrierToStored(code: string | null | undefined): string | null {
+  const c = String(code ?? '').trim().toLowerCase();
+  if (!c) return null;
+  if (c === 'usps' || c === 'stamps_com' || c === 'endicia' || c.startsWith('usps_')) return 'USPS';
+  if (c === 'ups' || c.startsWith('ups_')) return 'UPS';
+  if (c === 'fedex' || c.startsWith('fedex_')) return 'FEDEX';
+  if (c === 'dhl_express' || c.startsWith('dhl_express_')) return 'DHL_EXPRESS';
+  if (c === 'dhl_ecommerce' || c.startsWith('dhl_ecommerce_') || c === 'dhl_global_mail') return 'DHL_ECOMMERCE';
+  if (c === 'ontrac') return 'ONTRAC';
+  if (c === 'lasership') return 'LASERSHIP';
+  if (c === 'gso') return 'GSO';
+  if (c === 'amazon_shipping' || c === 'amazon_buy_shipping') return 'AMAZON';
+  return null;
+}
+
 /** UPPERCASE, punctuation-free carrier token. The column holds only this shape. */
 export function normalizeCarrierToken(value: string | null | undefined): string {
   return String(value ?? '')

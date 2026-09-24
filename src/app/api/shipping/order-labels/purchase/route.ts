@@ -6,6 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
+import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';
 import {
   storeOutboundDocumentFromBytes,
   OutboundDocumentValidationError,
@@ -182,6 +183,8 @@ async function finishPurchase(input: {
         orderIds: [orderId],
         organizationId: orgId,
         primaryTrackingNumber: label.trackingNumber,
+        // The label names its carrier — store that, not a regex guess.
+        primaryCarrier: shipStationCarrierToStored(label.carrierCode),
       });
       primaryShipmentId = trk.primaryShipmentId;
     } catch (e) {

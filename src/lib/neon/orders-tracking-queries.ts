@@ -46,12 +46,12 @@ type Tx = Pick<PoolClient, 'query'>;
  * "Unknown" to an operator means "we cannot follow this", which is equally true
  * of a carrier we can name but cannot call — so the message says which.
  */
-function resolveTrackingCarrier(normalizedTracking: string): {
+function resolveTrackingCarrier(normalizedTracking: string, reportedCarrier?: string | null): {
   carrierForStorage: string;
   isUnknownCarrier: boolean;
   unknownCarrierMessage: string;
 } {
-  const { carrier } = resolveStoredCarrier({ tracking: normalizedTracking });
+  const { carrier } = resolveStoredCarrier({ tracking: normalizedTracking, reported: reportedCarrier });
   const named = carrier !== UNKNOWN_CARRIER;
   return {
     carrierForStorage: carrier,
@@ -101,6 +101,12 @@ export async function upsertOrderTracking(
   shippingTrackingNumber: string | null | undefined,
   client: Tx,
   organizationId?: OrgId,
+  /**
+   * The carrier the label itself names (a bought label's carrier), already in
+   * the stored vocabulary. Wins over the pattern guess on a conflict — see
+   * `resolveStoredCarrier`.
+   */
+  reportedCarrier?: string | null,
 ): Promise<void> {
   const orgId = organizationId ?? transitionalDogfoodOrgId();
   const existingOrders = await client.query(
@@ -139,7 +145,7 @@ export async function upsertOrderTracking(
   }
 
   const { carrierForStorage, isUnknownCarrier, unknownCarrierMessage } =
-    resolveTrackingCarrier(normalizedTracking);
+    resolveTrackingCarrier(normalizedTracking, reportedCarrier);
 
   // Gather ALL shipment IDs linked to this order — both from orders.shipment_id
   // and order_shipment_links. This ensures the duplicate check excludes every
@@ -642,6 +648,8 @@ export interface ApplyOrderTrackingOps {
   setTrackingNumbers?: string[];
   /** Primary tracking (slot 0). Routed through upsertOrderTracking; '' / null clears it. */
   primaryTrackingNumber?: string | null;
+  /** Carrier the primary's label names (stored vocabulary) — see upsertOrderTracking. */
+  primaryCarrier?: string | null;
   /** Edit existing linked shipments by id. */
   edits?: Array<{ shipmentId: number; trackingNumber: string }>;
   /** Create additional (non-primary) tracking links. */
@@ -768,7 +776,7 @@ export async function reconcileOrderTrackingSet(
 export async function applyOrderTrackingOps(
   ops: ApplyOrderTrackingOps,
 ): Promise<ApplyOrderTrackingResult> {
-  const { orderIds, setTrackingNumbers, primaryTrackingNumber, edits, creates, deletes, setPrimaryShipmentId, organizationId } = ops;
+  const { orderIds, setTrackingNumbers, primaryTrackingNumber, primaryCarrier, edits, creates, deletes, setPrimaryShipmentId, organizationId } = ops;
   const orgId = organizationId ?? transitionalDogfoodOrgId();
   // Run the whole multi-statement batch on the tenant pool inside ONE
   // GUC-scoped transaction (SET LOCAL app.current_org). The low-level helpers
@@ -789,7 +797,7 @@ export async function applyOrderTrackingOps(
     }
 
     if (primaryTrackingNumber !== undefined) {
-      await upsertOrderTracking(orderIds, primaryTrackingNumber, client, organizationId);
+      await upsertOrderTracking(orderIds, primaryTrackingNumber, client, organizationId, primaryCarrier);
     }
 
     if (Array.isArray(edits) && edits.length > 0) {
