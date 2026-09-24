@@ -74,6 +74,32 @@ and why. Known candidates:
    for entity detail): add a one-line "superseded by mobile-ds-law-exoskeleton-HANDOFF.md" at the
    top rather than editing history.
 
+### Task 1 result — the list (2026-09-24, cloud session) · AWAITING OWNER APPROVAL
+
+Callers are `grep -rlE "import .*\b<Name>\b" src` counts (code-graph was not reachable from
+the cloud session; re-run `impact_analysis` before any delete). Nothing below is deleted yet.
+
+| # | Item | Live callers | Verdict | Why |
+|---|---|---|---|---|
+| 1a | SURFACE_LAW §7 `MobilePhoneFrame` | 0 (never built) | **delete** | unbuilt name; `MobileShell` owns the phone column |
+| 1b | SURFACE_LAW §7 `MobileRecentStrip` | 0 (never built) | **delete** | unbuilt; Back is nav-trail via `backHref` |
+| 1c | SURFACE_LAW §7 `MobileStepShell` | 0 (never built) | **delete** | unbuilt; a job screen is `DetailRecordFrame` + its own sticky job bar |
+| 1d | SURFACE_LAW §7 `MobileQueueShell` ("row → sheet") | 0 (never built) | **delete** | unbuilt, and "row → sheet" is the pattern that competes with the hub for an entity |
+| 1e | SURFACE_LAW §7 `MobileActionSlot` | 5 files | **keep** | real; the top-bar verb for list/queue pages, not records |
+| 1f | SURFACE_LAW §7 table | — | **rewrite** | two groups: *Record (the exoskeleton)*: `DetailHubScreen` · `DetailRecordFrame` · `DetailSummaryCard` · `DetailNav` + `detailDoor` · `DetailFactRow` · `DetailAck` · `DetailDock`. *List / job screens (stay)*: `MobileShell`, `MobileActionSlot`, `ItemCardRow`, `MobileTriagePage`, `BottomSheet` (edit / confirm / picker) |
+| 2a | pinned `ItemCardRow` | 9 files | **keep, rewrite useWhen/doNot** | LIST row only; add "a row opens the entity's hub (`/m/<entity>/[id]`), never a record sheet or card" |
+| 2b | pinned `ItemRecordMobileMeta` | 2 files | **keep, rewrite doNot** | list-row facts cluster; add "not a record screen — the record is `DetailHubScreen`" |
+| 2c | pinned `ItemRecordMobileStage` | only re-exported by `item-record/index.ts`; no screen imports it | **delete candidate** | list-row stage mark nobody mounts; confirm with code-graph, then delete component + pin |
+| 2d | pinned `ItemRecordQtyBadge` | 2 files | **keep** | list-row qty; no record wording to remove |
+| 2e | pinned `MobilePhotoCountBadge` | 2 files | **keep, rewrite useWhen** | drop "phone card"; a record's photo count is the Photos door meta |
+| 2f | pinned `BottomSheet` | 41 files | **keep, rewrite useWhen/doNot** | lose "phone row detail, list row opens a detail, handheld detail, phone drill-in"; keep "edit sheet from the /info pencil, dock verb sheet, confirm, pickers" |
+| 3 | `.cursor/rules/mobile-first-surface.mdc` | — | **gone already** | the `.cursor` tree was removed 2026-09-22; delete the stale pointers to it in `SURFACE_LAW.md` (header + §9) and `src/lib/mobile/mobile-first-surface.ts` line 5 |
+| 4 | `MobileTriagePage` / `TriageRow` | 3 screens (pair location, on-hold list, merge) | **keep** | search-and-pick job screens; the law already fails it as a hub (`hub-triage-page`) |
+| 5 | unported record screens `/m/u/[id]` `/m/h/[id]` `/m/r/[id]` `/m/b/[barcode]` `/m/orders/[orderId]` `/m/id/scan-out/[orderId]` | — | **baseline, not rules** | `DETAIL_HUB_UNPORTED_BASELINE = 6`, shrink-only; `/m/u/[id]` also carries a heading and `router.back()` |
+| 6a | `docs/handoff/mobile-repair-workbench-NEXT-HANDOFF.md` | — | **add superseded line** | lists `DetailSectionHeading` as an exoskeleton part; the law forbids a heading on a hub |
+| 6b | `docs/handoff/daily-*-HANDOFF.md` "detail sheet" | — | **leave** | daily checklist items are list rows, not scanned entities |
+| 6c | `DetailSectionHeading` (component) | unit hub + repair sub-screens | **keep** | legal on job screens / `/info`; forbidden only on hubs |
+
 ## Task 2 — make the exoskeleton law, served and gated (copy the sku-identity pattern)
 
 One law module, one guard, one gate; the MCP tool reads the same module so it cannot disagree
@@ -108,6 +134,36 @@ with the gate.
 - Prove the gate: plant one violation per rule in a fixture, watch the guard fail, remove it.
   `ds.mjs contract "<job phrase>"` must return the new pin FIRST for: "mobile scanned entity
   hub", "mobile record detail", "phone drill-in", "hub verbs", "entity details and edit".
+
+### Task 2 result (2026-09-24, cloud session) — built, gated, green
+
+- Law `src/lib/mobile/detail-hub-law.ts` (+ `.test.ts`, 16 tests: one planted violation per rule),
+  cohort `src/lib/mobile/detail-hub-cohort.ts` (8 peers, 2 ported, `DETAIL_HUB_UNPORTED_BASELINE = 6`).
+- Guard `scripts/detail-hub-guard.ts` (`--json`, `--file`) → gate **Detail hub** in
+  `scripts/verify-profile.mjs` (`always`). Proven: planted Edit/heading/router.back/`<main>`/
+  useEffect+fetch on the repair hub, an `<input>` on SKU-exception `/info`, and a 4-verb/2-primary
+  `RepairWorkbenchDock` → exit 1 listing all eight; reverted → exit 0. Baseline 7 → "drop it".
+- Kit: `src/design-system/components/DetailHubScreen.tsx` (`DetailHubScreen` + `DetailRecordFrame`),
+  `src/lib/mobile/detail-door.ts` (`detailDoor`). Repair and SKU exception hubs cut over (no aliases);
+  `SkuExceptionScreen` is now a thin mapper over `DetailRecordFrame` (+ `useSkuExceptionRecord`).
+- Pins: `DetailHubScreen` added (useWhen: mobile scanned entity hub, mobile record detail, phone
+  drill-in, entity details and edit, …); `DetailSummaryCard` narrowed to the card slot so it no
+  longer competes for "mobile scanned entity hub". `detailDoor` lives in `lib` (not a walked home) —
+  served through the `DetailHubScreen` pin and the `detail-hub` axis.
+- `ds.mjs detail-hub [file]` subcommand; README row + naming + `detail-hub` axis + smoke path fixed.
+- **Not done from the cloud (needs the laptop):**
+  1. `tools/design-mcp/design-mcp.profile.json` is a symlink to the MAIN checkout
+     (`~/Projects/cycleforge-app/tools/design-mcp/design-mcp.profile.json`), outside this worktree.
+     Add beside `ds_sku_identity`:
+     gate `ds_detail_hub` → argv `["scripts/detail-hub-guard.ts", "--json"]`, `fileArg: "--file"`;
+     `extraAxes[]` entry `detail-hub` with sources `src/lib/mobile/detail-hub-law.ts`
+     (`DETAIL_HUB_KIT`, `DETAIL_DOCK_MAX_VERBS`, `DETAIL_HUB_REFUSAL`) and
+     `src/lib/mobile/detail-hub-cohort.ts` (`DETAIL_HUB_PEERS`, `DETAIL_HUB_UNPORTED_BASELINE`).
+     Copy the exact key shape from the `ds_sku_identity` / `mobile-ground` entries already there.
+  2. `ds.mjs contract "<phrase>"` for the five phrases — the engine is not in the cloud container.
+     Until Task 3 rewrites `BottomSheet`'s useWhen, "phone drill-in" may still rank it first.
+  3. Probe both hubs at :3050 (repair RS hub + `/m/on-hold/TMP-QAE2E0924`) — layout is unchanged
+     by design (same slots, same classes), but it has not been looked at in a browser.
 
 ## Task 3 — delete the old rules (after Task 1's list is approved by the owner)
 

@@ -2,11 +2,11 @@
 
 import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { DetailNav } from '@/components/mobile/detail/DetailParts';
-import { SkuExceptionScreen } from '@/components/mobile/onhold/SkuExceptionScreen';
+import { useSkuExceptionRecord } from '@/components/mobile/onhold/SkuExceptionScreen';
 import { SkuExceptionInfoCard } from '@/components/mobile/onhold/SkuExceptionInfoCard';
 import { skuExceptionHubRows } from '@/components/mobile/onhold/sku-exception-hub-rows';
 import { DetailDock } from '@/design-system/components/DetailDock';
+import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import { Camera, Link2, Share2 } from '@/components/Icons';
 import {
   mobileSkuExceptionScreenHref,
@@ -24,7 +24,7 @@ function daysOnHold(iso: string | null): string | undefined {
 }
 
 /**
- * `/m/on-hold/[sku]` — the SKU exception HUB (the repair hub's exoskeleton):
+ * `/m/on-hold/[sku]` — the SKU exception HUB, on {@link DetailHubScreen}:
  * a read-only summary card on top that opens `/info`, then one door per exact
  * job (Photos · Locations · Pair), and the dock — Share · Take photo · Pair.
  * The share link is the plain app URL; a teammate opens this same hub.
@@ -34,34 +34,36 @@ function SkuExceptionHubInner() {
   const sku = decodeURIComponent(params?.sku ?? '');
   const router = useRouter();
 
+  const { item, state } = useSkuExceptionRecord(sku);
+
   return (
-    <SkuExceptionScreen sku={sku} meta={(item) => daysOnHold(item.createdAt)}>
-      {(item) => (
-        <>
-          <div className="flex-1 space-y-5 px-mode-page py-mode-page">
-            <SkuExceptionInfoCard item={item} />
-            <DetailNav label="SKU exception screens" rows={skuExceptionHubRows(item)} />
-          </div>
-          <DetailDock<HubVerb>
-            label="SKU exception actions"
-            verbs={[
-              { id: 'share', label: 'Share', icon: <Share2 /> },
-              { id: 'photo', label: 'Take photo', icon: <Camera /> },
-              { id: 'pair', label: 'Pair', icon: <Link2 />, primary: true },
-            ]}
-            onVerb={(verb) => {
-              if (verb === 'share') {
-                void shareRecordLink(skuExceptionShareUrl(item.sku), `SKU exception — ${item.productTitle}`);
-              } else if (verb === 'photo') {
-                router.push(`${mobileSkuExceptionScreenHref(item.sku, 'photos')}?capture=1`);
-              } else {
-                router.push(mobileSkuExceptionScreenHref(item.sku, 'pair'));
-              }
-            }}
-          />
-        </>
+    <DetailHubScreen
+      record={item}
+      state={state}
+      bar={{ title: sku, mono: true, meta: (r) => daysOnHold(r.createdAt) }}
+      card={(r) => <SkuExceptionInfoCard item={r} />}
+      rowsLabel="SKU exception screens"
+      rows={skuExceptionHubRows}
+      dock={(r) => (
+        <DetailDock<HubVerb>
+          label="SKU exception actions"
+          verbs={[
+            { id: 'share', label: 'Share', icon: <Share2 /> },
+            { id: 'photo', label: 'Take photo', icon: <Camera /> },
+            { id: 'pair', label: 'Pair', icon: <Link2 />, primary: true },
+          ]}
+          onVerb={(verb) => {
+            if (verb === 'share') {
+              void shareRecordLink(skuExceptionShareUrl(r.sku), `SKU exception — ${r.productTitle}`);
+            } else if (verb === 'photo') {
+              router.push(`${mobileSkuExceptionScreenHref(r.sku, 'photos')}?capture=1`);
+            } else {
+              router.push(mobileSkuExceptionScreenHref(r.sku, 'pair'));
+            }
+          }}
+        />
       )}
-    </SkuExceptionScreen>
+    />
   );
 }
 

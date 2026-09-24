@@ -1,8 +1,8 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import type { DetailNavItem } from '@/components/mobile/detail/DetailParts';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
+import { detailDoor } from '@/lib/mobile/detail-door';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { customerUpdateDraft } from '@/lib/repair/customer-update-drafts';
 import { repairStatusOperatorLabel } from '@/lib/repair-status';
@@ -41,19 +41,13 @@ export function useRepairHubRows(repairId: number, repair: RSRecord | null): Det
           : `Zendesk #${link.zendeskTicketId}`
         : (ticketBlockedReason(link) ?? '');
 
-  /** A slice screen under `/m/rs/[id]/<path>`; inert when its summary says it cannot open. */
-  const screen = (
-    id: string,
-    title: string,
-    icon: ReactNode,
-    row: { meta: string; enabled: boolean },
-  ): DetailNavItem => ({ id, title, icon, href: row.enabled ? `/m/rs/${repairId}/${id}` : null, meta: row.meta });
+  const base = `/m/rs/${repairId}`;
 
   return [
-    screen('photos', 'Photos', <Images />, photos),
-    screen('work', 'Bench log', <Wrench />, bench),
+    detailDoor(base, 'photos', 'Photos', <Images />, photos),
+    detailDoor(base, 'work', 'Bench log', <Wrench />, bench),
     { id: 'ticket', title: 'Ticket', icon: <MessageSquare />, href: ticketThreadHref(link, draft || undefined), meta: ticketMeta },
-    screen('paperwork', 'Paperwork', <Printer />, paperwork),
-    screen('record', 'Record', <ClipboardList />, { meta: 'Identifiers, state history, pickup audit', enabled: true }),
+    detailDoor(base, 'paperwork', 'Paperwork', <Printer />, paperwork),
+    detailDoor(base, 'record', 'Record', <ClipboardList />, { meta: 'Identifiers, state history, pickup audit' }),
   ];
 }

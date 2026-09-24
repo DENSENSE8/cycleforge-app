@@ -12,6 +12,7 @@ agent session must show `design-mcp` in its MCP list and must have
 | Is the canonical table still one industrial instrument? | split by line count, add a page toolbar slot | `ds_data_table` |
 | How does the pasted industrial brief enter this system? | copy its palette, component or spring literals | `ds_industrial_translation` |
 | Why is this component bad? | rewrites it from scratch | `ds_critique` |
+| Is this phone record screen the exoskeleton? | hand-rolls a card, a heading, an Edit button, a fourth verb | `ds_detail_hub` (`ds.mjs detail-hub [file]`) |
 
 ## When the agent catalog is empty
 
@@ -30,10 +31,15 @@ tree.
 - Raw `OmnichannelComposerDock` alone → incomplete mouth
 - Dumb / gun station → `showModeFaces={false}` (keep context ring); never
   `showModeRow={false}` to hide Unbox|Ticket
-- Mobile scanned-entity hub / mobile exoskeleton → **DetailSummaryCard**
-  - summary-only top card → `/info` for full facts + the only pencil edit
-  - at most two caption lines; mono identifier + status share one bottom row
-  - below: `DetailNav` doors; bottom: at most three task verbs
+- Mobile scanned-entity hub / mobile record / phone drill-in → **DetailHubScreen**
+  (the only record grammar on `/m`; law `src/lib/mobile/detail-hub-law.ts`,
+  gate `Detail hub` in `verify:fast`, MCP face `ds_detail_hub`)
+  - card slot → a **DetailSummaryCard** mapper; whole card → `/info`, which
+    holds every fact and the only edit (the bar pencil)
+  - rows → `DetailNav` doors built with `detailDoor()`; one per exact job
+  - dock → **DetailDock**, at most three verbs, one primary
+  - `/info` and job screens → `DetailRecordFrame`
+  - never: `MobileTriagePage` / `ItemCardRow` / a `BottomSheet` as the record
 
 ## The contract is derived, not written
 
@@ -44,7 +50,7 @@ means **nobody has written that law yet** — not that anything is permitted.
 
 `ds_tokens` requires `axis` (`color` · `radius` · `spacing` · `typography` ·
 `z-index` · `elevation` · `border` · `focus` · `station-skin` · `station-depth` ·
-`item-record`). There is no dump. The same slices
+`item-record` · `detail-hub`). There is no dump. The same slices
 are also MCP resources at `design://tokens/<axis>` — browse those; pass `filter`
 on the tool when you already know the name. After changing a token file, run
 smoke and the axis unit test, then `code-graph` `find_symbol` + `impact_analysis`
@@ -97,7 +103,8 @@ shared TypeScript-AST adjudicator used by the guard, tests, and eval cohort.
 ## Verify
 
 ```bash
-node tools/design-mcp/smoke.mjs   # stdio JSON-RPC: axes, resources, critique per-axis fixes
+node "$GARISEK_OS_ROOT/tools/design-mcp/smoke.mjs"   # the engine's smoke (stdio JSON-RPC: axes, resources, critique per-axis fixes)
+node_modules/.bin/tsx scripts/detail-hub-guard.ts    # the exoskeleton law (also in verify:fast)
 ```
 
 The variant extractor has been wrong twice: it once anchored on the

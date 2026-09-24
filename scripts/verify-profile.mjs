@@ -257,6 +257,20 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Detail hub',
+    // Every scanned entity's phone record is ONE grammar — the repair hub
+    // exoskeleton (operator 2026-09-24): DetailHubScreen, a DetailSummaryCard
+    // mapper, detailDoor doors, a ≤3-verb DetailDock, /info as the only edit.
+    // `always` for the same reason as Ground / Sku identity: a source read
+    // (<1s), and the increments that break it — an Edit button on a hub, a
+    // fourth dock verb, a hand-rolled record screen — are `verify:fast`
+    // increments. Same rule module as the Unit-tests gate
+    // (src/lib/mobile/detail-hub-law.ts) and the ds_detail_hub MCP face.
+    cmd: localBin('tsx'),
+    args: ['scripts/detail-hub-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Design tokens',
     // The committed platform artifacts (desktop tokens.css, iOS
     // DesignTokens.swift, design-mcp tokens.json) must be exactly what

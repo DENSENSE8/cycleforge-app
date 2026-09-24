@@ -36,6 +36,7 @@ function usage(code = 1) {
   node tools/design-mcp/ds.mjs mobile-first
   node tools/design-mcp/ds.mjs sku-identity
   node tools/design-mcp/ds.mjs mobile-ground
+  node tools/design-mcp/ds.mjs detail-hub [repo-relative-file]
   node tools/design-mcp/ds.mjs identity-purity`)
   process.exit(code)
 }
@@ -295,6 +296,24 @@ if (cmd === 'mobile-ground') {
   }
   process.exit(ok ? 0 : 1)
 }
+if (cmd === 'detail-hub') {
+  const file_path = argv[1]
+  const res = await rpcCall('ds_detail_hub', file_path ? { file_path } : {})
+  const text = extractText(res)
+  if (res.result?.isError) {
+    console.error(text)
+    process.exit(2)
+  }
+  console.log(text)
+  let ok = true
+  try {
+    ok = JSON.parse(text)?.ok !== false
+  } catch {
+    ok = true
+  }
+  process.exit(ok ? 0 : 1)
+}
+
 if (cmd === 'identity-purity') {
   const res = await rpcCall('ds_identity_purity', {})
   const text = extractText(res)
