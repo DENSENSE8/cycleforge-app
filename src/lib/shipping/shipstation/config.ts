@@ -21,7 +21,7 @@ export class ShipStationNotConnectedError extends Error {
 
 export class ShipFromNotConfiguredError extends Error {
   constructor(
-    message = 'No warehouse ship-from address is configured. Set the organization ship-from address (settings.shipFrom) or the SHIPSTATION_SHIP_FROM_* env vars.',
+    message = 'No warehouse ship-from address is configured. Set it under Settings → Organization → Ship-from address, or the SHIPSTATION_SHIP_FROM_* env vars.',
   ) {
     super(message);
     this.name = 'ShipFromNotConfiguredError';

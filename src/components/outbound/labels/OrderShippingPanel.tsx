@@ -31,7 +31,8 @@
  * to the triage form.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';
 import { BuyLabelSection } from '@/components/outbound/labels/BuyLabelSection';
@@ -42,6 +43,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/design-system/primitives';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { toast } from '@/lib/toast';
+import { SHIP_FROM_SETTINGS_PATH } from '@/lib/shipping/ship-from-settings';
 
 function parsePositive(raw: string): number | null {
   const trimmed = raw.trim();
@@ -167,7 +169,7 @@ export function OrderShippingPanel({
       : null;
 
   /** Named reason ShipStation cannot buy right now (`null` = none known). */
-  const [shipstationDown, setShipstationDown] = useState<string | null>(null);
+  const [shipstationDown, setShipstationDown] = useState<ReactNode>(null);
   const handleRatesError = useCallback((info: { code: string | null; message: string }) => {
     if (info.code === 'SHIPSTATION_NOT_CONNECTED') {
       setShipstationDown(
@@ -175,10 +177,16 @@ export function OrderShippingPanel({
       );
     } else if (info.code === 'SHIP_FROM_NOT_CONFIGURED') {
       setShipstationDown(
-        'No warehouse ship-from address is set for this organization, so carriers cannot rate the parcel. Ask an admin to set the organization ship-from address (or the SHIPSTATION_SHIP_FROM_* env vars), or attach an existing label instead.',
+        <>
+          No warehouse ship-from address is set, so carriers cannot rate the parcel. An admin sets it in{' '}
+          <Link href={SHIP_FROM_SETTINGS_PATH} className="font-semibold underline" data-testid={`${testIdPrefix}-ship-from-link`}>
+            Settings → Organization → Ship-from address
+          </Link>
+          ; or attach an existing label instead.
+        </>,
       );
     }
-  }, []);
+  }, [testIdPrefix]);
 
   // A ShipStation-sourced order carries its own weight on the ShipStation
   // order; `POST /api/shipping/order-rates` falls back to it, so the panel

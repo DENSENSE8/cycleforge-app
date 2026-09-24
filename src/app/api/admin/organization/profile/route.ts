@@ -4,6 +4,9 @@ import { getOrganization, updateOrgSettings } from '@/lib/tenancy/organizations'
 import type { OrgSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isKioskCommandId } from '@/lib/kiosk/commands';
+import pool from '@/lib/db';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { isShipFromComplete, parseShipFromInput } from '@/lib/shipping/ship-from-settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,6 +24,10 @@ function profilePayload(settings: OrgSettings) {
     brand: settings.brand ?? {},
     kiosk: settings.kiosk ?? {},
     letterhead: settings.letterhead ?? { addressLine1: '', addressLine2: '', phone: '', email: '' },
+    // Warehouse origin for ShipStation rates/labels. `null` = never set (the
+    // SHIPSTATION_SHIP_FROM_* env fallback, if any, applies).
+    shipFrom: settings.shipFrom ?? null,
+    shipFromComplete: isShipFromComplete(settings.shipFrom),
   };
 }
 
@@ -160,11 +167,41 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (touched) patch.kiosk = nextKiosk;
   }
 
+  /*
+   * SHIP-FROM. Either empty (clears it — the env fallback applies) or complete
+   * (line 1, city, state, ZIP): a half-filled origin would save and still fail
+   * every rate with SHIP_FROM_NOT_CONFIGURED, so it is refused here instead.
+   * The whole block is rebuilt (the shallow `||` merge replaces it anyway).
+   */
+  let shipFromChanged = false;
+  if (b.shipFrom !== undefined) {
+    const parsed = parseShipFromInput(b.shipFrom ?? {});
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error, code: 'SHIP_FROM_INVALID' }, { status: 400 });
+    }
+    patch.shipFrom = parsed.value;
+    shipFromChanged = JSON.stringify(current.shipFrom ?? null) !== JSON.stringify(parsed.value);
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
   }
 
   await updateOrgSettings(ctx.organizationId as OrgId, patch);
   const org = await getOrganization(ctx.organizationId as OrgId);
+
+  // The origin every label is bought from — who changed it, and from what.
+  if (shipFromChanged) {
+    await recordAudit(pool, ctx, req, {
+      source: 'api.admin.organization.profile',
+      action: AUDIT_ACTION.SETTINGS_UPDATE,
+      entityType: AUDIT_ENTITY.ORGANIZATION,
+      entityId: String(ctx.organizationId),
+      before: { shipFrom: current.shipFrom ?? null },
+      after: { shipFrom: patch.shipFrom ?? null },
+      extra: { field: 'shipFrom' },
+    });
+  }
+
   return NextResponse.json({ ok: true, ...profilePayload(org!.settings) });
 }, { permission: 'admin.view' });

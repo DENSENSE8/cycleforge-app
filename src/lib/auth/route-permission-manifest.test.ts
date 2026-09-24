@@ -864,3 +864,13 @@ test('regression: the Foundation 0 outbound slice keeps its gates', () => {
   assert.ok(work, 'the outbound work route should be in the manifest');
   assert.equal(work.permission, 'orders.view');
 });
+
+test('regression: admin.view gates the organization profile route (ship-from address write)', () => {
+  // PATCH /api/admin/organization/profile writes settings.shipFrom — the origin
+  // every ShipStation label is bought from. It must never drift off the admin gate.
+  const paths = routesGatedBy('admin.view').map((r) => r.path);
+  assert.ok(
+    paths.some((p) => p.includes('/api/admin/organization/profile')),
+    `expected /api/admin/organization/profile under admin.view, got ${paths.filter((p) => p.includes('organization')).join(', ')}`,
+  );
+});

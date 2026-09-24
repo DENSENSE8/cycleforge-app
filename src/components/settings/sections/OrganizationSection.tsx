@@ -132,7 +132,34 @@ interface OrgProfileResponse {
     phone: string;
     email: string;
   };
+  /** Warehouse origin for ShipStation rates/labels; null = never set. */
+  shipFrom: ShipFromDraft | null;
+  shipFromComplete?: boolean;
 }
+
+interface ShipFromDraft {
+  name: string;
+  company: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
+const EMPTY_SHIP_FROM: ShipFromDraft = {
+  name: '',
+  company: '',
+  phone: '',
+  addressLine1: '',
+  addressLine2: '',
+  city: '',
+  state: '',
+  postalCode: '',
+  country: 'US',
+};
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
@@ -757,6 +784,12 @@ export function OrganizationSection() {
         </div>
       </div>
 
+      <ShipFromCard
+        value={draft.shipFrom ?? EMPTY_SHIP_FROM}
+        complete={draft.shipFromComplete === true}
+        onChange={(shipFrom) => setDraft({ ...draft, shipFrom })}
+      />
+
       <div className="flex justify-end">
         <Button
           variant="brand"
@@ -768,5 +801,72 @@ export function OrganizationSection() {
         </Button>
       </div>
     </section>
+  );
+}
+
+/**
+ * Ship-from address — the warehouse origin every ShipStation rate and label is
+ * quoted from (`resolveShipFrom`). Saved with the rest of this page through
+ * `PATCH /api/admin/organization/profile`, which refuses a half-filled address:
+ * leave it all empty to fall back to the SHIPSTATION_SHIP_FROM_* env vars.
+ * `#ship-from` is where the To-ship Labels walk sends an operator whose rates
+ * fail with SHIP_FROM_NOT_CONFIGURED.
+ */
+function ShipFromCard({
+  value,
+  complete,
+  onChange,
+}: {
+  value: ShipFromDraft;
+  complete: boolean;
+  onChange: (next: ShipFromDraft) => void;
+}) {
+  const field = (key: keyof ShipFromDraft, label: string, placeholder: string, extra?: { maxLength?: number }) => (
+    <label className="block">
+      <span className="mb-1 block text-xs font-medium text-text-muted">{label}</span>
+      <input
+        type="text"
+        value={value[key]}
+        onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+        className={FIELD_CLS}
+        placeholder={placeholder}
+        maxLength={extra?.maxLength}
+        data-testid={`org-ship-from-${key}`}
+      />
+    </label>
+  );
+
+  return (
+    <div
+      id="ship-from"
+      className="scroll-mt-6 space-y-4 rounded-none border border-border-soft bg-surface-card p-5 shadow-sm"
+      data-testid="org-ship-from"
+    >
+      <div>
+        <h3 className="text-sm font-semibold text-text-default">Ship-from address</h3>
+        <p className="mt-1 text-xs text-text-soft">
+          The warehouse every ShipStation rate and shipping label is quoted from. Address line 1, city, state
+          and ZIP are required; leave it all empty to use the server&rsquo;s SHIPSTATION_SHIP_FROM_* settings.
+        </p>
+        <p className="mt-1 text-xs text-text-soft" role="status" data-testid="org-ship-from-status">
+          {complete ? 'Set — rates and labels ship from this address.' : 'Not set for this workspace.'}
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('name', 'Contact name', 'Shipping department')}
+        {field('company', 'Company', 'Your company')}
+      </div>
+      {field('addressLine1', 'Address line 1', '123 Main St.')}
+      {field('addressLine2', 'Address line 2', 'Suite A (optional)')}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <div className="sm:col-span-2">{field('city', 'City', 'Los Angeles')}</div>
+        {field('state', 'State', 'CA', { maxLength: 40 })}
+        {field('postalCode', 'ZIP', '90001', { maxLength: 20 })}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {field('phone', 'Phone', '(555) 555-5555')}
+        {field('country', 'Country', 'US', { maxLength: 2 })}
+      </div>
+    </div>
   );
 }

@@ -93,7 +93,7 @@ const LetterheadSchema = z.object({
 // Structured warehouse origin for outbound shipping labels (ship_from). Lives
 // in the settings jsonb bag (no DDL); env SHIPSTATION_SHIP_FROM_* is the
 // fallback. A rate/label needs a complete origin (line1 + city + state + zip).
-const ShipFromSchema = z.object({
+export const ShipFromSchema = z.object({
   name: z.string().max(80).default(''),
   company: z.string().max(80).default(''),
   phone: z.string().max(40).default(''),
