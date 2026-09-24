@@ -102,7 +102,9 @@ const CORNER_CLASS: Record<CornerRole, string> = {
   field: 'rounded-none',
   card: 'rounded-none',
   canvas: 'rounded-none',
-  surface: 'rounded-xl',
+  // Square since 2026-09-24: triage shares industrial identity (one language,
+  // two densities — packages/design-tokens/src/modes.ts OPERATIONAL_BASE).
+  surface: 'rounded-none',
   pill: 'rounded-full',
 };
 
@@ -115,7 +117,7 @@ const CORNER_PX: Record<CornerRole, number> = {
   field: 12,
   card: 16,
   canvas: 24,
-  surface: 12,
+  surface: 0,
   pill: 9999,
 };
 
@@ -149,6 +151,15 @@ export function cornerClass(role: CornerRole): string {
  * exemptions. None of them is a licence to round anything else.
  */
 export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
+
+/**
+ * The COUNTER family's card corner (kiosk / walk-in POS) — 12px. Counter keeps
+ * its own identity (BRIEF §4c; `IDENTITY_EXEMPT_MODES` in the mode registry),
+ * so it must not borrow an operational role: it used to mirror
+ * `cornerClass('surface')`, which squared when triage joined the industrial
+ * identity (2026-09-24).
+ */
+export const COUNTER_CARD_CORNER = 'rounded-xl';
 
 /**
  * Menu rows inside a {@link COMPOSER_SHELL_CORNER} drop panel padded `p-1`.
@@ -261,7 +272,11 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
  * claiming to be inside a triage panel — checkable in review, unlike a bare
  * `rounded-lg`. It is not a licence to round ops chrome that is not.
  */
-export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
+// Square since 2026-09-24 (owner ruling): the triage panel is square, so what
+// sits inside it is square — one identity across industrial and triage. The
+// constant stays so call sites keep naming the context they are in; the guard
+// (`design-system/modes/modes.guard.test.ts`) keeps it square.
+export const TRIAGE_PANEL_INNER_CORNER = 'rounded-none';
 
 /**
  * ── The mobile family (operator 2026-09-15) ──────────────────────────────────

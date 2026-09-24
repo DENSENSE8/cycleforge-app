@@ -74,6 +74,15 @@ Hit size follows the **device** (touch vs pointer), not a mode.
 | Surfaces | **canvas `#fafafa`** (Changed from `#ecece8`), bar `#f8f8f4`, rows `#fff`, ink `#10110f`, muted `#535650`, rule `#cacbc5`, edge `#b7b8b0`, well `#e6e7e1`, urgent text `#8a5f00` |
 
 ### triage — **Approved** (Q4b)
+> **Changed (owner, 2026-09-24): one language, two densities.** Triage no longer has its own
+> identity. It shares industrial's warm greys (`#10110f` / `#cacbc5` …), **radius 0**, warning
+> ink and label voice (mono heavy caps for labels and codes, sans for values). Triage differs
+> from industrial in **space only** — page padding 12/16, body 14/16, hit, motion. The slate
+> palette and the 4px radius below are **superseded** for triage (they remain for `counter` /
+> `assistant`, which keep their own identity). Source: `OPERATIONAL_BASE` in
+> `packages/design-tokens/src/modes.ts`; CI guard: `src/design-system/modes/modes.guard.test.ts`
+> (fails if an operational mode overrides anything but density, if a new mode is neither in the
+> family nor exempted by name, or if a triage corner constant rounds).
 Padding 12 desk / 16 touch · 4 px base, 8/12/16 · **radius 4** · evidence stack: what it is →
 evidence (photos, logs, timeline) → decision bar (2–4 verbs, bottom on touch) · body 14/16,
 lh 1.45 · mono labels/IDs · neutral decisions, primary = ink fill · 1 px rules, one shadow level for
@@ -98,7 +107,7 @@ composer (delete the private textareas) · body 15/16, lh 1.6 · no AI accent co
 pending-jobs button, AI notifications in Activity Inbox, composer unification — "a later
 triageable task".
 
-**Radius ladder across modes — Approved:** industrial 0 · triage 4 · counter 12 + pill · assistant 12 + pill.
+**Radius ladder across modes — Changed (2026-09-24):** industrial 0 · triage **0** (shared identity) · counter 12 + pill · assistant 12 + pill.
 
 ## 5. Invariants — **Approved** with state colours **Changed** (Q5)
 

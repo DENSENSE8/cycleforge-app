@@ -35,11 +35,11 @@ import { cn } from '@/utils/_cn';
 /**
  * Tablet-measure mirrors of the token roles used below.
  *
- * A responsive variant CANNOT be composed: `md:${cornerClass('surface')}`
+ * A responsive variant CANNOT be composed: `md:${COUNTER_CARD_CORNER}`
  * builds the string at runtime and Tailwind's scanner only reads source text,
  * so the utility is never emitted (the same trap `ELEVATION_HOVER_CLASS`
  * documents). They are therefore literals — and `kiosk-pos-surface.test.ts`
- * pins each one to the role it mirrors, so a theme that moves `surface` or the
+ * pins each one to the token it mirrors, so a theme that moves the counter corner or the
  * elevation ladder fails a test instead of silently drifting at `md:`.
  */
 export const KIOSK_POS_AT_MD = {

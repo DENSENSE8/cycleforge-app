@@ -99,8 +99,9 @@ export function MobileArrivalClassifyFlow({
       urgencyClassifyOptions({
         derivedLabel: 'platform',
         derivedTierEquivalent: null,
-        autoActiveClass:
-          'border-slate-200 bg-slate-50 text-slate-700 shadow-sm', // ds-allow-raw-neutral: Auto face
+        // Mode vars, not raw slate: the triage region shares the industrial
+        // identity (one language, two densities — modes.ts OPERATIONAL_BASE).
+        autoActiveClass: 'border-mode-rule bg-mode-well text-mode-ink',
       }),
     [],
   );

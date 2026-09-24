@@ -19,7 +19,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { COUNTER_CARD_CORNER, cornerClass } from '@/design-system/tokens/radius';
 import { ELEVATION_CLASS, TACTILE_PRESS_TRAVEL_CLASS } from '@/design-system/tokens/shadows';
 import {
   KIOSK_POS_ACTION_BAR,
@@ -37,9 +37,9 @@ import {
 } from './kiosk-pos-surface';
 
 test('each md: literal is exactly the md variant of the role it mirrors', () => {
-  // If a theme moves `surface` off rounded-xl, or the ladder renames a rung,
-  // this fails here instead of at the breakpoint in a customer's face.
-  assert.equal(KIOSK_POS_AT_MD.cornerSurface, `md:${cornerClass('surface')}`);
+  // The counter family's own corner (not an operational role — those are
+  // square). If it moves, this fails here instead of in a customer's face.
+  assert.equal(KIOSK_POS_AT_MD.cornerSurface, `md:${COUNTER_CARD_CORNER}`);
   assert.equal(KIOSK_POS_AT_MD.elevSoft, `md:${ELEVATION_CLASS.raised.soft}`);
   assert.equal(KIOSK_POS_AT_MD.elevRaisedHover, `md:hover:${ELEVATION_CLASS.raised.default}`);
 });
@@ -66,7 +66,7 @@ test('the ground is the ONE SoT background at every measure', () => {
   assert.ok(KIOSK_POS_GRID.includes('gap-0'));
   assert.ok(KIOSK_POS_GRID.includes('md:gap-3'));
   // No ungated corner or lift may reach the phone.
-  assert.ok(!KIOSK_POS_CARD.split(' ').includes(cornerClass('surface')));
+  assert.ok(!KIOSK_POS_CARD.split(' ').includes(COUNTER_CARD_CORNER));
   assert.ok(!KIOSK_POS_CARD.split(' ').includes(ELEVATION_CLASS.raised.soft));
 });
 

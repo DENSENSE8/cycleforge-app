@@ -36,6 +36,7 @@ import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayou
 import { Button, Checkbox, IconButton } from '@/design-system/primitives';
 import { LIFECYCLE, LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { TRIAGE_PANEL_INNER_CORNER, triagePanelControl } from '@/design-system/tokens/triage-panel';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
@@ -51,7 +52,7 @@ import { PaperworkDocuments, type PaperworkTab } from './PaperworkDocuments';
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
-      <dt className="pt-0.5 text-role-caption text-text-muted">{label}</dt>
+      <dt className={cn(RECORD_LABEL_CLASS, 'pt-1 text-text-muted')}>{label}</dt>
       <dd className="min-w-0 text-role-data text-text-default">{children}</dd>
     </>
   );

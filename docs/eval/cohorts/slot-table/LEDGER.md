@@ -579,5 +579,5 @@ _code-graph CLI unavailable_
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-24T18:58:28.585Z · cohort `slot-table` · run id `2026-09-24T18-56-28-688Z`_
+_Updated 2026-09-24T19:39:08.403Z · cohort `slot-table` · run id `2026-09-24T19-37-00-719Z`_
 <!-- /eval-ledger:auto:last-run -->

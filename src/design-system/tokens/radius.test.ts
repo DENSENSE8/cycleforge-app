@@ -56,9 +56,9 @@ describe('radius SoT', () => {
     );
   });
 
-  it('surface is the triage-panel exemption — not a licence to round the ladder', () => {
-    assert.equal(cornerClass('surface'), 'rounded-xl');
-    assert.equal(nestedCorner('surface', 0), 'field');
+  it('surface (triage panels) is square — triage shares the industrial identity', () => {
+    assert.equal(cornerClass('surface'), 'rounded-none');
+    assert.equal(nestedCorner('surface', 0), 'flush');
   });
 
   it('dropdown shells are the 8px control rung — ladder stays flush', () => {

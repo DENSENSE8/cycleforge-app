@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { DESK_RECORD_MEASURE_CLASS } from '@/design-system/tokens/desk-stage';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 
 export type TriageSectionSpec = {
   id: string;
@@ -18,12 +19,11 @@ export type TriageSectionSpec = {
  *
  * ## Breathing room is deliberate, not decoration
  *
- * The heading is a real heading — `role-body` semibold in sentence case, not
- * an 11px tracked-out eyebrow. A form with a dozen labels and three section
- * markers all set in caps has no hierarchy left: everything shouts, so the
- * reader gets no help deciding what to look at first. Sentence case at a
- * larger size makes the section markers legible AS markers and lets the field
- * labels below them recede.
+ * The heading speaks the industrial LABEL voice (owner ruling 2026-09-24 —
+ * one language, two densities): mono heavy caps, `RECORD_LABEL_CLASS`, the
+ * same face as `ORDER #` / `TRACKING` in the evidence column and `RDY` in the
+ * ledger. Mono caps are the fixed anchor the eye lands on; the sans values
+ * below are what varies. Triage keeps its roomier SPACE, not a second voice.
  *
  * Spacing follows the same logic — the gap BETWEEN sections is larger than the
  * padding inside a card, so the grouping reads as grouping without needing a
@@ -91,7 +91,7 @@ export function TriageSections({
         >
           <h3
             id={`${section.id}-heading`}
-            className="text-role-body font-semibold text-text-default"
+            className={cn(RECORD_LABEL_CLASS, 'text-text-default')}
           >
             {section.label}
           </h3>

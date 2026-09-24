@@ -43,6 +43,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/design-system/primitives';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { toast } from '@/lib/toast';
+import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { cn } from '@/utils/_cn';
 import { SHIP_FROM_SETTINGS_PATH } from '@/lib/shipping/ship-from-settings';
 
 function parsePositive(raw: string): number | null {
@@ -341,7 +343,7 @@ function ParcelField({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className={cn(RECORD_LABEL_CLASS, 'text-text-muted')}>{label}</Label>
       <Input
         id={id}
         value={value}

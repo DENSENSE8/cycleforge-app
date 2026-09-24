@@ -62,5 +62,7 @@ export function triagePanelControl(...extra: Parameters<typeof cn>): string {
  * to exist verbatim in a scanned file, and this is that file
  * (`@source '../design-system/**'` in globals.css).
  */
-export const TRIAGE_PANEL_SEGMENT_ENDS =
-  '[&>*:first-child]:rounded-l-lg [&>*:last-child]:rounded-r-lg';
+// Square since 2026-09-24 (one language, two densities): the strip's ends are
+// flush like the panel around them. Kept as a named slot so call sites keep
+// saying "this is a segmented strip"; the modes guard keeps it square.
+export const TRIAGE_PANEL_SEGMENT_ENDS = '';

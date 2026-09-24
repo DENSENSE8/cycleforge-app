@@ -99,7 +99,7 @@ export interface ModeSpec {
 
 // ── Registry ────────────────────────────────────────────────────────────────
 
-/** The shared slate palette triage / counter / assistant sit on (light theme). */
+/** The slate palette the identity-exempt modes (counter / assistant) sit on. */
 export const SLATE_SURFACES: ModeSurfaces = {
   canvas: '#fafafa',
   bar: '#ffffff',
@@ -114,42 +114,78 @@ export const SLATE_SURFACES: ModeSurfaces = {
   control: '#7b8aa0',
 };
 
+/**
+ * The warm industrial palette — the floor, the ledger, the desktop terminal.
+ * No light-grey text on the floor: `faint` is `muted`.
+ */
+export const WARM_SURFACES: ModeSurfaces = {
+  canvas: '#fafafa',
+  bar: '#f8f8f4',
+  panel: '#ffffff',
+  well: '#e6e7e1',
+  hover: '#f4f4ef',
+  ink: '#10110f',
+  muted: '#535650',
+  faint: '#535650',
+  rule: '#cacbc5',
+  edge: '#b7b8b0',
+  control: '#10110f',
+};
+
+/**
+ * ── One language, two densities (owner ruling 2026-09-24) ──────────────────
+ *
+ * The OPERATIONAL family — `industrial` and `triage` — shares ONE identity:
+ * warm greys, square corners, the same warning ink. A mode in this family may
+ * change SPACE only ({@link DENSITY_KEYS}: padding, hit, body size, motion),
+ * never identity. Triage used to carry slate greys and 4px corners, which put a
+ * consumer-SaaS panel inside the industrial terminal on the same screen (the
+ * Labels walk: warm ledger rail beside a slate, rounded record).
+ *
+ * Guard: `modes.guard.test.ts` fails CI if an operational mode overrides a key
+ * outside {@link DENSITY_KEYS}, or if a new mode is added without either
+ * joining this family or being exempted by name ({@link IDENTITY_EXEMPT_MODES}).
+ */
+export const OPERATIONAL_BASE = {
+  surfaces: WARM_SURFACES,
+  radius: '0',
+  radiusPill: '0',
+  // #d39200 fails contrast as text; this is its readable ink.
+  warnText: '#8a5f00',
+} as const satisfies Pick<ModeSpec, 'surfaces' | 'radius' | 'radiusPill' | 'warnText'>;
+
+/** The keys a mode in the operational family may set for itself. */
+export const DENSITY_KEYS = ['name', 'label', 'hint', 'pagePad', 'hit', 'hitCta', 'bodyText', 'motion'] as const;
+
+/** Modes that share {@link OPERATIONAL_BASE}. */
+export const OPERATIONAL_MODES = ['industrial', 'triage'] as const satisfies readonly ModeName[];
+
+/**
+ * Modes with their own identity, and why — each a separately ratified surface
+ * (BRIEF §4c / §4d), never an operator desk.
+ */
+export const IDENTITY_EXEMPT_MODES = {
+  counter: 'Customer-facing counter tablet (kiosk v2): tenant brand, 12px + pill, 56px CTA.',
+  assistant: 'Conversational AI surfaces: transcript column, 12px + pill.',
+} as const satisfies Partial<Record<ModeName, string>>;
+
 export const MODE_REGISTRY = {
   industrial: {
+    ...OPERATIONAL_BASE,
     name: 'industrial',
     label: 'Industrial',
-    hint: 'Floor queues and scan stations — #fafafa canvas, white rows, flush corners, dense 13px.',
-    surfaces: {
-      canvas: '#fafafa',
-      bar: '#f8f8f4',
-      panel: '#ffffff',
-      well: '#e6e7e1',
-      hover: '#f4f4ef',
-      ink: '#10110f',
-      muted: '#535650',
-      // No light-grey text on the floor: faint is muted.
-      faint: '#535650',
-      rule: '#cacbc5',
-      edge: '#b7b8b0',
-      control: '#10110f',
-    },
-    radius: '0',
-    radiusPill: '0',
+    hint: 'Floor queues and scan stations — dense: flush rows, 13px, no page padding.',
     pagePad: { base: '0', coarse: '0' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '13px', coarse: '13px' },
     // 150ms is the scan-status spot only; nothing else on the floor moves.
     motion: { feedback: '150ms' },
-    // #d39200 fails contrast as text; this is its readable ink.
-    warnText: '#8a5f00',
   },
   triage: {
+    ...OPERATIONAL_BASE,
     name: 'triage',
     label: 'Triage',
-    hint: 'Decide-and-route work — record detail, arrival triage.',
-    surfaces: SLATE_SURFACES,
-    radius: '4px',
-    radiusPill: '4px',
+    hint: 'Decide-and-route work — record detail, arrival triage. Industrial identity, roomier density.',
     pagePad: { base: '12px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '14px', coarse: '16px' },

@@ -63,7 +63,7 @@ public enum DesignTokens {
         /// Indeterminate pulse period (0 = none).
         public let motionPulse: Double
 
-        /// Industrial: Floor queues and scan stations — #fafafa canvas, white rows, flush corners, dense 13px.
+        /// Industrial: Floor queues and scan stations — dense: flush rows, 13px, no page padding.
         public static let industrial = Mode(
             canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
             bar: Color(red: 248.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0), // #f8f8f4
@@ -93,23 +93,23 @@ public enum DesignTokens {
             motionPulse: 0.0
         )
 
-        /// Triage: Decide-and-route work — record detail, arrival triage.
+        /// Triage: Decide-and-route work — record detail, arrival triage. Industrial identity, roomier density.
         public static let triage = Mode(
             canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
-            bar: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
+            bar: Color(red: 248.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0), // #f8f8f4
             panel: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
-            well: Color(red: 241.0 / 255.0, green: 245.0 / 255.0, blue: 249.0 / 255.0), // #f1f5f9
-            hover: Color(red: 248.0 / 255.0, green: 250.0 / 255.0, blue: 252.0 / 255.0), // #f8fafc
-            ink: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0), // #0f172a
-            muted: Color(red: 71.0 / 255.0, green: 85.0 / 255.0, blue: 105.0 / 255.0), // #475569
-            faint: Color(red: 100.0 / 255.0, green: 116.0 / 255.0, blue: 139.0 / 255.0), // #64748b
-            rule: Color(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0), // #e2e8f0
-            edge: Color(red: 203.0 / 255.0, green: 213.0 / 255.0, blue: 225.0 / 255.0), // #cbd5e1
-            control: Color(red: 123.0 / 255.0, green: 138.0 / 255.0, blue: 160.0 / 255.0), // #7b8aa0
-            warnText: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
+            well: Color(red: 230.0 / 255.0, green: 231.0 / 255.0, blue: 225.0 / 255.0), // #e6e7e1
+            hover: Color(red: 244.0 / 255.0, green: 244.0 / 255.0, blue: 239.0 / 255.0), // #f4f4ef
+            ink: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            muted: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
+            faint: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
+            rule: Color(red: 202.0 / 255.0, green: 203.0 / 255.0, blue: 197.0 / 255.0), // #cacbc5
+            edge: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
+            control: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
             brand: nil,
-            radius: 4.0,
-            radiusPill: 4.0,
+            radius: 0.0,
+            radiusPill: 0.0,
             pagePad: 12.0,
             pagePadTouch: 16.0,
             hitMin: 32.0,
