@@ -26,6 +26,15 @@ import {
   type ReleaseGateFacts,
 } from './release-gates';
 import { exceptionHeldSql } from './exception-membership';
+import {
+  PARCEL_FALLBACK_SELECT_SQL,
+  parcelFallbackJoinSql,
+  positiveOrNull,
+  rememberParcelDims,
+  resolveParcelWithSource,
+  type ParcelFallbackColumns,
+  type ParcelSource,
+} from './parcel-dims';
 
 type Client = Pick<PoolClient, 'query'>;
 
@@ -129,6 +138,8 @@ interface RawGateRow {
   parcel_height_in: string | number | null;
 }
 
+type RawGateRowWithParcel = RawGateRow & ParcelFallbackColumns;
+
 /** One caged/released order plus everything the gates and the form need. */
 export interface CagedOrderRecord {
   id: number;
@@ -158,11 +169,19 @@ export interface CagedOrderRecord {
   shippingLabelLinked: boolean;
   shippingLabelPurchased: boolean;
   createdAt: string | null;
-  /** Parcel stored on the order — the rate-shop's stored fallback. */
+  /**
+   * The parcel the rate-shop should use: the order's own when it has one,
+   * else what the product remembers (SKU, then item number) — see
+   * `src/lib/orders/parcel-dims.ts`. {@link parcelSource} says which.
+   */
   parcelWeightOz: number | null;
   parcelLengthIn: number | null;
   parcelWidthIn: number | null;
   parcelHeightIn: number | null;
+  /** `order` = measured on this order; `sku` / `item_number` = remembered; null = none. */
+  parcelSource: ParcelSource | null;
+  /** The SKU / item number the remembered parcel came from. */
+  parcelSourceKey: string | null;
   /** Live evaluation — always recomputed, never read back from `release_gates`. */
   gates: EvaluatedReleaseGates;
 }
@@ -191,9 +210,11 @@ const GATE_SELECT = `
     NULLIF(TRIM(COALESCE(stn.tracking_number_raw, '')), '') AS tracking_number,
     ${G2_DOCUMENT_COUNT_SQL}       AS linked_document_count,
     ${G3_LABEL_EXISTS_SQL}         AS shipping_label_linked,
-    ${G3_LABEL_PURCHASED_SQL}      AS shipping_label_purchased
+    ${G3_LABEL_PURCHASED_SQL}      AS shipping_label_purchased,
+    ${PARCEL_FALLBACK_SELECT_SQL}
   FROM orders o
   LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+  ${parcelFallbackJoinSql('o')}
 `;
 
 function factsFromRow(row: RawGateRow): ReleaseGateFacts {
@@ -209,15 +230,17 @@ function factsFromRow(row: RawGateRow): ReleaseGateFacts {
   };
 }
 
-/** pg returns `numeric` as text — normalize to a positive number or null. */
-function parcelNumber(value: string | number | null): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
-function mapRow(row: RawGateRow): CagedOrderRecord {
+function mapRow(row: RawGateRowWithParcel): CagedOrderRecord {
   const facts = factsFromRow(row);
+  const parcel = resolveParcelWithSource(
+    {
+      weightOz: positiveOrNull(row.parcel_weight_oz),
+      lengthIn: positiveOrNull(row.parcel_length_in),
+      widthIn: positiveOrNull(row.parcel_width_in),
+      heightIn: positiveOrNull(row.parcel_height_in),
+    },
+    row,
+  );
   return {
     id: Number(row.id),
     orderNumber: row.order_id,
@@ -238,10 +261,12 @@ function mapRow(row: RawGateRow): CagedOrderRecord {
     shippingLabelLinked: row.shipping_label_linked === true,
     shippingLabelPurchased: row.shipping_label_purchased === true,
     createdAt: row.created_at,
-    parcelWeightOz: parcelNumber(row.parcel_weight_oz),
-    parcelLengthIn: parcelNumber(row.parcel_length_in),
-    parcelWidthIn: parcelNumber(row.parcel_width_in),
-    parcelHeightIn: parcelNumber(row.parcel_height_in),
+    parcelWeightOz: parcel.weightOz,
+    parcelLengthIn: parcel.lengthIn,
+    parcelWidthIn: parcel.widthIn,
+    parcelHeightIn: parcel.heightIn,
+    parcelSource: parcel.source,
+    parcelSourceKey: parcel.sourceKey,
     gates: evaluateReleaseGates(facts),
   };
 }
@@ -285,7 +310,7 @@ export async function getOrderReleaseRecord(
 ): Promise<CagedOrderRecord | null> {
   const sql = `${GATE_SELECT} WHERE o.organization_id = $1 AND o.id = $2 LIMIT 1`;
   const run = async (c: Client) => {
-    const res = await c.query<RawGateRow>(sql, [orgId, orderId]);
+    const res = await c.query<RawGateRowWithParcel>(sql, [orgId, orderId]);
     const row = res.rows[0];
     return row ? mapRow(row) : null;
   };
@@ -309,7 +334,7 @@ export async function listOrderReleaseRecordsByIds(
   if (ids.length === 0) return [];
   const sql = `${GATE_SELECT} WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])`;
   const run = async (c: Client) => {
-    const res = await c.query<RawGateRow>(sql, [orgId, ids]);
+    const res = await c.query<RawGateRowWithParcel>(sql, [orgId, ids]);
     return res.rows.map(mapRow);
   };
   if (client) return run(client);
@@ -365,6 +390,10 @@ export async function setDocsNotRequired(
  * operator weighed here is what the carrier quotes. `null` clears a value
  * (the operator can un-measure a box); non-positive input is stored as NULL
  * rather than letting a 0 oz parcel masquerade as a fact.
+ *
+ * The entered values are also REMEMBERED on the order's SKU and item number
+ * (`product_parcel_dims`, same transaction) so the next order of the product
+ * arrives measured. Clearing a field here never erases the remembered value.
  */
 export async function setOrderParcel(
   orgId: OrgId,
@@ -375,26 +404,43 @@ export async function setOrderParcel(
     widthIn: number | null;
     heightIn: number | null;
   },
+  opts: { staffId?: number | null } = {},
 ): Promise<CagedOrderRecord | null> {
   const clean = (v: number | null): number | null =>
     typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+  const values = {
+    weightOz: clean(parcel.weightOz),
+    lengthIn: clean(parcel.lengthIn),
+    widthIn: clean(parcel.widthIn),
+    heightIn: clean(parcel.heightIn),
+  };
   return withTenantTransaction<CagedOrderRecord | null>(orgId, async (client) => {
-    await client.query(
+    const updated = await client.query<{
+      sku: string | null;
+      item_number: string | null;
+      sku_catalog_id: number | string | null;
+    }>(
       `UPDATE orders
           SET parcel_weight_oz = $3,
               parcel_length_in = $4,
               parcel_width_in  = $5,
               parcel_height_in = $6
-        WHERE organization_id = $1 AND id = $2`,
-      [
+        WHERE organization_id = $1 AND id = $2
+        RETURNING sku, item_number, sku_catalog_id`,
+      [orgId, orderId, values.weightOz, values.lengthIn, values.widthIn, values.heightIn],
+    );
+    const order = updated.rows[0];
+    if (order) {
+      await rememberParcelDims(client, {
         orgId,
         orderId,
-        clean(parcel.weightOz),
-        clean(parcel.lengthIn),
-        clean(parcel.widthIn),
-        clean(parcel.heightIn),
-      ],
-    );
+        sku: order.sku,
+        itemNumber: order.item_number,
+        skuCatalogId: order.sku_catalog_id == null ? null : Number(order.sku_catalog_id),
+        parcel: values,
+        staffId: opts.staffId ?? null,
+      });
+    }
     return getOrderReleaseRecord(orgId, orderId, client);
   });
 }

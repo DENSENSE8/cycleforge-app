@@ -86,6 +86,7 @@
     "test:receiving-exceptions": "tsx --test src/lib/receiving/exceptions.test.ts",
     "test:shipment-links": "tsx --test src/lib/shipping/shipment-links.test.ts",
     "test:shipstation": "tsx --test src/lib/shipping/shipstation/client.test.ts src/lib/shipping/shipstation/orders-v1.test.ts src/lib/shipping/shipstation/rate-request.test.ts",
+    "test:parcel-dims": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/orders/parcel-dims.test.ts",
     "test:label-purchase": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/shipping/label-purchase-ledger.test.ts",
     "test:orders": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/orders/resolve-buyer-customers.test.ts",
     "test:documents": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/documents/*.test.ts",

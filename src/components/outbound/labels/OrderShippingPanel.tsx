@@ -255,6 +255,13 @@ export function OrderShippingPanel({
         </div>
         {parcelMutation.isPending ? (
           <p className="text-role-micro text-text-faint">Saving parcel…</p>
+        ) : record?.parcelSource === 'sku' || record?.parcelSource === 'item_number' ? (
+          // Not measured on this order — the product remembers its box.
+          // Saving any field stores it on the order (and refreshes the memory).
+          <p className="text-role-caption text-text-soft" data-testid={`${testIdPrefix}-parcel-remembered`}>
+            Remembered from {record.parcelSource === 'sku' ? 'SKU' : 'item'}{' '}
+            <span className="font-mono text-text-default">{record.parcelSourceKey}</span>
+          </p>
         ) : null}
 
         {/* ── Rate-shop → buy → void (the existing engine, composed) ─────── */}

@@ -12,6 +12,12 @@ import {
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
 import { resolveOrderShipTo } from '@/lib/shipping/shipstation/order-ship-to';
 import {
+  PARCEL_FALLBACK_SELECT_SQL,
+  parcelFallbackJoinSql,
+  resolveParcelWithSource,
+  type ParcelFallbackColumns,
+} from '@/lib/orders/parcel-dims';
+import {
   OrderRateDimensionsSchema,
   resolveOrderRateParcel,
 } from '@/lib/shipping/shipstation/order-parcel';
@@ -46,14 +52,17 @@ type OrderRow = {
   parcel_length_in: string | number | null;
   parcel_width_in: string | number | null;
   parcel_height_in: string | number | null;
-};
+} & ParcelFallbackColumns;
 
 async function loadOrder(orgId: OrgId, orderId: number): Promise<OrderRow | null> {
   const res = await tenantQuery<OrderRow>(
     orgId,
-    `SELECT id, order_id, account_source, customer_id,
-            parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in
-       FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    `SELECT o.id, o.order_id, o.account_source, o.customer_id,
+            o.parcel_weight_oz, o.parcel_length_in, o.parcel_width_in, o.parcel_height_in,
+            ${PARCEL_FALLBACK_SELECT_SQL}
+       FROM orders o
+       ${parcelFallbackJoinSql('o')}
+      WHERE o.id = $1 AND o.organization_id = $2 LIMIT 1`,
     [orderId, orgId],
   );
   return res.rows[0] ?? null;
@@ -105,12 +114,22 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    const parcel = resolveOrderRateParcel({
-      stored: {
+    // The order's own parcel, else what its SKU / item number remembers.
+    const stored = resolveParcelWithSource(
+      {
         weightOz: numericColumn(order.parcel_weight_oz),
         lengthIn: numericColumn(order.parcel_length_in),
         widthIn: numericColumn(order.parcel_width_in),
         heightIn: numericColumn(order.parcel_height_in),
+      },
+      order,
+    );
+    const parcel = resolveOrderRateParcel({
+      stored: {
+        weightOz: stored.weightOz,
+        lengthIn: stored.lengthIn,
+        widthIn: stored.widthIn,
+        heightIn: stored.heightIn,
       },
       bodyWeightOz: weightOzOverride,
       bodyDimensions,

@@ -117,7 +117,7 @@ export async function POST(
         lengthIn: num(body?.lengthIn),
         widthIn: num(body?.widthIn),
         heightIn: num(body?.heightIn),
-      });
+      }, { staffId });
       if (!updated) {
         return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
       }
