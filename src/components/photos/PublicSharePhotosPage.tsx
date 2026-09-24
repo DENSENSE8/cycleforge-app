@@ -72,59 +72,63 @@ export default function PublicSharePhotosPage({ token }: { token: string }) {
   }
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-6">
-      <header className="space-y-3">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">{data.pack.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {data.photos.length} photo{data.photos.length === 1 ? '' : 's'}
-            {data.pack.poRef ? ` · PO ${data.pack.poRef}` : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={data.zipUrl}
-              className="inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
-            >
-              Download all (ZIP)
-            </a>
-            <Button
-              type="button"
-              variant="secondary"
-              size="md"
-              onClick={() => {
-                if (!pageUrl) return;
-                void navigator.clipboard.writeText(pageUrl).then(
-                  () => toast.success('Share link copied'),
-                  () => toast.error('Could not copy link'),
-                );
-              }}
-            >
-              Copy link
-            </Button>
+    // The app root is a fixed, overflow-hidden frame (html/body never scroll),
+    // so the page must own its scroll or a long pack is stuck at the first rows.
+    <main className="h-full min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="mx-auto max-w-5xl space-y-6 p-6">
+        <header className="space-y-3">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">{data.pack.title}</h1>
+            <p className="text-sm text-muted-foreground">
+              {data.photos.length} photo{data.photos.length === 1 ? '' : 's'}
+              {data.pack.poRef ? ` · PO ${data.pack.poRef}` : ''}
+            </p>
           </div>
-          {pageUrl ? (
-            <div className="rounded-lg border border-border bg-surface-card p-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Scan to open on phone</p>
-              <QRCode value={pageUrl} size={96} />
+          <div className="flex flex-wrap items-start gap-4">
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={data.zipUrl}
+                className="inline-flex rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+              >
+                Download all (ZIP)
+              </a>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  if (!pageUrl) return;
+                  void navigator.clipboard.writeText(pageUrl).then(
+                    () => toast.success('Share link copied'),
+                    () => toast.error('Could not copy link'),
+                  );
+                }}
+              >
+                Copy link
+              </Button>
             </div>
-          ) : null}
+            {pageUrl ? (
+              <div className="rounded-lg border border-border bg-surface-card p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Scan to open on phone</p>
+                <QRCode value={pageUrl} size={96} />
+              </div>
+            ) : null}
+          </div>
+        </header>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {data.photos.map((photo) => (
+            <a
+              key={photo.id}
+              href={photo.contentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={photo.thumbUrl} alt={photo.exportFilename || 'Photo'} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+            </a>
+          ))}
         </div>
-      </header>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {data.photos.map((photo) => (
-          <a
-            key={photo.id}
-            href={photo.contentUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="aspect-square overflow-hidden rounded-lg border border-border bg-muted"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.thumbUrl} alt={photo.exportFilename || 'Photo'} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-          </a>
-        ))}
       </div>
     </main>
   );
