@@ -42,6 +42,11 @@ export const outboundWorkQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_OUTBOUND_WORK_PAGE_SIZE).default(50),
   /** Tenant-scoped operational lookup; identity is still derived from auth. */
   query: z.string().trim().min(1).max(120).optional(),
+  /**
+   * One order by its internal id (`orders.id`) — the record screen's exact
+   * read. Still tenant-scoped and still inside `view`; never a partial match.
+   */
+  id: z.coerce.number().int().positive().max(2_147_483_647).optional(),
   /** Saved work view; the server, not the client, decides its membership. */
   view: outboundSavedViewIdSchema.default('all'),
 }).strict();
@@ -210,6 +215,7 @@ export function buildOutboundWorkOpenApi(): Record<string, unknown> {
           { name: 'cursor', in: 'query', required: false, schema: { type: 'string' } },
           { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: MAX_OUTBOUND_WORK_PAGE_SIZE, default: 50 } },
           { name: 'query', in: 'query', required: false, schema: { type: 'string', minLength: 1, maxLength: 120 } },
+          { name: 'id', in: 'query', required: false, description: 'Exactly one order by its internal id; the page then holds that order or nothing.', schema: { type: 'integer', minimum: 1, maximum: 2147483647 } },
           { name: 'view', in: 'query', required: false, description: 'Saved work view; membership is server-defined.', schema: { type: 'string', enum: [...OUTBOUND_SAVED_VIEW_IDS], default: 'all' } },
         ],
         responses: {

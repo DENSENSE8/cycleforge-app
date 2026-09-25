@@ -249,6 +249,7 @@ const WORK_SQL = `
       OR o.product_title ILIKE '%' || $6 || '%'
       OR stn.tracking_number_normalized ILIKE '%' || $6 || '%'
     )
+    AND ($9::int IS NULL OR o.id = $9)
     AND $8::text = ANY (membership.view_ids)
   ORDER BY o.is_out_of_stock DESC, o.is_urgent DESC, o.created_at DESC, o.id DESC
   LIMIT $7
@@ -387,6 +388,7 @@ export async function listOutboundWork(
     parsed.query ?? null,
     parsed.limit + 1,
     parsed.view,
+    parsed.id ?? null,
   ]);
   const rows = result.rows.slice(0, parsed.limit);
   const items = rows.map(mapRow);

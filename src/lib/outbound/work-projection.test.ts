@@ -116,6 +116,19 @@ test('the requested saved view is a bound parameter and every catalog view has a
   assert.equal(outboundWorkQuerySchema.safeParse({ view: 'urgent' }).success, false);
 });
 
+test('an exact order id narrows the read through a bound parameter, and its absence binds null', async () => {
+  const capture = async (query: Parameters<typeof listOutboundWork>[1]) => {
+    let sql = ''; let values: readonly unknown[] = [];
+    await listOutboundWork(ORG_A, query, { query: async (_organizationId, text, args) => { sql = text; values = args; return { rows: [] }; } });
+    return { sql, values };
+  };
+  const narrowed = await capture({ id: 7 });
+  assert.equal(narrowed.values[8], 7);
+  assert.match(narrowed.sql, /o\.id = \$9/);
+  assert.equal((await capture({})).values[8], null, 'no id must leave the whole queue readable');
+  assert.equal(outboundWorkQuerySchema.safeParse({ id: 0 }).success, false);
+});
+
 test('membership travels with the record and an unrecognized view fails closed', async () => {
   const page = await listOutboundWork(ORG_A, {}, { query: async () => ({ rows: [row({ view_ids: ['all', 'pending'] })] as never[] }) });
   assert.deepEqual(page.items[0]?.views, ['all', 'pending']);

@@ -371,6 +371,17 @@
             }
           },
           {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "Exactly one order by its internal id; the page then holds that order or nothing.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
             "name": "view",
             "in": "query",
             "required": false,
