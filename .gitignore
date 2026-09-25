@@ -8,6 +8,9 @@ node_modules/
 
 # next.js
 /.next/
+# NEXT_DIST_DIR builds (.next-perf, isolated prod builds): binary caches that
+# Tailwind's source scan must never read.
+/.next-*/
 /out/
 
 # production
