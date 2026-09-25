@@ -42,6 +42,7 @@
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
+import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
 import { normalizeUnshippedOrdersPayload } from '@/lib/orders/order-record-normalize';
 import { normalizeQueueCountsPayload } from '@/lib/orders/queue-counts-normalize';
@@ -82,6 +83,7 @@ async function getJson(path: string): Promise<unknown | null> {
     }
     return await res.json();
   } catch (error) {
+    if (isNextDynamicUsage(error)) throw error;
     console.error(`ready-to-pack seed failed for ${path}; client will fetch`, error);
     return null;
   }

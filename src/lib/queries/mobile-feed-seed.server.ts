@@ -22,6 +22,7 @@
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
+import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -56,6 +57,9 @@ export async function seedMobileReceivingFeed(
     client.setQueryData([...mobileFeedQueryKey(surface)], rows);
     return dehydrate(client);
   } catch (error) {
+    // Next's static-prerender bailout (`cookies()`) must escape, or the build
+    // marks the route static and serves `seed: null` forever.
+    if (isNextDynamicUsage(error)) throw error;
     console.error('seedMobileReceivingFeed failed; client will fetch', error);
     return null;
   }

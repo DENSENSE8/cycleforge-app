@@ -9,6 +9,7 @@ import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { normalizeUnshippedOrdersPayload } from '@/lib/orders/order-record-normalize';
+import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
 import {
   normalizeQueueCountsPayload,
@@ -106,6 +107,10 @@ export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
     fetchUnshippedRows(),
     fetchUnshippedCounts(),
   ]);
+  // `allSettled` would otherwise swallow Next's static-prerender bailout.
+  for (const result of [listResult, countsResult]) {
+    if (result.status === 'rejected' && isNextDynamicUsage(result.reason)) throw result.reason;
+  }
 
   if (listResult.status === 'fulfilled') {
     if (listResult.value != null) {

@@ -18,7 +18,8 @@
  * was wrong. Any `server-only` helper that reads `cookies()`/`headers()` behind
  * a never-throw contract needs it.
  *
- * Callers: `seed-catalog.ts`, `counter-boot.server.ts`.
+ * Callers: `seed-catalog.ts`, `counter-boot.server.ts`, and the shell paint
+ * seeds in `src/lib/queries/*-seed.server.ts`.
  * Affected API: none. Schemas: none.
  */
 

@@ -228,7 +228,8 @@ export async function readPlanFile(raw: string): Promise<PlanFileRead> {
 
   let content: string;
   try {
-    content = await fs.readFile(resolved.absolute, 'utf8');
+    // Shipped via `outputFileTracingIncludes`; keep the tracer from pulling the whole repo.
+    content = await fs.readFile(/* turbopackIgnore: true */ resolved.absolute, 'utf8');
   } catch {
     return { ok: false, reason: 'file_not_found' };
   }
