@@ -28,9 +28,8 @@
  * Zoho API. See `ExceptionEditor` for the call.
  */
 
-import { AlertCircle, Check, Loader2 } from '@/components/Icons';
+import { AlertCircle, Check } from '@/components/Icons';
 import { Alert, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { cn } from '@/utils/_cn';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
@@ -82,9 +81,6 @@ export function ExceptionCatalogPairing({
   searching,
   pairing,
   onPair,
-  sku,
-  creating,
-  onCreateAndPair,
 }: {
   fieldId: string;
   row: OrderExceptionRow;
@@ -94,9 +90,6 @@ export function ExceptionCatalogPairing({
   searching: boolean;
   pairing: boolean;
   onPair: (skuCatalogId: number) => void;
-  sku: string;
-  creating: boolean;
-  onCreateAndPair: () => void;
 }) {
   if (row.skuCatalogId) {
     return (
@@ -110,19 +103,16 @@ export function ExceptionCatalogPairing({
     );
   }
 
-  const newSku = (sku || row.sku || '').trim();
-
   return (
-    // Both routes out of "unpaired" on one row, both reachable without opening
-    // anything — the workbench e2e asserts exactly that. Link is the common
-    // case so it takes the width; create is the fallback and lands hard right,
-    // where every commit control on this surface now lives.
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-col gap-2">
+      <p className="text-role-caption text-text-muted">
+        SKU creation and modification stay with Inventory Management / Accounting.
+        This queue can only link an existing catalog item; send a missing item to Son
+        and the Inventory team through their controlled workflow.
+      </p>
       <IntakeCombobox
         triggerId={`${fieldId}-search`}
-        className={triagePanelControl('w-full min-w-56 flex-1 sm:w-auto')}
-        // The open panel takes the trigger's corner; `overflow-hidden` is what
-        // makes cmdk's square fill clip to it.
+        className={triagePanelControl('w-full')}
         contentClassName={cn('overflow-hidden', TRIAGE_PANEL_INNER_CORNER)}
         value={null}
         onChange={(value) => onPair(Number(value))}
@@ -144,24 +134,6 @@ export function ExceptionCatalogPairing({
         testId="exception-catalog-search"
         optionTestId={(opt) => `exception-catalog-hit-${opt.value}`}
       />
-      <Button
-        variant="outline"
-        size="md"
-        disabled={creating || pairing}
-        onClick={() => onCreateAndPair()}
-        className={triagePanelControl()}
-        data-testid="exception-create-sku"
-      >
-        {creating ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…
-          </>
-        ) : (
-          <>
-            Create <span className="max-w-32 truncate font-mono">{newSku || 'new item'}</span>
-          </>
-        )}
-      </Button>
     </div>
   );
 }

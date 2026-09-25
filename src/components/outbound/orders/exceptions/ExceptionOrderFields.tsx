@@ -4,9 +4,9 @@
  * Pairing identity — the facts needed to point this order at a Zoho SKU.
  *
  * Operator 2026-09-01 (R-FLOW-7): this form does not edit tracking, quantity,
- * or condition. Those belong on the To-ship paperwork walk. Title, item
- * number, and SKU are what the catalog pair reads and what "Create new item"
- * needs.
+ * or condition. Title, item number, and SKU are what the catalog pair reads.
+ * Creation and modification remain under Inventory Management / Accounting
+ * control, outside this desk.
  *
  * Layout: **title** first (which product), then item number · SKU on one row.
  * On a single-identifier channel those two keys often match; adjacent, the

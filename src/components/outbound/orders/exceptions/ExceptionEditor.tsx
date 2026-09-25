@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import type { ActiveStationOrder } from '@/hooks/station/types';
+import { BuyerNoteBlock } from '@/design-system/components/RecordNoteSlot';
 import { toast } from '@/lib/toast';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
@@ -67,7 +68,7 @@ export function ExceptionEditor({
       itemNumber: row.itemNumber,
       sku: row.sku ?? '',
       condition: row.condition ?? '',
-      notes: '',
+      notes: row.internalNote ?? '',
       tracking: row.trackingNumber ?? '',
       serialNumbers: [],
       testDateTime: null,
@@ -186,32 +187,6 @@ export function ExceptionEditor({
     [itemNumber, onChanged, row.accountSource, row.itemNumber, row.sku, sku],
   );
 
-  const [creating, setCreating] = useState(false);
-
-  const createAndPair = useCallback(async () => {
-    const newSku = (sku || row.sku || '').trim();
-    const newTitle = (title || row.productTitle || '').trim();
-    if (!newSku || !newTitle) {
-      toast.error('A new catalog entry needs both a SKU and a title.');
-      return;
-    }
-    setCreating(true);
-    try {
-      const created = await postJson('/api/sku-catalog', {
-        sku: newSku,
-        productTitle: newTitle,
-      });
-      const newId = Number((created as { catalog?: { id?: number } }).catalog?.id);
-      if (!Number.isFinite(newId) || newId <= 0) {
-        throw new Error('Catalog entry created but no id came back.');
-      }
-      await pairTo(newId);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not create the catalog entry.');
-    } finally {
-      setCreating(false);
-    }
-  }, [pairTo, row.productTitle, row.sku, sku, title]);
 
   return (
     <div className={CONTEXT_PANEL_HOST_CLASS} data-testid="exception-editor">
@@ -226,7 +201,25 @@ export function ExceptionEditor({
             />
           </div>
         }
-        banner={<ExceptionUnpairedBanner row={row} />}
+        banner={
+          <div className="flex flex-col gap-2">
+            <ExceptionUnpairedBanner row={row} />
+            <div className="border border-border-hairline bg-surface-subtle px-3 py-2 text-role-caption text-text-muted">
+              <span className="font-semibold text-text">{row.routing.category}</span>
+              <span className="mx-1">·</span>
+              <span>Owner: {row.routing.owner}</span>
+              <span className="mx-1">·</span>
+              <span>Action: {row.routing.actionRequired}</span>
+              {row.responsiblePerson ? (
+                <>
+                  <span className="mx-1">·</span>
+                  <span>Responsible: {row.responsiblePerson}</span>
+                </>
+              ) : null}
+            </div>
+            <BuyerNoteBlock note={row.buyerNote} />
+          </div>
+        }
         sections={[
           {
             id: 'catalog-pairing',
@@ -241,9 +234,6 @@ export function ExceptionEditor({
                 searching={searching}
                 pairing={pairing}
                 onPair={(id) => void pairTo(id)}
-                sku={sku}
-                creating={creating}
-                onCreateAndPair={() => void createAndPair()}
               />
             ),
           },

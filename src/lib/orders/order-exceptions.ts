@@ -35,20 +35,23 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { evaluateReleaseGates } from './release-gates';
 import { exceptionHeldSql } from './exception-membership';
 import {
+  ORDER_EXCEPTION_CATEGORIES,
   deriveOrderExceptionBlockers,
   resolveOrderExceptionRouting,
+  type OrderExceptionCategory,
   type OrderExceptionRow,
   type OrderExceptionScope,
 } from './order-exception-types';
-
 // Re-exported so server callers keep one import site; client components must
 // import from `./order-exception-types` directly (this module reaches the DB).
 export {
   ORDER_EXCEPTION_BLOCKER_LABEL,
+  ORDER_EXCEPTION_CATEGORIES,
   deriveOrderExceptionBlockers,
 } from './order-exception-types';
 export type {
   OrderExceptionBlocker,
+  OrderExceptionCategory,
   OrderExceptionRow,
   OrderExceptionScope,
 } from './order-exception-types';
@@ -72,6 +75,10 @@ interface RawExceptionRow {
   shipping_label_linked: boolean | null;
   shipping_label_purchased: boolean | null;
   sibling_unpaired_count: number | string | null;
+  exception_category: string | null;
+  responsible_person: string | null;
+  buyer_note: string | null;
+  internal_note: string | null;
 }
 
 /**
@@ -137,9 +144,19 @@ const SIBLING_UNPAIRED_SQL = `(
        = NULLIF(TRIM(COALESCE(o.item_number, '')), '')
 )`;
 
+function parseExceptionCategory(value: string | null): OrderExceptionCategory | null {
+  return ORDER_EXCEPTION_CATEGORIES.includes(value as OrderExceptionCategory)
+    ? (value as OrderExceptionCategory)
+    : null;
+}
+
 function mapRow(row: RawExceptionRow): OrderExceptionRow {
   const skuCatalogId = row.sku_catalog_id == null ? null : Number(row.sku_catalog_id);
   const linkedDocumentCount = Number(row.linked_document_count ?? 0);
+  const blockers = deriveOrderExceptionBlockers({
+    itemNumber: row.item_number,
+    skuCatalogId,
+  });
   return {
     id: Number(row.id),
     orderNumber: row.order_id,
@@ -155,14 +172,11 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
     catalogTitle: row.catalog_title,
     catalogSku: row.catalog_sku,
     siblingUnpairedCount: Number(row.sibling_unpaired_count ?? 0),
-    blockers: deriveOrderExceptionBlockers({
-      itemNumber: row.item_number,
-      skuCatalogId,
-    }),
-    routing: resolveOrderExceptionRouting(deriveOrderExceptionBlockers({
-      itemNumber: row.item_number,
-      skuCatalogId,
-    })),
+    blockers,
+    routing: resolveOrderExceptionRouting(blockers, { category: parseExceptionCategory(row.exception_category) }),
+    responsiblePerson: row.responsible_person,
+    buyerNote: row.buyer_note,
+    internalNote: row.internal_note,
     gates: evaluateReleaseGates({
       orderNumber: row.order_id,
       itemNumber: row.item_number,
@@ -192,6 +206,16 @@ const EXCEPTION_SELECT = `
     sc.product_title AS catalog_title,
     sc.sku           AS catalog_sku,
     NULLIF(TRIM(COALESCE(stn.tracking_number_raw, '')), '') AS tracking_number,
+    CASE
+      WHEN o.is_out_of_stock THEN 'Out of Stock'
+      WHEN NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL THEN 'Buyer Request'
+      WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
+      WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
+      ELSE 'Other'
+    END AS exception_category,
+    assignment.responsible_person,
+    NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') AS buyer_note,
+    NULLIF(TRIM(COALESCE(o.notes, '')), '') AS internal_note,
     ${G2_DOCUMENT_COUNT_SQL} AS linked_document_count,
     ${G3_LABEL_EXISTS_SQL}   AS shipping_label_linked,
     ${G3_LABEL_PURCHASED_SQL} AS shipping_label_purchased,
@@ -200,51 +224,71 @@ const EXCEPTION_SELECT = `
   LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
   LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
                           AND sc.organization_id = o.organization_id
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(tester.name, packer.name) AS responsible_person
+      FROM work_assignments wa
+      LEFT JOIN staff tester ON tester.id = wa.assigned_tech_id
+      LEFT JOIN staff packer ON packer.id = wa.assigned_packer_id
+     WHERE wa.organization_id = o.organization_id
+       AND wa.entity_type = 'ORDER'
+       AND wa.entity_id = o.id
+       AND wa.status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+     ORDER BY wa.updated_at DESC NULLS LAST, wa.created_at DESC
+     LIMIT 1
+  ) assignment ON TRUE
 `;
 
 /**
- * The exception queue.
- *
- * ## Why `actionable` means CAGED, and nothing else
- *
- * The tempting definition — "every order with a blocker" — was measured
- * against real data before it was written, and it matches **3,526 of 4,217
- * orders** (2,113 even after excluding packed/shipped; 518 inside 30 days).
- * Almost no historical order was ever paired to the catalog. A queue that
- * opens on thousands of rows is not a worklist, it is a wall: nobody finishes
- * it, so nobody starts it, and the surface dies.
- *
- * The cage stamp is the curated review set so several thousand historical
- * unpaired rows do not flood the desk. R-FLOW-7: membership is caged **and**
- * unpaired — pairing is what leaves this queue; a stale cage on a paired
- * order is live To-ship paperwork, not an exception.
+ * The exception queue. The category CASE is deliberately explicit: missing
+ * facts are not silently promoted into a new exception class.
  */
 export async function listOrderExceptions(
   orgId: OrgId,
-  options: { scope?: OrderExceptionScope; limit?: number; search?: string } = {},
+  options: {
+    scope?: OrderExceptionScope;
+    limit?: number;
+    search?: string;
+    category?: OrderExceptionCategory | null;
+  } = {},
 ): Promise<OrderExceptionRow[]> {
   const limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
   const scope: OrderExceptionScope = options.scope === 'all' ? 'all' : 'actionable';
   const search = (options.search ?? '').trim();
+  const category = options.category && ORDER_EXCEPTION_CATEGORIES.includes(options.category)
+    ? options.category
+    : null;
 
   const params: unknown[] = [orgId];
   let where = `WHERE o.organization_id = $1`;
+  const activeException = `(
+    ${exceptionHeldSql('o')}
+    OR o.is_out_of_stock
+    OR NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL
+    OR COALESCE(stn.has_exception, false)
+  )`;
 
-  if (scope === 'actionable') {
-    where += ` AND ${exceptionHeldSql('o')}`;
-  } else {
+  where += ` AND ${activeException}`;
+  if (scope === 'all') {
     where += `
-      AND (
-        ${exceptionHeldSql('o')}
-        OR o.sku_catalog_id IS NULL
-        OR NULLIF(TRIM(COALESCE(o.item_number, '')), '') IS NULL
-      )
       AND NOT EXISTS (
         SELECT 1 FROM station_activity_logs sal
          WHERE sal.shipment_id = o.shipment_id
            AND sal.organization_id = o.organization_id
            AND sal.activity_type = 'SHIP_CONFIRM'
       )`;
+  }
+
+  if (category) {
+    params.push(category);
+    where += ` AND (
+      CASE
+        WHEN o.is_out_of_stock THEN 'Out of Stock'
+        WHEN NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL THEN 'Buyer Request'
+        WHEN COALESCE(stn.has_exception, false) THEN 'Shipping Issue'
+        WHEN ${exceptionHeldSql('o')} THEN 'SKU Mapping'
+        ELSE 'Other'
+      END
+    ) = $${params.length}`;
   }
 
   if (search) {
@@ -262,11 +306,6 @@ export async function listOrderExceptions(
   params.push(limit);
   const res = await tenantQuery<RawExceptionRow>(
     orgId,
-    // COALESCE, not a bare `o.release_state = 'caged'`: that comparison is NULL
-    // for every legacy row, and `DESC` in Postgres is NULLS FIRST — which sorted
-    // 4,000 un-caged orders ahead of the caged ones and pushed the entire review
-    // set past the LIMIT. After that, missing item number then pair-once fan-out
-    // — same axis as {@link sortExceptionQueueRows}.
     `${EXCEPTION_SELECT} ${where}
       ORDER BY
         (COALESCE(o.release_state, '') = 'caged') DESC,

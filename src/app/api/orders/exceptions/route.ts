@@ -5,18 +5,18 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import {
   getOrderException,
   listOrderExceptions,
+  ORDER_EXCEPTION_CATEGORIES,
+  type OrderExceptionCategory,
   type OrderExceptionScope,
 } from '@/lib/orders/order-exceptions';
-
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/orders/exceptions — the order-exception worklist.
  *
- * Read-only. Every FIX this surface performs goes through an endpoint that
- * already exists (`PATCH /api/orders/[id]`, `POST /api/sku-catalog`,
- * `POST /api/sku-catalog/pair`, `POST /api/orders/[id]/cage-release`), so this
- * route adds a question to the system and no new way to write.
+ * Read-only. The editor links an existing catalog item and writes only the
+ * order's pairing fields; SKU creation/modification remains with Inventory
+ * Management / Accounting. Other exception actions stay on their owning desks.
  *
  * Query:
  *   ?scope=actionable|all   default `actionable` (excludes shipped)
@@ -41,8 +41,14 @@ export const GET = withAuth(
 
       const scope: OrderExceptionScope =
         searchParams.get('scope') === 'all' ? 'all' : 'actionable';
+      const requestedCategory = searchParams.get('category');
+      const category: OrderExceptionCategory | null =
+        ORDER_EXCEPTION_CATEGORIES.includes(requestedCategory as OrderExceptionCategory)
+          ? (requestedCategory as OrderExceptionCategory)
+          : null;
       const rows = await listOrderExceptions(orgId, {
         scope,
+        category,
         limit: Number(searchParams.get('limit')) || undefined,
         search: searchParams.get('q') ?? undefined,
       });

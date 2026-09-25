@@ -13,6 +13,20 @@
 
 import type { EvaluatedReleaseGates } from './release-gates';
 
+/** Categories the parent Exceptions desk can filter without hiding the work owner. */
+export const ORDER_EXCEPTION_CATEGORIES = [
+  'SKU Mapping',
+  'Out of Stock',
+  'Address Issue',
+  'Buyer Request',
+  'Marketplace Hold',
+  'Testing Issue',
+  'Shipping Issue',
+  'Other',
+] as const;
+
+export type OrderExceptionCategory = (typeof ORDER_EXCEPTION_CATEGORIES)[number];
+
 /** One missing pairing fact, one control that fixes it. Paperwork (docs /
  * labels / tracking) is not an exception blocker — that walk is To-ship. */
 export type OrderExceptionBlocker = 'unpaired' | 'no_item_number';
@@ -25,22 +39,48 @@ export const ORDER_EXCEPTION_BLOCKER_LABEL: Record<OrderExceptionBlocker, string
 export type OrderExceptionScope = 'actionable' | 'all';
 
 /**
- * Typed management contract for exceptions currently admitted to this queue.
- * New exception sources must add an explicit mapping here; renderers never
- * infer a category, action, or owner from a free-text blocker label.
+ * Typed management contract for one exception. Categories are explicit so a
+ * renderer cannot turn a free-text blocker into an invented owner or action.
  */
 export interface OrderExceptionRouting {
-  category: 'SKU mapping';
-  actionRequired: 'Add item number' | 'Pair SKU';
-  owner: 'Inventory';
+  category: OrderExceptionCategory;
+  actionRequired: string;
+  owner: string;
 }
 
 export function resolveOrderExceptionRouting(
   blockers: readonly OrderExceptionBlocker[],
+  facts: { category?: OrderExceptionCategory | null } = {},
 ): OrderExceptionRouting {
-  return blockers.includes('no_item_number')
-    ? { category: 'SKU mapping', actionRequired: 'Add item number', owner: 'Inventory' }
-    : { category: 'SKU mapping', actionRequired: 'Pair SKU', owner: 'Inventory' };
+  const category = facts.category;
+  if (category && category !== 'Other' && category !== 'SKU Mapping') {
+    const defaults: Record<
+      Exclude<OrderExceptionCategory, 'SKU Mapping' | 'Other'>,
+      { actionRequired: string; owner: string }
+    > = {
+      'Out of Stock': { actionRequired: 'Replenish or approve a substitute', owner: 'Inventory' },
+      'Address Issue': { actionRequired: 'Verify the ship-to address', owner: 'Customer Service' },
+      'Buyer Request': { actionRequired: 'Review and acknowledge the buyer instruction', owner: 'Customer Service' },
+      'Marketplace Hold': { actionRequired: 'Review the marketplace hold', owner: 'Marketplace Operations' },
+      'Testing Issue': { actionRequired: 'Complete or correct the test', owner: 'Testing' },
+      'Shipping Issue': { actionRequired: 'Resolve the carrier or label issue', owner: 'Shipping' },
+    };
+    return { category, ...defaults[category] };
+  }
+  if (category === 'SKU Mapping') {
+    return {
+      category,
+      actionRequired: 'Report to Inventory / Accounting for controlled review',
+      owner: 'Inventory / Accounting',
+    };
+  }
+  if (blockers.includes('no_item_number')) {
+    return { category: 'SKU Mapping', actionRequired: 'Add item number', owner: 'Inventory / Accounting' };
+  }
+  if (blockers.includes('unpaired')) {
+    return { category: 'SKU Mapping', actionRequired: 'Pair to an existing inventory item', owner: 'Inventory / Accounting' };
+  }
+  return { category: facts.category ?? 'Other', actionRequired: 'Review and assign the next action', owner: 'Operations' };
 }
 
 export interface OrderExceptionRow {
@@ -64,9 +104,15 @@ export interface OrderExceptionRow {
   blockers: OrderExceptionBlocker[];
   /** Typed category, required action, and accountable team. */
   routing: OrderExceptionRouting;
+  /** Assigned person, when the active work assignment names one. */
+  responsiblePerson: string | null;
+  /** Notes that must remain visible while the exception is worked. */
+  buyerNote: string | null;
+  internalNote: string | null;
   /** The release contract, unchanged — rendered, never re-derived. */
   gates: EvaluatedReleaseGates;
 }
+
 
 function present(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;

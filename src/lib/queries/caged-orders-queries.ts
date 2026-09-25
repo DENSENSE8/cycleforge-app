@@ -140,6 +140,14 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
  * em-dash for each, which is the honest reading of that.
  */
 export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
+  const responsibility = [
+    `${row.routing.category} · ${row.routing.owner}`,
+    row.responsiblePerson ? `Responsible: ${row.responsiblePerson}` : null,
+    `Action: ${row.routing.actionRequired}`,
+    row.internalNote ? `Internal: ${row.internalNote}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   return {
     id: row.id,
     order_id: row.orderNumber ?? '',
@@ -161,9 +169,11 @@ export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
     packed_by: null,
     packed_at: null,
     account_source: row.accountSource ?? null,
+    notes: responsibility,
+    buyer_note: row.buyerNote,
     created_at: null,
     has_tech_scan: false,
-    is_out_of_stock: false,
+    is_out_of_stock: row.routing.category === 'Out of Stock',
     is_urgent: false,
   } as unknown as ShippedOrder;
 }

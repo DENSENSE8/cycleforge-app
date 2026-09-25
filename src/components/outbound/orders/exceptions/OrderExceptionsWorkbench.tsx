@@ -96,9 +96,14 @@ import {
 } from '@/design-system/components/DeskActionSlot';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { exceptionRowToQueueRow } from '@/lib/queries/caged-orders-queries';
+import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
-import { sortExceptionQueueRows, type OrderExceptionRow } from '@/lib/orders/order-exception-types';
-import type { ShippedOrder } from '@/types/orders';
+import {
+  ORDER_EXCEPTION_CATEGORIES,
+  sortExceptionQueueRows,
+  type OrderExceptionCategory,
+  type OrderExceptionRow,
+} from '@/lib/orders/order-exception-types';
 import { ExceptionEditor } from './ExceptionEditor';
 
 interface ExceptionsPayload {
@@ -120,6 +125,12 @@ export function OrderExceptionsWorkbench() {
   const selectedParam = Number(searchParams.get('order'));
   const selectedId = Number.isFinite(selectedParam) && selectedParam > 0 ? selectedParam : null;
   const search = searchParams.get('search') ?? '';
+  const rawCategory = searchParams.get('category');
+  const category: OrderExceptionCategory | null = ORDER_EXCEPTION_CATEGORIES.includes(
+    rawCategory as OrderExceptionCategory,
+  )
+    ? (rawCategory as OrderExceptionCategory)
+    : null;
 
   const [debounced, setDebounced] = useState(search);
   useEffect(() => {
@@ -144,9 +155,10 @@ export function OrderExceptionsWorkbench() {
   );
 
   const query = useQuery({
-    queryKey: ['order-exceptions', 'actionable', debounced],
+    queryKey: ['order-exceptions', 'actionable', category, debounced],
     queryFn: async (): Promise<ExceptionsPayload> => {
       const params = new URLSearchParams({ scope: 'actionable' });
+      if (category) params.set('category', category);
       if (debounced.trim()) params.set('q', debounced.trim());
       const res = await fetch(`/api/orders/exceptions?${params}`, {
         credentials: 'same-origin',
@@ -166,6 +178,14 @@ export function OrderExceptionsWorkbench() {
   // Memoized: this list is the input to the grouped row model, so an
   // unmemoized re-derive would re-identify every row on every render.
   const records = useMemo(() => exceptions.map(exceptionRowToQueueRow), [exceptions]);
+  const categoryCounts = useMemo(() => {
+    const counts = Object.fromEntries(ORDER_EXCEPTION_CATEGORIES.map((key) => [key, 0])) as Record<
+      OrderExceptionCategory,
+      number
+    >;
+    for (const row of exceptions) counts[row.routing.category] += 1;
+    return counts;
+  }, [exceptions]);
 
   const openRecord = useCallback(
     (record: ShippedOrder) => patchParams({ order: String(record.id) }),
@@ -281,17 +301,37 @@ export function OrderExceptionsWorkbench() {
       ) : (
         // The TABLE display, small by default now that the route has a stage.
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
+          <nav
+            aria-label="Exception category"
+            className="flex shrink-0 items-stretch overflow-x-auto border-b border-mode-ink bg-mode-bar"
+            data-testid="exception-category-tabs"
+          >
+            <button
+              type="button"
+              aria-pressed={category == null}
+              onClick={() => patchParams({ category: null })}
+              className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-ink aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+            >
+              All <span className="ml-1 font-mono">{exceptions.length}</span>
+            </button>
+            {ORDER_EXCEPTION_CATEGORIES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={category === item}
+                onClick={() => patchParams({ category: item })}
+                className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-muted hover:bg-mode-hover aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+              >
+                {item} <span className="ml-1 font-mono">{categoryCounts[item]}</span>
+              </button>
+            ))}
+          </nav>
           <DataTable
             {...sheet}
             search={{
               value: search,
               onChange: (value) => patchParams({ search: value || null }),
               placeholder: 'Search order #, item #, SKU or title…',
-              // Same declaration as `searchAnsweredBy` above — the engine has to
-              // stand down too, or it re-runs the identical narrowing pass one
-              // layer down. `pending` is true through the debounce as well as the
-              // request, because until `debounced` catches up no fetch for THIS
-              // text exists yet and "no held order found" would be a guess.
               answeredBy: 'server',
               pending: query.isFetching || search.trim() !== debounced.trim(),
             }}

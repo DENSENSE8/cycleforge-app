@@ -73,15 +73,27 @@ describe('deriveOrderExceptionBlockers', () => {
 
 
 describe('resolveOrderExceptionRouting', () => {
-  it('maps missing identity to an Inventory-owned add-item-number action', () => {
+  it('maps missing identity to an Inventory / Accounting item-number action', () => {
     assert.deepEqual(resolveOrderExceptionRouting(['unpaired', 'no_item_number']), {
-      category: 'SKU mapping', actionRequired: 'Add item number', owner: 'Inventory',
+      category: 'SKU Mapping',
+      actionRequired: 'Add item number',
+      owner: 'Inventory / Accounting',
     });
   });
 
-  it('maps an identified unpaired order to an Inventory-owned SKU-pair action', () => {
+  it('maps an identified unpaired order to an Inventory / Accounting pairing action', () => {
     assert.deepEqual(resolveOrderExceptionRouting(['unpaired']), {
-      category: 'SKU mapping', actionRequired: 'Pair SKU', owner: 'Inventory',
+      category: 'SKU Mapping',
+      actionRequired: 'Pair to an existing inventory item',
+      owner: 'Inventory / Accounting',
+    });
+  });
+
+  it('routes an explicit out-of-stock exception to Inventory', () => {
+    assert.deepEqual(resolveOrderExceptionRouting([], { category: 'Out of Stock' }), {
+      category: 'Out of Stock',
+      actionRequired: 'Replenish or approve a substitute',
+      owner: 'Inventory',
     });
   });
 });
