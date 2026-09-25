@@ -17,8 +17,8 @@ import 'server-only';
  * `fs.realpath` — against the same allowlist, so a symlink inside `docs/`
  * cannot walk a read out of the tree.
  *
- * On Vercel the files ship with the functions via `outputFileTracingIncludes`
- * in `next.config.ts`; if you widen the allowlist, widen that too.
+ * On Vercel the docs are NOT shipped with the functions (bundling them broke
+ * deploys — see `next.config.ts`), so reads there answer `file_not_found`.
  */
 
 import { promises as fs } from 'node:fs';

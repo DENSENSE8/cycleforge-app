@@ -116,18 +116,15 @@ const nextConfig: NextConfig = {
     // same checkout — dev clobbers `.next`. Unset ⇒ default `.next`.
     distDir: process.env.NEXT_DIST_DIR || '.next',
     outputFileTracingRoot: process.cwd(),
-    // Task `repo` documents read plan files from disk at request time
-    // (src/lib/tasks/plan-files.ts); the tracer cannot see those reads, so
-    // ship the allowlisted roots with the two routes that make them.
-    outputFileTracingIncludes: {
-        '/api/tasks/plan-files': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
-        '/api/tasks/[id]/documents': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
-    },
+    // No `outputFileTracingIncludes` for docs: bundling `docs/**/*.md` into the
+    // task routes (which share the merged function bundle) made every Vercel
+    // deploy fail at "Deploying outputs" with an empty "Unexpected error"
+    // (bisected 2026-09-25: same tree minus that block deploys Ready). Task
+    // `repo` documents therefore read from disk only where the repo is present
+    // (dev / self-hosted); on Vercel `readPlanFile` answers file_not_found.
+    //
     // Functions execute compiled `.next/server`; TypeScript source is never
-    // read at request time (only tests read it). A dynamic path pulled all of
-    // `src/**` (~21 MB) into every trace and pushed the shared function bundle
-    // to ~235 MB, where Vercel failed at "Deploying outputs". SQL migrations
-    // and docs stay traceable.
+    // read at request time (only tests read it), so keep it out of traces.
     outputFileTracingExcludes: {
         '*': ['./src/**/*.ts', './src/**/*.tsx'],
     },
