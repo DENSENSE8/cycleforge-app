@@ -359,56 +359,81 @@ function OrderEvidence({
           All products ↗
         </a>
       </div>
-      <LabelEvidence orderId={record.id} orderRef={orderId || `#${record.id}`} />
+      <details className="border-b border-mode-ink">
+        <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
+          <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Labels</span>
+          <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>paperwork</span>
+        </summary>
+        <LabelEvidence orderId={record.id} orderRef={orderId || `#${record.id}`} />
+      </details>
       <OrderPriceEvidence orderId={record.id} />
       {record.customer ? (
-        <CustomerEvidence customer={record.customer} />
+        <details className="border-b border-mode-ink">
+          <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
+            <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
+            <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>{customerFullName(record.customer) || 'details'}</span>
+          </summary>
+          <CustomerEvidence customer={record.customer} />
+        </details>
       ) : record.customer_id == null && record.shipstation_ship_to ? (
-        <CustomerEvidence customer={shipToCustomer(record.shipstation_ship_to)} source="ShipStation" />
+        <details className="border-b border-mode-ink">
+          <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
+            <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
+            <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>ShipStation</span>
+          </summary>
+          <CustomerEvidence customer={shipToCustomer(record.shipstation_ship_to)} source="ShipStation" />
+        </details>
       ) : null}
 
       <dl className="flex flex-col px-4">
         <Fact label="Location" wide>
-          <span className={cn(RECORD_ID_CLASS, 'block break-words', locations ? 'text-mode-ink' : 'text-mode-warn')}>
-            {locations ? locations.split(' | ').map((path) => <span key={path} className="block">{path}</span>) : 'UNASSIGNED'}
-          </span>
-          {Number.isFinite(allocated) && allocated > 0 ? (
-            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-              {allocated} unit{allocated === 1 ? '' : 's'} allocated
-            </span>
-          ) : null}
-          {/* The SKU's home bin — where it is picked from until a unit is
-              allocated. Editable here (owner 2026-09-24); scan pairing stays
-              the phone verb. */}
-          <span className={cn(RECORD_LABEL_CLASS, 'mt-1 block text-mode-muted')}>
-            SKU home bin{' '}
-            <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal', homeBin ? 'text-mode-ink' : 'text-mode-warn')}>
-              {homeBin ?? 'none'}
-            </span>
-          </span>
-          <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
-            <LedgerSkuBinPicker
-              sku={sku}
-              current={homeBin}
-              onCommit={(barcode) => commits.handleCommitSkuBin(record, barcode)}
-            />
-          </span>
+          <details>
+            <summary className={cn('cursor-pointer list-none', focusRing('control'))}>
+              <span className={cn(RECORD_ID_CLASS, 'block truncate', locations ? 'text-mode-ink' : 'text-mode-warn')}>
+                {locations?.split(' | ')[0] ?? 'UNASSIGNED'}
+              </span>
+            </summary>
+            <div className="pt-1">
+              <span className={cn(RECORD_ID_CLASS, 'block break-words', locations ? 'text-mode-ink' : 'text-mode-warn')}>
+                {locations ? locations.split(' | ').map((path) => <span key={path} className="block">{path}</span>) : 'UNASSIGNED'}
+              </span>
+              {Number.isFinite(allocated) && allocated > 0 ? (
+                <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
+                  {allocated} unit{allocated === 1 ? '' : 's'} allocated
+                </span>
+              ) : null}
+              <span className={cn(RECORD_LABEL_CLASS, 'mt-1 block text-mode-muted')}>
+                SKU home bin{' '}
+                <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal', homeBin ? 'text-mode-ink' : 'text-mode-warn')}>
+                  {homeBin ?? 'none'}
+                </span>
+              </span>
+              <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
+                <LedgerSkuBinPicker
+                  sku={sku}
+                  current={homeBin}
+                  onCommit={(barcode) => commits.handleCommitSkuBin(record, barcode)}
+                />
+              </span>
+            </div>
+          </details>
         </Fact>
         <Fact label="Platform" wide>
-          <span className="inline-flex items-center gap-1.5">
-            <BrandIdentityDot {...platformMetaBrandDot(meta)} />
-            <span className={RECORD_LABEL_CLASS}>{channel.label || '—'}</span>
-            {channel.connectionName ? (
-              <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>· {channel.connectionName}</span>
-            ) : null}
-          </span>
-          {/* Imported under the wrong channel? Re-point it (orders.account_source). */}
-          <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
-            <LedgerPlatformPicker
-              value={view.platformValue ?? null}
-              onCommit={(accountSource) => commits.handleCommitPlatform(record, accountSource)}
-            />
-          </span>
+          <details>
+            <summary className={cn('inline-flex max-w-full cursor-pointer items-center gap-1.5', focusRing('control'))}>
+              <BrandIdentityDot {...platformMetaBrandDot(meta)} />
+              <span className={RECORD_LABEL_CLASS}>{channel.label || '—'}</span>
+              {channel.connectionName ? (
+                <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>· {channel.connectionName}</span>
+              ) : null}
+            </summary>
+            <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
+              <LedgerPlatformPicker
+                value={view.platformValue ?? null}
+                onCommit={(accountSource) => commits.handleCommitPlatform(record, accountSource)}
+              />
+            </span>
+          </details>
         </Fact>
         {/* Identifiers wear the one record face (OrderIdentityChips): brand
             dot + last-8 copy chip, left-aligned, the actions to the right. */}

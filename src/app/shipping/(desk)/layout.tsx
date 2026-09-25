@@ -7,7 +7,9 @@ import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
+  SHIPPING_EXCEPTIONS_PATH,
   SHIPPING_ORDERS_PATH,
+  SHIPPING_SHORTAGE_PATH,
   parseOrdersDeskContext,
 } from '@/lib/shipping/orders-desk';
 
@@ -75,16 +77,19 @@ export default function ShippingDeskLayout({ children }: { children: ReactNode }
     [cagedCount],
   );
 
-  // To ship is the first industrial desk (BRIEF §11): its record ledger runs
-  // edge to edge on the mode canvas. Every other tab keeps the card until it
-  // adopts the ledger itself. Support › Inquiries aliases this route with the
-  // slot table, so it keeps the card too.
+  // To ship is the full-width reference desk. Pending and Exceptions use the
+  // same ledger canvas and tab chrome; Support remains a card because it is a
+  // different context on the shared orders route.
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const flush =
-    pathname === SHIPPING_ORDERS_PATH &&
-    parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) !==
-      ORDERS_DESK_SUPPORT_CONTEXT;
+    pathname === SHIPPING_SHORTAGE_PATH
+    || pathname === SHIPPING_EXCEPTIONS_PATH
+    || (
+      pathname === SHIPPING_ORDERS_PATH
+      && parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) !==
+        ORDERS_DESK_SUPPORT_CONTEXT
+    );
 
   return (
     <DeskPageLayout decorateTabs={decorateTabs} stage={flush ? 'flush' : 'card'}>

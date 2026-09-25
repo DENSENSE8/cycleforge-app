@@ -30,10 +30,10 @@ function ShortageDeskContent({
           strictSearchScope
           selectMode={selectMode}
           railSelection={selectionEnabled}
+          ledger
           onPrimaryPainted={onPrimaryPainted}
           searchResultLabel="pending orders"
           clearSearchLabel="Show All Pending Orders"
-          searchEmptyTitle="No pending orders"
           fulfillmentLane="pending"
           lockedFulfillmentState="BLOCKED"
         />

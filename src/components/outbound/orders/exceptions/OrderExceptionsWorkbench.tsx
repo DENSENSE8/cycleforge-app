@@ -3,34 +3,15 @@
 /**
  * **Order exceptions** — the held-order queue, on the ONE outbound grid.
  *
- * Operator brief (2026-08-31): *"Port the currently built data table onto the
- * exceptions page within shipping. On the exceptions tab, clicking a button
- * should never open another page. It should open the data table first, for
- * exact triaging of information."* Then, on the first attempt being wrong:
- * *"You must use the one data table component, the slot table, the linear
- * host."*
+ * The Exceptions surface is the same full-width industrial ledger as To ship
+ * and Pending. It does not mount the slot `DataTable`: `OutboundOrdersLedger`
+ * owns the toolbar, row chrome, grouping, paging, fullscreen affordance, and
+ * evidence column. Exception rows are adapted into the shared `ShippedOrder`
+ * shape, so the design-system table has one implementation and one visual law.
  *
- * ## What this is, and the fork it is NOT
- *
- * This mounts {@link useOrdersSpreadsheet} — the same feed every other outbound
- * lane mounts — over the exception rows, adapted through
- * {@link exceptionRowToQueueRow}. Same binding (`fulfillment.default`), same
- * prefs bucket (`orders`), same compound two-row materialization of the
- * effective slot layout (staff ?? org ?? product). There is no
- * `order-exceptions` sheet, no second column model and no row component of its
- * own, because there is no second table.
- *
- * The first attempt at this surface built exactly those things — a
- * `*-grid-layout` SoT, a `*GridRow` with a switch over column keys, a new
- * `entityFamily`, a new `TableId`, a new registered binding — on the reasoning
- * that `blockers[]` and `siblingUnpairedCount` have no column on `ShippedOrder`.
- * That is the wrong altitude for that fact: a column this grid does not yet
- * print is a SLOT BINDING in `@/lib/tables/field-catalog/orders.ts`, resolved
- * by the layout cascade and materialized by `materializeTracks`. Adding a field
- * there offers the column to every outbound lane; hand-rolling a grid gives the
- * operator a second table that drifts from the first. The law is pinned in
- * `src/design-system/pinned.json` so `ds_contract` says it before the next
- * agent writes a line.
+ * Category controls are a narrow banner passed into that ledger. They filter
+ * the server-backed exception feed; they do not introduce a second table,
+ * column model, or row renderer.
  *
  * ## Image gutter
  *
@@ -88,13 +69,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { DataTable } from '@/components/tables/DataTable';
 import { ExceptionsRecentRail } from './ExceptionsRecentRail';
 import {
   DeskActionSlotRegistrar,
   DeskHeaderAction,
 } from '@/design-system/components/DeskActionSlot';
-import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
+import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { exceptionRowToQueueRow } from '@/lib/queries/caged-orders-queries';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
@@ -216,32 +197,19 @@ export function OrderExceptionsWorkbench() {
     },
     [query, selectedId, closeRecord],
   );
+  const toShipChrome = useToShipChrome();
+  const chrome = useMemo(
+    () => ({
+      ...toShipChrome,
+      search: {
+        value: search,
+        onChange: (value: string) => patchParams({ search: value || null }),
+        placeholder: 'Filter orders…',
+      },
+    }),
+    [patchParams, search, toShipChrome],
+  );
 
-  const sheet = useOrdersSpreadsheet({
-    records,
-    loading: query.isLoading,
-    searchValue: search,
-    // The find text IS the fetch key (line 147) and `?q=` is answered over the
-    // whole held set before `LIMIT 200` (order-exceptions.ts:250-259), so
-    // `records` ARE the matches. The second pass had a worse input than that:
-    // the fetch is keyed on `debounced` while this pass reads the live `search`,
-    // so every keystroke inside the 250ms window re-judged a correct answer for
-    // the PREFIX against the newer text and emptied the grid under the operator.
-    searchAnsweredBy: 'server',
-    onOpenRecord: openRecord,
-    onClearSearch: () => patchParams({ search: null }),
-    emptyMessage: 'Nothing blocked — every order has what it needs to ship.',
-    searchEmptyTitle: 'No held order found',
-    searchResultLabel: 'held orders',
-    clearSearchLabel: 'Show all held orders',
-    selectionScope: EXCEPTIONS_SELECTION_SCOPE,
-    ariaLabel: 'Order exceptions',
-    'data-testid': 'order-exceptions-grid-body',
-    // The `orders` prefs bucket on purpose: this IS the outbound sheet, so a
-    // column an operator curates on To-ship is curated here too. A bucket of
-    // its own would be the fork wearing a different hat.
-    tableId: 'orders',
-  });
 
   /**
    * Header verb: open the SKU-pairing record. Fullscreen stays on the table
@@ -299,42 +267,46 @@ export function OrderExceptionsWorkbench() {
           }
         />
       ) : (
-        // The TABLE display, small by default now that the route has a stage.
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
-          <nav
-            aria-label="Exception category"
-            className="flex shrink-0 items-stretch overflow-x-auto border-b border-mode-ink bg-mode-bar"
-            data-testid="exception-category-tabs"
-          >
-            <button
-              type="button"
-              aria-pressed={category == null}
-              onClick={() => patchParams({ category: null })}
-              className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-ink aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
-            >
-              All <span className="ml-1 font-mono">{exceptions.length}</span>
-            </button>
-            {ORDER_EXCEPTION_CATEGORIES.map((item) => (
-              <button
-                key={item}
-                type="button"
-                aria-pressed={category === item}
-                onClick={() => patchParams({ category: item })}
-                className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-muted hover:bg-mode-hover aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+          <OutboundOrdersLedger
+            chrome={chrome}
+            searchPending={query.isFetching || search.trim() !== debounced.trim()}
+            records={records}
+            loading={query.isLoading}
+            onOpenRecord={openRecord}
+            onCloseRecord={closeRecord}
+            railSelection={false}
+            selectionScope={EXCEPTIONS_SELECTION_SCOPE}
+            searchEmptyTitle="No held order found"
+            searchResultLabel="held orders"
+            clearSearchLabel="Show all held orders"
+            banner={
+              <nav
+                aria-label="Exception category"
+                className="flex shrink-0 items-stretch overflow-x-auto border-b border-mode-ink bg-mode-bar"
+                data-testid="exception-category-tabs"
               >
-                {item} <span className="ml-1 font-mono">{categoryCounts[item]}</span>
-              </button>
-            ))}
-          </nav>
-          <DataTable
-            {...sheet}
-            search={{
-              value: search,
-              onChange: (value) => patchParams({ search: value || null }),
-              placeholder: 'Search order #, item #, SKU or title…',
-              answeredBy: 'server',
-              pending: query.isFetching || search.trim() !== debounced.trim(),
-            }}
+                <button
+                  type="button"
+                  aria-pressed={category == null}
+                  onClick={() => patchParams({ category: null })}
+                  className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-ink aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+                >
+                  All <span className="ml-1 font-mono">{exceptions.length}</span>
+                </button>
+                {ORDER_EXCEPTION_CATEGORIES.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={category === item}
+                    onClick={() => patchParams({ category: item })}
+                    className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-muted hover:bg-mode-hover aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+                  >
+                    {item} <span className="ml-1 font-mono">{categoryCounts[item]}</span>
+                  </button>
+                ))}
+              </nav>
+            }
           />
         </div>
       )}

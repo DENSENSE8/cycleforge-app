@@ -40,19 +40,20 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
 
   return (
     <section aria-label="Price" data-testid="evidence-price" className="border-b border-mode-ink">
-      <div className={cn('flex items-center gap-2 border-b border-mode-edge px-4', LEDGER_HIT_CLASS)}>
-        <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Price</span>
-        <span
-          data-testid="evidence-price-net"
-          title={b ? `Net = ${NET_BASIS_LABEL[b.netBasis ?? 'amount_paid']} − tax − label costs. No marketplace fees.` : undefined}
-          className={cn(
-            RECORD_ID_CLASS,
-            query.isError ? 'text-mode-warn' : net == null ? 'text-mode-muted' : net < 0 ? STATE_TONE_CLASSES.danger.text : STATE_TONE_CLASSES.success.text,
-          )}
-        >
-          {query.isError ? 'Unreadable' : b == null ? '…' : net == null ? '—' : `Net ${formatCurrency(net)}${b.incomplete ? '*' : ''}`}
-        </span>
-      </div>
+      <details>
+        <summary className={cn('flex cursor-pointer list-none items-center gap-2 border-b border-mode-edge px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
+          <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Price</span>
+          <span
+            data-testid="evidence-price-net"
+            title={b ? `Net = ${NET_BASIS_LABEL[b.netBasis ?? 'amount_paid']} − tax − label costs. No marketplace fees.` : undefined}
+            className={cn(
+              RECORD_ID_CLASS,
+              query.isError ? 'text-mode-warn' : net == null ? 'text-mode-muted' : net < 0 ? STATE_TONE_CLASSES.danger.text : STATE_TONE_CLASSES.success.text,
+            )}
+          >
+            {query.isError ? 'Unreadable' : b == null ? '…' : net == null ? '—' : `Net ${formatCurrency(net)}${b.incomplete ? '*' : ''}`}
+          </span>
+        </summary>
       {b ? (
         <dl className="flex flex-col px-4">
           {b.lines.length > 0 ? (
@@ -137,6 +138,7 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
           ) : null}
         </dl>
       ) : null}
+      </details>
     </section>
   );
 }

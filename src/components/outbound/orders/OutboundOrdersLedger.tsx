@@ -168,6 +168,8 @@ export interface OutboundOrdersLedgerProps {
   onOpenRecord: (record: ShippedOrder) => void;
   onCloseRecord: () => void;
   railSelection: boolean;
+  /** Selection namespace; peers may reuse the ledger without sharing To-ship selection. */
+  selectionScope?: string;
   onLoadMore?: () => void;
   /** Non-blocking band above the rows (refresh failed while rows are painted). */
   banner?: ReactNode;
@@ -184,6 +186,7 @@ export function OutboundOrdersLedger({
   records,
   loading,
   onOpenRecord,
+  selectionScope = DASHBOARD_ORDERS_SELECTION_SCOPE,
   onCloseRecord,
   railSelection,
   onLoadMore,
@@ -201,7 +204,7 @@ export function OutboundOrdersLedger({
     searchAnsweredBy: 'server',
     onOpenRecord,
     onCloseRecord,
-    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    selectionScope,
     railSelection,
     queueMode: 'fulfillment',
     tableId: 'orders',
@@ -745,6 +748,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             facts={pick.facts}
             selectedStaffId={pick.selectedStaffId}
             assignedName={pick.assignedName}
+            showStamp
             onCommit={(id, name) => {
               for (const row of pick.open) commits.handleCommitStageAssign(row, 'orders.picked', id, name);
             }}
@@ -758,6 +762,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
             facts={pack.facts}
             selectedStaffId={pack.selectedStaffId}
             assignedName={pack.assignedName}
+            showStamp
             onCommit={(id, name) => {
               for (const row of pack.open) commits.handleCommitStageAssign(row, 'orders.packed', id, name);
             }}
@@ -860,6 +865,7 @@ const LedgerRecord = memo(function LedgerRecord({
       facts={pickFacts}
       selectedStaffId={staff.testerId}
       assignedName={staff.testerDisplay}
+      showStamp
       onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.picked', id, name)}
     />
   );
@@ -871,6 +877,7 @@ const LedgerRecord = memo(function LedgerRecord({
       facts={packFacts}
       selectedStaffId={staff.packerId}
       assignedName={staff.packerDisplay}
+      showStamp
       onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.packed', id, name)}
     />
   );
@@ -915,10 +922,6 @@ const LedgerRecord = memo(function LedgerRecord({
       className={cn(LEDGER_HIT_CLASS, 'w-8 items-center pt-0')}
     />
   );
-
-  return (
-    <div
-      data-order-row-id={record.id}
   // The buyer, from the customer book (`/api/orders` joins it), in band 1's
   // free span; S has no free span, so it reads in the evidence column only.
   // Display-only: a click lands on the row's open target, which opens the
@@ -934,6 +937,10 @@ const LedgerRecord = memo(function LedgerRecord({
         ) : null}
       </span>
     ) : null;
+
+  return (
+    <div
+      data-order-row-id={record.id}
       data-state={state}
       className={cn(
         'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover',
@@ -1060,14 +1067,14 @@ const LedgerRecord = memo(function LedgerRecord({
             </span>
             <span className="pointer-events-auto">{orderChip}</span>
             <span className="flex min-w-0 flex-1 items-center">{customerFace}</span>
-            <span className="pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">{shipBy}</span>
+            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">{shipBy}</span>
           </div>
           {/* Band 2 — identity: what it is ··· how many (the labour multiplier). */}
           <div className={cn('flex min-w-0 items-center gap-3 border-b border-mode-rule pl-2', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(RECORD_TITLE_CLASS, 'flex-1')} title={view.title || undefined}>
               {view.title || '—'}
             </span>
-            <span className="pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">
+            <span className="cf-section-rule pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">
               <LedgerQty
                 value={qtyFace}
                 onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
@@ -1086,7 +1093,7 @@ const LedgerRecord = memo(function LedgerRecord({
             </span>
             <span className="pointer-events-auto w-32 shrink-0">{pick}</span>
             <span className="pointer-events-auto w-32 shrink-0">{pack}</span>
-            <span className="pointer-events-auto h-full shrink-0 border-l border-mode-edge">
+            <span className="cf-section-rule pointer-events-auto h-full shrink-0 border-l border-mode-edge">
               <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} />
             </span>
             <LedgerNextStep next={next} />
@@ -1121,7 +1128,7 @@ export function LedgerLocation({
       title={path ? (home ? `${path} — SKU home bin, no unit allocated yet` : path) : 'No allocated location'}
     >
       <span className="text-mode-muted">{home ? 'BIN HOME ' : 'BIN '}</span>
-      {path ?? 'UNASSIGNED'}
+      <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal')}>{path ?? 'UNASSIGNED'}</span>
     </span>
   );
 }
