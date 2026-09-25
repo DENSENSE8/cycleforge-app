@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T23:03:14Z",
-  "totalRoutes": 1072,
+  "generatedAt": "2026-09-25T16:29:54Z",
+  "totalRoutes": 1087,
   "summary": {
-    "permissionGated": 874,
-    "authenticatedNoPermission": 115,
+    "permissionGated": 884,
+    "authenticatedNoPermission": 120,
     "anonymousIntentional": 36,
     "serviceToService": 47,
     "ungatedRead": 0,
@@ -1415,6 +1415,16 @@
       "path": "/api/catalog/priorities/route.ts",
       "methods": [
         "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/catalog/store-links/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
       ],
       "gate": "withAuth",
       "permission": "receiving.view",
@@ -3003,6 +3013,15 @@
       ],
       "gate": "withAuth",
       "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/integrations/shipstation/stores/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.view",
       "exemptReason": null
     },
     {
@@ -4931,6 +4950,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/packing/resolve-tote/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/packing/verification/decide/route.ts",
       "methods": [
         "POST"
@@ -5279,6 +5307,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/photos/videos/[id]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/pick/queue/route.ts",
       "methods": [
         "GET"
@@ -5306,12 +5343,12 @@
       "exemptReason": null
     },
     {
-      "path": "/api/picking/list/route.ts",
+      "path": "/api/picking/next/route.ts",
       "methods": [
-        "GET"
+        "POST"
       ],
-      "gate": "withAuth",
-      "permission": "orders.view",
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -5333,6 +5370,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/picking/session/[id]/note/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
       "path": "/api/picking/session/[id]/short-pick/route.ts",
       "methods": [
         "POST"
@@ -5343,6 +5389,15 @@
     },
     {
       "path": "/api/picking/session/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/tote/route.ts",
       "methods": [
         "POST"
       ],
@@ -5384,6 +5439,25 @@
       ],
       "gate": "withAuth",
       "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/pomodoro/report/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/pomodoro/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -8252,6 +8326,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/staff/[id]/functional-roles/route.ts",
+      "methods": [
+        "PUT"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
       "path": "/api/staff/[id]/name/route.ts",
       "methods": [
         "PATCH"
@@ -8722,9 +8805,61 @@
       "exemptReason": null
     },
     {
+      "path": "/api/tasks/[id]/documents/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/links/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/media/links/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/[id]/media/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
       "path": "/api/tasks/[id]/route.ts",
       "methods": [
         "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/tasks/plan-files/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "work_orders.claim",
@@ -9219,6 +9354,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/reminders/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
       "exemptReason": null
     },
     {
