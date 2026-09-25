@@ -123,6 +123,14 @@ const nextConfig: NextConfig = {
         '/api/tasks/plan-files': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
         '/api/tasks/[id]/documents': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
     },
+    // Functions execute compiled `.next/server`; TypeScript source is never
+    // read at request time (only tests read it). A dynamic path pulled all of
+    // `src/**` (~21 MB) into every trace and pushed the shared function bundle
+    // to ~235 MB, where Vercel failed at "Deploying outputs". SQL migrations
+    // and docs stay traceable.
+    outputFileTracingExcludes: {
+        '*': ['./src/**/*.ts', './src/**/*.tsx'],
+    },
     // Keep the production build fail-closed. CI typechecks earlier for faster
     // feedback, while Next repeats the check so a deployment cannot bypass CI
     // and publish a revision that does not compile.
