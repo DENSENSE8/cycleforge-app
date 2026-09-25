@@ -10,6 +10,8 @@ import {
 } from '@/lib/orders/orders-search';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
+import { customerDisplayJsonSql } from '@/lib/customers/customer-display';
 import {
   DOCK_STAGING_LATERAL,
   PICK_FACTS_LATERALS,
@@ -228,9 +230,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // desks would paint dashes for five minutes after deploy and blame the
       // data. Bump this string whenever the resolved price changes shape.
       priceProjectionVersion: 'price_facts_v1',
-      // Same reason: payloads cached before buyer_note / sku_home_location
-      // would paint no NOTE badge and no home bin for five minutes.
-      recordFactsVersion: 'buyer_note_sku_home_v1',
+      // Same reason: payloads cached before buyer_note / sku_home_location /
+      // customer / shipstation_ship_to would paint no NOTE badge, no home bin
+      // and no buyer for five minutes.
+      recordFactsVersion: 'buyer_note_sku_home_customer_ssshipto_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=300, stale-while-revalidate=60' };
@@ -547,6 +550,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.currency,
         ${replenishmentSelect}
         o.customer_id,
+        /* The linked buyer from the customer book (CustomerRecord DTO), so the
+         * row and the evidence column read name / ship-to without a fetch per
+         * row. NULL when the order has no customer_id. */
+        ${customerDisplayJsonSql('cust')} AS customer,
+        /* No customer-book buyer: the ship-to the paired ShipStation order
+         * carries (ShipStation shipTo keys), for the evidence column's Customer
+         * block. NULL when the order has a customer_id or no ShipStation ref. */
+        ss_ref.ship_to AS shipstation_ship_to,
         stn.latest_status_code,
         stn.latest_status_label,
         stn.latest_status_description,
@@ -632,7 +643,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
         loc_pack.location_kind AS pack_location_kind,
         o.sku_catalog_id,
-        COALESCE(NULLIF(BTRIM(sc.image_url), ''), ecwid_image.image_url) AS catalog_image_url,
+        COALESCE(NULLIF(BTRIM(sc.image_url), ''), ecwid_image.image_url, listing_cover.image_url) AS catalog_image_url,
         sc.category AS catalog_category,
         /* to_jsonb lets the deploy read safely while the additive column is
          * still rolling out: absent historical columns project NULL, then the
@@ -670,6 +681,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ORDER BY sp.created_at DESC NULLS LAST, sp.id DESC
         LIMIT 1
       ) ecwid_image ON TRUE
+      /* Last tier: the SKU listing-gallery cover, where acquired Amazon/eBay
+       * media lands (lib/photos/marketplace-media-backfill.ts). The paired
+       * catalog row wins; an unpaired order reaches its catalog row by the
+       * exact, org-scoped SKU. The fragment itself refuses to paint over a
+       * catalog photo or a Zoho-owned SKU. */
+      LEFT JOIN LATERAL (
+        SELECT ${listingCoverThumbUrlSql('sc_cover')} AS image_url
+          FROM sku_catalog sc_cover
+         WHERE sc_cover.organization_id = o.organization_id
+           AND (sc_cover.id = o.sku_catalog_id
+                OR (o.sku_catalog_id IS NULL AND sc_cover.sku = o.sku))
+         LIMIT 1
+      ) listing_cover ON TRUE
       LEFT JOIN wa_deadline ON wa_deadline.entity_id = o.id
       LEFT JOIN wa_t ON wa_t.entity_id = o.id
       LEFT JOIN wa_p ON wa_p.entity_id = o.id
@@ -677,6 +701,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN pack_activity ON pack_activity.shipment_id = o.shipment_id
       LEFT JOIN next_pack_activity ON next_pack_activity.shipment_id = o.shipment_id
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN customers cust
+        ON cust.id = o.customer_id AND cust.organization_id = o.organization_id
+      LEFT JOIN LATERAL (
+        SELECT ssr.ship_to
+          FROM shipstation_order_refs ssr
+         WHERE o.customer_id IS NULL
+           AND ssr.organization_id = o.organization_id
+           AND ssr.order_row_id = o.id
+         ORDER BY ssr.last_seen_at DESC NULLS LAST, ssr.id DESC
+         LIMIT 1
+      ) ss_ref ON TRUE
       LEFT JOIN order_pack_placements opp
         ON opp.order_id = o.id AND opp.organization_id = o.organization_id
       LEFT JOIN locations loc_pack ON loc_pack.id = opp.location_id

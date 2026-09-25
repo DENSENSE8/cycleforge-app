@@ -13,18 +13,24 @@
  *
  * It replaced the right-rail order inspector on this page (owner 2026-09-24:
  * the rail components were not built for this job). Facts come from the row the
- * queue already holds — no fetch on open — and every edit is the ledger's own
- * editor on the same commit waist, so the column and the row cannot disagree.
+ * queue already holds, and every edit is the ledger's own editor on the same
+ * commit waist, so the column and the row cannot disagree. Two fetches on
+ * open: the Label block — every label on the order with its purpose, from the
+ * label ledger (`GET /api/orders/[id]/label-purchase`), and the stored
+ * documents it prints from — and the Price panel
+ * (`GET /api/orders/[id]/price-breakdown`, persisted ShipStation amounts). The
+ * Customer block is the customer-book row `/api/orders` already joined onto
+ * the order.
  */
 
-import { useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { OrderNumberIdentity, TrackingIdentity } from '@/components/ui/OrderIdentityChips';
-import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
+import { ChevronLeft, ChevronRight, Printer, X } from '@/components/Icons';
 import {
   daysLateOn,
   queueRowStaff,
@@ -41,6 +47,19 @@ import { formatOutboundStoragePath } from '@/lib/shipping/outbound-storage-path'
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { formatCurrency } from '@/utils/_number';
+import {
+  customerAddressLines,
+  customerBillToLines,
+  customerFullName,
+  customerPhone,
+  type CustomerBillTo,
+  type CustomerRecord,
+} from '@/lib/customers/customer-display';
+import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
+import { Fact } from './EvidenceFact';
+import { OrderLabelEntries } from './OrderLabelEntries';
+import { OrderPriceEvidence } from './OrderPriceEvidence';
+import type { OrderLabelStatus } from '@/lib/shipping/order-label-summary';
 import {
   LIFECYCLE,
   LIFECYCLE_CLASSES,
@@ -59,7 +78,6 @@ import { initials, recordState } from './outbound-orders-ledger-state';
 import {
   LedgerCondition,
   LedgerListingLink,
-  LedgerNote,
   LedgerPlatformPicker,
   LedgerSkuBinPicker,
   LedgerTrackingReplace,
@@ -72,6 +90,13 @@ import {
 import {
   LEDGER_HIT_CLASS,
 } from './outbound-orders-ledger-geometry';
+import {
+  pickOrderDocument,
+  printDocument,
+  useOrderDocuments,
+  useOrderLabelSummary,
+} from './paperwork/order-paperwork-client';
+import { ItemPaperworkDialog } from './paperwork/PaperworkDocuments';
 import {
   getRailActions,
   getServerRailActions,
@@ -177,16 +202,6 @@ export function OutboundOrderEvidence(props: OutboundOrderEvidenceProps) {
   );
 }
 
-/** One fact row: mono label over (or beside) its value, ruled underneath. */
-function Fact({ label, children, wide = false }: { label: string; children: ReactNode; wide?: boolean }) {
-  return (
-    <div className={cn('flex min-w-0 border-b border-mode-edge', wide ? 'flex-col py-2' : 'items-center')}>
-      <dt className={cn(RECORD_LABEL_CLASS, 'w-24 shrink-0 text-mode-muted', !wide && 'py-2')}>{label}</dt>
-      <dd className="min-w-0 flex-1 text-role-data text-mode-ink">{children}</dd>
-    </div>
-  );
-}
-
 function OrderEvidence({
   record,
   todayKey,
@@ -221,6 +236,7 @@ function OrderEvidence({
   const packFacts = stageFacts(resolveOrdersSlotValue(record, 'orders.packed', staff));
   const bench = String(r.pack_location_name ?? '').trim() || null;
   const next = view.nextStep ?? null;
+  const [itemPaperworkOpen, setItemPaperworkOpen] = useState(false);
 
   return (
     <>
@@ -287,8 +303,31 @@ function OrderEvidence({
           </p>
           {record.item_number ? (
             <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-              ITEM <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal text-mode-ink')}>{record.item_number}</span>
+              ITEM{' '}
+              <button
+                type="button"
+                data-testid="evidence-item-paperwork"
+                title="Paperwork paired to this item number"
+                onClick={() => setItemPaperworkOpen(true)}
+                className={cn(
+                  'ds-raw-button',
+                  RECORD_ID_CLASS,
+                  'normal-case tracking-normal text-mode-ink underline decoration-mode-edge underline-offset-2 hover:decoration-mode-ink',
+                  focusRing('control'),
+                )}
+              >
+                {record.item_number}
+              </button>
             </p>
+          ) : null}
+          {record.item_number ? (
+            <ItemPaperworkDialog
+              open={itemPaperworkOpen}
+              onOpenChange={setItemPaperworkOpen}
+              orderId={record.id}
+              orderRef={orderId || `order-${record.id}`}
+              itemNumber={record.item_number}
+            />
           ) : null}
         </div>
       </div>
@@ -320,6 +359,13 @@ function OrderEvidence({
           All products ↗
         </a>
       </div>
+      <LabelEvidence orderId={record.id} orderRef={orderId || `#${record.id}`} />
+      <OrderPriceEvidence orderId={record.id} />
+      {record.customer ? (
+        <CustomerEvidence customer={record.customer} />
+      ) : record.customer_id == null && record.shipstation_ship_to ? (
+        <CustomerEvidence customer={shipToCustomer(record.shipstation_ship_to)} source="ShipStation" />
+      ) : null}
 
       <dl className="flex flex-col px-4">
         <Fact label="Location" wide>
@@ -470,15 +516,13 @@ function OrderEvidence({
             <span className={RECORD_LABEL_CLASS}>{bench}</span>
           </Fact>
         ) : null}
-        <Fact label="Note" wide>
-          {record.notes ? <p className="whitespace-pre-wrap break-words pb-1 text-role-caption text-mode-ink">{record.notes}</p> : null}
-          <span className="block h-8 border border-mode-edge bg-mode-panel">
-            <LedgerNote
-              value=""
-              onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.notes', value)}
-            />
-          </span>
-        </Fact>
+        {/* Read-only: the latest face of the `order_notes` trail. Writing a note
+            is the "Add note" verb below — the catalog at n=1, one home. */}
+        {record.notes ? (
+          <Fact label="Note" wide>
+            <p className="whitespace-pre-wrap break-words pb-1 text-role-caption text-mode-ink">{record.notes}</p>
+          </Fact>
+        ) : null}
       </dl>
 
       <div className="mt-auto">
@@ -565,6 +609,190 @@ function QueueEvidence({ records, todayKey }: OutboundOrderEvidenceProps) {
         Open a record · J / K to step · Esc to close
       </p>
     </>
+  );
+}
+
+/** How each label status reads in the column (mono-caps code, its tone, why). */
+const LABEL_STATUS_FACE: Readonly<Record<OrderLabelStatus, { label: string; tone: string; tip: string }>> = {
+  none: { label: 'None', tone: 'text-mode-warn', tip: 'No shipping label on this order yet.' },
+  bought: { label: 'Bought', tone: STATE_TONE_CLASSES.success.text, tip: 'Label bought through ShipStation.' },
+  pending: {
+    label: 'Unresolved',
+    tone: STATE_TONE_CLASSES.danger.text,
+    tip: 'A purchase started and never finished — check ShipStation before buying again.',
+  },
+  linked: { label: 'Linked', tone: 'text-mode-ink', tip: 'A label is attached to this order; it was not bought here.' },
+  voided: { label: 'Voided', tone: 'text-mode-muted', tip: 'The last label was voided and nothing has replaced it.' },
+};
+
+/**
+ * The order's labels: the outbound status (what To-ship needs), then EVERY
+ * label on the order — outbound, return, replacement; bought here, imported
+ * from ShipStation, or paired with Link label — each with its purpose, cost,
+ * tracking, ticket links and Print · Ticket · Unlink (`OrderLabelEntries`).
+ * The bar under them prints the order's stored label and slip — the same
+ * documents and `printDocument` call the Labels walk's success card prints.
+ */
+function LabelEvidence({ orderId, orderRef }: { orderId: number; orderRef: string }) {
+  const summaryQuery = useOrderLabelSummary(orderId);
+  const documentsQuery = useOrderDocuments(orderId);
+  const summary = summaryQuery.data ?? null;
+  const purchase = summary?.purchase ?? null;
+  const labels = summary?.labels ?? [];
+  const face = summary ? LABEL_STATUS_FACE[summary.status] : null;
+  const documents = documentsQuery.data?.documents ?? [];
+  const labelSrc = outboundDocumentContentSrc(
+    pickOrderDocument(documents, 'shipping_label', purchase?.labelDocumentId ?? null),
+  );
+  const slipSrc = outboundDocumentContentSrc(pickOrderDocument(documents, 'packing_slip', null));
+
+  return (
+    <section aria-label="Shipping label" data-testid="evidence-label" className="border-b border-mode-ink">
+      <div className={cn('flex items-center gap-2 border-b border-mode-edge px-4', LEDGER_HIT_CLASS)}>
+        <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>
+          Label{labels.length > 1 ? `s · ${labels.length}` : ''}
+        </span>
+        <span
+          data-testid="evidence-label-status"
+          title={summaryQuery.isError ? summaryQuery.error.message : face?.tip}
+          className={cn(RECORD_LABEL_CLASS, summaryQuery.isError ? 'text-mode-warn' : (face?.tone ?? 'text-mode-muted'))}
+        >
+          {summaryQuery.isError ? 'Unreadable' : (face?.label ?? '…')}
+        </span>
+      </div>
+      {summary?.status === 'pending' ? (
+        <p className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-edge px-4 py-2', STATE_TONE_CLASSES.danger.text)}>
+          {LABEL_STATUS_FACE.pending.tip}
+        </p>
+      ) : null}
+      <OrderLabelEntries orderId={orderId} orderRef={orderRef} labels={labels} documents={documents} />
+      <div className="flex items-stretch border-t border-mode-ink bg-mode-bar" data-testid="evidence-label-print">
+        <button
+          type="button"
+          disabled={!labelSrc}
+          title={labelSrc ? 'Print the stored shipping label' : 'No shipping label stored on this order'}
+          data-testid="evidence-print-label"
+          className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center border-r border-mode-edge', deskBarSegmentTone(false))}
+          onClick={() => labelSrc && printDocument(labelSrc)}
+        >
+          <Printer className="h-3.5 w-3.5" aria-hidden />
+          Print label
+        </button>
+        <button
+          type="button"
+          disabled={!slipSrc}
+          title={slipSrc ? 'Print the stored packing slip' : 'No packing slip stored on this order'}
+          data-testid="evidence-print-slip"
+          className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', deskBarSegmentTone(false))}
+          onClick={() => slipSrc && printDocument(slipSrc)}
+        >
+          <Printer className="h-3.5 w-3.5" aria-hidden />
+          Print slip
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * A ShipStation ship-to (`shipstation_order_refs.ship_to`) as the book's DTO,
+ * so an order with no customer-book buyer reads through the same readers.
+ */
+function shipToCustomer(shipTo: CustomerBillTo): CustomerRecord {
+  return {
+    id: 0,
+    display_name: shipTo.name ?? null,
+    customer_name: shipTo.company ?? null,
+    first_name: null,
+    last_name: null,
+    email: null,
+    phone: shipTo.phone ?? null,
+    mobile: null,
+    shipping_address_1: shipTo.address1 ?? null,
+    shipping_address_2: shipTo.address2 ?? null,
+    shipping_city: shipTo.city ?? null,
+    shipping_state: shipTo.state ?? null,
+    shipping_postal_code: shipTo.postalCode ?? null,
+    shipping_country: shipTo.country ?? null,
+    billing_address: null,
+  };
+}
+
+/**
+ * The buyer, from the customer book (`orders.customer_id → customers`, joined
+ * by `/api/orders`): name, email, phone, the full ship-to, and the bill-to only
+ * when it is a different address. Same readers as `CustomerDetailsTab`, in the
+ * column's industrial face. An order with no book buyer falls back to its
+ * ShipStation order's ship-to (`source` names it); with neither, no block.
+ */
+function CustomerEvidence({ customer, source }: { customer: CustomerRecord; source?: string }) {
+  const [copied, setCopied] = useState(false);
+  const name = customerFullName(customer);
+  const email = String(customer.email ?? '').trim();
+  const phone = customerPhone(customer);
+  const shipTo = customerAddressLines(customer);
+  const billTo = customerBillToLines(customer);
+  if (!name && !email && !phone && shipTo.length === 0) return null;
+
+  const copyAddress = () => {
+    void navigator.clipboard.writeText([name, ...shipTo].filter(Boolean).join('\n'));
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <section aria-label="Customer" data-testid="evidence-customer" className="border-b border-mode-ink">
+      <div className={cn('flex items-center border-b border-mode-edge px-4', LEDGER_HIT_CLASS)}>
+        <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
+        {source ? <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{source}</span> : null}
+      </div>
+      <dl className="flex flex-col px-4">
+        {name ? (
+          <Fact label="Name">
+            <span className="block truncate font-bold" title={name}>{name}</span>
+          </Fact>
+        ) : null}
+        {email ? (
+          <Fact label="Email">
+            <a
+              href={`mailto:${email}`}
+              title={email}
+              className={cn('block truncate underline decoration-mode-edge underline-offset-2 hover:decoration-mode-ink', focusRing('control'))}
+            >
+              {email}
+            </a>
+          </Fact>
+        ) : null}
+        {phone ? (
+          <Fact label="Phone">
+            <span className={cn(RECORD_ID_CLASS, 'select-all')}>{phone}</span>
+          </Fact>
+        ) : null}
+        {shipTo.length > 0 ? (
+          <Fact label="Ship to" wide>
+            <span className="block select-all whitespace-pre-line break-words">{shipTo.join('\n')}</span>
+          </Fact>
+        ) : null}
+        {billTo.length > 0 ? (
+          <Fact label="Bill to" wide>
+            <span className="block select-all whitespace-pre-line break-words">{billTo.join('\n')}</span>
+          </Fact>
+        ) : null}
+      </dl>
+      {shipTo.length > 0 ? (
+        <div className="flex items-stretch bg-mode-bar">
+          <button
+            type="button"
+            data-testid="evidence-customer-copy-address"
+            title="Copy the name and ship-to address"
+            className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', deskBarSegmentTone(false))}
+            onClick={copyAddress}
+          >
+            {copied ? 'Copied' : 'Copy address'}
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }
 

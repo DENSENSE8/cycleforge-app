@@ -229,6 +229,67 @@ export async function getMarketplaceParticipations(
     .map((m) => ({ marketplaceId: m.id, countryCode: m.countryCode, name: m.name }));
 }
 
+// ─── Catalog Items API (2022-04-01) ─────────────────────────────────────────
+
+/** One image from `getCatalogItem` with `includedData=images`. */
+export interface AmazonCatalogImage {
+  variant?: string;
+  link?: string;
+  height?: number;
+  width?: number;
+}
+
+export interface AmazonCatalogItemImages {
+  asin?: string;
+  images?: Array<{ marketplaceId?: string; images?: AmazonCatalogImage[] }>;
+}
+
+/**
+ * The listing's hero image URL from a catalog-item payload: the `MAIN` variant
+ * (largest rendition) of the requested marketplace, else of any marketplace,
+ * else the first image at all. `null` when the payload carries none.
+ */
+export function pickAmazonCatalogMainImage(
+  payload: AmazonCatalogItemImages | null | undefined,
+  marketplaceIds: readonly string[] = [],
+): string | null {
+  const groups = payload?.images ?? [];
+  const preferred = groups.filter((g) => g.marketplaceId && marketplaceIds.includes(g.marketplaceId));
+  const ordered = [...preferred, ...groups.filter((g) => !preferred.includes(g))];
+  for (const group of ordered) {
+    const main = (group.images ?? [])
+      .filter((img) => img.variant === 'MAIN' && String(img.link ?? '').trim())
+      .sort((a, b) => (b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0))[0];
+    if (main?.link) return main.link.trim();
+  }
+  for (const group of ordered) {
+    const first = (group.images ?? []).find((img) => String(img.link ?? '').trim());
+    if (first?.link) return first.link.trim();
+  }
+  return null;
+}
+
+/**
+ * Catalog images for one ASIN in the account's marketplaces. Non-PII; a 404
+ * (ASIN unknown to these marketplaces) surfaces as a thrown error like any
+ * other SP-API failure.
+ */
+export async function getCatalogItemImages(
+  account: AmazonAccount,
+  creds: AmazonCredentials,
+  asin: string,
+): Promise<AmazonCatalogItemImages> {
+  return callSpApi<AmazonCatalogItemImages>(account, creds, {
+    operation: 'getCatalogItem',
+    path: `/catalog/2022-04-01/items/${encodeURIComponent(asin)}`,
+    query: {
+      // Catalog Items takes a comma-delimited list, unlike the Orders API.
+      marketplaceIds: account.marketplaceIds.join(','),
+      includedData: 'images',
+    },
+  });
+}
+
 // ─── Orders API (v0) ────────────────────────────────────────────────────────
 
 export interface AmazonOrderSummary {

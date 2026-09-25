@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import {
@@ -11,11 +11,17 @@ import {
 
 /**
  * Owns the connections admin panel: the section expand/input state, the eBay +
- * Amazon account queries, and every integration mutation (eBay/Ecwid/exceptions
- * sync + full-integrity run, Zoho refresh/sync/import, eBay/Ecwid backfill,
- * Ecwid→Square catalog sync, carrier tracking, Amazon health/sync/connect/
- * disconnect, ShipStation CSV upload). Each fires an `admin-connections-log`
- * window event on success/failure. Returns a controller bag the sections render.
+ * Amazon account queries, and every integration mutation (Ecwid exception
+ * tracking + resolved-exception clearing, eBay token refresh, Zoho
+ * refresh/sync/import, eBay/Ecwid backfill, Ecwid→Square catalog sync, carrier
+ * tracking, Amazon health/connect/disconnect). Each fires an
+ * `admin-connections-log` window event on success/failure. Returns a
+ * controller bag the sections render.
+ *
+ * No order IMPORT lives here: ShipStation is the one order source
+ * (`POST /api/integrations/shipstation/sync`, driven by `useOrdersSync` on the
+ * orders desk). The eBay / Amazon order syncs and the "full order sync" that
+ * chained the eBay one were retired with their routes.
  */
 export function useConnectionsPanel() {
   const queryClient = useQueryClient();
@@ -29,7 +35,6 @@ export function useConnectionsPanel() {
   const [amazonRefreshToken, setAmazonRefreshToken] = useState('');
   const [amazonSellerId, setAmazonSellerId] = useState('');
   const [amazonRegion, setAmazonRegion] = useState<'NA' | 'EU' | 'FE'>('NA');
-  const shipStationFileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: accountsData } = useQuery({
     queryKey: qk.ebayAccounts,
@@ -58,20 +63,6 @@ export function useConnectionsPanel() {
 
   const logSuccess = (group: string, title: string, detail: string) => emitConnectionsLog({ group, title, detail, status: 'success' });
   const logError = (group: string, title: string, detail: string) => emitConnectionsLog({ group, title, detail, status: 'error' });
-
-  const ebaySyncMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch('/api/ebay/sync?reconcileExceptions=true', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) throw new Error(data?.error || data?.message || `Sync failed (HTTP ${res.status})`);
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: qk.ebayAccounts });
-      logSuccess('Orders', 'eBay Sync', `Created ${data?.totals?.createdOrders || 0}, deleted exceptions ${data?.totals?.deletedExceptions || 0}.`);
-    },
-    onError: (error: any) => logError('Orders', 'eBay Sync', error?.message || 'eBay sync failed'),
-  });
 
   const refreshTokenMutation = useMutation({
     mutationFn: async (accountName: string) => {
@@ -111,19 +102,6 @@ export function useConnectionsPanel() {
     },
     onSuccess: (data) => logSuccess('Orders', 'Ecwid Exception Sync', `Updated ${data?.updated || 0}, deleted ${data?.deleted || 0}.`),
     onError: (error: any) => logError('Orders', 'Ecwid Exception Sync', error?.message || 'Ecwid exception sync failed'),
-  });
-
-  const fullIntegrityMutation = useMutation({
-    mutationFn: async () => {
-      const ebayData = await ebaySyncMutation.mutateAsync();
-      const ecwidData = await ecwidExceptionTrackingMutation.mutateAsync();
-      const exceptionsData = await exceptionsSyncMutation.mutateAsync();
-      return { ebayData, ecwidData, exceptionsData };
-    },
-    onSuccess: ({ ebayData, ecwidData, exceptionsData }) => {
-      logSuccess('Orders', 'Full Integrity Run', `eBay created ${ebayData?.totals?.createdOrders || 0}, Ecwid updated ${ecwidData?.updated || 0}, exceptions cleared ${exceptionsData?.deleted || 0}.`);
-    },
-    onError: (error: any) => logError('Orders', 'Full Integrity Run', error?.message || 'Full integrity sync failed'),
   });
 
   const zohoRefreshMutation = useMutation({
@@ -252,21 +230,6 @@ export function useConnectionsPanel() {
     onError: (error: any) => logError('Amazon', 'Connection Check', error?.message || 'Health check failed'),
   });
 
-  const amazonSyncMutation = useMutation({
-    mutationFn: async (all: boolean) => {
-      const res = await fetch(`/api/amazon/sync${all ? '?all=1' : ''}`, { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.ok) throw new Error(data?.error || `Sync failed (HTTP ${res.status})`);
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: qk.amazonAccounts });
-      const t = data?.totals || {};
-      logSuccess('Amazon', 'Order Sync', `Imported ${t.imported || 0}, updated ${t.updated || 0}, FBA ${t.fbaReadOnly || 0}, skipped-untracked ${t.skippedUntracked || 0}.`);
-    },
-    onError: (error: any) => logError('Amazon', 'Order Sync', error?.message || 'Order sync failed'),
-  });
-
   const amazonConnectMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/amazon/connect', {
@@ -305,22 +268,6 @@ export function useConnectionsPanel() {
     onError: (error: any) => logError('Amazon', 'Disconnect', error?.message || 'Disconnect failed'),
   });
 
-  const handleShipStationFileChange = async (file: File | null) => {
-    if (!file) return;
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/google-sheets/sync-shipstation-orders', { method: 'POST', body: formData });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data?.success) throw new Error(data?.error || data?.message || 'ShipStation upload failed');
-      logSuccess('Orders', 'ShipStation Upload', data?.message || 'ShipStation upload completed.');
-    } catch (error: any) {
-      logError('Orders', 'ShipStation Upload', error?.message || 'ShipStation upload failed');
-    } finally {
-      if (shipStationFileInputRef.current) shipStationFileInputRef.current.value = '';
-    }
-  };
-
   return {
     showOrders, setShowOrders,
     showZoho, setShowZoho,
@@ -332,12 +279,9 @@ export function useConnectionsPanel() {
     amazonRefreshToken, setAmazonRefreshToken,
     amazonSellerId, setAmazonSellerId,
     amazonRegion, setAmazonRegion,
-    shipStationFileInputRef,
     now,
     tokenAccounts,
     amazonAccounts,
-    fullIntegrityMutation,
-    ebaySyncMutation,
     ecwidExceptionTrackingMutation,
     exceptionsSyncMutation,
     refreshTokenMutation,
@@ -349,10 +293,8 @@ export function useConnectionsPanel() {
     ecwidSquareSyncMutation,
     carrierSyncMutation,
     amazonHealthMutation,
-    amazonSyncMutation,
     amazonConnectMutation,
     amazonDisconnectMutation,
-    handleShipStationFileChange,
   };
 }
 

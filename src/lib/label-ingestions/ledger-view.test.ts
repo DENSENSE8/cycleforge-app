@@ -14,6 +14,8 @@ test('only MATCHED offers apply, and only QUARANTINED/FAILED offer reprocess', (
     APPLYING: null,
     APPLIED: null,
     FAILED: 'retry',
+    // Operator-paired to an order: resolved — offering Reprocess would undo the pairing.
+    LINKED: null,
   });
 });
 

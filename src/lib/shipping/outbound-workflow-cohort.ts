@@ -95,7 +95,7 @@ export const OUTBOUND_WORKFLOW_COHORT_FILES = {
   packingLogUpdateApi: 'src/app/api/packing-logs/update/route.ts',
   packerLogWriter: 'src/lib/packing/packer-log-writer.ts',
   packerLogCompletion: 'src/lib/packing/packer-log-completion.ts',
-  scanOutApi: 'src/app/api/shipped/scan-out/route.ts',
+  scanOutDomain: 'src/lib/outbound/scan-out.ts',
   stagedDeskQueue: 'src/components/outbound/scan-out/StagedQueueTable.tsx',
   packStationPanel: 'src/components/packer/PackOrderPanel.tsx',
   packAwaitingFeedback: 'src/components/packer/PackAwaitingFeedback.tsx',
@@ -442,7 +442,7 @@ export function evaluateOutboundWorkflowCohort(
   requireText(sources, 'mobilePackerPhotoStudio', "fetch('/api/packing-logs/update'", 'missing-mobile-pack-finalize-request', 'The verified phone flow must call the canonical pack finalizer.', violations);
   requireText(sources, 'mobilePackerPhotoStudio', 'draftPackerLogId: packerLogId', 'missing-mobile-pack-finalize-identity', 'The finalizer must promote the same durable photo-evidence parent.', violations);
   requireText(sources, 'ordersApi', "completion_state = 'COMPLETED'", 'draft-counts-as-packed', 'A CAPTURING photo parent must not make an order appear packed.', violations);
-  requireText(sources, 'scanOutApi', 'mirrorLegacyPackToAllocations', 'missing-scanout-shipped-mirror', 'Only dock scan-out owns the terminal SHIPPED mirror.', violations);
+  requireText(sources, 'scanOutDomain', 'mirrorLegacyPackToAllocations', 'missing-scanout-shipped-mirror', 'Only dock scan-out owns the terminal SHIPPED mirror.', violations);
   requireText(sources, 'packStationPanel', 'StationScanPaneHost', 'missing-pack-station-host', 'Packing must stay inside the existing governed station host.', violations);
   requireText(sources, 'packStationPanel', 'OrderPackChecklist', 'missing-pack-station-checklist', 'Packing station must render the same canonical pack checklist used by the mobile evidence flow.', violations);
   requireText(sources, 'packStationPanel', 'useOrderPackChecklist', 'missing-pack-station-facts', 'Packing station must consume the canonical packing checklist facts.', violations);

@@ -7,11 +7,8 @@ import type { ConnectionsPanelController } from './useConnectionsPanel';
 export function OrdersSection({ c }: { c: ConnectionsPanelController }) {
   return (
     <SidebarSection title="Orders" expanded={c.showOrders} onToggle={() => c.setShowOrders((v) => !v)}>
-      <LineItem label="Run Full Order Sync" detail="Run eBay sync, Ecwid exception sync, then clear resolved exceptions" right={<ActionButton onClick={() => c.fullIntegrityMutation.mutate()} loading={c.fullIntegrityMutation.isPending} title="Run full order sync" tone="green" />} />
-      <LineItem label="Sync eBay Orders" detail="Pull eBay changes and reconcile order exceptions" right={<ActionButton onClick={() => c.ebaySyncMutation.mutate()} loading={c.ebaySyncMutation.isPending} title="Sync eBay orders" tone="blue" />} />
       <LineItem label="Sync Ecwid Exceptions" detail="Copy tracking updates onto open Ecwid exceptions" right={<ActionButton onClick={() => c.ecwidExceptionTrackingMutation.mutate()} loading={c.ecwidExceptionTrackingMutation.isPending} title="Sync Ecwid exceptions" tone="blue" />} />
       <LineItem label="Clear Resolved Exceptions" detail="Remove exception rows that no longer need attention" right={<ActionButton onClick={() => c.exceptionsSyncMutation.mutate()} loading={c.exceptionsSyncMutation.isPending} title="Clear resolved exceptions" tone="green" />} />
-      <LineItem label="Upload ShipStation CSV" detail="Import a local ShipStation export" right={/* ds-raw-button: flush w-12 h-full cell action mirroring ActionButton geometry — not a Button shape */<button type="button" onClick={() => c.shipStationFileInputRef.current?.click()} className={`ds-raw-button h-full w-12 border-l border-border-soft ${sectionLabel} text-text-muted hover:bg-surface-sunken`}>Up</button>} />
       {c.tokenAccounts.map((account) => {
         const minutesLeft = Math.floor((new Date(account.token_expires_at).getTime() - c.now.getTime()) / 60000);
         const isRefreshing = c.refreshTokenMutation.isPending && c.refreshTokenMutation.variables === account.account_name;
@@ -125,16 +122,6 @@ export function AmazonSection({ c }: { c: ConnectionsPanelController }) {
         detail="Verify stored Amazon credentials reach SP-API"
         right={<ActionButton onClick={() => c.amazonHealthMutation.mutate()} loading={c.amazonHealthMutation.isPending} title="Check Amazon connection" tone="green" />}
       />
-      <LineItem
-        label="Sync Orders"
-        detail="Import tracked Amazon orders (by SKU / FBA item)"
-        right={<ActionButton onClick={() => c.amazonSyncMutation.mutate(false)} loading={c.amazonSyncMutation.isPending && c.amazonSyncMutation.variables === false} title="Sync Amazon orders" tone="blue" />}
-      />
-      <LineItem
-        label="Sync All Orders"
-        detail="Import every order, including untracked SKUs"
-        right={<ActionButton onClick={() => c.amazonSyncMutation.mutate(true)} loading={c.amazonSyncMutation.isPending && c.amazonSyncMutation.variables === true} title="Sync all Amazon orders" tone="indigo" />}
-      />
       <div className="border-b border-border-soft bg-surface-card px-4 py-3">
         <p className={dataValue}>Connect with refresh token</p>
         <p className={`mt-0.5 ${fieldLabel} text-text-soft`}>
@@ -142,7 +129,7 @@ export function AmazonSection({ c }: { c: ConnectionsPanelController }) {
           <a href="/settings/integrations/amazon" className="font-medium text-blue-600 hover:underline">
             Settings → Integrations → Amazon
           </a>
-          . Use this sidebar for sync tools only.
+          . Orders import through ShipStation, not from here.
         </p>
       </div>
       {c.amazonAccounts.map((acc) => (

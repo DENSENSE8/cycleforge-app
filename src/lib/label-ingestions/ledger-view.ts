@@ -30,6 +30,8 @@ const STATUS: Record<LabelIngestionState, LedgerStatus> = {
   PARSED: { label: 'PARSED', tone: 'info', rank: 2, action: null },
   APPLYING: { label: 'APPLYING', tone: 'fulfillment', rank: 2, action: null },
   APPLIED: { label: 'APPLIED', tone: 'success', rank: 3, action: null },
+  // Paired to an order by an operator (Link label) — resolved, nothing to do.
+  LINKED: { label: 'LINKED', tone: 'success', rank: 3, action: null },
 };
 
 export function ledgerStatus(state: LabelIngestionState): LedgerStatus {

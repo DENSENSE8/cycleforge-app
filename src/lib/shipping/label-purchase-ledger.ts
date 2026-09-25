@@ -23,6 +23,7 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { LabelPurchaseResult } from '@/lib/shipping/shipstation/types';
+import { shipmentIdFromLabelId, type LabelPurpose } from '@/lib/shipping/label-purpose';
 
 export type LabelPurchaseStatus = 'pending' | 'purchased' | 'voided';
 
@@ -41,6 +42,8 @@ export interface LabelPurchaseRecord {
   labelUrl: string | null;
   labelDocumentId: number | null;
   shipmentId: number | null;
+  /** Why the label was bought (outbound / return / replacement). */
+  purpose: LabelPurpose;
 }
 
 export interface ClaimInput {
@@ -50,6 +53,8 @@ export interface ClaimInput {
   rateId: string;
   labelFormat: string;
   staffId: number | null;
+  /** Recorded on the claim, so a replay finishes the purchase the same way. */
+  purpose: LabelPurpose;
 }
 
 export interface RecordPurchasedInput {
@@ -129,10 +134,11 @@ type Row = {
   label_url: string | null;
   label_document_id: number | null;
   shipment_id: number | null;
+  purpose: LabelPurpose;
 };
 
 const RETURNING = `id, order_id, client_event_id, status, label_id, tracking_number, carrier_code,
-  service_code, cost, currency, label_format, label_url, label_document_id, shipment_id`;
+  service_code, cost, currency, label_format, label_url, label_document_id, shipment_id, purpose`;
 
 function toRecord(row: Row): LabelPurchaseRecord {
   return {
@@ -150,19 +156,20 @@ function toRecord(row: Row): LabelPurchaseRecord {
     labelUrl: row.label_url,
     labelDocumentId: row.label_document_id,
     shipmentId: row.shipment_id,
+    purpose: row.purpose,
   };
 }
 
 export const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
-  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId }) => {
+  claim: async ({ orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose }) => {
     const res = await tenantQuery<{ id: string }>(
       orgId,
       `INSERT INTO shipping_label_purchases
-         (organization_id, order_id, client_event_id, status, rate_id, label_format, purchased_by)
-       VALUES ($1, $2, $3, 'pending', $4, $5, $6)
+         (organization_id, order_id, client_event_id, status, rate_id, label_format, purchased_by, purpose)
+       VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7)
        ON CONFLICT (organization_id, client_event_id) DO NOTHING
        RETURNING id`,
-      [orgId, orderId, clientEventId, rateId, labelFormat, staffId],
+      [orgId, orderId, clientEventId, rateId, labelFormat, staffId, purpose],
     );
     return res.rows[0] ? { id: Number(res.rows[0].id) } : null;
   },
@@ -172,7 +179,8 @@ export const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
       orgId,
       `UPDATE shipping_label_purchases
           SET status = 'purchased', label_id = $3, tracking_number = $4, carrier_code = $5,
-              service_code = $6, cost = $7, currency = $8, label_url = $9, updated_at = now()
+              service_code = $6, cost = $7, currency = $8, label_url = $9,
+              shipstation_shipment_id = $10, updated_at = now()
         WHERE id = $1 AND organization_id = $2
         RETURNING ${RETURNING}`,
       [
@@ -185,6 +193,7 @@ export const defaultLedgerDeps: LabelPurchaseLedgerDeps = {
         label.cost ?? null,
         label.currency ?? null,
         labelUrl,
+        shipmentIdFromLabelId(label.labelId),
       ],
     );
     if (!res.rows[0]) throw new Error(`label purchase ${purchaseId} vanished before it was recorded`);

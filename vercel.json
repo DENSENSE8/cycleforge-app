@@ -101,20 +101,12 @@
       "schedule": "20 * * * *"
     },
     {
-      "path": "/api/cron/amazon/orders-sync",
-      "schedule": "*/15 * * * *"
+      "path": "/api/cron/shipstation/orders-sync",
+      "schedule": "0 15 * * *"
     },
     {
-      "path": "/api/cron/google-sheets/transfer-orders",
-      "schedule": "30 15 * * 1-5"
-    },
-    {
-      "path": "/api/cron/google-sheets/transfer-orders",
-      "schedule": "0 18 * * 1-5"
-    },
-    {
-      "path": "/api/cron/google-sheets/transfer-orders",
-      "schedule": "0 22 * * 1-5"
+      "path": "/api/cron/shipstation/orders-sync",
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/cron/staff-goals/history",
@@ -153,7 +145,7 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/integrations/sync?providers=ebay,square,ecwid",
+      "path": "/api/cron/integrations/sync?providers=square",
       "schedule": "*/15 * * * *"
     },
     {

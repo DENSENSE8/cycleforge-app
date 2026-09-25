@@ -4,26 +4,13 @@
  * `sync()` for every org that has that provider connected.
  *
  * `syncConnection` powers the per-org "Sync now"; `runOrdersSyncAllOrgs`
- * powers the cron. Both reuse the providers' existing sync code (eBay/Amazon).
+ * powers the crons (the 15-minute Square run and ShipStation's own schedule).
  */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
-import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';
 import { connectorsWithCapability, getConnector, listConnectors } from './registry';
 import type { ReconcileOutcome, SyncOpts, SyncOutcome } from './types';
-import { tapBuyerNoteDerivation } from '@/lib/surfaces/buyer-note-derivation';
-
-/** Post-sync mirror-derivation taps (plan §2.3 fresh path) — tapWorkflow
- *  semantics: best-effort, NEVER throws (tapBuyerNoteDerivation swallows all
- *  errors), so awaiting it cannot fail a sync — and awaiting is required on
- *  serverless, where un-awaited work is frozen once the response returns.
- *  Signals derive from the LOCAL mirror the sync just updated, so provider
- *  errors can't reach this layer. eBay only today (Amazon is a fast-follow). */
-async function tapPostSyncDerivations(provider: IntegrationProvider, orgId: OrgId): Promise<void> {
-  if (provider !== 'ebay') return;
-  await tapBuyerNoteDerivation(orgId);
-}
 
 /**
  * Best-effort operational writeback after a provider sync. Stamps
@@ -63,22 +50,11 @@ export async function syncConnection(
   if (!connector.sync) return { ok: false, error: `${provider} has no sync capability yet` };
   const outcome = await connector.sync(orgId, opts);
   await recordSyncOutcome(orgId, provider, outcome.ok);
-  await tapPostSyncDerivations(provider, orgId);
   return outcome;
 }
 
-/** Which orgs have this provider connected. eBay/Amazon track connections in
- *  dedicated account tables; everything else lives in the vault. */
+/** Which orgs have this provider connected (its active vault row). */
 async function connectedOrgsForProvider(provider: IntegrationProvider): Promise<OrgId[]> {
-  if (provider === 'ebay' || provider === 'amazon') {
-    const table = provider === 'ebay' ? 'ebay_accounts' : 'amazon_accounts';
-    const platformFilter =
-      provider === 'ebay' ? ` AND ${EBAY_PLATFORM_PREDICATE}` : '';
-    const { rows } = await pool.query<{ organization_id: string }>(
-      `SELECT DISTINCT organization_id FROM ${table} WHERE is_active = true${platformFilter}`,
-    );
-    return rows.map((r) => r.organization_id as OrgId);
-  }
   const { rows } = await pool.query<{ organization_id: string }>(
     `SELECT DISTINCT organization_id FROM organization_integrations
       WHERE provider = $1 AND status = 'active'`,
@@ -95,13 +71,12 @@ export interface OrchestratorResult {
 
 /** Cron entrypoint: for every orders-capable connector with a wired sync(),
  *  sync every org that has it connected. `only` scopes the run to specific
- *  providers — used so the cron can drive eBay without double-running Amazon
- *  (which still has its own dedicated cron until Phase 4 consolidation). */
+ *  providers, so each cron drives exactly the providers it schedules. */
 export async function runOrdersSyncAllOrgs(only?: IntegrationProvider[]): Promise<OrchestratorResult[]> {
   const out: OrchestratorResult[] = [];
   const allow = only && only.length ? new Set(only) : null;
   for (const connector of connectorsWithCapability('orders')) {
-    if (!connector.sync) continue; // not wired yet (e.g. ecwid/square — later phase)
+    if (!connector.sync) continue;
     if (allow && !allow.has(connector.provider)) continue;
     const orgs = await connectedOrgsForProvider(connector.provider);
     for (const orgId of orgs) {
@@ -109,7 +84,6 @@ export async function runOrdersSyncAllOrgs(only?: IntegrationProvider[]): Promis
         const outcome = await connector.sync(orgId);
         out.push({ provider: connector.provider, orgId, outcome });
         await recordSyncOutcome(orgId, connector.provider, outcome.ok);
-        await tapPostSyncDerivations(connector.provider, orgId);
       } catch (e) {
         out.push({
           provider: connector.provider,

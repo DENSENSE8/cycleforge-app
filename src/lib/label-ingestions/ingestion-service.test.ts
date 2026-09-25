@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createLabelIngestion, LabelIngestionServiceError } from './ingestion-service';
+import { createLabelIngestion, LabelIngestionServiceError, markShipStationIngestionApplied, recordShipStationLabelIngestion, shipStationClientEventId, type ShipStationLabelIngestionInput } from './ingestion-service';
 
 const org = '00000000-0000-4000-8000-000000000001' as never;
 const row = (state: string, extra: Record<string, unknown> = {}) => ({ id: 7, client_event_id: '00000000-0000-4000-8000-000000000007', state, row_version: 1, sha256: 'a'.repeat(64), file_basename: 'label.pdf', byte_size: 10, parser_version: 'v1', match_method: null, tracking_number_raw: null, tracking_number_normalized: null, carrier: null, quarantine_reason_code: null, created_at: new Date('2026-09-18T00:00:00Z'), updated_at: new Date('2026-09-18T00:00:00Z'), staged_object_key: null, source: 'MANUAL_UPLOAD', observed_at: new Date('2026-09-18T00:00:00Z'), matched_account_source: null, matched_marketplace_order_id: null, matched_order_id: null, applied_at: null, ...extra });
@@ -12,4 +12,42 @@ test('ingestion stages before parsing and persists the resolver result', async (
 });
 test('a client-event reusing different bytes is rejected before staging', async () => {
   await assert.rejects(() => createLabelIngestion({ organizationId: org, actorStaffId: 2, clientEventId: '00000000-0000-4000-8000-000000000007', observedAt: '2026-09-18T00:00:00.000Z', fileBasename: 'label.pdf', bytes: Buffer.from('%PDF-x') }, { query: async () => ({ rows: [row('RECEIVED', { sha256: 'b'.repeat(64) })] }), store: { put: async () => { throw new Error('must not stage'); }, get: async () => Buffer.alloc(0) } }), (error: unknown) => error instanceof LabelIngestionServiceError && error.code === 'CLIENT_EVENT_PAYLOAD_MISMATCH');
+});
+
+const evidence = { parserVersion: 'shipstation-api-v1', cycleforgeReference: null, marketplaceOrderId: 'A-1', accountSource: null, trackingNumberRaw: '1Z999AA10123456784', trackingNumberNormalized: '1Z999AA10123456784', carrier: 'UPS', multiPackageEvidence: false };
+const ssInput = (over: Partial<ShipStationLabelIngestionInput> = {}): ShipStationLabelIngestionInput => ({ organizationId: org, shipmentId: 42, labelId: 'se-42', observedAt: '2026-09-24T00:00:00.000Z', fileBasename: 'shipstation-se-42.pdf', bytes: Buffer.from('%PDF-ss'), evidence, exactOrder: { accountSource: 'ebay', marketplaceOrderId: 'A-1', matchMethod: 'MARKETPLACE_ORDER_ID', cycleforgeReference: null }, quarantineReason: null, ...over });
+
+test('shipstation: a shipment already in the ledger replays without staging or inserting (PDF bytes differ per download)', async () => {
+  const result = await recordShipStationLabelIngestion(ssInput(), { query: async () => ({ rows: [row('APPLIED', { source: 'SHIPSTATION_API', shipstation_shipment_id: '42', sha256: 'c'.repeat(64) })] }), store: { put: async () => { throw new Error('must not stage'); }, get: async () => Buffer.alloc(0) }, transaction: async () => { throw new Error('must not write'); } });
+  assert.equal(result.outcome, 'REPLAYED'); assert.equal(result.ingestion.shipstationShipmentId, 42); assert.equal(result.ingestion.state, 'APPLIED');
+});
+test('shipstation: identical bytes under another row are a DUPLICATE_PDF, not a second ingestion', async () => {
+  const result = await recordShipStationLabelIngestion(ssInput(), { query: async () => ({ rows: [row('QUARANTINED', { id: 9, shipstation_shipment_id: null })] }), store: { put: async () => { throw new Error('must not stage'); }, get: async () => Buffer.alloc(0) } });
+  assert.equal(result.outcome, 'DUPLICATE_PDF'); assert.equal(result.ingestion.id, 9);
+});
+test('shipstation: a new label is staged first, then born settled with its shipment identity', async () => {
+  const calls: Array<{ sql: string; values: unknown[] }> = []; const staged: string[] = [];
+  const result = await recordShipStationLabelIngestion(ssInput({ exactOrder: null, quarantineReason: 'ORDER_NOT_FOUND' }), { query: async () => ({ rows: [] }), store: { put: async ({ objectKey }) => { staged.push(objectKey); }, get: async () => Buffer.alloc(0) }, transaction: async (_org, fn) => fn({ query: async (sql: string, values: unknown[]) => { calls.push({ sql, values }); return { rows: [row('QUARANTINED', { source: 'SHIPSTATION_API', shipstation_shipment_id: 42, shipstation_label_id: 'se-42' })] }; } } as never) });
+  assert.equal(result.outcome, 'CREATED'); assert.equal(staged.length, 1); assert.match(staged[0]!, /^label-ingestions\/.+\.pdf$/);
+  const insert = calls[0]!;
+  assert.equal(insert.values[1], shipStationClientEventId(42)); assert.equal(insert.values[6], 'QUARANTINED'); assert.equal(insert.values[16], 'ORDER_NOT_FOUND'); assert.equal(insert.values[17], 42); assert.equal(insert.values[18], 'se-42');
+});
+test('shipstation: the client event id is a stable UUID per shipment', () => {
+  assert.equal(shipStationClientEventId(42), shipStationClientEventId(42)); assert.notEqual(shipStationClientEventId(42), shipStationClientEventId(43));
+  assert.match(shipStationClientEventId(42), /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+});
+test('shipstation: a label must carry exactly one of an exact order or an exception reason', async () => {
+  const noop = { query: async () => ({ rows: [] }), store: { put: async () => {}, get: async () => Buffer.alloc(0) } };
+  await assert.rejects(() => recordShipStationLabelIngestion(ssInput({ exactOrder: null }), noop), (e: unknown) => e instanceof LabelIngestionServiceError && e.code === 'INGESTION_PROCESSING_FAILED');
+  await assert.rejects(() => recordShipStationLabelIngestion(ssInput({ quarantineReason: 'ORDER_NOT_FOUND' }), noop), (e: unknown) => e instanceof LabelIngestionServiceError && e.code === 'INGESTION_PROCESSING_FAILED');
+  await assert.rejects(() => recordShipStationLabelIngestion(ssInput({ bytes: Buffer.from('<html>') }), noop), (e: unknown) => e instanceof LabelIngestionServiceError && e.code === 'INVALID_PDF');
+});
+test('shipstation: finalizing an APPLIED row is a no-op; a stale row version is refused', async () => {
+  const tx = (state: string, version: number, sqls: string[]) => ({ transaction: async (_org: unknown, fn: (c: never) => unknown) => fn({ query: async (sql: string) => { sqls.push(sql); return { rows: [row(state, { source: 'SHIPSTATION_API', row_version: version })] }; } } as never) }) as never;
+  const replay: string[] = [];
+  const applied = await markShipStationIngestionApplied(org, { ingestionId: 7, expectedRowVersion: 1, orderIds: [3], shipmentId: 4, documentId: 5 }, tx('APPLIED', 2, replay));
+  assert.equal(applied.state, 'APPLIED'); assert.equal(replay.length, 1);
+  const stale: string[] = [];
+  await assert.rejects(() => markShipStationIngestionApplied(org, { ingestionId: 7, expectedRowVersion: 1, orderIds: [3], shipmentId: 4, documentId: 5 }, tx('MATCHED', 3, stale)), (e: unknown) => e instanceof LabelIngestionServiceError && e.code === 'INGESTION_NOT_ACTIONABLE');
+  assert.equal(stale.length, 1);
 });

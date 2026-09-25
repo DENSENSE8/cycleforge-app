@@ -1,32 +1,35 @@
 'use client';
 
 /**
- * The order's paperwork, inline — shipping labels, packing slips and the
- * manuals paired to the item, viewed and managed in place. No slide-over, no
- * motion. Triage face (sentence case, soft panels, h-9 controls) and
- * container-responsive: on a phone sheet the file list sits above the
- * document; on a desk pane wider than ~48rem they sit side by side.
+ * The order's paperwork, inline — shipping labels, packing slips and every
+ * paired paperwork row (manual, packing list, PL + M…), viewed and managed in
+ * place. No slide-over, no motion. Triage face (sentence case, soft panels,
+ * h-9 controls) and container-responsive: on a phone sheet the file list sits
+ * above the document; on a desk pane wider than ~48rem they sit side by side.
  *
- *   kinds     — Label · Slip · Manuals · All, with counts; Download all is one
- *               ZIP of every document and paired manual.
- *   list      — every file of the kind with download · replace · delete (and,
- *               for manuals, rename · unpair). Drop files on the list, or
+ *   kinds     — Label · Slip · Manuals & docs · All, with counts; Download all
+ *               is one ZIP of every document and paired row.
+ *   list      — every file of the kind, grouped by where it is paired (this
+ *               order · item # X · SKU Y, most specific first), with download ·
+ *               replace · delete, and for paired rows rename · re-pair (order /
+ *               item # / SKU / type) · unpair. Drop files on the list, or
  *               Upload; Label / Slip can also be fetched from the platform;
- *               Manuals can pair an existing library manual.
+ *               paired rows can come from the library.
  *   preview   — the selected file with print · download · open; All stacks
  *               every file so the whole packet reads top to bottom.
  *
- * Manuals pair to the order's item number AND SKU (and the catalog row they
- * resolve to) — exactly what pack print resolves, so a manual paired here is
- * the one the packer's insert prints.
+ * Pairing is the resolution pack print uses (lib/manuals/paperwork-pairing):
+ * pinned to this order only, to the item number (every recurring order of it)
+ * or to the SKU. The item-number view ({@link ItemPaperworkDialog}) is this
+ * same component narrowed to what is paired to the order's item number.
  */
 
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
   Download,
   ExternalLink,
   FileText,
+  Link2,
   Pencil,
   Printer,
   RefreshCw,
@@ -34,8 +37,9 @@ import {
   Unlink,
   Upload,
 } from '@/components/Icons';
+import { TYPE_OPTIONS } from '@/components/manuals/manual-crud/manual-crud-shared';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/design-system/components/Dialog';
 import { FetchedPdfFrame } from '@/design-system/components/FetchedPdfFrame';
-import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { resolveDocumentPreviewMime } from '@/design-system/components/document-preview-mime';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -50,6 +54,7 @@ import {
   outboundDocumentMimeHint,
 } from '@/lib/documents/outbound-document-display';
 import type { OutboundDocument } from '@/lib/documents/types';
+import type { PaperworkSource } from '@/lib/manuals/paperwork-pairing';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
@@ -63,26 +68,34 @@ import {
   type OrderManual,
   type PaperworkKind,
 } from './order-paperwork-client';
+import {
+  CAPTION,
+  FIELD_CLASS,
+  GroupHeader,
+  PairingControls,
+  RepairForm,
+  type PaperworkPatch,
+} from './PaperworkPairingControls';
 
 export type PaperworkTab = PaperworkKind | 'all';
 
 const KIND_LABEL: Record<PaperworkKind, string> = {
   shipping_label: 'Shipping label',
   packing_slip: 'Packing slip',
-  manual: 'Manual',
+  manual: 'Paired paperwork',
 };
 
 const TAB_FACE: Record<PaperworkTab, string> = {
   shipping_label: 'Label',
   packing_slip: 'Slip',
-  manual: 'Manuals',
+  manual: 'Manuals & docs',
   all: 'All',
 };
 
 const UPLOAD_FACE: Record<PaperworkKind, string> = {
   shipping_label: 'Upload label',
   packing_slip: 'Upload slip',
-  manual: 'Upload manual',
+  manual: 'Upload paperwork',
 };
 
 const ACCEPT: Record<PaperworkKind, string> = {
@@ -95,8 +108,12 @@ const ACCEPT: Record<PaperworkKind, string> = {
 interface PaperworkFile {
   key: string;
   kind: PaperworkKind;
+  /** Kind face: Shipping label / Packing slip, or the paperwork type. */
+  kindLabel: string;
   name: string;
   meta: string;
+  /** Paired rows: every key it is pinned to. */
+  pins: string | null;
   src: string | null;
   mime: 'pdf' | 'image';
   externalUrl: string | null;
@@ -104,8 +121,6 @@ interface PaperworkFile {
   doc?: OutboundDocument;
   manual?: OrderManual;
 }
-
-const CAPTION = 'text-role-caption text-text-muted';
 
 function docName(doc: OutboundDocument): string {
   if (doc.data.filename) return doc.data.filename;
@@ -127,14 +142,20 @@ function docMeta(doc: OutboundDocument): string {
   return [source, at !== '—' ? at : null].filter(Boolean).join(' · ');
 }
 
-function toFiles(documents: readonly OutboundDocument[], manuals: readonly OrderManual[]): PaperworkFile[] {
+function toFiles(
+  documents: readonly OutboundDocument[],
+  manuals: readonly OrderManual[],
+  orderId: number,
+): PaperworkFile[] {
   const docs = documents.map((doc): PaperworkFile => {
     const src = outboundDocumentContentSrc(doc);
     return {
       key: `doc:${doc.id}`,
       kind: doc.documentType,
+      kindLabel: KIND_LABEL[doc.documentType],
       name: docName(doc),
       meta: docMeta(doc),
+      pins: null,
       src,
       mime: outboundDocumentMimeHint(doc),
       externalUrl: src,
@@ -144,29 +165,39 @@ function toFiles(documents: readonly OutboundDocument[], manuals: readonly Order
   });
   const paired = manuals.map((manual): PaperworkFile => {
     const at = formatMonthDayTimePST(manual.updatedAt);
+    const typeLabel = TYPE_OPTIONS.find((option) => option.value && option.value === manual.type)?.label ?? manual.type ?? 'Manual';
+    const { pairing } = manual;
+    const pins = [
+      pairing.orderId === orderId ? 'This order' : pairing.orderId != null ? 'Another order' : null,
+      pairing.itemNumber ? `Item # ${pairing.itemNumber}` : null,
+      pairing.sku ? `SKU ${pairing.sku}` : null,
+    ].filter(Boolean).join(' · ');
     return {
       key: `manual:${manual.id}`,
       kind: 'manual',
+      kindLabel: typeLabel,
       name: manual.displayName,
-      meta: [manual.type, at !== '—' ? at : null].filter(Boolean).join(' · ') || 'Manual',
+      meta: at !== '—' ? at : 'Paired',
+      pins: pins ? `Paired to ${pins}` : null,
       src: manual.contentUrl,
       mime: resolveDocumentPreviewMime(manual.fileName, undefined) === 'image' ? 'image' : 'pdf',
       externalUrl: manual.contentUrl ?? manual.externalUrl,
-      // Pack prints inserts from the packet; the manual itself is view-only here.
-      printable: false,
+      printable: Boolean(manual.contentUrl),
       manual,
     };
   });
   const order: PaperworkKind[] = ['shipping_label', 'packing_slip', 'manual'];
+  // Stable: paired rows keep the server's precedence order (order > item # > SKU).
   return [...docs, ...paired].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
 }
 
 export function PaperworkDocuments({
   orderId,
   orderRef,
-  tab,
+  tab: requestedTab,
   onTabChange,
   onChanged,
+  itemView = false,
 }: {
   orderId: number;
   orderRef: string;
@@ -174,14 +205,24 @@ export function PaperworkDocuments({
   onTabChange: (tab: PaperworkTab) => void;
   /** Any write landed — the host re-reads the facts it owns. */
   onChanged: () => void;
+  /**
+   * The item-number view: only the paperwork paired to this order's item
+   * number — what every order of that item number resolves. Paired rows only;
+   * uploads and library pairs pin the item number.
+   */
+  itemView?: boolean;
 }) {
-  const documentsQuery = useOrderDocuments(orderId);
+  const tab: PaperworkTab = itemView ? 'manual' : requestedTab;
+  // The item view never lists the order's own label / slip (0 = query off).
+  const documentsQuery = useOrderDocuments(itemView ? 0 : orderId);
   const manualsQuery = useOrderManuals(orderId);
   const actions = useOrderPaperworkActions(orderId, orderRef, onChanged);
 
+  const resolved = manualsQuery.data ?? null;
   const documents = documentsQuery.data?.documents ?? [];
-  const manuals = manualsQuery.data?.manuals ?? [];
-  const files = useMemo(() => toFiles(documents, manuals), [documents, manuals]);
+  const allManuals = resolved?.manuals ?? [];
+  const manuals = itemView ? allManuals.filter((m) => m.pairedBy.includes('item_number')) : allManuals;
+  const files = useMemo(() => toFiles(documents, manuals, orderId), [documents, manuals, orderId]);
   const visible = tab === 'all' ? files : files.filter((f) => f.kind === tab);
   const count = (kind: PaperworkTab) => (kind === 'all' ? files.length : files.filter((f) => f.kind === kind).length);
 
@@ -190,6 +231,15 @@ export function PaperworkDocuments({
   useEffect(() => {
     setSelectedKey(null);
   }, [tab, orderId]);
+
+  // New paired paperwork: which key it pins, and its type.
+  const [pairTo, setPairTo] = useState<PaperworkSource | null>(null);
+  const [paperType, setPaperType] = useState('manual');
+  useEffect(() => {
+    setPairTo(null);
+  }, [orderId]);
+  const scope: PaperworkSource = itemView ? 'item_number' : (pairTo ?? resolved?.defaultPairTo ?? 'item_number');
+  const [itemViewOpen, setItemViewOpen] = useState(false);
 
   const uploadRef = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
@@ -205,7 +255,11 @@ export function PaperworkDocuments({
 
   const uploadFiles = (list: FileList | null) => {
     if (!uploadKind || !list) return;
-    for (const file of Array.from(list)) actions.upload.mutate({ kind: uploadKind, file });
+    for (const file of Array.from(list)) {
+      actions.upload.mutate(
+        uploadKind === 'manual' ? { kind: uploadKind, file, pairTo: scope, type: paperType } : { kind: uploadKind, file },
+      );
+    }
   };
 
   const onDrop = (event: DragEvent) => {
@@ -241,28 +295,34 @@ export function PaperworkDocuments({
     }
     if (file.manual) {
       const ok = await requestConfirm({
-        title: 'Delete this manual from the library?',
-        description: `${file.name} is removed for every item it is paired to. To take it off this item only, use Unpair.`,
-        confirmLabel: 'Delete manual',
+        title: `Delete this ${file.kindLabel.toLowerCase()} from the library?`,
+        description: `${file.name} stops printing for every order, item number and SKU it is paired to. To take it off one key only, use Re-pair; to keep it in the library unpaired, use Unpair.`,
+        confirmLabel: 'Delete',
         tone: 'danger',
       });
       if (ok) actions.removeManual.mutate({ manualId: file.manual.id, mode: 'delete' });
     }
   };
 
-  const onUnpair = (file: PaperworkFile) => {
-    if (file.manual) actions.removeManual.mutate({ manualId: file.manual.id, mode: 'unpair' });
+  const onUnpair = async (file: PaperworkFile) => {
+    if (!file.manual) return;
+    const ok = await requestConfirm({
+      title: 'Unpair it everywhere?',
+      description: `${file.name} comes off every order, item number and SKU and goes back to the library unassigned. To drop one key only, use Re-pair.`,
+      confirmLabel: 'Unpair',
+    });
+    if (ok) actions.removeManual.mutate({ manualId: file.manual.id, mode: 'unpair' });
   };
 
   const zipHref = downloadAllHref({
     documentIds: documents.map((d) => d.id),
     manualIds: manuals.filter((m) => m.contentUrl || m.externalUrl).map((m) => m.id),
-    title: `order-${orderRef}-paperwork`,
+    title: itemView ? `item-${resolved?.itemNumber ?? orderRef}-paperwork` : `order-${orderRef}-paperwork`,
   });
 
-  // Print all — label · slip · manuals in pack order, one dialog. The door for
-  // when the packer print station is down; the server ledgers each page as
-  // `fallback_browser` so pack history stays true.
+  // Print all — label · slip · paired paperwork in pack order, one dialog. The
+  // door for when the packer print station is down; the server ledgers each
+  // page as `fallback_browser` so pack history stays true.
   const [printingAll, setPrintingAll] = useState(false);
   const onPrintAll = async () => {
     setPrintingAll(true);
@@ -280,43 +340,89 @@ export function PaperworkDocuments({
 
   const loading = documentsQuery.isLoading || manualsQuery.isLoading;
   const slipIngest = documentsQuery.data?.packingSlipIngest ?? null;
-  const pairing = manualsQuery.data ?? null;
+  const openItemView = !itemView && resolved?.itemNumber ? () => setItemViewOpen(true) : undefined;
+
+  // Grouped by where each row is paired — most specific first (server order).
+  const grouped = !itemView && (tab === 'manual' || tab === 'all');
+  const groups = new Map<PaperworkSource, PaperworkFile[]>();
+  for (const file of visible) {
+    const source = file.manual?.source ?? 'order';
+    groups.set(source, [...(groups.get(source) ?? []), file]);
+  }
+
+  const renderRow = (file: PaperworkFile) => (
+    <FileRow
+      key={file.key}
+      file={file}
+      showKind={tab === 'all'}
+      active={selected?.key === file.key}
+      orderId={orderId}
+      orderRef={orderRef}
+      onSelect={() => {
+        setSelectedKey(file.key);
+        // All stacks every file: jump the stack to this one (no smooth scroll).
+        if (tab === 'all') {
+          previewRef.current
+            ?.querySelector(`[data-file-key="${file.key}"]`)
+            ?.scrollIntoView({ block: 'start' });
+        }
+      }}
+      onReplace={() => startReplace(file)}
+      onDelete={() => void onDelete(file)}
+      onUnpair={file.manual ? () => void onUnpair(file) : undefined}
+      onUpdate={file.manual ? (patch) => actions.updateManual.mutate({ manualId: file.manual!.id, ...patch }) : undefined}
+    />
+  );
 
   return (
-    <section data-testid="paperwork-docs" aria-label="Order paperwork" className="@container flex min-w-0 flex-col gap-3">
+    <section
+      data-testid={itemView ? 'item-paperwork' : 'paperwork-docs'}
+      aria-label={itemView ? 'Item number paperwork' : 'Order paperwork'}
+      className="@container flex min-w-0 flex-col gap-3"
+    >
       <div className="flex flex-wrap items-center gap-2">
-        <div role="tablist" aria-label="Paperwork kind" className={cn('inline-flex border border-border-soft', TRIAGE_PANEL_SEGMENT_ENDS)}>
-          {(['shipping_label', 'packing_slip', 'manual', 'all'] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              role="tab"
-              aria-selected={tab === kind}
-              data-testid={`paperwork-tab-${kind}`}
-              onClick={() => onTabChange(kind)}
-              className={cn(
-                'ds-raw-button inline-flex h-9 items-center gap-1.5 border-l border-border-soft px-3 text-role-caption font-semibold first:border-l-0',
-                tab === kind ? 'bg-surface-inverse text-text-inverse' : 'bg-surface-card text-text-default hover:bg-surface-sunken',
-                focusRing('control'),
-              )}
-            >
-              {TAB_FACE[kind]}
-              <span className={cn('tabular-nums', tab === kind ? 'opacity-80' : 'text-text-muted')}>{count(kind)}</span>
-            </button>
-          ))}
-        </div>
+        {itemView ? (
+          <p className={CAPTION}>
+            <span className="font-semibold text-text-default">{files.length}</span> paired to item #{' '}
+            <span className="font-mono font-semibold text-text-default">{resolved?.itemNumber ?? '—'}</span> — every order of
+            this item number shows and packs them.
+          </p>
+        ) : (
+          <div role="tablist" aria-label="Paperwork kind" className={cn('inline-flex border border-border-soft', TRIAGE_PANEL_SEGMENT_ENDS)}>
+            {(['shipping_label', 'packing_slip', 'manual', 'all'] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                role="tab"
+                aria-selected={tab === kind}
+                data-testid={`paperwork-tab-${kind}`}
+                onClick={() => onTabChange(kind)}
+                className={cn(
+                  'ds-raw-button inline-flex h-9 items-center gap-1.5 border-l border-border-soft px-3 text-role-caption font-semibold first:border-l-0',
+                  tab === kind ? 'bg-surface-inverse text-text-inverse' : 'bg-surface-card text-text-default hover:bg-surface-sunken',
+                  focusRing('control'),
+                )}
+              >
+                {TAB_FACE[kind]}
+                <span className={cn('tabular-nums', tab === kind ? 'opacity-80' : 'text-text-muted')}>{count(kind)}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <span className="min-w-0 flex-1" />
-        <Button
-          variant="secondary"
-          size="md"
-          className={triagePanelControl()}
-          icon={<Printer />}
-          disabled={files.length === 0 || printingAll}
-          data-testid="paperwork-print-all"
-          onClick={() => void onPrintAll()}
-        >
-          {printingAll ? 'Preparing…' : 'Print all'}
-        </Button>
+        {itemView ? null : (
+          <Button
+            variant="secondary"
+            size="md"
+            className={triagePanelControl()}
+            icon={<Printer />}
+            disabled={files.length === 0 || printingAll}
+            data-testid="paperwork-print-all"
+            onClick={() => void onPrintAll()}
+          >
+            {printingAll ? 'Preparing…' : 'Print all'}
+          </Button>
+        )}
         {zipHref ? (
           <a
             href={zipHref}
@@ -337,6 +443,20 @@ export function PaperworkDocuments({
           </Button>
         )}
       </div>
+
+      {tab === 'manual' ? (
+        <PairingControls
+          resolved={resolved}
+          scope={scope}
+          onScope={itemView ? undefined : setPairTo}
+          type={paperType}
+          onType={setPaperType}
+          pairedIds={manuals.map((m) => m.id)}
+          pending={actions.pairManual.isPending}
+          onPair={itemView ? undefined : (manualId) => actions.pairManual.mutate({ manualId, pairTo: scope })}
+          onOpenItemView={openItemView}
+        />
+      ) : null}
 
       {uploadKind ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -377,16 +497,6 @@ export function PaperworkDocuments({
         </div>
       ) : null}
 
-      {tab === 'manual' ? (
-        <ManualPairing
-          itemNumber={pairing?.itemNumber ?? null}
-          sku={pairing?.sku ?? null}
-          pairedIds={manuals.map((m) => m.id)}
-          pending={actions.pairManual.isPending}
-          onPair={(manualId) => actions.pairManual.mutate(manualId)}
-        />
-      ) : null}
-
       <div className="flex flex-col gap-3 @3xl:flex-row">
         {/* The list: what is on file, and every verb on it. Drop files here. */}
         <div
@@ -408,34 +518,23 @@ export function PaperworkDocuments({
             <p className={CAPTION}>Loading paperwork…</p>
           ) : visible.length === 0 ? (
             <EmptyList tab={tab} onUpload={uploadKind ? () => uploadRef.current?.click() : undefined} />
-          ) : (
-            <ul className="flex flex-col gap-2">
-              {visible.map((file) => (
-                <FileRow
-                  key={file.key}
-                  file={file}
-                  showKind={tab === 'all'}
-                  active={selected?.key === file.key}
-                  onSelect={() => {
-                    setSelectedKey(file.key);
-                    // All stacks every file: jump the stack to this one (no smooth scroll).
-                    if (tab === 'all') {
-                      previewRef.current
-                        ?.querySelector(`[data-file-key="${file.key}"]`)
-                        ?.scrollIntoView({ block: 'start' });
-                    }
-                  }}
-                  onReplace={() => startReplace(file)}
-                  onDelete={() => void onDelete(file)}
-                  onUnpair={file.manual ? () => onUnpair(file) : undefined}
-                  onRename={
-                    file.manual
-                      ? (displayName) => actions.renameManual.mutate({ manualId: file.manual!.id, displayName })
-                      : undefined
-                  }
-                />
+          ) : grouped ? (
+            <ul className="flex flex-col gap-3">
+              {[...groups.entries()].map(([source, list]) => (
+                <li key={source} className="flex flex-col gap-2" data-testid={`paperwork-group-${source}`}>
+                  <GroupHeader
+                    source={source}
+                    orderRef={orderRef}
+                    itemNumber={resolved?.itemNumber ?? null}
+                    sku={resolved?.sku ?? null}
+                    onOpenItemView={openItemView}
+                  />
+                  <ul className="flex flex-col gap-2">{list.map(renderRow)}</ul>
+                </li>
               ))}
             </ul>
+          ) : (
+            <ul className="flex flex-col gap-2">{visible.map(renderRow)}</ul>
           )}
         </div>
 
@@ -453,10 +552,16 @@ export function PaperworkDocuments({
             <PreviewCard file={selected} />
           ) : (
             <PreviewEmpty
-              title={loading ? 'Loading…' : `No ${KIND_LABEL[tab].toLowerCase()} on this order`}
+              title={
+                loading
+                  ? 'Loading…'
+                  : itemView
+                    ? `Nothing paired to item # ${resolved?.itemNumber ?? '—'} yet`
+                    : `No ${KIND_LABEL[tab].toLowerCase()} on this order`
+              }
               hint={
                 tab === 'manual'
-                  ? 'Upload one, or pair a manual already in the library.'
+                  ? 'Upload one, or pair one already in the library.'
                   : 'Drop a PDF or image on the list, upload one, or fetch it from the platform.'
               }
             />
@@ -487,6 +592,16 @@ export function PaperworkDocuments({
           event.target.value = '';
         }}
       />
+      {openItemView && resolved?.itemNumber ? (
+        <ItemPaperworkDialog
+          open={itemViewOpen}
+          onOpenChange={setItemViewOpen}
+          orderId={orderId}
+          orderRef={orderRef}
+          itemNumber={resolved.itemNumber}
+          onChanged={onChanged}
+        />
+      ) : null}
     </section>
   );
 }
@@ -495,66 +610,79 @@ function FileRow({
   file,
   showKind,
   active,
+  orderId,
+  orderRef,
   onSelect,
   onReplace,
   onDelete,
   onUnpair,
-  onRename,
+  onUpdate,
 }: {
   file: PaperworkFile;
   showKind: boolean;
   active: boolean;
+  orderId: number;
+  orderRef: string;
   onSelect: () => void;
   onReplace: () => void;
   onDelete: () => void;
   onUnpair?: () => void;
-  onRename?: (name: string) => void;
+  /** Paired rows: rename / retype / re-pair. */
+  onUpdate?: (patch: PaperworkPatch) => void;
 }) {
-  const [renaming, setRenaming] = useState(false);
+  const [mode, setMode] = useState<'view' | 'rename' | 'repair'>('view');
   const [draft, setDraft] = useState(file.name);
 
   return (
     <li
       data-testid="paperwork-file"
       data-kind={file.kind}
+      data-source={file.manual?.source ?? undefined}
       className={cn(
         'flex flex-col border bg-surface-card',
         TRIAGE_PANEL_INNER_CORNER,
         active ? 'border-text-default ring-1 ring-text-default' : 'border-border-soft',
       )}
     >
-      {renaming && onRename ? (
+      {mode === 'rename' && onUpdate ? (
         <form
           className="flex items-center gap-2 p-2"
           onSubmit={(event) => {
             event.preventDefault();
             const next = draft.trim();
-            if (next && next !== file.name) onRename(next);
-            setRenaming(false);
+            if (next && next !== file.name) onUpdate({ displayName: next });
+            setMode('view');
           }}
         >
           <input
             autoFocus
-            aria-label="Manual name"
+            aria-label="Name"
             data-testid="paperwork-rename-input"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {
                 event.preventDefault();
-                setRenaming(false);
+                setMode('view');
               }
             }}
-            className={cn(
-              'min-w-0 flex-1 border border-border-default bg-surface-card px-3 text-role-data text-text-default',
-              triagePanelControl(),
-              focusRing('control'),
-            )}
+            className={FIELD_CLASS}
           />
           <Button type="submit" size="md" className={triagePanelControl()}>
             Save
           </Button>
         </form>
+      ) : mode === 'repair' && onUpdate && file.manual ? (
+        <RepairForm
+          manual={file.manual}
+          orderId={orderId}
+          orderRef={orderRef}
+          onCancel={() => setMode('view')}
+          onSave={(patch) => {
+            onUpdate(patch);
+            setMode('view');
+          }}
+        />
       ) : (
         <button
           type="button"
@@ -568,9 +696,16 @@ function FileRow({
         >
           <FileText className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden />
           <span className="flex min-w-0 flex-col">
-            {showKind ? <span className="text-role-caption font-semibold text-text-muted">{KIND_LABEL[file.kind]}</span> : null}
+            {showKind || file.manual ? (
+              <span className="text-role-caption font-semibold text-text-muted">{file.kindLabel}</span>
+            ) : null}
             <span className="break-words text-role-data font-semibold text-text-default">{file.name}</span>
             <span className={CAPTION}>{file.meta}</span>
+            {file.pins ? (
+              <span className={CAPTION} data-testid="paperwork-file-pins">
+                {file.pins}
+              </span>
+            ) : null}
           </span>
         </button>
       )}
@@ -591,7 +726,7 @@ function FileRow({
             <Download className="h-4 w-4" aria-hidden />
           </a>
         ) : null}
-        {onRename ? (
+        {onUpdate ? (
           <IconButton
             size="md"
             className={TRIAGE_PANEL_INNER_CORNER}
@@ -601,8 +736,19 @@ function FileRow({
             icon={<Pencil className="h-4 w-4" />}
             onClick={() => {
               setDraft(file.name);
-              setRenaming(true);
+              setMode('rename');
             }}
+          />
+        ) : null}
+        {onUpdate ? (
+          <IconButton
+            size="md"
+            className={TRIAGE_PANEL_INNER_CORNER}
+            ariaLabel={`Re-pair ${file.name}`}
+            title="Re-pair: order, item number, SKU, type"
+            data-testid="paperwork-file-repair"
+            icon={<Link2 className="h-4 w-4" />}
+            onClick={() => setMode('repair')}
           />
         ) : null}
         <IconButton
@@ -618,8 +764,8 @@ function FileRow({
           <IconButton
             size="md"
             className={TRIAGE_PANEL_INNER_CORNER}
-            ariaLabel={`Unpair ${file.name} from this item`}
-            title="Unpair from this item (keeps it in the library)"
+            ariaLabel={`Unpair ${file.name}`}
+            title="Unpair everywhere (keeps it in the library)"
             data-testid="paperwork-file-unpair"
             icon={<Unlink className="h-4 w-4" />}
             onClick={onUnpair}
@@ -636,80 +782,6 @@ function FileRow({
         />
       </div>
     </li>
-  );
-}
-
-/** Manuals pair at item + SKU grain: say which keys, and pair from the library. */
-function ManualPairing({
-  itemNumber,
-  sku,
-  pairedIds,
-  pending,
-  onPair,
-}: {
-  itemNumber: string | null;
-  sku: string | null;
-  pairedIds: readonly number[];
-  pending: boolean;
-  onPair: (manualId: number) => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
-  useEffect(() => {
-    const id = window.setTimeout(() => setDebounced(query.trim()), 250);
-    return () => window.clearTimeout(id);
-  }, [query]);
-
-  const library = useQuery({
-    queryKey: ['paperwork-manual-library', debounced],
-    queryFn: async () => {
-      const params = new URLSearchParams({ q: debounced, limit: '30' });
-      const res = await fetch(`/api/product-manuals/search?${params}`, { credentials: 'same-origin' });
-      const body = (await res.json().catch(() => ({}))) as {
-        manuals?: Array<{ id: number; display_name: string | null; product_title: string | null; item_number: string | null; type: string | null }>;
-      };
-      return body.manuals ?? [];
-    },
-    staleTime: 60_000,
-  });
-
-  const options = (library.data ?? [])
-    .filter((m) => !pairedIds.includes(m.id))
-    .map((m) => ({
-      value: m.id,
-      label: m.display_name || m.product_title || `Manual #${m.id}`,
-      meta: [m.item_number ? `Item ${m.item_number}` : null, m.type].filter(Boolean).join(' · ') || undefined,
-    }));
-
-  const keyed = Boolean(itemNumber || sku);
-
-  return (
-    <div className="flex flex-col gap-2" data-testid="paperwork-manual-pairing">
-      <p className={CAPTION}>
-        Manuals pair to item <span className="font-mono font-semibold text-text-default">{itemNumber || '—'}</span>
-        {' '}and SKU <span className="font-mono font-semibold text-text-default">{sku || '—'}</span>, so pack prints them for every order of this item.
-      </p>
-      <div className={cn('border border-border-default bg-surface-card', triagePanelControl())}>
-        <SearchableSelectField
-          value={null}
-          onChange={(next) => {
-            if (next == null) return;
-            onPair(Number(next));
-          }}
-          options={options}
-          onSearchChange={setQuery}
-          loading={library.isFetching}
-          disabled={!keyed || pending}
-          appearance="flush"
-          placeholder={keyed ? (pending ? 'Pairing…' : 'Pair a manual from the library…') : 'This order has no item # or SKU'}
-          searchPlaceholder="Manual name or item #…"
-          emptyMessage="No matching manual"
-          ariaLabel="Pair a manual from the library"
-          testId="paperwork-manual-pair"
-          className="h-full w-full"
-        />
-      </div>
-    </div>
   );
 }
 
@@ -745,7 +817,7 @@ function PreviewCard({ file }: { file: PaperworkFile }) {
     >
       <div className="flex min-h-11 shrink-0 items-center gap-1 border-b border-border-hairline pl-3 pr-1.5">
         <span className="flex min-w-0 flex-1 flex-col py-1.5">
-          <span className="text-role-caption text-text-muted">{KIND_LABEL[file.kind]}</span>
+          <span className="text-role-caption text-text-muted">{file.kindLabel}</span>
           <span className="truncate text-role-data font-semibold text-text-default" title={file.name}>
             {file.name}
           </span>
@@ -833,5 +905,50 @@ function PreviewEmpty({ title, hint, bare = false }: { title: string; hint: Reac
       <p className="text-role-data font-semibold text-text-default">{title}</p>
       <p className={CAPTION}>{hint}</p>
     </div>
+  );
+}
+
+/**
+ * The item-number view: everything paired to this order's item number — what
+ * every order of it resolves and packs — with the same CRUD. Anchored on the
+ * order it was opened from (the routes are order-scoped; an item-number row
+ * resolves for every order of that item number).
+ */
+export function ItemPaperworkDialog({
+  open,
+  onOpenChange,
+  orderId,
+  orderRef,
+  itemNumber,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orderId: number;
+  orderRef: string;
+  itemNumber: string;
+  onChanged?: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[92dvh] max-w-5xl flex-col overflow-y-auto" data-testid="item-paperwork-dialog">
+        <DialogHeader>
+          <DialogTitle>
+            Item # <span className="font-mono">{itemNumber}</span> paperwork
+          </DialogTitle>
+          <DialogDescription>Opened from order {orderRef}. Changes apply to every order of this item number.</DialogDescription>
+        </DialogHeader>
+        {open ? (
+          <PaperworkDocuments
+            orderId={orderId}
+            orderRef={orderRef}
+            tab="manual"
+            onTabChange={() => undefined}
+            onChanged={onChanged ?? (() => undefined)}
+            itemView
+          />
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -2,9 +2,8 @@
  *   npx tsx --test src/lib/orders-sync/run-steps.test.ts
  *
  * Drives the shipped ledger fold with the event sequences the REAL emitters
- * produce, including the three that break a naive fold: `updating` twice per
- * lane (deletes + backfills), two lanes interleaving, and a lane that
- * finishes having never touched a step.
+ * produce, including the two that break a naive fold: a phase that repeats
+ * (bare, then counted), and a lane that finishes having never touched a step.
  */
 
 import assert from 'node:assert/strict';
@@ -14,7 +13,6 @@ import {
   cancelSyncRun,
   completeSyncRunLane,
   createSyncRun,
-  skipSyncRunLane,
   syncRunProgress,
   syncRunRowsSeen,
   syncRunSteps,
@@ -38,81 +36,54 @@ function step(state: SyncRunState, id: SyncRunStepId) {
 
 describe('sync run ledger', () => {
   it('accumulates a step count across repeated emissions of the same phase', () => {
-    // ingest-canonical-orders emits `updating` for deletes AND for backfills.
+    // The ShipStation connector reports its read bare, then again with the count.
     const state = drive(createSyncRun(), [
-      ['sheets', { type: 'phase', phase: 'updating', count: 3 }],
-      ['sheets', { type: 'phase', phase: 'updating', count: 9 }],
+      ['shipstation', { type: 'phase', phase: 'fetching_shipstation' }],
+      ['shipstation', { type: 'phase', phase: 'fetching_shipstation', count: 40 }],
+      ['shipstation', { type: 'phase', phase: 'updating', count: 3 }],
+      ['shipstation', { type: 'phase', phase: 'updating', count: 9 }],
     ]);
+    assert.equal(step(state, 'read_shipstation').count, 40);
     assert.equal(step(state, 'update').count, 12);
+    assert.equal(syncRunRowsSeen(state), 40, 'ShipStation orders are the headline');
   });
 
-  it('accumulates the same step across parallel lanes', () => {
+  it('never drags a finished step back when an earlier phase repeats late', () => {
     const state = drive(createSyncRun(), [
-      ['sheets', { type: 'phase', phase: 'inserting', count: 20 }],
-      ['ecwid', { type: 'phase', phase: 'inserting', count: 15 }],
+      ['shipstation', { type: 'phase', phase: 'resolving_tracking', count: 4 }],
+      ['shipstation', { type: 'phase', phase: 'inserting', count: 20 }],
+      ['shipstation', { type: 'phase', phase: 'resolving_tracking', count: 1 }],
     ]);
-    assert.equal(step(state, 'insert').count, 35);
-  });
-
-  it('never regresses a finished step when a slower lane arrives late', () => {
-    let state = drive(createSyncRun(), [
-      ['sheets', { type: 'phase', phase: 'inserting', count: 20 }],
-      ['sheets', { type: 'phase', phase: 'publishing' }],
-    ]);
-    state = completeSyncRunLane(state, 'sheets', { ok: true });
-    // Ecwid is still behind: insert is legitimately in flight again, but the
-    // SHEET lane's publish must not fall back to pending.
-    state = drive(state, [['ecwid', { type: 'phase', phase: 'inserting', count: 5 }]]);
     assert.equal(step(state, 'insert').state, 'running');
-    assert.equal(step(state, 'publish').state, 'running', 'ecwid has not published yet');
-
-    state = completeSyncRunLane(state, 'ecwid', { ok: true });
-    assert.equal(step(state, 'insert').state, 'done');
-    assert.equal(step(state, 'publish').state, 'done');
+    assert.equal(step(state, 'resolve_tracking').state, 'done');
+    assert.equal(step(state, 'resolve_tracking').count, 5);
   });
 
   it('reports an untouched step on a finished lane as a measured zero', () => {
-    let state = createSyncRun(['sheets']);
-    state = drive(state, [['sheets', { type: 'phase', phase: 'fetching_sheet', count: 214 }]]);
-    state = completeSyncRunLane(state, 'sheets', { ok: true, tabName: 'Sept' });
+    let state = createSyncRun(['shipstation']);
+    state = drive(state, [['shipstation', { type: 'phase', phase: 'fetching_shipstation', count: 214 }]]);
+    state = completeSyncRunLane(state, 'shipstation', { ok: true });
     const update = step(state, 'update');
     assert.equal(update.state, 'done');
     assert.equal(update.count, 0, 'nothing to update is an answer, not a blank');
-    assert.equal(state.tabName, 'Sept');
   });
 
   it('never fabricates a count for an unmeasured step', () => {
-    // `match` and `publish` emit no count. Defaulting them to 0 on completion
-    // painted "Match against existing orders — 0 orders", which reads as
-    // "matched nothing" on a run that matched plenty.
-    let unmeasured = createSyncRun(['sheets']);
-    unmeasured = drive(unmeasured, [
-      ['sheets', { type: 'phase', phase: 'matching_orders' }],
-      ['sheets', { type: 'phase', phase: 'publishing' }],
-    ]);
-    unmeasured = completeSyncRunLane(unmeasured, 'sheets', { ok: true });
-    assert.equal(step(unmeasured, 'match').state, 'done');
-    assert.equal(step(unmeasured, 'match').count, undefined);
+    // `publish` emits no count. Defaulting it to 0 on completion would paint
+    // "Publish to the desk — 0 orders" on a run that published plenty.
+    let unmeasured = createSyncRun(['shipstation']);
+    unmeasured = drive(unmeasured, [['shipstation', { type: 'phase', phase: 'publishing' }]]);
+    unmeasured = completeSyncRunLane(unmeasured, 'shipstation', { ok: true });
+    assert.equal(step(unmeasured, 'publish').state, 'done');
     assert.equal(step(unmeasured, 'publish').count, undefined);
     // …while a measured step still says zero out loud.
     assert.equal(step(unmeasured, 'insert').count, 0);
   });
 
-  it('marks an unconnected lane skipped and keeps it off the progress board', () => {
-    let state = skipSyncRunLane(createSyncRun(), 'ecwid');
-    assert.equal(step(state, 'read_ecwid').state, 'skipped');
-    state = drive(state, [['ecwid', { type: 'phase', phase: 'inserting', count: 99 }]]);
-    assert.equal(step(state, 'insert').count, undefined, 'a skipped lane cannot report counts');
-
-    const before = syncRunProgress(state).total;
-    const withEcwid = syncRunProgress(createSyncRun()).total;
-    assert.ok(before < withEcwid, 'skipped steps leave the denominator');
-  });
-
   it('counts completed steps, not the index of the step in view (PG6)', () => {
-    const state = drive(createSyncRun(['sheets', 'exceptions']), [
-      ['sheets', { type: 'phase', phase: 'fetching_sheet', count: 10 }],
-      ['sheets', { type: 'phase', phase: 'resolving_tracking', count: 4 }],
+    const state = drive(createSyncRun(), [
+      ['shipstation', { type: 'phase', phase: 'fetching_shipstation', count: 10 }],
+      ['shipstation', { type: 'phase', phase: 'resolving_tracking', count: 4 }],
     ]);
     const progress = syncRunProgress(state);
     assert.equal(progress.completed, 1, 'read is done, resolve is in flight');
@@ -131,49 +102,46 @@ describe('sync run ledger', () => {
   });
 
   it('settles only when no lane is still running', () => {
-    let state = createSyncRun(['sheets', 'ecwid']);
-    state = completeSyncRunLane(state, 'sheets', { ok: true });
-    assert.equal(state.settled, false);
-    state = completeSyncRunLane(state, 'ecwid', { ok: true });
+    let state = createSyncRun();
+    state = completeSyncRunLane(state, 'shipstation', { ok: true });
+    assert.equal(state.settled, false, 'the exceptions pass has not answered');
+    state = completeSyncRunLane(state, 'exceptions', { ok: true });
     assert.equal(state.settled, true);
     assert.ok(typeof state.endedAt === 'number');
   });
 
   it('pins a lane error to the step that was in flight', () => {
-    let state = drive(createSyncRun(['sheets']), [
-      ['sheets', { type: 'phase', phase: 'fetching_sheet', count: 3 }],
-      ['sheets', { type: 'phase', phase: 'inserting', count: 3 }],
+    let state = drive(createSyncRun(['shipstation']), [
+      ['shipstation', { type: 'phase', phase: 'fetching_shipstation', count: 3 }],
+      ['shipstation', { type: 'phase', phase: 'inserting', count: 3 }],
     ]);
-    state = drive(state, [['sheets', { type: 'error', error: 'Sheet API 503' }]]);
+    state = drive(state, [['shipstation', { type: 'error', error: 'ShipStation 503' }]]);
     assert.equal(step(state, 'insert').state, 'error');
-    assert.equal(step(state, 'insert').error, 'Sheet API 503');
+    assert.equal(step(state, 'insert').error, 'ShipStation 503');
     // The read really did finish; a failure downstream must not rewrite it.
-    assert.equal(step(state, 'read_sheet').state, 'done');
-    assert.equal(step(state, 'read_sheet').count, 3);
+    assert.equal(step(state, 'read_shipstation').state, 'done');
+    assert.equal(step(state, 'read_shipstation').count, 3);
     assert.equal(state.settled, true);
   });
 
   it('keeps what already landed when the operator cancels', () => {
-    let state = drive(createSyncRun(['sheets', 'ecwid']), [
-      ['sheets', { type: 'phase', phase: 'fetching_sheet', count: 120 }],
-      ['ecwid', { type: 'phase', phase: 'fetching_ecwid', count: 18 }],
-      ['sheets', { type: 'phase', phase: 'inserting', count: 20 }],
+    let state = drive(createSyncRun(), [
+      ['shipstation', { type: 'phase', phase: 'fetching_shipstation', count: 120 }],
+      ['shipstation', { type: 'phase', phase: 'inserting', count: 20 }],
     ]);
     state = cancelSyncRun(state);
     assert.equal(step(state, 'insert').count, 20, 'cancel must not erase what landed');
-    // Cancel lands on each lane's IN-FLIGHT step only. The sheet lane had moved
-    // on to inserting, so its finished read stands; the Ecwid lane was still
-    // mid-read, so that read is the one that got cut.
+    // Cancel lands on the IN-FLIGHT step only: ShipStation had moved on to
+    // inserting, so its finished read stands.
     assert.equal(step(state, 'insert').state, 'error');
-    assert.equal(step(state, 'read_sheet').state, 'done');
-    assert.equal(step(state, 'read_ecwid').state, 'error');
-    assert.equal(step(state, 'read_ecwid').count, 18, 'rows read before the cut still count');
-    assert.equal(syncRunRowsSeen(state), 138);
+    assert.equal(step(state, 'read_shipstation').state, 'done');
+    assert.equal(syncRunRowsSeen(state), 120);
+    assert.equal(state.settled, true, 'the queued exceptions pass is cancelled too');
   });
 
   it('is immutable — a fold returns a new state and leaves the old one intact', () => {
     const first = createSyncRun();
-    const second = applySyncRunEvent(first, 'sheets', {
+    const second = applySyncRunEvent(first, 'shipstation', {
       type: 'phase',
       phase: 'inserting',
       count: 7,

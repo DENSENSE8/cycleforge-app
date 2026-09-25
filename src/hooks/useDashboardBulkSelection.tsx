@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
+import { AlertTriangle, Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Link2, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -57,6 +57,7 @@ import { BulkNotesDialog } from '@/components/dashboard/BulkNotesDialog';
 import { BulkShipByDialog } from '@/components/dashboard/BulkShipByDialog';
 import { BulkFlagDialog } from '@/components/dashboard/BulkFlagDialog';
 import { ListingAutomationAssignCard } from '@/components/dashboard/ListingAutomationAssignCard';
+import { LinkLabelDialog } from '@/components/outbound/orders/LinkLabelDialog';
 import { openStageAssignPanel } from '@/lib/tables/stage-assign-panel-store';
 import type { OrderRowFlagId } from '@/lib/orders/order-row-flags';
 import type { ConditionGrade } from '@/lib/conditions';
@@ -172,6 +173,9 @@ export function useDashboardBulkSelection(
   // table bar passes the check-set itself, so its behaviour is unchanged.
   const [dialogRows, setDialogRows] = useState<DashSelectableRow[] | null>(null);
   const targetRows = dialogRows ?? selectedRows;
+  // Link label pairs ONE order with a ShipStation label (return / replacement /
+  // outbound bought outside) — the row it was run on, not the check-set.
+  const [linkLabelRow, setLinkLabelRow] = useState<DashSelectableRow | null>(null);
 
   const clearSelection = useCallback(() => {
     emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
@@ -852,6 +856,15 @@ export function useDashboardBulkSelection(
         run: handlePrintPaperwork,
       },
       {
+        key: 'link-label',
+        label: 'Link label',
+        icon: <Link2 className="h-4 w-4" />,
+        group: 'Set on these orders',
+        maxSelected: 1,
+        disabledReason: 'Link a label to one order at a time',
+        run: (rows) => setLinkLabelRow(rows[0] ?? null),
+      },
+      {
         key: 'scan-out',
         label: 'Scan out',
         icon: <ShippingModeScanOut className="h-4 w-4" />,
@@ -958,6 +971,14 @@ export function useDashboardBulkSelection(
         onCancel={() => setFlagOpen(false)}
         onConfirm={handleConfirmFlag}
       />
+      {linkLabelRow ? (
+        <LinkLabelDialog
+          open
+          onOpenChange={(open) => !open && setLinkLabelRow(null)}
+          orderId={Number(linkLabelRow.id)}
+          orderRef={String(linkLabelRow.order_id ?? '').trim() || `#${linkLabelRow.id}`}
+        />
+      ) : null}
     </>
   );
 

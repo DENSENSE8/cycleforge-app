@@ -4,7 +4,7 @@
  * To-ship's **Past imports** header action — opens the per-day import record.
  *
  * `role="overall"` and not `primary`: this is a COLLECTION action ("show me
- * what arrived"), not the desk's create verb. Sync Google Sheet keeps `primary`
+ * what arrived"), not the desk's create verb. Sync ShipStation keeps `primary`
  * and the Labels walk keeps `leading`, so all three coexist rather than
  * evicting each other (`DeskActionSlot` — last writer wins PER ROLE). To-ship
  * tucks its CSV export into the Sync dropdown (`copyExportPlacement: 'menu'`),

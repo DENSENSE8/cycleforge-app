@@ -59,7 +59,10 @@ import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
-import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
+import {
+  IMPORT_EXCEPTION_REASON_TEXT,
+  type ImportExceptionRow,
+} from '@/features/review/catalog-link/import-exception-types';
 import { cn } from '@/utils/_cn';
 
 /** Stable occupant ids — see the docblock. Do NOT key these on the record. */
@@ -531,20 +534,25 @@ function ImportExceptionFormBody({
     }
   };
 
+  // Only a missing item number resolves by typing one; a ShipStation
+  // quarantine clears itself on the next sync once its cause is fixed.
+  const resolvable = row.reason === 'no_item_number';
+  const reasonText = IMPORT_EXCEPTION_REASON_TEXT[row.reason];
+  const resolveAction: PaneHeaderActionBarAction = {
+    key: 'resolve',
+    label: submitting ? 'Resolving…' : 'Resolve',
+    icon: submitting ? (
+      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+    ) : (
+      <Check className="h-3.5 w-3.5" />
+    ),
+    onClick: () => void submitResolve(),
+    disabled: !itemNumber.trim() || submitting,
+    toneClassName: 'text-blue-700',
+    title: 'Resolve with the item number below',
+  };
   const headerActions: PaneHeaderActionBarAction[] = [
-    {
-      key: 'resolve',
-      label: submitting ? 'Resolving…' : 'Resolve',
-      icon: submitting ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-      ) : (
-        <Check className="h-3.5 w-3.5" />
-      ),
-      onClick: () => void submitResolve(),
-      disabled: !itemNumber.trim() || submitting,
-      toneClassName: 'text-blue-700',
-      title: 'Resolve with the item number below',
-    },
+    ...(resolvable ? [resolveAction] : []),
     {
       key: 'ignore',
       label: 'Ignore',
@@ -574,6 +582,7 @@ function ImportExceptionFormBody({
               fitDisplayWidth
             />
           </FieldRow>
+          {!resolvable ? <FieldRow label="Reason">{reasonText.label}</FieldRow> : null}
           <FieldRow label="Account">
             {(() => {
               const meta = sourcePlatformMetaFromLabel(row.accountSource);
@@ -605,14 +614,18 @@ function ImportExceptionFormBody({
         </>
       }
     >
-      <ListingApprovalSection
-        accountSource={row.accountSource}
-        productTitle={row.productTitle}
-        itemNumber={itemNumber}
-        onItemNumberChange={setItemNumber}
-        onSubmit={() => void submitResolve()}
-        disabled={submitting}
-      />
+      {resolvable ? (
+        <ListingApprovalSection
+          accountSource={row.accountSource}
+          productTitle={row.productTitle}
+          itemNumber={itemNumber}
+          onItemNumberChange={setItemNumber}
+          onSubmit={() => void submitResolve()}
+          disabled={submitting}
+        />
+      ) : (
+        <p className="text-role-caption text-text-muted">{reasonText.hint}</p>
+      )}
 
       {error ? <RailError message={error} /> : null}
     </RecordRailShell>

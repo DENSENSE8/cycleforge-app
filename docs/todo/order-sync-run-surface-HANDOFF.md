@@ -1,5 +1,9 @@
 # Order import — the measured run surface (HANDOFF)
 
+> **2026-09-24:** Google Sheets order sync was removed. The run's primary lane is always
+> `shipstation` (face **Sync ShipStation**); references below to the `sheets` lane,
+> `/api/google-sheets/transfer-orders` or the sheet cron are history.
+
 **Landed 2026-09-15.** Pressing Sync used to be a spinner that stopped. It is now
 a measured, step-by-step run with a per-row result, on the desk and on `/m`.
 

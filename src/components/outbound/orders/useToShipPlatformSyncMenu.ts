@@ -22,7 +22,7 @@ type OrderSyncSource = {
 };
 
 /**
- * A provider sync is a round trip to a marketplace, not an inline edit, so its
+ * A provider sync is a round trip to a storefront, not an inline edit, so its
  * result outlives the house 2.2s `success` default — the operator is watching
  * the queue, not the corner. Matches `SYNC_TOAST_MS` in `useOrdersSync`.
  */
@@ -39,9 +39,10 @@ async function fetchOrderSources(): Promise<OrderSyncSource[]> {
 /**
  * Connected sales-channel sync rows for the To-ship Sync dropdown.
  *
- * Face click stays Google Sheet. The chevron lists each connected order
- * source by name (`Sync eBay · {connection}`, `Sync Ecwid · {store}`), then
- * Sync more → Settings › Integrations.
+ * Face click stays ShipStation. The chevron lists every other connected order
+ * source with a wired connector sync by name (`Sync Square · {connection}`,
+ * `Sync Shopify · {store}`), then Sync more → Settings › Integrations. eBay,
+ * Amazon and Ecwid orders arrive through ShipStation and never list.
  */
 export function useToShipPlatformSyncMenu(): ToShipPlatformSyncRow[] {
   const router = useRouter();

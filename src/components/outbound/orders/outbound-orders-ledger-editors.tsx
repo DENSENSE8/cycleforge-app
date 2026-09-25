@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * Industrial ledger inline editors — ship-by, pick / pack assign, condition,
- * quantity and notes. Each is a 32px desk control that commits instantly
+ * Industrial ledger inline editors — ship-by, pick / pack assign, condition
+ * and quantity. Each is a 32px desk control that commits instantly
  * through the queue feed's one waist (`OrdersQueueCommits`) and stops its
  * click from reaching the row's open target. Shared by the ledger rows and
  * the evidence column so one fact has one editor.
@@ -29,7 +29,7 @@ import {
   type CompoundSlotValue,
   type CompoundStageStepFacts,
 } from '@/components/tables/compound/compound-row-model';
-import { ExternalLink, FileText, Pencil } from '@/components/Icons';
+import { ExternalLink, Pencil } from '@/components/Icons';
 import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import {
   conditionGradeTableLabel,
@@ -409,77 +409,6 @@ export function LedgerQty({
       {bare ? null : <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>QTY</span>}
       <span className={cn(bare ? RECORD_ID_CLASS : RECORD_QTY_BADGE_CLASS, orderRowQtyTone(value))}>{value}</span>
     </button>
-  );
-}
-
-export function LedgerNote({ value, onCommit }: { value: string; onCommit: (value: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState('');
-  const text = value.trim();
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) setDraft('');
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={text ? `Note: ${text}. Add a note` : 'Add a note'}
-          data-testid="ledger-note"
-          onClick={stop}
-          onPointerDown={stop}
-          className={cn(
-            'ds-raw-button flex h-full w-full min-w-0 items-center gap-1.5 px-1 text-left hover:bg-mode-hover',
-            LEDGER_HIT_CLASS,
-            focusRing('cell'),
-          )}
-        >
-          <FileText className={cn('h-3.5 w-3.5 shrink-0', text ? 'text-mode-ink' : 'text-mode-muted')} aria-hidden />
-          <span className="min-w-0 truncate text-role-caption text-mode-muted">{text}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" sideOffset={0} className="w-72 rounded-none p-2" onClick={stop}>
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const note = draft.trim();
-            if (!note) return;
-            onCommit(note);
-            setOpen(false);
-          }}
-        >
-          {text ? <p className="text-role-caption text-mode-muted">{text}</p> : null}
-          <textarea
-            autoFocus
-            rows={3}
-            aria-label="New note"
-            data-testid="ledger-note-input"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) event.currentTarget.form?.requestSubmit();
-            }}
-            className="w-full rounded-none border border-mode-control bg-mode-panel p-2 text-role-body text-mode-ink"
-          />
-          <button
-            type="submit"
-            disabled={!draft.trim()}
-            className={cn(
-              'ds-raw-button self-end bg-mode-ink px-3 text-mode-bar disabled:opacity-50',
-              LEDGER_HIT_CLASS,
-              RECORD_LABEL_CLASS,
-              focusRing('control'),
-            )}
-          >
-            Add note
-          </button>
-        </form>
-      </PopoverContent>
-    </Popover>
   );
 }
 

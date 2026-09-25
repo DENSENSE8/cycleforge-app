@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2, Printer } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
@@ -10,10 +10,14 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
+import { LABEL_PURPOSES, LABEL_PURPOSE_FACE, type LabelPurpose } from '@/lib/shipping/label-purpose';
+import { orderLabelPdfSrc, orderPriceBreakdownKey } from '@/components/outbound/orders/order-labels-client';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
 import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
-import type { OutboundDocument } from '@/lib/documents/types';
 import {
+  orderLabelSummaryKey,
+  pickOrderDocument,
   printDocument,
   useOrderDocuments,
 } from '@/components/outbound/orders/paperwork/order-paperwork-client';
@@ -39,6 +43,8 @@ interface BuyResponse {
   labelDocumentId?: number | null;
   warning?: string | null;
   idempotent?: boolean;
+  purpose?: LabelPurpose;
+  purchaseId?: number;
   error?: string;
 }
 
@@ -96,21 +102,6 @@ interface BuyLabelSectionProps {
   onPurchased?: (info: BuyResponse) => void;
 }
 
-/** The document this purchase stored, else the newest of that type on the order. */
-function pickDocument(
-  documents: readonly OutboundDocument[],
-  type: OutboundDocument['documentType'],
-  preferId: number | null,
-): OutboundDocument | null {
-  if (preferId != null) {
-    const exact = documents.find((d) => d.id === preferId);
-    if (exact) return exact;
-  }
-  const ofType = documents.filter((d) => d.documentType === type);
-  if (ofType.length === 0) return null;
-  return ofType.reduce((a, b) => (Date.parse(b.createdAt) > Date.parse(a.createdAt) ? b : a));
-}
-
 /**
  * Buy Label — the ShipStation rate-shop → purchase → print flow for the Outbound
  * · Labels order panel. Fetches live rates on demand, lets the operator pick one
@@ -131,6 +122,14 @@ export function BuyLabelSection({
   const face = cornerClass(flush ? 'flush' : 'field');
   const faceSm = cornerClass(flush ? 'flush' : 'control');
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
+  // Why this label is bought: the order's shipment (outbound), the buyer's
+  // parcel back to us (return — rated and bought buyer → warehouse, v2
+  // `is_return_label`), or a second shipment to the buyer (replacement). Every
+  // purpose is recorded on THIS order, under its number and name.
+  const [purpose, setPurpose] = useState<LabelPurpose>('outbound');
+  // The evidence column's Label block reads the purchase ledger; a buy or a
+  // void changes it.
+  const queryClient = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const [notifyCustomer, setNotifyCustomer] = useState(true);
   const [bought, setBought] = useState<BuyResponse | null>(null);
@@ -162,6 +161,7 @@ export function BuyLabelSection({
           // absent key keeps the server's stored-parcel / ShipStation fallback.
           ...(weightOz != null && weightOz > 0 ? { weightOz } : {}),
           ...(dimensions ? { dimensions } : {}),
+          purpose,
         }),
       });
       const data = (await res.json()) as RatesResponse;
@@ -190,7 +190,18 @@ export function BuyLabelSection({
             orderId,
             rateId: rate.rateId,
             clientEventId: purchaseKey(),
-            notifyCustomer,
+            notifyCustomer: purpose !== 'return' && notifyCustomer,
+            purpose,
+            // A return is bought from its (swapped) shipment, not the rate id:
+            // the server re-rates nothing — it rebuilds the shipment it quoted.
+            ...(purpose === 'return'
+              ? {
+                  carrierId: rate.carrierId,
+                  serviceCode: rate.serviceCode,
+                  ...(weightOz != null && weightOz > 0 ? { weightOz } : {}),
+                  ...(dimensions ? { dimensions } : {}),
+                }
+              : {}),
           }),
         }),
       );
@@ -200,9 +211,13 @@ export function BuyLabelSection({
     },
     onSuccess: (data) => {
       setBought(data);
+      void queryClient.invalidateQueries({ queryKey: orderLabelSummaryKey(orderId) });
+      void queryClient.invalidateQueries({ queryKey: orderPriceBreakdownKey(orderId) });
       setConfirming(false);
       onChange();
-      onPurchased?.(data);
+      // The label run advances on the order's shipment — a return or a
+      // replacement bought mid-run is a side story on the same order.
+      if ((data.purpose ?? purpose) === 'outbound') onPurchased?.(data);
     },
   });
 
@@ -227,6 +242,7 @@ export function BuyLabelSection({
     onSuccess: () => {
       clientEventIdRef.current = '';
       setBought(null);
+      void queryClient.invalidateQueries({ queryKey: orderLabelSummaryKey(orderId) });
       setVoidOpen(false);
       setVoidReason('');
       setSelectedRateId(null);
@@ -239,10 +255,25 @@ export function BuyLabelSection({
   // them from here instead of sending the operator to another panel.
   const documentsQuery = useOrderDocuments(bought ? orderId : 0);
   const orderDocuments = documentsQuery.data?.documents ?? [];
-  const labelDoc = pickDocument(orderDocuments, 'shipping_label', bought?.labelDocumentId ?? null);
-  const slipDoc = pickDocument(orderDocuments, 'packing_slip', null);
-  const labelSrc = outboundDocumentContentSrc(labelDoc);
-  const slipSrc = outboundDocumentContentSrc(slipDoc);
+  const labelDoc = pickOrderDocument(orderDocuments, 'shipping_label', bought?.labelDocumentId ?? null);
+  const slipDoc = pickOrderDocument(orderDocuments, 'packing_slip', null);
+  // A return is never stored as the order's label document (it would print in
+  // place of the outbound label) — it prints from ShipStation via the label proxy.
+  const labelSrc =
+    bought?.purpose === 'return' && bought.purchaseId
+      ? orderLabelPdfSrc(orderId, bought.purchaseId)
+      : outboundDocumentContentSrc(labelDoc);
+  const slipSrc = bought?.purpose === 'return' ? null : outboundDocumentContentSrc(slipDoc);
+
+  /** A new purpose is a new shipment: new rates, a new purchase key. */
+  const choosePurpose = (next: LabelPurpose) => {
+    if (next === purpose) return;
+    setPurpose(next);
+    setSelectedRateId(null);
+    setConfirming(false);
+    clientEventIdRef.current = '';
+    ratesMutation.reset();
+  };
 
   const rates = ratesMutation.data?.rates ?? [];
   const invalidRates = ratesMutation.data?.invalidRates ?? [];
@@ -264,6 +295,29 @@ export function BuyLabelSection({
           </button>
         ) : null}
       </div>
+      {!bought ? (
+        <div
+          className={cn('flex items-stretch border border-border-default bg-surface-canvas', faceSm)}
+          role="radiogroup"
+          aria-label="Label purpose"
+          data-testid="buy-label-purpose"
+        >
+          {LABEL_PURPOSES.map((p, i) => (
+            <button
+              key={p}
+              type="button"
+              role="radio"
+              aria-checked={purpose === p}
+              disabled={buyMutation.isPending}
+              data-testid={`buy-label-purpose-${p}`}
+              onClick={() => choosePurpose(p)}
+              className={cn(DESK_BAR_SEGMENT_CLASS, 'flex-1 justify-center', i > 0 && 'border-l border-border-default', deskBarSegmentTone(purpose === p))}
+            >
+              {LABEL_PURPOSE_FACE[p].label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <AnimatePresence mode="wait" initial={false}>
         {/* ── Success ───────────────────────────────────────────────────── */}
@@ -274,6 +328,7 @@ export function BuyLabelSection({
                 <Check className="h-4 w-4" />
                 <span className="text-role-caption font-semibold">
                   {bought.idempotent ? 'Label already purchased' : 'Label purchased'}
+                  {bought.purpose && bought.purpose !== 'outbound' ? ` · ${LABEL_PURPOSE_FACE[bought.purpose].label}` : ''}
                 </span>
               </div>
               <dl className="mt-2 space-y-1">
@@ -453,17 +508,24 @@ export function BuyLabelSection({
                 <div className={`space-y-2 ${face} border border-border-accent bg-surface-accent px-3 py-2.5`}>
                   <p className="text-role-caption font-semibold text-text-default">
                     Purchase this <span className="font-semibold">{money(selectedRate.amount, selectedRate.currency)}</span>{' '}
-                    {selectedRate.carrierName} {selectedRate.serviceName} label?
+                    {selectedRate.carrierName} {selectedRate.serviceName}{' '}
+                    {purpose === 'outbound' ? '' : `${LABEL_PURPOSE_FACE[purpose].label.toLowerCase()} `}label for {orderRef}?
                   </p>
-                  <label className="flex items-center gap-1.5 text-role-eyebrow font-semibold text-text-muted">
-                    <input
-                      type="checkbox"
-                      checked={notifyCustomer}
-                      onChange={(e) => setNotifyCustomer(e.target.checked)}
-                      className={cn('h-3.5 w-3.5 border-border-default text-text-accent', cornerClass('chip'))}
-                    />
-                    Email the customer a tracking notification
-                  </label>
+                  {purpose === 'return' ? (
+                    <p className="text-role-eyebrow text-text-muted">
+                      Buyer → warehouse. Charged by the carrier’s default (most carriers bill only once it is scanned).
+                    </p>
+                  ) : (
+                    <label className="flex items-center gap-1.5 text-role-eyebrow font-semibold text-text-muted">
+                      <input
+                        type="checkbox"
+                        checked={notifyCustomer}
+                        onChange={(e) => setNotifyCustomer(e.target.checked)}
+                        className={cn('h-3.5 w-3.5 border-border-default text-text-accent', cornerClass('chip'))}
+                      />
+                      Email the customer a tracking notification
+                    </label>
+                  )}
                   {buyMutation.isError ? (
                     <p className="text-role-eyebrow text-text-danger">{buyMutation.error.message}</p>
                   ) : null}
@@ -514,9 +576,13 @@ export function BuyLabelSection({
               onClick={() => ratesMutation.mutate()}
               className="w-full"
             >
-              Get shipping rates
+              {purpose === 'outbound' ? 'Get shipping rates' : `Get ${LABEL_PURPOSE_FACE[purpose].label.toLowerCase()} rates`}
             </Button>
-            <p className="mt-1 px-1 text-role-eyebrow text-text-faint">Rate-shop live carrier prices for {orderRef}.</p>
+            <p className="mt-1 px-1 text-role-eyebrow text-text-faint">
+              {purpose === 'return'
+                ? `Rate-shop a return — buyer to warehouse — for ${orderRef}.`
+                : `Rate-shop live carrier prices for ${orderRef}.`}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>

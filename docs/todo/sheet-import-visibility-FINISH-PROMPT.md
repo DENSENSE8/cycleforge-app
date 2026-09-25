@@ -1,5 +1,8 @@
 # Sheet import visibility + listing recovery — finish prompt
 
+> **OBSOLETE (2026-09-24):** Google Sheets order import was removed (ShipStation is the only
+> order importer). Do not execute this prompt.
+
 **Self-contained.** A new session needs only this file. Paste:
 
 > Read `docs/todo/sheet-import-visibility-FINISH-PROMPT.md` and execute item 1.

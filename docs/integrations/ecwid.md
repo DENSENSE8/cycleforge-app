@@ -1,5 +1,12 @@
 # Ecwid integration (Nango-backed, with hand-built fallback)
 
+> **2026-09-24 — order import dropped.** ShipStation is the sole outbound-order importer
+> and already aggregates the Ecwid store. The Ecwid order sync (connector `sync()`,
+> `/api/ecwid/transfer-orders`, the desk's Ecwid lane, the 15-minute cron entry) was
+> deleted, so the "Sync adapter" section and its checklist items below are obsolete. The
+> Ecwid connection still backs the catalog mirror, packing slips, exception tracking
+> (`/api/ecwid/sync-exception-tracking`), intake suggestions and the update-only backfills.
+
 **Status:** Plan. Ecwid is **not** in Nango's stock catalog, so "reuse Nango" here
 means registering Ecwid as a **custom OAuth2 provider** in our self-hosted Nango —
 which lets us still reuse Nango's auth + proxy + token storage. A hand-built native

@@ -14,8 +14,8 @@
  *   • the canonical `work_assignments` deadline row
  *   • cache invalidation + the realtime `order_changed` publish
  *
- * Extracted verbatim-in-behavior from `jobs/google-sheets-transfer-orders.ts`,
- * which had grown into this pipeline plus a Sheets reader. Splitting them is
+ * Extracted verbatim-in-behavior from the Google Sheets transfer job (since
+ * removed), which had grown into this pipeline plus a Sheets reader. Splitting them is
  * what lets a second source reuse the pipeline instead of copying an
  * `INSERT INTO orders` — there were nine such copies when this was written.
  *
@@ -53,7 +53,6 @@ import {
 import type { SyncProgress, TransferOrderDetail } from '@/lib/orders-sync/types';
 import {
   groupCanonicalOrderLines,
-  resolveSaleAmountWrite,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
 import {
@@ -61,6 +60,20 @@ import {
   resolveBuyerCustomers,
 } from '@/lib/orders/resolve-buyer-customers';
 import { normalizeItemNumber } from '@/lib/automations/listing-match';
+import {
+  crossSourceBackfillPolicy,
+  orderCollapseCandidates,
+  matchAggregatorOrderRows,
+  matchMarketplaceOrderRows,
+  shouldRekeyToIncomingSource,
+  type PlatformOf,
+} from '@/lib/orders/order-source-match';
+import { isBlank, planOrderRowBackfill } from '@/lib/orders/order-row-backfill';
+import type { BackfillPolicy } from '@/lib/orders/order-row-backfill';
+
+/** Whose customer id the buyer block carries: its own `channel` (an aggregator
+ *  names itself), else the order's source. */
+const buyerChannel = (order: CanonicalOrderLine) => order.buyer?.channel || order.accountSource;
 
 /** Tracking resolution is fanned out in batches of this size. */
 const TRACKING_RESOLVE_BATCH = 10;
@@ -95,6 +108,7 @@ type OrderProjection = {
   shipmentId: number | null;
   accountSource: string | null;
   status: string | null;
+  skuCatalogId?: number | null;
   createdAt: Date | string | null;
   // Price rides the projection ONLY so first-write-wins can see it; the type
   // and toProjection below must both carry it or the guard reads undefined and
@@ -111,6 +125,10 @@ interface IngestCanonicalOrdersResult {
   updatedOrdersTracking: number;
   updatedOrdersFields: number;
   deletedDuplicateOrders: number;
+  /** Aggregator orders left untouched because their number sits under more
+   *  than one platform (or beside a legacy aggregator row) — the caller
+   *  quarantines them. */
+  ambiguousOrderIds: string[];
   /** Non-blank tracking values that failed carrier detection (not linked). */
   unresolvedTrackingCount: number;
   matchedCustomers: number;
@@ -133,6 +151,7 @@ function emptyIngestResult(): IngestCanonicalOrdersResult {
     updatedOrdersTracking: 0,
     updatedOrdersFields: 0,
     deletedDuplicateOrders: 0,
+    ambiguousOrderIds: [],
     unresolvedTrackingCount: 0,
     matchedCustomers: 0,
     unmatchedCustomers: 0,
@@ -145,10 +164,6 @@ function emptyIngestResult(): IngestCanonicalOrdersResult {
       unmatchedCatalog: [],
     },
   };
-}
-
-function isBlank(value: unknown) {
-  return value === null || value === undefined || String(value).trim() === '';
 }
 
 function compactUpdateValues(values: Record<string, unknown>) {
@@ -393,6 +408,10 @@ interface IngestCanonicalOrdersOptions {
    *    against. REQUIRED for connectors: order numbers are only unique per
    *    marketplace, so Shopify "1001" and ShipStation "1001" are different
    *    orders and matching on the id alone would delete one of them.
+   *    One exception, when the channel has no row: the aggregator
+   *    (ShipStation) ADOPTS the marketplace rows carrying its order number, and
+   *    a marketplace CLAIMS the aggregator's row — see `order-source-match.ts`.
+   *    Neither ever deletes a row.
    */
   matchOn?: 'orderId' | 'accountSourceAndOrderId';
   /**
@@ -447,6 +466,16 @@ interface IngestCanonicalOrdersOptions {
    * "unknown" and the placeholder only ever seeds a brand-new row.
    */
   fallbackProductTitle?: string;
+  /**
+   * The lines come from an AGGREGATOR (ShipStation) that has already
+   * attributed each order to its platform account_source. With no row under
+   * that exact source, the order ADOPTS the one platform's rows carrying its
+   * number (or claims a legacy aggregator row) — see
+   * `matchAggregatorOrderRows`; a number spread across platforms is skipped
+   * and reported in `ambiguousOrderIds`. `platformOf` places an account_source
+   * in the org catalog. Only meaningful with `matchOn: 'accountSourceAndOrderId'`.
+   */
+  aggregator?: { platformOf: PlatformOf };
 }
 
 const noopProgress: SyncProgress = () => {};
@@ -468,6 +497,7 @@ export async function ingestCanonicalOrders(
     manageDeadlines = true,
     collapseDuplicates = true,
     fallbackProductTitle = '',
+    aggregator,
   }: IngestCanonicalOrdersOptions,
 ): Promise<IngestCanonicalOrdersResult> {
   const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
@@ -581,6 +611,7 @@ export async function ingestCanonicalOrders(
     shipmentId: ordersTable.shipmentId,
     accountSource: ordersTable.accountSource,
     status: ordersTable.status,
+    skuCatalogId: ordersTable.skuCatalogId,
     createdAt: ordersTable.createdAt,
     // Present ONLY so the update builder can apply first-write-wins to the
     // price (operator ruling 2026-09-15): without reading the current value
@@ -638,6 +669,7 @@ export async function ingestCanonicalOrders(
     shipmentId: order.shipmentId ?? null,
     accountSource: order.accountSource ?? null,
     status: order.status ?? null,
+    skuCatalogId: order.skuCatalogId ?? null,
     createdAt: order.createdAt ?? null,
     // NUMERIC arrives as a string; normalise so the first-write-wins guard
     // never sees a Decimal object it would stringify wrongly.
@@ -648,6 +680,9 @@ export async function ingestCanonicalOrders(
   // Rows arrive newest-first, so the first sighting of an order id is latest.
   const latestOrderByKey = new Map<string, OrderProjection>();
   const allOrdersByKey = new Map<string, OrderProjection[]>();
+  // Every row per order id, whatever its source — the cross-source fallback
+  // (`order-source-match.ts`) when a per-source key finds nothing.
+  const allOrdersByOrderId = new Map<string, OrderProjection[]>();
   existingOrders.forEach((order) => {
     const orderId = String(order.orderId || '').trim();
     if (!orderId || Number.isNaN(Number(order.id))) return;
@@ -657,6 +692,9 @@ export async function ingestCanonicalOrders(
     const rows = allOrdersByKey.get(key) ?? [];
     rows.push(projection);
     allOrdersByKey.set(key, rows);
+    const byId = allOrdersByOrderId.get(orderId) ?? [];
+    byId.push(projection);
+    allOrdersByOrderId.set(orderId, byId);
   });
 
   const latestCustomerByOrderId = pickLatestByKey(sourceCustomers, (customer) =>
@@ -672,8 +710,8 @@ export async function ingestCanonicalOrders(
     {
       orgId: effectiveOrgId,
       buyers: canonicalOrders
-        .filter((order) => order.buyer && buyerIdentityKey(order.accountSource, order.buyer))
-        .map((order) => ({ accountSource: order.accountSource, buyer: order.buyer! })),
+        .filter((order) => order.buyer && buyerIdentityKey(buyerChannel(order), order.buyer))
+        .map((order) => ({ accountSource: buyerChannel(order), buyer: order.buyer! })),
     },
     {
       runQuery: (org, sql, params) =>
@@ -898,11 +936,27 @@ export async function ingestCanonicalOrders(
   let updatedOrdersTracking = 0;
   let matchedCustomers = 0;
   let unmatchedCustomers = 0;
+  const ambiguousOrderIds: string[] = [];
 
   for (const order of canonicalOrders) {
     const orderId = order.externalOrderId;
     const catalogLink = resolveCatalogLink(order.productTitle, order.sku, order.itemNumber);
     const existingOrder = latestOrderByKey.get(matchKey(order.accountSource, orderId));
+    // Per-source keying found nothing: an aggregator (ShipStation) may ADOPT
+    // the platform's rows, and either kind of source may CLAIM a legacy
+    // aggregator row.
+    const rowsForNumber = allOrdersByOrderId.get(orderId) ?? [];
+    const crossSource =
+      existingOrder || matchOn !== 'accountSourceAndOrderId'
+        ? null
+        : aggregator
+          ? matchAggregatorOrderRows(order.accountSource, rowsForNumber, aggregator.platformOf)
+          : matchMarketplaceOrderRows(order.accountSource, rowsForNumber);
+    if (crossSource?.kind === 'ambiguous') {
+      ambiguousOrderIds.push(orderId);
+      continue;
+    }
+    const existingForDetail = existingOrder ?? crossSource?.rows[0];
 
     const detailRow: TransferOrderDetail = {
       orderId,
@@ -911,12 +965,12 @@ export async function ingestCanonicalOrders(
       itemNumber: catalogLink.itemNumber,
       tracking: order.trackings[0] || '',
       titleSource: catalogLink.titleSource,
-      existingAccountSource: existingOrder?.accountSource ?? null,
+      existingAccountSource: existingForDetail?.accountSource ?? null,
       existingCreatedAt:
-        existingOrder?.createdAt instanceof Date
-          ? existingOrder.createdAt.toISOString()
-          : typeof existingOrder?.createdAt === 'string'
-            ? existingOrder.createdAt
+        existingForDetail?.createdAt instanceof Date
+          ? existingForDetail.createdAt.toISOString()
+          : typeof existingForDetail?.createdAt === 'string'
+            ? existingForDetail.createdAt
             : null,
     };
 
@@ -944,7 +998,7 @@ export async function ingestCanonicalOrders(
     // strong buyer tier (channel id/email/phone), then the name-only tier.
     // All produce a real `customers` row, so downstream reads cannot tell
     // which path found it.
-    const buyerKey = order.buyer ? buyerIdentityKey(order.accountSource, order.buyer) : null;
+    const buyerKey = order.buyer ? buyerIdentityKey(buyerChannel(order), order.buyer) : null;
     const customerId =
       (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
       (buyerKey ? (customerIdByBuyer.get(buyerKey) ?? null) : null) ??
@@ -973,6 +1027,44 @@ export async function ingestCanonicalOrders(
       progress({ type: 'detail', kind: 'unresolvedTracking', row: unresolvedDetail });
     }
 
+    /** Plan one existing row's additive backfill (+ its links / deadline). */
+    const planBackfill = (
+      row: OrderProjection,
+      policy: Pick<BackfillPolicy, 'titleAuthoritative' | 'sourceWrite'>,
+    ) => {
+      // Read at call time: the collapse branch adds losers' ids before calling.
+      const shipmentIdList = Array.from(shipmentIds.values());
+      const plan = planOrderRowBackfill(
+        row,
+        {
+          orderId,
+          itemNumber: catalogLink.itemNumber,
+          productTitle: catalogLink.productTitle,
+          sku: catalogLink.sku,
+          skuCatalogId: catalogLink.skuCatalogId,
+          quantity: order.quantity,
+          condition: order.condition,
+          notes: order.notes,
+          status: order.status,
+          saleAmount: order.saleAmount,
+          currency: order.currency,
+          accountSource: order.accountSource,
+          customerId,
+          shipmentIds: shipmentIdList,
+        },
+        { ...policy, statusAuthoritative: !!authoritative.status },
+      );
+      if (plan.filledShipment) updatedOrdersTracking++;
+      const compacted = compactUpdateValues(plan.values);
+      if (Object.keys(compacted).length > 0) {
+        ordersToBackfill.push({ id: row.id, values: compacted, detail: detailRow });
+      }
+      if (shipmentIdList.length > 0) {
+        shipmentLinksToUpsert.set(row.id, { primaryShipmentId: plan.primaryShipmentId, shipmentIds: shipmentIdList });
+      }
+      if (manageDeadlines) orderDeadlinesToUpsert.push({ id: row.id, shipByDate: order.shipByDate });
+    };
+
     if (existingOrder) {
       // Collapse duplicates: keep the row carrying the most populated fields,
       // inherit the losers' shipment ids, delete the rest.
@@ -981,7 +1073,9 @@ export async function ingestCanonicalOrders(
         [o.productTitle, o.condition, o.itemNumber, o.sku, o.quantity, o.notes].filter((v) => !isBlank(v)).length;
       let orderToKeep: OrderProjection;
       if (candidateList.length > 1) {
-        const sorted = [...candidateList].sort((a, b) => score(b) - score(a));
+        // Keeper first: a marketplace row always outranks the aggregator's
+        // (ShipStation) copy, so a collapse can only ever delete the copy.
+        const sorted = orderCollapseCandidates(candidateList, score);
         orderToKeep = sorted[0];
         // Without collapse the losers keep existing, so they keep their own
         // shipment links — inheriting them here would move a live row's
@@ -996,64 +1090,23 @@ export async function ingestCanonicalOrders(
         orderToKeep = candidateList[0];
       }
 
-      // Backfill is additive only — a populated field is never clobbered.
-      const updateValues: Record<string, unknown> = {};
-      if (isBlank(orderToKeep.orderId) && orderId) updateValues.orderId = orderId;
-      if (isBlank(orderToKeep.itemNumber) && catalogLink.itemNumber) updateValues.itemNumber = catalogLink.itemNumber;
-      // Additive by default; an authoritative source refreshes the title.
-      if (authoritative.productTitle
-        ? !!catalogLink.productTitle
-        : isBlank(orderToKeep.productTitle) && !!catalogLink.productTitle) {
-        updateValues.productTitle = catalogLink.productTitle;
-      }
-      // Source status lands ONLY while the order is untouched — once an
-      // operator has moved it, local progress wins.
-      if (
-        authoritative.status
-        && order.status
-        && (isBlank(orderToKeep.status) || orderToKeep.status === 'unassigned')
-      ) {
-        updateValues.status = order.status;
-      }
-      if (isBlank(orderToKeep.quantity) && order.quantity) updateValues.quantity = order.quantity;
-      if (isBlank(orderToKeep.sku) && catalogLink.sku) updateValues.sku = catalogLink.sku;
-      if (isBlank(orderToKeep.condition) && order.condition) updateValues.condition = order.condition;
-      if (isBlank(orderToKeep.notes) && order.notes) updateValues.notes = order.notes;
-      if (catalogLink.skuCatalogId != null && (isBlank(orderToKeep.sku) || isBlank(orderToKeep.itemNumber))) {
-        updateValues.skuCatalogId = catalogLink.skuCatalogId;
-      }
-
-      // PRICE IS FIRST-WRITE-WINS (operator ruling 2026-09-15: "no price
-      // imported = no change"). A sale price is an immutable fact of the sale,
-      // so a source value writes only onto a row that has none, and a re-sync
-      // — even one that carries a price, as the Ecwid leg now does — can never
-      // clobber a manual correction. Currency follows the same rule: it is
-      // part of the same fact.
-      const saleAmountWrite = resolveSaleAmountWrite(
-        order.saleAmount,
-        orderToKeep.saleAmount == null ? null : String(orderToKeep.saleAmount),
-      );
-      if (saleAmountWrite != null) updateValues.saleAmount = saleAmountWrite;
-      if (order.currency && isBlank(orderToKeep.currency)) updateValues.currency = order.currency;
-
-      const shipmentIdList = Array.from(shipmentIds.values());
-      const primaryShipmentId =
-        (orderToKeep.shipmentId != null ? Number(orderToKeep.shipmentId) : null) ?? shipmentIdList[0] ?? null;
-      if (orderToKeep.shipmentId == null && primaryShipmentId != null) {
-        updateValues.shipmentId = primaryShipmentId;
-        updatedOrdersTracking++;
-      }
-      if (orderToKeep.customerId == null && customerId) updateValues.customerId = customerId;
-      if (isBlank(orderToKeep.accountSource) && order.accountSource) updateValues.accountSource = order.accountSource;
-
-      const compacted = compactUpdateValues(updateValues);
-      if (Object.keys(compacted).length > 0) {
-        ordersToBackfill.push({ id: orderToKeep.id, values: compacted, detail: detailRow });
-      }
-      if (shipmentIdList.length > 0) {
-        shipmentLinksToUpsert.set(orderToKeep.id, { primaryShipmentId, shipmentIds: shipmentIdList });
-      }
-      if (manageDeadlines) orderDeadlinesToUpsert.push({ id: orderToKeep.id, shipByDate: order.shipByDate });
+      // A marketplace updating the aggregator's row re-keys it to itself
+      // (order-id matching lanes: Sheets, Ecwid, CSV) — unless a surviving
+      // sibling already carries that source, which would collide on the key.
+      const incomingSource = String(order.accountSource ?? '').trim();
+      const survivors = collapseDuplicates ? [] : candidateList.filter((o) => o.id !== orderToKeep.id);
+      const rekey =
+        shouldRekeyToIncomingSource(orderToKeep.accountSource, order.accountSource) &&
+        !survivors.some((o) => String(o.accountSource ?? '').trim() === incomingSource);
+      planBackfill(orderToKeep, {
+        titleAuthoritative: !!authoritative.productTitle,
+        sourceWrite: rekey ? 'rekey' : 'fill',
+      });
+    } else if (crossSource && (crossSource.kind === 'adopt' || crossSource.kind === 'claim')) {
+      // Adopt (aggregator → marketplace rows) or claim (marketplace → the
+      // aggregator's row). Every matched row is backfilled; none is deleted.
+      const policy = crossSourceBackfillPolicy(crossSource.kind, !!authoritative.productTitle);
+      for (const row of crossSource.rows) planBackfill(row, policy);
     } else {
       const shipmentIdList = Array.from(shipmentIds.values());
       ordersToInsert.push({
@@ -1287,6 +1340,7 @@ export async function ingestCanonicalOrders(
     updatedOrdersTracking,
     updatedOrdersFields: ordersToBackfill.length,
     deletedDuplicateOrders: ordersToDelete.length,
+    ambiguousOrderIds,
     unresolvedTrackingCount: detailsUnresolvedTracking.length,
     matchedCustomers,
     unmatchedCustomers,

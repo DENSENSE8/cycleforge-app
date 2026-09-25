@@ -49,13 +49,18 @@ In-app equivalents: Labels walk → **Get shipping rates** (v2); To ship Sync �
    (`npx tsx scripts/audit-route-auth.ts --emit`) and pin it in
    `src/lib/auth/route-permission-manifest.test.ts`.
 
-## 1. ShipStation-only order sync when active (~2 h)
+## 1. ShipStation-only order sync — DONE, then made unconditional (2026-09-24)
 
-Today the To-ship **Sync Google Sheet** face (`OrdersDeskAddAction.tsx`) runs `useOrdersSync().handleTransfer`
-(`src/hooks/useOrdersSync.ts`): lanes `sheets` + `ecwid` in parallel via
-`POST /api/integrations/{provider}/sync` (NDJSON), then `exceptions`. The ShipStation connector
-already exists (`src/lib/integrations/connectors/shipstation.ts` → `shipstationSync`, v1 pull,
-incremental `modifyDate` cursor, uniform `orders` upsert) and is reachable from the Sync ▾ menu.
+> **Superseded:** the owner removed Google Sheets order sync entirely. The desk face always
+> reads **Sync ShipStation** and runs lanes `shipstation` + `ecwid`, then `exceptions` — there
+> is no `sheets` lane and no `status.active` switch. The steps below are the original plan,
+> kept for history.
+
+Before this work the To-ship **Sync Google Sheet** face (`OrdersDeskAddAction.tsx`) ran
+`useOrdersSync().handleTransfer` (`src/hooks/useOrdersSync.ts`): lanes `sheets` + `ecwid` in
+parallel via `POST /api/integrations/{provider}/sync` (NDJSON), then `exceptions`. The
+ShipStation connector already existed (`src/lib/integrations/connectors/shipstation.ts` →
+`shipstationSync`, v1 pull, incremental `modifyDate` cursor, uniform `orders` upsert).
 
 When `status.active`:
 
@@ -65,15 +70,16 @@ When `status.active`:
    `shipstation` instead of `google_sheets` for the first lane; widen `runConnectorSync`'s provider
    union. Mirror in `useOrdersSyncDemo.ts` only if the demo should show it.
 2. **Desk CTA** — face reads **Sync ShipStation** (and `/m/orders/sync` follows the same hook).
-3. **Refuse the sheet** — `POST /api/integrations/google_sheets/sync` answers 409
-   `{ code: 'SHEETS_RETIRED_SHIPSTATION_ACTIVE' }` for an active org; the connections panel's
-   Google Sheets actions (`useConnectionsPanel.ts`, `/api/google-sheets/sync-shipstation-orders`)
-   hide/disable with that reason.
-4. **Cron** — `google_sheets.transfer_orders` (`/api/cron/google-sheets/transfer-orders`,
-   `src/lib/cron/registry.ts`) skips active orgs and logs why. Confirm `integrations.orders_sync`
-   (every 15 min) already runs `shipstationSync` for connected orgs; if not, add it — that becomes
-   the scheduled ShipStation pull.
-5. **Not active** → everything stays exactly as today. No flag day.
+3. **Refuse the sheet** — superseded: the sheet order import is deleted (see 4), so there is
+   no 409 gate. The ShipStation CSV upload (`/api/google-sheets/sync-shipstation-orders` +
+   its connections-panel row) is deleted too.
+4. **Cron** — DONE (2026-09-24, owner: "remove the sync google sheet functions entirely").
+   Sheet order import is deleted outright, not gated: no `google_sheets.transfer_orders` cron,
+   no `/api/google-sheets/transfer-orders`, no `google_sheets` connector `sync()`. ShipStation
+   runs on its own cron `shipstation.orders_sync` (`/api/cron/shipstation/orders-sync`,
+   `0 15 * * *` + `0 21 * * *` UTC = 08:00 + 14:00 PDT) and is no longer in the 15-minute
+   `integrations.orders_sync` provider list.
+5. The desk and `/m/orders/sync` always sync ShipStation; there is no sheet fallback.
 
 ## 2. Close the tracking gap before retiring the sheet (~2 h) — REQUIRED
 

@@ -6,7 +6,7 @@
  * would display exactly the same."*
  *
  * So this is deliberately NOT a second UI. It is a list of the same
- * {@link SyncStreamEvent}s the real route streams, on the same three lanes,
+ * {@link SyncStreamEvent}s the real route streams, on the same two lanes,
  * replayed on a timer into the same {@link applySyncRunEvent} fold. The run
  * surface cannot tell the difference — which is the whole point: whatever the
  * demo shows is what production shows.
@@ -16,33 +16,13 @@
  * numbers is never mistaken for a real import.
  */
 import type { SyncRunLane, SyncRunOutcomeLine } from './run-steps';
-import type {
-  SyncStreamEvent,
-  TransferOrderDetail,
-  TransferSkippedRow,
-  TransferTabState,
-} from './types';
+import type { SyncStreamEvent, TransferOrderDetail, TransferTabState } from './types';
 
 export interface DemoRunBeat {
   /** Milliseconds after the previous beat. */
   after: number;
   lane: SyncRunLane;
   event: SyncStreamEvent;
-}
-
-function detail(orderId: string, productTitle: string): SyncStreamEvent {
-  return {
-    type: 'detail',
-    kind: 'inserted',
-    row: {
-      orderId,
-      productTitle,
-      sku: '',
-      itemNumber: orderId.replace(/\D/g, '').slice(0, 6),
-      tracking: `1Z999AA1${orderId.replace(/\D/g, '').slice(0, 7)}`,
-      titleSource: 'sheet',
-    },
-  };
 }
 
 function detailRow(orderId: string, productTitle: string): TransferOrderDetail {
@@ -52,56 +32,34 @@ function detailRow(orderId: string, productTitle: string): TransferOrderDetail {
     sku: '',
     itemNumber: orderId.replace(/\D/g, '').slice(0, 6),
     tracking: `1Z999AA1${orderId.replace(/\D/g, '').slice(0, 7)}`,
-    titleSource: 'sheet',
+    titleSource: 'sku_catalog',
   };
 }
 
-function skippedRow(
-  reason: TransferSkippedRow['reason'],
-  sheetRow: number,
-  orderId: string,
-  productTitle: string,
-): TransferSkippedRow {
-  return { reason, sheetRow, orderId, productTitle, platform: 'eBay', tracking: '' };
-}
-
 /**
- * Paced like a real sheet import: the read lands fast, tracking resolution is
- * the long pole, inserts come in a burst, exceptions trail the rest. Total
- * ≈ 11s — long enough to watch steps advance, short enough to press twice.
+ * Paced like a real ShipStation import: the read lands fast, tracking
+ * resolution is the long pole, the ingest lands updates then inserts, and the
+ * exceptions pass trails it. Total ≈ 10s — long enough to watch steps advance,
+ * short enough to press twice. Only the phases the ShipStation connector
+ * really emits: `fetching_shipstation` bare then counted, one `updating`, one
+ * `inserting`.
  */
 export const DEMO_RUN_SCRIPT: readonly DemoRunBeat[] = [
-  { after: 200, lane: 'sheets', event: { type: 'phase', phase: 'starting' } },
-  { after: 150, lane: 'ecwid', event: { type: 'phase', phase: 'starting' } },
-  { after: 400, lane: 'sheets', event: { type: 'phase', phase: 'fetching_sheet' } },
-  { after: 300, lane: 'ecwid', event: { type: 'phase', phase: 'fetching_ecwid' } },
+  { after: 200, lane: 'shipstation', event: { type: 'phase', phase: 'starting' } },
+  { after: 400, lane: 'shipstation', event: { type: 'phase', phase: 'fetching_shipstation' } },
   {
-    after: 1200,
-    lane: 'sheets',
-    event: { type: 'phase', phase: 'fetching_sheet', count: 214, message: 'Sept 2026' },
+    after: 1600,
+    lane: 'shipstation',
+    event: { type: 'phase', phase: 'fetching_shipstation', count: 214 },
   },
-  { after: 500, lane: 'ecwid', event: { type: 'phase', phase: 'fetching_ecwid', count: 18 } },
   {
-    after: 600,
-    lane: 'sheets',
+    after: 1800,
+    lane: 'shipstation',
     event: { type: 'phase', phase: 'resolving_tracking', count: 51 },
   },
-  { after: 400, lane: 'ecwid', event: { type: 'phase', phase: 'resolving_tracking', count: 6 } },
-  { after: 1400, lane: 'sheets', event: { type: 'phase', phase: 'matching_orders' } },
-  { after: 300, lane: 'ecwid', event: { type: 'phase', phase: 'matching_orders' } },
-  // Two `updating` beats on one lane: deletes, then backfills. The ledger
-  // accumulates them (3 + 9 = 12) — the case a naive fold renders backwards.
-  { after: 700, lane: 'sheets', event: { type: 'phase', phase: 'updating', count: 3 } },
-  { after: 450, lane: 'sheets', event: { type: 'phase', phase: 'updating', count: 9 } },
-  { after: 500, lane: 'sheets', event: { type: 'phase', phase: 'inserting', count: 35 } },
-  { after: 120, lane: 'sheets', event: detail('EB-44127', 'Dell Latitude 7420 · i7 · 16GB') },
-  { after: 120, lane: 'sheets', event: detail('EB-44128', 'HP EliteBook 840 G8 · i5') },
-  { after: 120, lane: 'sheets', event: detail('EB-44131', 'Lenovo ThinkPad T14 · Ryzen 5') },
-  { after: 400, lane: 'ecwid', event: { type: 'phase', phase: 'inserting', count: 4 } },
-  { after: 600, lane: 'sheets', event: { type: 'phase', phase: 'publishing' } },
-  { after: 250, lane: 'ecwid', event: { type: 'phase', phase: 'publishing' } },
-  { after: 500, lane: 'ecwid', event: { type: 'phase', phase: 'done' } },
-  { after: 300, lane: 'sheets', event: { type: 'phase', phase: 'done' } },
+  { after: 1400, lane: 'shipstation', event: { type: 'phase', phase: 'updating', count: 9 } },
+  { after: 900, lane: 'shipstation', event: { type: 'phase', phase: 'inserting', count: 35 } },
+  { after: 900, lane: 'shipstation', event: { type: 'phase', phase: 'done' } },
   { after: 400, lane: 'exceptions', event: { type: 'phase', phase: 'scanning_exceptions' } },
   {
     after: 500,
@@ -126,65 +84,32 @@ export const DEMO_RUN_SCRIPT: readonly DemoRunBeat[] = [
   { after: 600, lane: 'exceptions', event: { type: 'phase', phase: 'done' } },
 ] as const;
 
-/** Sheet tab the scripted run "read", so the header shows the same provenance. */
-export const DEMO_RUN_TAB_NAME = 'Sept 2026';
-
 /**
  * The roll-up sentence, in the exact grammar `useOrdersSync` composes for a
- * real run ("Orders synced: 39 inserted, 12 updated, …").
+ * real run ("Orders synced: 35 inserted, 9 updated").
  */
 export const DEMO_RUN_OUTCOME: SyncRunOutcomeLine = {
   type: 'success',
-  message: 'Orders synced: 39 inserted, 12 updated (7 tracking), 2 exceptions resolved, 21 need a fix',
+  message: 'Orders synced: 35 inserted, 9 updated',
 };
 
 /**
  * Sample per-row detail, in the same {@link TransferTabState} shape the real
- * connectors return — so "Rows to fix" on a demo run exercises the identical
- * grouping, hints and fix links as production, including the two skip reasons
- * that are NOT problems (Ecwid-sourced rows, FBA boxes) and the padding that is
- * counted but never listed.
+ * connector returns — so "Rows to fix" on a demo run exercises the identical
+ * grouping and hints as production.
  */
-export const DEMO_RUN_DETAIL_TABS: {
-  sheets: TransferTabState;
-  ecwid: TransferTabState;
-} = {
-  sheets: {
-    status: 'done',
-    details: {
-      inserted: [
-        detailRow('EB-44127', 'Dell Latitude 7420 · i7 · 16GB'),
-        detailRow('EB-44128', 'HP EliteBook 840 G8 · i5'),
-        detailRow('EB-44131', 'Lenovo ThinkPad T14 · Ryzen 5'),
-      ],
-      updated: [detailRow('EB-44002', 'Bose SoundLink Revolve+ · tracking attached')],
-      deleted: [],
-      unknownTitle: [],
-      unresolvedTracking: [],
-      unmatchedCatalog: [detailRow('EB-44133', 'Unbranded dock · item number not in catalog')],
-      skippedRows: [
-        skippedRow('noItemNumber', 18, 'EB-44140', 'Sony WH-1000XM4 · black'),
-        skippedRow('noItemNumber', 24, 'EB-44151', 'Logitech MX Master 3S'),
-        skippedRow('noTracking', 31, 'EB-44155', 'Anker 737 power bank'),
-        skippedRow('ecwid', 44, 'EC-9001', 'Bose 321 remote · Ecwid store'),
-        skippedRow('fbaShipment', 57, 'FBA15X9', 'FBA inbound box 3 of 6'),
-        skippedRow('blankRow', 91, '', ''),
-        skippedRow('blankRow', 92, '', ''),
-      ],
-      recoveredRows: [],
-    },
-  },
-  ecwid: {
-    status: 'done',
-    details: {
-      inserted: [detailRow('EC-9014', 'Bose Companion 2 · Ecwid direct')],
-      updated: [],
-      deleted: [],
-      unknownTitle: [],
-      unresolvedTracking: [],
-      unmatchedCatalog: [],
-      skippedRows: [],
-      recoveredRows: [],
-    },
+export const DEMO_RUN_DETAIL_TAB: TransferTabState = {
+  status: 'done',
+  details: {
+    inserted: [
+      detailRow('EB-44127', 'Dell Latitude 7420 · i7 · 16GB'),
+      detailRow('EB-44128', 'HP EliteBook 840 G8 · i5'),
+      detailRow('EB-44131', 'Lenovo ThinkPad T14 · Ryzen 5'),
+    ],
+    updated: [detailRow('EB-44002', 'Bose SoundLink Revolve+ · tracking attached')],
+    deleted: [],
+    unknownTitle: [],
+    unresolvedTracking: [],
+    unmatchedCatalog: [detailRow('EB-44133', 'Unbranded dock · item number not in catalog')],
   },
 };

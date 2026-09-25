@@ -1,5 +1,9 @@
 # Sheet import + Review queue — unified handoff
 
+> **OBSOLETE (2026-09-24):** Google Sheets order import was removed; nothing enqueues new
+> Review · Missing item number rows. The open queue still lists/resolves/ignores existing
+> rows. Do not continue this handoff.
+
 **Self-contained.** A new session needs only this file. Paste:
 
 > Read `docs/todo/sheet-import-review-queue-HANDOFF.md` and continue from "Status".

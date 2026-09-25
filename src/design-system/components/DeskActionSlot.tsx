@@ -36,7 +36,7 @@
  * Print, filter, columns, zoom and fullscreen stay off this row — they act
  * on chosen rows or on how the sheet is drawn
  * (`docs/todo/seller-table-program-PLAN.md` §05). To-ship Export is not an
- * `overall` button: it lives in the Sync Google Sheet dropdown
+ * `overall` button: it lives in the Sync ShipStation dropdown
  * ({@link DeskExportMenuRegistrar}), operator 2026-09-01. Labels is a
  * display toggle for the paperwork walk, not a per-row print verb.
  *

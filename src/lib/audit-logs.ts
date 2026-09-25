@@ -609,6 +609,13 @@ export const AUDIT_ACTION = {
   // the first stored label for the order timeline.
   LABEL_PURCHASED: 'orders.label.purchased',
   LABEL_VOIDED: 'orders.label.voided',
+  // Order ↔ ShipStation label pairing (Link label, Selected-order column):
+  // a label paired with / taken off an order under a purpose (outbound /
+  // return / replacement), and a label's tracking linked to a support ticket.
+  LABEL_LINKED: 'orders.label.linked',
+  LABEL_UNLINKED: 'orders.label.unlinked',
+  LABEL_TICKET_LINKED: 'orders.label.ticket_linked',
+  LABEL_TICKET_UNLINKED: 'orders.label.ticket_unlinked',
   // Outbound documents (docs/outbound-documents-plan.md) — packing slips +
   // shipping labels stored on `documents` + linked via `document_entity_links`.
   // LABEL_PRINTED (above) is preserved for the timeline on an order's FIRST
@@ -621,10 +628,11 @@ export const AUDIT_ACTION = {
   ORDER_DOCUMENT_BUNDLE_PRINT: 'order.document.bundle_print',
   /** Explicit reprint of an already-printed pack bundle (never re-buys postage). */
   ORDER_DOCUMENT_BUNDLE_REPRINT: 'order.document.bundle_reprint',
-  // To-ship paperwork: SKU manuals (product_manuals) paired to an order's
-  // item number + SKU via /api/orders/[id]/manuals. Entity is the order.
+  // To-ship paperwork: product_manuals rows (manuals, packing lists…) pinned to
+  // an order, its item number or its SKU via /api/orders/[id]/manuals. Entity
+  // is the order.
   ORDER_MANUAL_ATTACH:  'order.manual.attach',   // new file uploaded + paired
-  ORDER_MANUAL_PAIR:    'order.manual.pair',     // existing library manual paired
+  ORDER_MANUAL_PAIR:    'order.manual.pair',     // library row paired, or re-paired (before/after pairing)
   ORDER_MANUAL_UPDATE:  'order.manual.update',   // rename / retype
   ORDER_MANUAL_REPLACE: 'order.manual.replace',  // stored file swapped
   ORDER_MANUAL_UNPAIR:  'order.manual.unpair',   // back to the library, unassigned

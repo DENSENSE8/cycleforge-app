@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * To-ship Labels CTA — `role="leading"`, immediately left of Sync Google Sheet.
+ * To-ship Labels CTA — `role="leading"`, immediately left of Sync ShipStation.
  *
  * Display toggle for the paperwork walk (`?paperwork=`). Pressed = walk on;
  * press again (or `L`) to return to the table. Badge is print-packet incomplete

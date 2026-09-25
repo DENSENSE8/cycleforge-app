@@ -16,17 +16,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   applySyncRunEvent,
   cancelSyncRun,
-  completeSyncRunLane,
   createSyncRun,
   type SyncRunOutcomeLine,
   type SyncRunState,
 } from '@/lib/orders-sync/run-steps';
-import {
-  DEMO_RUN_DETAIL_TABS,
-  DEMO_RUN_OUTCOME,
-  DEMO_RUN_SCRIPT,
-  DEMO_RUN_TAB_NAME,
-} from '@/lib/orders-sync/demo-run';
+import { DEMO_RUN_DETAIL_TAB, DEMO_RUN_OUTCOME, DEMO_RUN_SCRIPT } from '@/lib/orders-sync/demo-run';
 import { buildSyncRunDetail, type SyncRunDetail } from '@/lib/orders-sync/run-detail';
 
 export interface OrdersSyncDemo {
@@ -66,7 +60,7 @@ export function useOrdersSyncDemo(): OrdersSyncDemo {
 
   const start = useCallback(() => {
     stopTimers();
-    const fresh = createSyncRun(['sheets', 'ecwid', 'exceptions']);
+    const fresh = createSyncRun(['shipstation', 'exceptions']);
     runRef.current = fresh;
     setRun(fresh);
     setOutcome(null);
@@ -78,18 +72,8 @@ export function useOrdersSyncDemo(): OrdersSyncDemo {
 
     const playFrom = (index: number) => {
       if (index >= DEMO_RUN_SCRIPT.length) {
+        // The script's own `done` beats already settled each lane.
         stopTimers();
-        // The script's own `done` beats already settled each lane; stamp the
-        // sheet tab so the header shows the same provenance a real run does.
-        const base = runRef.current;
-        if (base) {
-          const settled = completeSyncRunLane(base, 'sheets', {
-            ok: true,
-            tabName: DEMO_RUN_TAB_NAME,
-          });
-          runRef.current = settled;
-          setRun(settled);
-        }
         setIsRunning(false);
         setOutcome(DEMO_RUN_OUTCOME);
         return;
@@ -130,7 +114,7 @@ export function useOrdersSyncDemo(): OrdersSyncDemo {
   }, [stopTimers]);
 
   const detail = useMemo(
-    () => (run && !isRunning ? buildSyncRunDetail(DEMO_RUN_DETAIL_TABS) : null),
+    () => (run && !isRunning ? buildSyncRunDetail(DEMO_RUN_DETAIL_TAB) : null),
     [isRunning, run],
   );
 

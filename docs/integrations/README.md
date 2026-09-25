@@ -86,14 +86,17 @@ display card + Connect button + `/api/integrations/nango/*` flow already exist.
 
 - **Connection-driven sync** — `connectorsWithCapability('orders')` feeds the
   orchestrator; "Sync now" → `POST /api/integrations/<provider>/sync`; the cron
-  `/api/cron/integrations/sync?providers=ebay,…` runs the same path on a schedule
-  (currently `*/15 * * * *`, `?providers=ebay`). See
-  `docs/integrations-oauth-connection-plan.md`.
+  `/api/cron/integrations/sync?providers=square` runs the same path every 15 minutes.
+  See `docs/integrations-oauth-connection-plan.md`.
+- **ShipStation is the sole outbound-order importer** (2026-09-24) — the desk's Sync
+  ShipStation face and `/api/cron/shipstation/orders-sync` (08:00 + 14:00 PT). eBay,
+  Amazon, Ecwid and Google Sheets no longer pull orders (no connector `sync()`); their
+  connections stay for tokens, catalog, health and update-only backfills.
 - **`maxIntegrations`** — each connected provider counts against the org's plan ceiling
   (`src/lib/billing/plans.ts`).
-- **Per-provider crons** — Zoho, Amazon, Google Sheets, and the shipping carriers run
-  their own dedicated crons rather than the generic orchestrator (see each doc). All cron
-  routes authenticate with `Bearer ${CRON_SECRET}` (a Vercel **Sensitive** var — env
+- **Per-provider crons** — Zoho, ShipStation and the shipping carriers run their own
+  dedicated crons rather than the generic 15-minute orchestrator run (see each doc). All
+  cron routes authenticate with `Bearer ${CRON_SECRET}` (a Vercel **Sensitive** var — env
   changes require a redeploy or the crons 401).
 
 ## Conventions every doc follows

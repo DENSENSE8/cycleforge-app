@@ -44,10 +44,11 @@ separate feature, below.)
     `currency` = `total_money.currency`, `ON CONFLICT idx_orders_unique_account_order`),
   - advances the watermark only on a clean run, returns `SyncOutcome`.
 - **Wired in:** `'square'` added to `SOURCE_PLATFORMS` (label/tone) and to the
-  orchestrator cron (`/api/cron/integrations/sync?providers=ebay,square`, `*/15`).
+  orchestrator cron (`/api/cron/integrations/sync?providers=square`, `*/15`) — the only
+  provider that cron still drives (walk-in POS orders are not in ShipStation).
 
 So **"Sync now"** (`POST /api/integrations/square/sync`, `admin.manage_features`) and the
-cron now pull Square orders for any connected org — same path as eBay/Amazon.
+cron pull Square orders for any connected org.
 
 ## Notes / follow-ups
 

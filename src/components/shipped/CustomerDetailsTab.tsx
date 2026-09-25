@@ -7,24 +7,12 @@ import { sectionLabel, fieldLabel, dataValue } from '@/design-system/tokens/typo
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
-
-interface CustomerRecord {
-  id: number;
-  display_name: string | null;
-  customer_name: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
-  mobile: string | null;
-  shipping_address_1: string | null;
-  shipping_address_2: string | null;
-  shipping_city: string | null;
-  shipping_state: string | null;
-  shipping_postal_code: string | null;
-  shipping_country: string | null;
-  created_at: string | null;
-}
+import {
+  customerAddressLines,
+  customerFullName,
+  customerPhone,
+  type CustomerRecord,
+} from '@/lib/customers/customer-display';
 
 interface CustomerDetailsTabProps {
   customerId?: number | null;
@@ -34,18 +22,6 @@ interface CustomerDetailsTabProps {
    * keeps the slide-over / full-page gutter so existing call sites are unchanged.
    */
   bare?: boolean;
-}
-
-function fullName(c: CustomerRecord): string {
-  return (
-    c.display_name || c.customer_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || ''
-  ).trim();
-}
-
-function addressLines(c: CustomerRecord): string[] {
-  const street = [c.shipping_address_1, c.shipping_address_2].filter(Boolean).join(', ');
-  const cityLine = [c.shipping_city, c.shipping_state, c.shipping_postal_code].filter(Boolean).join(' ');
-  return [street, cityLine, c.shipping_country || ''].map((s) => s.trim()).filter(Boolean);
 }
 
 export function CustomerDetailsTab({ customerId, bare = false }: CustomerDetailsTabProps) {
@@ -123,9 +99,9 @@ export function CustomerDetailsTab({ customerId, bare = false }: CustomerDetails
     );
   }
 
-  const name = fullName(data);
-  const phone = data.phone || data.mobile || '';
-  const lines = addressLines(data);
+  const name = customerFullName(data);
+  const phone = customerPhone(data);
+  const lines = customerAddressLines(data);
   const fullAddress = [name, ...lines].filter(Boolean).join('\n');
   const hasAnything = !!name || !!data.email || !!phone || lines.length > 0;
 

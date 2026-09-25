@@ -49,10 +49,10 @@
  * ## Sync is the primary; platforms, export, and manual add are in the menu
  *
  * Operator direction (2026-08-31 / 2026-09-01). The desk's dominant intake is
- * a bulk pull — Google Sheet on the face, connected channels in the chevron
- * (`Sync eBay · {connection}`, `Sync Amazon · {connection}`, `Sync Ecwid ·
- * {store}`, Sync more). Export CSV tucks into the same menu (not a header
- * `overall` button).
+ * a bulk pull — ShipStation, the org's one primary order source, on the face
+ * (**Sync ShipStation**), other connected order sources in the chevron
+ * (`Sync {channel} · {connection}`, Sync more). Export CSV tucks into the
+ * same menu (not a header `overall` button).
  * One-at-a-time typing stays the exception. (The single-order acknowledgment
  * intake still has its own front door: the `?triage=` overlay, reachable from
  * the Exceptions tab and deep links.)
@@ -78,7 +78,7 @@ import { useToShipPlatformSyncMenu } from '@/components/outbound/orders/useToShi
  *
  * `demo` runs the SCRIPTED import (sample rows, no network, no writes) through
  * the same run surface as the real one, so the feedback can be reviewed and
- * demoed without touching the production Google Sheet (operator 2026-09-15).
+ * demoed without touching production orders (operator 2026-09-15).
  */
 export type OrderIntakeMethod = 'file' | 'sync' | 'demo' | 'test';
 
@@ -115,7 +115,7 @@ export function OrdersDeskAddAction({
       <DeskHeaderSplitAction
         tone="blue"
         icon={<RefreshCw aria-hidden className="h-3.5 w-3.5" />}
-        label={syncing ? (syncProgressLabel ?? 'Syncing…') : 'Sync Google Sheet'}
+        label={syncing ? (syncProgressLabel ?? 'Syncing…') : 'Sync ShipStation'}
         loading={syncing}
         onClick={() => onMethod('sync')}
         menuPlacement="bottom"

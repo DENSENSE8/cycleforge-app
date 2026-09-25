@@ -14,6 +14,7 @@
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { skuCatalogNoZohoTwinPredicateSql } from '@/lib/sku/sku-identity-law';
 
 /** Which gallery — a catalog SKU's reusable set, or a single unit's set. */
 export type ListingTarget = { kind: 'sku'; id: number } | { kind: 'unit'; id: number };
@@ -40,6 +41,26 @@ export interface ListingPhotoDeps {
 const defaultDeps: ListingPhotoDeps = { tenantQuery, withTenantTransaction };
 
 export class ListingTargetError extends Error {}
+
+/**
+ * `productImageUrl`'s last tier as SQL, for readers that resolve the product
+ * photo in the query: the thumb URL (`photoContentUrl(id, 'thumb')`) of the
+ * SKU gallery's cover. Guarded so it is the LOWEST tier whatever the caller's
+ * COALESCE order: it yields nothing when the catalog row has its own photo or
+ * an active Zoho item owns the SKU (the SKU identity law's photo rule).
+ *
+ * @param catalogAlias alias of the resolved `sku_catalog` row in the caller.
+ */
+export function listingCoverThumbUrlSql(catalogAlias: string): string {
+  return `(SELECT '/api/photos/' || lp.photo_id || '/content?variant=thumb'
+             FROM listing_photos lp
+            WHERE lp.organization_id = ${catalogAlias}.organization_id
+              AND lp.sku_catalog_id = ${catalogAlias}.id
+              AND lp.is_cover
+              AND NULLIF(BTRIM(${catalogAlias}.image_url), '') IS NULL
+              AND ${skuCatalogNoZohoTwinPredicateSql(catalogAlias)}
+            LIMIT 1)`;
+}
 
 /** The target column + bound value for a gallery, validated. */
 function targetColumn(target: ListingTarget): { column: 'sku_catalog_id' | 'serial_unit_id'; id: number } {
@@ -97,45 +118,63 @@ export async function addPhotosToListing(
   channel: ListingChannelRefs = {},
   deps: ListingPhotoDeps = defaultDeps,
 ): Promise<ListingGalleryItem[]> {
+  if (!photoIds.some((n) => Number.isFinite(n) && n > 0)) return getListingGallery(orgId, target, deps);
+  return deps.withTenantTransaction(orgId, (client) =>
+    addPhotosToListingInTx(client, orgId, target, photoIds, channel),
+  );
+}
+
+/**
+ * {@link addPhotosToListing} on a caller-owned transaction, so the append
+ * commits or rolls back together with the caller's other writes (e.g. the
+ * photo row it attaches).
+ */
+export async function addPhotosToListingInTx(
+  client: PoolClient,
+  orgId: OrgId,
+  target: ListingTarget,
+  photoIds: number[],
+  channel: ListingChannelRefs = {},
+): Promise<ListingGalleryItem[]> {
   const { column, id } = targetColumn(target);
   const ids = Array.from(new Set(photoIds.filter((n) => Number.isFinite(n) && n > 0)));
-  if (ids.length === 0) return getListingGallery(orgId, target, deps);
+  if (ids.length === 0) return readGallery(client, orgId, column, id);
 
-  return deps.withTenantTransaction(orgId, async (client) => {
-    const startRes = await client.query<{ next: number; count: number }>(
-      `SELECT COALESCE(MAX(sort_order) + 1, 0) AS next, COUNT(*)::int AS count
-         FROM listing_photos
-        WHERE organization_id = $1 AND ${column} = $2`,
-      [orgId, id],
-    );
-    const startOrder = Number(startRes.rows[0]?.next ?? 0);
-    const wasEmpty = Number(startRes.rows[0]?.count ?? 0) === 0;
+  const startRes = await client.query<{ next: number; count: number }>(
+    `SELECT COALESCE(MAX(sort_order) + 1, 0) AS next, COUNT(*)::int AS count
+       FROM listing_photos
+      WHERE organization_id = $1 AND ${column} = $2`,
+    [orgId, id],
+  );
+  const startOrder = Number(startRes.rows[0]?.next ?? 0);
+  const wasEmpty = Number(startRes.rows[0]?.count ?? 0) === 0;
 
-    // Insert in array order; ordinality drives the contiguous sort_order. The
-    // first row of a previously-empty gallery is stamped as cover.
-    await client.query(
-      `INSERT INTO listing_photos
-         (organization_id, photo_id, ${column}, platform_listing_id, serial_unit_listing_id,
-          sort_order, is_cover)
-       SELECT $1, v.pid, $2, $5, $6,
-              $3 + (v.ord - 1),
-              ($7::boolean AND v.ord = 1)
-         FROM unnest($4::bigint[]) WITH ORDINALITY AS v(pid, ord)
-         JOIN photos p ON p.id = v.pid AND p.organization_id = $1
-       ON CONFLICT (organization_id, ${column}, photo_id) DO NOTHING`,
-      [
-        orgId,
-        id,
-        startOrder,
-        ids,
-        channel.platformListingId ?? null,
-        channel.serialUnitListingId ?? null,
-        wasEmpty,
-      ],
-    );
+  // Insert in array order; ordinality drives the contiguous sort_order. The
+  // first row of a previously-empty gallery is stamped as cover. The unique
+  // photo index is PARTIAL (`WHERE <column> IS NOT NULL`), so the conflict
+  // target must restate that predicate or Postgres cannot infer it (42P10).
+  await client.query(
+    `INSERT INTO listing_photos
+       (organization_id, photo_id, ${column}, platform_listing_id, serial_unit_listing_id,
+        sort_order, is_cover)
+     SELECT $1, v.pid, $2, $5, $6,
+            $3 + (v.ord - 1),
+            ($7::boolean AND v.ord = 1)
+       FROM unnest($4::bigint[]) WITH ORDINALITY AS v(pid, ord)
+       JOIN photos p ON p.id = v.pid AND p.organization_id = $1
+     ON CONFLICT (organization_id, ${column}, photo_id) WHERE ${column} IS NOT NULL DO NOTHING`,
+    [
+      orgId,
+      id,
+      startOrder,
+      ids,
+      channel.platformListingId ?? null,
+      channel.serialUnitListingId ?? null,
+      wasEmpty,
+    ],
+  );
 
-    return readGallery(client, orgId, column, id);
-  });
+  return readGallery(client, orgId, column, id);
 }
 
 /** Reorder the gallery so sort_order matches `orderedPhotoIds`. Unknown ids are ignored. */

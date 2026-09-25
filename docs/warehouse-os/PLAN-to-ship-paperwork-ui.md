@@ -63,7 +63,7 @@ What that is **not**:
 
 | Piece | Grain | Existing engine |
 |---|---|---|
-| Manuals | SKU / item number (`sku_catalog_id`) | `listAssignedManualsForOrder`, `promoteProductManualToDocument` |
+| Manuals + paired paperwork (packing list, PL + M…) | This order (`order_id`) > item number > SKU (`sku` / `sku_catalog_id`) on one `product_manuals` row — precedence order, nothing shadowed | `lib/manuals/paperwork-pairing.ts` (rules), `lib/manuals/order-manuals.ts` (`listOrderManuals`, `listOrderPaperworkForPrint` → `listAssignedManualsForOrder`), `/api/orders/[id]/manuals*` |
 | Shipping label + packing slip | Order (+ shipment) | `OrderDocumentsSection`, `BuyLabelSection`, `attachOutboundDocument` |
 | Pack print | Order | `dispatchPrintBundle` / `resolvePrintBundle` |
 

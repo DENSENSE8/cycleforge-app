@@ -7,12 +7,8 @@
 import type { PermissionString } from '@/lib/auth/permissions';
 
 export function syncPermissionForProvider(provider: string): PermissionString {
-  if (provider === 'ebay') return 'integrations.ebay';
-  if (provider === 'amazon') return 'integrations.amazon';
-  if (provider === 'zoho') return 'integrations.zoho';
-  // Order-import sources whose sync replaces the legacy transfer-orders
-  // buttons (INT-020) keep the permission those buttons required, so the
-  // Unshipped sidebar's importers don't silently start 403ing operators.
-  if (provider === 'google_sheets' || provider === 'ecwid') return 'orders.import';
+  // ShipStation is the desk's Sync face — the order import every operator with
+  // `orders.import` runs. Every other wired sync is an admin action.
+  if (provider === 'shipstation') return 'orders.import';
   return 'admin.manage_features';
 }

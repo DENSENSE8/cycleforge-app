@@ -881,3 +881,41 @@ test('regression: shipping.view gates the browser-fallback paperwork print route
   assert.equal(r.permission, 'shipping.view');
   assert.deepEqual(r.methods, ['POST']);
 });
+
+test('regression: shipping.view gates the ShipStation key health probe', () => {
+  // The v1+v2 key probe decides whether an org's orders run through ShipStation
+  // only (Google Sheets retired). Read-only; any shipping viewer may check it.
+  const r = routeByPath('/api/integrations/shipstation/health/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'shipping.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
+test('regression: shipping.view gates the order label-purchase read', () => {
+  // The To-ship evidence column's Label block: who bought which label, for how
+  // much. Read-only, param route (requireRoutePerm), never ungated.
+  const r = routeByPath('/api/orders/[id]/label-purchase/route.ts');
+  assert.ok(r);
+  assert.equal(r.gate, 'requireRoutePerm');
+  assert.equal(r.permission, 'shipping.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
+test('regression: label pairing + price routes carry their gates (Link label, ticket, print proxy, price panel)', () => {
+  // Link label searches ShipStation and writes the label ledger — the same
+  // permission as buying one. Ticket links ride the helpdesk waist's gate.
+  const pinned: Array<[string, string, string[]]> = [
+    ['/api/orders/[id]/labels/route.ts', 'shipping.buy_label', ['GET', 'POST']],
+    ['/api/orders/[id]/labels/[labelId]/route.ts', 'shipping.buy_label', ['DELETE']],
+    ['/api/orders/[id]/labels/[labelId]/ticket/route.ts', 'integrations.zendesk', ['POST', 'DELETE']],
+    ['/api/orders/[id]/labels/[labelId]/pdf/route.ts', 'shipping.view', ['GET']],
+    ['/api/orders/[id]/price-breakdown/route.ts', 'orders.view', ['GET']],
+  ];
+  for (const [path, permission, methods] of pinned) {
+    const r = routeByPath(path);
+    assert.ok(r, `${path} should be in the manifest`);
+    assert.equal(r.gate, 'requireRoutePerm', path);
+    assert.equal(r.permission, permission, path);
+    assert.deepEqual([...r.methods].sort(), [...methods].sort(), path);
+  }
+});

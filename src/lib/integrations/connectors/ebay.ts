@@ -1,18 +1,17 @@
 /**
- * eBay connector sync + validate + refresh adapters — wrap the EXISTING
- * per-account eBay sync (`syncAccountOrders`) and the /api/ebay/health check
- * logic so a connection drives ingestion and credential validation across the
- * org's active eBay accounts. Lazily imported by the registry so the
- * lightweight connection reader never pulls in the eBay client.
+ * eBay connector validate + refresh adapters — the /api/ebay/health check logic
+ * and scoped token rotation across the org's active eBay accounts. Lazily
+ * imported by the registry so the lightweight connection reader never pulls in
+ * the eBay client.
+ *
+ * No order sync: ShipStation is the sole outbound-order importer (owner
+ * 2026-09-24), and it already aggregates the eBay stores.
  *
  * User tokens live in organization_integrations (scoped seller:/buyer:).
  */
-import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { EbayClient } from '@/lib/ebay/client';
 import {
-  EBAY_PLATFORM_PREDICATE,
-  EBAY_SELLER_ROLE_PREDICATE,
   getEbayAppCreds,
   listActiveEbayAccounts,
   parseEbayAccountScope,
@@ -22,34 +21,7 @@ import {
 } from '@/lib/ebay/credentials';
 import { ebayIdentityEndpoint, ebayScopeStringForRole } from '@/lib/ebay/oauth-config';
 import { refreshEbayAccessToken } from '@/lib/ebay/token-refresh';
-import { syncAccountOrders } from '@/lib/ebay/sync';
-import type { HealthResult, SyncOutcome, TokenEnvelope } from './types';
-
-export async function ebaySync(orgId: OrgId): Promise<SyncOutcome> {
-  // Seller accounts only — buyer purchasing tokens lack sell.fulfillment and
-  // are synced by /api/cron/ebay/purchase-sync → Incoming.
-  const { rows } = await pool.query<{ account_name: string }>(
-    `SELECT account_name FROM ebay_accounts
-      WHERE organization_id = $1 AND is_active = true
-        AND ${EBAY_PLATFORM_PREDICATE}
-        AND ${EBAY_SELLER_ROLE_PREDICATE}
-      ORDER BY account_name`,
-    [orgId],
-  );
-  if (rows.length === 0) return { ok: true, imported: 0, updated: 0 };
-
-  let imported = 0;
-  const errors: string[] = [];
-  for (const { account_name } of rows) {
-    try {
-      const r = await syncAccountOrders(account_name, orgId);
-      imported += r.createdOrders ?? 0;
-    } catch (e) {
-      errors.push(`${account_name}: ${e instanceof Error ? e.message : String(e)}`);
-    }
-  }
-  return { ok: errors.length === 0, imported, error: errors.length ? errors.join('; ') : undefined };
-}
+import type { HealthResult, TokenEnvelope } from './types';
 
 /**
  * connector.refresh() — rotate one scoped vault connection (or all active

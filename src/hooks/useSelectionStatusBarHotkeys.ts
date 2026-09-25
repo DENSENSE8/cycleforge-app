@@ -56,6 +56,8 @@ export const SELECTION_STATUS_BAR_META: Record<
   'print-shipping': { label: 'Shipping labels', variant: 'secondary', hotkey: 's' },
   // Label · slip · manuals in one dialog when the pack print station is down.
   'print-paperwork': { label: 'Paperwork', variant: 'secondary', hotkey: 'w' },
+  // Pair a ShipStation label (return / replacement / outside buy) with ONE order.
+  'link-label': { label: 'Link label', variant: 'secondary', hotkey: 'j' },
   'scan-out': { label: 'Scan out', variant: 'success', hotkey: 'x' },
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
   urgent: { label: 'Urgent', variant: 'warning', hotkey: 'u' },

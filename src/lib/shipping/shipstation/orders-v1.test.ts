@@ -98,7 +98,7 @@ test('listOrders: maps buyer identity (customerId, email, billTo) onto the norma
     assert.equal(order.shipTo?.addressLine2, 'Suite 200');
     assert.equal(order.shipTo?.company, 'Example Inc');
     assert.deepEqual(order.items, [
-      { sku: 'WIDGET-1', name: 'Blue Widget', quantity: 2, unitPrice: 19.99, weightOz: 16 },
+      { sku: 'WIDGET-1', name: 'Blue Widget', quantity: 2, unitPrice: 19.99, weightOz: 16, lineItemKey: null, orderItemId: null, upc: null, imageUrl: null, options: [], adjustment: false },
     ]);
   } finally {
     restore();
@@ -191,6 +191,163 @@ test('listStores: maps the connected storefronts and their marketplaces', async 
     assert.equal(stores[0].marketplace, 'eBay');
     assert.equal(stores[1].storeId, 100248);
     assert.equal(stores[2].marketplace, null, 'a store with no marketplace degrades, never throws');
+  } finally {
+    restore();
+  }
+});
+
+test('listShipments: sends the documented v1 filters and maps docs-shaped rows, skipping unparseable ones', async () => {
+  const restore = stubFetch({
+    '/shipments': {
+      shipments: [
+        {
+          shipmentId: 33974374,
+          orderId: 43945660,
+          orderNumber: '100038-1',
+          createDate: '2014-10-03T06:51:33.6270000',
+          shipDate: '2014-10-03',
+          trackingNumber: ' 9400111899561704681189 ',
+          isReturnLabel: false,
+          carrierCode: 'stamps_com',
+          serviceCode: 'usps_first_class_mail',
+          voided: false,
+          voidDate: null,
+          shipmentCost: 1.93,
+          insuranceCost: 0,
+        },
+        { shipmentId: 33974375, orderNumber: '100028', trackingNumber: '', voided: true },
+        { shipmentId: 'not-a-number', orderNumber: 'X' },
+      ],
+      total: 3,
+      page: 1,
+      pages: 2,
+    },
+  });
+  const stubbed = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+    urls.push(String(url));
+    return stubbed(url, init);
+  }) as typeof fetch;
+  try {
+    const client = createShipStationV1Client('k', 's', 'http://mock.local');
+    const res = await client.listShipments({ createDateStart: '2026-09-01T00:00:00.000Z', page: 1, pageSize: 50 });
+    const q = new URL(urls[0]).searchParams;
+    assert.equal(new URL(urls[0]).pathname, '/shipments');
+    assert.equal(q.get('createDateStart'), '2026-09-01T00:00:00.000Z');
+    assert.equal(q.get('sortBy'), 'CreateDate');
+    assert.equal(q.get('pageSize'), '50');
+    assert.equal(q.has('shipDateStart'), false, 'unset filters are not sent');
+
+    assert.equal(res.shipments.length, 2, 'the row with a non-numeric shipmentId is skipped, not fatal');
+    assert.equal(res.pages, 2);
+    assert.deepEqual(res.shipments[0], {
+      shipmentId: 33974374,
+      orderId: 43945660,
+      orderNumber: '100038-1',
+      createDate: '2014-10-03T06:51:33.6270000',
+      shipDate: '2014-10-03',
+      trackingNumber: '9400111899561704681189',
+      carrierCode: 'stamps_com',
+      serviceCode: 'usps_first_class_mail',
+      isReturnLabel: false,
+      voided: false,
+      shipmentCost: 1.93,
+      insuranceCost: 0,
+    });
+    assert.equal(res.shipments[1].voided, true);
+    assert.equal(res.shipments[1].trackingNumber, null, 'blank tracking degrades to null');
+    assert.equal(res.shipments[1].orderId, null);
+  } finally {
+    globalThis.fetch = stubbed;
+    restore();
+  }
+});
+
+test('listStores: v1 answers a bare array; inactive stores are requested and flagged', async () => {
+  const restore = stubFetch({
+    '/stores': [
+      { storeId: 246252, storeName: 'New Ecwid by Lightspeed Store', marketplaceId: 92, marketplaceName: 'Ecwid by Lightspeed', active: true },
+      { storeId: 216557, storeName: 'New eBay Store', marketplaceId: 144, marketplaceName: 'eBay', active: false },
+    ],
+  });
+  const stubbed = globalThis.fetch;
+  const urls: string[] = [];
+  globalThis.fetch = ((url: string | URL, init?: RequestInit) => {
+    urls.push(String(url));
+    return stubbed(url, init);
+  }) as typeof fetch;
+  try {
+    const stores = await createShipStationV1Client('k', 's', 'http://mock.local').listStores();
+    assert.equal(new URL(urls[0]).searchParams.get('showInactive'), 'true');
+    assert.deepEqual(
+      stores.map((s) => [s.storeId, s.marketplaceId, s.marketplaceName, s.active]),
+      [
+        [246252, 92, 'Ecwid by Lightspeed', true],
+        [216557, 144, 'eBay', false],
+      ],
+    );
+  } finally {
+    globalThis.fetch = stubbed;
+    restore();
+  }
+});
+
+test('listOrders: keeps the full order detail (money, dates, notes, gift, service, lines, split flag)', async () => {
+  const restore = stubFetch({
+    '/orders': {
+      orders: [
+        {
+          orderId: 318121813,
+          orderNumber: '100602',
+          orderKey: 'bba48a9d',
+          orderDate: '2026-09-01T07:09:35.1400000',
+          paymentDate: '2026-09-01T10:02:29.0000000',
+          shipByDate: '2026-09-03T00:00:00.0000000',
+          orderStatus: 'shipped',
+          amountPaid: 25.5,
+          taxAmount: 1.5,
+          shippingAmount: 4,
+          customerNotes: ' leave at door ',
+          internalNotes: 'fragile',
+          gift: true,
+          giftMessage: 'Happy birthday',
+          requestedShippingService: 'Standard',
+          dimensions: { units: 'inches', length: 16, width: 12, height: 6 },
+          advancedOptions: { storeId: 213534, source: null, mergedOrSplit: true },
+          items: [
+            {
+              sku: 'A-1',
+              name: 'Speaker',
+              quantity: 2,
+              unitPrice: 10,
+              lineItemKey: '123-LINE',
+              orderItemId: 9,
+              options: [{ name: 'Color', value: 'Black' }],
+            },
+            { sku: null, name: 'Discount', quantity: 1, unitPrice: -2, adjustment: true },
+          ],
+        },
+      ],
+      total: 1,
+      page: 1,
+      pages: 1,
+    },
+  });
+  try {
+    const [order] = (await createShipStationV1Client('k', 's', 'http://mock.local').listOrders()).orders;
+    assert.equal(order.amountPaid, 25.5);
+    assert.equal(order.paymentDate, '2026-09-01T10:02:29.0000000');
+    assert.equal(order.shipByDate, '2026-09-03T00:00:00.0000000');
+    assert.equal(order.customerNotes, 'leave at door');
+    assert.equal(order.gift, true);
+    assert.equal(order.requestedShippingService, 'Standard');
+    assert.equal(order.mergedOrSplit, true);
+    assert.deepEqual(order.dimensions, { length: 16, width: 12, height: 6, units: 'inches' });
+    assert.equal(order.items.length, 2);
+    assert.deepEqual(order.items[0].options, [{ name: 'Color', value: 'Black' }]);
+    assert.equal(order.items[0].lineItemKey, '123-LINE');
+    assert.equal(order.items[1].adjustment, true);
   } finally {
     restore();
   }

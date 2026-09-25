@@ -25,28 +25,27 @@ import {
 import { buildSyncRunDetail } from '@/lib/orders-sync/run-detail';
 
 /**
- * The "Import Latest Orders" sync orchestration — Google Sheets + Ecwid Direct
- * imports run in parallel through the connection-driven sync API
- * (`POST /api/integrations/[provider]/sync`, INT-020 — retiring the legacy
- * transfer-orders endpoints for this surface), then the Resolved Exceptions
- * pass streams as NDJSON. This is the ONE order-import implementation on any
- * surface: the desk CTA over the table, `/m/orders/sync`, and the chrome
- * popover all drive this hook. The rival copy — `useOrdersImport` behind the
- * dashboard sidebar's import card, with its own state, its own numbers and the
- * legacy NDJSON routes — was deleted with that unreachable card (2026-09-15).
+ * The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE
+ * order import, through the connection-driven sync API
+ * (`POST /api/integrations/shipstation/sync`, INT-020), then the Resolved
+ * Exceptions pass streams as NDJSON. There is no source switch: an org without
+ * live ShipStation keys sees the ShipStation route's own error as the lane
+ * error. This is the ONE order-import implementation on any surface: the desk
+ * CTA over the table, `/m/orders/sync`, and the chrome popover all drive this
+ * hook. The rival copy — `useOrdersImport` behind the dashboard sidebar's
+ * import card, with its own state, its own numbers and the legacy NDJSON
+ * routes — was deleted with that unreachable card (2026-09-15).
  */
 export interface OrdersSyncStatus {
   type: 'success' | 'error';
   message: string;
   details?: {
-    tabName?: string;
     inserted?: number;
     updated?: number;
     trackingAttached?: number;
     unresolvedTracking?: number;
     processedRows?: number;
     exceptionsResolved?: number;
-    ecwidInserted?: number;
     durationMs?: number;
   };
 }
@@ -54,10 +53,8 @@ export interface OrdersSyncStatus {
 function phaseSummary(phase: SyncPhase, count?: number): string {
   switch (phase) {
     case 'starting': return 'Starting…';
-    case 'fetching_sheet': return 'Fetching sheet…';
-    case 'fetching_ecwid': return 'Fetching Ecwid orders…';
+    case 'fetching_shipstation': return 'Fetching ShipStation orders…';
     case 'resolving_tracking': return count ? `Resolving ${count} tracking number${count === 1 ? '' : 's'}…` : 'Resolving tracking…';
-    case 'matching_orders': return 'Matching orders…';
     case 'inserting': return count ? `Inserting ${count} order${count === 1 ? '' : 's'}…` : 'Inserting…';
     case 'updating': return count ? `Updating ${count} order${count === 1 ? '' : 's'}…` : 'Updating…';
     case 'publishing': return 'Publishing changes…';
@@ -84,11 +81,7 @@ function coerceTransferDetails(value: unknown): TransferOrderDetails {
   const empty = emptyTransferDetails();
   if (!value || typeof value !== 'object') return empty;
   const src = value as Record<string, unknown>;
-  // Scoped to the TransferOrderDetail-shaped buckets. `skippedRows` holds a
-  // different row type and is narrowed separately below — a single generic
-  // helper over every key would widen the return to the union of both.
-  type DetailBucket = Exclude<keyof TransferOrderDetails, 'skippedRows' | 'recoveredRows'>;
-  const bucket = (key: DetailBucket): TransferOrderDetail[] =>
+  const bucket = (key: keyof TransferOrderDetails): TransferOrderDetail[] =>
     Array.isArray(src[key]) ? (src[key] as TransferOrderDetail[]) : [];
   return {
     inserted: bucket('inserted'),
@@ -97,12 +90,7 @@ function coerceTransferDetails(value: unknown): TransferOrderDetails {
     unknownTitle: bucket('unknownTitle'),
     unresolvedTracking: bucket('unresolvedTracking'),
     unmatchedCatalog: bucket('unmatchedCatalog'),
-    skippedRows: Array.isArray(src.skippedRows)
-      ? (src.skippedRows as TransferOrderDetails['skippedRows'])
-      : [],
-    recoveredRows: Array.isArray(src.recoveredRows)
-      ? (src.recoveredRows as TransferOrderDetails['recoveredRows'])
-      : [],
+    quarantined: bucket('quarantined'),
   };
 }
 
@@ -145,8 +133,7 @@ function readStreamError(raw: string): string {
 
 export function useOrdersSync() {
   const queryClient = useQueryClient();
-  const [sheetsTask, setSheetsTask] = useState<TransferTabState>({ status: 'idle' });
-  const [ecwidTask, setEcwidTask] = useState<TransferTabState>({ status: 'idle' });
+  const [shipStationTask, setShipStationTask] = useState<TransferTabState>({ status: 'idle' });
   const [exceptionsTask, setExceptionsTask] = useState<ExceptionsTabState>({ status: 'idle' });
   // `isSyncDialogOpen` is GONE (2026-09-15). The coupling it encoded was this
   // hook DRIVING a panel no surface showed: the flag existed to open the rail
@@ -157,12 +144,11 @@ export function useOrdersSync() {
   const [elapsedMs, setElapsedMs] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const [manualSheetName, setManualSheetName] = useState('');
   const [status, setStatus] = useState<OrdersSyncStatus | null>(null);
   /**
-   * The measured run ledger. Held in a ref as well as state because two lanes
-   * fold into it concurrently: reading `run` from the closure would let the
-   * Ecwid lane's fold overwrite the sheet lane's.
+   * The measured run ledger. Held in a ref as well as state because the
+   * stream folds into it batch by batch: reading `run` from the closure would
+   * let a later batch overwrite an earlier one.
    */
   const runRef = useRef<SyncRunState | null>(null);
   const [run, setRun] = useState<SyncRunState | null>(null);
@@ -177,7 +163,7 @@ export function useOrdersSync() {
   }, []);
 
   const completeRunLane = useCallback(
-    (lane: SyncRunLane, outcome: { ok: boolean; error?: string; tabName?: string }) => {
+    (lane: SyncRunLane, outcome: { ok: boolean; error?: string }) => {
       const base = runRef.current;
       if (!base) return;
       const next = completeSyncRunLane(base, lane, outcome);
@@ -199,16 +185,13 @@ export function useOrdersSync() {
   }, []);
 
   const isTransferring =
-    sheetsTask.status === 'running' ||
-    ecwidTask.status === 'running' ||
-    exceptionsTask.status === 'running';
+    shipStationTask.status === 'running' || exceptionsTask.status === 'running';
 
   const handleCancelTransfer = () => {
     abortRef.current?.abort();
     abortRef.current = null;
     clearInterval(elapsedRef.current ?? undefined);
-    setSheetsTask({ status: 'idle' });
-    setEcwidTask({ status: 'idle' });
+    setShipStationTask({ status: 'idle' });
     setExceptionsTask({ status: 'idle' });
     setStatus({ type: 'error', message: 'Import cancelled' });
     // The ledger KEEPS what already landed. Wiping the three tasks to idle
@@ -225,14 +208,13 @@ export function useOrdersSync() {
   const handleTransfer = async () => {
     const controller = new AbortController();
     abortRef.current = controller;
-    setSheetsTask({ status: 'running', details: emptyTransferDetails() });
-    setEcwidTask({ status: 'running', details: emptyTransferDetails() });
-    // Exceptions sync runs AFTER sheets+ecwid finish so that rows just inserted
-    // are visible to the matcher. Keep it idle/queued until then.
+    setShipStationTask({ status: 'running', details: emptyTransferDetails() });
+    // Exceptions sync runs AFTER ShipStation finishes so that rows just
+    // inserted are visible to the matcher. Keep it idle/queued until then.
     setExceptionsTask({ status: 'idle', summary: 'Queued' });
     setStatus(null);
     setElapsedMs(0);
-    const freshRun = createSyncRun(['sheets', 'ecwid', 'exceptions']);
+    const freshRun = createSyncRun(['shipstation', 'exceptions']);
     runRef.current = freshRun;
     setRun(freshRun);
     const t0 = Date.now();
@@ -253,8 +235,7 @@ export function useOrdersSync() {
     // once, when there is something to report — for the operator who navigated
     // away from the run.
 
-    let sheetsResultPayload: Record<string, unknown> | null = null;
-    let ecwidResultPayload: Record<string, unknown> | null = null;
+    let shipStationResultPayload: Record<string, unknown> | null = null;
     let exceptionsResultPayload: Record<string, unknown> | null = null;
 
     // Fires React Query invalidate + global refresh event so the dashboard
@@ -264,18 +245,16 @@ export function useOrdersSync() {
       dispatchUsavRefreshData();
     };
 
-    // Connection-driven import (INT-020): one POST to the provider's sync API.
+    // Connection-driven import (INT-020): one POST to ShipStation's sync API.
     // `Accept: application/x-ndjson` makes that POST STREAM — every phase and
     // per-row detail as it happens — and the terminal `result` line carries the
-    // same SyncOutcome the JSON form returns, so the per-tab state below is
-    // built from exactly the payload it always was.
-    const runConnectorSync = async (
-      provider: 'google_sheets' | 'ecwid',
-      lane: SyncRunLane,
-      body: Record<string, unknown> | undefined,
-      setter: typeof setSheetsTask,
-    ): Promise<{ payload: Record<string, unknown> | null; error?: string }> => {
-      setter({
+    // same SyncOutcome the JSON form returns, so the task state below is built
+    // from exactly the payload it always was.
+    const runShipStationSync = async (): Promise<{
+      payload: Record<string, unknown> | null;
+      error?: string;
+    }> => {
+      setShipStationTask({
         status: 'running',
         summary: 'Syncing…',
         phase: 'starting',
@@ -286,16 +265,16 @@ export function useOrdersSync() {
       let lastError: string | undefined;
       try {
         await streamNdjson(
-          `/api/integrations/${provider}/sync`,
+          '/api/integrations/shipstation/sync',
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: NDJSON_ACCEPT },
-            body: JSON.stringify(body ?? {}),
+            body: '{}',
             signal: controller.signal,
           },
           {
             onBatch: (events) => {
-              foldRun(lane, events);
+              foldRun('shipstation', events);
               let lastPhase: { phase: SyncPhase; count?: number } | undefined;
               for (const event of events) {
                 if (event.type === 'phase') {
@@ -308,7 +287,7 @@ export function useOrdersSync() {
               }
               if (!lastPhase) return;
               const phase = lastPhase;
-              setter((prev) => ({
+              setShipStationTask((prev) => ({
                 ...prev,
                 status: 'running',
                 phase: phase.phase,
@@ -334,31 +313,15 @@ export function useOrdersSync() {
       // emptyTransferDetails(), so the per-row inserted/updated/unmatched-catalog
       // lists drew nothing no matter what the import did — first in the deleted
       // `OrderSyncDialog`, now in `runDetail` → OrderSyncRunDetailSheet.
-      // SyncOutcome now carries `details`; fall back to empty
-      // only for a provider that genuinely sends none.
+      // SyncOutcome now carries `details`; fall back to empty only when the
+      // connector genuinely sends none.
       const detailsFromSync = coerceTransferDetails(data.details);
 
-      // Surface the skip breakdown in the summary. Without it, "every row was
-      // skipped for a blank Item Number" and "the sheet is already imported"
-      // both read as a bare "Up to date", which is the single most misleading
-      // thing this panel can say.
       const stats = (data.stats ?? {}) as Record<string, number>;
-      const skipped =
-        (stats.skippedNoItemNumber ?? 0) +
-        (stats.skippedNoTracking ?? 0) +
-        (stats.skippedNoOrderId ?? 0);
-      // "needs a fix", not "skipped": this counts only the ACTIONABLE reasons,
-      // while the panel header counts every listed skip. Two different numbers
-      // under one word ("11 skipped" beside "21 rows skipped") reads as a bug.
-      if (skipped > 0) parts.push(`${skipped} need${skipped === 1 ? 's' : ''} a fix`);
 
-      completeRunLane(lane, {
-        ok: success,
-        error: lastError,
-        tabName: typeof data.tabName === 'string' ? data.tabName : undefined,
-      });
+      completeRunLane('shipstation', { ok: success, error: lastError });
 
-      setter({
+      setShipStationTask({
         status: success ? 'done' : 'error',
         summary: success
           ? (parts.length > 0 ? (parts.join(', ') as string) : 'Up to date')
@@ -449,17 +412,8 @@ export function useOrdersSync() {
     };
 
     try {
-      const [sheetsR, ecwidR] = await Promise.all([
-        runConnectorSync(
-          'google_sheets',
-          'sheets',
-          { manualSheetName: manualSheetName.trim() || undefined },
-          setSheetsTask,
-        ),
-        runConnectorSync('ecwid', 'ecwid', undefined, setEcwidTask),
-      ]);
-      sheetsResultPayload = sheetsR.payload;
-      ecwidResultPayload = ecwidR.payload;
+      const shipStationR = await runShipStationSync();
+      shipStationResultPayload = shipStationR.payload;
 
       setExceptionsTask({ status: 'running', phase: 'starting' });
       const exceptionsR = await consumeExceptionsStream('/api/orders-exceptions/sync', {
@@ -477,20 +431,16 @@ export function useOrdersSync() {
       });
       exceptionsResultPayload = exceptionsR.payload;
 
-      const totalInserted = Number(sheetsResultPayload?.insertedOrders || 0)
-        + Number(ecwidResultPayload?.insertedOrders || 0);
-      const totalUpdated = Number(sheetsResultPayload?.updatedOrdersFields || 0)
-        + Number(ecwidResultPayload?.updatedOrdersFields || 0);
-      const totalTracking = Number(sheetsResultPayload?.updatedOrdersTracking || 0)
-        + Number(ecwidResultPayload?.updatedOrdersTracking || 0);
-      const totalUnresolved = Number(sheetsResultPayload?.unresolvedTrackingCount || 0)
-        + Number(ecwidResultPayload?.unresolvedTrackingCount || 0);
+      const totalInserted = Number(shipStationResultPayload?.insertedOrders || 0);
+      const totalUpdated = Number(shipStationResultPayload?.updatedOrdersFields || 0);
+      const totalTracking = Number(shipStationResultPayload?.updatedOrdersTracking || 0);
+      const totalUnresolved = Number(shipStationResultPayload?.unresolvedTrackingCount || 0);
       const exceptionsResolved = Number(exceptionsResultPayload?.matched || 0);
 
       await invalidateDashboardOrderQueries(queryClient);
       dispatchUsavRefreshData();
 
-      const anyFailed = [sheetsR, ecwidR, exceptionsR].some(
+      const anyFailed = [shipStationR, exceptionsR].some(
         (r) => Boolean(r.error) || (r.payload && (r.payload as any).success === false),
       );
       const parts = [];
@@ -508,51 +458,37 @@ export function useOrdersSync() {
         type: anyFailed ? 'error' : 'success',
         message: summary,
         details: {
-          tabName: sheetsResultPayload?.tabName as string | undefined,
           inserted: totalInserted,
           updated: totalUpdated,
           trackingAttached: totalTracking,
           unresolvedTracking: totalUnresolved,
-          processedRows: Number(sheetsResultPayload?.processedRows || 0)
-            + Number(ecwidResultPayload?.processedRows || 0),
+          processedRows: Number(shipStationResultPayload?.processedRows || 0),
           exceptionsResolved,
-          ecwidInserted: Number(ecwidResultPayload?.insertedOrders || 0),
           durationMs: Date.now() - t0,
         },
       });
 
-      // The failing case names the provider that failed rather than a generic
-      // "sync failed" — the sheet and Ecwid run in parallel and one can land
-      // while the other does not.
+      // The failing case names the step that failed rather than a generic
+      // "sync failed" — ShipStation can land while the exceptions pass does
+      // not.
       //
       // **Both carry an explicit duration + close button (operator 2026-09-14:
       // "toast not displaying").** It WAS displaying — for 2.2s
       // (`TOAST_DURATION.success`, tuned for an inline edit that paints
       // instantly). This import runs ~60s, so the operator clicks, looks away,
       // and the one sentence reporting 35 imported orders blinks and is gone
-      // while they are still looking at the sheet. A default meant for "your
+      // while they are still looking at the queue. A default meant for "your
       // edit saved" cannot report a minute-long batch job; `toast-theme.ts`
       // says call sites that need longer pass their own.
       if (anyFailed) {
         const failures = [
-          sheetsR.error && `Google Sheet: ${sheetsR.error}`,
-          ecwidR.error && `Ecwid: ${ecwidR.error}`,
+          shipStationR.error && `ShipStation: ${shipStationR.error}`,
           exceptionsR.error && `Exceptions: ${exceptionsR.error}`,
         ].filter(Boolean);
         toast.error(failures.length > 0 ? failures.join(' · ') : summary, {
           id: SYNC_TOAST_ID,
           duration: SYNC_TOAST_MS,
         });
-      } else if (sheetsResultPayload?.missingPriceColumn === true) {
-        // A run that imports rows but no revenue is a SUCCESS the operator must
-        // still act on: the header match is exact, so `Item Price` or
-        // `Sale Price (USD)` binds nothing and every row lands with a null sale
-        // amount. Silence here is how 4467 orders accumulated 6 prices.
-        toast.warning(
-          `${summary} — but the sheet has no price column, so no sale amounts were imported. Title a column "Sale Price".`,
-          // No `closeButton` — `toast.warning` already forces one.
-          { id: SYNC_TOAST_ID, duration: SYNC_TOAST_MS },
-        );
       } else {
         toast.success(summary, {
           id: SYNC_TOAST_ID,
@@ -582,22 +518,17 @@ export function useOrdersSync() {
   const runDetail = useMemo(
     () =>
       run && !isTransferring
-        ? buildSyncRunDetail({ sheets: sheetsTask, ecwid: ecwidTask })
+        ? buildSyncRunDetail(shipStationTask)
         : null,
-    [ecwidTask, isTransferring, run, sheetsTask],
+    [isTransferring, run, shipStationTask],
   );
 
   return {
-    sheetsTask,
-    ecwidTask,
-    exceptionsTask,
     run,
     runDetail,
     dismissRun,
     elapsedMs,
     isTransferring,
-    manualSheetName,
-    setManualSheetName,
     status,
     setStatus,
     handleTransfer,

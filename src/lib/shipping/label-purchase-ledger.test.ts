@@ -20,6 +20,7 @@ const input: ClaimInput = {
   rateId: 'se-rate-1',
   labelFormat: 'pdf',
   staffId: 7,
+  purpose: 'return',
 };
 
 const label: LabelPurchaseResult = {
@@ -49,6 +50,7 @@ function record(overrides: Partial<LabelPurchaseRecord> = {}): LabelPurchaseReco
     labelUrl: label.labelDownload.href,
     labelDocumentId: null,
     shipmentId: null,
+    purpose: 'return',
     ...overrides,
   };
 }

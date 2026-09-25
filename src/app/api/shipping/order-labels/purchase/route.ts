@@ -26,8 +26,17 @@ import {
   purchaseLabelOnce,
   type LabelPurchaseRecord,
 } from '@/lib/shipping/label-purchase-ledger';
-import { resolveOrderShipTo, snapshotShipToOnShipment } from '@/lib/shipping/shipstation/order-ship-to';
+import {
+  isShipStationOrder,
+  resolveOrderShipTo,
+  snapshotShipToOnShipment,
+} from '@/lib/shipping/shipstation/order-ship-to';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
+import { createOrderNote } from '@/lib/orders/order-notes';
+import { isLabelPurpose, type LabelPurpose } from '@/lib/shipping/label-purpose';
+import { labelTrailNote } from '@/lib/shipping/order-label-links';
+import { buildOrderShipmentSpec } from '@/lib/shipping/shipstation/order-shipment-spec';
+import { OrderRateDimensionsSchema } from '@/lib/shipping/shipstation/order-parcel';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +63,14 @@ export const dynamic = 'force-dynamic';
  * again. The label document still carries the key as its sourceHash, so keys
  * minted before the ledger existed keep short-circuiting on the document.
  *
- * Body: { orderId, rateId, clientEventId, labelFormat?: 'pdf'|'png'|'zpl', notifyCustomer?: boolean }
+ * Body: { orderId, rateId, clientEventId, labelFormat?: 'pdf'|'png'|'zpl', notifyCustomer?: boolean,
+ *         purpose?: 'outbound'|'return'|'replacement',
+ *         carrierId?, serviceCode?, weightOz?, dimensions? — return only: the chosen
+ *         rate's carrier/service and the parcel it was rated with }
+ *
+ * Every purpose lands on the SAME order (same number, same name) in the
+ * label ledger with its purpose and creation type `bought_in_app`; a return
+ * or replacement also writes the order's notes trail. See finishPurchase.
  */
 
 // `type` (not `interface`) so it satisfies pg/tenantQuery's `QueryResultRow`
@@ -105,7 +121,7 @@ async function resolveCustomerEmail(orgId: OrgId, order: OrderRow): Promise<stri
     );
     if (res.rows[0]?.email) return res.rows[0].email;
   }
-  if (order.account_source === 'shipstation' && order.order_id) {
+  if (order.order_id && (await isShipStationOrder(orgId, order).catch(() => false))) {
     const v1 = await getShipStationV1(orgId);
     const ssOrder = v1 ? await v1.getOrderByNumber(order.order_id) : null;
     return ssOrder?.customerEmail ?? null;
@@ -159,6 +175,14 @@ function buildShipEmail(to: string, orderRef: string, label: PurchasedLabel) {
  * the documents dedupe on their sourceHash — so a replayed key re-runs this to
  * backfill whatever the first attempt did not finish. Nothing here may throw:
  * the label is already paid for.
+ *
+ * Purpose decides where the label goes:
+ *   outbound     the order's primary tracking + label document + packing slip
+ *   replacement  an ADDITIONAL tracking on the order (the original shipment
+ *                stays primary) + its own label document + packing slip
+ *   return       nothing on the order's tracking or paperwork: the parcel
+ *                travels to us. It is on the order's label list (ledger row)
+ *                and prints through the label proxy from its ShipStation URL.
  */
 async function finishPurchase(input: {
   orgId: OrgId;
@@ -172,12 +196,26 @@ async function finishPurchase(input: {
   label: PurchasedLabel;
   knownShipmentId: number | null;
   knownDocumentId: number | null;
+  purpose: LabelPurpose;
 }): Promise<{ shipmentId: number | null; labelDocumentId: number | null; isFirstLabel: boolean; warning: string | null }> {
-  const { orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId, v2, label } = input;
+  const { orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId, v2, label, purpose } = input;
 
-  // 2. Register the tracking as the order's primary (STN + link + cache).
+  // 2. Register the tracking: the order's primary (outbound) or one more
+  // tracking on the order (replacement). A return's tracking is not the order's.
   let primaryShipmentId: number | null = input.knownShipmentId;
-  if (primaryShipmentId == null && label.trackingNumber) {
+  if (primaryShipmentId == null && label.trackingNumber && purpose === 'replacement') {
+    try {
+      const trk = await applyOrderTrackingOps({
+        orderIds: [orderId],
+        organizationId: orgId,
+        creates: [{ trackingNumber: label.trackingNumber }],
+      });
+      primaryShipmentId = trk.createdShipmentIds[0] ?? null;
+    } catch (e) {
+      console.error('[buy-label] replacement tracking register failed', e);
+    }
+  }
+  if (primaryShipmentId == null && label.trackingNumber && purpose === 'outbound') {
     try {
       const trk = await applyOrderTrackingOps({
         orderIds: [orderId],
@@ -234,7 +272,7 @@ async function finishPurchase(input: {
   let labelDocumentId: number | null = input.knownDocumentId;
   let isFirstLabel = false;
   let warning: string | null = null;
-  if (labelDocumentId == null) {
+  if (labelDocumentId == null && purpose !== 'return') {
     try {
       if (!label.labelUrl) throw new Error('ShipStation returned no label download URL.');
       const { buffer, contentType } = await v2.downloadLabel(label.labelUrl);
@@ -309,10 +347,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ? body.labelFormat
       : 'pdf';
     const notifyCustomer = body?.notifyCustomer !== false; // default on
+    const purpose: LabelPurpose = body?.purpose == null ? 'outbound' : body.purpose;
 
     if (!Number.isFinite(orderId) || orderId <= 0) throw ApiError.badRequest('Valid orderId is required');
     if (!rateId) throw ApiError.badRequest('rateId is required');
     if (!clientEventId) throw ApiError.badRequest('clientEventId is required (idempotency key)');
+    if (!isLabelPurpose(purpose)) throw ApiError.badRequest('purpose must be outbound, return or replacement');
+    // A return is bought from its shipment (v2 POST /labels + is_return_label),
+    // never from the rate id — ShipStation ignores the flag there.
+    const carrierId = String(body?.carrierId || '').trim();
+    const serviceCode = String(body?.serviceCode || '').trim();
+    if (purpose === 'return' && (!carrierId || !serviceCode)) {
+      throw ApiError.badRequest('A return label needs the chosen rate’s carrierId and serviceCode');
+    }
 
     const order = await loadOrder(orgId, orderId);
     if (!order) throw ApiError.notFound('order', orderId);
@@ -343,9 +390,33 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // 1. Claim the key, buy the label — IRREVERSIBLE — and record it before
     //    anything else can fail.
     const v2 = await getShipStationV2(orgId);
+    const buy =
+      purpose === 'return'
+        ? async () => {
+            // The same buyer → warehouse shipment the return was rated on.
+            const { spec } = await buildOrderShipmentSpec(orgId, {
+              orderId,
+              weightOzOverride: typeof body?.weightOz === 'number' && body.weightOz > 0 ? body.weightOz : null,
+              dimensions: OrderRateDimensionsSchema.nullish().catch(null).parse(body?.dimensions) ?? null,
+              purpose,
+            });
+            const outbound = await tenantQuery<{ label_id: string }>(
+              orgId,
+              `SELECT label_id FROM shipping_label_purchases
+                WHERE organization_id = $1 AND order_id = $2 AND purpose = 'outbound'
+                  AND status = 'purchased' AND label_id IS NOT NULL
+                ORDER BY created_at DESC LIMIT 1`,
+              [orgId, orderId],
+            );
+            return v2.purchaseLabelFromShipment(spec, carrierId, serviceCode, {
+              labelFormat,
+              returnLabel: { rmaNumber: orderRef, outboundLabelId: outbound.rows[0]?.label_id ?? null },
+            });
+          }
+        : () => v2.purchaseLabelFromRate(rateId, { labelFormat });
     const outcome = await purchaseLabelOnce(
-      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null },
-      () => v2.purchaseLabelFromRate(rateId, { labelFormat }),
+      { orgId, orderId, clientEventId, rateId, labelFormat, staffId: ctx.staffId ?? null, purpose },
+      buy,
     );
 
     if (outcome.kind === 'in_flight') {
@@ -369,7 +440,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // Bought on an earlier attempt — finish what that attempt may not have
       // (every step below dedupes), but never charge again.
       const label = fromRecord(outcome.record);
-      const finished = await finishPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId });
+      const finished = await finishPurchase({ orgId, order, orderId, orderRef, clientEventId, labelFormat, staffId: ctx.staffId ?? null, v2, label, knownShipmentId: outcome.record.shipmentId, knownDocumentId: outcome.record.labelDocumentId, purpose: outcome.record.purpose });
       return NextResponse.json({
         ok: true,
         idempotent: true,
@@ -410,6 +481,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       label,
       knownShipmentId: null,
       knownDocumentId: null,
+      purpose,
     });
     const labelUrl = label.labelUrl;
 
@@ -427,8 +499,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         currency: label.currency,
         labelId: label.labelId,
         rateId,
+        purpose,
+        creationType: 'bought_in_app',
       },
-      extra: { shipmentId: primaryShipmentId, labelDocumentId, clientEventId },
+      extra: { shipmentId: primaryShipmentId, labelDocumentId, clientEventId, purchaseId: label.purchaseId },
     });
     if (isFirstLabel) {
       await recordAudit(pool, ctx, req, {
@@ -439,13 +513,25 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         after: { tracking: label.trackingNumber, carrier: label.carrierCode },
       });
     }
-    await recordAudit(pool, ctx, req, {
-      source: 'api.outbound.labels.purchase',
-      action: AUDIT_ACTION.TRACKING_ADDED,
-      entityType: AUDIT_ENTITY.ORDER,
-      entityId: orderId,
-      after: { tracking: label.trackingNumber },
-    });
+    if (purpose !== 'return') {
+      await recordAudit(pool, ctx, req, {
+        source: 'api.outbound.labels.purchase',
+        action: AUDIT_ACTION.TRACKING_ADDED,
+        entityType: AUDIT_ENTITY.ORDER,
+        entityId: orderId,
+        after: { tracking: label.trackingNumber, purpose },
+      });
+    }
+    // A return / replacement is a second story on the same order — write it
+    // into the order's notes trail so the queue shows it next to the order.
+    if (purpose !== 'outbound') {
+      await createOrderNote({
+        orderId,
+        organizationId: orgId,
+        noteText: labelTrailNote('Bought', purpose, label),
+        staffId: ctx.staffId ?? null,
+      }).catch((e) => console.warn('[buy-label] order note failed', e));
+    }
 
     // 5. Fire-and-forget: realtime + cache + customer notification.
     after(async () => {
@@ -463,7 +549,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       } catch (e) {
         console.warn('[buy-label] realtime/cache failed', e);
       }
-      if (notifyCustomer) {
+      // The buyer gets tracking for a parcel coming to them — never for a return.
+      if (notifyCustomer && purpose !== 'return') {
         try {
           const email = await resolveCustomerEmail(orgId, order);
           if (email) await sendEmailBestEffort(buildShipEmail(email, orderRef, label));
@@ -485,6 +572,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       shipmentId: primaryShipmentId,
       labelDocumentId,
       warning,
+      purpose,
+      purchaseId: label.purchaseId,
     });
   } catch (error) {
     if (error instanceof ShipStationNotConnectedError) {

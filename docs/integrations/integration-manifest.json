@@ -52,7 +52,7 @@
         "orders"
       ],
       "flows": {
-        "pullsData": true,
+        "pullsData": false,
         "pushesInventory": false,
         "refreshesTokens": false,
         "validates": true,
@@ -90,7 +90,7 @@
         "orders"
       ],
       "flows": {
-        "pullsData": true,
+        "pullsData": false,
         "pushesInventory": false,
         "refreshesTokens": true,
         "validates": true,
@@ -110,7 +110,7 @@
         "catalog"
       ],
       "flows": {
-        "pullsData": true,
+        "pullsData": false,
         "pushesInventory": false,
         "refreshesTokens": false,
         "validates": false,
@@ -176,15 +176,13 @@
     {
       "key": "google_sheets",
       "label": "Google Sheets",
-      "description": "Spreadsheet order import pipelines.",
+      "description": "Technician serial and packer log sheet import.",
       "category": "Sales channels",
       "connect": "vault",
       "authKind": "vault",
-      "capabilities": [
-        "orders"
-      ],
+      "capabilities": [],
       "flows": {
-        "pullsData": true,
+        "pullsData": false,
         "pushesInventory": false,
         "refreshesTokens": false,
         "validates": false,

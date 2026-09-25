@@ -97,40 +97,55 @@ export type OrderChannelResolver = (
 const lower = (s: string) => s.trim().toLowerCase();
 
 /**
- * Build the order-channel resolver for one catalog snapshot. `account_source`
- * is hybrid-grain — a connection slug ('ebay-mk'), a platform slug ('ecwid'),
- * or a connection / platform NAME ('Amazon USAV') — so it is matched by
- * connection slug, then platform slug, then connection label, then platform
- * label. An Amazon 3-7-7 / eBay 2-5-5 order number overrides a match that
- * names a different platform (a Zoho slug must not repaint a marketplace order).
+ * `account_source` → the catalog account + platform it names, or nulls. The
+ * column is hybrid-grain — a connection slug ('ebay-mk'), a platform slug
+ * ('ecwid'), or a connection / platform NAME ('Amazon USAV') — so it is matched
+ * by connection slug, then platform slug, then connection label, then platform
+ * label, all case-insensitive. No order-number inference: that is the display
+ * resolver's override, not a fact about the source string.
  */
-export function buildOrderChannelResolver(
+export function buildAccountSourceLookup(
   platforms: readonly PlatformRow[],
   accounts: readonly PlatformAccountRow[],
-): OrderChannelResolver {
+): (accountSource: string | null | undefined) => { account: PlatformAccountRow | null; platform: PlatformRow | null } {
   const platformById = new Map(platforms.map((p) => [p.id, p]));
   const platformBySlug = new Map(platforms.map((p) => [lower(p.slug), p]));
   const platformByLabel = new Map(platforms.map((p) => [lower(p.label), p]));
   const accountBySlug = new Map(accounts.map((a) => [lower(a.slug), a]));
   const accountByLabel = new Map(accounts.map((a) => [lower(a.label), a]));
 
+  return (accountSource) => {
+    const key = lower(String(accountSource ?? ''));
+    if (!key) return { account: null, platform: null };
+    let account = accountBySlug.get(key) ?? null;
+    let platform = account ? (platformById.get(account.platform_id) ?? null) : (platformBySlug.get(key) ?? null);
+    if (!account && !platform) {
+      account = accountByLabel.get(key) ?? null;
+      platform = account ? (platformById.get(account.platform_id) ?? null) : (platformByLabel.get(key) ?? null);
+    }
+    return { account, platform };
+  };
+}
+
+/**
+ * Build the order-channel resolver for one catalog snapshot: the catalog match
+ * of {@link buildAccountSourceLookup}, except that an Amazon 3-7-7 / eBay 2-5-5
+ * order number overrides a match that names a different platform (a Zoho slug
+ * must not repaint a marketplace order).
+ */
+export function buildOrderChannelResolver(
+  platforms: readonly PlatformRow[],
+  accounts: readonly PlatformAccountRow[],
+): OrderChannelResolver {
+  const platformBySlug = new Map(platforms.map((p) => [lower(p.slug), p]));
+  const lookup = buildAccountSourceLookup(platforms, accounts);
+
   return (orderId, accountSource) => {
     const key = lower(String(accountSource ?? ''));
     const fromId = getOrderPlatformLabel(orderId, accountSource);
     const inferred = inferMarketplaceFromOrderId(orderId);
 
-    let account: PlatformAccountRow | null = null;
-    let platform: PlatformRow | null = null;
-    if (key) {
-      account = accountBySlug.get(key) ?? null;
-      platform = account ? (platformById.get(account.platform_id) ?? null) : (platformBySlug.get(key) ?? null);
-      if (!account && !platform) {
-        account = accountByLabel.get(key) ?? null;
-        platform = account
-          ? (platformById.get(account.platform_id) ?? null)
-          : (platformByLabel.get(key) ?? null);
-      }
-    }
+    let { account, platform } = lookup(accountSource);
     if (inferred && (!platform || lower(platform.slug) !== inferred)) {
       account = null;
       platform = platformBySlug.get(inferred) ?? null;

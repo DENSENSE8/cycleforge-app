@@ -18,6 +18,8 @@ import type { Parcel, ShipAddress } from './types';
 
 /** The order fields ship-to resolution reads. Both routes' row shapes satisfy it. */
 export type ShipToOrderRow = {
+  /** orders.id — pairs the row to its ShipStation order via `shipstation_order_refs`. */
+  id?: number | string | null;
   order_id: string | null;
   account_source: string | null;
   customer_id: number | null;
@@ -68,6 +70,24 @@ export async function loadCustomerShipTo(
   };
 }
 
+/**
+ * Is this order a ShipStation order? Imports carry their PLATFORM account_source
+ * (never 'shipstation'), so the durable answer is a `shipstation_order_refs` row;
+ * the legacy 'shipstation' source still counts until those rows are re-keyed.
+ */
+export async function isShipStationOrder(orgId: OrgId, order: ShipToOrderRow): Promise<boolean> {
+  if (!order.order_id) return false;
+  if (String(order.account_source ?? '').trim().toLowerCase() === 'shipstation') return true;
+  const id = Number(order.id);
+  if (!Number.isFinite(id) || id <= 0) return false;
+  const res = await tenantQuery<{ one: number }>(
+    orgId,
+    `SELECT 1 AS one FROM shipstation_order_refs WHERE organization_id = $1 AND order_row_id = $2 LIMIT 1`,
+    [orgId, id],
+  );
+  return res.rows.length > 0;
+}
+
 /** Resolve ship-to (+ the engine-stored weight when the v1 order carries one),
  * preferring ShipStation's own data. Never throws for a missing v1 connection —
  * falls through to the local customer tier. */
@@ -78,7 +98,7 @@ export async function resolveOrderShipTo(
   let shipTo: ShipAddress | null = null;
   let engineWeight: Parcel['weight'] | null = null;
 
-  if (order.account_source === 'shipstation' && order.order_id) {
+  if (order.order_id && (await isShipStationOrder(orgId, order).catch(() => false))) {
     const v1 = await getShipStationV1(orgId).catch(() => null);
     if (v1) {
       const ssOrder = await v1.getOrderByNumber(order.order_id).catch(() => null);

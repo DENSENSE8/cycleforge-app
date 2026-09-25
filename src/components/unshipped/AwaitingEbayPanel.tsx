@@ -70,42 +70,6 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
     },
   });
 
-  // Connection-driven sync (INT-020): both Run buttons route through
-  // POST /api/integrations/[provider]/sync — the legacy
-  // /api/orders/backfill/* endpoints are no longer called from here.
-  const runConnectorSync = async (provider: 'ebay' | 'ecwid') => {
-    const res = await fetch(`/api/integrations/${provider}/sync`, { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.ok === false) {
-      throw new Error(data?.error || data?.message || `Sync failed (HTTP ${res.status})`);
-    }
-    return data as { ok: boolean; imported?: number; updated?: number };
-  };
-
-  const ebayBackfillMutation = useMutation({
-    mutationFn: () => runConnectorSync('ebay'),
-    onSuccess: (data) => {
-      addLog(`eBay: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
-      onRefresh?.();
-      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
-    },
-    onError: (error: Error) => {
-      addLog(`eBay sync: ${error.message}`, 'error');
-    },
-  });
-
-  const ecwidBackfillMutation = useMutation({
-    mutationFn: () => runConnectorSync('ecwid'),
-    onSuccess: (data) => {
-      addLog(`Ecwid: ${data.imported ?? 0} imported, ${data.updated ?? 0} updated`, 'success');
-      onRefresh?.();
-      refreshDomains(REFRESH_BUNDLES.outboundOrderWrite);
-    },
-    onError: (error: Error) => {
-      addLog(`Ecwid sync: ${error.message}`, 'error');
-    },
-  });
-
   const integrityCheckMutation = useMutation({
     mutationFn: async (dryRun: boolean) => {
       const res = await fetch('/api/orders/integrity-check', {
@@ -138,13 +102,10 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
     },
   });
 
-  const hasValidEbayToken = ebayAccounts.length > 0 && expiredAccounts.length < ebayAccounts.length;
-  const ebayDisabled = !hasValidEbayToken;
-
   return (
     <div className="mt-4 space-y-0">
       <p className={`${sectionLabel} mb-2`}>
-        Sync & Backfill
+        Accounts & integrity
       </p>
 
       {expiredAccounts.map((account) => {
@@ -171,35 +132,6 @@ export function AwaitingEbayPanel({ onRefresh }: { onRefresh?: () => void }) {
           </div>
         );
       })}
-
-      <div className="flex items-center justify-between border-b border-border-hairline py-2.5">
-        <span className={`${fieldLabel} truncate pr-2`}>Sync eBay orders</span>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<RefreshCw />}
-          loading={ebayBackfillMutation.isPending}
-          disabled={ebayDisabled}
-          onClick={() => ebayBackfillMutation.mutate()}
-          className="shrink-0 bg-fill-warning hover:bg-fill-warning/90"
-        >
-          Run
-        </Button>
-      </div>
-
-      <div className="flex items-center justify-between border-b border-border-hairline py-2.5">
-        <span className={`${fieldLabel} truncate pr-2`}>Sync Ecwid orders</span>
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<RefreshCw />}
-          loading={ecwidBackfillMutation.isPending}
-          onClick={() => ecwidBackfillMutation.mutate()}
-          className="shrink-0 bg-accent-bg hover:bg-accent-bg/90"
-        >
-          Run
-        </Button>
-      </div>
 
       <div className="flex items-center justify-between border-b border-border-hairline py-2.5">
         <span className={`${fieldLabel} truncate pr-2`}>Check Integrity</span>

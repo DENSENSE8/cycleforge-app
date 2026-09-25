@@ -103,7 +103,7 @@ const USPS_FORM: CredentialFormDef = {
 const GOOGLE_SHEETS_FORM: CredentialFormDef = {
   provider: 'google_sheets',
   title: 'Google Sheets',
-  description: 'Connect a Google service account for spreadsheet order import. Paste the service account email and private key from your JSON key file.',
+  description: 'Connect a Google service account for the technician serial and packer log sheet import. Paste the service account email and private key from your JSON key file.',
   fields: [
     { key: 'clientEmail', label: 'Service account email', type: 'email', required: true, placeholder: 'sheets-import@project.iam.gserviceaccount.com' },
     { key: 'privateKey', label: 'Private key (PEM)', type: 'textarea', required: true, secret: true, placeholder: '-----BEGIN PRIVATE KEY-----\\n...' },

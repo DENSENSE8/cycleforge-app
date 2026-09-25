@@ -210,24 +210,6 @@ const shipstationBuyLabel: ActionDefinition = {
   confirm: 'soft',
 };
 
-/**
- * "Sync now" for the org's eBay connection — wraps the connection-driven
- * POST /api/integrations/ebay/sync (connector orchestrator). A source-level
- * refresh (no row target); the bound feed invalidates on success.
- */
-const ebaySyncNow: ActionDefinition = {
-  id: 'ebay.sync_now',
-  label: 'Sync eBay now',
-  icon: 'RefreshCw',
-  endpoint: { method: 'POST', path: '/api/integrations/ebay/sync' },
-  body: () => ({}),
-  // Must match the wrapped route's gate (managePermission('ebay')).
-  permission: 'integrations.ebay',
-  appliesTo: [],
-  integration: 'ebay',
-  confirm: 'none',
-};
-
 let builtinsRegistered = false;
 export function registerBuiltinActions(): void {
   if (builtinsRegistered) return;
@@ -241,5 +223,4 @@ export function registerBuiltinActions(): void {
   registerAction(importEbayOrder);
   registerAction(shipstationRateShop);
   registerAction(shipstationBuyLabel);
-  registerAction(ebaySyncNow);
 }

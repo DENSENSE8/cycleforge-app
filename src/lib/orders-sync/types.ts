@@ -7,12 +7,17 @@ export interface TransferOrderDetail {
   titleSource: 'sheet' | 'sku_catalog' | 'platform_lookup' | 'title_catalog_match' | 'none';
   /**
    * For `updated` / `deleted` rows: the original order's account_source and
-   * created_at. Lets the dialog show provenance like "originally inserted by
-   * Ecwid on 2026-05-20" so users can tell *why* a sheet row matched an
-   * existing DB row instead of inserting a new one.
+   * created_at. Lets the run detail show provenance like "originally
+   * inserted by Ecwid on 2026-05-20" so users can tell *why* an imported
+   * order matched an existing DB row instead of inserting a new one.
    */
   existingAccountSource?: string | null;
   existingCreatedAt?: string | null;
+  /** The platform account_source the order was recorded under (an
+   *  aggregator import names the real channel, never itself). */
+  platform?: string | null;
+  /** Quarantined rows: why the import refused to guess. */
+  quarantineReason?: string | null;
 }
 
 export interface TransferOrderDetails {
@@ -21,10 +26,10 @@ export interface TransferOrderDetails {
   deleted: TransferOrderDetail[];
   unknownTitle: TransferOrderDetail[];
   /**
-   * Rows whose sheet tracking value could not be recognized as a carrier
-   * tracking number (carrier detection failed — e.g. a double-scanned or
-   * malformed value). These are NOT linked to any shipment, so they surface
-   * as a warning instead of silently disappearing.
+   * Rows whose tracking value could not be recognized as a carrier tracking
+   * number (carrier detection failed — e.g. a double-scanned or malformed
+   * value). These are NOT linked to any shipment, so they surface as a
+   * warning instead of silently disappearing.
    */
   unresolvedTracking: TransferOrderDetail[];
   /**
@@ -33,29 +38,11 @@ export interface TransferOrderDetails {
    */
   unmatchedCatalog: TransferOrderDetail[];
   /**
-   * Rows the eligibility gate dropped BEFORE ingestion, with the reason. Every
-   * other bucket here describes a row that made it in; this is the only record
-   * of the ones that did not, and on a live tab it is routinely the largest
-   * group. Blank spreadsheet padding is counted but never listed.
+   * Orders the import would not attribute or match without guessing (unknown
+   * store, number already under several platforms). Parked on Review ·
+   * Missing item number (`order_import_exceptions`) instead.
    */
-  skippedRows?: TransferSkippedRow[];
-  /**
-   * Rows that WOULD have been skipped for a blank Item Number but were revived
-   * by an exact listing-title match. Shown so an inferred listing id is
-   * auditable rather than silent.
-   */
-  recoveredRows?: TransferSkippedRow[];
-}
-
-/** A sheet row the import declined, described so an operator can go fix it. */
-export interface TransferSkippedRow {
-  /** 1-based spreadsheet row, so the operator can jump straight to it. */
-  sheetRow: number;
-  reason: 'blankRow' | 'fbaShipment' | 'noOrderId' | 'noTracking' | 'noItemNumber' | 'ecwid';
-  orderId: string;
-  platform: string;
-  productTitle: string;
-  tracking: string;
+  quarantined?: TransferOrderDetail[];
 }
 
 export interface OrderExceptionResolutionDetail {
@@ -73,13 +60,11 @@ export interface TransferTabState {
   details?: TransferOrderDetails | null;
   /**
    * Raw counter bag passed straight through from `SyncOutcome.stats` (the
-   * connector seam). Carries the run's row/skip breakdown so the panel can say
-   * WHY an import moved nothing — the named fields below stay as the typed,
-   * UI-facing view of the same numbers.
+   * connector seam). The named fields below stay as the typed, UI-facing view
+   * of the same numbers.
    */
   stats?: Record<string, number>;
   error?: string;
-  tabName?: string;
   inserted?: number;
   updated?: number;
   deleted?: number;
@@ -87,8 +72,6 @@ export interface TransferTabState {
   trackingAttached?: number;
   /** Rows whose tracking value failed carrier detection (not linked). */
   unresolvedTracking?: number;
-  /** Sheet rows skipped because raw Item Number was blank. */
-  skippedNoItemNumber?: number;
   processedRows?: number;
   phase?: SyncPhase;
 }
@@ -110,8 +93,7 @@ export interface ExceptionsTabState {
  */
 export type SyncPhase =
   | 'starting'
-  | 'fetching_sheet'
-  | 'fetching_ecwid'
+  | 'fetching_shipstation'
   | 'resolving_tracking'
   | 'matching_orders'
   | 'inserting'
@@ -121,8 +103,8 @@ export type SyncPhase =
   | 'done';
 
 /**
- * NDJSON events streamed back from /api/google-sheets/transfer-orders,
- * /api/ecwid/transfer-orders, and /api/orders-exceptions/sync. Each line of
+ * NDJSON events streamed back from `POST /api/integrations/[provider]/sync`
+ * (Accept: application/x-ndjson) and /api/orders-exceptions/sync. Each line of
  * the response body is one JSON event.
  */
 export type SyncStreamEvent =

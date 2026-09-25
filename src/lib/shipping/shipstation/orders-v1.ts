@@ -39,6 +39,15 @@ export interface ShipStationV1Item {
   quantity: number;
   unitPrice: number | null;
   weightOz: number | null;
+  /** The marketplace's own line id (Amazon OrderItemId, eBay line item id). */
+  lineItemKey: string | null;
+  orderItemId: number | null;
+  upc: string | null;
+  imageUrl: string | null;
+  /** Variation / personalization options as the marketplace sent them. */
+  options: Array<{ name: string; value: string }>;
+  /** A discount/fee pseudo-line, not a product. */
+  adjustment: boolean;
 }
 
 /** A normalized v1 order — enough to sync into `orders` (incl. buyer identity
@@ -71,6 +80,29 @@ export interface ShipStationV1Order {
    */
   storeId: number | null;
   marketplace: string | null;
+  /** ShipStation's own order key (stable across order-number edits). */
+  orderKey: string | null;
+  /** When ShipStation first saw the order / the order's recorded ship date. */
+  createDate: string | null;
+  shipDate: string | null;
+  /** Carrier/service chosen on the order (the label's live in `/shipments`). */
+  carrierCode: string | null;
+  serviceCode: string | null;
+  /** Fulfilled outside ShipStation (marketplace-fulfilled, e.g. FBA). */
+  externallyFulfilled: boolean;
+  paymentDate: string | null;
+  shipByDate: string | null;
+  amountPaid: number | null;
+  taxAmount: number | null;
+  shippingAmount: number | null;
+  customerNotes: string | null;
+  internalNotes: string | null;
+  gift: boolean;
+  giftMessage: string | null;
+  requestedShippingService: string | null;
+  dimensions: { length: number | null; width: number | null; height: number | null; units: string | null } | null;
+  /** ShipStation split or merged this order (`advancedOptions.mergedOrSplit`). */
+  mergedOrSplit: boolean;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -120,13 +152,24 @@ const V1ItemSchema = z.object({
   quantity: z.number().nullish(),
   unitPrice: z.number().nullish(),
   weight: V1WeightSchema,
+  lineItemKey: z.string().nullish(),
+  orderItemId: z.number().nullish(),
+  upc: z.string().nullish(),
+  imageUrl: z.string().nullish(),
+  adjustment: z.boolean().nullish(),
+  options: z
+    .array(z.object({ name: z.string().nullish(), value: z.string().nullish() }))
+    .nullish(),
 });
 
 const V1OrderSchema = z.object({
   orderId: z.number(),
   orderNumber: z.string(),
+  orderKey: z.string().nullish(),
   orderDate: z.string().nullish(),
+  createDate: z.string().nullish(),
   modifyDate: z.string().nullish(),
+  shipDate: z.string().nullish(),
   orderStatus: z.string().nullish(),
   customerId: z.number().nullish(),
   customerUsername: z.string().nullish(),
@@ -136,10 +179,32 @@ const V1OrderSchema = z.object({
   items: z.array(V1ItemSchema).nullish(),
   orderTotal: z.number().nullish(),
   weight: V1WeightSchema,
+  carrierCode: z.string().nullish(),
+  serviceCode: z.string().nullish(),
+  externallyFulfilled: z.boolean().nullish(),
+  paymentDate: z.string().nullish(),
+  shipByDate: z.string().nullish(),
+  amountPaid: z.number().nullish(),
+  taxAmount: z.number().nullish(),
+  shippingAmount: z.number().nullish(),
+  customerNotes: z.string().nullish(),
+  internalNotes: z.string().nullish(),
+  gift: z.boolean().nullish(),
+  giftMessage: z.string().nullish(),
+  requestedShippingService: z.string().nullish(),
+  dimensions: z
+    .object({
+      length: z.number().nullish(),
+      width: z.number().nullish(),
+      height: z.number().nullish(),
+      units: z.string().nullish(),
+    })
+    .nullish(),
   advancedOptions: z
     .object({
       storeId: z.number().nullish(),
       source: z.string().nullish(),
+      mergedOrSplit: z.boolean().nullish(),
     })
     .nullish(),
 });
@@ -148,15 +213,43 @@ const V1StoreSchema = z.object({
   storeId: z.number(),
   storeName: z.string().nullish(),
   marketplace: z.string().nullish(),
+  marketplaceId: z.number().nullish(),
   marketplaceName: z.string().nullish(),
+  active: z.boolean().nullish(),
 });
 
-const V1StoresResponseSchema = z.object({
-  stores: z.array(z.unknown()).nullish(),
-});
+/** v1 `GET /stores` answers a bare JSON array; `{ stores }` is tolerated too. */
+const V1StoresResponseSchema = z.union([
+  z.array(z.unknown()),
+  z.object({ stores: z.array(z.unknown()).nullish() }).transform((r) => r.stores ?? []),
+]);
 
 const V1OrdersResponseSchema = z.object({
   orders: z.array(z.unknown()).nullish(),
+  total: z.number().nullish(),
+  page: z.number().nullish(),
+  pages: z.number().nullish(),
+});
+
+/** One v1 `/shipments` row — a label generated inside ShipStation. Only the
+ * fields the tracking attach needs; everything else is ignored. */
+const V1ShipmentSchema = z.object({
+  shipmentId: z.number(),
+  orderId: z.number().nullish(),
+  orderNumber: z.string().nullish(),
+  createDate: z.string().nullish(),
+  shipDate: z.string().nullish(),
+  trackingNumber: z.string().nullish(),
+  carrierCode: z.string().nullish(),
+  serviceCode: z.string().nullish(),
+  isReturnLabel: z.boolean().nullish(),
+  voided: z.boolean().nullish(),
+  shipmentCost: z.number().nullish(),
+  insuranceCost: z.number().nullish(),
+});
+
+const V1ShipmentsResponseSchema = z.object({
+  shipments: z.array(z.unknown()).nullish(),
   total: z.number().nullish(),
   page: z.number().nullish(),
   pages: z.number().nullish(),
@@ -189,6 +282,14 @@ function mapOrder(raw: z.infer<typeof V1OrderSchema>): ShipStationV1Order {
       it.weight && typeof it.weight.value === 'number'
         ? toOunces(it.weight.value, it.weight.units)
         : null,
+    lineItemKey: it.lineItemKey?.trim() || null,
+    orderItemId: it.orderItemId ?? null,
+    upc: it.upc?.trim() || null,
+    imageUrl: it.imageUrl?.trim() || null,
+    options: (it.options ?? [])
+      .map((o) => ({ name: String(o.name ?? '').trim(), value: String(o.value ?? '').trim() }))
+      .filter((o) => o.name || o.value),
+    adjustment: it.adjustment === true,
   }));
   const weight =
     raw.weight && typeof raw.weight.value === 'number'
@@ -210,6 +311,31 @@ function mapOrder(raw: z.infer<typeof V1OrderSchema>): ShipStationV1Order {
     weight,
     storeId: raw.advancedOptions?.storeId ?? null,
     marketplace: raw.advancedOptions?.source ?? null,
+    orderKey: raw.orderKey ?? null,
+    createDate: raw.createDate ?? null,
+    shipDate: raw.shipDate ?? null,
+    carrierCode: raw.carrierCode ?? null,
+    serviceCode: raw.serviceCode ?? null,
+    externallyFulfilled: raw.externallyFulfilled === true,
+    paymentDate: raw.paymentDate ?? null,
+    shipByDate: raw.shipByDate ?? null,
+    amountPaid: raw.amountPaid ?? null,
+    taxAmount: raw.taxAmount ?? null,
+    shippingAmount: raw.shippingAmount ?? null,
+    customerNotes: raw.customerNotes?.trim() || null,
+    internalNotes: raw.internalNotes?.trim() || null,
+    gift: raw.gift === true,
+    giftMessage: raw.giftMessage?.trim() || null,
+    requestedShippingService: raw.requestedShippingService?.trim() || null,
+    dimensions: raw.dimensions
+      ? {
+          length: raw.dimensions.length ?? null,
+          width: raw.dimensions.width ?? null,
+          height: raw.dimensions.height ?? null,
+          units: raw.dimensions.units ?? null,
+        }
+      : null,
+    mergedOrSplit: raw.advancedOptions?.mergedOrSplit === true,
   };
 }
 
@@ -217,10 +343,13 @@ function mapOrder(raw: z.infer<typeof V1OrderSchema>): ShipStationV1Order {
 export interface ShipStationV1Store {
   storeId: number;
   storeName: string | null;
-  /** Machine marketplace id ('eBay', 'Amazon', 'Shopify', …). */
+  /** Machine marketplace id ('eBay', 'Amazon', 'Shopify', …) when present. */
   marketplace: string | null;
-  /** Human marketplace name ('eBay', 'Amazon', 'Shopify', …). */
+  /** ShipStation's numeric marketplace id (2 Amazon, 144 eBay, 92 Ecwid, …). */
+  marketplaceId: number | null;
+  /** Human marketplace name ('eBay', 'Amazon', 'Ecwid by Lightspeed', …). */
   marketplaceName: string | null;
+  active: boolean;
 }
 
 function mapStore(raw: z.infer<typeof V1StoreSchema>): ShipStationV1Store {
@@ -228,7 +357,46 @@ function mapStore(raw: z.infer<typeof V1StoreSchema>): ShipStationV1Store {
     storeId: raw.storeId,
     storeName: raw.storeName ?? null,
     marketplace: raw.marketplace ?? null,
+    marketplaceId: raw.marketplaceId ?? null,
     marketplaceName: raw.marketplaceName ?? null,
+    active: raw.active !== false,
+  };
+}
+
+/** A label ShipStation generated for an order (v1 `/shipments`). ShipStation
+ * lists ONLY labels made in ShipStation — orders merely marked shipped are
+ * "external" and never appear here. Dates are ShipStation's offset-less
+ * account-local strings, passed through verbatim. */
+export interface ShipStationV1Shipment {
+  shipmentId: number;
+  orderId: number | null;
+  orderNumber: string | null;
+  createDate: string | null;
+  shipDate: string | null;
+  trackingNumber: string | null;
+  /** ShipStation account/carrier code (`stamps_com`, `ups_walleted`, …). */
+  carrierCode: string | null;
+  serviceCode: string | null;
+  isReturnLabel: boolean;
+  voided: boolean;
+  shipmentCost: number | null;
+  insuranceCost: number | null;
+}
+
+function mapShipment(raw: z.infer<typeof V1ShipmentSchema>): ShipStationV1Shipment {
+  return {
+    shipmentId: raw.shipmentId,
+    orderId: raw.orderId ?? null,
+    orderNumber: raw.orderNumber ?? null,
+    createDate: raw.createDate ?? null,
+    shipDate: raw.shipDate ?? null,
+    trackingNumber: raw.trackingNumber?.trim() || null,
+    carrierCode: raw.carrierCode ?? null,
+    serviceCode: raw.serviceCode ?? null,
+    isReturnLabel: raw.isReturnLabel === true,
+    voided: raw.voided === true,
+    shipmentCost: raw.shipmentCost ?? null,
+    insuranceCost: raw.insuranceCost ?? null,
   };
 }
 
@@ -294,12 +462,38 @@ async function v1Fetch(
 export interface ListOrdersParams {
   /** ISO date; pulls orders modified at/after this (incremental sync watermark). */
   modifyDateStart?: string;
+  /** ISO date; upper bound of a historical backfill window. */
+  modifyDateEnd?: string;
+  /** Exact order number — every ShipStation order carrying it (split copies). */
+  orderNumber?: string;
   page?: number;
+  /** v1 caps this at 500. */
   pageSize?: number;
 }
 
 export interface ListOrdersResult {
   orders: ShipStationV1Order[];
+  page: number;
+  pages: number;
+  total: number;
+}
+
+export interface ListShipmentsParams {
+  /** Shipments CREATED at/after this date (label bought). */
+  createDateStart?: string;
+  /** Shipments created at/before this date (backfill window). */
+  createDateEnd?: string;
+  /** Shipments whose ship date is at/after this date. */
+  shipDateStart?: string;
+  /** Exact-match filters (v1 `trackingNumber` / `orderNumber`). */
+  trackingNumber?: string;
+  orderNumber?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ListShipmentsResult {
+  shipments: ShipStationV1Shipment[];
   page: number;
   pages: number;
   total: number;
@@ -311,6 +505,9 @@ export interface ShipStationV1Client {
   /** The account's connected stores — the marketplace identifications the
    * platform catalog sync mirrors into the org's picker. */
   listStores(): Promise<ShipStationV1Store[]>;
+  /** Labels generated in ShipStation, oldest-created first (voided included —
+   * the caller decides). */
+  listShipments(params?: ListShipmentsParams): Promise<ListShipmentsResult>;
 }
 
 export function createShipStationV1Client(
@@ -326,6 +523,8 @@ export function createShipStationV1Client(
       sortDir: 'ASC',
     });
     if (params.modifyDateStart) q.set('modifyDateStart', params.modifyDateStart);
+    if (params.modifyDateEnd) q.set('modifyDateEnd', params.modifyDateEnd);
+    if (params.orderNumber) q.set('orderNumber', params.orderNumber);
     const json = await v1Fetch(apiKey, apiSecret, baseUrl, `/orders?${q.toString()}`);
     const parsed = V1OrdersResponseSchema.safeParse(json);
     const raw = parsed.success ? parsed.data : { orders: [], page: 1, pages: 1, total: 0 };
@@ -357,16 +556,45 @@ export function createShipStationV1Client(
   };
 
   const listStores = async (): Promise<ShipStationV1Store[]> => {
-    const json = await v1Fetch(apiKey, apiSecret, baseUrl, '/stores');
+    // Inactive stores still own historical orders, so they are listed too.
+    const json = await v1Fetch(apiKey, apiSecret, baseUrl, '/stores?showInactive=true');
     const parsed = V1StoresResponseSchema.safeParse(json);
     if (!parsed.success) return [];
     const stores: ShipStationV1Store[] = [];
-    for (const s of parsed.data.stores ?? []) {
+    for (const s of parsed.data) {
       const store = V1StoreSchema.safeParse(s);
       if (store.success) stores.push(mapStore(store.data));
     }
     return stores;
   };
 
-  return { listOrders, getOrderByNumber, listStores };
+  const listShipments = async (params: ListShipmentsParams = {}): Promise<ListShipmentsResult> => {
+    const q = new URLSearchParams({
+      page: String(params.page ?? 1),
+      pageSize: String(params.pageSize ?? 100),
+      sortBy: 'CreateDate',
+      sortDir: 'ASC',
+    });
+    if (params.createDateStart) q.set('createDateStart', params.createDateStart);
+    if (params.createDateEnd) q.set('createDateEnd', params.createDateEnd);
+    if (params.shipDateStart) q.set('shipDateStart', params.shipDateStart);
+    if (params.trackingNumber) q.set('trackingNumber', params.trackingNumber);
+    if (params.orderNumber) q.set('orderNumber', params.orderNumber);
+    const json = await v1Fetch(apiKey, apiSecret, baseUrl, `/shipments?${q.toString()}`);
+    const parsed = V1ShipmentsResponseSchema.safeParse(json);
+    const raw = parsed.success ? parsed.data : { shipments: [], page: 1, pages: 1, total: 0 };
+    const shipments: ShipStationV1Shipment[] = [];
+    for (const s of raw.shipments ?? []) {
+      const shipment = V1ShipmentSchema.safeParse(s);
+      if (shipment.success) shipments.push(mapShipment(shipment.data));
+    }
+    return {
+      shipments,
+      page: raw.page ?? 1,
+      pages: raw.pages ?? 1,
+      total: raw.total ?? shipments.length,
+    };
+  };
+
+  return { listOrders, getOrderByNumber, listStores, listShipments };
 }

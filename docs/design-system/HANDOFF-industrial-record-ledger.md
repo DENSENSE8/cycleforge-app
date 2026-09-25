@@ -143,7 +143,8 @@ The desktop terminal's `.evidence-panel`, always mounted (selecting never reflow
 next · close. Then the order number large, the state strip (code · word · next action), photo +
 title + SKU + item #, then a fact list: **Location** (all paths + units allocated) · Platform ·
 Order # (copy / open) · Tracking + carrier · Ship by · Ordered · Condition · Quantity · Price ·
-Pick · Pack · Pack bench · Note (latest + add). **Order actions (owner, 2026-09-24):** the
+Pick · Pack · Pack bench · Note (latest, read-only; shown only when one exists — writing a note
+is the **Add note** verb, never a second inline editor, owner 2026-09-24). **Order actions (owner, 2026-09-24):** the
 orders verb catalog resolved for THIS order — grouped as the bulk bar groups them, direction-aware
 (Mark urgent / Clear urgent, Mark scanned out / Undo), disabled verbs say why, **Delete** set apart
 last. It is the same catalog at n=1 (read from the rail-actions store), never a second

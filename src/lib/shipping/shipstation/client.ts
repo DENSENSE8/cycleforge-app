@@ -252,6 +252,7 @@ const RawLabelSchema = z.object({
   carrier_code: z.string().nullish(),
   service_code: z.string().nullish(),
   voided: z.boolean().nullish(),
+  is_return_label: z.boolean().nullish(),
   label_download: z
     .object({
       href: z.string().nullish(),
@@ -288,6 +289,24 @@ export interface LabelPurchaseOptions {
   labelFormat?: 'pdf' | 'png' | 'zpl';
   /** 4x6 (thermal, default) | letter. */
   labelLayout?: '4x6' | 'letter';
+  /**
+   * Buy a RETURN label (`is_return_label`): the spec's ship-from is the buyer
+   * and its ship-to is us. Only `purchaseLabelFromShipment` (v2 `POST /labels`)
+   * honours it — ShipStation ignores the flag on `/labels/rates/{id}`.
+   * Charged `carrier_default` (most carriers: only when the carrier scans it).
+   */
+  returnLabel?: {
+    /** Our reference on the label — the order number. */
+    rmaNumber?: string | null;
+    /** The outbound label this return belongs to (some carriers require it). */
+    outboundLabelId?: string | null;
+  };
+}
+
+/** A stored label as `GET /v2/labels/{label_id}` reports it. */
+export interface ShipStationLabelRecord extends LabelPurchaseResult {
+  voided: boolean;
+  isReturnLabel: boolean;
 }
 
 // ─── Client ─────────────────────────────────────────────────────────────────
@@ -309,6 +328,12 @@ export interface ShipStationV2Client {
    * ShipStation / ShipEngine host, never to an arbitrary URL.
    */
   downloadLabel(url: string): Promise<{ buffer: Buffer; contentType: string }>;
+  /**
+   * Read one stored label (null when ShipStation has no such label). Labels
+   * made in the ShipStation app are here too: the v2 label id of a v1
+   * shipment is `se-<shipmentId>` (verified live 2026-09-24, 62/62).
+   */
+  getLabel(labelId: string): Promise<ShipStationLabelRecord | null>;
 }
 
 export function createShipStationV2Client(
@@ -410,6 +435,14 @@ export function createShipStationV2Client(
       label_format: opts?.labelFormat ?? 'pdf',
       label_layout: opts?.labelLayout ?? '4x6',
       label_download_type: 'url',
+      ...(opts?.returnLabel
+        ? {
+            is_return_label: true,
+            charge_event: 'carrier_default',
+            ...(opts.returnLabel.rmaNumber ? { rma_number: opts.returnLabel.rmaNumber } : {}),
+            ...(opts.returnLabel.outboundLabelId ? { outbound_label_id: opts.returnLabel.outboundLabelId } : {}),
+          }
+        : {}),
     });
     return mapLabel(RawLabelSchema.parse(json));
   };
@@ -425,7 +458,19 @@ export function createShipStationV2Client(
   const downloadLabel = (url: string) =>
     downloadLabelBytes(url, isShipStationHost(url, baseUrl) ? apiKey : undefined);
 
-  return { listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel };
+  const getLabel = async (labelId: string): Promise<ShipStationLabelRecord | null> => {
+    let json: unknown;
+    try {
+      json = await req('GET', `/labels/${encodeURIComponent(labelId)}`);
+    } catch (error) {
+      if (error instanceof ShipStationApiError && error.httpStatus === 404) return null;
+      throw error;
+    }
+    const raw = RawLabelSchema.parse(json);
+    return { ...mapLabel(raw), voided: raw.voided === true, isReturnLabel: raw.is_return_label === true };
+  };
+
+  return { listCarriers, getRates, purchaseLabelFromRate, purchaseLabelFromShipment, voidLabel, downloadLabel, getLabel };
 }
 
 /** True when `url` is served by ShipStation / ShipEngine (or the configured v2 base). */

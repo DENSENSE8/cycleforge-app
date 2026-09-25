@@ -10,9 +10,10 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 /**
  * `/settings/integrations/sync` — the sync tools workbench (ex-Admin › Sync
  * tools; admin dissolution). Manual triggers for every connected surface:
- * orders (eBay / Ecwid / exceptions / ShipStation CSV), inventory sync (Zoho
- * token + expected POs + one-off receive import), backfills, the Ecwid→Square
- * catalog push, carrier tracking, and Amazon sync — the same
+ * order exceptions (Ecwid tracking + clearing resolved), eBay token refresh,
+ * inventory sync (Zoho token + expected POs + one-off receive import),
+ * backfills, the Ecwid→Square catalog push, carrier tracking, and Amazon
+ * connection checks — the same
  * {@link ConnectionsSidebarPanel} controller the admin sidebar mounted,
  * promoted from rail to page. `?page=zoho-management` opens the inventory sync
  * management sheet the Zoho section links to.

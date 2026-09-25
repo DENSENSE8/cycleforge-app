@@ -11,7 +11,7 @@
  *
  * Reuses:
  *   - resolveSquareConfig / squareFetchForOrg (Nango token, env fallback)
- *   - the orders upsert shape from src/lib/ebay/sync.ts (idx_orders_unique_account_order)
+ *   - the shared `orders` writer via ingestConnectorOrders
  *   - getSyncCursor / updateSyncCursor for the incremental updated_at watermark
  *
  * Lazily imported by the registry so the connection reader never pulls in the

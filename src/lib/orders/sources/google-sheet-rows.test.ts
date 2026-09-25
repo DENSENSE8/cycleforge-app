@@ -1,42 +1,7 @@
 import { describe, it } from 'node:test';
 import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import assert from 'node:assert/strict';
-import {
-  FIXED_COL_INDICES_DEFAULT,
-  bindSheetColumns,
-  mapSheetRowsToCanonicalLines,
-} from './google-sheet-rows';
-
-describe('bindSheetColumns', () => {
-  it('binds required and optional headers case-insensitively', () => {
-    const { colIndices, missing } = bindSheetColumns([
-      'Ship by date',
-      'Order Number',
-      'ITEM NUMBER',
-      'Item title',
-      'Qty',
-    ]);
-    assert.deepEqual(missing, []);
-    assert.equal(colIndices.shipByDate, 0);
-    assert.equal(colIndices.orderNumber, 1);
-    assert.equal(colIndices.itemNumber, 2);
-    assert.equal(colIndices.itemTitle, 3);
-    assert.equal(colIndices.quantity, 4);
-  });
-
-  it('leaves an absent optional column at -1 without failing', () => {
-    const { colIndices, missing } = bindSheetColumns(['Order Number', 'Item Number', 'Title']);
-    assert.deepEqual(missing, []);
-    assert.equal(colIndices.currency, -1);
-    assert.equal(colIndices.salePrice, -1);
-    assert.equal(colIndices.tracking, -1);
-  });
-
-  it('reports the missing REQUIRED headers so the caller can 400', () => {
-    const { missing } = bindSheetColumns(['Ship by date', 'Tracking']);
-    assert.deepEqual(missing.map((b) => b.field).sort(), ['itemNumber', 'itemTitle', 'orderNumber']);
-  });
-});
+import { FIXED_COL_INDICES_DEFAULT, mapSheetRowsToCanonicalLines } from './google-sheet-rows';
 
 describe('resolveSpreadsheetShipByDate', () => {
   it('resolves a date-only cell to the END of that warehouse day', () => {

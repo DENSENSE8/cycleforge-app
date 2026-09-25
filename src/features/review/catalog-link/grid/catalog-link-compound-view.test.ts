@@ -28,6 +28,7 @@ function exception(over: Partial<ImportExceptionRow> = {}): ImportExceptionRow {
     id: 22,
     accountOrderId: '19-12345',
     accountSource: 'Amazon',
+    reason: 'no_item_number',
     productTitle: 'Canon 5D',
     tracking: '1Z999',
     status: 'open',

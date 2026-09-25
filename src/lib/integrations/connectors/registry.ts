@@ -14,7 +14,8 @@ import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { Capability, IntegrationConnector } from './types';
 
 const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
-  // Marketplaces — real OAuth already exists; sync/refresh wired in Phase 1+.
+  // Marketplaces — real OAuth already exists. No sync(): ShipStation is the sole
+  // outbound-order importer and aggregates these stores (owner 2026-09-24).
   // 'inventory' is the ERP/inventory-BACKEND capability (POs, item master,
   // fulfillment push) — channel stock/price push on marketplaces is part of
   // the 'orders' channel capability (the pushInventory hook), not 'inventory'.
@@ -25,7 +26,6 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     authorizeStartPath: '/api/ebay/connect',
     healthPath: '/api/ebay/health',
     // Lazy imports so the connection reader never pulls in the eBay client.
-    sync: (orgId) => import('./ebay').then((m) => m.ebaySync(orgId)),
     validate: (orgId) => import('./ebay').then((m) => m.ebayValidate(orgId)),
     refresh: (orgId, scope) => import('./ebay').then((m) => m.ebayRefresh(orgId, scope)),
   },
@@ -35,7 +35,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     capabilities: ['orders'],
     authorizeStartPath: '/api/amazon/oauth/start',
     healthPath: '/api/amazon/health',
-    sync: (orgId) => import('./amazon').then((m) => m.amazonSync(orgId)),
+    // Lazy import so the connection reader never pulls in the Amazon client.
     validate: (orgId) => import('./amazon').then((m) => m.amazonValidate(orgId)),
   },
   // Operations
@@ -47,13 +47,10 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     healthPath: '/api/zoho/health',
     validate: (orgId, _scope, opts) => import('./zoho').then((m) => m.zohoValidate(orgId, opts)),
   },
-  google_sheets: {
-    provider: 'google_sheets',
-    authKind: 'vault',
-    capabilities: ['orders'],
-    // Lazy import so the connection reader never pulls in the Sheets job.
-    sync: (orgId, opts) => import('./orders-transfer').then((m) => m.googleSheetsSync(orgId, opts)),
-  },
+  // Credentials only: the technician / packer sheet import
+  // (`/api/google-sheets/execute-script`) reads the org's sheet with them.
+  // Sheet ORDER import was removed 2026-09-24 — orders come from ShipStation.
+  google_sheets: { provider: 'google_sheets', authKind: 'vault', capabilities: [] },
   // Storage backup — tenant connects their own Google Drive (Sign in with
   // Google, scope drive.file) so photo originals back up to / offload onto
   // storage they own. No ingestion capability; validate()/refresh() are
@@ -75,12 +72,12 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     // Lazy import so the connection reader never pulls in the Square client.
     sync: (orgId) => import('./square').then((m) => m.squareSync(orgId)),
   },
+  // Ecwid orders arrive through ShipStation; the connection feeds the catalog
+  // mirror, packing slips and exception tracking.
   ecwid: {
     provider: 'ecwid',
     authKind: 'vault',
     capabilities: ['orders', 'catalog'],
-    // Lazy import so the connection reader never pulls in the Ecwid job.
-    sync: (orgId, opts) => import('./orders-transfer').then((m) => m.ecwidSync(orgId, opts)),
   },
   // Nango-connected storefront (mirrors Square). Orders in via the GraphQL Admin
   // API through Nango's proxy; catalog/stock push-out is a later phase. Lazy
@@ -105,7 +102,8 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     provider: 'shipstation',
     authKind: 'vault',
     capabilities: ['orders', 'tracking', 'labels'],
-    sync: (orgId) => import('./shipstation').then((m) => m.shipstationSync(orgId)),
+    healthPath: '/api/integrations/shipstation/health?fresh=1',
+    sync: (orgId, opts) => import('./shipstation').then((m) => m.shipstationSync(orgId, opts)),
   },
   ups: { provider: 'ups', authKind: 'vault', capabilities: ['tracking'] },
   fedex: { provider: 'fedex', authKind: 'vault', capabilities: ['tracking'] },

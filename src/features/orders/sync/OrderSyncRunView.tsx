@@ -170,14 +170,9 @@ export function OrderSyncRunView({
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <header className="flex flex-col gap-1 border-b border-border-soft px-4 py-3">
-          <div className="flex items-center gap-2">
-            <p className={`${microBadge} text-text-soft`}>
-              {demo ? 'Order import · sample run' : 'Order import'}
-            </p>
-            {run.tabName ? (
-              <p className={`${microBadge} text-text-faint`}>tab {run.tabName}</p>
-            ) : null}
-          </div>
+          <p className={`${microBadge} text-text-soft`}>
+            {demo ? 'Order import · sample run' : 'Order import'}
+          </p>
           <div className="flex items-end justify-between gap-3">
             <h2 className="min-w-0 text-role-title font-semibold text-text-default">{headline}</h2>
             <p className="shrink-0 text-role-caption font-mono tabular-nums text-text-muted">
@@ -186,7 +181,7 @@ export function OrderSyncRunView({
           </div>
           {/*
             The "how much is it importing" number the operator asked for, as
-            soon as the sheet read reports it — ahead of any insert.
+            soon as the first source read reports it — ahead of any insert.
           */}
           <p className="text-role-caption text-text-muted">
             {rowsSeen > 0

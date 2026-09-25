@@ -6,8 +6,8 @@
  * calls internally) — then replicates EbayClient.fetchOrders() exactly:
  * GET /sell/fulfillment/v1/order with a `lastmodifieddate:[since..]` filter and
  * the EBAY_US marketplace, asking for 5 orders. For each order we confirm the
- * first line item carries `legacyItemId` (the external ref id the sync writes to
- * orders.item_number — see src/lib/ebay/sync.ts).
+ * first line item carries `legacyItemId` (the external ref id the removed
+ * eBay order sync wrote to orders.item_number).
  *
  * READ-ONLY: no order creation, no eBay writes, no DB writes. Network calls are
  * the OAuth token refresh (POST) and the order GET. A single read-only SELECT on
@@ -29,7 +29,7 @@ import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
 
 const ENV_FILE = process.argv[2] || '.env.e2e.tmp';
 const LIMIT = Math.max(1, Math.min(Number(process.argv[3]) || 5, 50));
-const DAYS_BACK = 30; // matches src/lib/ebay/sync.ts sinceIso window
+const DAYS_BACK = 30; // the removed eBay order sync's sinceIso window
 
 loadEnv({ path: ENV_FILE });
 

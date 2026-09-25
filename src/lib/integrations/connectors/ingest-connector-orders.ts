@@ -11,7 +11,11 @@
  *   • `matchOn: 'accountSourceAndOrderId'` — mirrors the unique constraint.
  *     Marketplace order numbers are only unique per channel, so matching on
  *     `order_id` alone would treat Shopify "1001" and ShipStation "1001" as one
- *     order and delete one of them.
+ *     order and delete one of them. A marketplace connector with no row
+ *     under its own source claims a legacy `shipstation` row for its number
+ *     (see `src/lib/orders/order-source-match.ts`). ShipStation itself does not
+ *     come through here: it is an aggregator and calls the writer in
+ *     `aggregator` mode (src/lib/integrations/connectors/shipstation.ts).
  *   • `authoritative` — the marketplace is the system of record for the title
  *     and the fulfillment status, so both refresh (status only while the order
  *     is still untouched locally).

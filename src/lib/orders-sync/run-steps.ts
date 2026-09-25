@@ -14,33 +14,31 @@
  *
  * ## Why folding is not trivial
  *
- * Three hazards, all real in the current emitters:
+ * Two hazards, both real in the current emitters:
  *
- * 1. **`updating` arrives twice per lane.** `ingest-canonical-orders` emits it
- *    once for deletes and once for backfills. A naive `count = event.count`
- *    makes the number jump *down*; counts here ACCUMULATE.
- * 2. **Lanes interleave.** Google Sheets and Ecwid run in `Promise.all`, so
- *    Ecwid can still be inserting while Sheets publishes. Step state is the
- *    max over lanes: running if ANY lane is on it, done once every lane that
- *    owns it has passed it.
- * 3. **A step can be legitimately empty.** A lane that finishes without ever
+ * 1. **A phase can arrive more than once.** The ShipStation connector reports
+ *    `fetching_shipstation` bare and then again with its count. A naive
+ *    `count = event.count` makes numbers jump or vanish; counts here
+ *    ACCUMULATE, and a lane's cursor never moves backwards.
+ * 2. **A step can be legitimately empty.** A lane that finishes without ever
  *    emitting `updating` updated zero rows — that is `0 updated`, done, not
- *    "still pending" and not "skipped". Only a lane that never ran at all
- *    (no Ecwid connection) yields skipped steps.
+ *    "still pending" and not "skipped". Only a lane the run never started
+ *    yields skipped steps.
  *
  * Everything here is pure and immutable: every mutator returns a new state, so
  * React can hold it and a test can drive it without a DOM.
  */
 import type { SyncPhase, SyncStreamEvent } from './types';
 
-/** One parallel stream of the import. Each posts its own request. */
-export type SyncRunLane = 'sheets' | 'ecwid' | 'exceptions';
+/**
+ * One stream of the import. Each posts its own request: ShipStation first, the
+ * exceptions pass after it, against the rows it just landed.
+ */
+export type SyncRunLane = 'shipstation' | 'exceptions';
 
 export type SyncRunStepId =
-  | 'read_sheet'
-  | 'read_ecwid'
+  | 'read_shipstation'
   | 'resolve_tracking'
-  | 'match'
   | 'update'
   | 'insert'
   | 'publish'
@@ -66,16 +64,13 @@ export interface SyncRunStep {
 }
 
 /**
- * Declaration order IS paint order, and it mirrors the machine: the ingest
- * pass resolves tracking, matches, applies deletes/backfills (`updating`),
- * then inserts, then publishes. Exceptions run last, after the rows they
- * match against exist.
+ * Declaration order IS paint order, and it mirrors the machine: the connector
+ * reads, resolves tracking, applies updates, then inserts, then publishes.
+ * Exceptions run last, after the rows they match against exist.
  */
 const STEP_ORDER: readonly SyncRunStepId[] = [
-  'read_sheet',
-  'read_ecwid',
+  'read_shipstation',
   'resolve_tracking',
-  'match',
   'update',
   'insert',
   'publish',
@@ -86,34 +81,29 @@ const STEP_META: Record<
   SyncRunStepId,
   { label: string; unit: string; measured: boolean }
 > = {
-  read_sheet: { label: 'Read Google Sheet', unit: 'row', measured: true },
-  read_ecwid: { label: 'Read Ecwid orders', unit: 'order', measured: true },
+  read_shipstation: { label: 'Read ShipStation orders', unit: 'order', measured: true },
   resolve_tracking: {
     label: 'Resolve tracking numbers',
     unit: 'tracking number',
     measured: true,
   },
-  // The emitters carry no count for these two: matching is a comparison pass
-  // and publishing is a fan-out. A check mark is the whole report.
-  match: { label: 'Match against existing orders', unit: '', measured: false },
   update: { label: 'Update changed orders', unit: 'order', measured: true },
   insert: { label: 'Insert new orders', unit: 'order', measured: true },
+  // The emitters carry no count for publishing: it is a fan-out. A check mark
+  // is the whole report.
   publish: { label: 'Publish to the desk', unit: '', measured: false },
   exceptions: { label: 'Resolve open exceptions', unit: 'exception', measured: true },
 };
 
 /** Which steps a lane can ever reach. Drives skipped-vs-empty. */
 const LANE_STEPS: Record<SyncRunLane, readonly SyncRunStepId[]> = {
-  sheets: ['read_sheet', 'resolve_tracking', 'match', 'update', 'insert', 'publish'],
-  ecwid: ['read_ecwid', 'resolve_tracking', 'match', 'update', 'insert', 'publish'],
+  shipstation: ['read_shipstation', 'resolve_tracking', 'update', 'insert', 'publish'],
   exceptions: ['exceptions'],
 };
 
 const PHASE_STEP: Partial<Record<SyncPhase, SyncRunStepId>> = {
-  fetching_sheet: 'read_sheet',
-  fetching_ecwid: 'read_ecwid',
+  fetching_shipstation: 'read_shipstation',
   resolving_tracking: 'resolve_tracking',
-  matching_orders: 'match',
   updating: 'update',
   inserting: 'insert',
   publishing: 'publish',
@@ -132,9 +122,9 @@ interface LaneState {
    * The step that was IN FLIGHT when this lane failed or was cancelled.
    *
    * Load-bearing: without it, a lane error painted every step it had already
-   * passed as failed, so cancelling mid-insert reported "Read Google Sheet —
-   * Cancelled" on a read that had finished with 214 rows. A failure belongs to
-   * one step; the ones behind it stand.
+   * passed as failed, so cancelling mid-insert reported "Read ShipStation
+   * orders — Cancelled" on a read that had finished with 214 orders. A failure
+   * belongs to one step; the ones behind it stand.
    */
   failedAt?: SyncRunStepId | null;
   error?: string;
@@ -144,8 +134,6 @@ export interface SyncRunState {
   lanes: Record<SyncRunLane, LaneState>;
   /** Accumulated per-step counts. Never overwritten downward. */
   counts: Partial<Record<SyncRunStepId, number>>;
-  /** Sheet tab the sheet lane actually read — the operator's "which tab?" check. */
-  tabName?: string;
   startedAt: number;
   endedAt?: number;
   /** True once no lane is still running and at least one lane has reported. */
@@ -156,7 +144,7 @@ export interface SyncRunState {
 const IDLE_LANE: LaneState = { status: 'idle', cursor: -1, current: null };
 
 export function createSyncRun(
-  lanes: readonly SyncRunLane[] = ['sheets', 'ecwid', 'exceptions'],
+  lanes: readonly SyncRunLane[] = ['shipstation', 'exceptions'],
   startedAt: number = Date.now(),
 ): SyncRunState {
   const all = Object.keys(LANE_STEPS) as SyncRunLane[];
@@ -168,9 +156,8 @@ export function createSyncRun(
 }
 
 /**
- * Advance one lane onto a step. The cursor is monotonic — a late `inserting`
- * from a slower lane must never drag a step that already finished back to
- * running.
+ * Advance one lane onto a step. The cursor is monotonic — a late repeat of an
+ * earlier phase must never drag a step that already finished back to running.
  */
 function advance(lane: LaneState, id: SyncRunStepId): LaneState {
   const next = STEP_ORDER.indexOf(id);
@@ -232,7 +219,7 @@ export function applySyncRunEvent(
 export function completeSyncRunLane(
   state: SyncRunState,
   lane: SyncRunLane,
-  outcome: { ok: boolean; error?: string; tabName?: string },
+  outcome: { ok: boolean; error?: string },
 ): SyncRunState {
   const current = state.lanes[lane];
   if (current.status === 'skipped') return state;
@@ -247,19 +234,7 @@ export function completeSyncRunLane(
       error: outcome.ok ? undefined : outcome.error,
     },
   };
-  return withSettlement({
-    ...state,
-    lanes,
-    tabName: outcome.tabName ?? state.tabName,
-  });
-}
-
-/** A lane that cannot run at all (provider not connected). Steps read skipped. */
-export function skipSyncRunLane(state: SyncRunState, lane: SyncRunLane): SyncRunState {
-  return withSettlement({
-    ...state,
-    lanes: { ...state.lanes, [lane]: { status: 'skipped', cursor: -1, current: null } },
-  });
+  return withSettlement({ ...state, lanes });
 }
 
 /**
@@ -326,9 +301,8 @@ function stepState(state: SyncRunState, id: SyncRunStepId): { state: SyncRunStep
  * The renderable ledger.
  *
  * A finished MEASURED step with no emission is `count: 0` — "nothing to
- * update" is an answer, not a blank. An UNMEASURED step (`match`, `publish`)
- * has no count at all, because inventing one would report a comparison pass as
- * "0 orders matched".
+ * update" is an answer, not a blank. An UNMEASURED step (`publish`) has no
+ * count at all, because inventing one would report a fan-out as "0 orders".
  */
 export function syncRunSteps(state: SyncRunState): SyncRunStep[] {
   return STEP_ORDER.map((id) => {
@@ -349,7 +323,7 @@ export function syncRunSteps(state: SyncRunState): SyncRunStep[] {
 
 /**
  * The one-sentence roll-up a settled run reports ("Orders synced: 35
- * inserted, 12 updated"). Named here because three surfaces consume it — the
+ * inserted, 9 updated"). Named here because three surfaces consume it — the
  * run view, the hook's own `status`, and the demo driver.
  */
 export interface SyncRunOutcomeLine {
@@ -379,5 +353,5 @@ export function syncRunProgress(state: SyncRunState): SyncRunProgress {
 
 /** Rows the run looked at — the "how many is it importing" headline number. */
 export function syncRunRowsSeen(state: SyncRunState): number {
-  return (state.counts.read_sheet ?? 0) + (state.counts.read_ecwid ?? 0);
+  return state.counts.read_shipstation ?? 0;
 }

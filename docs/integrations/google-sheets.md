@@ -1,9 +1,17 @@
 # Google Sheets
 
-The **legacy order-transfer pipeline** — USAV's pre-app orders/tech/packer data lived in
-a Google Sheet, and these jobs pull it into the DB. Built and live, but **write-back to
-Sheets is removed** (everything now persists straight to Postgres). Service-account auth
-(no per-user OAuth).
+The **legacy technician / packer sheet import** — USAV's pre-app tech and packer data
+lived in a Google Sheet, and these jobs pull it into the DB. **Write-back to Sheets is
+removed** (everything persists straight to Postgres). Service-account auth (no per-user
+OAuth).
+
+**Order import from Sheets was removed on 2026-09-24.** ShipStation is the only
+outbound-order importer: the desk's **Sync ShipStation** face
+(`POST /api/integrations/shipstation/sync`) and the `shipstation.orders_sync` cron
+(`/api/cron/shipstation/orders-sync`, 08:00 + 14:00 PT). Removed with it:
+`/api/google-sheets/transfer-orders`, `/api/google-sheets/sync-shipstation-orders`
+(ShipStation CSV upload), the `google_sheets` connector `sync()` / `orders` capability, and
+the `google_sheets.transfer_orders` cron.
 
 ## Auth — `src/lib/google-auth.ts`
 
@@ -17,57 +25,29 @@ jobs do not fall back to a global service account or spreadsheet.
 
 | Route | Auth | Purpose |
 |---|---|---|
-| `POST\|GET /api/google-sheets/transfer-orders` | `orders.import` | Streaming NDJSON job: import orders from the sheet (POST takes optional `manualSheetName`). |
-| `POST /api/google-sheets/sync-shipstation-orders` | `admin.manage_features` | Upload a ShipStation CSV → match tracking → insert/update orders, clear matched exceptions. |
 | `POST /api/google-sheets/execute-script` | `admin.manage_features` | Routes `scriptName` → `checkShippedOrders` / `syncTechSerialNumbers` / `syncPackerLogs`. |
-| `POST /api/sync-sheets` | `integrations.sheets` | Multi-tab sync: `shipped` + `tech_1..3` + `packer_*` in one pass. |
 | `POST /api/google-sheets/append` | `admin.manage_features` | **Removed** — returns 410. Persist to the DB instead. |
 
 `updateNonshippedOrders` (an old execute-script target) is likewise **410 Gone**.
 
-## Transfer-orders eligibility
+## What `execute-script` maps
 
-`runGoogleSheetsTransferOrders` (sheet path) only imports rows that have:
-
-1. **Order Number** (required header + non-blank cell)
-2. **Item Number** / Item ID / Listing ID (required header + non-blank **raw** cell — catalog title-match does **not** count)
-3. **Tracking** (non-blank cell; blank tracking is skipped like ShipStation)
-4. Platform ≠ `ecwid` on the sheet (Ecwid comes from the API path)
-
-Missing required headers fail the job with HTTP 400. Blank Item Number rows are counted as `skippedNoItemNumber` and never insert/update `orders` — this keeps unlinkable trash out of the orders SoT (`sku_platform_ids` / listing search need a listing id).
-
-When Item Number is present but does **not** resolve to an existing `sku_catalog` /
-`sku_platform_ids` row, the order **still imports** (`sku_catalog_id` null) and an
-explicit chore is upserted into `order_catalog_link_chores`. Operators clear that
-queue on **Review → Catalog link** (`/review?mode=catalog-link`): link the listing
-once to a Zoho/catalog SoT and all matching orders backfill. Historical orphans are
-**not** scanned into this queue — only new import misses.
-
-## What `/api/sync-sheets` maps
-
-- **`shipped`** tab → `orders` (`status='shipped'`, title/qty/condition/tracking/sku +
-  `sku_catalog_id`, `account_source`).
-- **`tech_1` / `tech_2` / `tech_3`** → `tech_serial_numbers` (+ `orders_exceptions` for
-  unmatched tracking); resolves `shipment_id` from tracking.
-- **`packer_*`** (dynamic tab names) → `packer_logs` (+ legacy allocation mirror).
-- Detects FBA-like FNSKU patterns and logs exceptions when tracking doesn't match an
-  order.
+- **`checkShippedOrders`** — read-only: which orders have a packer log via the
+  `shipment_id` FK.
+- **`tech_1` / `tech_2` / `tech_3`** (`syncTechSerialNumbers`) → `tech_serial_numbers`
+  (+ `orders_exceptions` for unmatched tracking); resolves `shipment_id` from tracking.
+- **`packer_*`** (`syncPackerLogs`) → `packer_logs`.
 
 Shared helpers live in `src/lib/sync/sheet-sync-common.ts`
 (`getTrackingLast8`, `hasFbaFnsku`, `hasOrderByTracking`, `parseSheetDateTime`,
-`upsertOpenOrdersException`, …). The transfer-orders job is
-`src/lib/jobs/google-sheets-transfer-orders.ts`
-(`runGoogleSheetsTransferOrders(orgId, manualSheetName?, source?, progress?)`).
+`upsertOpenOrdersException`, …).
 
-## Cron (`vercel.json`)
+## Review · Missing item number
 
-| Schedule | Path |
-|---|---|
-| `30 15 * * 1-5` | `/api/cron/google-sheets/transfer-orders` (3:30pm weekdays) |
-| `0 18 * * 1-5`  | `/api/cron/google-sheets/transfer-orders` (6:00pm weekdays) |
-| `0 22 * * 1-5`  | `/api/cron/google-sheets/transfer-orders` (10:00pm weekdays) |
-
-The cron route calls `runGoogleSheetsTransferOrders(orgId, ...)` under `withCronRun()`.
+The removed order import parked sheet rows with a blank Item Number in
+`order_import_exceptions`. No new rows arrive; the open ones are still listed, resolved
+(the stored sheet row is re-mapped through `src/lib/orders/sources/google-sheet-rows.ts`
+and ingested) or ignored on `/review?mode=catalog-link`.
 
 ## Vault migration
 
@@ -80,8 +60,7 @@ pnpm google-sheets:connect -- --apply
 ```
 
 The command verifies KMS configuration and reads the spreadsheet before writing.
-After one successful cron run, remove the legacy Google Sheets variables from the
-deployment; they are not read by runtime transfer or execute-script routes.
+Runtime routes do not read the legacy Google Sheets variables.
 
 ## Environment variables
 
@@ -90,12 +69,9 @@ deployment; they are not read by runtime transfer or execute-script routes.
 | `GOOGLE_CLIENT_EMAIL` | One-time migration input; not read by runtime jobs. |
 | `GOOGLE_PRIVATE_KEY` | One-time migration input; not read by runtime jobs. **Sensitive**. |
 | `SPREADSHEET_ID` | Required one-time migration input; stored in the vault after migration. |
-| `CRON_SECRET` | Bearer for the transfer-orders cron. |
 
 ## Status / direction
 
-This is a **migration-era** integration: it exists to drain the old spreadsheet workflow
-into the DB. New writes never go back to Sheets. Credentials are vault-backed and
-tenant-scoped. As the v1 outbound tracker
-(`docs/integrations/`/ memory `v1-tracker-tier-strategy`) takes over the orders sheet,
-these jobs become the backfill path, not the steady state.
+This is a **migration-era** integration: it exists to drain the old spreadsheet
+workflow into the DB. New writes never go back to Sheets. Credentials are vault-backed
+and tenant-scoped.

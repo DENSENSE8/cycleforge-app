@@ -34,11 +34,25 @@ const KNOWN_MARKETPLACE_SLUGS: Record<string, string> = {
   woocommerce: 'woocommerce',
   etsy: 'etsy',
   ecwid: 'ecwid',
+  'ecwid by lightspeed': 'ecwid',
   sqonline: 'square',
   'square online': 'square',
 };
 
-export function shipstationMarketplaceSlug(store: ShipStationV1Store): string | null {
+/**
+ * ShipStation's own channels — manual orders, the label API, the rate browser.
+ * They are ShipStation plumbing, not sales platforms: never mirrored into the
+ * catalog, and an order from one cannot be attributed to a platform.
+ */
+const SHIPSTATION_INTERNAL_MARKETPLACES = new Set(['shipstation', 'label api', 'ratebrowser']);
+
+export function isShipStationInternalStore(store: Pick<ShipStationV1Store, 'marketplace' | 'marketplaceName'>): boolean {
+  const key = String(store.marketplace ?? store.marketplaceName ?? '').trim().toLowerCase();
+  return SHIPSTATION_INTERNAL_MARKETPLACES.has(key);
+}
+
+export function shipstationMarketplaceSlug(store: Pick<ShipStationV1Store, 'marketplace' | 'marketplaceName'>): string | null {
+  if (isShipStationInternalStore(store)) return null;
   const key = String(store.marketplace ?? store.marketplaceName ?? '').trim();
   if (!key) return null;
   const lower = key.toLowerCase();
@@ -96,9 +110,11 @@ export async function syncShipStationStoresToCatalog(
       if (existing.rows.length > 0) platformIds.set(slug, Number(existing.rows[0].id));
     }
 
-    // One platform_account per store, so the type → account → platform chain
-    // can reach the specific ShipStation storefront.
+    // One platform_account per ACTIVE store, so the type → account → platform
+    // chain can reach the specific ShipStation storefront. Retired stores still
+    // attribute their historical orders, but add no picker entries.
     for (const store of stores) {
+      if (!store.active) continue;
       const slug = shipstationMarketplaceSlug(store);
       const platformId = slug ? platformIds.get(slug) : undefined;
       if (!platformId) continue;

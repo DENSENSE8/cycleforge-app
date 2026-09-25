@@ -10,6 +10,7 @@
 import type { PriceSource } from '@/lib/orders/price-resolve';
 import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
+import type { CustomerBillTo, CustomerRecord } from '@/lib/customers/customer-display';
 
 export interface ShippedOrder {
   id: number;
@@ -180,6 +181,17 @@ export interface ShippedOrder {
   station_activity_log_id?: number | null;
   /** FK to customers — linked buyer (e.g. Amazon MFN shipping contact). */
   customer_id?: number | null;
+  /**
+   * The linked customer-book row (`orders.customer_id → customers`, org-scoped),
+   * joined by `/api/orders`. Null when unlinked; absent on reads without the join.
+   */
+  customer?: CustomerRecord | null;
+  /**
+   * The paired ShipStation order's ship-to (`shipstation_order_refs.ship_to`,
+   * same keys as {@link CustomerBillTo}), joined by `/api/orders` only when the
+   * order has no `customer_id`. Absent on reads without the join.
+   */
+  shipstation_ship_to?: CustomerBillTo | null;
   /**
    * Marketplace buyer checkout note (`orders.buyer_note`, migration 2026-07-03p).
    * Mirrored raw by the channel sync and projected into `entity_signals`; this

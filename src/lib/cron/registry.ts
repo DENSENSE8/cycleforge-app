@@ -54,13 +54,14 @@ export const CRON_JOBS: CronJobDef[] = [
   { job: 'sourcing.scan', label: 'Sourcing scan', category: 'Sourcing', schedule: 'daily 06:00', expectedEveryMs: DAY },
   { job: 'sourcing.scour', label: 'Sourcing scour', category: 'Sourcing', schedule: 'daily 08:00', expectedEveryMs: DAY },
   // Integrations
-  { job: 'amazon.orders_sync', label: 'Amazon order sync', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'ebay.refresh_tokens', label: 'eBay token refresh', category: 'Integrations', schedule: 'hourly', expectedEveryMs: 1 * HOUR },
   { job: 'ebay.purchase_sync', label: 'eBay purchase sync', category: 'Integrations', schedule: 'every 30 min', expectedEveryMs: 30 * MIN },
   { job: 'integrations.reconcile', label: 'Integration reconciliation', category: 'Integrations', schedule: 'daily 04:00', expectedEveryMs: DAY },
   { job: 'integrations.token_refresh', label: 'Integration token refresh', category: 'Integrations', schedule: 'hourly', expectedEveryMs: HOUR },
-  { job: 'integrations.orders_sync', label: 'Connected order sync', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
-  { job: 'google_sheets.transfer_orders', label: 'Google Sheets transfer orders', category: 'Integrations', schedule: '3× daily (weekdays)', expectedEveryMs: DAY },
+  { job: 'integrations.orders_sync', label: 'Square order sync', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
+  // vercel.json is UTC-only: `0 15 * * *` + `0 21 * * *` are 08:00 + 14:00 PDT;
+  // under PST (Nov–Mar) the same entries land at 07:00 + 13:00 Pacific.
+  { job: 'shipstation.orders_sync', label: 'ShipStation order sync', category: 'Integrations', schedule: 'daily 08:00 + 14:00 PT', expectedEveryMs: 12 * HOUR },
   { job: 'documents.ecwid_packing_slips', label: 'ECWID packing-slip retry queue', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'documents.ensure_outbound', label: 'Outbound document ensure', category: 'Integrations', schedule: 'every 15 min', expectedEveryMs: 15 * MIN },
   { job: 'documents.nas_mirror', label: 'Outbound document NAS mirror', category: 'Integrations', schedule: 'daily 04:45', expectedEveryMs: DAY },
@@ -107,7 +108,7 @@ export const CRON_JOB_TRIGGER_PATH: Record<string, string> = {
   'stock_alerts': '/api/cron/stock-alerts',
   'sourcing.scan': '/api/cron/sourcing/scan',
   'ebay.refresh_tokens': '/api/cron/ebay/refresh-tokens',
-  'google_sheets.transfer_orders': '/api/cron/google-sheets/transfer-orders',
+  'shipstation.orders_sync': '/api/cron/shipstation/orders-sync',
   'documents.ecwid_packing_slips': '/api/cron/documents/ecwid-packing-slips?limit=25',
   'staff_goals.history': '/api/cron/staff-goals/history',
   'tickets.designated_assign': '/api/cron/tickets/designated-assign',

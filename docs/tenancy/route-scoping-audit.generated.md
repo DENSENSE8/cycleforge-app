@@ -9,23 +9,23 @@
 
 | metric | count |
 |---|---|
-| total route files | 1034 |
-| withAuth | 761 |
-| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 798 |
-| tenant-wrapped through an org-threaded helper | 733 |
-| references organizationId | 909 |
-| raw @/lib/db pool import | 299 |
-| drizzle / neon-http | 22 |
+| total route files | 1028 |
+| withAuth | 756 |
+| GUC-wrapped (tenantQuery/withTenantConnection/withTenantTransaction) | 795 |
+| tenant-wrapped through an org-threaded helper | 730 |
+| references organizationId | 904 |
+| raw @/lib/db pool import | 298 |
+| drizzle / neon-http | 21 |
 | uses DOGFOOD_ORG_ID / transitionalDogfoodOrgId | 7 |
-| cron routes | 42 |
+| cron routes | 41 |
 
 | risk | count |
 |---|---|
 | critical | 16 |
-| high | 24 |
-| medium | 62 |
-| low | 588 |
-| info | 344 |
+| high | 23 |
+| medium | 59 |
+| low | 585 |
+| info | 345 |
 
 ## Routes by risk (critical + high first)
 
@@ -54,7 +54,6 @@
 | high | `/api/auth/qr/status` | GET | — | — | — | staff |
 | high | `/api/auth/verify-email` | GET | ✅ | — | — | email_login_tokens, account_emails, staff |
 | high | `/api/beta/spots` | GET | — | — | — | beta_waitlist |
-| high | `/api/cron/amazon/orders-sync` | GET | — | — | — | amazon_accounts, accounts, orders |
 | high | `/api/cron/cleanup` | GET | — | — | — | entity_search_outbox |
 | high | `/api/cron/documents/ecwid-packing-slips` | GET | — | — | — | documents |
 | high | `/api/cron/documents/ensure-outbound` | GET | — | — | — | documents |
@@ -94,9 +93,6 @@
 | medium | `/api/cron/photos/analyze` | GET/POST | — | ✅ | — | photos |
 | medium | `/api/cron/photos/drive-mirror` | GET | — | ✅ | — | photos |
 | medium | `/api/cron/photos/nas-mirror` | GET | — | ✅ | — | photos |
-| medium | `/api/ebay/sync` | POST/GET | ✅ | ✅ | — | accounts |
-| medium | `/api/ecwid/transfer-orders` | POST | ✅ | ✅ | — | orders |
-| medium | `/api/google-sheets/transfer-orders` | POST/GET | ✅ | ✅ | — | orders |
 | medium | `/api/integrations/google-drive/callback` | GET | — | ✅ | — | photos |
 | medium | `/api/integrations/google-drive/connect` | GET | ✅ | ✅ | — | accounts, photos |
 | medium | `/api/integrations/google-drive/health` | GET | ✅ | ✅ | — | photos |
@@ -177,7 +173,6 @@
 | low | `/api/amazon/connect` | POST | ✅ | ✅ | ✅ | amazon_accounts, accounts |
 | low | `/api/amazon/health` | GET | ✅ | ✅ | ✅ | accounts |
 | low | `/api/amazon/oauth/callback` | GET | — | ✅ | ✅ | amazon_accounts, accounts |
-| low | `/api/amazon/sync` | POST | ✅ | ✅ | ✅ | accounts |
 | low | `/api/assignments/next` | GET | ✅ | ✅ | ✅ | work_assignments |
 | low | `/api/assignments/sku-search` | GET/POST | ✅ | ✅ | ✅ | work_assignments, sku_stock, items, staff, sku |
 | low | `/api/assistant/chat` | POST | ✅ | ✅ | ✅ | messages, types |
@@ -207,7 +202,6 @@
 | low | `/api/catalog/types` | GET/POST | ✅ | ✅ | ✅ | types |
 | low | `/api/catalog/types/[id]` | PATCH/DELETE | — | ✅ | ✅ | types |
 | low | `/api/check-tracking` | GET | ✅ | ✅ | ✅ | shipping_tracking_numbers, work_assignments, packer_logs, orders |
-| low | `/api/cron/google-sheets/transfer-orders` | GET | — | — | ✅ | orders |
 | low | `/api/cron/inventory/drift-check` | GET | — | — | ✅ | stock_alerts, sku |
 | low | `/api/cron/sku-catalog/refresh-suggestions` | GET | — | — | ✅ | sku_catalog |
 | low | `/api/cron/stock-alerts` | GET | — | — | ✅ | bin_contents, stock_alerts, sku |
@@ -277,7 +271,6 @@
 | low | `/api/get-title-by-sku` | GET | ✅ | ✅ | ✅ | sku_platform_ids, sku_catalog, sku_stock, items, sku |
 | low | `/api/global-search` | GET | ✅ | ✅ | ✅ | orders, sku |
 | low | `/api/google-sheets/execute-script` | POST | ✅ | ✅ | ✅ | tech_serial_numbers, orders_exceptions, packer_logs, orders |
-| low | `/api/google-sheets/sync-shipstation-orders` | POST | ✅ | ✅ | ✅ | shipping_tracking_numbers, orders_exceptions, work_assignments, orders |
 | low | `/api/handling-units` | GET/POST | ✅ | ✅ | ✅ | handling_units, items |
 | low | `/api/handling-units/[id]` | GET/DELETE | ✅ | ✅ | ✅ | handling_units |
 | low | `/api/handling-units/bulk` | POST | ✅ | ✅ | ✅ | handling_units |
@@ -730,14 +723,13 @@
 
 - ⛔ `/api/auth/verify-email` (high)
 
-### `accounts` — 30 routes, 13 not yet GUC-safe
+### `accounts` — 27 routes, 11 not yet GUC-safe
 
 - ⛔ `/api/admin/po-gmail/connect` (high)
 - ✅ `/api/amazon/accounts` (low)
 - ✅ `/api/amazon/connect` (low)
 - ✅ `/api/amazon/health` (low)
 - ✅ `/api/amazon/oauth/callback` (low)
-- ✅ `/api/amazon/sync` (low)
 - ⛔ `/api/auth/account/change-password` (critical)
 - ⛔ `/api/auth/account/passkey/authenticate/finish` (medium)
 - ⛔ `/api/auth/account/passkey/register/begin` (critical)
@@ -750,10 +742,8 @@
 - ✅ `/api/auth/sso/callback` (low)
 - ✅ `/api/catalog/platform-accounts` (low)
 - ✅ `/api/catalog/platform-accounts/[id]` (low)
-- ⛔ `/api/cron/amazon/orders-sync` (high)
 - ✅ `/api/ebay/accounts` (low)
 - ✅ `/api/ebay/health` (low)
-- ⛔ `/api/ebay/sync` (medium)
 - ⛔ `/api/integrations/google-drive/connect` (medium)
 - ✅ `/api/orders/backfill/ebay` (low)
 - ✅ `/api/org/accounts/merge` (low)
@@ -771,12 +761,11 @@
 
 - ✅ `/api/ai/chat-sessions/[sessionId]/messages` (low)
 
-### `amazon_accounts` — 4 routes, 1 not yet GUC-safe
+### `amazon_accounts` — 3 routes, 0 not yet GUC-safe
 
 - ✅ `/api/amazon/accounts` (low)
 - ✅ `/api/amazon/connect` (low)
 - ✅ `/api/amazon/oauth/callback` (low)
-- ⛔ `/api/cron/amazon/orders-sync` (high)
 
 ### `audit_logs` — 5 routes, 0 not yet GUC-safe
 
@@ -1386,7 +1375,7 @@
 - ✅ `/api/orders/[id]/amendments` (low)
 - ✅ `/api/pack/ship` (low)
 
-### `orders` — 152 routes, 16 not yet GUC-safe
+### `orders` — 147 routes, 13 not yet GUC-safe
 
 - ✅ `/api/admin/fix-status` (low)
 - ✅ `/api/admin/po-gmail/missing-orders` (low)
@@ -1395,9 +1384,7 @@
 - ✅ `/api/audit-log/report` (low)
 - ✅ `/api/automations/listing-assign` (low)
 - ✅ `/api/check-tracking` (low)
-- ⛔ `/api/cron/amazon/orders-sync` (high)
 - ⛔ `/api/cron/feed-membership-projection` (high)
-- ✅ `/api/cron/google-sheets/transfer-orders` (low)
 - ⛔ `/api/cron/zoho/orders-ingest-drain` (high)
 - ✅ `/api/customers/[id]` (low)
 - ✅ `/api/dashboard/operations` (low)
@@ -1409,11 +1396,8 @@
 - ⛔ `/api/ecwid/order-search` (high)
 - ✅ `/api/ecwid/recent-repair-orders` (low)
 - ✅ `/api/ecwid/sync-exception-tracking` (low)
-- ⛔ `/api/ecwid/transfer-orders` (medium)
 - ✅ `/api/global-search` (low)
 - ✅ `/api/google-sheets/execute-script` (low)
-- ✅ `/api/google-sheets/sync-shipstation-orders` (low)
-- ⛔ `/api/google-sheets/transfer-orders` (medium)
 - ✅ `/api/identification/jobs/[jobId]` (low)
 - ✅ `/api/integrations/[provider]/sync` (low)
 - ✅ `/api/integrations/order-sources` (low)
@@ -1541,11 +1525,10 @@
 - ⛔ `/api/zoho/purchase-orders/sync` (medium)
 - ✅ `/api/zoho/purchase-receives/sync` (low)
 
-### `orders_exceptions` — 9 routes, 0 not yet GUC-safe
+### `orders_exceptions` — 8 routes, 0 not yet GUC-safe
 
 - ✅ `/api/ecwid/sync-exception-tracking` (low)
 - ✅ `/api/google-sheets/execute-script` (low)
-- ✅ `/api/google-sheets/sync-shipstation-orders` (low)
 - ✅ `/api/orders-exceptions/delete` (low)
 - ✅ `/api/orders-exceptions/sync` (low)
 - ✅ `/api/receiving/unfound-queue/[kind]/[id]` (low)
@@ -2025,7 +2008,7 @@
 - ✅ `/api/orders/[id]/timeline` (low)
 - ✅ `/api/receiving-lines/incoming/details` (low)
 
-### `shipping_tracking_numbers` — 58 routes, 0 not yet GUC-safe
+### `shipping_tracking_numbers` — 57 routes, 0 not yet GUC-safe
 
 - ✅ `/api/admin/logs` (low)
 - ✅ `/api/audit-log/report` (low)
@@ -2043,7 +2026,6 @@
 - ✅ `/api/fba/shipments/mark-shipped` (low)
 - ✅ `/api/fba/shipments/split-for-paired-review` (low)
 - ✅ `/api/fba/shipments/today` (low)
-- ✅ `/api/google-sheets/sync-shipstation-orders` (low)
 - ✅ `/api/orders` (low)
 - ✅ `/api/orders/[id]/timeline` (low)
 - ✅ `/api/orders/backfill/ebay` (low)
@@ -2945,7 +2927,7 @@
 - ✅ `/api/warranty/claims/[id]/restore` (low)
 - ✅ `/api/warranty/claims/bulk/restore` (low)
 
-### `work_assignments` — 30 routes, 0 not yet GUC-safe
+### `work_assignments` — 29 routes, 0 not yet GUC-safe
 
 - ✅ `/api/assignments/next` (low)
 - ✅ `/api/assignments/sku-search` (low)
@@ -2956,7 +2938,6 @@
 - ✅ `/api/fba/shipments` (low)
 - ✅ `/api/fba/shipments/today/duplicate-yesterday` (low)
 - ✅ `/api/fba/shipments/today/items` (low)
-- ✅ `/api/google-sheets/sync-shipstation-orders` (low)
 - ✅ `/api/local-pickups` (low)
 - ✅ `/api/orders` (low)
 - ✅ `/api/orders/add` (low)

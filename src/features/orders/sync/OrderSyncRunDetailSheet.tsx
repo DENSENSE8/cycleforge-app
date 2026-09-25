@@ -3,10 +3,9 @@
 /**
  * Which rows — the run's per-row record, one tap from the result.
  *
- * "21 need a fix" is a number an operator cannot act on. This is the answer to
+ * "1 needs a fix" is a number an operator cannot act on. This is the answer to
  * the question it provokes, grouped by what to DO about each row: fixable
- * groups first, then what landed, with spreadsheet padding counted but never
- * listed.
+ * groups first, then what landed.
  *
  * ## Why a BottomSheet
  *
@@ -17,14 +16,11 @@
  * desk-only occupant with a select-over-select header, and on a phone a rail is
  * not a surface.
  *
- * Grouping, tone and the fix links come from {@link buildSyncRunDetail}, which
- * is pure and tested — this file only paints.
+ * Grouping and tone come from {@link buildSyncRunDetail}, which is pure and
+ * tested — this file only paints.
  */
 
-import { useRouter } from 'next/navigation';
-import { ExternalLink } from '@/components/Icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/design-system/primitives/Button';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import type {
   SyncRunDetail,
@@ -37,22 +33,16 @@ const TONE_INK: Record<SyncRunDetailTone, string> = {
   success: 'text-text-success',
   info: 'text-text-info',
   warning: 'text-text-warning',
-  quiet: 'text-text-soft',
 };
 
-function DetailGroup({
-  group,
-  onFollowHref,
-}: {
-  group: SyncRunDetailGroup;
-  onFollowHref: (href: string) => void;
-}) {
-  const count = group.unlistedCount ?? group.rows.length;
+function DetailGroup({ group }: { group: SyncRunDetailGroup }) {
   return (
     <section className="border-t border-border-hairline py-3 first:border-t-0" data-group={group.id}>
       <div className="flex items-baseline justify-between gap-2">
         <h3 className={`${microBadge} ${TONE_INK[group.tone]}`}>{group.label}</h3>
-        <p className="shrink-0 text-role-micro font-mono tabular-nums text-text-muted">{count}</p>
+        <p className="shrink-0 text-role-micro font-mono tabular-nums text-text-muted">
+          {group.rows.length}
+        </p>
       </div>
       {group.hint ? (
         <p className="mt-1 text-role-micro leading-relaxed text-text-muted">{group.hint}</p>
@@ -63,7 +53,7 @@ function DetailGroup({
           {group.rows.map((row) => (
             <li key={row.key} className="flex items-baseline gap-2">
               <span className="shrink-0 font-mono text-role-micro text-text-soft">
-                {row.sheetRow ? `row ${row.sheetRow}` : row.orderId || '—'}
+                {row.orderId || '—'}
               </span>
               <span className="min-w-0 flex-1 break-words text-role-caption text-text-default">
                 {row.title || 'Untitled'}
@@ -74,18 +64,6 @@ function DetailGroup({
             </li>
           ))}
         </ul>
-      ) : null}
-
-      {group.href ? (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="mt-2"
-          onClick={() => onFollowHref(group.href as string)}
-        >
-          <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-          Open the fix queue
-        </Button>
       ) : null}
     </section>
   );
@@ -100,8 +78,6 @@ export function OrderSyncRunDetailSheet({
   onClose: () => void;
   detail: SyncRunDetail;
 }) {
-  const router = useRouter();
-
   return (
     <BottomSheet
       open={open}
@@ -113,19 +89,12 @@ export function OrderSyncRunDetailSheet({
     >
       {detail.groups.length === 0 ? (
         <p className="text-role-caption text-text-muted">
-          This run reported no per-row detail — nothing was inserted, updated or declined.
+          This run reported no per-row detail — nothing was inserted or updated.
         </p>
       ) : (
         <div className="flex flex-col">
           {detail.groups.map((group) => (
-            <DetailGroup
-              key={group.id}
-              group={group}
-              onFollowHref={(href) => {
-                onClose();
-                router.push(href);
-              }}
-            />
+            <DetailGroup key={group.id} group={group} />
           ))}
         </div>
       )}

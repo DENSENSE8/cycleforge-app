@@ -90,8 +90,21 @@ export interface HealthResult {
 export interface SyncOpts {
   full?: boolean;
   cursor?: unknown;
-  /** Google Sheets only: import a specific sheet tab instead of the latest. */
-  manualSheetName?: string;
+  /**
+   * ShipStation only: run the resumable HISTORICAL backfill instead of the
+   * incremental pull. Dry-run unless `apply` — a dry run reads ShipStation and
+   * the org's orders and reports what it would import / enrich / skip /
+   * quarantine, writing nothing. An applied run checkpoints every page in
+   * `shipstation_sync_runs` and resumes an interrupted run unless `restart`.
+   */
+  backfill?: {
+    apply?: boolean;
+    /** ISO start of the history to walk; default: 7 days ago (the import scope). */
+    since?: string;
+    /** Window size in days (modifyDate windows, oldest first). Default 7. */
+    windowDays?: number;
+    restart?: boolean;
+  };
   /**
    * Live per-phase progress sink. Present only for an operator-driven run that
    * is streaming its own response (the desk / `/m` sync surfaces); cron and
@@ -100,7 +113,7 @@ export interface SyncOpts {
    *
    * This is the field whose absence made a 60-second import report itself as a
    * spinner that stopped: the underlying job has always taken a
-   * {@link SyncProgress}, and `orders-transfer.ts` was passing `undefined` for
+   * {@link SyncProgress}, and the connector adapter was passing `undefined` for
    * it, so every phase and every per-row detail the ingest emitted was
    * discarded at the connector seam.
    */
@@ -118,20 +131,17 @@ export interface SyncOutcome {
    * Provider-shaped per-row result detail, passed through verbatim to the
    * caller (the route returns the whole outcome as JSON). Opaque here on
    * purpose: the contract stays provider-agnostic, and each surface narrows it
-   * to its own type — the Sheets/Ecwid importer reads it as
+   * to its own type — the desk's run surface reads it as
    * `TransferOrderDetails` (src/lib/orders-sync/types.ts).
    *
-   * This field is the prerequisite orders-transfer.ts named for retiring the
-   * legacy NDJSON routes. Without it a connector sync reduces a whole import to
-   * two counters, and the run's per-row record (`buildSyncRunDetail` →
-   * OrderSyncRunDetailSheet) has literally nothing to draw.
+   * Without it a connector sync reduces a whole import to two counters, and
+   * the run's per-row record (`buildSyncRunDetail` → OrderSyncRunDetailSheet)
+   * has literally nothing to draw.
    */
   details?: unknown;
   /**
-   * Counters a surface may show beside the totals — most importantly the
-   * "why did nothing import" story (rows skipped for no item number, no
-   * tracking, no order id). Silently dropping these is what turns a fully
-   * skipped import into a blank "up to date" panel.
+   * Counters a surface may show beside the totals (rows read, fields vs
+   * tracking updates, duplicates removed, unresolved tracking).
    */
   stats?: Record<string, number>;
 }

@@ -3,6 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { listingCoverThumbUrlSql } from '@/lib/photos/listing-photos';
 import { liveLabelLateralSql, mapLiveLabelRow } from './live-label';
 import {
   OUTBOUND_MATERIAL_JOINS_SQL,
@@ -150,7 +151,8 @@ const TRIAGE_MEMBERSHIP_SQL = `o.acknowledged_at IS NULL
  * never similarity-gated. The Zoho item governs both title and photo; the
  * catalog is the fallback only when no active Zoho item exists, and the
  * catalog photo never stands in for a Zoho item that has none (the
- * `RECEIVING_LINE_IMAGE_URL_SQL` rule).
+ * `RECEIVING_LINE_IMAGE_URL_SQL` rule). Below the catalog photo sits the SKU's
+ * listing-gallery cover — where acquired marketplace media lands.
  */
 const WORK_SQL = `
   SELECT
@@ -169,7 +171,7 @@ const WORK_SQL = `
                THEN '/api/zoho/items/' || zi.zoho_item_id || '/image'
              ELSE NULLIF(zi.image_url, '')
         END
-      ELSE NULLIF(sc.image_url, '')
+      ELSE COALESCE(NULLIF(sc.image_url, ''), ${listingCoverThumbUrlSql('sc')})
     END AS thumbnail_url,
     stock.ready AS stock_ready,
     stock.received AS stock_received,

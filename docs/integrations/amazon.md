@@ -1,12 +1,14 @@
 # Amazon (Selling Partner API)
 
-Imports Amazon **sales orders** (SKU- / FBA-item-scoped) into the local `sales_orders`
-table. **LWA-only** auth (no AWS IAM/SigV4 — Amazon dropped that requirement
-2023-10-02), a zero-dependency SP-API client, and an incremental watermark sync that
-runs on a cron. This is **built and live** (Phase 1), not a plan.
+Connects Amazon seller accounts: **LWA-only** auth (no AWS IAM/SigV4 — Amazon dropped
+that requirement 2023-10-02), a zero-dependency SP-API client, a health probe, and the
+per-order Product-tab reimport (`POST /api/orders/[id]/amazon-refresh`).
 
-> Background: this began as the SP-API order-import design; the code below is the
-> shipped result.
+> **Order import removed 2026-09-24.** ShipStation is the sole outbound-order importer and
+> already aggregates the Amazon store, so the Amazon order pull (`order-sync.ts`,
+> `order-map.ts`, `POST /api/amazon/sync`, the `amazon.orders_sync` cron and the connector
+> `sync()`) was deleted. That pull also imported FBA (AFN) orders read-only; they are no
+> longer imported.
 
 ## Tenancy model
 
@@ -42,19 +44,13 @@ Tokens are encrypted at rest via `INTEGRATION_KMS_KEY` (`writeAmazonToken` /
   `getMarketplaceParticipations()` (cheap, non-PII health probe),
   `getOrdersGenerator()` (pages by `LastUpdatedAfter`), `getOrderItems()`,
   `getOrderAddress()` + `createRestrictedDataToken()` (RDT for buyer PII, MFN only).
-- `order-sync.ts` — `syncAmazonAccountOrders()` / `syncOrgAmazonOrders()`: pull by
-  watermark, **item-scope filter** (only tracked SKUs unless `?all=1`), upsert into
-  `sales_orders` directly (**no Zoho coupling**). FBA (AFN) orders import **read-only**
-  (`status='shipped'`) so they never hit packer queues. An atomic `sync_started_at`
-  claim prevents concurrent runs.
-- `order-map.ts` — pure mappers (`isFbaOrder`, `mapAmazonStatus`, `representativeItem`,
-  watermark overlap/lookback constants).
+- `order-item-refresh.ts` — the Product-tab reimport behind `/api/orders/[id]/amazon-refresh`.
 - `token-refresh.ts` — LWA code/refresh exchange + token encryption envelope.
 - `accounts.ts` — `loadActiveAmazonAccounts()`, `loadAmazonCreds()`, `amazonScopeForSeller()`.
 
 The connector wrapper `src/lib/integrations/connectors/amazon.ts` exports
-`amazonSync(orgId)` → `SyncOutcome`; registered in `connectors/registry.ts` with
-`authKind: 'oauth'`, `capabilities: ['orders','inventory']`.
+`amazonValidate(orgId)`; registered in `connectors/registry.ts` with `authKind: 'oauth'`
+and no `sync()`.
 
 ## Routes
 
@@ -66,13 +62,6 @@ The connector wrapper `src/lib/integrations/connectors/amazon.ts` exports
 | `GET /api/amazon/oauth/start` | `integrations.amazon` | Begin Seller Central OAuth |
 | `GET /api/amazon/oauth/callback` | public (state) | Code → refresh token, store, upsert account |
 | `GET /api/amazon/health` | `integrations.amazon` | Per-account `getMarketplaceParticipations` probe |
-| `POST /api/amazon/sync` | `integrations.amazon` | Manual sync (`?all=1` imports untracked SKUs) |
-| `GET /api/cron/amazon/orders-sync` | Bearer `CRON_SECRET` | Incremental import for all orgs |
-
-## Background sync
-
-`/api/cron/amazon/orders-sync` runs **every 15 min** (`vercel.json`) and loops every org
-with an active account, calling `syncOrgAmazonOrders`. `?all=1` widens to untracked SKUs.
 
 ## DB tables (migration `2026-06-14b_amazon_integration.sql`)
 
@@ -98,12 +87,11 @@ with an active account, calling `syncOrgAmazonOrders`. `?all=1` widens to untrac
 | `AMAZON_MARKETPLACE_IDS` | Comma list (default `ATVPDKIKX0DER` = US). |
 | `AMAZON_SP_API_REFRESH_TOKEN_USAV` | Transitional USAV bootstrap token (env fallback, USAV org only). |
 | `INTEGRATION_KMS_KEY` | AES-256-GCM key; **required in prod** to encrypt tokens at rest. |
-| `CRON_SECRET` | Bearer for the orders-sync cron. |
 
 ## Notes / follow-ups
 
-- FBA orders are imported read-only for visibility; the unshipped/packer flows ignore
-  them (`fulfillment_channel='AFN'`).
+- `last_updated_watermark` / `sync_started_at` / `last_sync_at` on `amazon_accounts` were
+  written only by the removed order pull; they are now static.
 - Buyer PII on MFN orders is best-effort via RDT and depends on the app's approved roles.
 - The Settings card uses the `amazon` connect method: region picker + OAuth +
   paste-token + health + per-account disconnect (`managePermission` → `integrations.amazon`).

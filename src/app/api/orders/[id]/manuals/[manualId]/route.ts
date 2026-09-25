@@ -5,8 +5,9 @@ import {
   OrderManualError,
   removeOrderManual,
   replaceOrderManualFile,
-  updateOrderManualDetails,
+  updateOrderManual,
 } from '@/lib/manuals/order-manuals';
+import { PaperworkPairingError, parsePaperworkPairing } from '@/lib/manuals/paperwork-pairing';
 import { ManualFileError } from '@/lib/manuals/manual-file-store';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
@@ -16,12 +17,14 @@ export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 /**
- * One SKU manual on an order (To-ship paperwork walk).
- *   PATCH  → JSON `{ displayName?, type? }` rename, or multipart
- *            `{ file, displayName? }` replace the stored file.
- *   DELETE → `?mode=unpair` (default; back to the library, unassigned) or
- *            `?mode=delete` (deactivate).
- * The manual must currently belong to the order (404 otherwise).
+ * One paperwork row resolved for an order (To-ship paperwork walk + its
+ * item-number view).
+ *   PATCH  → JSON `{ displayName?, type?, pairing? }` rename / retype / re-pair
+ *            (`pairing` = the complete new `{ orderId, itemNumber, sku }`), or
+ *            multipart `{ file, displayName? }` replace the stored file.
+ *   DELETE → `?mode=unpair` (default; every key cleared, back to the library
+ *            unassigned) or `?mode=delete` (deactivate).
+ * The row must currently resolve for the order (404 otherwise).
  */
 
 type Params = { params: Promise<{ id: string; manualId: string }> };
@@ -67,7 +70,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ success: true, manual });
     }
 
-    const body = (await req.json().catch(() => null)) as { displayName?: unknown; type?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as
+      | { displayName?: unknown; type?: unknown; pairing?: unknown }
+      | null;
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ success: false, error: 'JSON body or multipart file is required' }, { status: 400 });
     }
@@ -77,20 +82,23 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     ) {
       return NextResponse.json({ success: false, error: 'displayName and type must be strings' }, { status: 400 });
     }
-    const manual = await updateOrderManualDetails(orgId, orderId, manualId, {
+    const pairing = body.pairing === undefined ? undefined : parsePaperworkPairing(body.pairing);
+    const { manual, before } = await updateOrderManual(orgId, orderId, manualId, {
       displayName: body.displayName as string | undefined,
       type: body.type as string | null | undefined,
+      pairing,
     });
     await recordAudit(pool, gate.ctx, req, {
       source: 'orders-manuals',
-      action: AUDIT_ACTION.ORDER_MANUAL_UPDATE,
+      action: pairing ? AUDIT_ACTION.ORDER_MANUAL_PAIR : AUDIT_ACTION.ORDER_MANUAL_UPDATE,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: orderId,
-      after: { manualId, displayName: manual.displayName, type: manual.type },
+      before: pairing ? { manualId, pairing: before } : undefined,
+      after: { manualId, displayName: manual.displayName, type: manual.type, pairing: manual.pairing },
     });
     return NextResponse.json({ success: true, manual });
   } catch (error) {
-    if (error instanceof OrderManualError || error instanceof ManualFileError) {
+    if (error instanceof OrderManualError || error instanceof PaperworkPairingError || error instanceof ManualFileError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });
     }
     console.error('Error in PATCH /api/orders/[id]/manuals/[manualId]:', error);
@@ -120,7 +128,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
       action: modeRaw === 'delete' ? AUDIT_ACTION.ORDER_MANUAL_DELETE : AUDIT_ACTION.ORDER_MANUAL_UNPAIR,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: orderId,
-      before: { manualId, ...before },
+      before: { manualId, pairing: before },
     });
     return NextResponse.json({ success: true });
   } catch (error) {

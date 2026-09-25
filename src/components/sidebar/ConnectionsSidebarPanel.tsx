@@ -24,13 +24,6 @@ export function ConnectionsSidebarPanel() {
 
   return (
     <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
-      <input
-        ref={c.shipStationFileInputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={(e) => c.handleShipStationFileChange(e.target.files?.[0] || null)}
-      />
       <div className="flex-1 overflow-y-auto">
         <OrdersSection c={c} />
         <ZohoSection c={c} />

@@ -33,8 +33,8 @@
  * `/m/orders/sync` on the phone. This leaf was a second door onto the same job
  * with its OWN `useOrdersSync()` instance, so an operator could start a second
  * concurrent import from here and watch it in a rail-shaped panel that
- * reported different numbers. Backfill (`AwaitingEbayPanel`) stays: it is a
- * different job.
+ * reported different numbers. The `backfill` leaf (`AwaitingEbayPanel`) stays
+ * for eBay token refresh and the duplicate check — it imports nothing.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -141,8 +141,8 @@ export function OrderIngestRail({
       }
       rows.push({
         id: BACKFILL_LEAF,
-        label: 'Backfill',
-        subtitle: 'eBay / Ecwid catch-up',
+        label: 'Accounts & integrity',
+        subtitle: 'eBay tokens · duplicate check',
         icon: RefreshCw,
         group: 'assets',
         tone: 'neutral',

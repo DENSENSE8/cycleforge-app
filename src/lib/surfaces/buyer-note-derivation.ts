@@ -3,13 +3,10 @@
  * standard — eBay first; Amazon rides the same module later, behind RDT).
  *
  * Signals are a PROJECTION OF THE LOCAL MIRROR (`orders.buyer_note`, migration
- * 2026-07-03p), never a side-effect of the connector. Two triggers share this
- * one function:
- *   • FRESH PATH — fire-and-forget hook in the sync orchestrator after a
- *     provider sync (tapWorkflow semantics: best-effort, never fails a sync).
- *   • HEAL PATH — the nightly `/api/cron/signals/buyer-notes-heal` sweep under
- *     withCronLock, re-scanning a wider window.
- * Both are free no-ops on rows already emitted: `source_ref` +
+ * 2026-07-03p), never a side-effect of the connector. The nightly
+ * `/api/cron/signals/buyer-notes-heal` sweep (under withCronLock) runs it; the
+ * fresh-path hook it used to share with the eBay order sync went with that sync
+ * (2026-09-24). Re-runs are free no-ops on rows already emitted: `source_ref` +
  * ux_entity_signals_source_ref make double-emission structurally impossible.
  * A full backfill is just this sweep with a bigger `limit`.
  *
@@ -134,16 +131,4 @@ export async function deriveBuyerNoteSignals(
   }
 
   return { enabled: true, scanned: rows.length, emitted, duplicates, failed };
-}
-
-/**
- * Fresh-path hook for the sync orchestrator — tapWorkflow semantics: never
- * throws, never rejects, never fails a sync.
- */
-export async function tapBuyerNoteDerivation(orgId: OrgId): Promise<void> {
-  try {
-    await deriveBuyerNoteSignals(orgId, { limit: 500 });
-  } catch (err) {
-    console.warn('[buyer-note-derivation] fresh-path tap failed (non-fatal):', err);
-  }
 }

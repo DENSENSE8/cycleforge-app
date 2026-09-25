@@ -8,7 +8,6 @@ import assert from 'node:assert/strict';
 import {
   buyerNoteSourceRef,
   deriveBuyerNoteSignals,
-  tapBuyerNoteDerivation,
   type BuyerNoteCandidateRow,
   type DeriveBuyerNoteSignalsDeps,
 } from './buyer-note-derivation';
@@ -106,10 +105,4 @@ test('limit is clamped to [1, 10000]', async () => {
   await deriveBuyerNoteSignals(ORG, { limit: 0 }, deps);
   await deriveBuyerNoteSignals(ORG, { limit: 999_999 }, deps);
   assert.deepEqual(cap.listCalls.map((c) => c.limit), [1, 10_000]);
-});
-
-test('tapBuyerNoteDerivation never rejects (fresh-path tap contract)', async () => {
-  // Force the real default deps path to fail fast by passing an org the flag
-  // reader will choke on — the tap must still resolve.
-  await tapBuyerNoteDerivation('not-a-uuid');
 });

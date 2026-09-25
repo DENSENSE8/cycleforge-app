@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-24T18:44:30Z",
-  "totalRoutes": 1071,
+  "generatedAt": "2026-09-24T23:03:14Z",
+  "totalRoutes": 1072,
   "summary": {
-    "permissionGated": 872,
+    "permissionGated": 874,
     "authenticatedNoPermission": 115,
     "anonymousIntentional": 36,
-    "serviceToService": 48,
+    "serviceToService": 47,
     "ungatedRead": 0,
     "ungatedWrite": 0
   },
@@ -674,15 +674,6 @@
       "path": "/api/amazon/oauth/start/route.ts",
       "methods": [
         "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "integrations.amazon",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/amazon/sync/route.ts",
-      "methods": [
-        "POST"
       ],
       "gate": "withAuth",
       "permission": "integrations.amazon",
@@ -1641,15 +1632,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/cron/amazon/orders-sync/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "cron bearer secret",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
       "path": "/api/cron/catalog-projection/route.ts",
       "methods": [
         "GET"
@@ -1714,15 +1696,6 @@
     },
     {
       "path": "/api/cron/feed-membership-projection/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "cron bearer secret",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/cron/google-sheets/transfer-orders/route.ts",
       "methods": [
         "GET"
       ],
@@ -1859,6 +1832,15 @@
     },
     {
       "path": "/api/cron/shipping/sync-due/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "cron bearer secret",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/cron/shipstation/orders-sync/route.ts",
       "methods": [
         "GET"
       ],
@@ -2276,16 +2258,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/ebay/sync/route.ts",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "integrations.ebay",
-      "exemptReason": null
-    },
-    {
       "path": "/api/ecwid-square/sync/route.ts",
       "methods": [
         "POST"
@@ -2328,15 +2300,6 @@
       ],
       "gate": "withAuth",
       "permission": "integrations.ecwid",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/ecwid/transfer-orders/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.import",
       "exemptReason": null
     },
     {
@@ -2806,25 +2769,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/google-sheets/sync-shipstation-orders/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "admin.manage_features",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/google-sheets/transfer-orders/route.ts",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.import",
-      "exemptReason": null
-    },
-    {
       "path": "/api/handling-units/[id]/assign/route.ts",
       "methods": [
         "POST"
@@ -3050,6 +2994,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/integrations/shipstation/health/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
       "exemptReason": null
     },
     {
@@ -4360,6 +4313,53 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/[id]/label-purchase/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/labels/[labelId]/pdf/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/labels/[labelId]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/labels/[labelId]/ticket/route.ts",
+      "methods": [
+        "DELETE",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "integrations.zendesk",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/labels/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/[id]/manuals/[manualId]/route.ts",
       "methods": [
         "DELETE",
@@ -4413,6 +4413,15 @@
         "GET"
       ],
       "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/[id]/price-breakdown/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
       "permission": "orders.view",
       "exemptReason": null
     },

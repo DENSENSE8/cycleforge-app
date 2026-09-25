@@ -78,7 +78,7 @@ const G2_DOCUMENT_COUNT_SQL = `(
  * `listDocumentsForOrder` still dual-reads. Missing the legacy shape here would
  * cage orders whose label predates the link table.
  */
-const G3_LABEL_EXISTS_SQL = `EXISTS (
+export const G3_LABEL_EXISTS_SQL = `EXISTS (
   SELECT 1
     FROM documents d
    WHERE d.organization_id = o.organization_id
@@ -99,7 +99,7 @@ const G3_LABEL_EXISTS_SQL = `EXISTS (
  * only sharpens what the form tells the operator ("bought" vs "linked") — it
  * never changes the verdict.
  */
-const G3_LABEL_PURCHASED_SQL = `EXISTS (
+export const G3_LABEL_PURCHASED_SQL = `EXISTS (
   SELECT 1
     FROM documents d
     JOIN document_entity_links l
@@ -131,6 +131,7 @@ interface RawGateRow {
   linked_document_count: number | string | null;
   shipping_label_linked: boolean | null;
   shipping_label_purchased: boolean | null;
+  has_shipstation_ref: boolean | null;
   created_at: string | null;
   parcel_weight_oz: string | number | null;
   parcel_length_in: string | number | null;
@@ -168,6 +169,12 @@ export interface CagedOrderRecord {
   linkedDocumentCount: number;
   shippingLabelLinked: boolean;
   shippingLabelPurchased: boolean;
+  /**
+   * A ShipStation order is paired with this row (`shipstation_order_refs`) —
+   * imports keep their platform `account_source`, so this, not the source, says
+   * the rate-shop can fall back to the weight stored on the ShipStation order.
+   */
+  hasShipStationRef: boolean;
   createdAt: string | null;
   /**
    * The parcel the rate-shop should use: the order's own when it has one,
@@ -211,6 +218,10 @@ const GATE_SELECT = `
     ${G2_DOCUMENT_COUNT_SQL}       AS linked_document_count,
     ${G3_LABEL_EXISTS_SQL}         AS shipping_label_linked,
     ${G3_LABEL_PURCHASED_SQL}      AS shipping_label_purchased,
+    EXISTS (
+      SELECT 1 FROM shipstation_order_refs ssr
+       WHERE ssr.organization_id = o.organization_id AND ssr.order_row_id = o.id
+    )                              AS has_shipstation_ref,
     ${PARCEL_FALLBACK_SELECT_SQL}
   FROM orders o
   LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
@@ -260,6 +271,7 @@ function mapRow(row: RawGateRowWithParcel): CagedOrderRecord {
     linkedDocumentCount: Number(row.linked_document_count ?? 0),
     shippingLabelLinked: row.shipping_label_linked === true,
     shippingLabelPurchased: row.shipping_label_purchased === true,
+    hasShipStationRef: row.has_shipstation_ref === true,
     createdAt: row.created_at,
     parcelWeightOz: parcel.weightOz,
     parcelLengthIn: parcel.lengthIn,

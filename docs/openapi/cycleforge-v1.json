@@ -427,7 +427,8 @@
           "QUARANTINED",
           "APPLYING",
           "APPLIED",
-          "FAILED"
+          "FAILED",
+          "LINKED"
         ]
       },
       "LabelMatchMethod": {

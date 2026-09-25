@@ -2,7 +2,7 @@
 
 /**
  * Desk page-header split CTA — a primary verb plus a chevron menu (To-ship's
- * Sync Google Sheet, Incoming's Add purchase order).
+ * Sync ShipStation, Incoming's Add purchase order).
  *
  * The desk hands over the verb and the menu; the BAR decides the face through
  * {@link useDeskHeaderFace}: the pill capsule on a card desk, the industrial

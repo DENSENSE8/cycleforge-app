@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { shipstationMarketplaceSlug } from './shipstation-store-sync';
+import { isShipStationInternalStore, shipstationMarketplaceSlug } from './shipstation-store-sync';
 
 /**
  * DB-free unit tests for the marketplace → catalog-slug mapping (the pure half
@@ -10,32 +10,33 @@ import { shipstationMarketplaceSlug } from './shipstation-store-sync';
  */
 
 test('known marketplaces reuse the org catalog slugs (no duplicate platforms)', () => {
+  assert.equal(shipstationMarketplaceSlug({ marketplace: 'eBay', marketplaceName: 'eBay' }), 'ebay');
+  assert.equal(shipstationMarketplaceSlug({ marketplace: 'Amazon', marketplaceName: null }), 'amazon');
   assert.equal(
-    shipstationMarketplaceSlug({ storeId: 1, storeName: null, marketplace: 'eBay', marketplaceName: 'eBay' }),
-    'ebay',
-  );
-  assert.equal(
-    shipstationMarketplaceSlug({ storeId: 2, storeName: null, marketplace: 'Amazon', marketplaceName: null }),
-    'amazon',
-  );
-  assert.equal(
-    shipstationMarketplaceSlug({ storeId: 3, storeName: null, marketplace: 'Square Online', marketplaceName: null }),
+    shipstationMarketplaceSlug({ marketplace: 'Square Online', marketplaceName: null }),
     'square',
     'branded name maps onto the canonical slug',
+  );
+  assert.equal(
+    shipstationMarketplaceSlug({ marketplace: null, marketplaceName: 'Ecwid by Lightspeed' }),
+    'ecwid',
+    'the live v1 name for Ecwid stores is the existing ecwid platform',
   );
 });
 
 test('unknown marketplaces slug from their name so the picker still classifies', () => {
-  assert.equal(
-    shipstationMarketplaceSlug({ storeId: 4, storeName: null, marketplace: 'Reverb', marketplaceName: 'Reverb' }),
-    'reverb',
-  );
+  assert.equal(shipstationMarketplaceSlug({ marketplace: 'Reverb', marketplaceName: 'Reverb' }), 'reverb');
 });
 
 test('a store with no marketplace yields null (no platform row invented)', () => {
-  assert.equal(
-    shipstationMarketplaceSlug({ storeId: 5, storeName: 'Manual', marketplace: null, marketplaceName: null }),
-    null,
-  );
-  assert.equal(shipstationMarketplaceSlug({ storeId: 6, storeName: null, marketplace: '  ', marketplaceName: '' }), null);
+  assert.equal(shipstationMarketplaceSlug({ marketplace: null, marketplaceName: null }), null);
+  assert.equal(shipstationMarketplaceSlug({ marketplace: '  ', marketplaceName: '' }), null);
+});
+
+test('ShipStation plumbing (manual orders, label API, rate browser) is never a platform', () => {
+  for (const marketplaceName of ['ShipStation', 'Label Api', 'RateBrowser']) {
+    assert.equal(isShipStationInternalStore({ marketplace: null, marketplaceName }), true, marketplaceName);
+    assert.equal(shipstationMarketplaceSlug({ marketplace: null, marketplaceName }), null, marketplaceName);
+  }
+  assert.equal(isShipStationInternalStore({ marketplace: null, marketplaceName: 'Walmart' }), false);
 });

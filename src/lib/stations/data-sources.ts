@@ -549,7 +549,7 @@ const testingTechQueue: DataSourceDefinition = {
  * account_source, newest first). `account`/`status` are server-side params;
  * "unshipped only" filters client-side on the route's `is_shipped` flag (no
  * server param exists for it). Bind `shipstation.rate_shop` /
- * `shipstation.buy_label` to work a row, `ebay.sync_now` to re-pull the feed.
+ * `shipstation.buy_label` to work a row.
  */
 const ebayOpenOrders: DataSourceDefinition = {
   id: 'ebay.open_orders',

@@ -7,9 +7,8 @@
  * imported the blocker labels from there would pull the Neon driver into the
  * browser bundle and fail the build outright.
  *
- * Same bundle-altitude split the connectors use for
- * `orders-transfer-outcome.ts`: the SHAPE travels everywhere, the IO stays on
- * the server.
+ * Bundle-altitude split: the SHAPE travels everywhere, the IO stays on the
+ * server.
  */
 
 import type { EvaluatedReleaseGates } from './release-gates';

@@ -1,9 +1,10 @@
 /**
- * Review · Missing item number — enqueue on sheet-import `noItemNumber` skip,
- * list/resolve/ignore for `/review?mode=catalog-link`.
+ * Review · Missing item number — list/resolve/ignore for
+ * `/review?mode=catalog-link`.
  *
- * Sibling of order-catalog-link-chores.ts. Only rows explicitly upserted here
- * appear in the queue (no historical orphan scan).
+ * Rows were enqueued by the Google Sheets order import on a `noItemNumber`
+ * skip. That import was removed 2026-09-24, so no new rows arrive; the queue
+ * stays so the open ones can still be resolved or ignored.
  *
  * "Resolve" does not hand-build an order: it splices the operator-supplied
  * Item Number into the ORIGINAL stored sheet row and re-runs the exact same
@@ -25,19 +26,10 @@ import {
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import type {
+  ImportExceptionReason,
   ImportExceptionRow,
   ImportExceptionStatus,
 } from '@/features/review/catalog-link/import-exception-types';
-
-export type EnqueueImportExceptionInput = {
-  accountOrderId: string;
-  accountSource?: string | null;
-  productTitle?: string | null;
-  tracking?: string | null;
-  sheetRow?: number | null;
-  rawRow: SheetRow;
-  colIndices: SheetColumnIndices;
-};
 
 /** Injectable collaborators (real impls by default; fakes in tests). */
 export type ImportExceptionDeps = {
@@ -49,7 +41,7 @@ export type ImportExceptionDeps = {
   withTx: <T>(orgId: OrgId, fn: (client: Pick<PoolClient, 'query'>) => Promise<T>) => Promise<T>;
   ingest: (
     lines: CanonicalOrderLine[],
-    opts: { orgId: OrgId; source: string },
+    opts: { orgId: OrgId; source: string; collapseDuplicates?: boolean },
   ) => Promise<{ insertedOrderIds: number[] }>;
   invalidate?: (orgId: OrgId, tags: string[]) => Promise<unknown>;
 };
@@ -60,67 +52,6 @@ const defaultDeps: ImportExceptionDeps = {
   ingest: ingestCanonicalOrders,
   invalidate: invalidateCacheTags,
 };
-
-/**
- * Upsert an open exception per underlying sale. Re-syncs bump seen_count /
- * last_seen and refresh the raw-row snapshot ONLY while still open — a
- * resolved or ignored row is left alone (`WHERE status = 'open'`), because the
- * source sheet cell is never edited by this feature and would otherwise
- * resurface forever.
- */
-export async function enqueueImportExceptionsForImport(
-  orgId: OrgId,
-  rows: EnqueueImportExceptionInput[],
-  deps: ImportExceptionDeps = defaultDeps,
-): Promise<number> {
-  if (rows.length === 0) return 0;
-
-  const merged = new Map<string, EnqueueImportExceptionInput>();
-  for (const row of rows) {
-    const accountOrderId = row.accountOrderId.trim();
-    if (!accountOrderId) continue;
-    const accountSource = (row.accountSource || '').trim();
-    const key = `${accountSource}::${accountOrderId}`;
-    // Last write wins for a given order id within one import batch — there is
-    // only ever one sheet row per order, so a collision means a re-read, not
-    // two distinct sales.
-    merged.set(key, { ...row, accountOrderId, accountSource });
-  }
-
-  for (const row of merged.values()) {
-    await deps.query(
-      orgId,
-      `INSERT INTO order_import_exceptions
-         (organization_id, account_order_id, account_source, product_title,
-          tracking, raw_row, col_indices, sheet_row, status, first_seen_at,
-          last_seen_at, seen_count, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', now(), now(), 1, now())
-       ON CONFLICT (organization_id, account_source, account_order_id)
-       DO UPDATE SET
-         product_title = COALESCE(EXCLUDED.product_title, order_import_exceptions.product_title),
-         tracking = COALESCE(EXCLUDED.tracking, order_import_exceptions.tracking),
-         raw_row = EXCLUDED.raw_row,
-         col_indices = EXCLUDED.col_indices,
-         sheet_row = EXCLUDED.sheet_row,
-         last_seen_at = now(),
-         seen_count = order_import_exceptions.seen_count + 1,
-         updated_at = now()
-       WHERE order_import_exceptions.status = 'open'`,
-      [
-        orgId,
-        row.accountOrderId,
-        row.accountSource || '',
-        (row.productTitle || '').trim() || null,
-        (row.tracking || '').trim() || null,
-        JSON.stringify(row.rawRow),
-        JSON.stringify(row.colIndices),
-        row.sheetRow ?? null,
-      ],
-    );
-  }
-
-  return merged.size;
-}
 
 export async function listOpenImportExceptions(
   orgId: OrgId,
@@ -141,6 +72,7 @@ export async function listOpenImportExceptions(
   const result = await deps.query<{
     id: number;
     account_order_id: string;
+    reason: string;
     account_source: string;
     product_title: string | null;
     tracking: string | null;
@@ -153,7 +85,7 @@ export async function listOpenImportExceptions(
     last_seen_at: Date;
   }>(
     orgId,
-    `SELECT id, account_order_id, account_source, product_title, tracking,
+    `SELECT id, account_order_id, account_source, product_title, tracking, reason,
             status, sheet_row, resolved_item_number, resolved_order_id,
             seen_count, first_seen_at, last_seen_at
        FROM order_import_exceptions
@@ -183,6 +115,7 @@ export async function listOpenImportExceptions(
     rows: result.rows.map((r) => ({
       id: Number(r.id),
       accountOrderId: r.account_order_id,
+      reason: r.reason as ImportExceptionReason,
       accountSource: r.account_source,
       productTitle: r.product_title,
       tracking: r.tracking,
@@ -237,11 +170,12 @@ export async function resolveImportException(
   const found = await deps.query<{
     id: number;
     status: string;
+    reason: string;
     raw_row: SheetRow;
     col_indices: SheetColumnIndices;
   }>(
     orgId,
-    `SELECT id, status, raw_row, col_indices
+    `SELECT id, status, reason, raw_row, col_indices
        FROM order_import_exceptions
       WHERE id = $1 AND organization_id = $2
       LIMIT 1`,
@@ -251,6 +185,16 @@ export async function resolveImportException(
   if (!row) return { ok: false, error: 'Exception not found', status: 404 };
   if (row.status !== 'open') {
     return { ok: false, error: 'Exception is not open', status: 409 };
+  }
+  // A ShipStation quarantine carries no sheet row to replay: it clears on the
+  // next ShipStation sync once its store is bound to a platform or the
+  // conflicting rows are cleaned up.
+  if (row.reason !== 'no_item_number') {
+    return {
+      ok: false,
+      error: 'Resolves on the next ShipStation sync once the store or conflicting orders are fixed',
+      status: 409,
+    };
   }
 
   const colIndices = row.col_indices;
@@ -264,6 +208,8 @@ export async function resolveImportException(
   const ingestResult = await deps.ingest([line], {
     orgId,
     source: 'review-import-exception',
+    // Resolving one row must never delete another order that shares its id.
+    collapseDuplicates: false,
   });
   const orderId = ingestResult.insertedOrderIds[0] ?? null;
 

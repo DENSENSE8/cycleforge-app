@@ -2,16 +2,17 @@
 
 /**
  * One order's paperwork, client side: the packing slips + shipping labels on
- * the order (`documents`) and the manuals paired to its item number / SKU
- * (`product_manuals`). Reads share the `['order-documents', id]` key the
- * shipping panel and pack print already use, so every surface agrees.
+ * the order (`documents`) and every `product_manuals` row (manual, packing
+ * list, PL + M…) pinned to the order, its item number or its SKU. Reads share
+ * the `['order-documents', id]` key the shipping panel and pack print already
+ * use, so every surface agrees.
  *
  * Writes:
  *   documents — upload (multipart → GCS), replace (upload the new file, then
  *               unlink the old), delete, fetch from the platform.
- *   manuals   — upload new (paired to the order's item + SKU), pair an
- *               existing library manual, rename, replace the file, unpair,
- *               delete from the library.
+ *   paperwork — upload new (pinned to this order / its item # / its SKU), pair
+ *               an existing library row, rename / retype / re-pair, replace the
+ *               file, unpair, delete from the library.
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +22,8 @@ import type {
   OutboundDocumentsResponse,
   OutboundDocumentType,
 } from '@/lib/documents/types';
+import type { OrderLabelSummary } from '@/lib/shipping/order-label-summary';
+import type { PaperworkPairing, PaperworkSource } from '@/lib/manuals/paperwork-pairing';
 
 export type PaperworkKind = OutboundDocumentType | 'manual';
 
@@ -34,20 +37,27 @@ export interface OrderManual {
   contentUrl: string | null;
   /** Google preview for Drive-only manuals. */
   externalUrl: string | null;
-  pairedBy: Array<'catalog' | 'item_number' | 'sku'>;
+  /** Most specific source it resolves under (order > item # > SKU). */
+  source: PaperworkSource | null;
+  pairedBy: PaperworkSource[];
+  pairing: PaperworkPairing;
   updatedAt: string;
 }
 
 export interface OrderManualsResponse {
   success: boolean;
+  orderId: number;
   itemNumber: string | null;
   sku: string | null;
   skuCatalogId: number | null;
+  defaultPairTo: PaperworkSource;
+  /** Precedence order: this order, item number, SKU. */
   manuals: OrderManual[];
 }
 
 export const orderDocumentsKey = (orderId: number) => ['order-documents', orderId] as const;
 export const orderManualsKey = (orderId: number) => ['order-manuals', orderId] as const;
+export const orderLabelSummaryKey = (orderId: number) => ['order-label-summary', orderId] as const;
 
 async function readJson<T>(res: Response, fallback: string): Promise<T> {
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
@@ -68,6 +78,35 @@ export function useOrderDocuments(orderId: number) {
     refetchInterval: (query) =>
       query.state.data?.packingSlipIngest?.status === 'processing' ? 2_000 : false,
   });
+}
+
+/** `GET /api/orders/[id]/label-purchase` — the order's label status + current purchase. */
+export function useOrderLabelSummary(orderId: number) {
+  return useQuery({
+    queryKey: orderLabelSummaryKey(orderId),
+    queryFn: async () =>
+      readJson<OrderLabelSummary>(
+        await fetch(`/api/orders/${orderId}/label-purchase`, { credentials: 'same-origin' }),
+        'Could not load the shipping label.',
+      ),
+    enabled: Number.isFinite(orderId) && orderId > 0,
+    staleTime: 30_000,
+  });
+}
+
+/** The document a purchase stored, else the newest of that type on the order. */
+export function pickOrderDocument(
+  documents: readonly OutboundDocument[],
+  type: OutboundDocumentType,
+  preferId: number | null,
+): OutboundDocument | null {
+  if (preferId != null) {
+    const exact = documents.find((d) => d.id === preferId);
+    if (exact) return exact;
+  }
+  const ofType = documents.filter((d) => d.documentType === type);
+  if (ofType.length === 0) return null;
+  return ofType.reduce((a, b) => (Date.parse(b.createdAt) > Date.parse(a.createdAt) ? b : a));
 }
 
 export function useOrderManuals(orderId: number) {
@@ -114,19 +153,34 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: orderDocumentsKey(orderId) });
     void queryClient.invalidateQueries({ queryKey: orderManualsKey(orderId) });
+    void queryClient.invalidateQueries({ queryKey: orderLabelSummaryKey(orderId) });
     onChanged?.();
   };
   const fail = (error: Error) => toast.error(error.message);
 
   const upload = useMutation({
-    mutationFn: async ({ kind, file }: { kind: PaperworkKind; file: File }) => {
+    mutationFn: async ({
+      kind,
+      file,
+      pairTo,
+      type,
+    }: {
+      kind: PaperworkKind;
+      file: File;
+      /** Paperwork only: which key the new row pins (server default when absent). */
+      pairTo?: PaperworkSource;
+      type?: string;
+    }) => {
       if (kind === 'manual') {
+        const fields: Record<string, string> = { displayName: file.name.replace(/\.[a-z0-9]+$/i, '') };
+        if (pairTo) fields.pairTo = pairTo;
+        if (type) fields.type = type;
         const res = await fetch(`/api/orders/${orderId}/manuals`, {
           method: 'POST',
           credentials: 'same-origin',
-          body: formFor(file, { displayName: file.name.replace(/\.[a-z0-9]+$/i, '') }),
+          body: formFor(file, fields),
         });
-        await readJson(res, 'Manual upload failed.');
+        await readJson(res, 'Upload failed.');
         return;
       }
       await uploadDocument(orderId, orderRef, kind, file);
@@ -183,33 +237,45 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
   });
 
   const pairManual = useMutation({
-    mutationFn: async (manualId: number) => {
+    mutationFn: async ({ manualId, pairTo }: { manualId: number; pairTo: PaperworkSource }) => {
       const res = await fetch(`/api/orders/${orderId}/manuals`, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ manualId }),
+        body: JSON.stringify({ manualId, pairTo }),
       });
-      await readJson(res, 'Could not pair the manual.');
+      await readJson(res, 'Could not pair it.');
     },
     onSuccess: () => {
-      toast.success('Manual paired to this item');
+      toast.success('Paired');
       refresh();
     },
     onError: fail,
   });
 
-  const renameManual = useMutation({
-    mutationFn: async ({ manualId, displayName }: { manualId: number; displayName: string }) => {
+  /** Rename / retype / re-pair (`pairing` is the complete new pinning). */
+  const updateManual = useMutation({
+    mutationFn: async ({
+      manualId,
+      ...patch
+    }: {
+      manualId: number;
+      displayName?: string;
+      type?: string | null;
+      pairing?: Pick<PaperworkPairing, 'orderId' | 'itemNumber' | 'sku'>;
+    }) => {
       const res = await fetch(`/api/orders/${orderId}/manuals/${manualId}`, {
         method: 'PATCH',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName }),
+        body: JSON.stringify(patch),
       });
-      await readJson(res, 'Could not rename the manual.');
+      await readJson(res, 'Could not save it.');
     },
-    onSuccess: refresh,
+    onSuccess: (_data, { pairing }) => {
+      if (pairing) toast.success('Pairing saved');
+      refresh();
+    },
     onError: fail,
   });
 
@@ -238,7 +304,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
       await readJson(res, mode === 'delete' ? 'Could not delete the manual.' : 'Could not unpair the manual.');
     },
     onSuccess: (_data, { mode }) => {
-      toast.success(mode === 'delete' ? 'Manual deleted from the library' : 'Manual unpaired from this item');
+      toast.success(mode === 'delete' ? 'Deleted from the library' : 'Unpaired — back in the library');
       refresh();
     },
     onError: fail,
@@ -250,7 +316,7 @@ export function useOrderPaperworkActions(orderId: number, orderRef: string, onCh
     removeDocument,
     fetchFromPlatform,
     pairManual,
-    renameManual,
+    updateManual,
     replaceManual,
     removeManual,
   };

@@ -8,6 +8,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { publishRepairChanged } from '@/lib/realtime/publish';
 import { updateCustomerContact } from '@/lib/neon/customer-queries';
 import { CustomerContactPatchBody } from '@/lib/schemas/customers';
+import { CUSTOMER_DISPLAY_COLUMNS } from '@/lib/customers/customer-display';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +25,7 @@ export const GET = withAuth(async (req, ctx) => {
 
   const { rows } = await tenantQuery(
     ctx.organizationId,
-    `SELECT id, display_name, customer_name, first_name, last_name,
-            email, phone, mobile,
-            shipping_address_1, shipping_address_2, shipping_city,
-            shipping_state, shipping_postal_code, shipping_country,
-            channel_refs, created_at
+    `SELECT ${CUSTOMER_DISPLAY_COLUMNS.join(', ')}, channel_refs
        FROM customers
       WHERE id = $1 AND organization_id = $2
       LIMIT 1`,

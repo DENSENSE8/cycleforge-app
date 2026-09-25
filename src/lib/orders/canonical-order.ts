@@ -73,6 +73,12 @@ export interface CanonicalOrderLine {
   buyer?: {
     /** The channel's own stable customer id (e.g. ShipStation `customerId`). */
     channelCustomerId: string;
+    /**
+     * The system that issued `channelCustomerId`, when it is not the order's
+     * `accountSource` — an aggregator (ShipStation) records the order under the
+     * platform but its customer ids are its own. Omitted = `accountSource`.
+     */
+    channel?: string;
     name: string;
     email: string;
     phone: string;
@@ -85,6 +91,21 @@ export interface CanonicalOrderLine {
       postalCode: string;
       country: string;
       residential: boolean | null;
+    } | null;
+    /**
+     * Bill-to, stored on `customers.billing_address` (jsonb) only while that
+     * is still blank. Omitted/null when the source has none.
+     */
+    billTo?: {
+      name: string | null;
+      company: string | null;
+      phone: string | null;
+      address1: string;
+      address2: string | null;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
     } | null;
   } | null;
   /** Channel label → `orders.account_source`. */

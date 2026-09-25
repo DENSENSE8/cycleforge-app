@@ -9,10 +9,11 @@
  * centred scroll ({@link TriageScrollLayout}):
  *
  *   Order                  — the item, platform, who picked and packed it and when.
+ *   Parcel & shipping label — weight / L·W·H (remembered per SKU) → rate-shop → buy
+ *                            ({@link OrderShippingPanel}). Directly under Order:
+ *                            the buy is the job.
  *   Paperwork              — label · slip · manuals inline ({@link PaperworkDocuments}):
  *                            view, upload, replace, delete, pair, download all.
- *   Parcel & shipping label — weight / L·W·H (remembered per SKU) → rate-shop → buy
- *                            ({@link OrderShippingPanel}).
  *
  * Escape reaches EXIT through the walk's record cursor (the desk's ambient
  * keyboard), which stands down while a field is focused — there Escape only
@@ -336,7 +337,6 @@ export function PaperworkEditor({
         banner={<BuyerNoteBlock note={String(row.buyer_note ?? '').trim() || null} />}
         sections={[
           { id: 'paperwork-order', label: 'Order', children: orderSection },
-          { id: 'paperwork-documents', label: 'Paperwork', children: paperworkSection },
           {
             id: 'paperwork-shipping',
             label: 'Parcel & shipping label',
@@ -352,6 +352,7 @@ export function PaperworkEditor({
               />
             ),
           },
+          { id: 'paperwork-documents', label: 'Paperwork', children: paperworkSection },
         ]}
       />
     </section>

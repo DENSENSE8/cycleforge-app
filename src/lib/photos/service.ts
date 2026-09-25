@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
   findPhotoByEntityLegacyUrl,
@@ -108,57 +109,69 @@ export async function uploadPhoto(input: UploadPhotoInput): Promise<UploadPhotoR
 export async function attachPhotoWithLegacyUrl(
   input: AttachLegacyPhotoInput,
 ): Promise<UploadPhotoResult & { created: boolean }> {
+  return withTenantTransaction(input.organizationId, (client) =>
+    attachPhotoWithLegacyUrlInTx(client, input),
+  );
+}
+
+/**
+ * {@link attachPhotoWithLegacyUrl} on a caller-owned transaction, so the photo,
+ * its link and its storage row commit or roll back with the caller's other
+ * writes (e.g. the listing-gallery row that makes it a cover).
+ */
+export async function attachPhotoWithLegacyUrlInTx(
+  client: PoolClient,
+  input: AttachLegacyPhotoInput,
+): Promise<UploadPhotoResult & { created: boolean }> {
   assertPhotoWriteAllowed(input.entityType, input.photoType);
   const linkRole = input.linkRole ?? 'primary';
-  return withTenantTransaction(input.organizationId, async (client) => {
-    const existingId = await findPhotoByEntityLegacyUrl(client, {
-      organizationId: input.organizationId,
-      entityType: input.entityType,
-      entityId: input.entityId,
-      legacyUrl: input.legacyUrl,
-      linkRole,
-    });
-    if (existingId) {
-      if (!input.idempotent) {
-        throw new Error('Photo already exists');
-      }
-      return { ...photoDisplayUrls(existingId), id: existingId, created: false };
-    }
-
-    const poRef =
-      input.poRef ?? (await resolvePoRef(input.entityType, input.entityId));
-    const photoId = await insertPhotoCatalog(client, {
-      organizationId: input.organizationId,
-      staffId: input.staffId,
-      photoType: input.photoType ?? null,
-      poRef,
-      clientCapturedAt: input.clientCapturedAt ?? null,
-      photoAspect: input.photoAspect ?? null,
-    });
-
-    await createPhotoEntityLink(client, {
-      photoId,
-      organizationId: input.organizationId,
-      entityType: input.entityType,
-      entityId: input.entityId,
-      linkRole,
-    });
-
-    await client.query(
-      `INSERT INTO photo_storage
-         (photo_id, organization_id, provider, bucket, object_key, legacy_url, is_primary, content_type)
-       VALUES ($1, $2, 'legacy_url', NULL, $3, $4, TRUE, $5)`,
-      [
-        photoId,
-        input.organizationId,
-        input.legacyUrl,
-        input.legacyUrl,
-        input.contentType ?? 'image/jpeg',
-      ],
-    );
-
-    return { id: photoId, ...photoDisplayUrls(photoId), created: true };
+  const existingId = await findPhotoByEntityLegacyUrl(client, {
+    organizationId: input.organizationId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    legacyUrl: input.legacyUrl,
+    linkRole,
   });
+  if (existingId) {
+    if (!input.idempotent) {
+      throw new Error('Photo already exists');
+    }
+    return { ...photoDisplayUrls(existingId), id: existingId, created: false };
+  }
+
+  const poRef =
+    input.poRef ?? (await resolvePoRef(input.entityType, input.entityId));
+  const photoId = await insertPhotoCatalog(client, {
+    organizationId: input.organizationId,
+    staffId: input.staffId,
+    photoType: input.photoType ?? null,
+    poRef,
+    clientCapturedAt: input.clientCapturedAt ?? null,
+    photoAspect: input.photoAspect ?? null,
+  });
+
+  await createPhotoEntityLink(client, {
+    photoId,
+    organizationId: input.organizationId,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    linkRole,
+  });
+
+  await client.query(
+    `INSERT INTO photo_storage
+       (photo_id, organization_id, provider, bucket, object_key, legacy_url, is_primary, content_type)
+     VALUES ($1, $2, 'legacy_url', NULL, $3, $4, TRUE, $5)`,
+    [
+      photoId,
+      input.organizationId,
+      input.legacyUrl,
+      input.legacyUrl,
+      input.contentType ?? 'image/jpeg',
+    ],
+  );
+
+  return { id: photoId, ...photoDisplayUrls(photoId), created: true };
 }
 
 async function uploadPhotoLegacyUrl(input: UploadPhotoInput): Promise<UploadPhotoResult> {

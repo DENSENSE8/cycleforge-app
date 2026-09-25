@@ -179,10 +179,13 @@ export async function upsertOrderTracking(
 
   if ((existingSTN.rowCount ?? 0) > 0) {
     const existingId = Number(existingSTN.rows[0].id);
-    // Is the existing shipment owned by this order?
-    if (currentShipmentIds.includes(existingId)) {
-      // Already owned — just re-point orders.shipment_id to this shipment.
-      // Heal a NULL org stamp so tenant RLS can see the row on later reads.
+    // Is the existing shipment owned by this order — or by no order at all? An
+    // orphan STN (a packer scan registers the tracking before any order carries
+    // it; a prior delete leaves one behind) is claimable, the same rule
+    // createAdditionalShipmentLink applies. Only another order's row rejects.
+    if (currentShipmentIds.includes(existingId) || !(await isShipmentOwnedByAnyOrder(existingId, client))) {
+      // Re-point orders.shipment_id to this shipment. Heal a NULL org stamp
+      // so tenant RLS can see the row on later reads.
       shipmentId = existingId;
       await healShipmentOrganizationId(existingId, orgId);
     } else {
@@ -464,6 +467,8 @@ export async function createAdditionalShipmentLink(
   shippingTrackingNumber: string,
   client: Tx,
   organizationId?: OrgId,
+  /** `shipment_links.source` — who added this tracking (default: an operator's assign). */
+  linkSource = 'orders.assign',
 ): Promise<number> {
   const orgId = organizationId ?? transitionalDogfoodOrgId();
   const rawTracking = String(shippingTrackingNumber || '').trim();
@@ -580,7 +585,7 @@ export async function createAdditionalShipmentLink(
   for (const orderId of orderIds) {
     await linkShipment(
       orgId,
-      { ownerType: 'ORDER', ownerId: orderId, shipmentId, direction: 'OUTBOUND', isPrimary: false, role: 'ORDER_SPLIT', source: 'orders.assign' },
+      { ownerType: 'ORDER', ownerId: orderId, shipmentId, direction: 'OUTBOUND', isPrimary: false, role: 'ORDER_SPLIT', source: linkSource },
       client,
     );
   }
@@ -652,8 +657,8 @@ export interface ApplyOrderTrackingOps {
   primaryCarrier?: string | null;
   /** Edit existing linked shipments by id. */
   edits?: Array<{ shipmentId: number; trackingNumber: string }>;
-  /** Create additional (non-primary) tracking links. */
-  creates?: Array<{ trackingNumber: string }>;
+  /** Create additional (non-primary) tracking links; `source` stamps `shipment_links.source`. */
+  creates?: Array<{ trackingNumber: string; source?: string }>;
   /** Unlink shipments from the order. */
   deletes?: Array<{ shipmentId: number }>;
   /** Which shipment should become orders.shipment_id after the batch. */
@@ -815,7 +820,7 @@ export async function applyOrderTrackingOps(
       for (const create of creates) {
         const nextTracking = String(create?.trackingNumber || '').trim();
         if (!nextTracking) continue;
-        const createdId = await createAdditionalShipmentLink(orderIds, nextTracking, client, organizationId);
+        const createdId = await createAdditionalShipmentLink(orderIds, nextTracking, client, organizationId, create.source);
         createdShipmentIds.push(createdId);
       }
     }

@@ -194,19 +194,35 @@ export async function resolveBuyerCustomers(
     }
   }
 
+  // Each entry is a distinct identity key, so the writes are independent; run
+  // them a few at a time instead of one round trip after another (a 500-order
+  // ShipStation page is 500 buyers).
   // ── Refresh matched rows (adopted ones get the channel id stamped) ───
-  for (const [key, customerId] of resolved) {
+  await forEachLimited(Array.from(resolved), UPSERT_CONCURRENCY, async ([key, customerId]) => {
     const entry = wanted.get(key);
     if (entry) await upsertResolvedCustomer(args.orgId, customerId, entry, deps);
-  }
+  });
 
   // ── Create genuinely-new buyers ──────────────────────────────────────
-  for (const [key, entry] of pending) {
+  await forEachLimited(Array.from(pending), UPSERT_CONCURRENCY, async ([key, entry]) => {
     const id = await upsertResolvedCustomer(args.orgId, null, entry, deps);
     if (id != null) resolved.set(key, id);
-  }
+  });
 
   return resolved;
+}
+
+const UPSERT_CONCURRENCY = 8;
+
+async function forEachLimited<T>(items: readonly T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 function splitName(name: string): { first: string; last: string } {
@@ -236,6 +252,8 @@ async function upsertResolvedCustomer(
   const channelRefs = JSON.stringify(
     stampColumn ? { [`${accountSource}_customer_id`]: channelId } : {},
   );
+  // Bill-to lands on `customers.billing_address` only while that is blank.
+  const billingAddress = buyer.billTo ? JSON.stringify(buyer.billTo) : null;
 
   if (customerId != null) {
     // Names/phone/email fill blanks only; the address is overwritten when the
@@ -258,8 +276,11 @@ async function upsertResolvedCustomer(
              shipping_country     = COALESCE($12, shipping_country),
              ${stampColumn} = COALESCE(${stampColumn}, $13),
              channel_refs = channel_refs || ($14::jsonb),
+             billing_address = CASE
+               WHEN $15::jsonb IS NOT NULL AND (billing_address IS NULL OR billing_address = '{}'::jsonb)
+               THEN $15::jsonb ELSE billing_address END,
              updated_at = now()
-           WHERE id = $1 AND organization_id = $15`
+           WHERE id = $1 AND organization_id = $16`
         : `UPDATE customers SET
              customer_name = COALESCE(NULLIF($2, ''), customer_name),
              display_name  = COALESCE(NULLIF($2, ''), display_name),
@@ -274,20 +295,23 @@ async function upsertResolvedCustomer(
              shipping_postal_code = COALESCE($11, shipping_postal_code),
              shipping_country     = COALESCE($12, shipping_country),
              channel_refs = channel_refs || ($13::jsonb),
+             billing_address = CASE
+               WHEN $14::jsonb IS NOT NULL AND (billing_address IS NULL OR billing_address = '{}'::jsonb)
+               THEN $14::jsonb ELSE billing_address END,
              updated_at = now()
-           WHERE id = $1 AND organization_id = $14`,
+           WHERE id = $1 AND organization_id = $15`,
       stampColumn
         ? [
             customerId, name, first, last, buyer.phone.trim(), buyer.email.trim(),
             shipTo?.address1 ?? null, shipTo?.address2 ?? null, shipTo?.city ?? null,
             shipTo?.state ?? null, shipTo?.postalCode ?? null, shipTo?.country ?? null,
-            channelId, channelRefs, orgId,
+            channelId, channelRefs, billingAddress, orgId,
           ]
         : [
             customerId, name, first, last, buyer.phone.trim(), buyer.email.trim(),
             shipTo?.address1 ?? null, shipTo?.address2 ?? null, shipTo?.city ?? null,
             shipTo?.state ?? null, shipTo?.postalCode ?? null, shipTo?.country ?? null,
-            channelRefs, orgId,
+            channelRefs, billingAddress, orgId,
           ],
     );
     return customerId;
@@ -299,16 +323,18 @@ async function upsertResolvedCustomer(
            organization_id, customer_name, display_name, first_name, last_name,
            phone, email, shipping_address_1, shipping_address_2, shipping_city,
            shipping_state, shipping_postal_code, shipping_country,
-           contact_type, ${stampColumn}, channel_refs, created_at, updated_at
-         ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'customer', $13, $14::jsonb, now(), now())
+           contact_type, ${stampColumn}, channel_refs, billing_address, created_at, updated_at
+         ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'customer', $13, $15::jsonb,
+                   COALESCE($14::jsonb, '{}'::jsonb), now(), now())
          ON CONFLICT DO NOTHING
          RETURNING id`
       : `INSERT INTO customers (
            organization_id, customer_name, display_name, first_name, last_name,
            phone, email, shipping_address_1, shipping_address_2, shipping_city,
            shipping_state, shipping_postal_code, shipping_country,
-           contact_type, channel_refs, created_at, updated_at
-         ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'customer', $13::jsonb, now(), now())
+           contact_type, channel_refs, billing_address, created_at, updated_at
+         ) VALUES ($1, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'customer', $14::jsonb,
+                   COALESCE($13::jsonb, '{}'::jsonb), now(), now())
          ON CONFLICT DO NOTHING
          RETURNING id`,
     stampColumn
@@ -316,13 +342,13 @@ async function upsertResolvedCustomer(
           orgId, name || 'Unknown', first, last, buyer.phone.trim() || null,
           buyer.email.trim() || null, shipTo?.address1 ?? null, shipTo?.address2 ?? null,
           shipTo?.city ?? null, shipTo?.state ?? null, shipTo?.postalCode ?? null,
-          shipTo?.country ?? null, channelId, channelRefs,
+          shipTo?.country ?? null, channelId, billingAddress, channelRefs,
         ]
       : [
           orgId, name || 'Unknown', first, last, buyer.phone.trim() || null,
           buyer.email.trim() || null, shipTo?.address1 ?? null, shipTo?.address2 ?? null,
           shipTo?.city ?? null, shipTo?.state ?? null, shipTo?.postalCode ?? null,
-          shipTo?.country ?? null, channelRefs,
+          shipTo?.country ?? null, billingAddress, channelRefs,
         ],
   );
   // NULL row = a constraint race (e.g. the unique channel-id index lost to a

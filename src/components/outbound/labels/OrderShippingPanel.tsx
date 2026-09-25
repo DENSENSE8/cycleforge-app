@@ -16,6 +16,9 @@
  * It COMPOSES what already exists — nothing here is a second engine:
  *  - tracking / label-state readout from the order's live gate facts
  *    (`orderReleaseGatesQuery`; tracking renders as the house `TrackingChip`);
+ *  - the ShipStation state line from the key health check
+ *    (`useShipStationStatus`: "ShipStation active (v1 ✓ v2 ✓)", or which key
+ *    is missing / rejected / not answering, linking Settings → Integrations);
  *  - parcel weight-oz + L×W×H persisting via
  *    `POST /api/orders/[id]/cage-release {action:'set-parcel'}` (the one
  *    parcel write path, `setOrderParcel`);
@@ -46,6 +49,19 @@ import { toast } from '@/lib/toast';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { cn } from '@/utils/_cn';
 import { SHIP_FROM_SETTINGS_PATH } from '@/lib/shipping/ship-from-settings';
+import { useShipStationStatus } from '@/hooks/useShipStationStatus';
+import type { ShipStationKeyState } from '@/lib/shipping/shipstation/status';
+
+/** Where an admin fixes the ShipStation keys. */
+const SHIPSTATION_SETTINGS_PATH = '/settings/integrations/shipstation';
+
+/** One key's verdict on the ShipStation state line. */
+const KEY_MARK: Readonly<Record<ShipStationKeyState, string>> = {
+  active: '✓',
+  missing: 'missing',
+  rejected: 'rejected',
+  error: 'not answering',
+};
 
 function parsePositive(raw: string): number | null {
   const trimmed = raw.trim();
@@ -96,6 +112,8 @@ export function OrderShippingPanel({
   const fieldId = useId();
   const gatesQuery = useQuery(orderReleaseGatesQuery(orderId));
   const record = gatesQuery.data ?? null;
+  // Unknown (403 / network) is `null` — the line stays silent rather than guess.
+  const { status: shipstation } = useShipStationStatus();
 
   const refetchGates = gatesQuery.refetch;
   const handleFactsChanged = useCallback(() => {
@@ -175,7 +193,13 @@ export function OrderShippingPanel({
   const handleRatesError = useCallback((info: { code: string | null; message: string }) => {
     if (info.code === 'SHIPSTATION_NOT_CONNECTED') {
       setShipstationDown(
-        'ShipStation is not connected — connect it in Settings → Integrations, or attach an existing label instead.',
+        <>
+          ShipStation is not connected — connect it in{' '}
+          <Link href={SHIPSTATION_SETTINGS_PATH} className="font-semibold underline">
+            Settings → Integrations
+          </Link>
+          , or attach an existing label instead.
+        </>,
       );
     } else if (info.code === 'SHIP_FROM_NOT_CONFIGURED') {
       setShipstationDown(
@@ -190,10 +214,12 @@ export function OrderShippingPanel({
     }
   }, [testIdPrefix]);
 
-  // A ShipStation-sourced order carries its own weight on the ShipStation
-  // order; `POST /api/shipping/order-rates` falls back to it, so the panel
-  // must not refuse to rate just because no local weight was typed.
-  const shipstationSourced = record?.accountSource === 'shipstation';
+  // An order paired with a ShipStation order carries its own weight there;
+  // `POST /api/shipping/order-rates` falls back to it, so the panel must not
+  // refuse to rate just because no local weight was typed. The pairing (a
+  // `shipstation_order_refs` row), not `account_source`: imports keep their
+  // platform source.
+  const shipstationSourced = record?.hasShipStationRef === true;
 
   const stateLine = record?.shippingLabelPurchased
     ? 'Label bought through the existing label path.'
@@ -227,6 +253,28 @@ export function OrderShippingPanel({
             Re-check
           </Button>
         </div>
+        {shipstation ? (
+          <p
+            className={cn('text-role-caption', shipstation.active ? 'text-text-success' : 'text-text-warning')}
+            role="status"
+            data-testid={`${testIdPrefix}-shipstation-state`}
+          >
+            ShipStation {shipstation.active ? 'active' : 'not active'} (v1 {KEY_MARK[shipstation.v1]} v2{' '}
+            {KEY_MARK[shipstation.v2]})
+            {shipstation.v1 === 'active' && shipstation.v2 === 'active' ? null : (
+              <>
+                {' — '}
+                <Link
+                  href={SHIPSTATION_SETTINGS_PATH}
+                  className="font-semibold underline"
+                  data-testid={`${testIdPrefix}-shipstation-settings-link`}
+                >
+                  Settings → Integrations
+                </Link>
+              </>
+            )}
+          </p>
+        ) : null}
 
         {/* ── Parcel — persists on the order and rides the rate request ──── */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

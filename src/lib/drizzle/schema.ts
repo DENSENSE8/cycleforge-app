@@ -5461,7 +5461,7 @@ export const labelIngestions = pgTable('label_ingestions', {
   fileBasename: text('file_basename').notNull(),
   byteSize: bigint('byte_size', { mode: 'number' }).notNull(),
   observedAt: timestamp('observed_at', { withTimezone: true }).notNull(),
-  /** WATCHED_FOLDER | BROWSER_FIXTURE | MANUAL_UPLOAD */
+  /** WATCHED_FOLDER | BROWSER_FIXTURE | MANUAL_UPLOAD | SHIPSTATION_API */
   source: text('source').notNull(),
   /** RECEIVED | STAGED | PARSED | MATCHED | QUARANTINED | APPLYING | APPLIED | FAILED */
   state: text('state').notNull().default('RECEIVED'),
@@ -5488,6 +5488,11 @@ export const labelIngestions = pgTable('label_ingestions', {
   appliedAt: timestamp('applied_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** ShipStation v1 shipment id — the stable identity of a SHIPSTATION_API row
+   *  (its PDF is re-rendered per download, so sha256 alone cannot dedupe). */
+  shipstationShipmentId: bigint('shipstation_shipment_id', { mode: 'number' }),
+  /** ShipStation v2 label id the PDF was fetched from (`se-<shipmentId>`). */
+  shipstationLabelId: text('shipstation_label_id'),
 }, (table) => ({
   orgIdUniq: uniqueIndex('label_ingestions_org_id_uniq').on(table.organizationId, table.id),
   orgShaUniq: uniqueIndex('ux_label_ingestions_org_sha256').on(table.organizationId, table.sha256),
@@ -5510,6 +5515,9 @@ export const labelIngestions = pgTable('label_ingestions', {
   orgDeviceObservedIdx: index('idx_label_ingestions_org_device_observed')
     .on(table.organizationId, table.deviceId, table.observedAt.desc(), table.id.desc())
     .where(sql`device_id IS NOT NULL`),
+  orgShipstationShipmentUniq: uniqueIndex('ux_label_ingestions_org_shipstation_shipment')
+    .on(table.organizationId, table.shipstationShipmentId)
+    .where(sql`shipstation_shipment_id IS NOT NULL`),
 }));
 
 export type LabelIngestion = typeof labelIngestions.$inferSelect;

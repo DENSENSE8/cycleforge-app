@@ -29,7 +29,7 @@ import {
 } from './run-steps';
 import type { SyncStreamEvent } from './types';
 
-const LANES: readonly SyncRunLane[] = ['sheets', 'ecwid', 'exceptions'];
+const LANES: readonly SyncRunLane[] = ['shipstation', 'exceptions'];
 
 function ndjsonResponse(events: SyncStreamEvent[]): Response {
   return new Response(events.map((e) => JSON.stringify(e)).join('\n'), {
@@ -79,13 +79,12 @@ describe('demo run ≡ streamed run', () => {
     const state = await foldOverTheWire();
     const steps = syncRunSteps(state);
     const count = (id: string) => steps.find((step) => step.id === id)?.count;
-    assert.equal(count('read_sheet'), 214);
-    assert.equal(count('read_ecwid'), 18);
-    assert.equal(count('resolve_tracking'), 57, '51 sheet + 6 ecwid');
-    assert.equal(count('update'), 12, 'deletes 3 + backfills 9');
-    assert.equal(count('insert'), 39, '35 sheet + 4 ecwid');
+    assert.equal(count('read_shipstation'), 214);
+    assert.equal(count('resolve_tracking'), 51);
+    assert.equal(count('update'), 9);
+    assert.equal(count('insert'), 35);
     assert.equal(count('exceptions'), 4);
-    assert.equal(syncRunRowsSeen(state), 232);
+    assert.equal(syncRunRowsSeen(state), 214);
     const progress = syncRunProgress(state);
     assert.equal(progress.completed, progress.total, 'every lane reported done');
   });
@@ -94,26 +93,30 @@ describe('demo run ≡ streamed run', () => {
     // A 403 (plan ceiling, missing permission) is JSON, not NDJSON — the client
     // turns it into one `error` line, which settles the lane instead of leaving
     // a spinner up forever.
-    let state = createSyncRun(['sheets']);
+    let state = createSyncRun(['shipstation']);
     await streamNdjson<SyncStreamEvent>(
-      '/api/integrations/google_sheets/sync',
+      '/api/integrations/shipstation/sync',
       { method: 'POST' },
       {
         fetch: async () => new Response('{"error":"PLAN_LIMIT"}', { status: 403 }),
         yieldToInput: async () => undefined,
         onBatch: (batch) => {
-          for (const event of batch) state = applySyncRunEvent(state, 'sheets', event);
+          for (const event of batch) state = applySyncRunEvent(state, 'shipstation', event);
         },
       },
     );
     assert.equal(state.settled, true);
-    assert.equal(state.lanes.sheets.status, 'error');
+    assert.equal(state.lanes.shipstation.status, 'error');
   });
 
   it('holds the ledger open until every lane has reported', async () => {
     let state = createSyncRun(LANES);
-    state = applySyncRunEvent(state, 'sheets', { type: 'phase', phase: 'fetching_sheet', count: 5 });
-    state = completeSyncRunLane(state, 'sheets', { ok: true });
-    assert.equal(state.settled, false, 'ecwid + exceptions have not answered');
+    state = applySyncRunEvent(state, 'shipstation', {
+      type: 'phase',
+      phase: 'fetching_shipstation',
+      count: 5,
+    });
+    state = completeSyncRunLane(state, 'shipstation', { ok: true });
+    assert.equal(state.settled, false, 'the exceptions pass has not answered');
   });
 });

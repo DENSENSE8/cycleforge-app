@@ -98,7 +98,7 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
   {
     key: 'google_sheets',
     label: 'Google Sheets',
-    description: 'Spreadsheet order import pipelines.',
+    description: 'Technician serial and packer log sheet import.',
     category: 'Sales channels',
     connect: 'vault',
     badge: 'bg-green-100 text-green-700',

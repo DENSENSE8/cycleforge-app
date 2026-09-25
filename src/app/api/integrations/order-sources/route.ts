@@ -1,8 +1,8 @@
 /**
  * GET /api/integrations/order-sources
  *
- * Safe metadata for the To-ship Sync Google Sheet chevron: connected
- * order-ingestion platforms (not Google Sheets — that is the dock face)
+ * Safe metadata for the To-ship Sync ShipStation chevron: connected
+ * order-ingestion platforms (not ShipStation — that is the dock face)
  * with operator labels like `Sync eBay · USAV`. Never returns secrets.
  */
 import { NextResponse } from 'next/server';

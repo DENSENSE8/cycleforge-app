@@ -32,14 +32,14 @@ stateDiagram-v2
 ```mermaid
 graph LR
     ZOHO[Zoho Inventory]
-    EBAY[eBay API]
-    ECWID[Ecwid]
-    SHEETS[Google Sheets<br/>ShipStation export]
+    STORES[eBay · Amazon · Ecwid · Walmart stores]
+    SHIPSTATION[ShipStation API]
+    SQUARE[Square POS]
 
     ZOHO -->|POST /api/zoho/orders/ingest<br/>+ cron| ORDERS[(orders table<br/>status='unassigned')]
-    EBAY -->|POST /api/ebay/sync<br/>+ cron| ORDERS
-    ECWID -->|POST /api/ecwid-square/sync<br/>+ /api/ecwid/transfer-orders| ORDERS
-    SHEETS -->|POST /api/google-sheets/sync-shipstation-orders<br/>+ cron 3x/day| ORDERS
+    STORES -->|aggregated by ShipStation| SHIPSTATION
+    SHIPSTATION -->|POST /api/integrations/shipstation/sync<br/>+ cron 08:00 + 14:00 PT| ORDERS
+    SQUARE -->|POST /api/integrations/square/sync<br/>+ cron every 15 min| ORDERS
 
     ORDERS -->|tech scans tracking| SCAN[/api/tech/scan-tracking/]
     ORDERS -->|packer scans tracking| PACK[/api/packing-logs/]

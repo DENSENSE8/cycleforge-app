@@ -12,11 +12,9 @@ import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { FIXED_COL_INDICES_DEFAULT } from '@/lib/orders/sources/google-sheet-rows';
 import {
-  enqueueImportExceptionsForImport,
   ignoreImportException,
   listOpenImportExceptions,
   resolveImportException,
-  type EnqueueImportExceptionInput,
   type ImportExceptionDeps,
 } from './order-import-exceptions';
 
@@ -27,25 +25,11 @@ interface QueryCall {
   params: unknown[];
 }
 
-function baseInput(
-  overrides: Partial<EnqueueImportExceptionInput> = {},
-): EnqueueImportExceptionInput {
-  return {
-    accountOrderId: 'ORD-1',
-    accountSource: 'eBay',
-    productTitle: 'Bose Wave Radio',
-    tracking: '1Z999AA10123456784',
-    sheetRow: 2,
-    rawRow: ['', 'ORD-1', '', 'Bose Wave Radio', '1', '', '', '1Z999AA10123456784', '', 'eBay'],
-    colIndices: FIXED_COL_INDICES_DEFAULT,
-    ...overrides,
-  };
-}
-
 function fakes(opts: {
   selectRow?: {
     id: number;
     status: string;
+    reason?: string;
     raw_row: unknown[];
     col_indices: typeof FIXED_COL_INDICES_DEFAULT;
   } | null;
@@ -75,11 +59,12 @@ function fakes(opts: {
           fields: [],
         } as QueryResult;
       }
-      if (/SELECT id, status, raw_row, col_indices/i.test(sql)) {
+      if (/SELECT id, status, reason, raw_row, col_indices/i.test(sql)) {
         const row = opts.selectRow === undefined
           ? {
               id: 7,
               status: 'open',
+              reason: 'no_item_number',
               raw_row: ['', 'ORD-1', '', 'Bose Wave Radio', '1', '', '', '1Z999', '', 'eBay'],
               col_indices: FIXED_COL_INDICES_DEFAULT,
             }
@@ -138,49 +123,6 @@ function fakes(opts: {
 
   return { deps, queries, ingestCalls, invalidateCalls, getTxOrg: () => txOrg };
 }
-
-describe('enqueueImportExceptionsForImport', () => {
-  it('returns 0 and issues no query for an empty batch', async () => {
-    const f = fakes();
-    const n = await enqueueImportExceptionsForImport(ORG, [], f.deps);
-    assert.equal(n, 0);
-    assert.equal(f.queries.length, 0);
-  });
-
-  it('skips blank accountOrderId', async () => {
-    const f = fakes();
-    const n = await enqueueImportExceptionsForImport(
-      ORG,
-      [baseInput({ accountOrderId: '  ' })],
-      f.deps,
-    );
-    assert.equal(n, 0);
-    assert.equal(f.queries.length, 0);
-  });
-
-  it('merges duplicate keys last-write-wins and upserts once', async () => {
-    const f = fakes();
-    const n = await enqueueImportExceptionsForImport(
-      ORG,
-      [
-        baseInput({ productTitle: 'First' }),
-        baseInput({ productTitle: 'Second' }),
-      ],
-      f.deps,
-    );
-    assert.equal(n, 1);
-    assert.equal(f.queries.length, 1);
-    assert.match(f.queries[0]!.sql, /WHERE order_import_exceptions\.status = 'open'/);
-    assert.equal(f.queries[0]!.params[3], 'Second');
-  });
-
-  it('upsert SQL refuses to reopen resolved/ignored rows', async () => {
-    const f = fakes();
-    await enqueueImportExceptionsForImport(ORG, [baseInput()], f.deps);
-    assert.match(f.queries[0]!.sql, /WHERE order_import_exceptions\.status = 'open'/);
-    assert.ok(!/SET status = 'open'/i.test(f.queries[0]!.sql));
-  });
-});
 
 describe('listOpenImportExceptions', () => {
   it('clamps limit/offset and maps camelCase rows', async () => {
@@ -265,6 +207,7 @@ describe('resolveImportException', () => {
       selectRow: {
         id: 7,
         status: 'ignored',
+        reason: 'no_item_number',
         raw_row: [],
         col_indices: FIXED_COL_INDICES_DEFAULT,
       },
@@ -280,6 +223,7 @@ describe('resolveImportException', () => {
       selectRow: {
         id: 7,
         status: 'open',
+        reason: 'no_item_number',
         raw_row: ['x'],
         col_indices: { ...FIXED_COL_INDICES_DEFAULT, itemNumber: -1 },
       },
@@ -290,12 +234,30 @@ describe('resolveImportException', () => {
     assert.equal(res.status, 409);
   });
 
+  it('refuses to "resolve" a ShipStation quarantine by item number (it clears on the next sync)', async () => {
+    const f = fakes({
+      selectRow: {
+        id: 7,
+        status: 'open',
+        reason: 'shipstation_ambiguous_match',
+        raw_row: [],
+        col_indices: FIXED_COL_INDICES_DEFAULT,
+      },
+    });
+    const res = await resolveImportException(ORG, { id: 7, itemNumber: '123' }, f.deps);
+    assert.equal(res.ok, false);
+    if (res.ok) return;
+    assert.equal(res.status, 409);
+    assert.equal(f.ingestCalls.length, 0, 'nothing is ingested');
+  });
+
   it('splices the Item Number, ingests via the sheet path, and marks resolved', async () => {
     const raw = ['', 'ORD-1', '', 'Bose Wave Radio', '1', '', '', '1Z999', '', 'eBay'];
     const f = fakes({
       selectRow: {
         id: 7,
         status: 'open',
+        reason: 'no_item_number',
         raw_row: raw,
         col_indices: FIXED_COL_INDICES_DEFAULT,
       },

@@ -116,6 +116,34 @@ The receiver verifies ShipStation's **RSA-SHA256 signature** (over
 on the unguessable token in the path. Tracking events update the matching
 shipment through the existing tracking spine and fan out a realtime refresh.
 
+## Historical labels backfill (PDF + tracking)
+
+Labels bought in ShipStation (app or API) before CycleForge saw them are pulled
+into the label-ingestion ledger by
+`src/lib/label-ingestions/sources/shipstation-history.ts`:
+
+```
+node --env-file=.env --import tsx --import ./scripts/register-server-only-shim.cjs \
+  scripts/backfill-shipstation-labels.mts [--org=<uuid>] [--days=7] [--apply]
+```
+
+- **Feed:** v1 `GET /shipments` over the window; voided and return labels are
+  skipped. **PDF:** v2 `GET /v2/labels/se-<shipmentId>` → `label_download.pdf`
+  (every v1 shipment has a v2 label under that id, app-made labels included).
+- **Idempotent** on the ShipStation shipment id (`label_ingestions.shipstation_shipment_id`,
+  unique per org) and the PDF sha256. ShipStation re-renders the PDF on every
+  download, so the shipment id is what makes a re-run a no-op.
+- **Order match:** ShipStation's order number → the org's rows (a legacy
+  `shipstation` row wins, else every row with that number). No match, rows under
+  several sources, a second live label on the same order, or no order number →
+  the row stays `QUARANTINED` with that reason (never guessed).
+- **`--apply`:** PDF staged in the ledger's GCS prefix, tracking attached through
+  the ShipStation sync's attach, the PDF stored as the order's `shipping_label`
+  document (`sourceHash = shipstation-label:<labelId>`), row finalized `APPLIED`
+  (no serial-unit transition — the parcel already shipped). Labels bought in-app
+  (`shipping_label_purchases` with a document) are skipped. Without `--apply` it
+  only reads and prints the counts.
+
 ## Known limitations / follow-ups
 
 - **Idempotency window.** The buy-label route dedupes on a per-purchase

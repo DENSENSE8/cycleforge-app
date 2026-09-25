@@ -17,8 +17,7 @@
  *
  * ## Three states, all of them designed
  *
- * - **Idle** — what the import will do, the optional tab override, and the two
- *   ways to start it.
+ * - **Idle** — what the import will do, and the two ways to start it.
  * - **Running** — {@link OrderSyncRunView}'s measured ledger; its own X cancels.
  * - **Settled** — the same ledger, frozen, with the result sentence. Nothing
  *   auto-dismisses: the operator acknowledges, and lands back on the queue.
@@ -41,7 +40,6 @@ import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Play, RefreshCw, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
-import { TextField } from '@/design-system/primitives/TextField';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,50 +137,18 @@ export function MobileOrderSyncScreen() {
           Bring in the latest orders
         </h2>
         <p className="mt-2 max-w-prose text-role-caption leading-relaxed text-text-muted">
-          Reads the Google Sheet and Ecwid, attaches tracking, then resolves open
+          Reads ShipStation, attaches tracking, then resolves open
           scan exceptions against whatever just landed. You will see each step
           and its count as it runs, and the result stays on screen until you
           close it.
         </p>
 
-        {/*
-          The tab override. Blank is the answer almost every day — the job picks
-          the current tab itself — so this is a field the operator may ignore,
-          never a required step in front of the verb. It reads the SAME
-          `manualSheetName` the hook has always threaded into `SyncOpts`
-          (`handleTransfer` → POST body → the route's `BodySchema`); this screen
-          is the first UI for it since the ingest rail's `sync` leaf was deleted,
-          and the phone gets it first (SURFACE_LAW: every operator verb is
-          completable on `/m` before a desk consumes it).
-
-          `mono` because the value is a spreadsheet tab id an operator copies
-          character-for-character (`Sheet_01_14_2026`), and a proportional font
-          hides a wrong digit. Demo never reads it — scripted rows have no sheet.
-        */}
-        {canImportOrders ? (
-          <div className="mt-6">
-            <TextField
-              label="Sheet tab (optional)"
-              value={sync.manualSheetName}
-              onChange={sync.setManualSheetName}
-              mono
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              disabled={sync.isTransferring}
-              data-testid="mobile-order-sync-tab"
-            />
-            <p className="mt-2 text-role-caption leading-relaxed text-text-muted">
-              Leave blank to read the tab the sheet is on today. Name a tab to
-              re-import an older one.
-            </p>
-          </div>
-        ) : (
+        {!canImportOrders ? (
           <p className="mt-5 text-role-caption text-text-danger">
             You do not have permission to import orders. Ask an admin for
             <span className="font-mono"> orders.import</span>.
           </p>
-        )}
+        ) : null}
       </div>
 
       {/*

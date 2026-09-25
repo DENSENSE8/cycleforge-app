@@ -1,20 +1,20 @@
 {
   "summary": {
-    "total": 1034,
-    "withAuth": 761,
-    "tenantWrapped": 798,
-    "delegatedTenantWrapped": 733,
-    "orgIdRef": 909,
-    "rawPool": 299,
-    "drizzle": 22,
+    "total": 1028,
+    "withAuth": 756,
+    "tenantWrapped": 795,
+    "delegatedTenantWrapped": 730,
+    "orgIdRef": 904,
+    "rawPool": 298,
+    "drizzle": 21,
     "transitional": 7,
-    "cron": 42,
+    "cron": 41,
     "byRisk": {
       "critical": 16,
-      "high": 24,
-      "medium": 62,
-      "low": 588,
-      "info": 344
+      "high": 23,
+      "medium": 59,
+      "low": 585,
+      "info": 345
     }
   },
   "routes": [
@@ -509,29 +509,6 @@
       "mutates": false,
       "touched": [
         "beta_waitlist"
-      ],
-      "risk": "high"
-    },
-    {
-      "route": "/api/cron/amazon/orders-sync",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": false,
-      "permission": null,
-      "orgIdRef": false,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": true,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": true,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [
-        "amazon_accounts",
-        "accounts",
-        "orders"
       ],
       "risk": "high"
     },
@@ -1374,71 +1351,6 @@
       "mutates": false,
       "touched": [
         "photos"
-      ],
-      "risk": "medium"
-    },
-    {
-      "route": "/api/ebay/sync",
-      "methods": [
-        "POST",
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "integrations.ebay",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "accounts"
-      ],
-      "risk": "medium"
-    },
-    {
-      "route": "/api/ecwid/transfer-orders",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "orders.import",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "orders"
-      ],
-      "risk": "medium"
-    },
-    {
-      "route": "/api/google-sheets/transfer-orders",
-      "methods": [
-        "POST",
-        "GET"
-      ],
-      "withAuth": true,
-      "permission": "orders.import",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "orders"
       ],
       "risk": "medium"
     },
@@ -3200,27 +3112,6 @@
       "risk": "low"
     },
     {
-      "route": "/api/amazon/sync",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "integrations.amazon",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "accounts"
-      ],
-      "risk": "low"
-    },
-    {
       "route": "/api/assignments/next",
       "methods": [
         "GET"
@@ -3863,27 +3754,6 @@
         "shipping_tracking_numbers",
         "work_assignments",
         "packer_logs",
-        "orders"
-      ],
-      "risk": "low"
-    },
-    {
-      "route": "/api/cron/google-sheets/transfer-orders",
-      "methods": [
-        "GET"
-      ],
-      "withAuth": false,
-      "permission": null,
-      "orgIdRef": false,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": true,
-      "transitional": false,
-      "isCron": true,
-      "isPathParam": false,
-      "mutates": false,
-      "touched": [
         "orders"
       ],
       "risk": "low"
@@ -5554,30 +5424,6 @@
         "tech_serial_numbers",
         "orders_exceptions",
         "packer_logs",
-        "orders"
-      ],
-      "risk": "low"
-    },
-    {
-      "route": "/api/google-sheets/sync-shipstation-orders",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "admin.manage_features",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "shipping_tracking_numbers",
-        "orders_exceptions",
-        "work_assignments",
         "orders"
       ],
       "risk": "low"
@@ -17253,6 +17099,25 @@
     },
     {
       "route": "/api/cron/shipping/sync-due",
+      "methods": [
+        "GET"
+      ],
+      "withAuth": false,
+      "permission": null,
+      "orgIdRef": false,
+      "tenantWrapped": false,
+      "delegatedTenantWrapped": false,
+      "rawPool": false,
+      "drizzle": false,
+      "transitional": false,
+      "isCron": true,
+      "isPathParam": false,
+      "mutates": false,
+      "touched": [],
+      "risk": "info"
+    },
+    {
+      "route": "/api/cron/shipstation/orders-sync",
       "methods": [
         "GET"
       ],

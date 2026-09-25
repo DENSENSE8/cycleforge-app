@@ -9,6 +9,8 @@ export const LABEL_INGESTION_STATES = [
   'APPLYING',
   'APPLIED',
   'FAILED',
+  /** A quarantined ShipStation label an operator paired to an order (Link label). */
+  'LINKED',
 ] as const;
 
 export type LabelIngestionState = (typeof LABEL_INGESTION_STATES)[number];
@@ -17,6 +19,8 @@ export const LABEL_INGESTION_SOURCES = [
   'WATCHED_FOLDER',
   'BROWSER_FIXTURE',
   'MANUAL_UPLOAD',
+  /** Historical labels pulled from ShipStation's API (sources/shipstation-history.ts). */
+  'SHIPSTATION_API',
 ] as const;
 
 export type LabelIngestionSource = (typeof LABEL_INGESTION_SOURCES)[number];

@@ -17,7 +17,13 @@
  * providers (Zoho ∪ Ecwid ∪ catalog) with a deliberate Zoho-wins-exclusively
  * precedence — that is a provider arbitration, and collapsing it into this
  * would change which image an Ecwid-only SKU shows.
+ *
+ * The LAST tier is the SKU's listing-gallery cover (`listing_photos`, see
+ * `listing-photos.ts`). Marketplace media acquired by
+ * `marketplace-media-backfill.ts` lands there, so an Amazon/eBay picture can
+ * only paint a product that neither Zoho nor the catalog has a photo for.
  */
+import { photoContentUrl } from './display-url';
 
 export interface ProductImageSources {
   /** `items.zoho_item_id` — the mirror's handle, and the URL's path segment. */
@@ -26,6 +32,8 @@ export interface ProductImageSources {
   zohoImageDocumentId?: string | null;
   /** `sku_catalog.image_url` — the catalog stock photo. */
   catalogImageUrl?: string | null;
+  /** Cover `photo_id` of the SKU's listing gallery — marketplace media's tier. */
+  listingCoverPhotoId?: number | null;
 }
 
 /**
@@ -40,5 +48,8 @@ export function productImageUrl(sources: ProductImageSources): string | null {
   if (zohoItemId && documentId) {
     return `/api/zoho/items/${encodeURIComponent(zohoItemId)}/image`;
   }
-  return String(sources.catalogImageUrl ?? '').trim() || null;
+  const catalog = String(sources.catalogImageUrl ?? '').trim();
+  if (catalog) return catalog;
+  const cover = Number(sources.listingCoverPhotoId);
+  return Number.isInteger(cover) && cover > 0 ? photoContentUrl(cover, 'thumb') : null;
 }

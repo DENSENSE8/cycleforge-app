@@ -7,6 +7,7 @@ import {
   OrderManualError,
   pairExistingManualToOrder,
 } from '@/lib/manuals/order-manuals';
+import { PaperworkPairingError, parsePairScope } from '@/lib/manuals/paperwork-pairing';
 import { ManualFileError } from '@/lib/manuals/manual-file-store';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
@@ -16,11 +17,15 @@ export const runtime = 'nodejs';
 export const maxDuration = 120;
 
 /**
- * SKU manuals for one order (To-ship paperwork walk).
- *   GET  → manuals paired to the order's catalog id / item number / SKU.
- *   POST → multipart `file` (+ displayName, type): upload + pair a new manual;
- *          JSON `{ manualId }`: pair an existing library manual.
- * Domain logic: lib/manuals/order-manuals.
+ * Paperwork for one order (To-ship paperwork walk + its item-number view):
+ * manuals, packing lists, any `product_manuals` row.
+ *   GET  → every row resolved for the order — pinned to the order, its item
+ *          number or its SKU — in precedence order (order > item # > SKU).
+ *   POST → multipart `file` (+ displayName, type, pairTo): upload + pin a new
+ *          row; JSON `{ manualId, pairTo? }`: pin an existing library row.
+ *          `pairTo` = order | item_number | sku (default: item number, else
+ *          SKU, else order).
+ * Domain logic: lib/manuals/order-manuals + lib/manuals/paperwork-pairing.
  */
 
 function parseId(raw: string): number | null {
@@ -77,18 +82,19 @@ export async function POST(
       const manual = await createOrderManualFromFile(orgId, orderId, file, {
         displayName: String(form.get('displayName') ?? ''),
         type: String(form.get('type') ?? ''),
+        pairTo: parsePairScope(form.get('pairTo')),
       });
       await recordAudit(pool, gate.ctx, req, {
         source: 'orders-manuals',
         action: AUDIT_ACTION.ORDER_MANUAL_ATTACH,
         entityType: AUDIT_ENTITY.ORDER,
         entityId: orderId,
-        after: { manualId: manual.id, displayName: manual.displayName, fileName: manual.fileName },
+        after: { manualId: manual.id, displayName: manual.displayName, fileName: manual.fileName, pairing: manual.pairing },
       });
       return NextResponse.json({ success: true, manual }, { status: 201 });
     }
 
-    const body = (await req.json().catch(() => null)) as { manualId?: unknown } | null;
+    const body = (await req.json().catch(() => null)) as { manualId?: unknown; pairTo?: unknown } | null;
     const manualId = parseId(String(body?.manualId ?? ''));
     if (manualId === null) {
       return NextResponse.json(
@@ -96,18 +102,18 @@ export async function POST(
         { status: 400 },
       );
     }
-    const { manual, before } = await pairExistingManualToOrder(orgId, orderId, manualId);
+    const { manual, before } = await pairExistingManualToOrder(orgId, orderId, manualId, parsePairScope(body?.pairTo));
     await recordAudit(pool, gate.ctx, req, {
       source: 'orders-manuals',
       action: AUDIT_ACTION.ORDER_MANUAL_PAIR,
       entityType: AUDIT_ENTITY.ORDER,
       entityId: orderId,
-      before: { manualId, ...before },
-      after: { manualId, pairedBy: manual.pairedBy },
+      before: { manualId, pairing: before },
+      after: { manualId, pairing: manual.pairing },
     });
     return NextResponse.json({ success: true, manual });
   } catch (error) {
-    if (error instanceof OrderManualError || error instanceof ManualFileError) {
+    if (error instanceof OrderManualError || error instanceof PaperworkPairingError || error instanceof ManualFileError) {
       return NextResponse.json({ success: false, error: error.message }, { status: error.status });
     }
     console.error('Error in POST /api/orders/[id]/manuals:', error);

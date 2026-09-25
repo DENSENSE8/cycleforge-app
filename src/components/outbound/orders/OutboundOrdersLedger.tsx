@@ -96,6 +96,7 @@ import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { orderRowQtyTone } from '@/lib/condition-tone';
 import { resolveOrderBin, type OrderBinFace } from '@/lib/shipping/outbound-storage-path';
+import { customerFullName, customerPlace } from '@/lib/customers/customer-display';
 import {
   LIFECYCLE,
   LIFECYCLE_CLASSES,
@@ -918,6 +919,21 @@ const LedgerRecord = memo(function LedgerRecord({
   return (
     <div
       data-order-row-id={record.id}
+  // The buyer, from the customer book (`/api/orders` joins it), in band 1's
+  // free span; S has no free span, so it reads in the evidence column only.
+  // Display-only: a click lands on the row's open target, which opens the
+  // record whose evidence column carries the full Customer block.
+  const customerName = record.customer ? customerFullName(record.customer) : '';
+  const customerWhere = record.customer ? customerPlace(record.customer) : '';
+  const customerFace =
+    customerName || customerWhere ? (
+      <span data-testid="ledger-customer" className="flex min-w-0 items-baseline gap-2">
+        <span className="truncate text-role-data text-mode-ink">{customerName}</span>
+        {customerWhere ? (
+          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>{customerWhere}</span>
+        ) : null}
+      </span>
+    ) : null;
       data-state={state}
       className={cn(
         'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover',
@@ -1043,7 +1059,7 @@ const LedgerRecord = memo(function LedgerRecord({
               </span>
             </span>
             <span className="pointer-events-auto">{orderChip}</span>
-            <span className="min-w-0 flex-1" />
+            <span className="flex min-w-0 flex-1 items-center">{customerFace}</span>
             <span className="pointer-events-auto h-full w-32 shrink-0 border-l border-mode-edge">{shipBy}</span>
           </div>
           {/* Band 2 — identity: what it is ··· how many (the labour multiplier). */}
@@ -1109,4 +1125,3 @@ export function LedgerLocation({
     </span>
   );
 }
-
