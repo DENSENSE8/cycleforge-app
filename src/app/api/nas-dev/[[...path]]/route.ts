@@ -43,7 +43,7 @@ export const runtime = 'nodejs';
 // THIS machine's mount path — it differs per OS (macOS: /Volumes/...,
 // Windows: a mapped drive / UNC path, Linux: the CIFS mountpoint).
 const DEFAULT_ROOT = '/Volumes/USAV Media/Puchasing photos/2026';
-const ROOT = resolve(process.env.NAS_DEV_ROOT || DEFAULT_ROOT);
+const ROOT = resolve(/* turbopackIgnore: true */ process.env.NAS_DEV_ROOT || DEFAULT_ROOT);
 
 // On in production unless explicitly opted in via NAS_DEV_ROOT (see header).
 const ENABLED = Boolean(process.env.NAS_DEV_ROOT) || process.env.NODE_ENV !== 'production';
@@ -87,7 +87,7 @@ export async function GET(
 
   const { path: segments = [] } = await params;
   // Next.js URL-decodes catch-all segments, so spaces in "JAN 2026" arrive intact.
-  const target = resolve(ROOT, segments.join('/'));
+  const target = resolve(/* turbopackIgnore: true */ ROOT, segments.join('/'));
 
   // Path-traversal guard: the resolved path must stay inside ROOT.
   if (target !== ROOT && !target.startsWith(ROOT + sep)) {
@@ -96,18 +96,18 @@ export async function GET(
 
   let info;
   try {
-    info = await stat(target);
+    info = await stat(/* turbopackIgnore: true */ target);
   } catch {
     return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
   // ── Directory → nginx-autoindex-compatible JSON listing ──────────────────
   if (info.isDirectory()) {
-    const names = await readdir(target);
+    const names = await readdir(/* turbopackIgnore: true */ target);
     const entries = await Promise.all(
       names.filter((n) => !isHidden(n)).map(async (name) => {
         try {
-          const s = await stat(join(target, name));
+          const s = await stat(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ target, name));
           const isDir = s.isDirectory();
           if (!isDir && !IMAGE_RE.test(name)) return null; // skip non-image files
           return {
@@ -128,7 +128,7 @@ export async function GET(
 
   // ── File → stream the image bytes ────────────────────────────────────────
   const ext = extname(target).toLowerCase();
-  const buf = await readFile(target);
+  const buf = await readFile(/* turbopackIgnore: true */ target);
 
   // Optional on-the-fly thumbnail (?thumb=<px>): a small EXIF-rotated webp so
   // the picker's row previews load in KB instead of pulling multi-MB originals.

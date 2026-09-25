@@ -22,8 +22,9 @@ import { searchHitHref } from '@/lib/search/search-hit';
  * Returns null on anything unreadable so one bad photo never fails the claim.
  */
 
+// Local SMB mount (dev / NAS_DEV_ROOT hosts only): never traced into functions.
 const NAS_DEV_ROOT = resolve(
-  process.env.NAS_DEV_ROOT || '/Volumes/USAV Media/Puchasing photos/2026',
+  /* turbopackIgnore: true */ process.env.NAS_DEV_ROOT || '/Volumes/USAV Media/Puchasing photos/2026',
 );
 const NAS_APP_PREFIX = '/api/nas/';
 const NAS_DEV_PREFIX = '/api/nas-dev/';
@@ -104,7 +105,7 @@ async function readNasDevPhoto(relPath: string): Promise<PhotoBytes | null> {
   // Path-traversal guard: stay inside the configured root.
   if (target !== NAS_DEV_ROOT && !target.startsWith(NAS_DEV_ROOT + sep)) return null;
   try {
-    const buf = await readFile(target);
+    const buf = await readFile(/* turbopackIgnore: true */ target);
     const ext = extname(target).toLowerCase();
     return {
       bytes: new Uint8Array(buf),
@@ -203,7 +204,7 @@ export async function readPhotoBytes(rawUrl: string): Promise<PhotoBytes | null>
 // Where per-ticket claim archives live. Defaults to the "2 Zendesk 2026" folder
 // inside the photos root (a sibling of the month folders); override with env.
 const CLAIM_ARCHIVE_DIR = resolve(
-  process.env.ZENDESK_CLAIM_ARCHIVE_DIR || join(NAS_DEV_ROOT, '2 Zendesk 2026'),
+  /* turbopackIgnore: true */ process.env.ZENDESK_CLAIM_ARCHIVE_DIR || join(NAS_DEV_ROOT, '2 Zendesk 2026'),
 );
 
 /**

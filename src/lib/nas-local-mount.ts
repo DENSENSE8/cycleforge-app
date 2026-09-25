@@ -16,7 +16,7 @@ const MIME: Record<string, string> = {
 };
 
 export function nasLocalMountRoot(): string {
-  return resolve(process.env.NAS_DEV_ROOT || DEFAULT_ROOT);
+  return resolve(/* turbopackIgnore: true */ process.env.NAS_DEV_ROOT || DEFAULT_ROOT);
 }
 
 /** True when `next dev` (or NAS_DEV_ROOT in prod) may read/write the SMB mount. */
@@ -48,19 +48,19 @@ export async function listNasLocalDir(segments: string[]) {
   if (!target) return { ok: false as const, status: 403, error: 'forbidden' };
   let info;
   try {
-    info = await stat(target);
+    info = await stat(/* turbopackIgnore: true */ target);
   } catch {
     return { ok: false as const, status: 404, error: 'not found' };
   }
   if (!info.isDirectory()) {
     return { ok: false as const, status: 404, error: 'not found' };
   }
-  const names = await readdir(target);
+  const names = await readdir(/* turbopackIgnore: true */ target);
   const entries = (
     await Promise.all(
       names.filter((n) => !isHidden(n)).map(async (name) => {
         try {
-          const s = await stat(join(target, name));
+          const s = await stat(/* turbopackIgnore: true */ join(/* turbopackIgnore: true */ target, name));
           const isDir = s.isDirectory();
           if (!isDir && !NAS_LOCAL_IMAGE_RE.test(name)) return null;
           return {
@@ -82,9 +82,9 @@ export async function readNasLocalFile(segments: string[]) {
   const target = resolveNasLocalTarget(segments);
   if (!target) return { ok: false as const, status: 403, error: 'forbidden' };
   try {
-    const info = await stat(target);
+    const info = await stat(/* turbopackIgnore: true */ target);
     if (!info.isFile()) return { ok: false as const, status: 404, error: 'not found' };
-    const buf = await readFile(target);
+    const buf = await readFile(/* turbopackIgnore: true */ target);
     const ext = extname(target).toLowerCase();
     return {
       ok: true as const,
