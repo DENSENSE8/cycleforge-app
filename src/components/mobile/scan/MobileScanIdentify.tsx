@@ -27,16 +27,14 @@ import {
   pushStationTape,
   stationDedupeId,
   STATION_TAPE_LIMIT,
-  type StationItemAction,
   type StationTapeEntry,
 } from '@/components/mobile/station/station-tape';
 import {
-  mobileArrivalClassifyHref,
-  mobileArrivalPhotosThenClassifyHref,
   parseArrivalClassifyStep,
   parseArrivalReceivingId,
   parseArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
+import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
 import { landScanIdentify } from '@/lib/scan/identify-land';
 import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
@@ -274,42 +272,26 @@ function MobileScanIdentifyInner() {
   );
 
   /**
-   * The arrival-triage decisions, per carton row (BRIEF §4 triage: 2–4 verbs;
-   * owner 2026-09-24: in the opened row, not a bar over the camera). Every verb
-   * enters the EXISTING classify flow — no new write path: Return / Repair
-   * carry the decision as a type hint the Type step pre-selects, and the
-   * operator still taps to save. Photos first is the expected path, so it is
-   * the ink fill.
+   * A carton row opens the carton itself (operator 2026-09-24: the primary
+   * record of the job is a full screen with an X back to the job, never a
+   * sheet or a verb strip). The triage decisions — photos, classify
+   * (Platform → Type → Priority), unbox — live on the carton hub `/m/r/[id]`:
+   * Take photo in its dock, Classify as its door `/m/r/[id]/classify`.
    */
-  const actions = useMemo(() => {
-    const map = new Map<string, readonly StationItemAction[]>();
+  const opens = useMemo(() => {
+    const map = new Map<string, () => void>();
     for (const entry of tape) {
       const receivingId = stationDedupeId(ARRIVAL_DEDUPE_KIND, entry.dedupeKey);
       if (receivingId == null || !entry.dedupeKey) continue;
-      const verb = (label: string, href: string, primary = false): StationItemAction => ({
-        label,
-        pendingLabel: 'Opening…',
-        pending: false,
-        primary,
-        run: () => router.push(href),
-      });
-      map.set(entry.dedupeKey, [
-        verb(
-          'Photos & classify',
-          mobileArrivalPhotosThenClassifyHref(receivingId, { title: entry.identifier ?? undefined }),
-          true,
-        ),
-        verb('Return', mobileArrivalClassifyHref(receivingId, 'platform', { type: 'RETURN' })),
-        verb('Repair', mobileArrivalClassifyHref(receivingId, 'platform', { type: 'REPAIR' })),
-      ]);
+      const href = withJobReturn(`/m/r/${receivingId}`, '/m/scan');
+      map.set(entry.dedupeKey, () => router.push(href));
     }
     return map;
   }, [tape, router]);
 
-  const itemActions = useCallback(
-    (entry: StationTapeEntry): readonly StationItemAction[] | null =>
-      (entry.dedupeKey && actions.get(entry.dedupeKey)) || null,
-    [actions],
+  const itemOpen = useCallback(
+    (entry: StationTapeEntry): (() => void) | null => (entry.dedupeKey && opens.get(entry.dedupeKey)) || null,
+    [opens],
   );
 
   /**
@@ -376,7 +358,7 @@ function MobileScanIdentifyInner() {
           )}
         </div>
       }
-      itemActions={itemActions}
+      itemOpen={itemOpen}
       window={
         bindRaw ? (
           <MobileLocationBindSheet

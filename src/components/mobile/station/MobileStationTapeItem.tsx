@@ -134,6 +134,12 @@ function MobileStationTapeItemBase({
   /** The verbs this entry offers, when the station offers any. */
   actions,
   /**
+   * Opens the entry's own record on tap (the carton hub from arrival triage).
+   * Used only when there are no `actions`: a row either discloses verbs in
+   * place or navigates, never both.
+   */
+  onOpen,
+  /**
    * What line 1 says when the record has no name.
    *
    * The station's word, not this component's — scan-out calls it an unfound
@@ -146,6 +152,7 @@ function MobileStationTapeItemBase({
   now: number;
   emphasis?: 'focus' | 'history';
   actions?: readonly StationItemAction[] | null;
+  onOpen?: (() => void) | null;
   untitledLabel?: string;
 }) {
   const focus = emphasis === 'focus';
@@ -325,6 +332,17 @@ function MobileStationTapeItemBase({
           onClick={() => setOpen((v) => !v)}
           // The region's hit floor (triage touch: 48px), explicitly: a
           // title-less row is only ~36px of content and is still tappable.
+          className={cn(
+            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-center text-left',
+            focusRing('cell', 'accent'),
+          )}
+        >
+          {body}
+        </button>
+      ) : onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
           className={cn(
             'ds-raw-button flex min-h-mode-hit w-full flex-col justify-center text-left',
             focusRing('cell', 'accent'),

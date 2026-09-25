@@ -62,6 +62,13 @@ export function MobileStationShell({
    * on the 30s clock tick.
    */
   itemActions,
+  /**
+   * The record an entry opens on tap, or null. For stations whose decisions
+   * live on the entity's own screen (arrival triage → the carton hub): a tap
+   * navigates instead of disclosing verbs. Ignored for an entry that has
+   * `itemActions`. Same STABLE-per-entry contract as `itemActions`.
+   */
+  itemOpen,
   /** Line 1 for an entry with no name. The station's own word. */
   untitledLabel,
   /** Shown in place of the tape before anything has happened. */
@@ -71,6 +78,7 @@ export function MobileStationShell({
 }: {
   tape: readonly StationTapeEntry[];
   itemActions?: (entry: StationTapeEntry) => readonly StationItemAction[] | null;
+  itemOpen?: (entry: StationTapeEntry) => (() => void) | null;
   untitledLabel?: string;
   empty?: React.ReactNode;
   window: React.ReactNode;
@@ -171,6 +179,7 @@ export function MobileStationShell({
                     entry={entry}
                     now={now}
                     actions={itemActions?.(entry) ?? null}
+                    onOpen={itemOpen?.(entry) ?? null}
                     untitledLabel={untitledLabel}
                   />
                 </motion.div>
@@ -206,6 +215,7 @@ export function MobileStationShell({
                     now={now}
                     emphasis="focus"
                     actions={itemActions?.(focus) ?? null}
+                    onOpen={itemOpen?.(focus) ?? null}
                     untitledLabel={untitledLabel}
                   />
                 </motion.div>

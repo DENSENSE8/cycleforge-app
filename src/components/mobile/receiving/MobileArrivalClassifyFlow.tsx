@@ -5,7 +5,11 @@
  *
  * Options come from desktop classify SoTs (`classify-pill-options` + catalogs).
  * Persist mirrors desktop: PATCH receiving for platform/type, receiving-logs for
- * priority_tier. Back/list escape clears to `/m/triage`.
+ * priority_tier.
+ *
+ * Two hosts: `/m/scan?rid=&step=` (the default — escape clears to the scan
+ * tape) and the carton hub's Classify door `/m/r/[id]/classify` (escape
+ * returns to the carton), which passes `stepHref` / `exit`.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -32,6 +36,7 @@ import {
   type ArrivalClassifyStep,
   type ArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
+import { previousMobilePath } from '@/lib/mobile/nav-trail';
 import { cn } from '@/utils/_cn';
 import type { InlinePillOption } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 
@@ -46,6 +51,8 @@ export function MobileArrivalClassifyFlow({
   step,
   trackingLabel,
   typeHint = null,
+  stepHref,
+  exit,
 }: {
   receivingId: number;
   step: ArrivalClassifyStep;
@@ -55,6 +62,10 @@ export function MobileArrivalClassifyFlow({
    * the Type step, never saved without the operator's tap.
    */
   typeHint?: ArrivalTypeHint | null;
+  /** The host's URL for a step. Default: the `/m/scan` classify host. */
+  stepHref?: (step: ArrivalClassifyStep) => string;
+  /** Where escape and the last step land, and what the escape button says. Default: `/m/scan`. */
+  exit?: { href: string; label: string };
 }) {
   const router = useRouter();
   const { options: platformOpts } = usePlatformCatalog();
@@ -62,16 +73,21 @@ export function MobileArrivalClassifyFlow({
   const [saving, setSaving] = useState(false);
   const [pickedPlatform, setPickedPlatform] = useState<string | null>(null);
   const [pickedType, setPickedType] = useState<string | null>(null);
+  const exitHref = exit?.href ?? '/m/scan';
 
+  // Back, not forward, when the operator came from the exit (the carton hub's
+  // Classify door): a replace would leave hub · hub on the stack and the hub's
+  // X would pop onto its own copy (nav-trail; same rule as MobileDetailTopBar).
   const goList = useCallback(() => {
-    router.replace('/m/scan');
-  }, [router]);
+    if (previousMobilePath() === exitHref.split(/[?#]/)[0]) router.back();
+    else router.replace(exitHref);
+  }, [router, exitHref]);
 
   const goStep = useCallback(
     (next: ArrivalClassifyStep) => {
-      router.replace(mobileArrivalClassifyHref(receivingId, next, { type: typeHint }));
+      router.replace(stepHref ? stepHref(next) : mobileArrivalClassifyHref(receivingId, next, { type: typeHint }));
     },
-    [router, receivingId, typeHint],
+    [router, receivingId, typeHint, stepHref],
   );
 
   const onBack = useCallback(() => {
@@ -263,7 +279,7 @@ export function MobileArrivalClassifyFlow({
 
       <div className="flex flex-1 flex-col items-center justify-end px-4 pb-6 pt-8">
         <Button variant="ghost" size="lg" radius="mode" onClick={goList} className="mb-3 min-h-mode-hit text-text-muted">
-          Back to scan
+          {exit?.label ?? 'Back to scan'}
         </Button>
       </div>
 
