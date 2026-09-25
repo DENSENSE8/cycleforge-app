@@ -2,7 +2,7 @@
 
 import { ReactNode, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronLeft } from '@/components/Icons';
+import { ChevronLeft, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { MobileScanCta } from '@/components/mobile/redesign/mobile-scan-cta';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -32,6 +32,13 @@ interface MobileDetailTopBarProps {
    * `router.back()`.
    */
   backHref?: string;
+  /**
+   * Paint the leading control as an **X** ("Close") instead of a back chevron.
+   * For a record opened FROM a job (an order from the pick queue): the operator
+   * is peeking at the record and returning to the job, not walking up a tree.
+   * Navigation is identical — `backHref` still decides where it lands.
+   */
+  close?: boolean;
   /** Slot at the right edge — status pill, network chip, print button. */
   right?: ReactNode;
 }
@@ -71,6 +78,7 @@ export function MobileDetailTopBar({
   mono = false,
   lead,
   backHref,
+  close = false,
   right,
 }: MobileDetailTopBarProps) {
   const router = useRouter();
@@ -110,8 +118,8 @@ export function MobileDetailTopBar({
     >
       <IconButton
         onClick={handleBack}
-        ariaLabel="Back"
-        icon={<ChevronLeft className="h-6 w-6 text-text-default" />}
+        ariaLabel={close ? 'Close' : 'Back'}
+        icon={close ? <X className="h-6 w-6 text-text-default" /> : <ChevronLeft className="h-6 w-6 text-text-default" />}
         className={cn(
           '-ml-1 flex h-11 w-11 shrink-0 items-center justify-center transition-colors hover:bg-surface-hover',
           cornerClass('flush'),

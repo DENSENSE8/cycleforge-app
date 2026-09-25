@@ -23,6 +23,8 @@ export interface DetailRecordBar<T> {
   right?: PerRecord<T>;
   /** Where Back lands (nav-trail). Never `router.push` a parent. */
   backHref?: string;
+  /** An X instead of a chevron — the record was opened from a job (see `mobileJobReturn`). */
+  close?: boolean;
 }
 
 /** The three honest non-record states every entity screen shares. */
@@ -63,6 +65,7 @@ export function DetailRecordFrame<T>({
         mono={bar.mono}
         subtitle={bar.subtitle}
         backHref={bar.backHref}
+        close={bar.close}
         meta={resolve(bar.meta, live) || undefined}
         right={resolve(bar.right, live) || undefined}
       />

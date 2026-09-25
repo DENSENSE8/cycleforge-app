@@ -5,13 +5,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Link2, PackageCheck, RefreshCw } from '@/components/Icons';
+import { AlertTriangle, ClipboardList, Link2, PackageCheck, RefreshCw } from '@/components/Icons';
+import { DetailNavRow } from '@/components/mobile/detail/DetailParts';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { SearchableSelectField } from '@/design-system/components';
 import { Button, TextField } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 import { toast } from '@/lib/toast';
+import { withJobReturn } from '@/lib/mobile/nav-trail';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   exceptionPairingResolveCount,
@@ -218,6 +220,17 @@ export function MobileOrderExceptionTask({ orderId }: { orderId: number }) {
             Pairing resolves {resolveCount} held order{resolveCount === 1 ? '' : 's'}.
           </p>
         </section>
+
+        {/* The exception is the job; the order is its record — a full screen
+            with an X back here, never a sheet (operator 2026-09-24). */}
+        <nav aria-label="Order record" className="border-b border-border-hairline">
+          <DetailNavRow
+            href={withJobReturn(`/m/orders/${row.id}?by=id`, `/m/exceptions/${row.id}`)}
+            title="Order"
+            meta={[row.orderNumber || `#${row.id}`, 'customer, label, units, activity'].join(' · ')}
+            icon={<ClipboardList />}
+          />
+        </nav>
 
         <section aria-labelledby="exception-identity-heading" className="border-b border-border-hairline">
           <h2 id="exception-identity-heading" className="px-3 py-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">

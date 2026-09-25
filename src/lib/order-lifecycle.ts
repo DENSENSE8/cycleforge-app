@@ -22,6 +22,7 @@
  */
 
 import type { LifecycleState } from '@cycleforge/design-tokens';
+import type { OutboundWarehouseStage } from '@/lib/outbound/work-contract';
 
 /** The full pre‑dock pipeline stage vocabulary. */
 export type OrderLifecycleStage =
@@ -129,6 +130,27 @@ export function orderLifecycleState(
   if (stage === 'BLOCKED') return 'outOfStock';
   if (flags.urgent) return 'urgent';
   if (stage === 'PACKED_STAGED') return 'packed';
+  return 'ready';
+}
+
+/**
+ * The server's outbound warehouse stage (`OutboundWorkItem.warehouseStage`,
+ * `/api/v1/outbound/work`) + the order's expedite flag → the same
+ * {@link LifecycleState} vocabulary. The ONE mapping for a record that reads
+ * the projection instead of the pre-dock signals (the phone order hub).
+ *
+ * Precedence: shipped is terminal, out of stock is the exception, an expedite
+ * outranks progress, a packed or labeled carton reads packed, everything
+ * earlier (READY, PICKED) reads ready.
+ */
+export function workStageLifecycleState(
+  stage: OutboundWarehouseStage,
+  flags: { urgent?: boolean | null } = {},
+): LifecycleState {
+  if (stage === 'SCANNED_OUT') return 'shipped';
+  if (stage === 'OUT_OF_STOCK') return 'outOfStock';
+  if (flags.urgent) return 'urgent';
+  if (stage === 'PACKED' || stage === 'LABELED') return 'packed';
   return 'ready';
 }
 

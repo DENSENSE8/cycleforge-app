@@ -17,8 +17,10 @@
  * the routes nobody remembered to add; a denylist fails open, which is the
  * correct default when the thing being withheld is the app's primary action.
  *
- * A trailing slash is load-bearing: `/m/pick/` excludes the pick DETAIL screen
- * (which owns a bar) while `/m/pick` itself still gets the header.
+ * A trailing slash is load-bearing where the bare path is a queue that keeps
+ * the header while its records own a bar (`/m/exceptions/` vs `/m/exceptions`).
+ * `/m/pick` has no queue: the bare route IS the directed pick session and
+ * draws its own progress band.
  *
  * PRE-SIGN-IN paths are NOT listed here — `isClientPublicPath` owns those, and
  * they get no shell at all.
@@ -33,17 +35,25 @@ export const OWN_TOP_BAR_PREFIXES = [
   // the checklist row that sent the operator here.
   '/m/t/',
   '/m/b/',
-  '/m/pick/',
+  '/m/pick',
   '/m/print',
   '/m/id/',
-  // Order import owns an X + title bar; a host header above it would stack two
-  // chromes on one screen (operator 2026-09-15).
-  '/m/orders/sync',
+  // The order hub and its doors own MobileDetailTopBar (X back to the job);
+  // order import (`/m/orders/sync`) owns an X + title bar. A host header above
+  // either would stack two chromes on one screen (operator 2026-09-15).
+  '/m/orders/',
   // Exception records own MobileDetailTopBar; the queue keeps the host bar.
   '/m/exceptions/',
   // The QC line pick (landed from the scan kernel armed for QC) owns its bar.
   '/m/qc/',
 ] as const;
+
+/**
+ * Routes under an {@link OWN_TOP_BAR_PREFIXES} prefix that draw NO bar of their
+ * own and so keep the host header: the order intake form sits beside the order
+ * hub's `[orderId]` segment.
+ */
+const HOST_TOP_BAR_KEEPS = ['/m/orders/new'] as const;
 
 /**
  * Does this route draw its own top bar — i.e. is the host header withheld?
@@ -56,5 +66,6 @@ export const OWN_TOP_BAR_PREFIXES = [
  */
 export function mobileRouteOwnsTopBar(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
+  if (HOST_TOP_BAR_KEEPS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;
   return OWN_TOP_BAR_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
 }

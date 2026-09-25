@@ -5,6 +5,7 @@ import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 import { findOrderByTrackingKey } from '@/lib/orders-exceptions';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { OrderLookupRecord } from '@/lib/orders/order-hub';
 import pool from '@/lib/db';
 
 /**
@@ -12,7 +13,10 @@ import pool from '@/lib/db';
  *
  * Resolve a single order by:
  *   1. human `order_id` (externally-visible order #), or
- *   2. carrier tracking (header-search paste / scan) via {@link findOrderByTrackingKey}.
+ *   2. carrier tracking (header-search paste / scan) via {@link findOrderByTrackingKey}, or
+ *   3. `?by=id`: the internal `orders.id` pk only — the phone order hub's
+ *      fallback when a job linked by pk (pick queue, exceptions). Never mixed
+ *      with 1/2, so a numeric order # can never shadow a pk or vice versa.
  *
  * Returns the order joined with customer + current work assignment + serial
  * numbers so mobile `/m/orders/[orderId]` and header-search identifier commits
@@ -23,33 +27,8 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-interface OrderDetail {
-  id: number;
-  order_id: string;
-  product_title: string | null;
-  sku: string | null;
-  condition: string | null;
-  status: string | null;
-  status_history: unknown;
-  quantity: string | null;
-  notes: string | null;
-  account_source: string | null;
-  order_date: string | null;
-  created_at: string | null;
-  item_number: string | null;
-  shipment_id: number | null;
-  customer_id: number | null;
-  customer_name: string | null;
-  ship_to_city: string | null;
-  ship_to_state: string | null;
-  ship_to_postal_code: string | null;
-  ship_to_address_1: string | null;
-  ship_by_date: string | null;
-  tester_id: number | null;
-  packer_id: number | null;
-  tracking_numbers: string[];
-  serials: string[];
-}
+/** The response row — shared with the phone order hub (`src/lib/orders/order-hub.ts`). */
+type OrderDetail = OrderLookupRecord;
 
 const ORDER_DETAIL_SELECT = `
     SELECT
@@ -198,27 +177,39 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid order id' }, { status: 400 });
   }
   const decoded = decodeURIComponent(orderId);
+  const byId = request.nextUrl.searchParams.get('by') === 'id';
+  const pk = byId ? Number(decoded) : null;
+  if (byId && !(Number.isInteger(pk) && (pk as number) > 0 && (pk as number) <= 2_147_483_647)) {
+    return NextResponse.json({ ok: false, error: 'invalid order id' }, { status: 400 });
+  }
 
   // Short-TTL read model for the mobile order-detail page: order VM + activity
   // strip, reloaded per scan. 20s TTL bounds staleness; tech/scan + the order
-  // mutation chokepoint (invalidateOrderViews) bust the org-scoped tags.
+  // mutation chokepoint (invalidateOrderViews) bust the org-scoped tags. The
+  // cache key carries the lookup mode — `id:14262` (pk) and `no:14262` (order #)
+  // are different orders, and neither prefix can be forged by the other.
   const cached = await getOrSet<{ order: OrderDetail | null; activity: unknown[] }>(
     CACHE_NS.orderDetail,
     orgId,
-    decoded,
+    pk != null ? `id:${pk}` : `no:${decoded}`,
     20,
     [CACHE_TAGS.orders, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],
     async () => {
-      // 1) Human order # (per-tenant string key).
-      let order = await loadOrderDetailByOrderId(orgId, decoded);
+      let order: OrderDetail | null;
+      if (pk != null) {
+        order = await loadOrderDetailById(orgId, pk);
+      } else {
+        // 1) Human order # (per-tenant string key).
+        order = await loadOrderDetailByOrderId(orgId, decoded);
 
-      // 2) Carrier tracking — header-search paste commits identifiers through
-      //    resolveSearchOrder → this route; order_id-only miss left tracking
-      //    pastes on the results list instead of opening detail.
-      if (!order) {
-        const byTracking = await findOrderByTrackingKey(decoded, pool, orgId);
-        if (byTracking) {
-          order = await loadOrderDetailById(orgId, byTracking.id);
+        // 2) Carrier tracking — header-search paste commits identifiers through
+        //    resolveSearchOrder → this route; order_id-only miss left tracking
+        //    pastes on the results list instead of opening detail.
+        if (!order) {
+          const byTracking = await findOrderByTrackingKey(decoded, pool, orgId);
+          if (byTracking) {
+            order = await loadOrderDetailById(orgId, byTracking.id);
+          }
         }
       }
 

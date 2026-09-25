@@ -62,8 +62,8 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
     entity: 'order',
     route: '/m/orders/[orderId]',
     hub: 'src/app/m/(shell)/orders/[orderId]/page.tsx',
-    info: null,
-    status: 'unported',
+    info: 'src/app/m/(shell)/orders/[orderId]/info/page.tsx',
+    status: 'ported',
   },
   {
     entity: 'scan-out order',
@@ -79,4 +79,4 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
  * it is the one edit this module exists to stop. At 0 every scanned thing on a
  * phone wears the exoskeleton by machine.
  */
-export const DETAIL_HUB_UNPORTED_BASELINE = 6;
+export const DETAIL_HUB_UNPORTED_BASELINE = 5;

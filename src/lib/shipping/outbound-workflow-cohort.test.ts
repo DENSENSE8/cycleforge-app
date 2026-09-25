@@ -146,25 +146,6 @@ test('the mobile Pick execution face cannot restore raw palette, radius, or shad
   assert.ok(ids.includes('raw-style-utility'));
 });
 
-test('route-backed Order detail cannot restore legacy rounded, shadowed, or gradient chrome', () => {
-  const sources = Object.fromEntries(
-    Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),
-  ) as Parameters<typeof evaluateOutboundWorkflowCohort>[0];
-  const regressed = {
-    ...sources,
-    orderDetail: sources.orderDetail
-      .replace('border-t-border-accent', 'border-t-blue-600')
-      // ds-allow-raw-neutral: deliberate invalid fixture for the raw-style guard.
-      .replace('border-t border-border-hairline bg-surface-card px-6 pb-3 pt-3', 'border-t border-slate-200 bg-gradient-to-t from-slate-50 px-6 pb-3 pt-3')
-      .replaceAll('cornerClass', 'rounded-full'),
-  };
-  const ids = evaluateOutboundWorkflowCohort(regressed).violations.map((violation) => violation.id);
-  assert.ok(ids.includes('missing-order-detail-corner-role'));
-  assert.ok(ids.includes('missing-order-detail-semantic-spinner'));
-  assert.ok(ids.includes('order-detail-legacy-chrome'));
-  assert.ok(ids.includes('raw-style-utility'));
-});
-
 test('the mobile Outbound shell cannot restore raw danger-palette error chrome', () => {
   const sources = Object.fromEntries(
     Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),

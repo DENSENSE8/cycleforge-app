@@ -77,6 +77,15 @@ export const qk = {
     /** One repair's signed documents (`GET /api/repair-service/document/[id]`). */
     documents: (id: number) => ['repairs', 'documents', id] as const,
   },
+  orders: {
+    /**
+     * One order's phone hub (`/m/orders/[orderId]`) and its doors share these
+     * reads. `key` is the route param for the lookup (`record`) and the pk for
+     * the outbound projection (`work`). Rooted under `orders` so every order
+     * mutation's `invalidateQueries(['orders'])` refreshes the open record.
+     */
+    hub: (key: string | number, facet: string) => ['orders', 'hub', key, facet] as const,
+  },
   skuExceptions: {
     /** Broad invalidation prefix — every SKU-exception (TMP- placeholder) read. */
     all: ['sku-exceptions'] as const,

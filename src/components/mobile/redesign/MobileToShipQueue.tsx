@@ -24,6 +24,7 @@ import {
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { cn } from '@/utils/_cn';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { bandWorkOrderRows } from '@/lib/work-orders/deadline-bands';
 import {
   MOBILE_TO_SHIP_SORTS,
@@ -270,9 +271,16 @@ export function MobileToShipQueue({
   const onOpenDetail = useCallback(
     (row: WorkOrderRow) => {
       setSheetRow(null);
-      router.push(row.sourcePath || `/m/orders/${encodeURIComponent(String(row.orderId || row.entityId))}`);
+      // ORDER rows carry the desk's `/dashboard?pending=` as sourcePath; the
+      // phone opens the order hub, by public order # when known, else by pk.
+      const target = row.sourcePath?.startsWith('/m/')
+        ? row.sourcePath
+        : row.orderId
+          ? `/m/orders/${encodeURIComponent(row.orderId)}`
+          : `/m/orders/${row.entityId}?by=id`;
+      router.push(withJobReturn(target, pathname));
     },
-    [router],
+    [router, pathname],
   );
 
   const onPriorityAction = useCallback(

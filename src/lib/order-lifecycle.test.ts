@@ -11,6 +11,7 @@ import {
   SHIPMENT_STATUS_CATEGORIES,
   type OrderLifecycleSignals,
   type OutboundSignals,
+  workStageLifecycleState,
 } from './order-lifecycle';
 import {
   sqlInList,
@@ -155,4 +156,15 @@ test('sqlInList generated fragments are byte-identical to the replaced SQL liter
   );
   // dashboard/operations tested-today  →  activity_type IN (<this>)
   assert.equal(sqlInList(TECH_TEST_ACTIVITY_TYPES), `'TRACKING_SCANNED', 'FNSKU_SCANNED'`);
+});
+
+test('workStageLifecycleState: shipped is terminal, OOS beats urgent, urgent beats progress', () => {
+  assert.equal(workStageLifecycleState('SCANNED_OUT', { urgent: true }), 'shipped');
+  assert.equal(workStageLifecycleState('OUT_OF_STOCK', { urgent: true }), 'outOfStock');
+  assert.equal(workStageLifecycleState('PACKED', { urgent: true }), 'urgent');
+  assert.equal(workStageLifecycleState('READY', { urgent: true }), 'urgent');
+  assert.equal(workStageLifecycleState('PACKED'), 'packed');
+  assert.equal(workStageLifecycleState('LABELED'), 'packed');
+  assert.equal(workStageLifecycleState('PICKED'), 'ready');
+  assert.equal(workStageLifecycleState('READY', { urgent: null }), 'ready');
 });

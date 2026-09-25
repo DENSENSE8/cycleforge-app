@@ -10,7 +10,7 @@
 
 import ts from 'typescript';
 
-export const OUTBOUND_WORKFLOW_COHORT_VERSION = 44 as const;
+export const OUTBOUND_WORKFLOW_COHORT_VERSION = 45 as const;
 export const OUTBOUND_WORKFLOW_COHORT_TRIPWIRE =
   'src/lib/shipping/outbound-workflow-cohort.test.ts' as const;
 export const OUTBOUND_WORKFLOW_COHORT_LEDGER =
@@ -33,7 +33,6 @@ export const OUTBOUND_WORKFLOW_COHORT_FILES = {
   pickQueueRow: 'src/components/mobile/redesign/PickQueueRow.tsx',
   microListingTrigger: 'src/components/mobile/redesign/MicroListingTrigger.tsx',
   sheet: 'src/components/mobile/redesign/MobileToShipSheet.tsx',
-  orderDetail: 'src/components/mobile/redesign/OrderDetail.tsx',
   facts: 'src/lib/shipping/outbound-workflow-facts.ts',
   actions: 'src/lib/shipping/outbound-workflow-actions.ts',
   handlingFacts: 'src/lib/shipping/outbound-handling-facts.ts',
@@ -332,10 +331,6 @@ export function evaluateOutboundWorkflowCohort(
   requireText(sources, 'row', 'outboundHandlingFactFaces', 'missing-governed-handling-row-face', 'The Orders row must adapt safety flags through the shared handling law.', violations);
   requireText(sources, 'itemCard', 'item-card-handling-facts', 'missing-handling-banner', 'Governed handling facts must paint a full-width row warning strip when present.', violations);
   requireText(sources, 'itemCard', '<Alert', 'missing-handling-alert-primitive', 'The handling strip must compose the governed alert primitive.', violations);
-  requireText(sources, 'orderDetail', 'cornerClass', 'missing-order-detail-corner-role', 'Order detail controls must name their sanctioned corner role instead of writing a radius utility.', violations);
-  requireText(sources, 'orderDetail', 'border-t-border-accent', 'missing-order-detail-semantic-spinner', 'Order detail loading feedback must use semantic accent border ink.', violations);
-  requireText(sources, 'orderDetail', 'bg-surface-card', 'missing-order-detail-semantic-action-dock', 'Order detail action dock must use the semantic surface, not a page-local gradient.', violations);
-  forbidPattern(sources, 'orderDetail', /\bGlassButton\b|bg-gradient-to-t/, 'order-detail-legacy-chrome', 'Order detail actions must use the canonical Button face without legacy glass or palette-gradient chrome.', violations);
   requireText(sources, 'fbaPlanRail', "PLANNED: 'bg-fill-warning'", 'missing-fba-plan-rail-token', 'FBA plan markers must use semantic fill roles.', violations);
   requireText(sources, 'fbaPlanInput', 'ThemedStationScanBar', 'missing-fba-shared-scan-host', 'FBA planning must retain the governed station scan host.', violations);
   requireText(sources, 'fbaPlanQueue', 'radius="flush"', 'missing-fba-plan-action-radius', 'FBA plan confirmation uses canonical flush action geometry.', violations);
