@@ -5,6 +5,7 @@ import {
   auditDetailDockSource,
   auditDetailHubPage,
   auditDetailInfoPage,
+  auditMobileSheets,
   balancedSpan,
   importMap,
   stripComments,
@@ -122,6 +123,24 @@ test('/info: the bar pencil is the only write control', () => {
   assert.deepEqual(rules(auditDetailInfoPage(INFO, inline)), ['info-write-control']);
   const second = clean.replace('<EditSheet open={open} />', '<IconButton ariaLabel="Delete" icon={<Trash />} />');
   assert.deepEqual(rules(auditDetailInfoPage(INFO, second)), ['info-write-control']);
+});
+
+test('sheets: every phone BottomSheet has a role, entries stay live, and record sheets only shrink', () => {
+  const A = 'src/components/mobile/x/ASheet.tsx';
+  const B = 'src/app/m/(shell)/x/page.tsx';
+  const mounts = (file: string) => ({ file, source: `export function S() { return <BottomSheet open onClose={f} />; }` });
+  const verdict = (files: { file: string; source: string }[], roles: Record<string, string>, baseline: number) => {
+    const out = auditMobileSheets(files, roles, baseline);
+    return { rules: rules(out.violations), problems: out.problems.length };
+  };
+  assert.deepEqual(verdict([mounts(A), mounts(B)], { [A]: 'picker', [B]: 'record' }, 1), { rules: [], problems: 0 });
+  // An unlisted phone sheet fails; a desk sheet and a comment are not phone mounts.
+  assert.deepEqual(verdict([mounts(A), mounts(B)], { [A]: 'picker' }, 0), { rules: ['sheet-unclassified'], problems: 0 });
+  assert.deepEqual(verdict([mounts('src/components/desk/Sheet.tsx'), { file: A, source: '// <BottomSheet>' }], {}, 0), { rules: [], problems: 0 });
+  // A listed file that stopped mounting is stale; records above or below the baseline both ask for an edit.
+  assert.deepEqual(verdict([], { [A]: 'picker' }, 0), { rules: [], problems: 1 });
+  assert.deepEqual(verdict([mounts(A), mounts(B)], { [A]: 'record', [B]: 'record' }, 1), { rules: [], problems: 1 });
+  assert.deepEqual(verdict([mounts(A)], { [A]: 'picker' }, 1), { rules: [], problems: 1 });
 });
 
 test('helpers: comments blank out, spans balance, imports map', () => {

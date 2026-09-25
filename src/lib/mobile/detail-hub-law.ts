@@ -88,7 +88,9 @@ export const DETAIL_HUB_REFUSAL =
   'with detailDoor(), and a DetailDock of at most three verbs with one primary. /info holds every fact ' +
   'and the only edit (the pencil in its bar). No Edit button or heading on the hub, no router Back, no ' +
   'nested <main>, no useEffect+fetch for hub data (React Query), no hand-rolled sticky dock, and never ' +
-  'MobileTriagePage as a record screen. See src/lib/mobile/detail-hub-law.ts.';
+  'MobileTriagePage as a record screen. The primary record of the job being worked is never a phone ' +
+  'BottomSheet: it opens as its hub route with an X back to the job; every phone sheet declares its role ' +
+  'in src/lib/mobile/mobile-sheet-roles.ts and record sheets only shrink. See src/lib/mobile/detail-hub-law.ts.';
 
 export type DetailHubRule =
   | 'hub-missing-screen'
@@ -103,7 +105,8 @@ export type DetailHubRule =
   | 'hub-triage-page'
   | 'dock-too-many-verbs'
   | 'dock-many-primary'
-  | 'info-write-control';
+  | 'info-write-control'
+  | 'sheet-unclassified';
 
 export interface DetailHubViolation {
   /** Repo-relative, POSIX separators. */
@@ -329,6 +332,59 @@ export function auditDetailInfoPage(file: string, source: string): DetailHubViol
     });
   }
   return out;
+}
+
+/** Phone files the sheet law reads: `src/components/mobile/**` and `src/app/m/**`. */
+export function isPhoneSheetScope(file: string): boolean {
+  return file.startsWith('src/components/mobile/') || file.startsWith('src/app/m/');
+}
+
+/** Whether this source mounts a `<BottomSheet` (comments ignored). */
+export function mountsBottomSheet(source: string): boolean {
+  return /<BottomSheet\b/.test(stripComments(source));
+}
+
+/**
+ * The sheet-vs-screen law over the phone files that mount a `BottomSheet`:
+ * each must carry a role in `roles`; a listed file that no longer mounts one
+ * is stale; the `record` count is a shrink-only baseline.
+ */
+export function auditMobileSheets(
+  sheetFiles: { file: string; source: string }[],
+  roles: Readonly<Record<string, string>>,
+  recordBaseline: number,
+): { violations: DetailHubViolation[]; problems: string[] } {
+  const violations: DetailHubViolation[] = [];
+  const problems: string[] = [];
+  const mounting = new Set<string>();
+  for (const { file, source } of sheetFiles) {
+    if (!isPhoneSheetScope(file) || !mountsBottomSheet(source)) continue;
+    mounting.add(file);
+    if (roles[file] == null) {
+      const text = stripComments(source);
+      violations.push({
+        file,
+        line: lineAt(text, text.search(/<BottomSheet\b/)),
+        rule: 'sheet-unclassified',
+        detail:
+          'phone BottomSheet with no role — classify it in src/lib/mobile/mobile-sheet-roles.ts ' +
+          "(edit · dock-verb · confirm · picker · linked-peek); a job's primary record is a hub route, not a sheet",
+      });
+    }
+  }
+  for (const file of Object.keys(roles)) {
+    if (!mounting.has(file)) problems.push(`${file} no longer mounts a BottomSheet — drop it from MOBILE_SHEET_ROLES`);
+  }
+  const records = Object.keys(roles).filter((file) => roles[file] === 'record').length;
+  if (records > recordBaseline) {
+    problems.push(
+      `record sheets rose to ${records} (baseline ${recordBaseline}) — the primary record of a job is its hub ` +
+        'route with an X back, never a sheet; the baseline only shrinks',
+    );
+  } else if (records < recordBaseline) {
+    problems.push(`record sheet retired — drop MOBILE_RECORD_SHEET_BASELINE to ${records} in the same commit`);
+  }
+  return { violations, problems };
 }
 
 export function formatDetailHubViolation(v: DetailHubViolation): string {

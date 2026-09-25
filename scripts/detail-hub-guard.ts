@@ -19,6 +19,10 @@
  *   - any /m page mounting DetailHubScreen must be a listed peer.
  *   - unported peers: counted against DETAIL_HUB_UNPORTED_BASELINE (shrink-only);
  *     one that now passes must be flipped to ported with the baseline dropped.
+ *   - every phone file (`src/components/mobile`, `src/app/m`) mounting
+ *     `<BottomSheet` has a role in MOBILE_SHEET_ROLES
+ *     (`src/lib/mobile/mobile-sheet-roles.ts`); `record` sheets are counted
+ *     against MOBILE_RECORD_SHEET_BASELINE (shrink-only).
  *
  * `--file <path>`: the verdict for that one file (hub rules if it is a hub
  * page or mounts DetailHubScreen, /info rules if it is an info page, dock
@@ -36,6 +40,7 @@ import {
   auditDetailDockSource,
   auditDetailHubPage,
   auditDetailInfoPage,
+  auditMobileSheets,
   DETAIL_HUB_KIT,
   DETAIL_HUB_REFUSAL,
   formatDetailHubViolation,
@@ -43,6 +48,7 @@ import {
   type ModuleReader,
 } from '../src/lib/mobile/detail-hub-law';
 import { DETAIL_HUB_PEERS, DETAIL_HUB_UNPORTED_BASELINE } from '../src/lib/mobile/detail-hub-cohort';
+import { MOBILE_RECORD_SHEET_BASELINE, MOBILE_SHEET_ROLES } from '../src/lib/mobile/mobile-sheet-roles';
 
 const argv = process.argv.slice(2);
 const asJson = argv.includes('--json');
@@ -104,6 +110,8 @@ function checkOne(rel: string): Report {
     advisory = peer?.status === 'unported';
   }
   if (isInfoPage(rel)) violations.push(...auditDetailInfoPage(rel, text));
+  // One file: only its own classification — stale entries and the baseline are full-run verdicts.
+  violations.push(...auditMobileSheets([{ file: rel, source: text }], MOBILE_SHEET_ROLES, MOBILE_RECORD_SHEET_BASELINE).violations);
   const problems = advisory && violations.length > 0
     ? [`${rel} is an unported peer — these are its porting gaps (counted by the baseline, not failed here)`]
     : [];
@@ -120,14 +128,20 @@ function checkAll(): Report {
   const violations: DetailHubViolation[] = [];
   const problems: string[] = [];
   const files = walk(path.join(REPO, 'src')).map((abs) => posix(path.relative(REPO, abs)));
+  const sheetFiles: { file: string; source: string }[] = [];
 
   for (const rel of files) {
     const text = readFileSync(path.join(REPO, rel), 'utf8');
     if (text.includes('<DetailDock')) violations.push(...auditDetailDockSource(rel, text));
+    if (text.includes('<BottomSheet')) sheetFiles.push({ file: rel, source: text });
     if (rel.startsWith('src/app/m/') && /<DetailHubScreen\b/.test(text) && !DETAIL_HUB_PEERS.some((p) => p.hub === rel)) {
       problems.push(`${rel} mounts DetailHubScreen but is not in DETAIL_HUB_PEERS (src/lib/mobile/detail-hub-cohort.ts)`);
     }
   }
+
+  const sheets = auditMobileSheets(sheetFiles, MOBILE_SHEET_ROLES, MOBILE_RECORD_SHEET_BASELINE);
+  violations.push(...sheets.violations);
+  problems.push(...sheets.problems);
 
   const unported: { route: string; gaps: number }[] = [];
   for (const peer of DETAIL_HUB_PEERS) {

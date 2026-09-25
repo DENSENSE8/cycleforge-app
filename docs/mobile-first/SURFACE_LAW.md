@@ -108,14 +108,29 @@ Pass/fail: fail any of R1–R4 on the mobile SoT → not done.
 
 ## 7. Component kit (build toward; share repo-wide)
 
+**Record (the exoskeleton — one scanned thing, a full scrollable screen):**
+
 | Component | Responsibility |
 |---|---|
-| `MobilePhoneFrame` | Fixed max-width column + side gutters on `lg+`; hosts SoT |
-| `MobileRecentStrip` | Top-left compact recents / back MRU |
-| `MobileStepShell` | Title + optional path status + body + sticky CTA slot |
-| `MobileQueueShell` | Search + banded list + row → sheet (Pick / Work pattern) |
-| `MobileActionSlot` | The page's **one** top-bar verb, painted left of the permanent SCAN seat. Registrar + provider, mirroring the desk's `DeskActionSlot` |
-| Existing | `RedesignedMobileShell`, `BottomSheet`, item-record mobile faces, Pick `_picker/*` |
+| `DetailHubScreen` | The entity hub `/m/<entity>/[id]`: bar, summary card, doors, dock, loading/error |
+| `DetailRecordFrame` | The frame of `/info` and each job screen under a hub |
+| `DetailSummaryCard` | The read-only card on top of a hub; the whole card opens `/info` |
+| `DetailNav` + `detailDoor` | One door per job screen (photos, lines, activity …) |
+| `DetailFactRow` · `DetailAck` | Facts on `/info`; the acknowledgement line |
+| `DetailDock` | ≤3 verbs, one primary — the only surface on a hub that writes |
+
+**List / job screens (stay):** `MobileShell`, `MobileActionSlot`, `ItemCardRow`,
+`MobileTriagePage`, `BottomSheet`.
+
+**Sheet vs screen (operator 2026-09-24).** The primary record of the job being
+worked — an order while picking or packing, a carton, a unit, a bin, a SKU, a
+ticket — is never a sheet. It opens as its hub route: a full scrollable screen
+with an **X** back to the job. `BottomSheet` is for an edit from the `/info`
+pencil, a dock verb's form, a confirmation, a picker, and a quick look at a
+**linked** item from inside another record (an item linked to a ticket). Every
+phone sheet declares its role in `src/lib/mobile/mobile-sheet-roles.ts`; the
+`Detail hub` gate fails an unclassified sheet, and record sheets are a
+shrink-only baseline.
 
 New jobs **compose** these; they do not invent a parallel mobile design system.
 
