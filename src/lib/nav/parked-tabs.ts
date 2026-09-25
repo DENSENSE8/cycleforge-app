@@ -56,7 +56,6 @@ export const PARKED_TABS: Readonly<Record<ParkedTabKey, string>> = {
   'inventory:triage': 'Tracking Exceptions — Zoho re-query path unreliable.',
   'inventory:pulse': 'Pulse — throughput board not reading live movement.',
   'inventory:graph': 'Graph — stock-flow view incomplete.',
-  'inventory:replenish': 'Replenish — `?section=replenish` body is a stub.',
   'inventory:reason-codes': 'Reason Codes — ex-admin CRUD, unported to the desk frame.',
   'inventory:favorites': 'Quick Picks — ex-admin CRUD, unported to the desk frame.',
   'inventory:health': 'Health — rollout/drift board, quick-links only.',

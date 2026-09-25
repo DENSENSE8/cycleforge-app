@@ -2,8 +2,9 @@
 
 /**
  * Far-right actions-column trigger: opens AssigneeCombobox in roster
- * mode (every member, Picker and Packer switches). Cell All staff is the
- * in-flow editor for that column's face.
+ * mode (every member, Picker and Packer switches). The switches write floor
+ * functional roles, never RBAC. Each cell's pencil is the in-flow editor for
+ * that column's face.
  */
 
 import { useRef, useState } from 'react';
@@ -12,15 +13,8 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { StageStaffAssignPopover } from './StageStaffAssignPopover';
-import type { CompoundStaffRoster } from './compound-row-model';
 
-export function CompoundStaffRosterButton({
-  roster,
-  label,
-}: {
-  roster: CompoundStaffRoster;
-  label?: string;
-}) {
+export function CompoundStaffRosterButton({ label }: { label?: string }) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -51,7 +45,6 @@ export function CompoundStaffRosterButton({
         label="Staff"
         role="all"
         selectedStaffId={null}
-        onSetLaneRole={roster.onSetLaneRole}
       />
     </span>
   );

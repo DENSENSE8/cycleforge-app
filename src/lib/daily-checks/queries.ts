@@ -20,10 +20,33 @@ import type {
 } from './types';
 
 /**
- * Items in effect on a civil day. The half-open window (`effective_from <= D`,
- * `retired_at > D`) is what makes a PAST report show the list as it stood then
- * — see the migration header. The owner name rides the same read as a LEFT
- * JOIN: one query, and an owner who has since gone inactive still paints.
+ * Item `item` is on the list on civil day `day` — the half-open window
+ * (`effective_from <= D`, `retired_at > D`) that makes a PAST report show the
+ * list as it stood then (see the migration header). A `once` item is born with
+ * `retired_at = effective_from + 1`, so this one predicate also limits it to
+ * its own day. Every "is it live on D" read shares this fragment — the items
+ * read, the rename guard and the reminder feed — so they cannot drift.
+ *
+ * Both arguments are SQL expressions from trusted call sites (an alias, a
+ * placeholder), never user input.
+ */
+export function dailyCheckItemLiveOnSql(item: string, day: string): string {
+  return `(${item}.effective_from <= ${day} AND (${item}.retired_at IS NULL OR ${item}.retired_at > ${day}))`;
+}
+
+/**
+ * Staffer `staff` owes item `item`: recurring and unowned work belongs to the
+ * whole shift; an owned one-off only to its owner. The SQL twin of the
+ * report's per-staff denominator (`countsFor` in `report.ts`).
+ */
+export function dailyCheckItemOwedBySql(item: string, staff: string): string {
+  return `(${item}.kind = 'recurring' OR ${item}.assigned_staff_id IS NULL OR ${item}.assigned_staff_id = ${staff})`;
+}
+
+/**
+ * Items in effect on a civil day ({@link dailyCheckItemLiveOnSql}). The owner
+ * name rides the same read as a LEFT JOIN: one query, and an owner who has
+ * since gone inactive still paints.
  *
  * The linked TICKET rides it too. The phone row paints a ticket mark, and the
  * manager report groups a day's ticket work — both need "is this a ticket?"
@@ -33,6 +56,7 @@ import type {
  */
 const ITEMS_ON_DAY_SQL = `
   SELECT i.id, i.title, i.description, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
+         to_char(i.due_time, 'HH24:MI') AS due_time, i.remind_offset_minutes,
          s.name AS assigned_staff_name,
          t.entity_id AS ticket_id
     FROM daily_check_items i
@@ -45,14 +69,8 @@ const ITEMS_ON_DAY_SQL = `
        ORDER BY l.created_at ASC, l.id ASC
        LIMIT 1
     ) t ON TRUE
-   WHERE i.effective_from <= $1::date
-     AND (i.retired_at IS NULL OR i.retired_at > $1::date)
-     AND (
-       $2::int IS NULL
-       OR i.kind = 'recurring'
-       OR i.assigned_staff_id IS NULL
-       OR i.assigned_staff_id = $2
-     )
+   WHERE ${dailyCheckItemLiveOnSql('i', '$1::date')}
+     AND ($2::int IS NULL OR ${dailyCheckItemOwedBySql('i', '$2')})
    ORDER BY i.sort_order ASC, i.id ASC
 `;
 
@@ -87,6 +105,9 @@ interface ItemRow {
   glyph: string | null;
   /** The first linked Zendesk ticket, or null on a plain task. */
   ticket_id: string | number | null;
+  /** `to_char(due_time, 'HH24:MI')` — civil `HH:MM`, never a driver-parsed TIME. */
+  due_time: string | null;
+  remind_offset_minutes: number | null;
 }
 
 interface MarkRow {
@@ -102,6 +123,22 @@ interface StaffRow {
 }
 
 const toNum = (v: string | number): number => (typeof v === 'number' ? v : Number(v));
+
+function itemFromRow(r: ItemRow): DailyCheckItem {
+  return {
+    id: toNum(r.id),
+    title: r.title,
+    description: r.description,
+    sortOrder: toNum(r.sort_order),
+    kind: r.kind,
+    assignedStaffId: r.assigned_staff_id,
+    assignedStaffName: r.assigned_staff_name,
+    glyph: r.glyph,
+    ticketId: r.ticket_id == null ? null : toNum(r.ticket_id),
+    dueTime: r.due_time,
+    remindOffsetMinutes: r.remind_offset_minutes,
+  };
+}
 
 /** One day's report: the list, everyone's ticks, and the viewer's own row. */
 export async function loadDailyCheckReport(args: {
@@ -121,17 +158,7 @@ export async function loadDailyCheckReport(args: {
     tenantQuery<StaffRow>(orgId, ROSTER_SQL, [staffScope]),
   ]);
 
-  const items: DailyCheckItem[] = itemsRes.rows.map((r) => ({
-    id: toNum(r.id),
-    title: r.title,
-    description: r.description,
-    sortOrder: r.sort_order,
-    kind: r.kind,
-    assignedStaffId: r.assigned_staff_id,
-    assignedStaffName: r.assigned_staff_name,
-    glyph: r.glyph,
-    ticketId: r.ticket_id == null ? null : toNum(r.ticket_id),
-  }));
+  const items: DailyCheckItem[] = itemsRes.rows.map(itemFromRow);
 
   const marks: DailyCheckMarkFact[] = marksRes.rows.map((r) => ({
     itemId: toNum(r.item_id),
@@ -170,11 +197,7 @@ export async function markDailyCheck(args: {
          WHERE EXISTS (
            SELECT 1 FROM daily_check_items
             WHERE id = $1
-              AND (
-                kind = 'recurring'
-                OR assigned_staff_id IS NULL
-                OR assigned_staff_id = $2
-              )
+              AND ${dailyCheckItemOwedBySql('daily_check_items', '$2')}
          )
        ON CONFLICT (organization_id, item_id, staff_id, marked_on) DO NOTHING
          RETURNING id`,
@@ -219,11 +242,7 @@ export async function dailyCheckItemBelongsToStaff(args: {
     args.orgId,
     `SELECT id FROM daily_check_items
       WHERE id = $1
-        AND (
-          kind = 'recurring'
-          OR assigned_staff_id IS NULL
-          OR assigned_staff_id = $2
-        )`,
+        AND ${dailyCheckItemOwedBySql('daily_check_items', '$2')}`,
     [args.itemId, args.staffId],
   );
   return res.rows.length > 0;
@@ -270,14 +289,21 @@ export async function createDailyCheckItem(args: {
   kind: 'recurring' | 'once';
   assignedStaffId?: number | null;
   glyph?: string | null;
+  /** Civil `HH:MM` in the warehouse zone, or null. */
+  dueTime?: string | null;
+  /** Minutes before `dueTime`; the route guarantees a due time rides with it. */
+  remindOffsetMinutes?: number | null;
 }): Promise<DailyCheckItem> {
   const { orgId, title, description, effectiveFrom, kind, assignedStaffId, glyph } = args;
+  const dueTime = args.dueTime ?? null;
+  const remindOffsetMinutes = args.remindOffsetMinutes ?? null;
   return withTenantTransaction(orgId, async (client) => {
     // Append: one past the current max, so a new item never displaces the order
     // operators already know.
     const res = await client.query<ItemRow>(
       `INSERT INTO daily_check_items
-         (title, description, sort_order, effective_from, retired_at, kind, assigned_staff_id, glyph)
+         (title, description, sort_order, effective_from, retired_at, kind, assigned_staff_id, glyph,
+          due_time, remind_offset_minutes)
        VALUES ($1,
                $2,
                COALESCE((SELECT MAX(sort_order) + 1 FROM daily_check_items), 0),
@@ -285,9 +311,20 @@ export async function createDailyCheckItem(args: {
                CASE WHEN $4::text = 'once' THEN $3::date + 1 ELSE NULL END,
                $4::text,
                $5,
-               $6)
+               $6,
+               $7::time,
+               $8::int)
          RETURNING id, sort_order`,
-      [title, description ?? null, effectiveFrom, kind, assignedStaffId ?? null, glyph ?? null],
+      [
+        title,
+        description ?? null,
+        effectiveFrom,
+        kind,
+        assignedStaffId ?? null,
+        glyph ?? null,
+        dueTime,
+        remindOffsetMinutes,
+      ],
     );
     const id = toNum(res.rows[0].id);
     let assignedStaffName: string | null = null;
@@ -312,19 +349,42 @@ export async function createDailyCheckItem(args: {
       // A freshly INSERTed item has no links yet — the composer attaches them
       // in a second call, so the row it returns is honestly ticket-less.
       ticketId: null,
+      dueTime,
+      remindOffsetMinutes,
     };
   });
 }
 
+/** The fields {@link updateDailyCheckItem} may change; at least one is present. */
+export interface DailyCheckItemPatch {
+  title?: string;
+  /** Civil `HH:MM`, or null to clear — clearing it also clears the reminder. */
+  dueTime?: string | null;
+  remindOffsetMinutes?: number | null;
+}
+
+/** The patched fields as they stood before the edit — the audit row's `before`. */
+export interface DailyCheckItemPrevious {
+  title: string;
+  dueTime: string | null;
+  remindOffsetMinutes: number | null;
+}
+
+export type UpdateDailyCheckItemResult =
+  | { ok: true; item: DailyCheckItem; previous: DailyCheckItemPrevious }
+  | { ok: false; reason: 'not_found' | 'offset_requires_due_time' };
+
 /**
- * Rename a LIVE item. Titles are NOT versioned — one `title` column, and a past
- * report reads the live row — so this rewrites what last month's report says a
- * staffer attested to. That is the intended behaviour (decision A, 2026-09-15):
- * the common edit is a typo or a clarification, the marks still point at the
- * same item id, and the route writes an audit row carrying before/after so a
- * manager can see the correction. The alternative (retire + create) mints a new
- * id, orphans the marks, and breaks the one-item-one-identity property that
- * makes a ticket row joinable across days.
+ * Edit a LIVE item's wording or its due time / reminder. Titles are NOT
+ * versioned — one `title` column, and a past report reads the live row — so a
+ * rename rewrites what last month's report says a staffer attested to. That is
+ * the intended behaviour (decision A, 2026-09-15): the common edit is a typo or
+ * a clarification, the marks still point at the same item id, and the route
+ * writes an audit row carrying before/after so a manager can see the
+ * correction. The alternative (retire + create) mints a new id, orphans the
+ * marks, and breaks the one-item-one-identity property that makes a ticket row
+ * joinable across days. A due time is the same kind of fact: it moves when the
+ * item rings, not what any past report measured.
  *
  * CADENCE AND OWNER ARE NOT EDITABLE HERE, and that is not an oversight: `kind`
  * and `assigned_staff_id` feed the PER-STAFF DENOMINATOR in
@@ -332,68 +392,102 @@ export async function createDailyCheckItem(args: {
  * arithmetic of every past report rather than its wording. Retire the item and
  * add the replacement instead.
  *
- * LIVE means "on the list on `dayKey`", the same half-open window
- * `ITEMS_ON_DAY_SQL` reads (`effective_from <= D`, `retired_at IS NULL OR
- * retired_at > D`) — NOT `retired_at IS NULL`. A `once` item is born with
- * `retired_at = effective_from + 1` so it drops off tomorrow without a sweep
- * job, so a null-check would refuse to rename every one-off — which is every
- * row the Ticket face writes. Null means no such row on that day's list in this
+ * LIVE means "on the list on `dayKey`" ({@link dailyCheckItemLiveOnSql}) — NOT
+ * `retired_at IS NULL`. A `once` item is born with `retired_at =
+ * effective_from + 1` so it drops off tomorrow without a sweep job, so a
+ * null-check would refuse to edit every one-off — which is every row the
+ * Ticket face writes. `not_found` means no such row on that day's list in this
  * tenant; the route answers 404.
  *
- * Returns the PREVIOUS title alongside the new row, because the audit entry is
- * worthless without it ("someone renamed item 12" tells a manager nothing).
- * It comes out of the same statement — an UPDATE's `FROM` sees the pre-update
- * snapshot — rather than a read-then-write pair, which would report a stale
- * `before` whenever two edits race.
+ * Clearing the due time clears the reminder with it (an offset from nothing is
+ * meaningless). Setting an offset on an item that has no due time trips the
+ * named CHECK `daily_check_items_remind_offset_range` and answers
+ * `offset_requires_due_time` rather than a 500.
+ *
+ * Returns the PREVIOUS values alongside the new row, because the audit entry
+ * is worthless without them ("someone edited item 12" tells a manager
+ * nothing). They come out of the same statement — an UPDATE's `FROM` sees the
+ * pre-update snapshot — rather than a read-then-write pair, which would report
+ * a stale `before` whenever two edits race.
  */
 export async function updateDailyCheckItem(args: {
   orgId: string;
   itemId: number;
-  title: string;
+  patch: DailyCheckItemPatch;
   /** The civil day the edit is made on — the window this row must be live in. */
   dayKey: string;
-}): Promise<{ item: DailyCheckItem; previousTitle: string } | null> {
-  const { orgId, itemId, title, dayKey } = args;
-  return withTenantTransaction(orgId, async (client) => {
-    // RETURNING the whole row, not just an ack: the client patches its cache
-    // from this, and the owner name + linked ticket must survive the edit — a
-    // partial row would blank the phone's ticket mark until the next refetch.
-    const res = await client.query<ItemRow & { previous_title: string }>(
-      `UPDATE daily_check_items i
-          SET title = $2, updated_at = now()
-         FROM daily_check_items prev
-        WHERE i.id = $1
-          AND prev.id = i.id
-          AND i.effective_from <= $3::date
-          AND (i.retired_at IS NULL OR i.retired_at > $3::date)
-       RETURNING i.id, i.title, i.description, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
-                 prev.title AS previous_title,
-                 (SELECT s.name FROM staff s WHERE s.id = i.assigned_staff_id)
-                   AS assigned_staff_name,
-                 (SELECT l.entity_id
-                    FROM daily_check_item_links l
-                   WHERE l.item_id = i.id AND l.entity_type = 'ZENDESK_TICKET'
-                   ORDER BY l.created_at ASC, l.id ASC
-                   LIMIT 1) AS ticket_id`,
-      [itemId, title, dayKey],
-    );
-    const row = res.rows[0];
-    if (!row) return null;
-    return {
-      previousTitle: row.previous_title,
-      item: {
-        id: toNum(row.id),
-        title: row.title,
-        description: row.description,
-        sortOrder: toNum(row.sort_order),
-        kind: row.kind,
-        assignedStaffId: row.assigned_staff_id,
-        assignedStaffName: row.assigned_staff_name,
-        glyph: row.glyph,
-        ticketId: row.ticket_id == null ? null : toNum(row.ticket_id),
-      },
-    };
-  });
+}): Promise<UpdateDailyCheckItemResult> {
+  const { orgId, itemId, patch, dayKey } = args;
+  const setsDueTime = patch.dueTime !== undefined;
+  const setsOffset = patch.remindOffsetMinutes !== undefined;
+  try {
+    return await withTenantTransaction(orgId, async (client) => {
+      // RETURNING the whole row, not just an ack: the client patches its cache
+      // from this, and the owner name + linked ticket must survive the edit — a
+      // partial row would blank the phone's ticket mark until the next refetch.
+      const res = await client.query<
+        ItemRow & {
+          previous_title: string;
+          previous_due_time: string | null;
+          previous_remind_offset_minutes: number | null;
+        }
+      >(
+        `UPDATE daily_check_items i
+            SET title = COALESCE($2::text, i.title),
+                due_time = CASE WHEN $4::boolean THEN $5::time ELSE i.due_time END,
+                remind_offset_minutes = CASE
+                  WHEN $6::boolean THEN $7::int
+                  WHEN $4::boolean AND $5::time IS NULL THEN NULL
+                  ELSE i.remind_offset_minutes
+                END,
+                updated_at = now()
+           FROM daily_check_items prev
+          WHERE i.id = $1
+            AND prev.id = i.id
+            AND ${dailyCheckItemLiveOnSql('i', '$3::date')}
+         RETURNING i.id, i.title, i.description, i.sort_order, i.kind, i.assigned_staff_id, i.glyph,
+                   to_char(i.due_time, 'HH24:MI') AS due_time, i.remind_offset_minutes,
+                   prev.title AS previous_title,
+                   to_char(prev.due_time, 'HH24:MI') AS previous_due_time,
+                   prev.remind_offset_minutes AS previous_remind_offset_minutes,
+                   (SELECT s.name FROM staff s WHERE s.id = i.assigned_staff_id)
+                     AS assigned_staff_name,
+                   (SELECT l.entity_id
+                      FROM daily_check_item_links l
+                     WHERE l.item_id = i.id AND l.entity_type = 'ZENDESK_TICKET'
+                     ORDER BY l.created_at ASC, l.id ASC
+                     LIMIT 1) AS ticket_id`,
+        [
+          itemId,
+          patch.title ?? null,
+          dayKey,
+          setsDueTime,
+          patch.dueTime ?? null,
+          setsOffset,
+          patch.remindOffsetMinutes ?? null,
+        ],
+      );
+      const row = res.rows[0];
+      if (!row) return { ok: false, reason: 'not_found' } as const;
+      return {
+        ok: true,
+        item: itemFromRow(row),
+        previous: {
+          title: row.previous_title,
+          dueTime: row.previous_due_time,
+          remindOffsetMinutes: row.previous_remind_offset_minutes,
+        },
+      } as const;
+    });
+  } catch (error: unknown) {
+    // Caught OUTSIDE the transaction: the failed statement already aborted it,
+    // and the wrapper has rolled back by the time we see the error.
+    const pg = error as { code?: string; constraint?: string };
+    if (pg?.code === '23514' && pg.constraint === 'daily_check_items_remind_offset_range') {
+      return { ok: false, reason: 'offset_requires_due_time' };
+    }
+    throw error;
+  }
 }
 
 /**

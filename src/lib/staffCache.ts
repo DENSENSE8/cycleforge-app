@@ -1,12 +1,15 @@
 import { getCurrentPSTDateKey } from '@/utils/date';
+import type { StaffFunctionalRoleKey } from '@/lib/schemas/staff-functional-roles';
 
 export interface StaffMember {
   id: number;
   name: string;
   /** Legacy primary-role string (mirror of staff_roles[0]). Kept for display. */
   role: string;
-  /** RBAC role keys from staff_roles — the source of truth for membership. */
+  /** RBAC role keys from staff_roles — what the staffer may ACCESS. */
   roles: string[];
+  /** Floor functional roles — what the staffer DOES (Pick / Pack lists). */
+  functionalRoles: StaffFunctionalRoleKey[];
 }
 
 // Module-level singleton: one fetch per page load, shared across all consumers.
@@ -25,11 +28,17 @@ function normalizeStaff(raw: any[]): StaffMember[] {
         const role = String(m.role || '');
         // Fall back to the legacy primary-role string if no staff_roles rows.
         const roles = roleKeys.length > 0 ? roleKeys : role ? [role] : [];
+        const functionalRoles = Array.isArray(m.functional_roles)
+          ? (m.functional_roles as unknown[])
+              .map((k) => String(k))
+              .filter((k): k is StaffFunctionalRoleKey => k === 'picker' || k === 'packer')
+          : [];
         return {
           id: Number(m.id),
           name: String(m.name || ''),
           role,
           roles,
+          functionalRoles,
         };
       })
     : [];
@@ -98,21 +107,39 @@ export function getPresentStaffForToday(): Promise<StaffMember[]> {
   return _presentPromise;
 }
 
-const FLOOR_LANE_KEYS = new Set(['technician', 'picker', 'pick', 'tech', 'packer', 'pack']);
-
-/** Keep a warm roster after an inline Pick / Pack role write — no loading frame. */
-export function patchCachedStaffLaneRole(
+function patchCachedStaffFunctionalRole(
   staffId: number,
-  role: 'technician' | 'packer',
+  functionalRoles: StaffFunctionalRoleKey[],
 ): void {
   const patch = (list: StaffMember[]): StaffMember[] =>
-    list.map((member) => {
-      if (member.id !== staffId) return member;
-      const kept = member.roles.filter((key) => !FLOOR_LANE_KEYS.has(key.trim().toLowerCase()));
-      return { ...member, role, roles: [role, ...kept] };
-    });
+    list.map((member) => (member.id === staffId ? { ...member, functionalRoles } : member));
   if (_data) _data = patch(_data);
   if (_presentData) _presentData = patch(_presentData);
+}
+
+/**
+ * Grant / revoke a floor functional role (picker / packer). Never touches RBAC
+ * access roles. Keeps the warm roster in step so an open list does not flash.
+ * Resolves to the staffer's full functional-role set; throws on failure.
+ */
+export async function saveStaffFunctionalRole(
+  staffId: number,
+  role: StaffFunctionalRoleKey,
+  enabled: boolean,
+): Promise<StaffFunctionalRoleKey[]> {
+  const res = await fetch(`/api/staff/${staffId}/functional-roles`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ role, enabled }),
+  });
+  const body = (await res.json().catch(() => null)) as
+    | { success?: boolean; functionalRoles?: StaffFunctionalRoleKey[]; error?: string }
+    | null;
+  if (!res.ok || !body?.success || !Array.isArray(body.functionalRoles)) {
+    throw new Error(body?.error || `functional role ${res.status}`);
+  }
+  patchCachedStaffFunctionalRole(staffId, body.functionalRoles);
+  return body.functionalRoles;
 }
 
 /** Call this when staff data changes (e.g. after a PUT/POST to /api/staff). */

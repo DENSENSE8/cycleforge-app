@@ -18,22 +18,22 @@
  * sit and nothing else.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef } from 'react';
 import { AlertTriangle, Check, Inbox, Loader2, Package, Search, Ticket } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
-import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import type { TriageSectionSpec } from '@/design-system/components/TriageScrollLayout';
-import { Button, Switch } from '@/design-system/primitives';
+import { Button, Switch, TextField } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   triagePanelControl,
   TRIAGE_PANEL_INNER_CORNER,
 } from '@/design-system/tokens/triage-panel';
 import { useThrowTask, throwTargetKey, type ThrowTaskMode } from '@/hooks/useThrowTask';
-import { TASK_NOTE_MAX } from '@/lib/tasks/create-task-core';
+import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX } from '@/lib/tasks/create-task-core';
 import { cn } from '@/utils/_cn';
 
 export interface TaskComposerSections {
@@ -52,7 +52,8 @@ export function useTaskComposerSections({
   active,
   mode = 'record',
 }: {
-  onCreated: () => void;
+  /** The thrown task's id (null if the response did not carry one). */
+  onCreated: (taskId: number | null) => void;
   /** False while the checklist half is showing — do not steal the caret. */
   active: boolean;
   /**
@@ -73,8 +74,10 @@ export function useTaskComposerSections({
     picked,
     setPicked,
     staff,
-    assignee,
-    setAssigneeById,
+    assignees,
+    toggleAssignee,
+    projectName,
+    setProjectName,
     note,
     setNote,
     urgent,
@@ -88,8 +91,6 @@ export function useTaskComposerSections({
   } = composer;
 
   const scanRef = useRef<HTMLInputElement>(null);
-  const assigneeRef = useRef<HTMLButtonElement>(null);
-  const [assigneeOpen, setAssigneeOpen] = useState(false);
 
   const focusFirstField = useCallback(() => scanRef.current?.focus(), []);
 
@@ -106,7 +107,7 @@ export function useTaskComposerSections({
     ? ticketMode
       ? 'Find the ticket first'
       : 'Find a record first'
-    : !assignee
+    : assignees.length === 0
       ? 'Pick who it goes to'
       : null;
 
@@ -237,48 +238,28 @@ export function useTaskComposerSections({
       children: (
         <div className="flex flex-wrap items-start gap-x-5 gap-y-4">
           <div className="min-w-48 flex-1 space-y-2">
-            <Label htmlFor={`${fieldId}-assignee`}>Assignee</Label>
-            <Button
-              id={`${fieldId}-assignee`}
-              ref={assigneeRef}
-              type="button"
-              variant="secondary"
-              className={triagePanelControl('w-full justify-start')}
-              aria-haspopup="listbox"
-              aria-expanded={assigneeOpen}
-              ariaLabel="Assign this task"
-              data-testid="task-composer-assignee"
-              onClick={() => setAssigneeOpen(true)}
-            >
-              {assignee ? (
-                <span className="flex min-w-0 items-center gap-2">
-                  <StaffAvatar
-                    staffId={assignee.id}
-                    name={assignee.name}
-                    size="sm"
-                    colorRing
-                    alt=""
-                  />
-                  <span className="truncate">{assignee.name}</span>
-                </span>
-              ) : staff === null ? (
-                'Loading staff…'
-              ) : (
-                'Search staff…'
-              )}
-            </Button>
-            <StageStaffAssignPopover
-              open={assigneeOpen}
-              onClose={() => setAssigneeOpen(false)}
-              anchorRef={assigneeRef}
-              label="Assign this task"
-              role="all"
-              selectedStaffId={assignee?.id ?? null}
-              onCommit={(staffId, staffName) => {
-                setAssigneeById(staffId, staffName);
-                setAssigneeOpen(false);
-              }}
-            />
+            <Label>Assign to {assignees.length > 0 ? `· ${assignees.length} selected` : ''}</Label>
+            {staff === null ? (
+              <p className="text-role-caption text-text-faint">Loading staff…</p>
+            ) : (
+              <div className="max-h-44 space-y-1 overflow-y-auto" role="group" aria-label="Task assignees">
+                {staff.map((person) => {
+                  const selected = assignees.some((member) => member.id === person.id);
+                  return (
+                    <label key={person.id} className={cn('flex cursor-pointer items-center gap-2 px-2 py-1.5 text-role-caption', TRIAGE_PANEL_INNER_CORNER, selected ? 'bg-surface-selected' : 'hover:bg-surface-card')}>
+                      <Checkbox
+                        checked={selected}
+                        disabled={!selected && assignees.length >= TASK_ASSIGNEES_MAX}
+                        onCheckedChange={() => toggleAssignee(person)}
+                        aria-label={`Assign ${person.name}`}
+                      />
+                      <StaffAvatar staffId={person.id} name={person.name} size="sm" colorRing alt="" />
+                      <span className="truncate">{person.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="min-w-40 flex-1 space-y-2">
@@ -319,7 +300,15 @@ export function useTaskComposerSections({
       id: 'task-details',
       label: 'Details',
       children: (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <TextField
+            label="Project name"
+            value={projectName}
+            onChange={setProjectName}
+            maxLength={TASK_PROJECT_NAME_MAX}
+            data-testid="task-composer-project"
+          />
+          <p className="text-role-caption text-text-faint">Optional. Group shared work under one name, e.g. Return and replacement.</p>
           <Label htmlFor={`${fieldId}-note`}>What do you need them to do?</Label>
           <textarea
             id={`${fieldId}-note`}

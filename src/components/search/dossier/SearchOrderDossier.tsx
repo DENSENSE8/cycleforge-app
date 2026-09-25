@@ -18,6 +18,7 @@ import {
 import { shippedOrderToItemRecords } from '@/lib/item-record/shipped-order-item-record';
 import { presentFindDossier } from '@/lib/search/find-dossier-model';
 import { presentOrderFindEvents } from '@/lib/search/find-events-from-sources';
+import { toast } from '@/lib/toast';
 import {
   joinMeta,
   orderDossierFindings,
@@ -60,6 +61,11 @@ export function SearchOrderDossier({
     ...orderTimelineQuery(order?.id ?? 0),
     enabled: Boolean(order?.id),
   });
+  useEffect(() => {
+    if (timelineQuery.isError) {
+      toast.error('Could not load order history or pack photos. Try again.');
+    }
+  }, [timelineQuery.isError, timelineQuery.errorUpdatedAt]);
 
   const primaryPaint = useSearchPrimaryPaintOptional();
   useEffect(() => {
@@ -118,10 +124,12 @@ export function SearchOrderDossier({
   const tracking = presentFact(order.shipping_tracking_number);
   const qty = presentFact(order.quantity);
   const marketplaceId = presentFact(order.order_id);
+  const itemNumber = presentFact(order.item_number);
   const title = presentFact(order.product_title) || marketplaceId || `Order ${order.id}`;
   const facts = [
     { id: 'status', label: 'Status', value: status },
     ...(marketplaceId ? [{ id: 'order', label: 'Order', value: marketplaceId }] : []),
+    ...(itemNumber ? [{ id: 'item-number', label: 'Item number', value: itemNumber }] : []),
     ...(sku ? [{ id: 'sku', label: 'SKU', value: sku }] : []),
     ...(qty ? [{ id: 'qty', label: 'Qty', value: qty }] : []),
     ...(tracking ? [{ id: 'tracking', label: 'Tracking', value: tracking }] : []),

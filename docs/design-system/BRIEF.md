@@ -66,11 +66,13 @@ Hit size follows the **device** (touch vs pointer), not a mode.
 | Row | touch: 5 pt spine · 108 pt photo · 3 × 36 pt bands. Desk: see §4a and the To-ship handoff. **Row zoom per list (S/M/L) + app zoom per staff** (Changed) |
 | Labels | mono 9–10 pt heavy uppercase, 0.08 em |
 | Values | IDs/SKUs/serials mono bold 12–13; titles sans bold 15 |
-| State | spine + **state code** `RDY URG PKD OOS SHP` beside it; tint fill only for red; selection = 2 px ink outline; tint/details on hover or selection |
+| State | spine + **state icon + state code** `RDY URG PKD OOS SHP` beside it; selection = 2 px ink outline; tint/details on hover or selection. **Approved (owner, 2026-09-25):** each code is led by its `LIFECYCLE` icon — circle-dot · alarm-clock · package · package-x · truck · circle-pause — so state reads by shape as well as colour. **Changed (owner, 2026-09-25): no row wash for any state** — the pink out-of-stock fill is gone (red on pink was 4.41:1); out of stock is carried by the hatched spine + `OOS` code on white |
 | Borders | 1 px rules, no shadows |
+| Grain | **Approved (owner, 2026-09-25): grain is a depth ladder — rougher = deeper.** SVG noise tile per surface role: well (photo slot, sunken troughs) 3 % coarse · canvas 7 % medium · bar (tabs, toolbar, evidence column, group bands) 7 % fine · ink fills (active tab, pressed segment) 12 %. The white row panel and anything raised over it carry none. Rides both `bg-mode-*` and the remapped `bg-surface-sunken` / `bg-surface-canvas` inside a light region, so every component gets it; zero specificity, so a component's own background image wins. Light scheme only. No amber text on a well. Opacity is capped by contrast (7 % keeps urgent ink ≥ 4.5:1 at a full-black noise pixel); depth is carried by speck size. Guard: `modes.guard.test.ts`. Bar segment labels (tabs, bar actions) are mono **11 px** so light-on-ink text holds up over the grain |
 | Imagery | photo fills its square |
 | Motion | none, **except the one fixed scan-status spot** (≤150 ms; motion.dev on web, native elsewhere) |
 | Hit | touch 48 (bottom sheet for details / exact actions); desk 32 |
+| Trailing edge | **Approved (owner, 2026-09-25):** every right-edge glyph of a row or evidence fact (+/−, open ↗, edit ✎, a picker's ⌄) sits centred in one 32 px trailing cell flush with the content edge — one vertical axis. `RECORD_TRAILING_CELL_CLASS` / `RECORD_TRAILING_GLYPH_INSET_CLASS` (`tokens/industrial-record.ts`); facts and sections mount `record-ledger/EvidenceDisclosure`. Pinned in `pinned.json` (`EvidenceDisclosure`, `SearchableSelectField`) |
 | Surfaces | **canvas `#fafafa`** (Changed from `#ecece8`), bar `#f8f8f4`, rows `#fff`, ink `#10110f`, muted `#535650`, rule `#cacbc5`, edge `#b7b8b0`, well `#e6e7e1`, urgent text `#8a5f00` |
 
 ### triage — **Approved** (Q4b)
@@ -202,6 +204,55 @@ are terrible and not used properly for this use case". **Location** leads the co
 the state code and the platform); **condition** sits beside the select box. The desk frame is one
 full-width **industrial bar** (modes as flush segments, no page title row). Port spec and prompt:
 [`HANDOFF-industrial-record-ledger.md`](./HANDOFF-industrial-record-ledger.md).
+
+**Changed (owner, 2026-09-25):** the desk record's bands regroup by job. Band 1 is context —
+state · platform · order # ··· buyer · **listing** (right end, no hairline) · ship-by. Band 3 is
+execution — condition · **BIN · SKU** (the physical lookup pair, side by side) ··· pick · pack ·
+next step. A key/value fact (`BIN`, `SKU`) prints key and value at ONE size and line box
+(`RECORD_FACT_KEY_CLASS`); a 10 px key beside a 13 px value read as two heights.
+
+**Changed (owner, 2026-09-25):** condition is a **solid chip**, like the state badge — tag icon +
+short grade (`NEW`, `L-NEW`, `REF`, `A`/`B`/`C`, `PARTS`) in white on a fill of the grade's colour
+(`CONDITION_GRADE_TONE[grade].solid`; teal and emerald step to -700 so white clears 4.5:1). One
+fixed box (64 × 14 px) on every record so BIN and SKU never shift. No grade → the same chip on the
+well in muted ink with `—`. Clicking it opens the existing condition list. Same chip on the ledger
+row and the evidence column (`RECORD_CONDITION_CHIP_CLASS`). Icon: tag — **Approved (owner,
+2026-09-25)**. L-NEW and A text inks step to -700 everywhere (the -600 read too faint as text).
+
+**Changed (owner, 2026-09-25):** in the evidence column, the next step in the state strip
+(`→ PICK`, `→ PACK` …) is a solid badge in the record's state colour (danger when blocked), and the
+sale **price** reads one line under the item # in the item block — its only place in the column.
+
+**Changed (owner, 2026-09-25):** the state code is a **solid badge** — icon + code on the tone's
+`code` fill in its `codeInk` (`STATE_TONES`; white on the -700 step, near-black on the warning
+orange), ≥ 4.5:1 for every tone, one fixed box the size of `NOTE`. **The SKU on band 3 starts
+under the buyer on band 1:** both bands share one lead column (`LEDGER_LEAD_CLASS`), so the
+columns read straight down the list.
+
+**Measured (2026-09-25, item 6):** the secondary ink is already the playbook's dark grey — every
+muted text on the record is `#535650` at 7.46:1; no light-grey or faded text remains. The one
+value that was drawn muted, the pick/pack operator's name, now reads in ink (label muted, value
+ink). What still reads light is the 9 px stamp, a size problem (item 10), not a colour one.
+
+**Changed (owner, 2026-09-25):** the seed-group band sits on the records' columns (chevron in the
+photo lane, then the same lead, buyer/SKU column and pick · pack · next lanes). Staff avatar
+initials switch to dark ink on light staff colours. An un-noted record's note slot is a filled grey
+**`+ NOTE`** that adds a note in place. Mono labels and IDs are really bold: Plex Mono 700 is
+loaded (mono only; Inter stays capped at 600).
+
+**Changed (owner, 2026-09-25, item 8):** an editable box reads **recessed** with rules only — top +
+left edge in the control ink, right + bottom in the edge grey, no shadow (`RECORD_RECESS_CLASS`):
+the QTY box and the note field.
+
+**Changed (owner, 2026-09-25):** preserve existing `staff.color_hex` values and choose
+pure black `#000000` or white `#ffffff` initials by whichever has higher WCAG contrast.
+`blackOrWhiteInk` supplies this decision to `IdentityMark` and the staff recipient list.
+The square industrial mark keeps its ring-free, mono bold uppercase initials.
+
+**Item 8a reverted (owner, 2026-09-25):** remove the muted/richer palette, colour mapping,
+palette restrictions and added Change color controls. Existing colour editors and arbitrary
+hex choices remain as before. No staff records were recoloured. Only initials contrast changes;
+black or white provides at least 4.5:1 contrast on every valid RGB background.
 
 ## Resolved 2026-09-24 (all six approved as written)
 

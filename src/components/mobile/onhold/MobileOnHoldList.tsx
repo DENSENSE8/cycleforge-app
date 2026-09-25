@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MobileTriagePage, type TriageSection } from '@/components/mobile/triage/MobileTriagePage';
 import { TriageRow } from '@/components/mobile/triage/TriageRow';
+import { useTriageSelection } from '@/components/mobile/triage/useTriageSelection';
 import { OnHoldBadge } from '@/components/mobile/pair/OnHoldBadge';
 import { useProvisionalSkus, useSkuExceptionsRealtime } from '@/hooks/useProvisionalSkus';
 import { mobileSkuExceptionHref } from '@/lib/inventory/sku-exception-links';
@@ -33,6 +34,7 @@ function plural(n: number, word: string): string {
 export function MobileOnHoldList() {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const [selected, select] = useTriageSelection('on-hold');
 
   useSkuExceptionsRealtime();
   const { data: items = [], isLoading, isError } = useProvisionalSkus();
@@ -75,17 +77,24 @@ export function MobileOnHoldList() {
               </span>
             }
             imageUrl={item.coverPhotoId != null ? photoContentUrl(item.coverPhotoId, 'thumb') : null}
-            badge={<OnHoldBadge />}
+            code={<OnHoldBadge />}
+            selected={selected === item.sku}
             actionLabel="Pair"
             actionName={`Pair ${item.productTitle} to a Zoho SKU`}
             inspectName={`Open ${item.productTitle}`}
-            onInspect={() => router.push(mobileSkuExceptionHref(item.sku))}
-            onAction={() => router.push(`${mobileSkuExceptionHref(item.sku)}/pair`)}
+            onInspect={() => {
+              select(item.sku);
+              router.push(mobileSkuExceptionHref(item.sku));
+            }}
+            onAction={() => {
+              select(item.sku);
+              router.push(`${mobileSkuExceptionHref(item.sku)}/pair`);
+            }}
           />
         )),
       },
     ],
-    [isError, isLoading, needle, query, router, visible],
+    [isError, isLoading, needle, query, router, visible, selected, select],
   );
 
   return (

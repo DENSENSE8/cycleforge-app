@@ -268,7 +268,10 @@ export function routeScan(raw: string): ScanRoute | null {
   //    receiving line, serial-unit, and repair labels carry now that
   //    they're DataMatrix instead of URL QR. No URL, no host, just the
   //    prefixed handle.
-  const rcvShort = /^R-(\d+)$/i.exec(value);
+  // Carton labels are encountered both as the human-readable `R-123` and as
+  // the slash form `r/123` produced by a few wedge configurations.  Keep this
+  // before the letter→bin fallback: an `r/` carton is not a bin called "r".
+  const rcvShort = /^R[-/](\d+)$/i.exec(value);
   if (rcvShort) return { type: 'receiving',      value, redirect: `/m/r/${rcvShort[1]}` };
   const lineShort = /^L-(\d+)$/i.exec(value);
   if (lineShort) return { type: 'receiving-line', value, redirect: `/m/l/${lineShort[1]}` };

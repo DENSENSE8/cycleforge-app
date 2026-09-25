@@ -10,7 +10,8 @@
  * handoff is not work, and the lane that keeps it (`all`) exists for the desk's
  * audit view.
  *
- * Callers: `MobileDailyChecklist` (the unified Daily list).
+ * Callers: `MobileDailyChecklist` (the unified Daily list), `MobileTaskSheet`
+ * (one handed task's Start / Mark done / Reopen dock).
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -54,7 +55,7 @@ export function useMyTasks(enabled: boolean) {
  * the last resort, not the first answer — "Task 91 is canceled" is actionable
  * and "409" is not.
  */
-async function setTaskStatus(taskId: number, status: 'DONE' | 'ASSIGNED'): Promise<void> {
+async function setTaskStatus(taskId: number, status: 'DONE' | 'ASSIGNED' | 'IN_PROGRESS'): Promise<void> {
   const res = await fetch(`/api/tasks/${taskId}`, {
     ...FRESH,
     method: 'PATCH',
@@ -99,6 +100,41 @@ export function useToggleTaskDone() {
       return { previous };
     },
     onError: (_error, _variables, context) => {
+      if (context?.previous) queryClient.setQueryData(MY_TASKS_QUERY_KEY, context.previous);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
+/**
+ * Pick a handed task up — `IN_PROGRESS`, which the route stamps `started_at`
+ * on (first start only), so the desk's "Started" fact and the phone's Start
+ * verb are one write. Optimistic like the tick: the task sheet's dock flips to
+ * Mark done the moment the thumb lifts.
+ */
+export function useStartTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (taskId: number) => setTaskStatus(taskId, 'IN_PROGRESS'),
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: MY_TASKS_QUERY_KEY });
+      const previous = queryClient.getQueryData<TaskDeskRow[]>(MY_TASKS_QUERY_KEY);
+      if (previous) {
+        const now = Date.now();
+        queryClient.setQueryData<TaskDeskRow[]>(
+          MY_TASKS_QUERY_KEY,
+          previous.map((row) =>
+            row.id === taskId
+              ? { ...row, status: 'IN_PROGRESS', startedAtMs: row.startedAtMs ?? now }
+              : row,
+          ),
+        );
+      }
+      return { previous };
+    },
+    onError: (_error, _taskId, context) => {
       if (context?.previous) queryClient.setQueryData(MY_TASKS_QUERY_KEY, context.previous);
     },
     onSettled: () => {

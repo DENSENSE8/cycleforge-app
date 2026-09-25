@@ -30,7 +30,6 @@ const PARKED_TAB_KEYS = [
   'inventory:health',
   'inventory:pulse',
   'inventory:reason-codes',
-  'inventory:replenish',
   'inventory:triage',
 ] as const;
 
@@ -106,12 +105,12 @@ test('the ROUTE survives the parked door — parking is not deleting', () => {
 
 test('the Inventory tabs that work still display — parking is per tab, not per lane', () => {
   // The lane gate (`LANE_MOBILE_FIRST`) could only have hidden Inventory
-  // whole, which is the wrong instrument: the desk is in daily use. These four
-  // are why the tab altitude had to exist — Stock and SKU Exceptions lead
-  // (owner 2026-09-24).
+  // whole, which is the wrong instrument: the desk is in daily use. These five
+  // are why the tab altitude exists — Stock and SKU Exceptions lead; Replenish
+  // rejoined once its purchasing ledger shipped.
   const inventory = filterPageChildren(getSidebarPageNav('inventory')!, ALL_PERMISSIONS);
   assert.deepEqual(
     inventory.children?.map((child) => child.id),
-    ['stock', 'sku-exceptions', 'ledger', 'locations'],
+    ['stock', 'sku-exceptions', 'ledger', 'replenish', 'locations'],
   );
 });

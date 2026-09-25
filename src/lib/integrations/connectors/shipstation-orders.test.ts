@@ -170,14 +170,21 @@ test('stores map to the platform spelling the org already uses; ShipStation plum
   assert.equal(attributeStore(null, attributions).kind, 'unattributed');
 });
 
-test('an explicit binding (platform account scoped to the store id) wins over the marketplace', () => {
+test('a store link wins over the marketplace: its account, else the linked platform in the org spelling', () => {
   const bound = buildStoreAttributions(STORES, {
     ...CATALOG,
-    bindings: new Map([[2, { accountSource: 'MEKONG', platform: 'ebay' }]]),
+    bindings: new Map([
+      [2, { platform: 'ebay', accountSource: 'MEKONG' }],
+      // Shopify store re-pointed by the operator at the existing Ecwid platform.
+      [4, { platform: 'ecwid', accountSource: null }],
+    ]),
   });
-  const a = attributeStore(2, bound);
-  assert.equal(a.kind === 'platform' && a.accountSource, 'MEKONG');
-  assert.equal(a.kind === 'platform' && a.via, 'binding');
+  const mekong = attributeStore(2, bound);
+  assert.equal(mekong.kind === 'platform' && mekong.accountSource, 'MEKONG');
+  assert.equal(mekong.kind === 'platform' && mekong.via, 'binding');
+  const relinked = attributeStore(4, bound);
+  assert.equal(relinked.kind === 'platform' && relinked.platform, 'ecwid');
+  assert.equal(relinked.kind === 'platform' && relinked.accountSource, 'ecwid', 'the org spelling, not "shopify"');
 });
 
 test('canonical line: never a "ShipStation order" title; all lines summarized; notes, gift, service and bill-to kept', () => {

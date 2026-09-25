@@ -12,7 +12,7 @@ import { cn } from '@/utils/_cn';
  */
 export default function CommandBookPage() {
   return (
-    <div className={cn('min-h-full', SETTINGS_FLOOR_CLASS)}>
+    <div className={cn('h-full min-h-0 w-full overflow-y-auto', SETTINGS_FLOOR_CLASS)}>
       <CommandBookSheet />
     </div>
   );

@@ -93,11 +93,14 @@ export function useDeskHeaderFace(): DeskHeaderFace {
 
 /**
  * One industrial bar cell — mode tab or page action. Full bar height, square,
- * mono 10 heavy uppercase, no outer margin: neighbours share a 1px edge.
+ * mono 11 heavy uppercase, no outer margin: neighbours share a 1px edge.
+ * 11px, not the 10px record label: the active cell is light ink on the
+ * grained ink fill, and at 10px its strokes broke up against the grain
+ * (owner 2026-09-25, "TO SHIP" readability).
  */
 export const DESK_BAR_SEGMENT_CLASS = cn(
   'ds-raw-button inline-flex min-h-mode-hit shrink-0 items-center gap-2 px-4',
-  'font-mono text-role-micro font-extrabold uppercase tracking-[0.08em]',
+  'font-mono text-role-eyebrow font-extrabold uppercase tracking-[0.08em]',
   'disabled:cursor-not-allowed disabled:opacity-40',
   cornerClass('flush'),
   focusRing('cell'),

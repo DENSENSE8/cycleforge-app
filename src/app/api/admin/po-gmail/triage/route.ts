@@ -9,8 +9,8 @@
  * sidebar lazy-paginates beyond the cap.
  *
  * The legacy PATCH endpoint at /api/admin/po-gmail/missing-orders is
- * superseded by /api/admin/po-gmail/triage/[id] but stays around until
- * its callers are removed (PoMailboxPreviewPanel still uses it).
+ * superseded by /api/admin/po-gmail/triage/[id]. The dedicated PO Mailbox
+ * UI has been retired; mailbox data and processing APIs remain intact.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

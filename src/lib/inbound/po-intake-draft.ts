@@ -19,6 +19,7 @@ export type PoIntakeLineDraft = {
   /** Explicit qty string — empty means "still need quantity". */
   quantity: string;
   lineItemId: string;
+  listingUrl: string;
 };
 
 export type PoIntakeDraft = {
@@ -28,7 +29,6 @@ export type PoIntakeDraft = {
   accountName: string;
   trackingNumber: string;
   carrierCode: string;
-  listingUrl: string;
   priority: string;
   lines: PoIntakeLineDraft[];
   /** Freeform notes from the model (not persisted). */
@@ -48,6 +48,7 @@ export const EMPTY_PO_INTAKE_LINE = (): PoIntakeLineDraft => ({
   itemName: '',
   quantity: '',
   lineItemId: '',
+  listingUrl: '',
 });
 
 export const EMPTY_PO_INTAKE_DRAFT = (): PoIntakeDraft => ({
@@ -57,7 +58,6 @@ export const EMPTY_PO_INTAKE_DRAFT = (): PoIntakeDraft => ({
   accountName: '',
   trackingNumber: '',
   carrierCode: '',
-  listingUrl: '',
   priority: 'auto',
   lines: [EMPTY_PO_INTAKE_LINE()],
   notes: '',
@@ -268,7 +268,7 @@ export function buildPoIntakeImportBodies(
     if (draft.trackingNumber.trim()) body.tracking_number = draft.trackingNumber.trim();
     if (draft.carrierCode.trim()) body.carrier_code = draft.carrierCode.trim();
     if (draft.seller.trim()) body.seller = draft.seller.trim();
-    if (draft.listingUrl.trim()) body.listing_url = draft.listingUrl.trim();
+    if (line.listingUrl.trim()) body.listing_url = line.listingUrl.trim();
     if (draft.accountName.trim()) body.account_name = draft.accountName.trim();
     return body;
   });

@@ -26,8 +26,11 @@
 
 import { useEffect, useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { PomodoroTimer } from '@/components/ui/PomodoroTimer';
 import { Button } from '@/design-system/primitives';
+import { getCurrentPSTDateKey } from '@/utils/date';
 import { useDailyCheckLinks } from '@/lib/daily-checks/use-daily-check-links';
+import { useRecordView } from '@/lib/pomodoro/use-record-view';
 import { cn } from '@/utils/_cn';
 import type { DailyCheckItem, DailyCheckReport } from '@/lib/daily-checks/types';
 import { TITLE_INPUT_CLASS } from './MobileDailyComposerFields';
@@ -61,6 +64,7 @@ export function MobileDailyDetailSheet({
   onRemove: () => void;
   onClose: () => void;
 }) {
+  useRecordView('checklist', item?.id ?? null, getCurrentPSTDateKey());
   const lastMarkedAt = report?.mine.lastMarkedAt ?? null;
   const { data: links, isLoading: linksLoading } = useDailyCheckLinks(item?.id ?? null);
 
@@ -117,15 +121,15 @@ export function MobileDailyDetailSheet({
           </span>
         ) : null}
       </div>
+      {item ? (
+        <PomodoroTimer kind="checklist" id={item.id} date={getCurrentPSTDateKey()} canRun={!report?.mine.doneItemIds.includes(item.id)} className="px-1" />
+      ) : null}
 
       {/*
-       * THE FIELD IS THE FIRST THING, focused, keyboard up — the pencil that
-       * opened this sheet promised editing, and the earlier two-step (open →
-       * press Edit → type) made the glyph lie about its own verb. The facts
-       * stay below it rather than being swapped out: an operator correcting a
-       * title still wants to see whose item it is and whether it is already
-       * ticked, and a sheet that hides them behind a mode is a sheet you have
-       * to drive.
+       * The title field follows the timer, focused with the keyboard up. The
+       * pencil that opened this sheet promised editing, not another mode.
+       * The facts stay below it: an operator correcting a title still needs
+       * to see whose item it is and whether the shift ticked it.
        *
        * Read-only for anyone without `admin.manage_staff` — the title falls
        * back to plain text, so the sheet is still the detail surface for a

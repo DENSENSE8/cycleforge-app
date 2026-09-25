@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera } from '@/components/Icons';
+import { Camera, Printer } from '@/components/Icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
 import { PhotoGallery } from '@/components/shipped/PhotoGallery';
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
@@ -20,6 +22,7 @@ import {
 } from '@/components/ui/StackedRowIdentity';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 import { Button } from '@/design-system/primitives';
+import { useScopedPackerPhotos } from '@/hooks/useScopedPackerPhotos';
 
 interface MobilePackingSheetProps {
   row: PackerLogRow | null;
@@ -43,6 +46,7 @@ function getSourceDotBg(row: PackerLogRow) {
  */
 export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetProps) {
   const router = useRouter();
+  const [paperworkOpen, setPaperworkOpen] = useState(false);
   const productTitle = row?.product_title || row?.item_number || row?.sku || 'Unnamed pack line';
   const skuValue = (row?.sku || '').trim();
   const orderRowId = row?.order_row_id ?? null;
@@ -55,10 +59,9 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
     productTitle: productTitle,
     enabled: open && (orderRowId != null || Boolean(skuValue)),
   });
+  const scopedPhotos = useScopedPackerPhotos(row?.packer_log_id ?? 0, { enabled: open && Boolean(row?.packer_log_id) });
 
-  // Hooks must run in the same order while the controlled sheet moves from
-  // closed/no-row to open/selected-row. The previous early return sat above
-  // the two query hooks and crashed React on the first row selection.
+  // Every hook runs above this guard: the controlled sheet mounts with no row.
   if (!row) return null;
 
   const packerLogId = row.packer_log_id;
@@ -66,15 +69,15 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
   const orderId = (row.order_id || '').trim();
   const trackingValue = (row.shipping_tracking_number || row.scan_ref || '').trim();
   const serialValue = (row.serial_number || '').trim();
-  const photos = Array.isArray(row.packer_photos_url) ? row.packer_photos_url : [];
+  const photos = scopedPhotos.query.data?.photos.map((photo) => ({ id: photo.id, url: photo.photoUrl })) ?? [];
 
-  // Carry the real order number so packer photos file under it in the library.
-  // Guided Review starts on the slip step (plan §2b).
+  // Extra captures reuse the same packer-log scope and retain its order key.
   const photosHref = packerLogId
     ? `/m/p/${packerLogId}/photos?${new URLSearchParams({
         ...(orderId ? { orderId } : {}),
-        step: 'slip',
-      }).toString()}`
+        ...(orderRowId ? { orderRowId: String(orderRowId) } : {}),
+        mode: 'spam',
+      })}`
     : null;
 
   return (
@@ -119,37 +122,58 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
           variant="mobile"
         />
 
-        {photos.length > 0 ? (
-          <div className="rounded-none border border-border-hairline bg-surface-card p-3">
-            <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`Photos ${photos.length}`} />
+        {scopedPhotos.query.isError ? (
+          <p role="alert" className="text-role-caption text-text-danger">Could not load packing photos.</p>
+        ) : photos.length > 0 ? (
+          <div className="border border-border-hairline bg-surface-card p-3">
+            <PhotoGallery
+              photos={photos}
+              orderId={orderId}
+              compact
+              launcherTitle={`Photos ${photos.length}`}
+              onPhotoDeleted={() => void scopedPhotos.query.refetch()}
+            />
           </div>
         ) : (
-          <p className="rounded-none bg-surface-warning px-4 py-3 text-center text-role-caption font-semibold text-text-warning">
-            No pack photos yet — tap below to capture.
+          <p className="bg-surface-warning px-4 py-3 text-center text-role-caption font-semibold text-text-warning">
+            {scopedPhotos.query.isPending ? 'Loading packing photos…' : 'No pack photos yet — take photos below.'}
           </p>
         )}
-
+        {orderRowId ? (
+          <Button variant="secondary" size="md" icon={<Printer />} onClick={() => setPaperworkOpen(true)}>
+            Paperwork + label
+          </Button>
+        ) : null}
         {photosHref ? (
           <Button
             type="button"
             variant="primary"
             size="lg"
+            icon={<Camera />}
             radius="flush"
             onClick={() => {
               onClose();
               router.replace(photosHref);
             }}
-            ariaLabel="Take photos"
             className="h-14 w-full"
           >
-            <Camera className="h-6 w-6" />
+            Take more photos
           </Button>
         ) : (
-          <p className="rounded-none bg-surface-danger px-4 py-3 text-center text-role-caption font-semibold text-text-danger">
+          <p className="bg-surface-danger px-4 py-3 text-center text-role-caption font-semibold text-text-danger">
             Missing packer log id — cannot attach photos.
           </p>
         )}
       </div>
+      {orderRowId ? (
+        <MobileOrderPaperworkSheet
+          open={paperworkOpen}
+          onClose={() => setPaperworkOpen(false)}
+          orderId={orderRowId}
+          orderRef={orderId}
+          pack={{ packerLogId }}
+        />
+      ) : null}
     </BottomSheet>
   );
 }

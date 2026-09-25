@@ -27,9 +27,11 @@ function PhotoPageInner() {
   const [resolved, setResolved] = useState<{ title: string; poRef: string | null } | null>(null);
 
   const validReceivingId = Number.isFinite(receivingId) && receivingId > 0;
-  const headerLabel = titleParam || resolved?.title || `RCV-${receivingId}`;
+  const headerLabel = titleParam || resolved?.title || `R-${receivingId}`;
   const poRef = poRefParam || resolved?.poRef || null;
-  const backHref = backParam || '/m/receiving';
+  // The carton hub is the carton's home; deep links that came from elsewhere
+  // (arrival guided capture) pass their own `back`.
+  const backHref = backParam || `/m/r/${receivingId}`;
 
   useEffect(() => {
     if (titleParam || !validReceivingId) return;

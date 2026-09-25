@@ -112,11 +112,35 @@ export function unshippedOrdersQuery({
   staffId,
   strictSearchScope = false,
   stage,
+  blockedOnly = false,
   limit,
 }: OrderQueryParams = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'unshipped', { searchQuery, packedBy, testedBy, staffId, strictSearchScope, stage: stage ?? null, limit: limit ?? null }],
-    queryFn: () => fetchUnshippedOrdersData({ searchQuery, packedBy, testedBy, staffId, strictSearchScope, stage, limit }),
+    queryKey: [
+      'dashboard-table',
+      'unshipped',
+      {
+        searchQuery,
+        packedBy,
+        testedBy,
+        staffId,
+        strictSearchScope,
+        stage: stage ?? null,
+        blockedOnly,
+        limit: limit ?? null,
+      },
+    ],
+    queryFn: () =>
+      fetchUnshippedOrdersData({
+        searchQuery,
+        packedBy,
+        testedBy,
+        staffId,
+        strictSearchScope,
+        stage,
+        blockedOnly,
+        limit,
+      }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

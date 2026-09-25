@@ -7,10 +7,10 @@
  * `work_assignments` is read by six surfaces with six different questions, and
  * the task desk asks the one none of them did: *what has been handed to a
  * person, by whom, due when, at what priority, and against which record*. The
- * columns for that already exist (R-A, 2026-09-22 — zero DDL); what did not
- * exist was one assembled answer. Without this module the read route, the slot
- * catalog, the composer and the `/m` face each re-derive urgency from an int
- * and a name from a join, and they drift the first time one of them is edited.
+ * first columns already existed (R-A, 2026-09-22); the shared-task membership
+ * table and project label extend that answer without duplicating assignment
+ * rows. One assembled answer keeps the desk, phone, composer and reports
+ * consistent as those records change.
  *
  * A VIEW MODEL, assembled once per row (kinetic-ledger law 4). Derived facts —
  * urgency from `priority`, openness from `status` — are computed HERE so two
@@ -36,6 +36,7 @@ import {
   type TaskEntityType,
   type TaskUrgency,
 } from './task-vocabulary';
+import type { TaskLinkFace } from './task-links-shared';
 
 /**
  * `assignment_status_enum`, verbatim. Re-spelled here (not imported from the
@@ -111,7 +112,9 @@ export interface TaskDeskRow {
   /** The record this task is about. */
   entityType: TaskEntityType;
   entityId: number;
-  /** `work_assignments.notes` — the task text an operator typed. */
+  /** Human umbrella label, separate from the instructions in note. */
+  projectName: string | null;
+  /** `work_assignments.notes` — task instructions an operator typed. */
   note: string;
   status: TaskDeskStatus;
   /** Stored int. Lower sorts first (`idx_work_assignments_assignee`). */
@@ -119,6 +122,8 @@ export interface TaskDeskRow {
   /** Derived from {@link priority} once, here. */
   urgency: TaskUrgency;
   assignee: TaskDeskPerson | null;
+  /** Ordered members, lead first. */
+  assignees: TaskDeskPerson[];
   assignedBy: TaskDeskPerson | null;
   /** When it was handed over (`assigned_at`, NOT NULL). */
   assignedAtMs: number;
@@ -127,7 +132,24 @@ export interface TaskDeskRow {
   /** "The deadline" — `deadline_at`. */
   deadlineAtMs: number | null;
   completedAtMs: number | null;
+  /**
+   * "Remind me" — `work_assignments.remind_at`, an absolute instant. The
+   * phone apps schedule a LOCAL notification for it from `GET /api/v1/reminders`.
+   */
+  remindAtMs: number | null;
   ticket: TaskDeskTicket | null;
+  /** Every record the task names beyond its anchor (`work_assignment_links`). */
+  links: TaskLinkFace[];
+  /**
+   * Media on the task itself: `WORK_ASSIGNMENT` photos / ready videos PLUS
+   * media links of that kind (`work_assignment_media_links`).
+   */
+  photoCount: number;
+  videoCount: number;
+  /** Oldest UPLOADED photo — the record's face in the ledger's photo lane (null when only links). */
+  coverPhotoId: number | null;
+  /** Markdown documents on the task (`work_assignment_documents`). */
+  docCount: number;
 }
 
 /**
@@ -141,15 +163,23 @@ export interface TaskDeskWireRow {
   entityType: TaskEntityType;
   entityId: number;
   note: string | null;
+  projectName: string | null;
   status: string;
   priority: number | null;
   assignee: TaskDeskPerson | null;
+  assignees: TaskDeskPerson[];
   assignedBy: TaskDeskPerson | null;
   assignedAt: string;
   startedAt: string | null;
   deadlineAt: string | null;
   completedAt: string | null;
+  remindAt: string | null;
   ticket: TaskDeskTicket | null;
+  links: TaskLinkFace[];
+  photoCount: number;
+  videoCount: number;
+  coverPhotoId: number | null;
+  docCount: number;
 }
 
 /** The `GET /api/tasks` envelope. */
@@ -172,18 +202,26 @@ export function taskDeskRowFromWire(wire: TaskDeskWireRow): TaskDeskRow {
     entityType: wire.entityType,
     entityId: wire.entityId,
     note: (wire.note ?? '').trim(),
+    projectName: wire.projectName,
     // An unknown status label is a schema drift, not a row to drop: paint it
     // as OPEN so the operator still sees the work, and let the enum test fail.
     status: isTaskDeskStatus(wire.status) ? wire.status : 'OPEN',
     priority,
     urgency: taskUrgencyFromPriority(priority),
     assignee: wire.assignee,
+    assignees: wire.assignees,
     assignedBy: wire.assignedBy,
     assignedAtMs: ms(wire.assignedAt) ?? 0,
     startedAtMs: ms(wire.startedAt),
     deadlineAtMs: ms(wire.deadlineAt),
     completedAtMs: ms(wire.completedAt),
+    remindAtMs: ms(wire.remindAt),
     ticket: wire.ticket,
+    links: wire.links,
+    photoCount: wire.photoCount,
+    videoCount: wire.videoCount,
+    coverPhotoId: wire.coverPhotoId,
+    docCount: wire.docCount,
   };
 }
 
@@ -299,4 +337,27 @@ export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface)
     default:
       return null;
   }
+}
+
+/** Leading markdown block syntax: heading, quote, bullet / task box, ordered item. */
+const MARKDOWN_LINE_LEAD = /^\s*(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)/;
+
+/**
+ * A task's ONE-LINE face — its human project label when present, otherwise
+ * the first line of its instructions with markdown syntax removed
+ * (`# Reship steps` → `Reship steps`), or the anchor record when it has no
+ * words. Every surface reading a task title uses this same precedence.
+ */
+export function taskDeskTitle(row: TaskRecordRef & { note: string | null; projectName?: string | null }): string {
+  const projectName = row.projectName?.trim();
+  if (projectName) return projectName;
+  for (const raw of (row.note ?? '').split('\n')) {
+    const line = raw
+      .replace(MARKDOWN_LINE_LEAD, '')
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/[*_`~]+/g, '')
+      .trim();
+    if (line) return line;
+  }
+  return taskDeskRecordLabel(row);
 }

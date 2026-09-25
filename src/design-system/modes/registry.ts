@@ -8,7 +8,7 @@
  * app/layout.tsx injects `modeRegistryStyleText` as
  * `<style id="app-mode-registry">`, directly after the theme palettes.
  */
-import { modeRegistryCssText } from '@cycleforge/design-tokens';
+import { modeRegistryCssText, stateCodeCssText, trialCssText } from '@cycleforge/design-tokens';
 
 export {
   MODE_NAMES,
@@ -27,4 +27,4 @@ export {
   type ModeSurfaces,
 } from '@cycleforge/design-tokens';
 
-export const modeRegistryStyleText = modeRegistryCssText();
+export const modeRegistryStyleText = `${modeRegistryCssText()}\n\n${stateCodeCssText()}\n\n${trialCssText()}`;

@@ -155,6 +155,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         zoho_purchaseorder_number: string | null;
         platform_account_id: number | null;
         receiving_id: number | null;
+        listing_url: string | null;
       }>(
         orgId,
         `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
@@ -162,7 +163,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                 -- Wave-2 reader cutover: line zoho cluster reads from
                 -- receiving_line_zoho rz (1:1; LEFT JOIN ≡ the old spine NULLs).
                 rz.zoho_purchaseorder_id, rz.zoho_purchaseorder_number,
-                rl.platform_account_id, rl.receiving_id
+                rl.platform_account_id, rl.receiving_id, rl.listing_url
            FROM inbound_purchase_order_links l
            JOIN receiving_line rl ON rl.id = l.receiving_line_id AND rl.organization_id = l.organization_id
            LEFT JOIN receiving_line_zoho rz ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -285,6 +286,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           receiving_line_id: l.id,
           rate: null,
           item_total: null,
+          listing_url: l.listing_url,
         })),
         shipment: mirror?.tracking_number
           ? {
@@ -423,11 +425,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         zoho_line_item_id: string | null;
         zoho_item_id: string | null;
         rate: number | null;
+        listing_url: string | null;
       }>(
         orgId,
         `SELECT rl.id, rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received,
                 rl.workflow_status::text AS workflow_status,
-                rz.zoho_line_item_id, rz.zoho_item_id, rz.rate
+                rz.zoho_line_item_id, rz.zoho_item_id, rz.rate, rl.listing_url
            FROM receiving_line rl
            LEFT JOIN receiving_line_zoho rz
              ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
@@ -535,6 +538,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           receiving_line_id: l.id,
           rate: l.rate,
           item_total: null,
+          listing_url: l.listing_url,
         })),
         shipment,
         receive_events: [],
@@ -761,6 +765,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       quantity?: number;
       rate?: number;
       item_total?: number;
+      listing_url?: string;
     };
     type LocalLine = {
       id: number;
@@ -773,6 +778,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       workflow_status: string | null;
       sku: string | null;
       item_name: string | null;
+      listing_url: string | null;
     };
     const rawLineItems: RawLine[] = (() => {
       const raw = mirror?.raw as { line_items?: RawLine[] } | undefined;
@@ -790,7 +796,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               rl.quantity_expected,
               rl.workflow_status::text,
               rl.sku,
-              rl.item_name
+              rl.item_name,
+              rl.listing_url
          FROM receiving_line_zoho rz
          JOIN receiving_line rl
            ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
@@ -842,6 +849,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
               receiving_line_id: match?.id ?? null,
               rate: l.rate ?? rateFromLocal,
               item_total: l.item_total ?? null,
+              listing_url: l.listing_url ?? match?.listing_url ?? null,
             };
           })
         : localLinesRes.rows.map((l) => {
@@ -863,6 +871,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                 rate != null && Number.isFinite(rate) && expected > 0
                   ? rate * expected
                   : null,
+              listing_url: l.listing_url,
             };
           });
 

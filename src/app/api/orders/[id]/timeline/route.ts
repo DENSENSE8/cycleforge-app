@@ -3,6 +3,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
 import {
+  listOrderPackerTimelinePhotos,
   listUnitTimelinePhotos,
   type UnitTimelinePhoto,
 } from '@/lib/photos/queries/unit-timeline-photos';
@@ -38,11 +39,9 @@ import {
  *                   SAL. We pull TECH-station rows (the "tech scan" the panel was
  *                   missing) + OUTBOUND ship-out, excluding PACK (audit owns it,
  *                   avoiding a duplicate "Packed").
- *   • `unitPhotos` — the five-stage photo evidence rows (arrival / unbox carton /
- *                   unbox item / testing / packing — `UnitTimelinePhotoSource`)
- *                   for the order's allocated serial units, each row carrying
- *                   the unit's serial for client-side serial grouping. A failed
- *                   photo sub-fetch degrades to [] — it never 500s the timeline.
+ *   • `unitPhotos` — five-stage evidence for allocated serial units plus
+ *                   shipment-linked PACKER_LOG photos. Pack evidence remains
+ *                   visible even when an order has no serialized allocation.
  *
  * Read-only; gated by `orders.view`.
  */
@@ -360,6 +359,18 @@ export async function GET(
       } catch (photoErr: any) {
         console.warn('[GET /api/orders/[id]/timeline] photo spine degraded:', photoErr?.message);
       }
+    }
+    const seenPhotoIds = new Set<number>();
+    unitPhotos = unitPhotos.filter((photo) => {
+      if (seenPhotoIds.has(photo.photoId)) return false;
+      seenPhotoIds.add(photo.photoId);
+      return true;
+    });
+    const packerPhotos = await listOrderPackerTimelinePhotos(orgId, id);
+    for (const photo of packerPhotos) {
+      if (seenPhotoIds.has(photo.photoId)) continue;
+      seenPhotoIds.add(photo.photoId);
+      unitPhotos.push(photo);
     }
 
     // Thread spine — entity-anchored conversation messages (THREAD_MESSAGE) for

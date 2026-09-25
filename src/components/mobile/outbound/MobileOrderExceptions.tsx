@@ -4,16 +4,21 @@
  * Mobile projection of the canonical order-exceptions queue.
  *
  * The server query and blocker vocabulary are the same ones mounted by the
- * desktop DataTable. Only presentation differs: flat phone item rows lead into
- * one task-local pairing surface.
+ * desktop DataTable. Only presentation differs: BRIEF §4 triage rows
+ * ({@link TriageRow}) — `HLD` leads (a caged order is on hold), then what it
+ * is, then order # and blocker. Inspect opens the order record (a full screen
+ * with an X back here); the ink decision opens the pairing task.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, RefreshCw } from '@/components/Icons';
-import { ItemCardRow } from '@/components/mobile/redesign/ItemCardRow';
+import { LifecycleStateCode } from '@/components/mobile/triage/StateCode';
+import { TriageRow } from '@/components/mobile/triage/TriageRow';
+import { useTriageSelection } from '@/components/mobile/triage/useTriageSelection';
 import { Button, Inset, SearchField } from '@/design-system/primitives';
+import { withJobReturn } from '@/lib/mobile/nav-trail';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   sortExceptionQueueRows,
@@ -61,9 +66,8 @@ export function MobileOrderExceptions() {
     [exceptions.data],
   );
 
-  const open = (row: OrderExceptionRow) => {
-    router.push(`/m/exceptions/${row.id}`);
-  };
+  const [selected, select] = useTriageSelection('exceptions');
+  const label = (row: OrderExceptionRow) => row.orderNumber || `#${row.id}`;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="mobile-order-exceptions">
@@ -112,25 +116,36 @@ export function MobileOrderExceptions() {
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col">
-            {rows.map((row) => (
-              <li key={row.id}>
-                <ItemCardRow
-                  title={row.productTitle || row.catalogTitle || row.orderNumber || `Order ${row.id}`}
-                  orderContext={`${row.accountSource || 'Order'} · ${row.orderNumber || `#${row.id}`}`}
-                  reference={row.sku || row.itemNumber}
-                  itemNumber={row.itemNumber || row.sku}
-                  qty={Number(row.quantity) || 1}
-                  managementStatus={row.routing.category}
-                  managementAction={row.routing.actionRequired}
-                  managementOwner={row.routing.owner}
-                  stateRail="exception"
-                  onOpen={() => open(row)}
-                  ariaLabel={`Resolve ${row.orderNumber || row.id}: ${blockerSummary(row)}`}
-                  primary={null}
+          <ul className="flex flex-col divide-y divide-border-hairline border-b border-border-hairline">
+            {rows.map((row) => {
+              const title = row.productTitle || row.catalogTitle || label(row);
+              const verb = row.blockers.includes('no_item_number') ? 'Add item #' : 'Pair';
+              return (
+                <TriageRow
+                  key={row.id}
+                  code={<LifecycleStateCode state="onHold" />}
+                  title={title}
+                  meta={
+                    <span className="min-w-0 truncate text-role-caption text-text-soft">
+                      <span className="font-mono">{label(row)}</span>
+                      {` · ${blockerSummary(row)}`}
+                    </span>
+                  }
+                  selected={selected === String(row.id)}
+                  actionLabel={verb}
+                  actionName={`${verb} for ${label(row)}: ${blockerSummary(row)}`}
+                  inspectName={`Open order ${label(row)}`}
+                  onInspect={() => {
+                    select(String(row.id));
+                    router.push(withJobReturn(`/m/orders/${row.id}?by=id`, '/m/exceptions'));
+                  }}
+                  onAction={() => {
+                    select(String(row.id));
+                    router.push(`/m/exceptions/${row.id}`);
+                  }}
                 />
-              </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>

@@ -197,6 +197,7 @@ export async function importReturnWithTicket(
       reason: input.body.return_reason ?? undefined,
       notePublic: false,
       poReceivingLink: input.poReceivingLinkForCarton?.(receivingId),
+      listingUrl: input.body.listing_url ?? undefined,
       idempotencyKey: input.idempotencyKey,
     },
     { ...deps.claimDeps, getHelpdesk: async () => helpdesk },

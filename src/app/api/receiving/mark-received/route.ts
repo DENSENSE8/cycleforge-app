@@ -697,11 +697,10 @@ export const POST = withAuth(async (request, ctx) => {
       // (notes + quantity_received). Same transaction = same atomicity the single
       // statement had.
       // `notes` is COALESCE'd, not assigned: a receive may SET the operator's
-      // item note but must never CLEAR one it was not given. The mobile QA
-      // sheet passes `notes: null` on its Pass-all path
-      // (ReceivingQaActionSheet.tsx → markAllLines(..., null, ...)), and a bare
-      // `SET notes = $1` therefore erased whatever the desktop operator had
-      // typed on the Unbox panel — silently, on every phone-side pass.
+      // item note but must never CLEAR one it was not given. A caller that
+      // passes `notes: null` (the retired phone QA sheet's Pass-all path did)
+      // met a bare `SET notes = $1` that erased whatever the desktop operator
+      // had typed on the Unbox panel — silently, on every phone-side pass.
       // Clearing a note stays the notes composer's job (PATCH
       // /api/receiving-lines, which presence-checks the field). Same semantics
       // the sibling writers already document: receive-line.ts (`notes =

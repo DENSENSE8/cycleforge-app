@@ -1,12 +1,16 @@
 'use client';
 
 /**
- * `/search?sel=` body — FIND confirmation, not scan-station preview.
+ * `/search?sel=` body — FIND confirmation, not scan-station preview. An ORDER
+ * on the desk opens the triage order ledger (the on-the-phone lookup); the
+ * phone keeps the compact dossier.
  */
 
 import { Package } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { SearchOrderDossier } from '@/components/search/dossier/SearchOrderDossier';
+import { SearchOrderLedger } from '@/components/search/dossier/SearchOrderLedger';
+import { useFindDensity } from '@/components/search/find-density-context';
 import { SearchUnitDossier } from '@/components/search/dossier/SearchUnitDossier';
 import { SearchReceivingDossier } from '@/components/search/dossier/SearchReceivingDossier';
 import { SearchSkuDossier, SearchStackDossier } from '@/components/search/dossier/SearchGenericDossier';
@@ -22,10 +26,15 @@ export function SearchDossier({
   onExit: () => void;
 }) {
   const onBack = hasQuery ? onExit : undefined;
+  const density = useFindDensity();
 
   switch (sel.entityType) {
     case 'order':
-      return <SearchOrderDossier orderId={sel.id} onBack={onBack} />;
+      return density === 'compact' ? (
+        <SearchOrderDossier orderId={sel.id} onBack={onBack} />
+      ) : (
+        <SearchOrderLedger orderId={sel.id} />
+      );
     case 'receiving':
       return <SearchReceivingDossier receivingId={sel.id} onBack={onBack} />;
     case 'unit':

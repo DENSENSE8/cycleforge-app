@@ -2,6 +2,13 @@
 // Generated split of the former flat Icons.tsx (the nav-icon SoT).
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
+import {
+  AlarmClock as LucideAlarmClock,
+  CircleDot as LucideCircleDot,
+  CirclePause as LucideCirclePause,
+  PackageX as LucidePackageX,
+} from 'lucide-react';
+
 export const AlertCircle = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -78,4 +85,25 @@ export const Sparkles = ({ className = "w-6 h-6" }: { className?: string }) => (
         <path d="m5 3 1 2.5L8.5 6 6 7 5 9.5 4 7 1.5 6 4 5.5 5 3Z" />
         <path d="m19 17 1 2.5 2.5.5-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" />
     </svg>
+);
+
+// Lifecycle state glyphs — drawn before the state code (`LIFECYCLE[state].icon`).
+/** Ready — `RDY`. */
+export const CircleDot = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideCircleDot className={className} />
+);
+
+/** Urgent — `URG`. */
+export const AlarmClock = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideAlarmClock className={className} />
+);
+
+/** Out of stock — `OOS`. */
+export const PackageX = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucidePackageX className={className} />
+);
+
+/** On hold — `HLD`. */
+export const CirclePause = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideCirclePause className={className} />
 );

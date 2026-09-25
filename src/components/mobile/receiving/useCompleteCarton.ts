@@ -6,10 +6,10 @@
  * Posts ONE carton-scoped request to `/api/receiving/mark-received-po`
  * (`receiving_id`), not a per-line loop. That route already owns the whole
  * receive: every open line under the carton, the photo-policy gate, audit, and
- * the realtime fan-out the desktop bench listens to. `ReceivingQaActionSheet`
- * loops `mark-received` per line because its job is a per-line QA VERDICT
- * (pass / fail); receiving a carton is a different job, so it composes the bulk
- * route instead of forking that loop.
+ * the realtime fan-out the desktop bench listens to. A per-line QA verdict
+ * (pass / fail) is a different job — on the phone that is the QC scan kernel
+ * (`/m/r/[id]/qc` → `/m/qc/line/[id]`) — so receiving composes the bulk route
+ * instead of looping `mark-received` per line.
  *
  * Two things this shell exists to get right (the request/response decisions
  * themselves live in `./complete-carton`, pure and tested):
@@ -35,12 +35,12 @@ import {
   completeCartonRequestBody,
   mapCompleteCartonResponse,
   type CompleteCartonOutcome,
+  type CompleteCartonRow,
 } from '@/components/mobile/receiving/complete-carton';
 import { photoPolicyOverrideField } from '@/lib/receiving/photo-policy-override-wire';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-export function useCompleteCarton(row: ReceivingLineRow | null) {
+export function useCompleteCarton(row: CompleteCartonRow | null) {
   const [state, setState] = useState<CompleteCartonOutcome>(COMPLETE_CARTON_IDLE);
   // Held across retries — see (1) in the module doc.
   const idempotencyKeyRef = useRef<string | null>(null);

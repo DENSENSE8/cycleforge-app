@@ -119,6 +119,8 @@ export interface ReceivingLineRow {
   receiving_zoho_notes?: string | null;
   /** Carton-level listing URL from `receiving.listing_url` (same for all lines on the package). */
   receiving_listing_url?: string | null;
+  /** Line-level listing URL from `receiving_line.listing_url`. */
+  listing_url?: string | null;
   /**
    * Derived faceted bucket for `view=incoming` — computed on read from the
    * carrier status on shipping_tracking_numbers (DELIVERED_UNOPENED,

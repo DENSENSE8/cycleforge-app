@@ -34,6 +34,7 @@ const LineSchema = z.object({
   item_name: z.string().trim().max(500).optional().default(''),
   quantity: z.string().trim().max(20),
   line_item_id: z.string().trim().max(200).optional().default(''),
+  listing_url: z.string().trim().max(2000).optional().default(''),
 });
 
 const Body = z.object({
@@ -43,7 +44,6 @@ const Body = z.object({
   account_name: z.string().trim().max(200).optional().default(''),
   tracking_number: z.string().trim().max(200).optional().default(''),
   carrier_code: z.string().trim().max(40).optional().default(''),
-  listing_url: z.string().trim().max(2000).optional().default(''),
   priority: z.string().trim().max(10).optional().default('auto'),
   lines: z.array(LineSchema).min(1).max(100),
 });
@@ -60,7 +60,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     accountName: parsed.account_name,
     trackingNumber: parsed.tracking_number,
     carrierCode: parsed.carrier_code,
-    listingUrl: parsed.listing_url,
     priority: parsed.priority || 'auto',
     notes: '',
     lines: parsed.lines.map((l) => ({
@@ -68,6 +67,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       itemName: l.item_name,
       quantity: l.quantity,
       lineItemId: l.line_item_id,
+      listingUrl: l.listing_url,
     })),
   };
 

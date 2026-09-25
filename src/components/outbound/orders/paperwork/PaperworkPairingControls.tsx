@@ -20,7 +20,7 @@ import {
 } from '@/design-system/tokens/triage-panel';
 import type { PaperworkSource } from '@/lib/manuals/paperwork-pairing';
 import { cn } from '@/utils/_cn';
-import type { OrderManual, OrderManualsResponse } from './order-paperwork-client';
+import type { OrderManual, OrderManualsResponse } from '@/lib/orders/order-paperwork-client';
 
 export const CAPTION = 'text-role-caption text-text-muted';
 

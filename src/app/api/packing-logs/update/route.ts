@@ -15,6 +15,7 @@ import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import pool from '@/lib/db';
 import { createPackerLog, finalizePackerLogCapture } from '@/lib/packing/packer-log-writer';
+import { releasePackedTotes } from '@/lib/picking/tote-scan';
 
 class PackFinalizeRequestError extends Error {}
 
@@ -336,6 +337,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     updated_at             = NOW()
             WHERE work_assignments.organization_id = $1
           `, [ctx.organizationId, targetOrderId, staffId]);
+          await releasePackedTotes(ctx.organizationId, {
+            orderId: targetOrderId,
+            shipmentId: resolvedShipmentId,
+          }, client);
         }
         return { deduplicated: false, packerLogId, ledgerRows: [], updatedRows: fallbackUpdate.rows, photosCount };
       } else {
@@ -354,6 +359,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                   updated_at             = NOW()
           WHERE work_assignments.organization_id = $1
         `, [ctx.organizationId, targetOrderId, staffId]);
+        await releasePackedTotes(ctx.organizationId, { shipmentId: resolvedShipmentId }, client);
       }
 
       // 4. Emit PACKED ledger rows per SKU in the shipment. The trigger

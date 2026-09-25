@@ -25,12 +25,14 @@ import {
   transitionReplenishmentStatus,
   recalculateNeed,
   createDraftPurchaseOrders,
-  REPLENISHMENT_ALLOWED_TRANSITIONS,
   type CreateDraftPurchaseOrdersDeps,
   type ReplenishmentRequestRow,
-  type ReplenishmentStatus,
   type DbClient,
 } from './replenishment';
+import {
+  REPLENISHMENT_ALLOWED_TRANSITIONS,
+  type ReplenishmentRequestStatus,
+} from './replenishment-request-status';
 import type { OrgId } from './tenancy/constants';
 
 const ORG = '11111111-1111-1111-1111-111111111111' as OrgId;
@@ -156,7 +158,7 @@ test('transition legality matrix: terminal states allow nothing', () => {
   assert.deepEqual(REPLENISHMENT_ALLOWED_TRANSITIONS.fulfilled, []);
   assert.deepEqual(REPLENISHMENT_ALLOWED_TRANSITIONS.cancelled, []);
   // Every declared target is itself a known status.
-  const known = Object.keys(REPLENISHMENT_ALLOWED_TRANSITIONS) as ReplenishmentStatus[];
+  const known = Object.keys(REPLENISHMENT_ALLOWED_TRANSITIONS) as ReplenishmentRequestStatus[];
   for (const targets of Object.values(REPLENISHMENT_ALLOWED_TRANSITIONS)) {
     for (const target of targets) assert.ok(known.includes(target), `unknown target ${target}`);
   }
@@ -254,7 +256,7 @@ function fakePoDeps(over: Partial<CreateDraftPurchaseOrdersDeps> & {
     zohoPayloads: [] as Array<{ vendor_id: string; line_items: Array<{ item_id: string; quantity: number; rate: number }> }>,
     txOrgs: [] as OrgId[],
     txClient: fakeClient(),
-    transitions: [] as Array<{ id: string; next: ReplenishmentStatus; orgId: OrgId; sameClient: boolean }>,
+    transitions: [] as Array<{ id: string; next: ReplenishmentRequestStatus; orgId: OrgId; sameClient: boolean }>,
   };
 
   const deps: CreateDraftPurchaseOrdersDeps = {

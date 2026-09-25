@@ -24,7 +24,7 @@
  *   `onClose` go out.
  */
 
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
@@ -52,6 +52,15 @@ const HEAD_ICON_CLASS = cn(
   focusRing('control'),
 );
 
+export interface RecordLedgerNavigation {
+  position: number | null;
+  total: number;
+  onPrev: (() => void) | null;
+  onNext: (() => void) | null;
+  prevDisabled: boolean;
+  nextDisabled: boolean;
+}
+
 export interface RecordLedgerProps<T> {
   /** Accessible name of the record list (`SKU exceptions`). */
   label: string;
@@ -63,12 +72,22 @@ export interface RecordLedgerProps<T> {
   openKey: string | null;
   onOpenKey: (key: string) => void;
   onClose: () => void;
+  /** Existing record-cursor service controls, when this ledger participates in a shared record plane. */
+  navigation?: RecordLedgerNavigation;
   /** Toolbar contents — search, facets, counts. Sits on the 1px ink rule. */
   toolbar: ReactNode;
   /** Optional strip under the toolbar (errors, notices). */
   banner?: ReactNode;
   /** Head of the evidence column: `Selected <noun>`. */
   evidenceNoun: string;
+  /**
+   * Replaces the `Selected <noun>` head while the column holds something that
+   * is not a record yet — a create form opened with `openKey` set to a key no
+   * record carries (`New exception`).
+   */
+  evidenceHead?: string;
+  /** Omit the visible generic heading when the evidence body names itself. */
+  hideEvidenceHeading?: boolean;
   /** Evidence column body — the open record, or the list read as a whole. */
   evidence: ReactNode;
   loading?: boolean;
@@ -76,6 +95,8 @@ export interface RecordLedgerProps<T> {
   empty: ReactNode;
   /** Status line under the records. */
   footer?: ReactNode;
+  /** Optional shared scroll owner for prepend-to-top behavior in an existing feed. */
+  scrollRef?: RefObject<HTMLDivElement>;
   testId?: string;
 }
 
@@ -87,19 +108,24 @@ export function RecordLedger<T>({
   openKey,
   onOpenKey,
   onClose,
+  navigation,
   toolbar,
   banner,
   evidenceNoun,
+  evidenceHead,
+  hideEvidenceHeading = false,
   evidence,
   loading = false,
   empty,
   footer,
+  scrollRef: providedScrollRef,
   testId,
 }: RecordLedgerProps<T>) {
   const keys = useMemo(() => records.map(recordKey), [records, recordKey]);
   const openIndex = openKey == null ? -1 : keys.indexOf(openKey);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const internalScrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = providedScrollRef ?? internalScrollRef;
   const virtualizer = useVirtualizer({
     count: records.length,
     getScrollElement: () => scrollRef.current,
@@ -113,12 +139,17 @@ export function RecordLedger<T>({
 
   const step = useCallback(
     (by: 1 | -1) => {
+      if (navigation) {
+        const move = by === -1 ? navigation.onPrev : navigation.onNext;
+        move?.();
+        return;
+      }
       if (keys.length === 0) return;
       const from = openIndex < 0 ? (by === 1 ? -1 : keys.length) : openIndex;
       const next = keys[Math.min(Math.max(from + by, 0), keys.length - 1)];
       if (next != null && next !== openKey) onOpenKey(next);
     },
-    [keys, openIndex, openKey, onOpenKey],
+    [keys, navigation, openIndex, openKey, onOpenKey],
   );
 
   useEffect(() => {
@@ -211,7 +242,7 @@ export function RecordLedger<T>({
         </div>
 
         <aside
-          aria-label={`Selected ${evidenceNoun}`}
+          aria-label={evidenceHead ?? `Selected ${evidenceNoun}`}
           data-testid="record-evidence"
           className={cn(
             'min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-panel',
@@ -227,10 +258,16 @@ export function RecordLedger<T>({
                 RECORD_HIT_CLASS,
               )}
             >
-              <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Selected {evidenceNoun}</span>
-              {open && openIndex >= 0 ? (
+              {hideEvidenceHeading ? (
+                <span className="flex-1" aria-hidden />
+              ) : (
+                <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>
+                  {evidenceHead ?? `Selected ${evidenceNoun}`}
+                </span>
+              )}
+              {open && (navigation?.position != null || openIndex >= 0) ? (
                 <span className={cn(RECORD_LABEL_CLASS, 'px-2 tabular-nums text-mode-muted')}>
-                  {openIndex + 1} / {keys.length}
+                  {navigation?.position ?? openIndex + 1} / {navigation?.total ?? keys.length}
                 </span>
               ) : null}
               {open ? (
@@ -240,7 +277,7 @@ export function RecordLedger<T>({
                     aria-label="Previous record"
                     aria-keyshortcuts="K"
                     className={HEAD_ICON_CLASS}
-                    disabled={openIndex <= 0}
+                    disabled={navigation ? navigation.prevDisabled : openIndex <= 0}
                     onClick={() => step(-1)}
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -250,7 +287,7 @@ export function RecordLedger<T>({
                     aria-label="Next record"
                     aria-keyshortcuts="J"
                     className={HEAD_ICON_CLASS}
-                    disabled={openIndex < 0 || openIndex >= keys.length - 1}
+                    disabled={navigation ? navigation.nextDisabled : openIndex < 0 || openIndex >= keys.length - 1}
                     onClick={() => step(1)}
                   >
                     <ChevronRight className="h-4 w-4" aria-hidden />

@@ -4,7 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { Loader2 } from '@/components/Icons';
+import { Loader2, Printer } from '@/components/Icons';
+import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
@@ -31,6 +32,7 @@ type GuidedCaptureStep = 'slip' | 'box';
 export interface MobilePackerPhotoStudioProps {
   packerLogId: number;
   orderId: string;
+  orderRowId?: number | null;
   headerLabel: string;
   returnHref: string;
   maxPhotos?: number;
@@ -50,6 +52,7 @@ export interface MobilePackerPhotoStudioProps {
 export function MobilePackerPhotoStudio({
   packerLogId,
   orderId,
+  orderRowId = null,
   headerLabel,
   returnHref,
   maxPhotos = 10,
@@ -69,6 +72,16 @@ export function MobilePackerPhotoStudio({
   );
 
   const { priorPhotos, deletePrior, queryKey, query } = useScopedPackerPhotos(packerLogId);
+  const [paperworkOpen, setPaperworkOpen] = useState(false);
+  const paperwork = orderRowId ? (
+    <MobileOrderPaperworkSheet
+      open={paperworkOpen}
+      onClose={() => setPaperworkOpen(false)}
+      orderId={orderRowId}
+      orderRef={orderId}
+      pack={{ packerLogId }}
+    />
+  ) : null;
 
   const returnToPack = useCallback(() => {
     router.replace(returnHref);
@@ -81,10 +94,17 @@ export function MobilePackerPhotoStudio({
       queryClient.invalidateQueries({ queryKey: ['packer-logs-mobile'] });
     });
   }, [queryClient, queryKey]);
+  useEffect(() => {
+    if (query.isError) toast.error('Could not load saved packing photos.', { position: 'top-center' });
+  }, [query.isError]);
 
   const handleDeletePrior = useCallback(
     async (photoId: number) => {
-      await deletePrior(photoId);
+      try {
+        await deletePrior(photoId);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not delete packing photo.', { position: 'top-center' });
+      }
     },
     [deletePrior],
   );
@@ -237,68 +257,91 @@ export function MobilePackerPhotoStudio({
         toast.message('Saved — sent to review', { position: 'top-center' });
       }
       returnToPack();
-    } catch {
-      toast.error('Could not submit verification. Photos are still saved.', { position: 'top-center' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not finish packing.', { position: 'top-center' });
       setSubmitting(false);
     }
   }, [completePacking, executeWmsCommand, orderId, packerLogId, returnToPack, tracking, user]);
 
+  const openPaperwork = orderRowId ? () => setPaperworkOpen(true) : undefined;
+
   if (!guided) {
     return (
-      <MobilePackerSpamCamera
-        embedded
-        onDone={handleDone}
-        onCancel={returnToPack}
-        maxPhotos={maxPhotos}
-        priorPhotos={priorPhotos}
-        onDeletePrior={handleDeletePrior}
-        header={<StudioHeader eyebrow="Add pack photos" label={headerLabel} />}
-      />
+      <>
+        <MobilePackerSpamCamera
+          embedded
+          onDone={handleDone}
+          onCancel={returnToPack}
+          maxPhotos={maxPhotos}
+          priorPhotos={priorPhotos}
+          onDeletePrior={handleDeletePrior}
+          header={<StudioHeader eyebrow="Add pack photos" label={headerLabel} onPaperwork={openPaperwork} />}
+        />
+        {paperwork}
+      </>
     );
   }
 
   if (step === 'confirm') {
     return (
-      <PackVerifyConfirm
-        orderId={orderId}
-        tracking={tracking}
-        onTrackingChange={setTracking}
-        submitting={submitting}
-        onConfirm={onConfirm}
-        onBack={() => setStep('box')}
-        canScan={!!slipBlob}
-        ocrBusy={ocrBusy}
-        onScanFromSlip={scanFromSlip}
-      />
+      <>
+        <PackVerifyConfirm
+          orderId={orderId}
+          tracking={tracking}
+          onTrackingChange={setTracking}
+          submitting={submitting}
+          onConfirm={onConfirm}
+          onBack={() => setStep('box')}
+          canScan={!!slipBlob}
+          ocrBusy={ocrBusy}
+          onScanFromSlip={scanFromSlip}
+          onPaperwork={openPaperwork}
+        />
+        {paperwork}
+      </>
     );
   }
 
   const isSlip = step === 'slip';
   return (
-    <MobilePackerSpamCamera
-      key={step}
-      embedded
-      onDone={isSlip ? onSlipDone : onBoxDone}
-      onCancel={isSlip ? returnToPack : () => setStep('slip')}
-      maxPhotos={maxPhotos}
-      priorPhotos={priorPhotos}
-      onDeletePrior={handleDeletePrior}
-      gateCapture={isSlip}
-      header={
-        <StudioHeader
-          eyebrow={isSlip ? 'Step 1 of 2 · Packing slip' : 'Step 2 of 2 · Box'}
-          label={isSlip ? 'Capture the packing slip flat' : `Capture the box · ${headerLabel}`}
-        />
-      }
-    />
+    <>
+      <MobilePackerSpamCamera
+        key={step}
+        embedded
+        onDone={isSlip ? onSlipDone : onBoxDone}
+        onCancel={isSlip ? returnToPack : () => setStep('slip')}
+        maxPhotos={maxPhotos}
+        priorPhotos={priorPhotos}
+        onDeletePrior={handleDeletePrior}
+        gateCapture={isSlip}
+        header={
+          <StudioHeader
+            eyebrow={isSlip ? 'Step 1 of 2 · Packing slip' : 'Step 2 of 2 · Box'}
+            label={isSlip ? 'Capture the packing slip flat' : `Capture the box · ${headerLabel}`}
+            onPaperwork={openPaperwork}
+          />
+        }
+      />
+      {paperwork}
+    </>
   );
 }
 
-function StudioHeader({ eyebrow, label }: { eyebrow: string; label: string }) {
+/** Paperwork stays one tap away on the dark photo stage (slip, box and verify). */
+function StagePaperworkButton({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <Button variant="glass" size="sm" icon={<Printer />} onClick={onClick} className={cn('border border-white/20 text-white', className)}>
+      Paperwork + label
+    </Button>
+  );
+}
+
+function StudioHeader({ eyebrow, label, onPaperwork }: { eyebrow: string; label: string; onPaperwork?: () => void }) {
   return (
     <div className="min-w-0">
       <p className="text-role-micro uppercase tracking-[0.22em] text-white/60">{eyebrow}</p>
       <p className="truncate text-sm font-semibold text-white">{label}</p>
+      {onPaperwork ? <StagePaperworkButton onClick={onPaperwork} className="mt-2" /> : null}
     </div>
   );
 }
@@ -316,6 +359,7 @@ function PackVerifyConfirm({
   canScan,
   ocrBusy,
   onScanFromSlip,
+  onPaperwork,
 }: {
   orderId: string;
   tracking: string;
@@ -326,6 +370,7 @@ function PackVerifyConfirm({
   canScan: boolean;
   ocrBusy: boolean;
   onScanFromSlip: () => void;
+  onPaperwork?: () => void;
 }) {
   return (
     <div className="flex min-h-[100dvh] flex-col justify-between bg-stage px-5 py-6 text-white">
@@ -336,6 +381,7 @@ function PackVerifyConfirm({
             {orderId.startsWith('PL-') ? `Pack ${orderId}` : `Order ${orderId}`}
           </p>
         </div>
+        {onPaperwork ? <StagePaperworkButton onClick={onPaperwork} /> : null}
         <p className="text-role-caption text-white/70">
           Ensure lighting is clear, avoid blur, and hold the slip flat. Enter the tracking
           number from the slip to confirm it matches this order.

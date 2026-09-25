@@ -40,12 +40,18 @@ import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter } from 'next/font/google'
  * Both are flagged as follow-ups in the typography handoff, not as settled
  * forever.
  *
- * ## Weights stop at 600 on every cut
+ * ## Weights stop at 600 on the sans and condensed cuts
  *
  * 700+ bleeds pixels at small sizes on the 1080p warehouse monitors this UI
  * lives on, and hierarchy here comes from colour contrast + tracking (Linear
  * discipline), not from ink. Loading the weight at all is what lets it drift
  * back in — so it is not loaded.
+ *
+ * **Exception — mono 700 (owner 2026-09-25, BRIEF §4 industrial):** industrial
+ * labels and IDs are "mono heavy uppercase". With 600 the heaviest cut, the
+ * record faces' `font-bold`/`extrabold`/`black` all rendered as the same 600
+ * (measured: identical ink at 600–900). Plex Mono 700 costs one latin woff2
+ * (14.9 KB; the 600 file is 15.6 KB). Inter stays capped at 600.
  *
  * NOTE: Inter is a variable font, and requesting it without an explicit
  * `weight` array would ship the whole 100–900 axis — which would make a stray
@@ -91,7 +97,7 @@ export const ibmPlexSansCondensed = IBM_Plex_Sans_Condensed({
 
 export const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '600'],
+  weight: ['400', '500', '600', '700'],
   variable: '--font-ibm-plex-mono',
   display: 'swap',
 });

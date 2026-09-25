@@ -241,17 +241,6 @@ export interface OrdersQueueTableRowProps {
     staffId: number | null,
     staffName: string | null,
   ) => void;
-  /**
-   * Persist a staffer's floor role (picker / packer) from Pick / Pack chips
-   * in the cell combo (and the actions-column roster). Name-click still
-   * assigns only people who already have that lane.
-   */
-  onSetStaffLaneRole?: (
-    staffId: number,
-    role: 'technician' | 'packer',
-    staffName: string,
-    notice?: { face: 'technician' | 'packer'; eligible: boolean },
-  ) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
@@ -743,7 +732,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onCommitShipBy,
   onCommitOrderedAt,
   onCommitStageAssign,
-  onSetStaffLaneRole,
 }: OrdersQueueTableRowProps) {
   const statusTrail = useOrderStatusTrail();
   /**
@@ -975,7 +963,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         role: 'technician' as const,
         onCommit: (staffId: number | null, staffName: string | null) =>
           onCommitStageAssign(record, 'orders.picked', staffId, staffName),
-        onSetLaneRole: onSetStaffLaneRole,
       },
       'orders.packed': {
         selectedStaffId: packerId,
@@ -983,10 +970,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         role: 'packer' as const,
         onCommit: (staffId: number | null, staffName: string | null) =>
           onCommitStageAssign(record, 'orders.packed', staffId, staffName),
-        onSetLaneRole: onSetStaffLaneRole,
       },
     };
-  }, [compoundView, onCommitStageAssign, onSetStaffLaneRole, testerId, packerId, record]);
+  }, [compoundView, onCommitStageAssign, testerId, packerId, record]);
 
   // ── The cells — one shell, two column models ─────────────────────────────
   // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
@@ -1289,7 +1275,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.onCommitCondition !== next.onCommitCondition) return false;
   if (prev.onCommitShipBy !== next.onCommitShipBy) return false;
   if (prev.onCommitStageAssign !== next.onCommitStageAssign) return false;
-  if (prev.onSetStaffLaneRole !== next.onSetStaffLaneRole) return false;
   if (prev.testerId !== next.testerId) return false;
   if (prev.packerId !== next.packerId) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label

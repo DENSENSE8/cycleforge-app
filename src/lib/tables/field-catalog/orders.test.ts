@@ -52,10 +52,13 @@ describe('orders catalog', () => {
     }
   });
 
-  it('product default parses against the catalog (picked in status:1, qty · amount · condition · item # · notes under the title)', () => {
+  it('product default parses against the catalog (Pick + Pack status stamps, qty · amount · condition · item # · notes under the title)', () => {
     const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
-    assert.deepEqual(parsed.statusBindings, [{ fieldId: 'orders.picked' }]);
+    assert.deepEqual(parsed.statusBindings, [
+      { fieldId: 'orders.picked' },
+      { fieldId: 'orders.packed' },
+    ]);
     assert.deepEqual(parsed.subtitleBindings, [
       { fieldId: 'orders.qty' },
       { fieldId: 'orders.amount' },
@@ -121,7 +124,7 @@ describe('resolveOrdersSlotValue — stage events', () => {
     if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(value.who, 'Tuan');
     assert.equal(value.whoStaffId, 9);
-    assert.match(String(value.at), /^Jul 13/);
+    assert.equal(value.at, 'Jul 13, 4:15 PM');
     assert.equal(value.station, null);
   });
 
@@ -191,6 +194,7 @@ describe('resolveOrdersSlotValue — stage events', () => {
     );
     if (value?.kind !== 'stage_event') return assert.fail('expected stage_event');
     assert.equal(value.who, 'Ana');
+    assert.equal(value.at, 'Jul 13, 6:00 PM');
     assert.equal(value.station, 'Bench 2');
   });
 

@@ -1,27 +1,14 @@
 'use client';
 
 /**
- * Throwing a task, headless — resolve a record, pick a person, send.
+ * Throwing a task, headless — resolve a record or ticket, name the project,
+ * choose a team, send one shared assignment.
  *
- * ## Why a hook and not two copies
- *
- * Two surfaces hand work to a colleague and they are genuinely different
- * shapes: `ThrowTaskPanel` is a 380px chord-summoned overlay ("I am holding
- * this thing, take it"), and the task desk's composer is a full inline form
- * with a deadline ("plan this work"). What they share is not layout — it is
- * the SEQUENCE: resolve the record server-side, load the roster, POST the
- * task, and report honestly when an amplifier degraded. That sequence has four
- * branch points a second copy would get subtly wrong, so it lives here once
- * and each surface brings its own chrome.
- *
- * ## Resolution is server-side, and that is not an implementation detail
- *
- * A tracking number is the single most likely thing to be in an operator's
- * hand, and `routeScan` — the client-side decoder — has **no tracking
- * vocabulary**. It decodes what this app PRINTS. Only `POST /api/scan/resolve`
- * can turn a carrier number into the order(s) it belongs to, so the field posts
- * there and {@link resolveThrowTargets} reads the answer back. A local parse
- * would silently fail on the commonest input.
+ * The quick overlay, task desk composer and phone sheet have different layouts
+ * but share this sequence: resolve the record server-side, load the roster,
+ * POST one task with every chosen member, and report a degraded amplifier.
+ * A tracking number has no client-side decoder; the server's scan resolver
+ * and {@link resolveThrowTargets} are the source of truth on every surface.
  *
  * ## The two amplifiers are reported, never hidden
  *
@@ -36,10 +23,10 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { resolveThrowTargets, type ThrowTarget } from '@/lib/tasks/throw-targets';
+import { TASK_ASSIGNEES_MAX } from '@/lib/tasks/create-task-core';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 
 /**
@@ -79,11 +66,12 @@ export function throwTargetKey(target: ThrowTarget): string {
 
 /** Refusals `POST /api/tasks` can return, in words an operator can act on. */
 const REFUSAL_COPY: Record<string, string> = {
-  self_throw: 'You cannot throw a task at yourself.',
+  self_throw: 'Add someone besides yourself to the team.',
   unsupported_entity: 'That record kind cannot carry a task.',
   invalid_entity_id: 'That record could not be identified.',
   invalid_assignee: 'That person could not be found.',
   note_too_long: 'That note is too long.',
+  project_name_too_long: 'That project name is too long.',
 };
 
 /** Refusals `POST /api/tasks/ticket-target` can return, in the same voice. */
@@ -97,17 +85,18 @@ export function useThrowTask({
   onThrown,
   mode = 'record',
 }: {
-  onThrown: () => void;
+  /** Called with the created task's id (null if the response omitted it). */
+  onThrown: (taskId: number | null) => void;
   /** Which question the record field asks. See {@link ThrowTaskMode}. */
   mode?: ThrowTaskMode;
 }) {
-  const { user } = useAuth();
 
   const [raw, setRaw] = useState('');
   const [resolve, setResolve] = useState<ThrowResolveState>({ status: 'idle' });
   const [picked, setPicked] = useState<ThrowTarget | null>(null);
   const [staff, setStaff] = useState<StaffRecipient[] | null>(null);
-  const [assignee, setAssignee] = useState<StaffRecipient | null>(null);
+  const [assignees, setAssignees] = useState<StaffRecipient[]>([]);
+  const [projectName, setProjectName] = useState('');
   const [note, setNote] = useState('');
   const [urgent, setUrgent] = useState(false);
   const [deadline, setDeadline] = useState<Date | null>(null);
@@ -126,7 +115,7 @@ export function useThrowTask({
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { staff?: StaffRecipient[] } | null) => {
         if (cancelled) return;
-        setStaff((data?.staff ?? []).filter((s) => s.id !== user?.staffId));
+        setStaff(data?.staff ?? []);
       })
       .catch(() => {
         if (!cancelled) setStaff([]);
@@ -134,7 +123,7 @@ export function useThrowTask({
     return () => {
       cancelled = true;
     };
-  }, [user?.staffId]);
+  }, []);
 
   /**
    * Switching what the field ASKS FOR invalidates what it found. A carton
@@ -213,7 +202,7 @@ export function useThrowTask({
   }, [raw, mode, resolveTicket]);
 
   const submit = useCallback(async () => {
-    if (!picked || !assignee || throwing) return;
+    if (!picked || assignees.length === 0 || throwing) return;
     setThrowing(true);
     try {
       const res = await fetch('/api/tasks', {
@@ -225,7 +214,8 @@ export function useThrowTask({
         body: JSON.stringify({
           entityType: picked.entityType,
           entityId: picked.entityId,
-          assigneeStaffId: assignee.id,
+          assigneeStaffIds: assignees.map((person) => person.id),
+          projectName: projectName.trim() || undefined,
           note: note.trim() || undefined,
           urgency: urgent ? 'urgent' : 'normal',
           deadlineAt: deadline ? deadline.toISOString() : undefined,
@@ -244,7 +234,7 @@ export function useThrowTask({
       // Honest reporting: the task landed, but say so if an amplifier did not.
       const notified: string = data?.notified ?? 'sent';
       const urgency: string = data?.urgency ?? 'not_urgent';
-      const thrown = `${picked.label} → ${assignee.name}`;
+      const thrown = `${projectName.trim() || picked.label} → ${assignees.map((person) => person.name).join(', ')}`;
 
       if (notified === 'sent' && urgency !== 'failed') {
         toast.success(`Thrown · ${thrown}`);
@@ -254,7 +244,7 @@ export function useThrowTask({
         });
       } else if (notified === 'failed') {
         toast.warning(`Thrown · ${thrown}`, {
-          description: 'The task was created but the notification did not go out.',
+          description: 'One or more team members were not notified; the task was created.',
         });
       } else {
         toast.warning(`Thrown · ${thrown}`, {
@@ -264,32 +254,32 @@ export function useThrowTask({
       // A fresh key for the NEXT task — the composer stays mounted after a
       // send, so reusing the settled key would make the second task a no-op.
       idempotencyKey.current = safeRandomUUID();
-      onThrown();
+      onThrown(data?.task?.id ?? null);
     } catch {
       toast.error('Could not throw that task.');
       idempotencyKey.current = safeRandomUUID();
     } finally {
       setThrowing(false);
     }
-  }, [picked, assignee, throwing, note, urgent, deadline, onThrown]);
+  }, [picked, assignees, throwing, note, projectName, urgent, deadline, onThrown]);
 
-  /**
-   * Pick by id — for a combobox that commits `(staffId, staffName)` rather
-   * than handing back a roster row. Resolves against the loaded roster so the
-   * face keeps its avatar colour; synthesises a minimal recipient only when
-   * the roster has not settled, because the POST needs the id and nothing
-   * else.
-   */
-  const setAssigneeById = useCallback(
+  /** Keep the first selected member as the lead; a tap toggles membership. */
+  const toggleAssignee = useCallback((person: StaffRecipient) => {
+    setAssignees((current) =>
+      current.some((member) => member.id === person.id)
+        ? current.filter((member) => member.id !== person.id)
+        : current.length < TASK_ASSIGNEES_MAX ? [...current, person] : current,
+    );
+  }, []);
+
+  const toggleAssigneeById = useCallback(
     (staffId: number | null, staffName: string | null) => {
-      if (staffId == null) {
-        setAssignee(null);
-        return;
-      }
-      const known = staff?.find((s) => s.id === staffId);
-      setAssignee(known ?? { id: staffId, name: staffName ?? `#${staffId}`, role: '', color_hex: '' });
+      if (staffId == null) return;
+      const known = staff?.find((person) => person.id === staffId);
+      if (known) toggleAssignee(known);
+      else if (staffName) toggleAssignee({ id: staffId, name: staffName, role: '', color_hex: '' });
     },
-    [staff],
+    [staff, toggleAssignee],
   );
 
   /** Clear the draft without unmounting — the composer's "send another". */
@@ -297,7 +287,8 @@ export function useThrowTask({
     setRaw('');
     setResolve({ status: 'idle' });
     setPicked(null);
-    setAssignee(null);
+    setAssignees([]);
+    setProjectName('');
     setNote('');
     setUrgent(false);
     setDeadline(null);
@@ -311,9 +302,11 @@ export function useThrowTask({
     picked,
     setPicked,
     staff,
-    assignee,
-    setAssignee,
-    setAssigneeById,
+    assignees,
+    toggleAssignee,
+    toggleAssigneeById,
+    projectName,
+    setProjectName,
     note,
     setNote,
     urgent,
@@ -321,7 +314,7 @@ export function useThrowTask({
     deadline,
     setDeadline,
     throwing,
-    canThrow: Boolean(picked && assignee) && !throwing,
+    canThrow: Boolean(picked && assignees.length > 0) && !throwing,
     runResolve,
     submit,
     reset,

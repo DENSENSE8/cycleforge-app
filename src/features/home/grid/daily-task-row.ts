@@ -29,6 +29,14 @@ export interface DailyTaskRow {
   teamTotal: number;
   /** When the viewer ticked it (ISO), or null. */
   markedAt: string | null;
+  /** Item context, shown on the evidence column — never on one day's tick. */
+  description: string | null;
+  /** First linked Zendesk ticket (provider number), or null. */
+  ticketId: number | null;
+  /** Civil due time `HH:MM` (warehouse zone), or null. */
+  dueTime: string | null;
+  /** Minutes before {@link dueTime} the phone apps ring; null = no reminder. */
+  remindOffsetMinutes: number | null;
 }
 
 /**
@@ -66,5 +74,9 @@ export function buildDailyTaskRows(
     teamDone: teamDoneByItem.get(item.id) ?? 0,
     teamTotal: item.kind === 'once' && item.assignedStaffId != null ? 1 : rosterSize,
     markedAt: markedAtByItemId?.get(item.id) ?? null,
+    description: item.description,
+    ticketId: item.ticketId,
+    dueTime: item.dueTime,
+    remindOffsetMinutes: item.remindOffsetMinutes,
   }));
 }

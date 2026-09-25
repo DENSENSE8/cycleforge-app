@@ -30,6 +30,26 @@ Small-business tenants can open Unbox without triage. Industry-standard steps su
 
 Serial capture is **unbox-only** — the serial is not visible until the carton is opened.
 
+### Desk delivery ledgers
+
+`/incoming` is the purchasing/delivery read surface, not another scan service. It runs the shared
+triage `RecordLedger` frame over the existing receiving roots:
+
+- **On the way** groups purchase orders and lines from `useReceivingLinesData`; selecting a row
+  opens the consolidated `useIncomingDetails` model in the evidence column.
+- **Add PO** and **Add Return** open in that evidence column. Purchase listing URLs are stored per
+  line; return listing URLs are included in the claim-ticket detail. CSV return intake remains a
+  separate import path.
+- **Docked** (`/incoming?lane=docked`) is a separate warehouse-lifecycle ledger over the history
+  feed. It presents `SCANNED`, `UNBOXED`, `RECEIVED`, `ON_HOLD`, and `EXCEPTION` without changing
+  the triage/unbox timestamp laws above.
+- Barcode identity still resolves through `routeScan`; scan persistence still goes through
+  `recordReceivingScan`. The ledgers are presentation adapters over those roots.
+
+Inventory › Replenish uses the same industrial ledger anatomy for review, quantity/vendor/cost
+edits, legal status transitions, and draft purchase-order creation. Its domain mutations remain in
+`src/lib/replenishment.ts`; draft PO creation remains `/api/replenish/bulk-create-po`.
+
 ---
 
 ## Legacy modes (pre–surface split)

@@ -2,8 +2,9 @@
 
 /**
  * Inventory › **SKU Exceptions** — the floor-minted placeholder SKUs
- * (`TMP-<barcode>`) as an industrial record ledger with a triage evidence
- * column (HANDOFF-industrial-record-ledger; BRIEF §3 exception triage).
+ * (`TMP-<barcode>`, or `TMP-XXXXX-XXXXX` when made without one) as an
+ * industrial record ledger with a triage evidence column
+ * (HANDOFF-industrial-record-ledger; BRIEF §3 exception triage).
  *
  *   spine │ photo │ HLD · BIN <locations> · BARCODE ·························│ SEP 24
  *         │       │ title ··················································│ QTY [n]
@@ -18,12 +19,18 @@
  *   resolves says why — already paired, with a link to the real product.
  * - Live: {@link useSkuExceptionsRealtime} refetches the list and the open
  *   record whenever the phone (or another desk) mints, edits, counts or pairs.
+ * - **New temp SKU** (the desk's primary header verb) opens
+ *   {@link SkuExceptionCreateForm} in the evidence column, as the open "record";
+ *   J / K, Esc, ✕ or opening a row leave it. A fresh form per open (one
+ *   idempotency key each); done, it opens the new record.
  */
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { Plus } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
 import {
@@ -39,6 +46,7 @@ import {
 } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { RECORD_LOCATION_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import {
   useProvisionalSku,
   useProvisionalSkus,
@@ -57,9 +65,13 @@ import {
   skuExceptionNextStep,
   skuExceptionTitle,
 } from './sku-exception-record';
+import { SkuExceptionCreateForm } from './SkuExceptionCreateForm';
 import { SkuExceptionEvidence } from './SkuExceptionEvidence';
 
 const recordKey = (row: ProvisionalSku) => row.sku;
+
+/** The ledger's open key while the create form holds the evidence column — no SKU carries it. */
+const CREATE_KEY = 'new-temp-sku';
 
 export function SkuExceptionsLedger() {
   const router = useRouter();
@@ -81,8 +93,43 @@ export function SkuExceptionsLedger() {
     },
     [router, searchParams],
   );
-  const openRecord = useCallback((sku: string) => replace((params) => params.set('sku', sku)), [replace]);
-  const closeRecord = useCallback(() => replace((params) => params.delete('sku')), [replace]);
+  const [creating, setCreating] = useState(false);
+  const openRecord = useCallback(
+    (sku: string) => {
+      setCreating(false);
+      replace((params) => params.set('sku', sku));
+    },
+    [replace],
+  );
+  const closeRecord = useCallback(() => {
+    setCreating(false);
+    replace((params) => params.delete('sku'));
+  }, [replace]);
+  const toggleCreate = useCallback(() => {
+    if (creating) {
+      setCreating(false);
+      return;
+    }
+    setCreating(true);
+    if (selectedSku) replace((params) => params.delete('sku'));
+  }, [creating, replace, selectedSku]);
+
+  const createAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="primary"
+        size="md"
+        icon={<Plus aria-hidden />}
+        aria-pressed={creating}
+        onClick={toggleCreate}
+        data-testid="sku-exceptions-new"
+      >
+        New temp SKU
+      </DeskHeaderAction>
+    ),
+    [creating, toggleCreate],
+  );
 
   const { value: query, setValue: setQuery } = useOptimisticUrlParam<string>({
     urlValue: searchParams.get('q') ?? '',
@@ -101,75 +148,83 @@ export function SkuExceptionsLedger() {
   );
 
   return (
-    <RecordLedger
-      testId="sku-exceptions-ledger"
-      label="SKU exceptions"
-      records={shown}
-      recordKey={recordKey}
-      renderRecord={renderRecord}
-      openKey={selectedSku}
-      onOpenKey={openRecord}
-      onClose={closeRecord}
-      loading={list.isLoading}
-      toolbar={
-        <>
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="Search title, SKU, barcode, description or location…"
-            className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-none pl-2"
-            tone="neutral"
-            hideUnderline
-            fillHost
-          />
-          <span className={cn(RECORD_LABEL_CLASS, 'ml-auto flex items-center px-3 tabular-nums text-mode-muted')}>
-            {query.trim() ? `${shown.length} of ${rows.length}` : `${rows.length}`} on hold
-          </span>
-        </>
-      }
-      banner={
-        list.isError ? (
-          <div
-            role="alert"
-            data-testid="sku-exceptions-error"
-            className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-rule bg-mode-well px-3 py-2 text-mode-warn')}
-          >
-            {list.error instanceof Error ? list.error.message : 'Could not load SKU exceptions.'}
-          </div>
-        ) : null
-      }
-      empty={
-        query.trim() ? (
+    <>
+      <DeskActionSlotRegistrar role="primary">{createAction}</DeskActionSlotRegistrar>
+      <RecordLedger
+        testId="sku-exceptions-ledger"
+        label="SKU exceptions"
+        records={shown}
+        recordKey={recordKey}
+        renderRecord={renderRecord}
+        openKey={creating ? CREATE_KEY : selectedSku}
+        onOpenKey={openRecord}
+        onClose={closeRecord}
+        loading={list.isLoading}
+        toolbar={
           <>
-            <b className="text-role-body font-bold text-mode-ink">No SKU exception matches “{query.trim()}”</b>
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              className={cn(RECORD_LABEL_CLASS, 'underline underline-offset-2 text-mode-ink')}
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              placeholder="Search title, SKU, barcode, description or location…"
+              className="min-w-0 max-w-[28rem] flex-1 overflow-hidden rounded-none pl-2"
+              tone="neutral"
+              hideUnderline
+              fillHost
+            />
+            <span className={cn(RECORD_LABEL_CLASS, 'ml-auto flex items-center px-3 tabular-nums text-mode-muted')}>
+              {query.trim() ? `${shown.length} of ${rows.length}` : `${rows.length}`} on hold
+            </span>
+          </>
+        }
+        banner={
+          list.isError ? (
+            <div
+              role="alert"
+              data-testid="sku-exceptions-error"
+              className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-rule bg-mode-well px-3 py-2 text-mode-warn')}
             >
-              Clear search
-            </button>
-          </>
-        ) : (
-          <>
-            <b className="text-role-body font-bold text-mode-ink">No SKU exceptions</b>
-            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Every scanned product is paired</span>
-          </>
-        )
-      }
-      evidenceNoun="exception"
-      evidence={
-        <SkuExceptionEvidence
-          sku={selectedSku}
-          item={record.data}
-          loading={record.isLoading}
-          error={record.isError ? record.error : null}
-          mergedInto={record.mergedInto}
-          rows={rows}
-          onExit={closeRecord}
-        />
-      }
-    />
+              {list.error instanceof Error ? list.error.message : 'Could not load SKU exceptions.'}
+            </div>
+          ) : null
+        }
+        empty={
+          query.trim() ? (
+            <>
+              <b className="text-role-body font-bold text-mode-ink">No SKU exception matches “{query.trim()}”</b>
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className={cn(RECORD_LABEL_CLASS, 'underline underline-offset-2 text-mode-ink')}
+              >
+                Clear search
+              </button>
+            </>
+          ) : (
+            <>
+              <b className="text-role-body font-bold text-mode-ink">No SKU exceptions</b>
+              <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Every scanned product is paired</span>
+            </>
+          )
+        }
+        evidenceNoun="exception"
+        evidenceHead={creating ? 'New exception' : undefined}
+        evidence={
+          creating ? (
+            <SkuExceptionCreateForm onCreated={openRecord} onCancel={closeRecord} />
+          ) : (
+            <SkuExceptionEvidence
+              sku={selectedSku}
+              item={record.data}
+              loading={record.isLoading}
+              error={record.isError ? record.error : null}
+              mergedInto={record.mergedInto}
+              rows={rows}
+              onExit={closeRecord}
+            />
+          )
+        }
+      />
+    </>
   );
 }
 
@@ -191,7 +246,7 @@ const SkuExceptionRecord = memo(function SkuExceptionRecord({
   return (
     <IndustrialRecord
       recordKey={row.sku}
-      state="onHold"
+      state={lifecycleRecordState('onHold')}
       open={open}
       openLabel={`SKU exception ${row.sku}, on hold, ${title}`}
       onOpen={() => onOpen(row.sku)}
@@ -202,9 +257,13 @@ const SkuExceptionRecord = memo(function SkuExceptionRecord({
         {
           main: (
             <>
-              <RecordStateCode state="onHold" />
+              <RecordStateCode state={lifecycleRecordState('onHold')} />
               <RecordBin faces={skuExceptionLocationFaces(row)} className={RECORD_LOCATION_CLASS} />
-              <RecordIdFact label="Barcode" value={row.barcode} />
+              {row.barcode ? (
+                <RecordIdFact label="Barcode" value={row.barcode} />
+              ) : (
+                <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>No barcode</span>
+              )}
             </>
           ),
           right: (

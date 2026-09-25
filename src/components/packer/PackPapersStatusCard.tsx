@@ -21,7 +21,7 @@ import {
   subscribePackPrintBundleUi,
   triggerPackPrintBundle,
   type PrintBundleUiState,
-} from '@/components/packer/pack-print-bundle';
+} from '@/lib/print/pack-print-bundle-client';
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
 
 export function PackPapersStatusCard({ orderRowId }: { orderRowId: number | null }) {

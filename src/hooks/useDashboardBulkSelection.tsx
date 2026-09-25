@@ -53,7 +53,6 @@ import {
 import { ORDERS_FIELD_CATALOG } from '@/lib/tables/field-catalog/orders';
 import { BulkConditionDialog } from '@/components/dashboard/BulkConditionDialog';
 import { BulkQtyDialog } from '@/components/dashboard/BulkQtyDialog';
-import { BulkNotesDialog } from '@/components/dashboard/BulkNotesDialog';
 import { BulkShipByDialog } from '@/components/dashboard/BulkShipByDialog';
 import { BulkFlagDialog } from '@/components/dashboard/BulkFlagDialog';
 import { ListingAutomationAssignCard } from '@/components/dashboard/ListingAutomationAssignCard';
@@ -352,13 +351,11 @@ export function useDashboardBulkSelection(
     [assignOrder, clearSelection, confirmBulkWrite, selectedOrderIds],
   );
 
-  // ─── Bulk condition / qty / notes ──────────────────────────────────────────
+  // ─── Bulk condition / qty ──────────────────────────────────────────────────
   const [conditionOpen, setConditionOpen] = useState(false);
   const [isSavingCondition, setIsSavingCondition] = useState(false);
   const [qtyOpen, setQtyOpen] = useState(false);
   const [isSavingQty, setIsSavingQty] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const handleConfirmCondition = useCallback(
     async (condition: ConditionGrade) => {
@@ -406,34 +403,6 @@ export function useDashboardBulkSelection(
     [assignOrder, clearSelection, confirmBulkWrite, selectedOrderIds],
   );
 
-  const handleConfirmNotes = useCallback(
-    async (noteText: string) => {
-      const orderIds = selectedOrderIds();
-      if (orderIds.length === 0) return;
-      if (!(await confirmBulkWrite(orderIds.length, 'Add the note'))) return;
-      setIsSavingNotes(true);
-      try {
-        const res = await fetch('/api/orders/notes/bulk', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderIds, noteText }),
-        });
-        if (!res.ok) throw new Error(`bulk-notes ${res.status}`);
-        const data = (await res.json()) as { updatedIds?: number[] };
-        const n = data.updatedIds?.length ?? orderIds.length;
-        toast.success(n === 1 ? 'Note added' : `Note added on ${n} orders`);
-        setNotesOpen(false);
-        clearSelection();
-        refreshDomain('orders.outbound');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Could not add the note');
-      } finally {
-        setIsSavingNotes(false);
-      }
-    },
-    [clearSelection, confirmBulkWrite, selectedOrderIds],
-  );
-
   // ─── Bulk triage flag ──────────────────────────────────────────────────────
   const [flagOpen, setFlagOpen] = useState(false);
   const [isSavingFlag, setIsSavingFlag] = useState(false);
@@ -445,8 +414,8 @@ export function useDashboardBulkSelection(
 
   // Every dialog closed → the next verb targets the check-set again.
   useEffect(() => {
-    if (!conditionOpen && !qtyOpen && !notesOpen && !shipByOpen && !flagOpen) setDialogRows(null);
-  }, [conditionOpen, qtyOpen, notesOpen, shipByOpen, flagOpen]);
+    if (!conditionOpen && !qtyOpen && !shipByOpen && !flagOpen) setDialogRows(null);
+  }, [conditionOpen, qtyOpen, shipByOpen, flagOpen]);
 
   const handleConfirmFlag = useCallback(
     async (flag: OrderRowFlagId | null) => {
@@ -793,17 +762,6 @@ export function useDashboardBulkSelection(
         },
       },
       {
-        key: 'notes',
-        label: 'Add note',
-        icon: <FileText className="h-4 w-4" />,
-        group: 'Set on these orders',
-        writesField: 'orders.notes',
-        run: (rows) => {
-          setDialogRows(rows.length > 0 ? rows : null);
-          setNotesOpen(true);
-        },
-      },
-      {
         key: 'listing-rule',
         label: 'Listing → staff rule',
         icon: <Bookmark className="h-4 w-4" />,
@@ -949,13 +907,6 @@ export function useDashboardBulkSelection(
         saving={isSavingQty}
         onCancel={() => setQtyOpen(false)}
         onConfirm={handleConfirmQty}
-      />
-      <BulkNotesDialog
-        open={notesOpen}
-        count={targetRows.length}
-        saving={isSavingNotes}
-        onCancel={() => setNotesOpen(false)}
-        onConfirm={handleConfirmNotes}
       />
       <BulkShipByDialog
         open={shipByOpen}

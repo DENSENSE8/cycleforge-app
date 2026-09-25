@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LabelPurpose } from '@/lib/shipping/label-purpose';
 import type { LabelLinkCandidate } from '@/lib/shipping/order-label-links';
 import type { PriceBreakdown } from '@/lib/orders/order-price-breakdown';
-import { orderLabelSummaryKey } from './paperwork/order-paperwork-client';
+import { orderLabelSummaryKey } from '@/lib/orders/order-paperwork-client';
 
 export const labelCandidatesKey = (orderId: number, q: string) => ['order-label-candidates', orderId, q] as const;
 export const orderPriceBreakdownKey = (orderId: number) => ['order-price-breakdown', orderId] as const;

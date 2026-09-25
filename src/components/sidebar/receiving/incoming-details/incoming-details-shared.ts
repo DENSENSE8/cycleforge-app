@@ -104,6 +104,7 @@ export interface DetailsResponse {
     receiving_line_id: number | null;
     rate: number | null;
     item_total: number | null;
+    listing_url: string | null;
   }>;
   shipment: {
     shipment_id: number;

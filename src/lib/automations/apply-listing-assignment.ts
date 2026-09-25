@@ -2,8 +2,11 @@
  * applyListingAssignment — evaluate org automation_rules for an order and
  * write work_assignments via the shared upsert helper.
  *
- * v1: do not overwrite a human ASSIGNED assignee (different staff). Idempotent
- * when already assigned to the same staff. CSV row assignees beat rules.
+ * Each action resolves primary → backup against who is out today
+ * (listStaffOutOnDate); both out leaves the work unassigned for anyone to
+ * claim. v1: do not overwrite a human ASSIGNED assignee (different from the
+ * resolved staff). Idempotent when already assigned to the resolved staff.
+ * CSV row assignees beat rules.
  */
 
 import type { PoolClient } from 'pg';
@@ -16,15 +19,30 @@ import {
   type QueryClient,
 } from '@/lib/work-assignments/upsert-order-assignment';
 import {
+  collectActionStaffIds,
   filterActionsForCsvOverride,
   matchListingRule,
   normalizeItemNumber,
+  resolveActionAssignee,
   selectActionsForTrigger,
   type AssignWorkAction,
   type AutomationRuleRow,
   type AutomationTriggerKey,
   type ListingAutomationFacts,
+  type ResolvedAssignee,
+  unassignedReason,
 } from '@/lib/automations/listing-match';
+import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
+
+/** Loads the staff among `staffIds` who are out today. Test seam. */
+export type ListStaffOut = (
+  organizationId: OrgId,
+  staffIds: number[],
+  client: QueryClient,
+) => Promise<ReadonlySet<number>>;
+
+const defaultListStaffOut: ListStaffOut = (organizationId, staffIds, client) =>
+  listStaffOutOnDate(organizationId, staffIds, { client });
 
 export type ApplyListingAssignmentInput = {
   organizationId: OrgId;
@@ -36,12 +54,20 @@ export type ApplyListingAssignmentInput = {
   overwriteManual?: boolean;
   /** Optional client already inside a tenant transaction. */
   client?: QueryClient;
+  /** Out-today lookup; defaults to listStaffOutOnDate (today, PST). */
+  listStaffOut?: ListStaffOut;
+};
+
+/** An applied action plus who took it: the primary, or the backup standing in. */
+export type AppliedAssignWorkAction = AssignWorkAction & {
+  assigned_staff_id: number;
+  via: ResolvedAssignee['via'];
 };
 
 export type ApplyListingAssignmentResult = {
   status: 'applied' | 'skipped' | 'failed';
   ruleId: number | null;
-  actionsApplied: AssignWorkAction[];
+  actionsApplied: AppliedAssignWorkAction[];
   reason?: string;
   error?: string;
 };
@@ -129,35 +155,48 @@ async function applyActions(
   actions: AssignWorkAction[],
   overwriteManual: boolean,
   client: QueryClient,
-): Promise<{ applied: AssignWorkAction[]; skipped: string[] }> {
-  const applied: AssignWorkAction[] = [];
+  listStaffOut: ListStaffOut,
+): Promise<{ applied: AppliedAssignWorkAction[]; skipped: string[] }> {
+  const applied: AppliedAssignWorkAction[] = [];
   const skipped: string[] = [];
+  const outToday = await listStaffOut(organizationId, collectActionStaffIds(actions), client);
 
   for (const action of actions) {
+    const resolved = resolveActionAssignee(action, outToday);
+    if (!resolved) {
+      // Leave the work unassigned so anyone can claim it.
+      skipped.push(unassignedReason(action));
+      continue;
+    }
+    const appliedAction: AppliedAssignWorkAction = {
+      ...action,
+      assigned_staff_id: resolved.staffId,
+      via: resolved.via,
+    };
     const current = await getActiveOrderAssignee(orderId, action.work_type, client);
     if (
       current &&
       current.status !== 'OPEN' &&
       current.staffId != null &&
-      current.staffId !== action.staff_id &&
+      current.staffId !== resolved.staffId &&
       !overwriteManual
     ) {
       skipped.push(`${action.work_type}:manual_assignee_${current.staffId}`);
       continue;
     }
-    if (current?.staffId === action.staff_id && current.status === 'ASSIGNED') {
+    if (current?.staffId === resolved.staffId && current.status === 'ASSIGNED') {
       // Idempotent — already correct.
-      applied.push(action);
+      applied.push(appliedAction);
       continue;
     }
     await upsertOrderAssignment(
       organizationId,
       orderId,
       action.work_type,
-      action.staff_id,
+      resolved.staffId,
       client,
     );
-    applied.push(action);
+    applied.push(appliedAction);
   }
 
   return { applied, skipped };
@@ -220,8 +259,7 @@ async function runInClient(
       };
     }
 
-    // On import / item_number_set: apply TEST immediately; PACK waits for PASS
-    // allocate (unit.test_passed) unless trigger is unit.test_passed.
+    // Import / item_number_set run TEST + PACK; unit.test_passed re-runs PACK.
     const actionsForTrigger = selectActionsForTrigger(filtered, input.triggerKey);
 
     if (actionsForTrigger.length === 0) {
@@ -254,6 +292,7 @@ async function runInClient(
       actionsForTrigger,
       input.overwriteManual === true,
       client,
+      input.listStaffOut ?? defaultListStaffOut,
     );
 
     if (applied.length === 0) {

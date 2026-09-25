@@ -119,15 +119,16 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
 ];
 
 /**
- * The PRODUCT default To-ship layout: the pick step in status:1, and
- * `qty · amount · condition · item # · notes` under the title. Money is a
- * SUBTITLE binding, not `amountFieldId` — a field may not be bound twice.
+ * The PRODUCT default To-ship layout: Pick and Pack in the two status tracks,
+ * each with its completion date and time, and `qty · amount · condition · item
+ * # · notes` under the title. Money is a SUBTITLE binding, not `amountFieldId`
+ * — a field may not be bound twice.
  * Guard: `orders.test.ts` parses this against the catalog.
  */
 export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',
   identityFieldId: 'orders.order_id',
-  statusBindings: [{ fieldId: 'orders.picked' }],
+  statusBindings: [{ fieldId: 'orders.picked' }, { fieldId: 'orders.packed' }],
   subtitleBindings: [
     { fieldId: 'orders.qty' },
     { fieldId: 'orders.amount' },

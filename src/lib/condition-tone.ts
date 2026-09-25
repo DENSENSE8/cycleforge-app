@@ -24,6 +24,12 @@ export type ConditionGradeTone = {
    * {@link ConditionGradeTone.text}.
    */
   dotClass: string;
+  /**
+   * Solid chip — fill + ink, ≥ 4.5:1 (the industrial condition chip, owner
+   * 2026-09-25). The fill is the grade's text hue, a step darker where white
+   * on it would fail (teal / emerald -700).
+   */
+  solid: string;
 };
 
 /** Props for a house `GridStatusCellValue` condition face. */
@@ -47,14 +53,17 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-text-warning',
     chipIconClass: 'inline-flex items-center justify-center text-text-warning',
     dotClass: 'bg-yellow-500',
+    solid: 'bg-orange-700 text-white',
   },
   LIKE_NEW: {
     active: 'bg-teal-600 text-white shadow-none ring-teal-700',
     inactive: 'bg-surface-card text-teal-800 ring-teal-200 hover:bg-teal-50',
     badge: 'bg-teal-50 text-teal-700 ring-teal-200',
-    text: 'text-teal-600',
-    chipIconClass: 'inline-flex items-center justify-center text-teal-600',
+    // -700: teal-600 as text is 3.74:1 on white (owner 2026-09-25: too faint).
+    text: 'text-teal-700',
+    chipIconClass: 'inline-flex items-center justify-center text-teal-700',
     dotClass: 'bg-teal-600',
+    solid: 'bg-teal-700 text-white',
   },
   REFURBISHED: {
     active: 'bg-indigo-600 text-white shadow-none ring-indigo-700',
@@ -63,14 +72,17 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-indigo-600',
     chipIconClass: 'inline-flex items-center justify-center text-indigo-600',
     dotClass: 'bg-indigo-600',
+    solid: 'bg-indigo-600 text-white',
   },
   USED_A: {
     active: 'bg-emerald-600 text-white shadow-none ring-emerald-700',
     inactive: 'bg-surface-card text-emerald-800 ring-emerald-200 hover:bg-emerald-50',
     badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-    text: 'text-emerald-600',
-    chipIconClass: 'inline-flex items-center justify-center text-emerald-600',
+    // -700: emerald-600 as text is 3.77:1 on white (owner 2026-09-25: too faint).
+    text: 'text-emerald-700',
+    chipIconClass: 'inline-flex items-center justify-center text-emerald-700',
     dotClass: 'bg-emerald-600',
+    solid: 'bg-emerald-700 text-white',
   },
   USED_B: {
     active: 'bg-blue-600 text-white shadow-none ring-blue-700',
@@ -79,6 +91,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-blue-600',
     chipIconClass: 'inline-flex items-center justify-center text-blue-600',
     dotClass: 'bg-blue-600',
+    solid: 'bg-blue-600 text-white',
   },
   USED_C: {
     // ds-allow-raw-neutral: identity/tone hue — USED_C's slate among emerald/blue/amber grade hues, not chrome
@@ -88,6 +101,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-text-muted',
     chipIconClass: 'inline-flex items-center justify-center text-text-muted',
     dotClass: 'bg-slate-700', // ds-allow-raw-neutral: identity/tone hue — USED_C slate dot
+    solid: 'bg-slate-600 text-white', // ds-allow-raw-neutral: identity/tone hue — USED_C slate chip
   },
   PARTS: {
     // Brown (orange-900) — must stay distinct from BRAND_NEW yellow; amber
@@ -98,6 +112,7 @@ export const CONDITION_GRADE_TONE: Record<ConditionGrade, ConditionGradeTone> = 
     text: 'text-orange-900',
     chipIconClass: 'inline-flex items-center justify-center text-orange-900',
     dotClass: 'bg-orange-900',
+    solid: 'bg-orange-900 text-white',
   },
 };
 

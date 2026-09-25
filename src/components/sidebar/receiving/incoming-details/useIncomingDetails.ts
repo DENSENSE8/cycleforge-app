@@ -83,7 +83,7 @@ export function useIncomingDetails({
 
   const { data, isLoading, isError, refetch } = useQuery<DetailsResponse>({
     queryKey: ['incoming-details', detailsKey, focusKey],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const qs = isShipmentOnly
         ? `shipment_id=${encodeURIComponent(String(shipmentId))}`
         : isInboundOnly
@@ -95,7 +95,7 @@ export function useIncomingDetails({
         !isCartonOnly && focusKey != null
           ? `${qs}&receiving_id=${encodeURIComponent(String(focusKey))}`
           : qs;
-      const res = await fetch(`/api/receiving-lines/incoming/details?${focusQs}`, { cache: 'no-store' });
+      const res = await fetch(`/api/receiving-lines/incoming/details?${focusQs}`, { cache: 'no-store', signal });
       if (!res.ok) throw new Error(`details ${res.status}`);
       return res.json();
     },

@@ -24,13 +24,22 @@ export type IdentificationAutomationTriggerKey =
   (typeof IDENTIFICATION_AUTOMATION_TRIGGER_KEYS)[number];
 export type AutomationTriggerKey = (typeof AUTOMATION_TRIGGER_KEYS)[number];
 
+/**
+ * `backup_staff_id` takes the action when `staff_id` is out that PST day
+ * (inactive, unscheduled, or approved time off). Both out → left unassigned.
+ */
 export const AutomationAssignAction = z
   .object({
     type: z.literal('assign_work'),
     work_type: z.enum(['TEST', 'PACK']),
     staff_id: z.number().int().positive(),
+    backup_staff_id: z.number().int().positive().optional(),
   })
-  .strict();
+  .strict()
+  .refine((a) => a.backup_staff_id == null || a.backup_staff_id !== a.staff_id, {
+    message: 'backup_staff_id must differ from staff_id',
+    path: ['backup_staff_id'],
+  });
 
 export const AutomationRuleWhen = z
   .object({
@@ -77,6 +86,9 @@ export const ListingAssignBody = z
     mode: z.enum(['save_and_assign', 'apply_existing']),
     techId: z.number().int().positive().optional().nullable(),
     packerId: z.number().int().positive().optional().nullable(),
+    /** Used when the primary is out that day. Must differ from the primary. */
+    backupTechId: z.number().int().positive().optional().nullable(),
+    backupPackerId: z.number().int().positive().optional().nullable(),
     idempotencyKey: z.string().min(8).max(128).optional(),
   })
   .strict()
@@ -88,6 +100,20 @@ export const ListingAssignBody = z
       if (body.packerId == null || body.packerId <= 0) {
         ctx.addIssue({ code: 'custom', message: 'packerId required', path: ['packerId'] });
       }
+    }
+    if (body.backupTechId != null && body.backupTechId === body.techId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'backupTechId must differ from techId',
+        path: ['backupTechId'],
+      });
+    }
+    if (body.backupPackerId != null && body.backupPackerId === body.packerId) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'backupPackerId must differ from packerId',
+        path: ['backupPackerId'],
+      });
     }
   });
 

@@ -12,7 +12,9 @@
  * barcode rather than handing out a sequence number buys the property the
  * whole feature depends on: scanning the SAME physical box twice resolves to
  * the SAME provisional, so two operators working opposite ends of a rack
- * cannot end up with half the count each under rival placeholder ids.
+ * cannot end up with half the count each under rival placeholder ids. A
+ * product with no barcode derives its key from the caller's idempotency key
+ * instead (`provisionalSkuForSourceRef`), for the same reason.
  *
  * The `TMP-` prefix is load-bearing in a second way — any report that renders
  * a raw SKU string shows it as obviously not a real product, which is the
@@ -50,6 +52,59 @@ export function provisionalSkuForBarcode(rawBarcode: string): string | null {
   const normalized = normalizeProvisionalBarcode(rawBarcode);
   if (!normalized) return null;
   return `${PROVISIONAL_SKU_PREFIX}${normalized}`;
+}
+
+const CROCKFORD_BASE32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const FNV64_OFFSET = BigInt('0xcbf29ce484222325');
+const FNV64_PRIME = BigInt('0x100000001b3');
+const FMIX64_C1 = BigInt('0xff51afd7ed558ccd');
+const FMIX64_C2 = BigInt('0xc4ceb9fe1a85ec53');
+const SHIFT_33 = BigInt(33);
+const U64_MASK = (BigInt(1) << BigInt(64)) - BigInt(1);
+
+/**
+ * The provisional SKU for a product that has NO barcode — a name typed on the
+ * phone, a row on a bin sheet — keyed by the caller's idempotency key.
+ *
+ * Same (org, key) → same SKU, so a double-tapped Create or a re-run import
+ * joins the placeholder it already made instead of minting a rival (the same
+ * property `provisionalSkuForBarcode` gets from the physical barcode). The key
+ * is NOT the title: two different boxes can share a name.
+ *
+ * The org is hashed in because `sku_catalog.sku` and `sku_stock.sku` are
+ * GLOBALLY unique: the same import run against the QA sandbox and then the
+ * real org must not mint the same string twice.
+ *
+ * Shape `TMP-XXXXX-XXXXX` (50 bits of FNV-1a 64 + murmur3 fmix64, Crockford
+ * base32). The finaliser matters: bare FNV barely moves the high bits for
+ * keys that differ in one trailing character (`…:C-04-15-1` / `…-2`), which
+ * made sibling SKUs near-identical. The inner hyphen is deliberate: barcode
+ * normalisation strips hyphens, so a barcode-derived key can never collide
+ * with one of these.
+ *
+ * Pure and dependency-free (no `node:crypto`) because client code imports
+ * this module.
+ */
+export function provisionalSkuForSourceRef(orgId: string, rawRef: string): string | null {
+  const ref = String(rawRef ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+  const org = String(orgId ?? '').trim().toLowerCase();
+  if (!ref || !org) return null;
+  let hash = FNV64_OFFSET;
+  for (const byte of new TextEncoder().encode(`${org}\n${ref}`)) {
+    hash ^= BigInt(byte);
+    hash = (hash * FNV64_PRIME) & U64_MASK;
+  }
+  hash ^= hash >> SHIFT_33;
+  hash = (hash * FMIX64_C1) & U64_MASK;
+  hash ^= hash >> SHIFT_33;
+  hash = (hash * FMIX64_C2) & U64_MASK;
+  hash ^= hash >> SHIFT_33;
+  let chars = '';
+  for (let i = 0; i < 10; i += 1) {
+    chars += CROCKFORD_BASE32[Number(hash & BigInt(31))];
+    hash >>= BigInt(5);
+  }
+  return `${PROVISIONAL_SKU_PREFIX}${chars.slice(0, 5)}-${chars.slice(5)}`;
 }
 
 /** True when a SKU string is a floor-minted placeholder. */

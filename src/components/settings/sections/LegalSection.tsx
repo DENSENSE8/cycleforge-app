@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { Button, Panel } from '@/design-system/primitives';
 import { LEGAL_DOCS, LEGAL_INDEX_BLURB, type LegalDoc } from '@/content/legal';
 

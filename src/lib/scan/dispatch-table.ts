@@ -89,7 +89,7 @@ export interface ArmedScanSession {
  * and a line label is taken so the tech can pick one of its units.
  */
 export const QC_SCAN_SESSION: ArmedScanSession = {
-  expects: ['serial-unit', 'receiving-line'],
+  expects: ['serial-unit', 'receiving-line', 'receiving'],
   work: 'qc',
   title: 'Quality control',
 };
@@ -186,6 +186,17 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     reason: 'this station is running QC — pick a unit on this line',
   },
   {
+    // A carton label is a useful QC starting point too: it opens the carton
+    // hub's line picker, rather than pretending the carton itself is a unit.
+    id: 'qc-carton',
+    classes: ['receiving'],
+    when: ALWAYS,
+    armedFor: 'qc',
+    card: 'qc',
+    stateful: true,
+    reason: 'this station is running QC — pick a line in this carton',
+  },
+  {
     id: 'staged-for-pack',
     classes: ['handling-unit', 'sscc'],
     when: (s) => s.stagedForPack === true,
@@ -248,6 +259,7 @@ const TITLE_TEMPLATES = {
   qcLpn: (lpn: string) => `QC · LPN ${lpn}`,
   qcUnit: (unit: string) => `QC · Unit ${unit}`,
   qcLine: (line: string) => `QC · Line ${line}`,
+  qcCarton: (carton: string) => `QC · Carton ${carton}`,
   pack: (ref: string) => `Pack · ${ref}`,
 } as const;
 
@@ -302,6 +314,10 @@ function titleFor(
       // A URL-form line label reads as its printed handle, not the whole URL.
       const lineId = /^\/m\/l\/(\d+)$/.exec(route.redirect || '')?.[1];
       return TITLE_TEMPLATES.qcLine(lineId ? `L-${lineId}` : route.value);
+    }
+    if (route.type === 'receiving') {
+      const cartonId = /^\/m\/r\/(\d+)$/.exec(route.redirect || '')?.[1];
+      return TITLE_TEMPLATES.qcCarton(cartonId ? `R-${cartonId}` : route.value);
     }
     return TITLE_TEMPLATES.qcLpn(lpnLabel(route));
   }

@@ -18,7 +18,8 @@ const ROUTE_LISTING_ASSIGN_POST = 'automations.listing-assign.post';
 
 /**
  * GET /api/automations/listing-assign?orderIds=1,2,3
- * Preview distinct (item #, SKU) pairs covered by the selection.
+ * Preview distinct (item #, SKU) pairs covered by the selection, each with the
+ * rule that keys it (pair rule, else item-#-only) and its primary/backup staff.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
@@ -45,7 +46,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
 /**
  * POST /api/automations/listing-assign
- * save_and_assign — upsert one rule per (item #, SKU) pair + assign TEST/PACK on selected orders.
+ * save_and_assign — upsert one rule per (item #, SKU) pair (primary + optional
+ *   backup per role) + assign TEST/PACK on selected orders now, backup when the
+ *   primary is out today.
  * apply_existing — fire existing automation_rules against the selection.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -71,6 +74,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       mode: parsed.mode,
       techId: parsed.techId,
       packerId: parsed.packerId,
+      backupTechId: parsed.backupTechId,
+      backupPackerId: parsed.backupPackerId,
       actorStaffId: ctx.staffId ?? null,
     });
 

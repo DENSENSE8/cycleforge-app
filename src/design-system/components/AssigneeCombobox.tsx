@@ -7,8 +7,10 @@
  * Check) but the trigger is a table cell or icon, not a form Button, so the
  * shell is design-system Popover (anchorRef), not ui/popover.
  *
- * Assign: name-click. Roster: All staff trailing on CommandInput; each row
- * carries eligibility switches the host named (Picker, Packer, …).
+ * Assign: name-click. Roster: the pencil trailing on CommandInput (search
+ * left, pencil right) toggles it; each row carries eligibility switches the
+ * host named (Picker, Packer, …) and a name-click still assigns rows the host
+ * marks `assignable`. The anchored popover is flush — shell and rows square.
  * Numbered assign (left-gutter picker/packer): heading + 1…n badges; empty
  * search + digit commits.
  *
@@ -20,7 +22,7 @@
  */
 
 import { useId, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
-import { Check, User } from '@/components/Icons';
+import { Check, Pencil } from '@/components/Icons';
 import {
   Command,
   CommandEmpty,
@@ -31,7 +33,7 @@ import {
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { Popover } from '@/design-system/primitives/Popover';
 import { Switch } from '@/design-system/primitives/Switch';
-import { DROPDOWN_ITEM_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass, DROPDOWN_ITEM_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -59,10 +61,14 @@ export type AssigneeComboboxPanelProps = {
   loading?: boolean;
   emptyMessage: string;
   roster: boolean;
-  showAllStaff?: boolean;
-  onAllStaff?: () => void;
+  /** Present ⇒ the trailing pencil toggles roster mode. */
+  onEditRoster?: () => void;
+  /** Accessible name for the pencil — e.g. Edit pickers. */
+  editRosterLabel?: string;
   onSelect: (row: AssigneeComboboxRow) => void;
   onFaceChange?: (row: AssigneeComboboxRow, faceId: string, checked: boolean) => void;
+  /** Square row faces — set by the flush {@link AssigneeCombobox} shell. */
+  flushRows?: boolean;
   disabled?: boolean;
   listId?: string;
   className?: string;
@@ -84,10 +90,11 @@ export function AssigneeComboboxPanel({
   loading = false,
   emptyMessage,
   roster,
-  showAllStaff = false,
-  onAllStaff,
+  onEditRoster,
+  editRosterLabel = 'Edit staff',
   onSelect,
   onFaceChange,
+  flushRows = false,
   disabled = false,
   listId,
   className,
@@ -136,13 +143,14 @@ export function AssigneeComboboxPanel({
         disabled={disabled}
         className="text-role-micro text-text-default"
         trailing={
-          showAllStaff && onAllStaff ? (
+          onEditRoster ? (
             <IconButton
               type="button"
-              size="xs"
+              size="sm"
               tone="neutral"
-              icon={<User className="h-3.5 w-3.5" />}
-              ariaLabel="All staff"
+              radius="flush"
+              icon={<Pencil className="h-3.5 w-3.5" />}
+              ariaLabel={editRosterLabel}
               aria-pressed={roster}
               data-testid="stage-staff-all-staff"
               className={cn(
@@ -154,7 +162,7 @@ export function AssigneeComboboxPanel({
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                onAllStaff();
+                onEditRoster();
               }}
             />
           ) : undefined
@@ -169,7 +177,7 @@ export function AssigneeComboboxPanel({
         ) : null}
 
         {rows.map((row, index) => {
-          const canAssignHere = !roster && row.assignable !== false;
+          const canAssignHere = row.assignable !== false;
           const hotkey = numbered && !roster ? String(index + 1) : null;
           return (
             <CommandItem
@@ -181,9 +189,9 @@ export function AssigneeComboboxPanel({
               }}
               className={cn(
                 'flex w-full min-w-0 items-center gap-2 px-2.5 py-1.5 text-left',
-                DROPDOWN_ITEM_CORNER,
+                flushRows ? cornerClass('flush') : DROPDOWN_ITEM_CORNER,
                 canAssignHere ? 'cursor-pointer' : 'cursor-default',
-                row.selected && !roster ? 'bg-surface-sunken text-text-default' : 'text-text-default',
+                row.selected ? 'bg-surface-sunken text-text-default' : 'text-text-default',
               )}
             >
               {row.leading}
@@ -258,14 +266,14 @@ export function AssigneeCombobox({
       onClose={onClose}
       anchorRef={anchorRef}
       placement="bottom-start"
-      gap={4}
+      gap={0}
       role="listbox"
       aria-label={panel.roster ? 'Staff roster' : `Assign ${label}`}
       padded={false}
-      className="w-[280px]"
+      className={cn('w-[280px]', cornerClass('flush'))}
       data-testid={testId}
     >
-      <AssigneeComboboxPanel {...panel} onEscape={onClose} />
+      <AssigneeComboboxPanel {...panel} flushRows onEscape={onClose} />
     </Popover>
   );
 }

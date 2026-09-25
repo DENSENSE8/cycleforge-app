@@ -66,7 +66,7 @@ interface StockByLocationDbRow {
   catalog_image_url: string | null;
   zoho_item_id: string | null;
   zoho_image_document_id: string | null;
-  source: 'bin' | 'unit';
+  source: 'bin' | 'unit' | 'exception';
   qty: number;
   last_moved: Date | string | null;
   last_counted: Date | string | null;
@@ -145,10 +145,33 @@ export async function getStockByLocation(args: {
         AND NULLIF(TRIM(su.sku), '') IS NOT NULL
       GROUP BY l.id, CASE WHEN l.id IS NULL THEN su.current_location ELSE NULL END, su.sku
     ),
+    -- An on-hold product can exist before it has been counted into a bin.
+    -- Keep that work visible in the SAME ledger instead of a second queue.
+    unlocated_provisional_pairs AS (
+      SELECT
+        NULL::int                              AS location_id,
+        NULL::text                             AS written_location,
+        ss.sku                                 AS sku,
+        'exception'::text                      AS source,
+        COALESCE(ss.stock, 0)::int             AS qty,
+        ss.updated_at                          AS last_moved,
+        NULL::timestamptz                      AS last_counted
+      FROM sku_stock ss
+      WHERE ss.organization_id = $1
+        AND ss.is_provisional = true
+        AND NOT EXISTS (
+          SELECT 1 FROM bin_contents bc
+          WHERE bc.organization_id = ss.organization_id
+            AND bc.sku = ss.sku
+            AND bc.qty <> 0
+        )
+    ),
     pairs AS (
       SELECT * FROM bin_pairs
       UNION ALL
       SELECT * FROM unit_pairs
+      UNION ALL
+      SELECT * FROM unlocated_provisional_pairs
     ),
     joined AS (
       SELECT

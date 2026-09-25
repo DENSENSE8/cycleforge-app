@@ -21,7 +21,10 @@
  * One row per (location, sku, source): merging the two into one number would
  * add a counted quantity to a unit count and hide which half a picker can scan.
  */
-export type LocationStockSource = 'bin' | 'unit';
+export type LocationStockSource = 'bin' | 'unit' | 'exception';
+
+/** The one inventory list can be narrowed by operational state. */
+export type LocationStockStateFilter = 'on-hold' | 'catalog';
 
 export interface LocationStockTableRow {
   /**
@@ -107,6 +110,23 @@ export function filterLocationStockByRooms(
   if (rooms.length === 0) return [...rows];
   const wanted = new Set(rooms);
   return rows.filter((row) => wanted.has((row.room ?? '').trim() || UNROOMED_FACET_ID));
+}
+
+/** Keep the one stock list, optionally narrowed to its operational state. */
+export function filterLocationStockByState(
+  rows: readonly LocationStockTableRow[],
+  states: readonly LocationStockStateFilter[],
+): LocationStockTableRow[] {
+  if (states.length === 0) return [...rows];
+  const wanted = new Set(states);
+  return rows.filter((row) => wanted.has(row.is_provisional ? 'on-hold' : 'catalog'));
+}
+
+/** `?status=` wire (comma list) → stock-state filters. */
+export function parseStockStates(raw: string | null | undefined): LocationStockStateFilter[] {
+  return [...new Set((raw ?? '').split(',').map((value) => value.trim()).filter(
+    (value): value is LocationStockStateFilter => value === 'on-hold' || value === 'catalog',
+  ))];
 }
 
 /** `?room=` wire (comma list) → room ids. */

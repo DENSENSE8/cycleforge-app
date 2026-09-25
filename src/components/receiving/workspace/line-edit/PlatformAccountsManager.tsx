@@ -4,15 +4,15 @@
  * CRUD manager for the org's storefront accounts (platform_accounts), grouped
  * under their platform. Each platform shows its active accounts with inline
  * rename (connection name + optional short label, `platform_accounts.short_label`
- * — wins over the platform's on the ledger / label faces) + hide, a
- * hidden/restore section, and an "add account" row; backed by
- * /api/catalog/platform-accounts. Lives in the /settings catalog section beside
- * {@link CatalogManagerList} (platforms + types), and under the platform list
- * in {@link CatalogManagerPopover} ("Edit platforms").
+ * — wins over the platform's on the ledger / label faces) + hide, and an "add
+ * account" row; every hidden account sits in ONE collapsed "Hidden" list at the
+ * foot (restorable). Backed by /api/catalog/platform-accounts. Lives in the
+ * /settings catalog section beside {@link CatalogManagerList} (platforms +
+ * types), and under the platform list in {@link CatalogManagerPopover}
+ * ("Edit platforms").
  *
- * Accounts are entirely org-defined (seeded from ebay_accounts + one default per
- * platform), so there is no built-in read-only fallback — before the migration
- * the lists are simply empty and the platform shows its add row.
+ * The seeded `<platform>-main` default IS its platform
+ * ({@link isPlatformDefaultAccount}), so it is not listed as an account.
  */
 
 import { useState } from 'react';
@@ -23,7 +23,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import type { PlatformAccountRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useInvalidateCatalog } from '@/hooks/useCatalog';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { normalizeShortLabelInput, PLATFORM_SHORT_LABEL_MAX } from '@/lib/platform-display';
+import { isPlatformDefaultAccount, normalizeShortLabelInput, PLATFORM_SHORT_LABEL_MAX } from '@/lib/platform-display';
 import { cn } from '@/utils/_cn';
 
 
@@ -44,9 +44,6 @@ export function PlatformAccountsManager() {
   const [editLabel, setEditLabel] = useState('');
   const [editShort, setEditShort] = useState('');
   const [busyId, setBusyId] = useState<number | 'new' | null>(null);
-
-  // Catalog isn't editable until the migration has seeded platforms.
-  const editable = platforms.some((p) => p.id != null);
 
   async function call(method: string, path: string, body?: unknown): Promise<boolean> {
     const res = await fetch(`${BASE}${path}`, {
@@ -107,20 +104,17 @@ export function PlatformAccountsManager() {
     );
   }
 
-  if (!editable) {
-    return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 inset-field text-role-micro font-semibold text-amber-800">
-        Apply migration <code>2026-06-13g</code> + <code>2026-06-14f</code> to seed and edit storefront accounts.
-      </div>
-    );
-  }
+  const platformById = new Map(platforms.map((p) => [String(p.id), p]));
+  const listed = accounts.filter((a) => {
+    const platform = platformById.get(String(a.platform_id));
+    return platform != null && !isPlatformDefaultAccount(platform, a);
+  });
+  const hiddenList = listed.filter((a) => !a.is_active);
 
   return (
     <div className="space-y-4">
       {platforms.map((p) => {
-        const list = accounts.filter((a) => a.platform_id === p.id);
-        const activeList = list.filter((a) => a.is_active);
-        const hiddenList = list.filter((a) => !a.is_active);
+        const activeList = listed.filter((a) => a.is_active && String(a.platform_id) === String(p.id));
         const isAdding = addingFor === p.id;
         return (
           <div key={p.id}>
@@ -141,12 +135,6 @@ export function PlatformAccountsManager() {
             </div>
 
             <ul className="space-y-1.5">
-              {activeList.length === 0 && !isAdding ? (
-                <li className="rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy text-role-caption text-text-faint">
-                  No accounts yet.
-                </li>
-              ) : null}
-
               {activeList.map((a) => {
                 const rowBusy = busyId === a.id;
                 const isEditing = editingId === a.id;
@@ -189,9 +177,6 @@ export function PlatformAccountsManager() {
                             {a.short_label}
                           </span>
                         ) : null}
-                        <span className="shrink-0 rounded bg-surface-sunken inset-chip font-mono text-role-eyebrow text-text-soft">
-                          {a.slug}
-                        </span>
                       </span>
                     )}
 
@@ -262,34 +247,41 @@ export function PlatformAccountsManager() {
                 </li>
               ) : null}
             </ul>
-
-            {hiddenList.length > 0 ? (
-              <ul className="mt-1.5 space-y-1.5">
-                {hiddenList.map((a) => (
-                  <li
-                    key={a.id}
-                    className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy"
-                  >
-                    <span className="flex-1 truncate text-role-caption font-semibold text-text-faint line-through">{a.label}</span>
-                    {busyId === a.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void setActive(a, true)}
-                        className="text-blue-600 hover:bg-blue-50"
-                      >
-                        Restore
-                      </Button>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
           </div>
         );
       })}
+
+      {hiddenList.length > 0 ? (
+        <details>
+          <summary className="cursor-pointer text-role-eyebrow uppercase tracking-widest text-text-faint">
+            Hidden ({hiddenList.length})
+          </summary>
+          <ul className="mt-1.5 space-y-1.5">
+            {hiddenList.map((a) => (
+              <li
+                key={a.id}
+                className="flex items-center gap-2 rounded-lg border border-dashed border-border-soft bg-surface-canvas inset-cozy"
+              >
+                <span className="flex-1 truncate text-role-caption font-semibold text-text-faint line-through">
+                  {platformById.get(String(a.platform_id))?.label} · {a.label}
+                </span>
+                {busyId === a.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-text-faint" />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void setActive(a, true)}
+                    className="text-blue-600 hover:bg-blue-50"
+                  >
+                    Restore
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </div>
   );
 }

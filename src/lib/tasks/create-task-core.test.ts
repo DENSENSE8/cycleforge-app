@@ -33,6 +33,8 @@ function fakes(
         entityType: args.entityType,
         entityId: args.entityId,
         assigneeStaffId: args.assigneeStaffId,
+        assigneeStaffIds: args.assigneeStaffIds,
+        projectName: args.projectName,
         priority: args.priority,
         note: args.note,
       };
@@ -59,12 +61,15 @@ test('a normal throw creates the task and never touches urgency', async () => {
     entityType: 'order',
     entityId: 42,
     assigneeStaffId: 9,
+    assigneeStaffIds: [9],
+    projectName: null,
     // The thrower is recorded on the row itself — without it, "what did I hand
     // off" is a query nobody can write (2026-08-08d).
     assignedByStaffId: ACTOR,
     priority: 100,
     note: null,
     deadlineAt: null,
+    remindAt: null,
     status: 'OPEN',
   });
   assert.equal(promotions.length, 0, 'a normal task must not promote anything');
@@ -184,6 +189,21 @@ test('an unparseable deadline is refused before anything is written', async () =
   }
 });
 
+test('a reminder is stored as a canonical instant; an unparseable one is refused', async () => {
+  const { deps, inserts } = fakes();
+  await createTaskCore({ ...base, remindAt: '2026-09-30T10:00:00-07:00' }, deps);
+  assert.equal(inserts[0].remindAt, '2026-09-30T17:00:00.000Z');
+
+  const none = fakes();
+  await createTaskCore(base, none.deps);
+  assert.equal(none.inserts[0].remindAt, null);
+
+  const bad = fakes();
+  const result = await createTaskCore({ ...base, remindAt: 'tomorrow' }, bad.deps);
+  assert.deepEqual(result, { ok: false, reason: 'invalid_reminder' });
+  assert.equal(bad.inserts.length, 0);
+});
+
 test('the assignee is notified, with the note and the urgency flag', async () => {
   const { deps, notifications } = fakes();
   const result = await createTaskCore(
@@ -195,6 +215,7 @@ test('the assignee is notified, with the note and the urgency flag', async () =>
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].actorStaffId, ACTOR);
   assert.equal(notifications[0].urgent, true);
+  assert.equal(notifications[0].recipientStaffId, 9);
   assert.equal(notifications[0].task.assigneeStaffId, 9);
   assert.equal(notifications[0].task.note, 'serial mismatch');
 });
@@ -247,4 +268,80 @@ test('every record kind can be thrown', async () => {
     assert.equal(result.ok, true, `${entityType} must be throwable`);
     assert.equal(inserts[0].entityType, entityType);
   }
+});
+
+test('one shared task has an ordered lead, trimmed project label and one inbox delivery per member', async () => {
+  const { deps, inserts, notifications } = fakes();
+  const result = await createTaskCore({
+    ...base, assigneeStaffIds: [9, 11], projectName: '  Returns launch  ',
+  }, deps);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.task.id, 555);
+  assert.equal(result.task.assigneeStaffId, 9);
+  assert.deepEqual(result.task.assigneeStaffIds, [9, 11]);
+  assert.equal(inserts.length, 1);
+  assert.equal(inserts[0].projectName, 'Returns launch');
+  assert.deepEqual(notifications.map((notification) => notification.recipientStaffId), [9, 11]);
+  assert.deepEqual(result.notifications.map((notification) => notification.status), ['sent', 'sent']);
+});
+
+test('invalid or repeated members write nothing', async () => {
+  for (const ids of [[], [9, 9], [9, 0], Array.from({ length: 21 }, (_, n) => n + 10)]) {
+    const { deps, inserts } = fakes();
+    assert.deepEqual(await createTaskCore({ ...base, assigneeStaffIds: ids }, deps),
+      { ok: false, reason: 'invalid_assignee' });
+    assert.equal(inserts.length, 0);
+  }
+});
+
+test('the creator may join a team but is never notified of their own throw', async () => {
+  const { deps, inserts, notifications } = fakes();
+  const result = await createTaskCore({ ...base, assigneeStaffIds: [ACTOR, 9] }, deps);
+  assert.equal(result.ok, true);
+  assert.deepEqual(inserts[0].assigneeStaffIds, [ACTOR, 9]);
+  assert.deepEqual(notifications.map(({ recipientStaffId }) => recipientStaffId), [9]);
+
+  const alone = fakes();
+  assert.deepEqual(await createTaskCore({ ...base, assigneeStaffIds: [ACTOR] }, alone.deps),
+    { ok: false, reason: 'self_throw' });
+  assert.equal(alone.inserts.length, 0);
+});
+
+test('one failed recipient does not prevent notification of subsequent members', async () => {
+  const { deps, notifications } = fakes();
+  const notify = deps.notifyAssignee;
+  deps.notifyAssignee = async (args) => {
+    if (args.recipientStaffId === 9) throw new Error('inbox unavailable');
+    return notify(args);
+  };
+  const result = await createTaskCore({ ...base, assigneeStaffIds: [9, 11] }, deps);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.notifications, [
+    { staffId: 9, status: 'failed' }, { staffId: 11, status: 'sent' },
+  ]);
+  assert.deepEqual(notifications.map(({ recipientStaffId }) => recipientStaffId), [11]);
+});
+
+test('a foreign-org member refuses the whole creation before notifying or promoting', async () => {
+  const { deps, notifications, promotions } = fakes();
+  deps.insertTask = async () => null;
+  const result = await createTaskCore({
+    ...base, assigneeStaffIds: [9, 999], urgency: 'urgent',
+  }, deps);
+  assert.deepEqual(result, { ok: false, reason: 'invalid_assignee' });
+  assert.equal(notifications.length, 0);
+  assert.equal(promotions.length, 0);
+});
+
+test('project names over the store limit are refused; whitespace is no project', async () => {
+  const { deps, inserts } = fakes();
+  const refused = await createTaskCore({
+    ...base, projectName: 'X'.repeat(161),
+  }, deps);
+  assert.deepEqual(refused, { ok: false, reason: 'project_name_too_long' });
+  assert.equal(inserts.length, 0);
+  const result = await createTaskCore({ ...base, projectName: '   ' }, deps);
+  assert.equal(result.ok && result.task.projectName, null);
 });

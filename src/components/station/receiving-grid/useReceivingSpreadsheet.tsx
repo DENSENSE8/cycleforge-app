@@ -34,6 +34,8 @@ import { mergeCustomFieldColumns } from '@/lib/custom-fields/column-model';
 import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
+import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
+export { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 
 export interface ReceivingSpreadsheetProps {
   /** Day-banded PO groups (Unbox / History). */
@@ -161,27 +163,6 @@ function poFoldKey(row: ReceivingLineRow): string {
   const po = (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || '').trim();
   return po || `line:${row.id}`;
 }
-
-/** Painted-row haystack for the local find-bar. Never a URL or a refetch. */
-export function receivingLineMatchesQuery(row: ReceivingLineRow, query: string): boolean {
-  const needle = query.trim().toLowerCase();
-  if (!needle) return true;
-  const hay: Array<string | null | undefined> = [
-    row.sku,
-    row.item_name,
-    row.zoho_item_title,
-    row.catalog_product_title,
-    row.zoho_purchaseorder_number,
-    row.tracking_number,
-    row.carrier,
-    row.notes,
-    String(row.id),
-    ...(row.serials ?? []).map((unit) => unit.serial_number),
-    ...(row.units ?? []).map((unit) => unit.serial),
-  ];
-  return hay.some((value) => value != null && value.toLowerCase().includes(needle));
-}
-
 
 /**
  * Unbox / History / Testing spreadsheet — shared receiving-domain binding

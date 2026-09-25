@@ -27,13 +27,24 @@ export function DetailDock<Id extends string>({
   label,
   verbs,
   onVerb,
+  size = 'default',
 }: {
   /** Accessible name of the dock (`Repair actions`, `SKU exception actions`). */
   label: string;
   verbs: readonly DetailDockVerb<Id>[];
   onVerb: (id: Id) => void;
+  /**
+   * `glove` — 56px cells for a screen worked one-handed with gloves at the
+   * shelf (the directed picker). Icon and label stay on ONE row; the label
+   * steps down to caption type so a three-word verb (`Out of Stock`) fits a
+   * third of a phone without wrapping. Default follows the mode's CTA hit.
+   */
+  size?: 'default' | 'glove';
 }) {
-  const cell = 'min-h-mode-hit-cta w-full rounded-mode px-2';
+  const cell =
+    size === 'glove'
+      ? 'min-h-14 w-full gap-1 whitespace-nowrap rounded-mode px-1 text-role-caption'
+      : 'min-h-mode-hit-cta w-full rounded-mode px-2';
   const columns = verbs.length >= 3 ? 'grid-cols-3' : verbs.length === 2 ? 'grid-cols-2' : 'grid-cols-1';
   return (
     <nav

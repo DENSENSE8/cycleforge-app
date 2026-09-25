@@ -24,6 +24,7 @@
  */
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
@@ -56,13 +57,18 @@ import {
   type CustomerRecord,
 } from '@/lib/customers/customer-display';
 import { outboundDocumentContentSrc } from '@/lib/documents/outbound-document-display';
-import { Fact } from './EvidenceFact';
+import {
+  EvidenceDisclosure,
+  EvidenceFactDisclosure,
+  EvidenceFactRow,
+} from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { OrderLabelEntries } from './OrderLabelEntries';
 import { OrderPriceEvidence } from './OrderPriceEvidence';
+import { OrderAutoAssignRule } from './OrderAutoAssignRule';
+import { ReturnReplacementLabelSection } from './ReturnReplacementLabelSection';
 import type { OrderLabelStatus } from '@/lib/shipping/order-label-summary';
 import {
   LIFECYCLE,
-  LIFECYCLE_CLASSES,
   STATE_TONE_CLASSES,
   type LifecycleState,
 } from '@/design-system/tokens/lifecycle';
@@ -73,7 +79,9 @@ import {
   RECORD_LABEL_CLASS,
   RECORD_PRICE_CLASS,
   recordStateCodeClass,
+  stateBadgeClass,
 } from '@/design-system/tokens/industrial-record';
+import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { initials, recordState } from './outbound-orders-ledger-state';
 import {
   LedgerCondition,
@@ -85,6 +93,7 @@ import {
   LedgerQty,
   LedgerShipBy,
   LedgerStageAssign,
+  LedgerNoteField,
   stageFacts,
 } from './outbound-orders-ledger-editors';
 import {
@@ -95,7 +104,7 @@ import {
   printDocument,
   useOrderDocuments,
   useOrderLabelSummary,
-} from './paperwork/order-paperwork-client';
+} from '@/lib/orders/order-paperwork-client';
 import { ItemPaperworkDialog } from './paperwork/PaperworkDocuments';
 import {
   getRailActions,
@@ -204,6 +213,7 @@ export function OutboundOrderEvidence(props: OutboundOrderEvidenceProps) {
 
 function OrderEvidence({
   record,
+  records,
   todayKey,
   getStaffName,
   checked,
@@ -226,7 +236,8 @@ function OrderEvidence({
   const orderId = view.orderId ?? '';
   const channel = useOrderChannel()(orderId, view.platformValue);
   const meta = channel.meta;
-  const locations = formatOutboundStoragePath(record.storage_locations);
+  const locationPaths = formatOutboundStoragePath(record.storage_locations)?.split(' | ') ?? [];
+  const buyer = orderBuyer(record);
   const homeBin = formatOutboundStoragePath(record.sku_home_location ? [record.sku_home_location] : null);
   const sku = view.detail?.sku ?? (String(record.sku ?? '').trim() || null);
   const allocated = Number(r.allocated_unit_count);
@@ -237,6 +248,7 @@ function OrderEvidence({
   const bench = String(r.pack_location_name ?? '').trim() || null;
   const next = view.nextStep ?? null;
   const [itemPaperworkOpen, setItemPaperworkOpen] = useState(false);
+  const labelIntakeEntry = useSearchParams().get('entry') === 'label';
 
   return (
     <>
@@ -250,23 +262,22 @@ function OrderEvidence({
         className={cn(
           'flex items-center gap-2 border-b border-mode-ink px-4',
           LEDGER_HIT_CLASS,
-          state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
         )}
       >
-        <span className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state].dot)} aria-hidden />
-        <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(state))}>
+        <LifecycleCode state={state} srLabel={null}>
           {spec.code} · {spec.label}
-        </span>
-        <span
-          className={cn(
-            RECORD_LABEL_CLASS,
-            'ml-auto',
-            next?.blocked ? STATE_TONE_CLASSES.danger.text : 'text-mode-ink',
-          )}
-          title={next?.tip}
-        >
-          {next?.label ?? ''}
-        </span>
+        </LifecycleCode>
+        {/* Where it goes next, as a solid badge in the record's colour
+            (owner 2026-09-25); a blocked step wears the danger badge. */}
+        {next ? (
+          <span
+            data-testid="evidence-next-step"
+            className={cn(RECORD_LABEL_CLASS, 'ml-auto inline-flex h-3.5 items-center', stateBadgeClass(next.blocked ? 'danger' : spec.tone))}
+            title={next.tip}
+          >
+            {next.label}
+          </span>
+        ) : null}
       </div>
       <BuyerNoteBlock note={String(record.buyer_note ?? '').trim() || null} />
 
@@ -320,6 +331,14 @@ function OrderEvidence({
               </button>
             </p>
           ) : null}
+          {/* Price one line under the item # (owner 2026-09-25) — its only place
+              in the column, so the money reads with the thing it is for. */}
+          <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')} data-testid="evidence-price">
+            PRICE{' '}
+            <span className={cn(RECORD_PRICE_CLASS, 'normal-case tracking-normal')}>
+              {record.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—'}
+            </span>
+          </p>
           {record.item_number ? (
             <ItemPaperworkDialog
               open={itemPaperworkOpen}
@@ -359,85 +378,67 @@ function OrderEvidence({
           All products ↗
         </a>
       </div>
-      <details className="border-b border-mode-ink">
-        <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
-          <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Labels</span>
-          <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>paperwork</span>
-        </summary>
-        <LabelEvidence orderId={record.id} orderRef={orderId || `#${record.id}`} />
-      </details>
+      <LabelEvidence orderId={record.id} orderRef={orderId || `#${record.id}`} />
+      <ReturnReplacementLabelSection
+        key={record.id}
+        orderId={record.id}
+        orderRef={orderId || `#${record.id}`}
+        defaultOpen={labelIntakeEntry}
+      />
       <OrderPriceEvidence orderId={record.id} />
-      {record.customer ? (
-        <details className="border-b border-mode-ink">
-          <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
-            <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
-            <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>{customerFullName(record.customer) || 'details'}</span>
-          </summary>
-          <CustomerEvidence customer={record.customer} />
-        </details>
-      ) : record.customer_id == null && record.shipstation_ship_to ? (
-        <details className="border-b border-mode-ink">
-          <summary className={cn('flex cursor-pointer list-none items-center gap-2 px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
-            <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
-            <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')}>ShipStation</span>
-          </summary>
-          <CustomerEvidence customer={shipToCustomer(record.shipstation_ship_to)} source="ShipStation" />
-        </details>
-      ) : null}
+      {buyer ? <CustomerEvidence customer={buyer.customer} source={buyer.source} /> : null}
 
-      <dl className="flex flex-col px-4">
-        <Fact label="Location" wide>
-          <details>
-            <summary className={cn('cursor-pointer list-none', focusRing('control'))}>
-              <span className={cn(RECORD_ID_CLASS, 'block truncate', locations ? 'text-mode-ink' : 'text-mode-warn')}>
-                {locations?.split(' | ')[0] ?? 'UNASSIGNED'}
+      <div className="flex flex-col px-4">
+        <EvidenceFactDisclosure
+          label="Location"
+          testId="evidence-location"
+          value={
+            <>
+              <span className={cn(RECORD_ID_CLASS, 'min-w-0 truncate', locationPaths[0] ? 'text-mode-ink' : 'text-mode-warn')}>
+                {locationPaths[0] ?? 'UNASSIGNED'}
               </span>
-            </summary>
-            <div className="pt-1">
-              <span className={cn(RECORD_ID_CLASS, 'block break-words', locations ? 'text-mode-ink' : 'text-mode-warn')}>
-                {locations ? locations.split(' | ').map((path) => <span key={path} className="block">{path}</span>) : 'UNASSIGNED'}
-              </span>
-              {Number.isFinite(allocated) && allocated > 0 ? (
-                <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
-                  {allocated} unit{allocated === 1 ? '' : 's'} allocated
-                </span>
+              {locationPaths.length > 1 ? (
+                <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>+{locationPaths.length - 1}</span>
               ) : null}
-              <span className={cn(RECORD_LABEL_CLASS, 'mt-1 block text-mode-muted')}>
-                SKU home bin{' '}
-                <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal', homeBin ? 'text-mode-ink' : 'text-mode-warn')}>
-                  {homeBin ?? 'none'}
-                </span>
-              </span>
-              <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
-                <LedgerSkuBinPicker
-                  sku={sku}
-                  current={homeBin}
-                  onCommit={(barcode) => commits.handleCommitSkuBin(record, barcode)}
-                />
-              </span>
-            </div>
-          </details>
-        </Fact>
-        <Fact label="Platform" wide>
-          <details>
-            <summary className={cn('inline-flex max-w-full cursor-pointer items-center gap-1.5', focusRing('control'))}>
-              <BrandIdentityDot {...platformMetaBrandDot(meta)} />
-              <span className={RECORD_LABEL_CLASS}>{channel.label || '—'}</span>
-              {channel.connectionName ? (
-                <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>· {channel.connectionName}</span>
-              ) : null}
-            </summary>
-            <span className="mt-1 block h-8 border border-mode-edge bg-mode-panel">
+            </>
+          }
+        >
+          {locationPaths.slice(1).map((path) => (
+            <span key={path} className={cn(RECORD_ID_CLASS, 'block break-words text-mode-ink')}>{path}</span>
+          ))}
+          {Number.isFinite(allocated) && allocated > 0 ? (
+            <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
+              {allocated} unit{allocated === 1 ? '' : 's'} allocated
+            </span>
+          ) : null}
+          <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>
+            SKU home bin{' '}
+            <span className={cn(RECORD_ID_CLASS, 'normal-case tracking-normal', homeBin ? 'text-mode-ink' : 'text-mode-warn')}>
+              {homeBin ?? 'none'}
+            </span>
+          </span>
+          <span className="block h-8">
+            <LedgerSkuBinPicker
+              sku={sku}
+              current={homeBin}
+              onCommit={(barcode) => commits.handleCommitSkuBin(record, barcode)}
+            />
+          </span>
+        </EvidenceFactDisclosure>
+        <EvidenceFactRow label="Platform">
+          <span className="flex h-8 min-w-0 items-center gap-1.5" data-testid="evidence-platform">
+            <BrandIdentityDot {...platformMetaBrandDot(meta)} />
+            <span className="min-w-0 flex-1">
               <LedgerPlatformPicker
                 value={view.platformValue ?? null}
                 onCommit={(accountSource) => commits.handleCommitPlatform(record, accountSource)}
               />
             </span>
-          </details>
-        </Fact>
+          </span>
+        </EvidenceFactRow>
         {/* Identifiers wear the one record face (OrderIdentityChips): brand
             dot + last-8 copy chip, left-aligned, the actions to the right. */}
-        <Fact label="Order #">
+        <EvidenceFactRow label="Order #">
           <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-order-chip">
             <span className="flex min-w-0 flex-1 items-center">
               <OrderNumberIdentity
@@ -448,13 +449,13 @@ function OrderEvidence({
             </span>
             <LedgerOpenAction href={marketplaceOrderUrl(orderId, view.platformValue)} label="order number" />
           </span>
-        </Fact>
-        <Fact label="Listing">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Listing">
           <span className="block h-8">
             <LedgerListingLink href={view.titleHref ?? null} itemNumber={record.item_number ?? null} face="value" />
           </span>
-        </Fact>
-        <Fact label="TRK#">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="TRK#">
           <span className="flex min-w-0 flex-1 items-center" data-testid="evidence-tracking-chip">
             <span className="flex min-w-0 flex-1 items-center">
               {view.tracking ? (
@@ -477,8 +478,8 @@ function OrderEvidence({
               label="tracking number"
             />
           </span>
-        </Fact>
-        <Fact label="Ship by">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Ship by">
           <span className="block h-8">
             <LedgerShipBy
               dateKey={view.delay?.dateKey ?? null}
@@ -488,17 +489,17 @@ function OrderEvidence({
               onCommit={(key) => commits.handleCommitShipBy(record, key)}
             />
           </span>
-        </Fact>
-        <Fact label="Ordered">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Ordered">
           <span className={RECORD_ID_CLASS}>{view.orderedAt?.label || '—'}</span>
-        </Fact>
-        <Fact label="Condition">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Condition">
           <LedgerCondition
             value={record.condition ?? null}
             onCommit={(value) => commits.handleCommitCondition(record, value)}
           />
-        </Fact>
-        <Fact label="Quantity">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Quantity">
           <span className="block h-8 w-28">
             <LedgerQty
               bare
@@ -506,13 +507,8 @@ function OrderEvidence({
               onCommit={(value) => commits.handleCommitSubtitleField(record, 'orders.qty', value)}
             />
           </span>
-        </Fact>
-        <Fact label="Price">
-          <span className={RECORD_PRICE_CLASS}>
-            {record.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—'}
-          </span>
-        </Fact>
-        <Fact label="Pick">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Pick">
           <LedgerStageAssign
             verb="Pick"
             doneVerb="Picked"
@@ -523,8 +519,8 @@ function OrderEvidence({
             onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.picked', id, name)}
             showStamp
           />
-        </Fact>
-        <Fact label="Pack">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="Pack">
           <LedgerStageAssign
             verb="Pack"
             doneVerb="Packed"
@@ -535,20 +531,22 @@ function OrderEvidence({
             onCommit={(id, name) => commits.handleCommitStageAssign(record, 'orders.packed', id, name)}
             showStamp
           />
-        </Fact>
+        </EvidenceFactRow>
+        {/* The listing rule for this item # (+ SKU): picker / packer and their
+            backups. Keyed by record so an unsaved draft never follows J / K. */}
+        <OrderAutoAssignRule key={record.id} record={record} records={records} getStaffName={getStaffName} />
         {bench ? (
-          <Fact label="Pack bench">
+          <EvidenceFactRow label="Pack bench">
             <span className={RECORD_LABEL_CLASS}>{bench}</span>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
-        {/* Read-only: the latest face of the `order_notes` trail. Writing a note
-            is the "Add note" verb below — the catalog at n=1, one home. */}
-        {record.notes ? (
-          <Fact label="Note" wide>
-            <p className="whitespace-pre-wrap break-words pb-1 text-role-caption text-mode-ink">{record.notes}</p>
-          </Fact>
-        ) : null}
-      </dl>
+        {/* The latest face of the `order_notes` trail, edited in place and
+            autosaved (the same field the row's NOTE badge opens). Keyed by
+            record so switching orders saves the old draft, then reseeds. */}
+        <div className="border-b border-mode-edge py-2">
+          <LedgerNoteField key={record.id} label="Note" orderId={Number(record.id)} note={record.notes ?? null} />
+        </div>
+      </div>
 
       <div className="mt-auto">
       <RecordVerbs record={record} />
@@ -608,28 +606,28 @@ function QueueEvidence({ records, todayKey }: OutboundOrderEvidenceProps) {
       <div className={cn('flex items-center border-b border-mode-ink px-4', LEDGER_HIT_CLASS)}>
         <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>No order selected</span>
       </div>
-      <dl className="flex flex-col px-4">
+      <div className="flex flex-col px-4">
         {SUMMARY_STATES.map((state) => (
-          <Fact key={state} label={LIFECYCLE[state].code}>
+          <EvidenceFactRow key={state} label={LIFECYCLE[state].code}>
             <span className="flex items-center justify-between">
-              <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(state))}>{LIFECYCLE[state].label}</span>
+              <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(LIFECYCLE[state]))}>{LIFECYCLE[state].label}</span>
               <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.byState[state]}</span>
             </span>
-          </Fact>
+          </EvidenceFactRow>
         ))}
-        <Fact label="Late">
+        <EvidenceFactRow label="Late">
           <span className="flex items-center justify-between">
             <span className={cn(RECORD_LABEL_CLASS, STATE_TONE_CLASSES.danger.text)}>Past ship-by</span>
             <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.late}</span>
           </span>
-        </Fact>
-        <Fact label="No bin">
+        </EvidenceFactRow>
+        <EvidenceFactRow label="No bin">
           <span className="flex items-center justify-between">
             <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>Unassigned location</span>
             <span className={cn(RECORD_ID_CLASS, 'tabular-nums')}>{summary.unlocated}</span>
           </span>
-        </Fact>
-      </dl>
+        </EvidenceFactRow>
+      </div>
       <p className={cn(RECORD_LABEL_CLASS, 'mt-auto border-t border-mode-edge p-4 text-mode-muted')}>
         Open a record · J / K to step · Esc to close
       </p>
@@ -672,11 +670,10 @@ function LabelEvidence({ orderId, orderRef }: { orderId: number; orderRef: strin
   const slipSrc = outboundDocumentContentSrc(pickOrderDocument(documents, 'packing_slip', null));
 
   return (
-    <section aria-label="Shipping label" data-testid="evidence-label" className="border-b border-mode-ink">
-      <div className={cn('flex items-center gap-2 border-b border-mode-edge px-4', LEDGER_HIT_CLASS)}>
-        <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>
-          Label{labels.length > 1 ? `s · ${labels.length}` : ''}
-        </span>
+    <EvidenceDisclosure
+      label={labels.length > 1 ? `Labels · ${labels.length}` : 'Labels'}
+      testId="evidence-label"
+      summary={
         <span
           data-testid="evidence-label-status"
           title={summaryQuery.isError ? summaryQuery.error.message : face?.tip}
@@ -684,14 +681,15 @@ function LabelEvidence({ orderId, orderRef }: { orderId: number; orderRef: strin
         >
           {summaryQuery.isError ? 'Unreadable' : (face?.label ?? '…')}
         </span>
-      </div>
+      }
+    >
       {summary?.status === 'pending' ? (
         <p className={cn(RECORD_LABEL_CLASS, 'border-b border-mode-edge px-4 py-2', STATE_TONE_CLASSES.danger.text)}>
           {LABEL_STATUS_FACE.pending.tip}
         </p>
       ) : null}
       <OrderLabelEntries orderId={orderId} orderRef={orderRef} labels={labels} documents={documents} />
-      <div className="flex items-stretch border-t border-mode-ink bg-mode-bar" data-testid="evidence-label-print">
+      <div className="flex items-stretch border-t border-mode-edge bg-mode-bar" data-testid="evidence-label-print">
         <button
           type="button"
           disabled={!labelSrc}
@@ -715,7 +713,7 @@ function LabelEvidence({ orderId, orderRef }: { orderId: number; orderRef: strin
           Print slip
         </button>
       </div>
-    </section>
+    </EvidenceDisclosure>
   );
 }
 
@@ -744,11 +742,23 @@ function shipToCustomer(shipTo: CustomerBillTo): CustomerRecord {
 }
 
 /**
- * The buyer, from the customer book (`orders.customer_id → customers`, joined
- * by `/api/orders`): name, email, phone, the full ship-to, and the bill-to only
- * when it is a different address. Same readers as `CustomerDetailsTab`, in the
- * column's industrial face. An order with no book buyer falls back to its
- * ShipStation order's ship-to (`source` names it); with neither, no block.
+ * The order's buyer: the customer-book row (`orders.customer_id → customers`,
+ * joined by `/api/orders`), else its ShipStation order's ship-to. Null when
+ * the order carries neither.
+ */
+function orderBuyer(record: ShippedOrder): { customer: CustomerRecord; source?: string } | null {
+  if (record.customer) return { customer: record.customer };
+  if (record.customer_id == null && record.shipstation_ship_to) {
+    return { customer: shipToCustomer(record.shipstation_ship_to), source: 'ShipStation' };
+  }
+  return null;
+}
+
+/**
+ * The buyer as one collapsible section: name (or the source) in the header,
+ * then email, phone, the full ship-to, and the bill-to only when it is a
+ * different address. Same readers as `CustomerDetailsTab`, in the column's
+ * industrial face.
  */
 function CustomerEvidence({ customer, source }: { customer: CustomerRecord; source?: string }) {
   const [copied, setCopied] = useState(false);
@@ -766,19 +776,28 @@ function CustomerEvidence({ customer, source }: { customer: CustomerRecord; sour
   };
 
   return (
-    <section aria-label="Customer" data-testid="evidence-customer" className="border-b border-mode-ink">
-      <div className={cn('flex items-center border-b border-mode-edge px-4', LEDGER_HIT_CLASS)}>
-        <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Customer</span>
-        {source ? <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{source}</span> : null}
-      </div>
-      <dl className="flex flex-col px-4">
+    <EvidenceDisclosure
+      label="Customer"
+      testId="evidence-customer"
+      summary={
+        <span className={cn(RECORD_ID_CLASS, 'truncate text-mode-ink')} title={name || undefined}>
+          {name || source || 'details'}
+        </span>
+      }
+    >
+      <div className="flex flex-col px-4">
+        {source ? (
+          <EvidenceFactRow label="Source">
+            <span className={RECORD_LABEL_CLASS}>{source}</span>
+          </EvidenceFactRow>
+        ) : null}
         {name ? (
-          <Fact label="Name">
+          <EvidenceFactRow label="Name">
             <span className="block truncate font-bold" title={name}>{name}</span>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
         {email ? (
-          <Fact label="Email">
+          <EvidenceFactRow label="Email">
             <a
               href={`mailto:${email}`}
               title={email}
@@ -786,24 +805,24 @@ function CustomerEvidence({ customer, source }: { customer: CustomerRecord; sour
             >
               {email}
             </a>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
         {phone ? (
-          <Fact label="Phone">
+          <EvidenceFactRow label="Phone">
             <span className={cn(RECORD_ID_CLASS, 'select-all')}>{phone}</span>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
         {shipTo.length > 0 ? (
-          <Fact label="Ship to" wide>
+          <EvidenceFactRow label="Ship to" wide>
             <span className="block select-all whitespace-pre-line break-words">{shipTo.join('\n')}</span>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
         {billTo.length > 0 ? (
-          <Fact label="Bill to" wide>
+          <EvidenceFactRow label="Bill to" wide>
             <span className="block select-all whitespace-pre-line break-words">{billTo.join('\n')}</span>
-          </Fact>
+          </EvidenceFactRow>
         ) : null}
-      </dl>
+      </div>
       {shipTo.length > 0 ? (
         <div className="flex items-stretch bg-mode-bar">
           <button
@@ -817,7 +836,7 @@ function CustomerEvidence({ customer, source }: { customer: CustomerRecord; sour
           </button>
         </div>
       ) : null}
-    </section>
+    </EvidenceDisclosure>
   );
 }
 

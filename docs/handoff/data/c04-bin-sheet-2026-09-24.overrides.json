@@ -1,0 +1,92 @@
+{
+  "sheet": "c04-bin-sheet-2026-09-24.json",
+  "importKey": "c04-bin-sheet-2026-09-24",
+  "ledgerNote": "C-04 bin sheet 2026-09-24",
+  "decisions": {
+    "answeredBy": "owner, 2026-09-24 (HANDOFF-sku-temp-intake-c04.md Step 1)",
+    "D1": "Map by locations.name: C-04-RR-L is bin C04RRL00 (all 37 non-empty cells resolve 1:1).",
+    "D2": "'p' = parts: units under the item's SKU, parts under a separate temp SKU '<item> — parts' in the same bin (one parts SKU per item).",
+    "D3": "Bare '+ n' = parts (D2 rule); 'bad' = not stocked, noted in the description.",
+    "D4": "86 -> 00086. Every other bare number and [OLD]-01138 -> temp SKU with the number in the description.",
+    "D4b": "Near matches are NOT stocked under the match: temp SKU with 'Possible match: …' in the description.",
+    "D5": "SKUs not in Zoho (00148-P-3-BK, 00148-P-3-WY, 326-P-1) -> one temp SKU per sheet SKU (both BK cells share one, both WY cells share one); 00046-P-6 units real, its 9p per D2.",
+    "D6": "45-P-2-BK (WRONG) -> ONE temp SKU for C-04-13-1 and C-04-11-1. The stray 1x 00045-P-2-BK in C-04-09-2 is LEFT as is.",
+    "D7": "C-04-07-1 -> two temp SKUs (White x2, Gray x15) plus the parts per D2.",
+    "D8": "Write delta = sheet - current per (bin, SKU) through adjustBinQty, reason CYCLE_COUNT, note 'C-04 bin sheet 2026-09-24'.",
+    "D9": "Title but no qty (C-04-15-1/2/6) -> temp SKU, no stock, 'COUNT NEEDED'.",
+    "D10": "Typo fixes in temp titles only (Boss -> Bose, (Blank) -> (Black)); raw text stays in the description."
+  },
+  "titleFixes": [
+    ["\\bBoss\\b", "Bose"],
+    ["\\(Blank\\)", "(Black)"]
+  ],
+  "products": {
+    "45-P-2-BK-WRONG": {
+      "title": "Bose R/C RC-PWS Universal Cinemate II (Black)",
+      "description": "Sheet SKU 45-P-2-BK marked WRONG; NEW, not used; in box."
+    },
+    "00148-P-3-BK": {
+      "title": "Cable, Array extended black",
+      "description": "Sheet SKU 00148-P-3-BK is not in Zoho. Base 00148-P-3 is 'Bose Lifestyle Acoustimass System - System Input Cable'. Sheet titles differ across cells (D5)."
+    },
+    "00148-P-3-WY": {
+      "title": "AM input cable 6 speaker (White)",
+      "description": "Sheet SKU 00148-P-3-WY is not in Zoho. Base 00148-P-3 is 'Bose Lifestyle Acoustimass System - System Input Cable'. Sheet titles differ across cells (D5)."
+    },
+    "00046-P-6-parts": {
+      "title": "RC 321 II RM cover — parts",
+      "description": "Parts for 00046-P-6 'Bose 321 Home Theater System Speaker - Remote Control' (D2)."
+    },
+    "00187-P-1-parts": {
+      "title": "RC28T1-27 — parts",
+      "description": "Parts for 00187-P-1 'Bose Lifestyle 18 28 Series III AV18 - Remote Control' (D2)."
+    },
+    "00132-P-1-parts": {
+      "title": "RC18T1-27 — parts",
+      "description": "Parts for 00132-P-1 'Bose Lifestyle AV-18 Series I Media Center - RC18T1 Remote' (D2)."
+    }
+  },
+  "rows": {
+    "C-04-15-1": { "temp": "C-04-15-1" },
+    "C-04-15-2": { "temp": "C-04-15-2" },
+    "C-04-15-5": { "temp": "C-04-15-5", "hint": "Sheet number 736 is not a Zoho SKU. Legacy [OLD]-01149 'Bose RC-25 Remote Control' is inactive." },
+    "C-04-15-6": { "temp": "C-04-15-6" },
+    "C-04-13-1": { "temp": "45-P-2-BK-WRONG" },
+    "C-04-13-2": { "temp": "C-04-13-2", "hint": "Possible match: 00055 'Bose RC-35S2 Remote'." },
+    "C-04-13-3": { "sku": "00086" },
+    "C-04-11-1": { "temp": "45-P-2-BK-WRONG" },
+    "C-04-11-2": { "temp": "326-P-1", "hint": "Sheet SKU 326-P-1 is not in Zoho. Possible match: 00326-P-1 'Bose Solo 5 TV Sound System - Remote Control'." },
+    "C-04-11-3": { "sku": "00080-P-1" },
+    "C-04-11-4": { "temp": "C-04-11-4", "hint": "Sheet number 847 is not a Zoho SKU ([OLD]-00847 is an unrelated Lifestyle 135 system)." },
+    "C-04-11-5": { "temp": "C-04-11-5", "hint": "Sheet number 1012 is not a Zoho SKU ([OLD]-01012 is an unrelated AM15 subwoofer). Legacy [OLD]-01152 'RC-9 Remote Control for Lifestyle 3,5,8,12' is inactive." },
+    "C-04-11-6": { "temp": "C-04-11-6", "hint": "Sheet number 681 is not a Zoho SKU. Legacy [OLD]-01148 'Bose RC-20 Remote Control' is inactive." },
+    "C-04-09-1": { "temp": "C-04-09-1", "partsTemp": "C-04-09-1-parts" },
+    "C-04-09-2": { "sku": "00114-P-1" },
+    "C-04-09-4": { "temp": "C-04-09-4", "partsTemp": "C-04-09-4-parts" },
+    "C-04-09-6": { "temp": "C-04-09-6", "hint": "Sheet SKU [OLD]-01138 is an INACTIVE Zoho item titled 'Bose RC-38S RC38S2-27 Expansion Remote for Lifestyle 38 and 48' — not this item." },
+    "C-04-07-1": {
+      "variants": { "White": "C-04-07-1-white", "Gray": "C-04-07-1-gray" },
+      "partsTemp": "C-04-07-1-parts",
+      "hint": "Sheet number 672 is not a Zoho SKU. Possible match: 00231-P-1 'Bose AV3-2-1 Series I - Media Center' or 00046-P-12 'AV3-2-1 Media Center'."
+    },
+    "C-04-07-2": { "temp": "C-04-07-2", "partsTemp": "C-04-07-2-parts", "hint": "Sheet number 672 is not a Zoho SKU. Possible match: 00231-P-1 'Bose AV3-2-1 Series I - Media Center' or 00013-P-1 '321 GS Series II - Media Center'." },
+    "C-04-07-3": { "temp": "C-04-07-3", "hint": "Sheet number 672 is not a Zoho SKU. Possible match: 00231-P-1 'Bose AV3-2-1 Series I - Media Center' or 00013-P-1 '321 GS Series II - Media Center'." },
+    "C-04-07-4": { "sku": "00048-P-1" },
+    "C-04-07-5": { "sku": "00046-P-6" },
+    "C-04-07-6": { "partsTemp": "00046-P-6-parts" },
+    "C-04-05-2": { "temp": "C-04-05-2" },
+    "C-04-05-3": { "sku": "00187-P-1", "partsTemp": "00187-P-1-parts" },
+    "C-04-05-4": { "temp": "C-04-05-4" },
+    "C-04-05-5": { "temp": "C-04-05-5", "hint": "Legacy [OLD]-01138 'Bose RC-38S RC38S2-27 Expansion Remote' (inactive) matches this title." },
+    "C-04-05-6": { "temp": "C-04-05-6", "partsTemp": "C-04-05-6-parts", "hint": "Legacy [OLD]-01150 'Bose Remote RC48S2-27' is inactive." },
+    "C-04-03-1": { "sku": "00499-P-1" },
+    "C-04-03-2": { "sku": "00132-P-1", "partsTemp": "00132-P-1-parts" },
+    "C-04-03-3": { "sku": "00020-P-1" },
+    "C-04-03-4": { "temp": "C-04-03-4" },
+    "C-04-03-5": { "temp": "C-04-03-5", "hint": "Sheet number 892 is not a Zoho SKU. Possible match: 00101 'Bose RC38T1-27 Remote Control'." },
+    "C-04-03-6": { "temp": "00148-P-3-BK" },
+    "C-04-01-1": { "temp": "00148-P-3-WY" },
+    "C-04-01-2": { "temp": "00148-P-3-BK" },
+    "C-04-01-5": { "temp": "00148-P-3-WY" }
+  }
+}

@@ -249,9 +249,8 @@ export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
  * heatmap"; this is that rule followed to its conclusion.
  */
 export const HAND_HTML_TABLE_ALLOW: readonly string[] = [
-  'src/components/ai/MarkdownRenderer.tsx',
+  'src/components/ui/MarkdownRenderer.tsx',
   'src/components/warehouse/WarehouseMap.tsx',
-  'src/components/po-gmail/mailbox/ScannedMode.tsx',
   'src/app/api/walk-in/receipt/[id]/route.tsx',
   'src/lib/counter/visit-receipt-html.ts',
   'src/lib/serial/serial-journey.ts',

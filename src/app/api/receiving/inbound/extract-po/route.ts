@@ -60,7 +60,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         account_name: result.draft.accountName,
         tracking_number: result.draft.trackingNumber,
         carrier_code: result.draft.carrierCode,
-        listing_url: result.draft.listingUrl,
         priority: result.draft.priority,
         notes: result.draft.notes,
         lines: result.draft.lines.map((l) => ({
@@ -68,6 +67,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           item_name: l.itemName,
           quantity: l.quantity,
           line_item_id: l.lineItemId,
+          listing_url: l.listingUrl,
         })),
       },
       missing,

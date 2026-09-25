@@ -53,7 +53,6 @@ import type {
   CompoundRowView,
   CompoundShipByEdit,
   CompoundStageAssign,
-  CompoundStaffRoster,
   CompoundSubtitleEdit,
   CompoundSubtitleSelect,
 } from './compound-row-model';
@@ -95,8 +94,8 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
    * `stage_event` track arms the empty/pending mark as a staff combo.
    */
   stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
-  /** Present ⇒ the actions column mounts the all-staff role roster. */
-  staffRoster?: CompoundStaffRoster;
+  /** Present ⇒ the actions column mounts the all-staff Picker / Packer roster. */
+  staffRoster?: boolean;
 
   /*
    * ── The IN-CELL EDIT capabilities ──────────────────────────────────────────

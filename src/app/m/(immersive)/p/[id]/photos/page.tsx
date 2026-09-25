@@ -9,6 +9,7 @@ function PhotoPageInner() {
   const searchParams = useSearchParams();
   const packerLogId = Number(params?.id);
   const orderId = searchParams.get('orderId') || `PL-${packerLogId}`;
+  const orderRowId = Number(searchParams.get('orderRowId'));
   // Guided Review capture is the default for /m/p/{id}/photos (plan §2b). A
   // bare open (no ?step=) still runs slip→box→confirm; `?step=box` resumes at
   // the box step (desktop deep-link / re-entry). `?mode=spam` keeps the legacy
@@ -34,6 +35,7 @@ function PhotoPageInner() {
     <MobilePackerPhotoStudio
       packerLogId={packerLogId}
       orderId={orderId}
+      orderRowId={Number.isSafeInteger(orderRowId) && orderRowId > 0 ? orderRowId : null}
       headerLabel={headerLabel}
       returnHref={completePacking ? '/m/pack' : '/m/work'}
       maxPhotos={10}

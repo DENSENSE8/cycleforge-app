@@ -61,27 +61,32 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
-    if (download) {
-      const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
-      if (!res.ok) {
-        return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
-      }
-      const bytes = Buffer.from(await res.arrayBuffer());
-      const headerType = res.headers.get('content-type') || '';
-      const mime =
-        headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
-          ? 'application/pdf'
-          : headerType || 'application/octet-stream';
-      return new NextResponse(bytes, {
-        headers: {
-          'content-type': mime,
-          'content-disposition': `attachment; filename="${filename.replace(/[\r\n"]/g, '')}"`,
-          'cache-control': 'private, max-age=300',
-        },
-      });
+    // External PDFs need the same-origin path too: the mobile preview fetches
+    // this URL, and a redirect to a third-party PDF fails CORS before it paints.
+    // Non-PDF previews retain their original external navigation behavior.
+    if (!download && !filename.toLowerCase().endsWith('.pdf')) {
+      return NextResponse.redirect(url, { status: 302 });
     }
 
-    return NextResponse.redirect(url, { status: 302 });
+    const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
+    }
+    const bytes = Buffer.from(await res.arrayBuffer());
+    const headerType = res.headers.get('content-type') || '';
+    const mime =
+      headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
+        ? 'application/pdf'
+        : headerType || 'application/octet-stream';
+    return new NextResponse(bytes, {
+      headers: {
+        'content-type': mime,
+        'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${filename.replace(/[\r\n"]/g, '')}"`,
+        'content-length': String(bytes.length),
+        'cache-control': 'private, max-age=300',
+        'x-content-type-options': 'nosniff',
+      },
+    });
   } catch (err) {
     console.error('[GET /api/product-manuals/[id]/content]', err);
     return NextResponse.json({ error: 'Failed to load manual' }, { status: 500 });

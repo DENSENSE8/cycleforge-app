@@ -85,6 +85,7 @@ test('the kernel armed for QC lands a unit label on its checklist, a line on its
     ['U-CN1A2B3', '/m/u/CN1A2B3/qc'],
     ['(01)00012345678905(21)SER-9', '/m/u/SER-9/qc'],
     ['L-32545', '/m/qc/line/32545'],
+    ['r/32545', '/m/r/32545/qc'],
   ] as const) {
     const route = routeScan(raw);
     const land = landScanIdentify(dispatchScan({ scan: route!, armedSession: QC_SCAN_SESSION }), route);

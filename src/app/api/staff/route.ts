@@ -14,6 +14,18 @@ function isDatabaseUnavailable(error: unknown) {
     return isTransientDbError(error);
 }
 
+/**
+ * Floor functional roles (picker / packer) — what the staffer DOES, apart
+ * from the RBAC `role_keys` (what they may ACCESS). The Pick / Pack assign
+ * lists filter on this, never on RBAC.
+ */
+const FUNCTIONAL_ROLES_SELECT = `,
+  COALESCE((
+    SELECT array_agg(f.role_key ORDER BY f.role_key)
+    FROM staff_functional_roles f
+    WHERE f.organization_id = s.organization_id AND f.staff_id = s.id
+  ), ARRAY[]::text[]) AS functional_roles`;
+
 async function handleGet(request: NextRequest, ctx: AuthContext) {
     try {
         const { searchParams } = new URL(request.url);
@@ -158,7 +170,7 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
             FROM staff_roles sr
             JOIN roles r ON r.id = sr.role_id
             WHERE sr.staff_id = s.id
-          ), ARRAY[]::text[]) AS role_keys`;
+          ), ARRAY[]::text[]) AS role_keys${FUNCTIONAL_ROLES_SELECT}`;
 
         const sql = `
           SELECT s.id, s.name, s.role, s.employee_id, s.active, s.color_hex, s.avatar_photo_id, s.default_home_path, s.created_at
@@ -219,7 +231,7 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
                   FROM staff_roles sr
                   JOIN roles r ON r.id = sr.role_id
                   WHERE sr.staff_id = s.id
-                ), ARRAY[]::text[]) AS role_keys
+                ), ARRAY[]::text[]) AS role_keys${FUNCTIONAL_ROLES_SELECT}
               FROM staff s
               ${fallbackConditions.length > 0 ? `WHERE ${fallbackConditions.join(' AND ')}` : ''}
               ORDER BY s.role ASC, s.name ASC

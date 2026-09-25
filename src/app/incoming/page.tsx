@@ -3,7 +3,7 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /**
  * `/incoming` — the Incoming operator surface (POs Zoho says are issued but not
@@ -35,26 +35,7 @@ import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection'
  * If Incoming's first paint is worth server-side work later, the prerequisite is
  * a cheap ranking column on that query — not a shorter timeout.
  */
-export default async function IncomingPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string }>;
-}) {
-  // PO Mailbox (admin dissolution): the emailed-PO / unmatched-carton triage
-  // queue moved here from `/admin?section=po_mailbox`. It owns its whole body
-  // (sub-tabs + toolbar + table), so it replaces the browse shell rather than
-  // nesting inside it.
-  if ((await searchParams).view === 'mailbox') {
-    return (
-      <>
-        <SurfaceParamHygiene />
-        <DeskPageLayout className="h-full">
-          <PoMailboxAdminSection />
-        </DeskPageLayout>
-      </>
-    );
-  }
-
+export default function IncomingPage() {
   return (
     <>
       <SurfaceParamHygiene />
@@ -71,13 +52,15 @@ export default async function IncomingPage({
         (`railless: true`) instead of special-cased inside `isRaillessSurface`,
         and stays independent of `deskChrome` — the two are separate facts.
       */}
-      <DeskPageLayout className="h-full">
-        <IncomingBrowseShell>
-          <SurfaceGate surfaceKey="incoming">
-            <ReceivingSurfacePage />
-          </SurfaceGate>
-        </IncomingBrowseShell>
-      </DeskPageLayout>
+      <ModeRegion mode="triage" className="contents">
+        <DeskPageLayout className="h-full" stage="flush">
+          <IncomingBrowseShell>
+            <SurfaceGate surfaceKey="incoming">
+              <ReceivingSurfacePage />
+            </SurfaceGate>
+          </IncomingBrowseShell>
+        </DeskPageLayout>
+      </ModeRegion>
     </>
   );
 }

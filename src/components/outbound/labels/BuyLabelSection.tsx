@@ -20,7 +20,7 @@ import {
   pickOrderDocument,
   printDocument,
   useOrderDocuments,
-} from '@/components/outbound/orders/paperwork/order-paperwork-client';
+} from '@/lib/orders/order-paperwork-client';
 
 interface RatesResponse {
   ok: boolean;
@@ -71,6 +71,8 @@ interface BuyLabelSectionProps {
   orderRef: string;
   /** Called after a purchase or void so the parent refreshes the document tray. */
   onChange: () => void;
+  /** Locks this instance to one shipment purpose and removes the purpose picker. */
+  fixedPurpose?: LabelPurpose;
   /**
    * Station flush host — square faces (`cornerClass('flush')`) so Buy Label matches
    * Unbox pinned chrome under Labels Documents.
@@ -100,6 +102,8 @@ interface BuyLabelSectionProps {
    * To-ship label run). Omit everywhere else.
    */
   onPurchased?: (info: BuyResponse) => void;
+  /** Fires for every successful purchase, including return and replacement. */
+  onAnyPurchased?: (info: BuyResponse) => void;
 }
 
 /**
@@ -113,11 +117,13 @@ export function BuyLabelSection({
   orderId,
   orderRef,
   onChange,
+  fixedPurpose,
   flush = false,
   weightOz = null,
   dimensions = null,
   onRatesError,
   onPurchased,
+  onAnyPurchased,
 }: BuyLabelSectionProps) {
   const face = cornerClass(flush ? 'flush' : 'field');
   const faceSm = cornerClass(flush ? 'flush' : 'control');
@@ -126,7 +132,8 @@ export function BuyLabelSection({
   // parcel back to us (return — rated and bought buyer → warehouse, v2
   // `is_return_label`), or a second shipment to the buyer (replacement). Every
   // purpose is recorded on THIS order, under its number and name.
-  const [purpose, setPurpose] = useState<LabelPurpose>('outbound');
+  const [selectedPurpose, setSelectedPurpose] = useState<LabelPurpose>('outbound');
+  const purpose = fixedPurpose ?? selectedPurpose;
   // The evidence column's Label block reads the purchase ledger; a buy or a
   // void changes it.
   const queryClient = useQueryClient();
@@ -215,6 +222,7 @@ export function BuyLabelSection({
       void queryClient.invalidateQueries({ queryKey: orderPriceBreakdownKey(orderId) });
       setConfirming(false);
       onChange();
+      onAnyPurchased?.(data);
       // The label run advances on the order's shipment — a return or a
       // replacement bought mid-run is a side story on the same order.
       if ((data.purpose ?? purpose) === 'outbound') onPurchased?.(data);
@@ -268,7 +276,7 @@ export function BuyLabelSection({
   /** A new purpose is a new shipment: new rates, a new purchase key. */
   const choosePurpose = (next: LabelPurpose) => {
     if (next === purpose) return;
-    setPurpose(next);
+    setSelectedPurpose(next);
     setSelectedRateId(null);
     setConfirming(false);
     clientEventIdRef.current = '';
@@ -282,7 +290,9 @@ export function BuyLabelSection({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">Buy Label</h3>
+        <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+          {fixedPurpose ? `Buy ${LABEL_PURPOSE_FACE[fixedPurpose].label} label` : 'Buy Label'}
+        </h3>
         {rates.length > 0 && !bought ? (
           <button /* ds-raw-button: custom rate-shop control (selectable rate card / micro eyebrow action) */
             type="button"
@@ -295,7 +305,7 @@ export function BuyLabelSection({
           </button>
         ) : null}
       </div>
-      {!bought ? (
+      {!bought && !fixedPurpose ? (
         <div
           className={cn('flex items-stretch border border-border-default bg-surface-canvas', faceSm)}
           role="radiogroup"

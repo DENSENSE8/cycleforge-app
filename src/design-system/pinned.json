@@ -227,8 +227,8 @@
   },
   "SearchableSelectField": {
     "useWhen": "sku type, platform, claim mode, location, inbound kind, flush compose combobox, not people",
-    "doNot": "Do not use this for staff. People pickers are AssigneeCombobox via StageStaffAssignPopover (StaffAvatar + name). SearchableSelectField staff lists are a fork.",
-    "law": "src/design-system/components/SearchableSelectField.tsx. Operator 2026-09-11: staff is AssigneeCombobox."
+    "doNot": "Do not use this for staff. People pickers are AssigneeCombobox via StageStaffAssignPopover (StaffAvatar + name). SearchableSelectField staff lists are a fork. In a record's evidence column (appearance=\"flush\", a fact value) the chevron must land on the trailing-cell axis: className carries RECORD_TRAILING_GLYPH_INSET_CLASS from @/design-system/tokens/industrial-record — never a hand-tuned pr-*.",
+    "law": "src/design-system/components/SearchableSelectField.tsx. Operator 2026-09-11: staff is AssigneeCombobox. Operator 2026-09-25: evidence-column pickers (Platform, SKU bin) share the record trailing axis."
   },
   "MorphingRowActionMenu": {
     "useWhen": "row actions, packing slip, shipping label, mark urgent, scan out, selection manifold, checkbox menu",
@@ -409,5 +409,10 @@
     "useWhen": "switch staff, change staff, staff switcher, act as another staff, shared station identity swap",
     "doNot": "PINLESS — no StaffPinPad mount, no PIN step: tap = POST /api/auth/act-as-staff { staffId, deviceKind: 'station' } with persistent inherited server-side — the same mint the email login's staff picker uses. Chrome is search + Recent/All groups on flat rows, nothing else; the signed-in staff is hidden (excludeStaffId — the sheet lists who you could BECOME, operator 2026-09-15). Errors map the act-as codes (NOT_SHARED_ORG · TARGET_NOT_FOUND · CROSS_ORG · TARGET_INACTIVE · RATE_LIMITED) into the onMessage strip; humanError owns the mapping.",
     "law": "src/components/auth/SwitchStaffSheet.tsx · src/app/api/auth/act-as-staff/route.ts · src/lib/auth/act-as-staff.ts. Operator 2026-09-15: 'the switch staff should not have a pin. It should be pinless, just like the native login using email.'"
+  },
+  "EvidenceDisclosure": {
+    "useWhen": "evidence column, Selected-order column, fact row, fact that expands, collapsible evidence section, Labels / Price / Customer block, label value plus minus, disclosure row, to-ship evidence, trailing glyph, right edge alignment",
+    "doNot": "Do not hand-roll a <details> fact or section beside these — EvidenceFactRow (label · value), EvidenceFactDisclosure (label · value · +/−, expands in place) and EvidenceDisclosure (label · summary · +/−) own the w-24 label lane and the trailing cell. Every right-edge glyph of a record row or evidence fact (+/−, open ↗, edit ✎, the price Items chevron) sits in RECORD_TRAILING_CELL_CLASS — one 32px cell flush with the content edge, 14px glyph centred — so they stack on one vertical axis. A glyph drawn INSIDE another control (SearchableSelectField ⌄) lands on that axis with RECORD_TRAILING_GLYPH_INSET_CLASS, never its own pr-*/mr-*/ml-auto. Never repeat the summary/value inside the expanded body. The triage stack (RecordEvidence's EvidenceSection / EvidenceFact) is the non-disclosing sibling — do not mix the two in one column.",
+    "law": "src/design-system/components/record-ledger/EvidenceDisclosure.tsx + src/design-system/tokens/industrial-record.ts (RECORD_TRAILING_CELL_CLASS, RECORD_TRAILING_GLYPH_INSET_CLASS). Operator 2026-09-25: the right-edge alignment of the To-ship evidence column is correct — pin it into the design system so it survives future edits (measured: every trailing glyph on one x, ±0.5px)."
   }
 }

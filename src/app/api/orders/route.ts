@@ -149,6 +149,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
      * Labels (awaitingOnly) and Scan-out history stay on their own routes.
      */
     const inWarehouse        = searchParams.get('inWarehouse') === 'true';
+    /** blockedOnly=true → every unshipped out-of-stock order, including no-label/caged rows. */
+    const blockedOnly         = searchParams.get('blockedOnly') === 'true';
     /** stagedOnly=true → packed (PACK event) but not yet dock scan-out (no SHIP_CONFIRM) */
     const stagedOnly         = searchParams.get('stagedOnly') === 'true';
     /** exceptionsOnly=true → only orders whose shipment has an exception or has been stalled (no carrier scan in >stallHours, default 72h) */
@@ -220,9 +222,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       statusCategoryFilter,
       listShape:          queueShape ? 'queue' : '',
       stage:              stageFilter,
-      pageLimit:          pageLimit ?? '',
-      cursor:             cursorRaw || '',
       inWarehouse,
+      blockedOnly,
       membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
       // Payloads cached before the price projection existed have no price_*
@@ -501,6 +502,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.id,
         wa_deadline.deadline_at AS deadline_at,
         to_char(wa_deadline.deadline_at, 'YYYY-MM-DD') AS ship_by_date,
+        o.order_date::text AS order_date,
         o.order_id,
         COALESCE(sc.product_title, o.product_title) AS product_title,
         o.item_number,
@@ -859,16 +861,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     if (shippedOnly) {
       sql += ` AND ${shippedByCarrierOrLatestStatusSql}`;
     } else if (!includeShipped && !packedOnly) {
-      // Pending/unshipped dashboards should stay limited to orders that have not
-      // entered a carrier-shipped state, even when excludePacked is also active.
-      sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
+      // Blocked OOS work remains actionable even when a stale carrier status
+      // says "shipped"; blockedOnly still excludes real dock ship-confirm rows.
+      if (!blockedOnly) {
+        // Pending/unshipped dashboards should stay limited to orders that have not
+        // entered a carrier-shipped state, even when excludePacked is also active.
+        sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
+        // Dock scan-out is the Shipped desk. Without this, never-packed rows that
+        // already left still painted on To-ship / Ready-to-pack.
+        sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
+      }
       // Amazon-fulfilled (FBA/AFN) orders are read-only records — Amazon ships
       // them, so they never belong on the to-ship/pack to-do list.
       sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
-      // Dock scan-out is the Shipped desk. Without this, never-packed rows that
-      // already left still painted on To-ship / Ready-to-pack (fulfillmentScope
-      // used to stop at "not packed").
-      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (packedOnly) {
@@ -908,8 +913,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // To-ship so staff see pending work here, not only on Exceptions.
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
+    if (blockedOnly) {
+      // Shortage/pending must retain operator-blocked OOS work even when it has
+      // no label or is already caged; only a real ship-confirm leaves the queue.
+      sql += ` AND o.is_out_of_stock = true`;
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
+    }
 
-    if (inWarehouse) {
+    if (inWarehouse && !blockedOnly) {
       sql += ` AND o.shipment_id IS NOT NULL`;
       sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
@@ -1069,6 +1080,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         OR COALESCE(o.quantity, '') ILIKE $${likeParam}
         OR COALESCE(o.customer_id::text, '') ILIKE $${likeParam}
         OR o.id::text ILIKE $${likeParam}
+        OR COALESCE(cust.display_name, '') ILIKE $${likeParam}
+        OR COALESCE(cust.customer_name, '') ILIKE $${likeParam}
+        OR concat_ws(' ', cust.first_name, cust.last_name) ILIKE $${likeParam}
+        OR COALESCE(cust.email, '') ILIKE $${likeParam}
+        OR COALESCE(ss_ref.ship_to->>'name', '') ILIKE $${likeParam}
       `;
       params.push(likeValue);
       paramCount++;
@@ -1086,6 +1102,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           WHERE RIGHT(regexp_replace(UPPER(COALESCE(s.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g'), 18) = $${paramCount}
         )`;
         params.push(key18);
+        paramCount++;
+      }
+
+      // A caller reads out their phone number: match its last 10 digits on the
+      // customer and on the ShipStation ship-to, however either is formatted.
+      const phoneDigits = trimmedQuery.replace(/\D/g, '');
+      if (phoneDigits.length >= 7 && phoneDigits.length <= 15 && !/[a-z]/i.test(trimmedQuery)) {
+        const phoneKey = phoneDigits.slice(-10);
+        sql += ` OR RIGHT(regexp_replace(COALESCE(cust.phone, ''), '\\D', '', 'g'), 10) = $${paramCount}
+          OR RIGHT(regexp_replace(COALESCE(cust.mobile, ''), '\\D', '', 'g'), 10) = $${paramCount}
+          OR RIGHT(regexp_replace(COALESCE(ss_ref.ship_to->>'phone', ''), '\\D', '', 'g'), 10) = $${paramCount}`;
+        params.push(phoneKey);
         paramCount++;
       }
 

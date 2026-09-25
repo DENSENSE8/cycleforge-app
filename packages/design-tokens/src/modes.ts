@@ -95,6 +95,31 @@ export interface ModeSpec {
   warnText?: string;
   /** Tenant brand colour; overridden per org at the region root. */
   brand?: string;
+  /**
+   * Matte grain, as a DEPTH ladder: rougher = deeper. Each layer is a noise
+   * opacity plus a speck frequency (lower = coarser). Omit for none. The white
+   * row panel and anything raised over it (popovers, dialogs) carry none: the
+   * working surface is clean paper.
+   */
+  grain?: ModeGrain;
+}
+
+/** One grain layer: noise opacity over the surface, and speck frequency (lower = coarser). */
+export interface GrainLayer {
+  opacity: number;
+  frequency: number;
+}
+
+/** Grain per depth, deepest first. */
+export interface ModeGrain {
+  /** Recessed wells — photo slot, empty slots, troughs. Coarsest. No amber text on a well. */
+  well: GrainLayer;
+  /** The ground behind the stage. */
+  canvas: GrainLayer;
+  /** Chrome — tab strip, toolbar, evidence column, group bands. Finest. */
+  bar: GrainLayer;
+  /** Pressed / active ink fills (active tab, pressed segment). */
+  inverse: GrainLayer;
 }
 
 // ── Registry ────────────────────────────────────────────────────────────────
@@ -152,7 +177,18 @@ export const OPERATIONAL_BASE = {
   radiusPill: '0',
   // #d39200 fails contrast as text; this is its readable ink.
   warnText: '#8a5f00',
-} as const satisfies Pick<ModeSpec, 'surfaces' | 'radius' | 'radiusPill' | 'warnText'>;
+  // Owner 2026-09-25: a hardware finish that reads as DEPTH — rougher is
+  // deeper. Opacity is capped by text contrast (7% is the ceiling on the warm
+  // planes; a well has almost no headroom for amber), so depth is carried by
+  // speck SIZE as much as strength: fine chrome, medium ground, coarse wells.
+  // Worst-case contrast per layer: modes.guard.test.ts.
+  grain: {
+    well: { opacity: 0.03, frequency: 0.45 },
+    canvas: { opacity: 0.07, frequency: 0.65 },
+    bar: { opacity: 0.07, frequency: 0.85 },
+    inverse: { opacity: 0.12, frequency: 0.85 },
+  },
+} as const satisfies Pick<ModeSpec, 'surfaces' | 'radius' | 'radiusPill' | 'warnText' | 'grain'>;
 
 /** The keys a mode in the operational family may set for itself. */
 export const DENSITY_KEYS = ['name', 'label', 'hint', 'pagePad', 'hit', 'hitCta', 'bodyText', 'motion'] as const;
@@ -269,6 +305,43 @@ function modeSelector(name: ModeName): string {
   return `[data-mode='${name}']`;
 }
 
+/** The grain layers, deepest first — the order the stylesheet and guard walk. */
+export const GRAIN_DEPTHS = ['well', 'canvas', 'bar', 'inverse'] as const satisfies readonly (keyof ModeGrain)[];
+
+/**
+ * Surface utilities each grain depth rides on. `bg-mode-*` are the industrial
+ * roles; the neutral `bg-surface-*` utilities are remapped to those same roles
+ * inside a light region, so every component there gets the depth ladder with
+ * no per-component class. Outside a region the vars are unset → no grain.
+ */
+const GRAIN_SURFACES: Readonly<Record<keyof ModeGrain, readonly string[]>> = {
+  well: ['bg-mode-well', 'bg-surface-sunken'],
+  canvas: ['bg-mode-canvas', 'bg-surface-canvas'],
+  bar: ['bg-mode-bar'],
+  inverse: ['bg-mode-ink'],
+};
+
+/**
+ * One 160px tile of greyscale fractal noise, as a base64 SVG data URI. A
+ * single repeating tile on the surface — no PNG, no overlay element, nothing
+ * per row — so a long ledger scrolls exactly as before.
+ *
+ * The noise is flattened to opaque grey and contrast-stretched to the full
+ * black↔white swing before `opacity` applies: raw turbulence clusters around
+ * mid-grey with a translucent alpha, which at 4% renders as a flat tint.
+ * Full swing is also the worst case the contrast guard measures.
+ */
+export function grainImage({ opacity, frequency }: GrainLayer): string {
+  const stretch = `type='linear' slope='3' intercept='-1'`;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>` +
+    `<filter id='g'><feTurbulence type='fractalNoise' baseFrequency='${frequency}' numOctaves='3' stitchTiles='stitch'/>` +
+    `<feColorMatrix type='matrix' values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/>` +
+    `<feComponentTransfer><feFuncR ${stretch}/><feFuncG ${stretch}/><feFuncB ${stretch}/></feComponentTransfer></filter>` +
+    `<rect width='160' height='160' filter='url(#g)' opacity='${opacity}'/></svg>`;
+  return `url("data:image/svg+xml;base64,${btoa(svg)}")`;
+}
+
 function baseDeclarations(spec: ModeSpec): string[] {
   const hitCta = spec.hitCta ?? spec.hit;
   const lines = SURFACE_KEYS.map((key) => `  --mode-${key}: ${MODE_COLOR_VAR_FALLBACK[key]};`);
@@ -285,6 +358,9 @@ function baseDeclarations(spec: ModeSpec): string[] {
     `  --mode-motion-pulse: ${spec.motion.pulse ?? '0s'};`,
   );
   if (spec.brand) lines.push(`  --mode-brand: ${spec.brand};`);
+  // Every region resets the ladder, so a nested ungrained region (assistant
+  // rail) never inherits its parent's grain; the light block sets the values.
+  for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: none;`);
   lines.push('  color: var(--mode-ink);');
   return lines;
 }
@@ -296,6 +372,11 @@ function lightDeclarations(spec: ModeSpec): string[] {
   // The theme-less roles pin their literal on light; the rest follow the remap.
   lines.push(`  --mode-bar: ${spec.surfaces.bar};`, `  --mode-control: ${spec.surfaces.control};`);
   if (spec.warnText) lines.push(`  --mode-warn-text: ${spec.warnText};`);
+  // Light scheme only: black noise is invisible on dark planes, and the
+  // contrast guard measures the light palette.
+  if (spec.grain) {
+    for (const depth of GRAIN_DEPTHS) lines.push(`  --mode-grain-${depth}: ${grainImage(spec.grain[depth])};`);
+  }
   return lines;
 }
 
@@ -328,6 +409,14 @@ export function modeRegistryCssText(): string {
     (name) => `  ${modeSelector(name)} {\n${coarseDeclarations(MODE_REGISTRY[name]).join('\n')}\n  }`,
   );
   blocks.push(`@media (pointer: coarse) {\n${coarse.join('\n')}\n}`);
+  // `:where()` keeps these at zero specificity, so a component's own
+  // background-image (hatched spine, gradient) always wins over the grain.
+  blocks.push(
+    ...GRAIN_DEPTHS.map(
+      (depth) =>
+        `:where(${GRAIN_SURFACES[depth].map((cls) => `.${cls}`).join(', ')}) {\n  background-image: var(--mode-grain-${depth}, none);\n}`,
+    ),
+  );
   blocks.push(
     `@media (prefers-reduced-motion: reduce) {\n  [data-mode] {\n    --mode-motion-feedback: 0ms;\n    --mode-motion-press: 0ms;\n    --mode-motion-pulse: 0s;\n  }\n}`,
   );

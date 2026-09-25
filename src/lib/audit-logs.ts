@@ -109,11 +109,14 @@ export const AUDIT_ENTITY = {
   PHOTO_IMAGE_TYPE: 'photo_image_type',
   PHOTO_LABEL: 'photo_label',
   LISTING_PHOTO: 'listing_photo',
+  // Video on a photo entity (`entity_videos`) — the video twin of PHOTO.
+  ENTITY_VIDEO: 'entity_video',
   // External platform connection (organization_integrations vault row).
   INTEGRATION: 'integration',
   // One row of the fixed daily checklist (daily_check_items). The per-day
   // TICKS are not audited — daily_check_marks already carries staff + instant.
   DAILY_CHECK_ITEM: 'daily_check_item',
+  POMODORO_TIMER: 'pomodoro_timer',
   STAFF_TODO: 'staff_todo',
   STAFF_MESSAGE: 'staff_message',
   // Entity-anchored conversation thread (entity_threads)
@@ -341,6 +344,7 @@ export const AUDIT_ACTION = {
   HANDLING_UNIT_CREATE:   'handling_unit.create',
   HANDLING_UNIT_ASSIGN:   'handling_unit.assign',
   HANDLING_UNIT_UNASSIGN: 'handling_unit.unassign',
+  HANDLING_UNIT_PAIR:     'handling_unit.pair',
   // Label manifests (preboxed kit — one label, many serials)
   MANIFEST_CREATE:        'label_manifest.create',
   MANIFEST_ADD_ITEM:      'label_manifest.add_item',
@@ -400,6 +404,23 @@ export const AUDIT_ACTION = {
   // Desk edit on a thrown task (status / priority / deadline / assignee).
   // Separate from the throw so "who moved this deadline" is answerable.
   WORK_TASK_UPDATE:        'work_task.update',
+  POMODORO_START:       'pomodoro.start',
+  POMODORO_PAUSE:       'pomodoro.pause',
+  POMODORO_RESET_CYCLE: 'pomodoro.reset_cycle',
+  // A record linked to / unlinked from a thrown task (`work_assignment_links`):
+  // the extra order / tracking number / ticket beyond the task's anchor.
+  WORK_TASK_LINK_ADD:      'work_task.link_add',
+  WORK_TASK_LINK_REMOVE:   'work_task.link_remove',
+  // A markdown document attached to / removed from a thrown task
+  // (`work_assignment_documents`): uploaded text or a linked repo plan file.
+  WORK_TASK_DOC_ADD:       'work_task.doc_add',
+  WORK_TASK_DOC_REMOVE:    'work_task.doc_remove',
+  // A photo / video attached by URL to a thrown task (`work_assignment_media_links`):
+  // YouTube / Vimeo / Loom / Drive or a direct https file — added, re-pointed or
+  // re-titled, removed.
+  WORK_TASK_MEDIA_LINK_ADD:    'work_task.media_link_add',
+  WORK_TASK_MEDIA_LINK_UPDATE: 'work_task.media_link_update',
+  WORK_TASK_MEDIA_LINK_REMOVE: 'work_task.media_link_remove',
   // Agentic-loop master plan (plan-agent mutations via /api/forge/chat)
   MASTER_PLAN_TICKET_STATUS: 'master_plan.ticket_status',
   // In-app issue → fix → toast loop
@@ -471,6 +492,8 @@ export const AUDIT_ACTION = {
   LISTING_PHOTO_REMOVE:    'listing_photo.remove',
   // Photo backup — copied photo originals into a tenant's connected Google Drive
   PHOTO_DRIVE_EXPORT:      'photo.drive_export',
+  // Removed one entity video (row + best-effort GCS object delete).
+  ENTITY_VIDEO_DELETE:     'entity_video.delete',
   // External integration connection lifecycle (OAuth connect / disconnect)
   INTEGRATION_CONNECT:     'integration.connect',
   INTEGRATION_DISCONNECT:  'integration.disconnect',
@@ -502,6 +525,12 @@ export const AUDIT_ACTION = {
    * `extra.self` distinguishes which.
    */
   STAFF_NAME_SET: 'staff.name.set',
+  /**
+   * Floor functional role granted / revoked (`staff_functional_roles`:
+   * picker, packer). Separate from RBAC — changes who appears in the Pick /
+   * Pack assign lists, never what the staffer may access.
+   */
+  STAFF_FUNCTIONAL_ROLE_SET: 'staff.functional_role.set',
   // Home Inbox — personal follow/mute on an entity, and inbox triage.
   SUBSCRIPTION_TOGGLE: 'subscription.toggle',
   INBOX_TRIAGE: 'inbox.triage',

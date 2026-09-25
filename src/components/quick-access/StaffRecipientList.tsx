@@ -3,6 +3,7 @@
 import { Check } from '@/components/Icons';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 import { cn } from '@/utils/_cn';
+import { blackOrWhiteInk } from '@/lib/color-contrast';
 
 interface StaffRecipientListProps {
   staff: ReadonlyArray<StaffRecipient>;
@@ -54,7 +55,10 @@ export function StaffRecipientList({
               >
                 <span
                   className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-role-eyebrow text-white"
-                  style={{ backgroundColor: s.color_hex || '#10b981' }}
+                  style={{
+                    backgroundColor: s.color_hex || '#10b981',
+                    color: blackOrWhiteInk(s.color_hex || '#10b981'),
+                  }}
                 >
                   {initials(s.name)}
                 </span>

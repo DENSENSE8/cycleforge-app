@@ -2,14 +2,26 @@
  * Bulk listing→staff from to-ship selection: upsert automation_rules keyed on
  * the (item #, SKU) pair and/or assign TEST+PACK on the selected orders now.
  * A line with an item # but no SKU keys the item-#-only listing-wide wildcard.
+ * Each role carries an optional backup who takes the work when the primary is
+ * out that day — the same resolution the rules engine runs on import.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { normalizeItemNumber, normalizeSku } from '@/lib/automations/listing-match';
+import {
+  collectActionStaffIds,
+  normalizeItemNumber,
+  normalizeSku,
+  parseAssignActions,
+  resolveActionAssignee,
+  type AssignWorkAction,
+  type ResolvedAssignee,
+  unassignedReason,
+} from '@/lib/automations/listing-match';
 import { LISTING_AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 import { upsertOrderAssignment } from '@/lib/work-assignments/upsert-order-assignment';
 import { applyListingAssignment } from '@/lib/automations/apply-listing-assignment';
+import { listStaffOutOnDate } from '@/lib/staff/staff-out-today';
 
 export type ListingAssignMode = 'save_and_assign' | 'apply_existing';
 
@@ -20,6 +32,9 @@ export type ListingAssignInput = {
   /** Required when mode is save_and_assign. */
   techId?: number | null;
   packerId?: number | null;
+  /** Optional; takes the work when the primary is out that day. */
+  backupTechId?: number | null;
+  backupPackerId?: number | null;
   actorStaffId?: number | null;
 };
 
@@ -29,6 +44,17 @@ export type ListingAssignOrderResult = {
   sku: string | null;
   status: 'assigned' | 'rule_applied' | 'skipped' | 'failed';
   reason?: string;
+  /** save_and_assign: who took each role now, primary or backup. */
+  assigned?: Partial<Record<AssignWorkAction['work_type'], ResolvedAssignee>>;
+};
+
+/** The rule keying a previewed pair, flattened for the rule editor. */
+export type ListingRuleSummary = {
+  id: number;
+  techId: number | null;
+  backupTechId: number | null;
+  packerId: number | null;
+  backupPackerId: number | null;
 };
 
 /** One rule key: normalized item # + normalized SKU (null = item-#-only wildcard). */
@@ -93,17 +119,26 @@ function groupByPair(facts: OrderFact[]): {
   return { pairs: [...byKey.values()], noItemNumber };
 }
 
+/** then_json for a listing rule; a null backup omits the key. */
+function buildAssignActions(staff: {
+  techId: number;
+  backupTechId: number | null;
+  packerId: number;
+  backupPackerId: number | null;
+}): AssignWorkAction[] {
+  const test: AssignWorkAction = { type: 'assign_work', work_type: 'TEST', staff_id: staff.techId };
+  if (staff.backupTechId != null) test.backup_staff_id = staff.backupTechId;
+  const pack: AssignWorkAction = { type: 'assign_work', work_type: 'PACK', staff_id: staff.packerId };
+  if (staff.backupPackerId != null) pack.backup_staff_id = staff.backupPackerId;
+  return [test, pack];
+}
+
 async function upsertRuleForPair(
   organizationId: OrgId,
   pair: ListingSkuPair,
-  techId: number,
-  packerId: number,
+  thenJson: AssignWorkAction[],
   actorStaffId: number | null,
 ): Promise<'created' | 'updated'> {
-  const thenJson = [
-    { type: 'assign_work', work_type: 'TEST', staff_id: techId },
-    { type: 'assign_work', work_type: 'PACK', staff_id: packerId },
-  ];
   const whenJson = pair.sku
     ? { item_number: pair.itemNumber, sku: pair.sku }
     : { item_number: pair.itemNumber };
@@ -167,28 +202,98 @@ async function upsertRuleForPair(
   return 'created';
 }
 
+type PreviewRuleRow = {
+  id: number;
+  when_json: Record<string, unknown> | null;
+  then_json: unknown;
+};
+
+/** Only item # (+ SKU) rules are editable from the to-ship rail. */
+const LISTING_RULE_WHEN_KEYS = new Set(['item_number', 'sku']);
+
+function summarizeRule(id: number, actions: AssignWorkAction[]): ListingRuleSummary {
+  const test = actions.find((a) => a.work_type === 'TEST');
+  const pack = actions.find((a) => a.work_type === 'PACK');
+  return {
+    id,
+    techId: test?.staff_id ?? null,
+    backupTechId: test?.backup_staff_id ?? null,
+    packerId: pack?.staff_id ?? null,
+    backupPackerId: pack?.backup_staff_id ?? null,
+  };
+}
+
 /**
- * Preview (item #, SKU) pairs covered by a set of order ids (for the to-ship overlay).
+ * Preview (item #, SKU) pairs covered by a set of order ids (for the to-ship
+ * overlay), each with the enabled rule that keys it: the exact pair rule, else
+ * the item-#-only wildcard — matchListingRule's precedence.
  */
 export async function previewListingAssign(
   organizationId: OrgId,
   orderIds: number[],
 ): Promise<{
-  listings: Array<ListingSkuPair & { orderCount: number; orderIds: number[] }>;
+  listings: Array<
+    ListingSkuPair & { orderCount: number; orderIds: number[]; rule: ListingRuleSummary | null }
+  >;
   skippedNoItemNumber: number;
   totalOrders: number;
 }> {
   const facts = await loadOrderFacts(organizationId, orderIds);
   const { pairs, noItemNumber } = groupByPair(facts);
+
+  const itemNumbers = [...new Set(pairs.map((p) => p.itemNumber))];
+  const ruleRows =
+    itemNumbers.length === 0
+      ? []
+      : (
+          await tenantQuery<PreviewRuleRow>(
+            organizationId,
+            `SELECT id, when_json, then_json
+               FROM automation_rules
+              WHERE organization_id = $1
+                AND deleted_at IS NULL
+                AND enabled = true
+                AND upper(regexp_replace(trim(COALESCE(when_json->>'item_number', '')), '[^A-Za-z0-9]', '', 'g')) = ANY($2::text[])
+              ORDER BY priority ASC, id ASC`,
+            [organizationId, itemNumbers],
+          )
+        ).rows;
+
+  // item # → { pair rules by SKU, first item-#-only rule }, first-wins in priority order.
+  const rulesByItem = new Map<
+    string,
+    { bySku: Map<string, ListingRuleSummary>; wildcard: ListingRuleSummary | null }
+  >();
+  for (const row of ruleRows) {
+    const when = row.when_json ?? {};
+    if (!Object.keys(when).every((k) => LISTING_RULE_WHEN_KEYS.has(k))) continue;
+    const actions = parseAssignActions(row.then_json);
+    if (actions.length === 0) continue;
+    const itemNumber = normalizeItemNumber(String(when.item_number ?? ''));
+    const sku = normalizeSku(String(when.sku ?? ''));
+    const entry = rulesByItem.get(itemNumber) ?? { bySku: new Map(), wildcard: null };
+    const summary = summarizeRule(Number(row.id), actions);
+    if (sku) {
+      if (!entry.bySku.has(sku)) entry.bySku.set(sku, summary);
+    } else {
+      entry.wildcard ??= summary;
+    }
+    rulesByItem.set(itemNumber, entry);
+  }
+
   return {
     totalOrders: facts.length,
     skippedNoItemNumber: noItemNumber.length,
-    listings: pairs.map(({ itemNumber, sku, rows }) => ({
-      itemNumber,
-      sku,
-      orderCount: rows.length,
-      orderIds: rows.map((r) => r.id),
-    })),
+    listings: pairs.map(({ itemNumber, sku, rows }) => {
+      const entry = rulesByItem.get(itemNumber);
+      return {
+        itemNumber,
+        sku,
+        orderCount: rows.length,
+        orderIds: rows.map((r) => r.id),
+        rule: (sku ? entry?.bySku.get(sku) : undefined) ?? entry?.wildcard ?? null,
+      };
+    }),
   };
 }
 
@@ -238,18 +343,53 @@ export async function listingAssignFromOrders(
     if (!Number.isFinite(techId) || techId <= 0 || !Number.isFinite(packerId) || packerId <= 0) {
       throw new Error('techId and packerId are required for save_and_assign');
     }
+    const actions = buildAssignActions({
+      techId,
+      backupTechId: input.backupTechId ?? null,
+      packerId,
+      backupPackerId: input.backupPackerId ?? null,
+    });
+    if (actions.some((a) => a.backup_staff_id === a.staff_id)) {
+      throw new Error('backup staff must differ from the primary');
+    }
 
     for (const pair of pairs) {
-      await upsertRuleForPair(orgId, pair, techId, packerId, input.actorStaffId ?? null);
+      await upsertRuleForPair(orgId, pair, actions, input.actorStaffId ?? null);
       rulesUpserted += 1;
     }
+
+    // Same primary→backup resolution as the engine; today's roster applies to
+    // every order in the selection.
+    const outToday =
+      pairs.length === 0
+        ? new Set<number>()
+        : await listStaffOutOnDate(orgId, collectActionStaffIds(actions));
+    const resolved = actions.map((action) => ({
+      action,
+      assignee: resolveActionAssignee(action, outToday),
+    }));
 
     for (const { itemNumber, sku, rows } of pairs) {
       for (const row of rows) {
         try {
-          await upsertOrderAssignment(orgId, row.id, 'TEST', techId);
-          await upsertOrderAssignment(orgId, row.id, 'PACK', packerId);
-          orderResults.push({ orderId: row.id, itemNumber, sku, status: 'assigned' });
+          const assigned: ListingAssignOrderResult['assigned'] = {};
+          const unassigned: string[] = [];
+          for (const { action, assignee } of resolved) {
+            if (!assignee) {
+              unassigned.push(unassignedReason(action));
+              continue;
+            }
+            await upsertOrderAssignment(orgId, row.id, action.work_type, assignee.staffId);
+            assigned[action.work_type] = assignee;
+          }
+          orderResults.push({
+            orderId: row.id,
+            itemNumber,
+            sku,
+            status: Object.keys(assigned).length > 0 ? 'assigned' : 'skipped',
+            ...(unassigned.length > 0 ? { reason: unassigned.join(',') } : {}),
+            assigned,
+          });
         } catch (err) {
           orderResults.push({
             orderId: row.id,

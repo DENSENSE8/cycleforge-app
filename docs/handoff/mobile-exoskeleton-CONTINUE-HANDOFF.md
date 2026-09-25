@@ -182,6 +182,14 @@ were applied 2026-09-24 with the operator's OK, together with two other sessions
 0 pending, and `tenancy:coverage` was regenerated. Still not exercised: a real GCS upload
 (it needs the bucket CORS rule) and a real Zendesk post.
 
+### Carton follow-up — unbox hands straight to QC (2026-09-24)
+
+The normal scan kernel still identifies an `R-` carton onto `/m/r/{id}`, where the
+operator confirms **Unbox**. Once the carton-scoped receive succeeds, the hub now
+replaces itself with `/m/r/{id}/qc`; that screen lists the carton's received lines,
+then the selected line's units, then the selected unit's checklist. An armed QC
+scan of the same carton already lands on that picker directly.
+
 ## Checks before you call it done
 - `pnpm verify:fast` (only the known `sessions.ts` error allowed).
 - `ds.mjs contract` returns each new pin first for its job phrase.

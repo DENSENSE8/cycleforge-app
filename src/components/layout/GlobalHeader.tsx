@@ -10,6 +10,7 @@ import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { SidebarCollapseControl } from './SidebarCollapseControl';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
+import { GlobalHeaderAdd } from './GlobalHeaderAdd';
 import {
   HEADER_ICON_CLUSTER,
   HEADER_INSET_X,
@@ -36,16 +37,10 @@ import { cn } from '@/utils/_cn';
  *   - **Floor page chip** — {@link HeaderPageSwitcher} (Scan Stations triage
  *     with the spine closed; desks stay on DeskPageChrome)
  *   - **Context** — page `panelContent`
- *   - **Actions** — {@link ActivityInboxButton}, far right, and it is the
- *     WHOLE zone (operator 2026-09-22: *"it would be best to add the add icon
- *     inside of the inbox itself … so it wouldn't take up space within a
- *     global header"*).
- *
- *     The global CREATE menu that used to lead this cluster is RETIRED by the
- *     same ruling. The `+` an operator actually reaches for is "watch this
- *     tracking number", which is an INBOX verb — it belongs in the panel that
- *     will deliver the answer, not in a second permanent beam seat. Adding a
- *     tracking watch now lives inside `ActivityInboxPopover`.
+ *   - **Actions** — a visible `+` starts shipping-label intake from every
+ *     desktop page. The flow resolves an order first, displays it through the
+ *     To-ship ledger, and keeps return and replacement purchases attached to
+ *     that order. The activity inbox stays far right.
  *
  *     A standing beam seat is earned by FREQUENCY. `HeaderGoalChip` and
  *     `GlobalHeaderAssistantButton` stay unmounted for the same reason; both
@@ -104,6 +99,7 @@ export function GlobalHeader({
       <HeaderPageSwitcher />
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
       <div className={HEADER_ICON_CLUSTER} data-header-zone="actions">
+        <GlobalHeaderAdd />
         <ActivityInboxButton />
       </div>
     </header>

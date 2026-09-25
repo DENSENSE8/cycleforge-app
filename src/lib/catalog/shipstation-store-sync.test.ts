@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isShipStationInternalStore, shipstationMarketplaceSlug } from './shipstation-store-sync';
+import { isShipStationInternalStore, shipstationMarketplaceSlug, storesToPlace } from './shipstation-store-sync';
 
 /**
  * DB-free unit tests for the marketplace → catalog-slug mapping (the pure half
@@ -39,4 +39,24 @@ test('ShipStation plumbing (manual orders, label API, rate browser) is never a p
     assert.equal(shipstationMarketplaceSlug({ marketplace: null, marketplaceName }), null, marketplaceName);
   }
   assert.equal(isShipStationInternalStore({ marketplace: null, marketplaceName: 'Walmart' }), false);
+});
+
+test('a linked store is never re-placed; unlinked sales stores (retired too) are', () => {
+  const store = (storeId: number, marketplaceName: string) => ({ storeId, marketplace: null, marketplaceName });
+  const placed = storesToPlace(
+    [
+      store(246252, 'Ecwid by Lightspeed'), // linked by the operator → untouched
+      store(216566, 'eBay'),
+      store(999, 'Walmart'), // retired stores still own historical orders
+      store(1, 'ShipStation'), // manual orders: plumbing, never placed
+    ],
+    new Set(['246252']),
+  );
+  assert.deepEqual(
+    placed.map(({ store: s, slug }) => [s.storeId, slug]),
+    [
+      [216566, 'ebay'],
+      [999, 'walmart'],
+    ],
+  );
 });

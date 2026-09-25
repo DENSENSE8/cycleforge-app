@@ -23,18 +23,20 @@ export const taskDeskDbDeps: TaskDeskDeps = {
   query: (orgId, sql, params) => tenantQuery(orgId, sql, params),
 };
 
-/** One transaction, one GUC-scoped connection, one row edited and re-read. */
+/** One transaction; the trigger records the actor's work/completion atomically. */
 export async function patchTaskDeskRow(
   orgId: OrgId,
   taskId: number,
   patch: TaskDeskPatch,
+  actorStaffId: number | null,
 ): Promise<PatchTaskDeskResult> {
-  return withTenantTransaction(orgId, async (client) =>
-    patchTaskDeskRowInTx(orgId, taskId, patch, {
+  return withTenantTransaction(orgId, async (client) => {
+    await client.query(`SELECT set_config('app.current_staff', $1::text, true)`, [actorStaffId == null ? '' : String(actorStaffId)]);
+    return patchTaskDeskRowInTx(orgId, taskId, patch, {
       query: async (sql, params) => {
         const res = await client.query(sql, params);
         return { rows: res.rows as Array<Record<string, unknown>>, rowCount: res.rowCount };
       },
-    }),
-  );
+    });
+  });
 }

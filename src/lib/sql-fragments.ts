@@ -23,12 +23,10 @@ export const SHIPPED_BY_CARRIER_SQL = `COALESCE(
  * quarantine / damaged / returns are not sellable. A unit in one of these is
  * not supply.
  *
- * Shared because two surfaces must agree on it exactly: the allocator's
- * `selectSupply` (src/lib/allocation/auto-allocate.ts), which decides what it
- * may reserve, and the pick list's shortfall query
- * (src/lib/picking/pick-list.ts), which tells the operator whether a sweep
- * would find anything. A second copy is how a phone comes to promise stock the
- * allocator refuses.
+ * Read by the allocator's `selectSupply` (src/lib/allocation/auto-allocate.ts),
+ * which decides what it may reserve. Any surface that promises a picker stock
+ * must read this same list — a second copy is how a phone comes to promise
+ * stock the allocator refuses.
  *
  * Formatted as a parenthesised SQL list for direct `IN` interpolation.
  */

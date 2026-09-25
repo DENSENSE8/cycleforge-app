@@ -64,6 +64,22 @@ the slot `DataTable`.
 `ModeRegion` on those two routes only. Placeholder SKUs read `LIFECYCLE.onHold` (`HLD`, warning).
 To ship still runs its own ledger files; it can adopt the primitive in its own page pass.
 
+**Inbound Deliveries · Docked receipts · Inventory Replenish (2026-09-25)** now use the same
+shared primitive without replacing their domain services. `/incoming` mounts
+`ModeRegion mode="triage"` → `DeskPageLayout stage="flush"` → `RecordLedger`; On the way adapts
+the existing `useReceivingLinesData` PO/line feed into `IncomingDeliveryRecord` and opens the
+existing consolidated `useIncomingDetails` read model in `IncomingDeliveryEvidence`. Add PO and
+Add Return are evidence-column modes; PO listing URLs are line-level. Scans still resolve through
+`routeScan` and write through `recordReceivingScan`.
+
+`/incoming?lane=docked` is a separate receiving-lifecycle ledger (`SCANNED` · `UNBOXED` ·
+`RECEIVED` · `ON_HOLD` · `EXCEPTION`) backed by the history feed; its evidence embeds the existing
+carton history reader. Inventory › Replenish adapts `/api/need-to-order` into
+`ReplenishmentPlanRecord` / `ReplenishmentPlanEvidence`; edits and workflow transitions stay in
+`src/lib/replenishment.ts`, and draft-PO creation stays in `/api/replenish/bulk-create-po`.
+`inventory:replenish` is no longer parked. These are presentation adapters over the established
+scan, query, cursor, mutation and PO-creation roots—not parallel data services.
+
 ## The record — one anatomy on every device
 
 ```

@@ -33,10 +33,12 @@ describe('buildAddInboundImportBody', () => {
       receivingType: 'RETURN',
       trackingNumber: '1Z999',
       pickedCatalogId: 42,
+      listingUrl: 'https://example.com/listing/sku-1',
     });
     assert.equal(body.kind, 'return');
     assert.equal(body.sku_catalog_id, 42);
     assert.equal(body.tracking_number, '1Z999');
+    assert.equal(body.listing_url, 'https://example.com/listing/sku-1');
   });
 
   it('purchase omits sku_catalog_id', () => {

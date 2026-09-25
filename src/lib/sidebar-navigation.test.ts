@@ -30,6 +30,13 @@ import {
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
+test('incoming has only On the way and History, including retired mailbox deep links', () => {
+  const page = getSidebarPageNav('incoming');
+  assert.deepEqual(page?.children?.map((child) => child.label), ['On the way', 'History']);
+  assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('view=mailbox') }), 'pipeline');
+  assert.equal(resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('lane=docked') }), 'docked');
+});
+
 test('getSidebarNavItems applies the MOBILE-FIRST GATE, and nothing else, by default', () => {
   // Dogfood parking is retired, so no rows are filtered for that reason any
   // more. What IS filtered (operator 2026-09-14) is every row in a lane the
@@ -703,7 +710,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // keeping the tab would be a second door to `/shipping/fba`.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['shortage', 'orders', 'shipped', 'exceptions'],
+    ['exceptions', 'shortage', 'orders', 'shipped'],
   );
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),

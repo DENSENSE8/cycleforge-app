@@ -29,7 +29,7 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { Check, X, Printer, Plus, Package } from '@/components/Icons';
-import { Panel, IconButton } from '@/design-system/primitives';
+import { Panel, IconButton, Button } from '@/design-system/primitives';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -68,6 +68,13 @@ interface BoxResponse {
   handling_unit: BoxDetail;
 }
 
+/** `GET /api/packing/resolve-tote` — `packHref` only when this tote carries a packable order. */
+interface PackToteResponse {
+  success: boolean;
+  tracking?: string;
+  packHref?: string;
+}
+
 export default function MobileHandlingUnitPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -103,6 +110,17 @@ export default function MobileHandlingUnitPage() {
   }, [flash]);
 
   const box = data?.handling_unit;
+  const { data: packTote } = useQuery<PackToteResponse>({
+    queryKey: ['handling-unit.pack-order', box?.id],
+    enabled: !!box,
+    queryFn: async () => {
+      const res = await fetch(`/api/packing/resolve-tote?scan=${encodeURIComponent(`H-${box!.id}`)}`, {
+        cache: 'no-store',
+      });
+      return res.json() as Promise<PackToteResponse>;
+    },
+    refetchOnWindowFocus: false,
+  });
 
   const submitAdd = useCallback(async () => {
     const ref = unwrapScannedSerial(addInput);
@@ -212,6 +230,19 @@ export default function MobileHandlingUnitPage() {
 
       {box && (
         <>
+          {/* A house-label scan lands here from /m/scan: a staged tote carrying
+              an order offers its pack job instead of stranding the operator. */}
+          {packTote?.packHref && (
+            <Panel radius="xl" padding="sm" className="mx-3 mt-3">
+              <p className="text-sm font-semibold text-text-default">Ready to pack</p>
+              <p className="mt-1 text-xs text-text-soft">
+                {box.code} carries order tracking {packTote.tracking}
+              </p>
+              <Button variant="primary" radius="flush" className="mt-3 w-full" onClick={() => router.push(packTote.packHref!)}>
+                Start packing
+              </Button>
+            </Panel>
+          )}
           {/* Rollup + meta */}
           <Panel radius="xl" padding="sm" className="mx-3 mt-3">
             <div className="flex items-center justify-between gap-2">

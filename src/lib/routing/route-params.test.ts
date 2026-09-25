@@ -120,6 +120,12 @@ test('Incoming desk accepts Pipeline ∪ Docked sorts; History keeps its own voc
   assert.equal(parseRouteParams(HISTORY_ROUTE_PARAMS, incoming).get('sort'), null);
 });
 
+test('retired PO Mailbox links resolve to the incoming ledger without a mailbox face', () => {
+  const next = parseRouteParams(INCOMING_ROUTE_PARAMS, new URLSearchParams('view=mailbox&lane=docked'));
+  assert.equal(next.get('view'), null);
+  assert.equal(next.get('lane'), 'docked');
+});
+
 test('Unbox Displays URL keys are stripped by surface hygiene', () => {
   // Displays leaf + nest are local React state (Arrival parity). Stale
   // `?display=` / nest params must not survive hygiene — mount strip + desk

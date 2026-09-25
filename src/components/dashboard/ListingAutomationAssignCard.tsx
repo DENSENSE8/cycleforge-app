@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * To-ship selection overlay: save (item #, SKU) → QC + packer as automation_rules
+ * To-ship selection overlay: save (item #, SKU) → QC + packer (each with an
+ * optional backup for days the primary is out) as automation_rules
  * and assign the selected orders now. Mirrors WorkOrderAssignmentCard chrome
  * (AssignmentOverlayCard + StaffButtonGrid) without the per-row carousel.
  */
@@ -46,6 +47,8 @@ export function ListingAutomationAssignCard({
   const [preview, setPreview] = useState<PreviewState>({ status: 'loading' });
   const [techId, setTechId] = useState<number | null>(null);
   const [packerId, setPackerId] = useState<number | null>(null);
+  const [backupTechId, setBackupTechId] = useState<number | null>(null);
+  const [backupPackerId, setBackupPackerId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,6 +113,8 @@ export function ListingAutomationAssignCard({
           mode,
           techId: mode === 'save_and_assign' ? techId : undefined,
           packerId: mode === 'save_and_assign' ? packerId : undefined,
+          backupTechId: mode === 'save_and_assign' ? backupTechId : undefined,
+          backupPackerId: mode === 'save_and_assign' ? backupPackerId : undefined,
         }),
       });
       const body = (await res.json().catch(() => null)) as {
@@ -205,26 +210,48 @@ export function ListingAutomationAssignCard({
             ) : null}
 
             <StaffButtonGrid
-              label="QC / technician"
+              label="Picker"
               options={technicianOptions}
               selectedId={techId}
-              onSelect={setTechId}
-              emptyMessage="No technicians"
+              onSelect={(id) => {
+                setTechId(id);
+                if (backupTechId === id) setBackupTechId(null);
+              }}
+              emptyMessage="No pickers"
             />
             <StaffButtonGrid
-              label="Picker / packer"
+              label="Backup picker (optional)"
+              options={technicianOptions.filter((m) => m.id !== techId)}
+              selectedId={backupTechId}
+              onSelect={(id) => setBackupTechId((prev) => (prev === id ? null : id))}
+              emptyMessage="No other pickers"
+            />
+            <StaffButtonGrid
+              label="Packer"
               options={packerOptions}
               selectedId={packerId}
-              onSelect={setPackerId}
+              onSelect={(id) => {
+                setPackerId(id);
+                if (backupPackerId === id) setBackupPackerId(null);
+              }}
               columns={2}
               emptyMessage="No packers"
+            />
+            <StaffButtonGrid
+              label="Backup packer (optional)"
+              options={packerOptions.filter((m) => m.id !== packerId)}
+              selectedId={backupPackerId}
+              onSelect={(id) => setBackupPackerId((prev) => (prev === id ? null : id))}
+              columns={2}
+              emptyMessage="No other packers"
             />
           </>
         ) : null}
         {error ? <p className="text-role-caption text-text-danger">{error}</p> : null}
         <p className="text-role-eyebrow text-text-soft">
           Save rules &amp; assign writes item # + SKU → staff for future imports and
-          assigns these orders now. Apply existing rules only uses rules already saved.
+          assigns these orders now; a backup takes over on days its primary is out.
+          Apply existing rules only uses rules already saved.
         </p>
       </div>
     </AssignmentOverlayCard>

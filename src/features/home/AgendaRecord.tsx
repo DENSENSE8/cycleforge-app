@@ -1,0 +1,198 @@
+'use client';
+
+/**
+ * One Daily agenda row as an {@link IndustrialRecord} — the checklist item and
+ * the handed-over task in the SAME anatomy, so the eye reads one list even
+ * though the stores stay three (checklist · task · ticket).
+ *
+ *   spine │ face │ ☐ CODE · KIND · record · links ························│ due
+ *         │      │ title ···············································│ reminder
+ *         │      │ who · from · media ··································│ → next
+ *
+ * Band 1's box is the TICK — "I finished this" — on both halves, the gesture
+ * the Reminders list taught; the rest of the record opens the evidence column.
+ */
+
+import { memo } from 'react';
+import { format } from 'date-fns';
+import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import {
+  IndustrialRecord,
+  RecordNext,
+  RecordPhoto,
+  RecordStamp,
+  RecordTitle,
+} from '@/design-system/components/record-ledger/IndustrialRecord';
+import { RECORD_HIT_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
+import { photoContentUrl } from '@/lib/photos/display-url';
+import { agendaRecordState } from '@/lib/daily/agenda-record-state';
+import { DAILY_AGENDA_TYPE_LABEL, type DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
+import type { TaskLinkKind } from '@/lib/tasks/task-links-shared';
+import { cn } from '@/utils/_cn';
+
+/** Band-1 kind stamp — three letters, one per store face. */
+const KIND_CODE: Readonly<Record<DailyAgendaRow['type'], string>> = {
+  checklist: 'CHK',
+  task: 'TSK',
+  ticket: 'TKT',
+};
+
+const LINK_CODE: Readonly<Record<TaskLinkKind, string>> = { order: 'ORD', tracking: 'TRK', ticket: 'TKT' };
+
+/** `ORD 2 · TRK 1` — how many of each record the task names, in link order. */
+function linkSummary(row: DailyAgendaRow): string {
+  const counts = new Map<TaskLinkKind, number>();
+  for (const link of row.links) counts.set(link.kind, (counts.get(link.kind) ?? 0) + 1);
+  return [...counts].map(([kind, n]) => `${LINK_CODE[kind]} ${n}`).join(' · ');
+}
+
+/** `3:00 PM` from a checklist's civil `HH:MM` — the wall clock the floor reads. */
+function civilTimeFace(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+function dueFace(row: DailyAgendaRow): { face: string | null; title?: string } {
+  if (row.type === 'checklist') return { face: row.dueTime ? civilTimeFace(row.dueTime) : null };
+  if (row.deadlineAtMs == null) return { face: null };
+  const due = new Date(row.deadlineAtMs);
+  return { face: format(due, 'MMM d · h:mm a').toUpperCase(), title: format(due, 'EEE MMM d, yyyy · h:mm a') };
+}
+
+function reminderFace(row: DailyAgendaRow): string | null {
+  if (row.type === 'checklist') {
+    if (row.dueTime == null || row.remindOffsetMinutes == null) return null;
+    return row.remindOffsetMinutes === 0 ? 'At due' : `${row.remindOffsetMinutes}m before`;
+  }
+  return row.remindAtMs == null ? null : format(new Date(row.remindAtMs), 'MMM d · h:mm a').toUpperCase();
+}
+
+export const AgendaRecord = memo(function AgendaRecord({
+  row,
+  open,
+  nowMs,
+  isToday,
+  tickable,
+  onOpen,
+  onToggle,
+}: {
+  row: DailyAgendaRow;
+  open: boolean;
+  nowMs: number;
+  isToday: boolean;
+  tickable: boolean;
+  onOpen: (key: string) => void;
+  onToggle: (row: DailyAgendaRow) => void;
+}) {
+  const state = agendaRecordState(row, nowMs, isToday);
+  const due = dueFace(row);
+  const reminder = reminderFace(row);
+  const links = linkSummary(row);
+  const who = row.type === 'checklist' ? row.ownerName : row.assigneeName;
+  const media = [
+    row.photoCount > 0 ? `PHOTO ${row.photoCount}` : null,
+    row.videoCount > 0 ? `VIDEO ${row.videoCount}` : null,
+    row.docCount > 0 ? `DOCS ${row.docCount}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <IndustrialRecord
+      recordKey={row.key}
+      state={lifecycleRecordState(state.lifecycle)}
+      open={open}
+      openLabel={`${DAILY_AGENDA_TYPE_LABEL[row.type]} ${row.id}, ${state.word}, ${row.title}`}
+      onOpen={() => onOpen(row.key)}
+      photo={
+        <RecordPhoto
+          src={row.coverPhotoId != null ? photoContentUrl(row.coverPhotoId, 'thumb') : null}
+          fallback={row.title}
+        />
+      }
+      bands={[
+        {
+          main: (
+            <>
+              <span className="pointer-events-auto -ml-2 shrink-0">
+                <GridRowCheckbox
+                  checked={row.done}
+                  disabled={!tickable}
+                  onToggle={() => onToggle(row)}
+                  label={`Mark "${row.title}" ${row.done ? 'not done' : 'done'}`}
+                  className={cn(RECORD_HIT_CLASS, 'w-8 items-center pt-0')}
+                />
+              </span>
+              <span
+                className={cn(
+                  RECORD_LABEL_CLASS,
+                  'w-10 shrink-0',
+                  state.late ? 'text-mode-warn' : row.done ? 'text-mode-muted' : 'text-mode-ink',
+                )}
+                title={state.word}
+              >
+                {state.code}
+              </span>
+              <span className={cn(RECORD_LABEL_CLASS, 'w-8 shrink-0 text-mode-muted')}>{KIND_CODE[row.type]}</span>
+              {row.recordLabel ? (
+                <span className={cn(RECORD_ID_CLASS, 'shrink-0 truncate text-mode-ink')}>{row.recordLabel}</span>
+              ) : (
+                <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>
+                  {row.cadence === 'once' ? 'One-off' : 'Every day'}
+                </span>
+              )}
+              {links ? (
+                <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={row.links.map((l) => l.label).join(', ')}>
+                  + {links}
+                </span>
+              ) : null}
+            </>
+          ),
+          right: <RecordStamp title={due.title}>{due.face}</RecordStamp>,
+        },
+        {
+          main: <RecordTitle>{row.title}</RecordTitle>,
+          right: reminder ? (
+            <span className={cn(RECORD_LABEL_CLASS, 'w-full truncate text-left text-mode-ink')} title="Reminder">
+              <span className="text-mode-muted">RMD </span>
+              {reminder}
+            </span>
+          ) : null,
+        },
+        {
+          main: (
+            <>
+              <span className="inline-flex w-40 shrink-0 items-center gap-1.5">
+                {who ? (
+                  <StaffAvatar staffId={row.ownerId} name={who} size="xs" shape="square" />
+                ) : null}
+                <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>
+                  {who ?? (row.type === 'checklist' ? 'Whole shift' : 'Unassigned')}
+                </span>
+              </span>
+              {row.type === 'checklist' ? (
+                <span className={cn(RECORD_LABEL_CLASS, 'w-20 shrink-0 tabular-nums text-mode-muted')}>
+                  Team {row.teamDone ?? 0}/{row.teamTotal ?? 0}
+                </span>
+              ) : (
+                <span className={cn(RECORD_LABEL_CLASS, 'w-32 shrink-0 truncate text-mode-muted')}>
+                  {row.assignedByName ? `From ${row.assignedByName}` : ''}
+                </span>
+              )}
+              <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>{media}</span>
+              {row.description ? (
+                <span className="min-w-0 flex-1 truncate text-role-data text-mode-muted" title={row.description}>
+                  {row.description}
+                </span>
+              ) : null}
+            </>
+          ),
+          right: <RecordNext label={state.next} warn={state.late} />,
+        },
+      ]}
+    />
+  );
+});

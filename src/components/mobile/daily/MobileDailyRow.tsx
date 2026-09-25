@@ -80,8 +80,9 @@ export function MobileDailyRow({
   ticketId?: number | null;
   /**
    * What the hard-right door promises. `edit` opens the item's own sheet
-   * (pencil); `record` walks to the order/carton/thread the task points at
-   * (chevron). A task has no editable list entry, so it never wears a pencil.
+   * (pencil); `record` opens a task's sheet — its instructions, media and the
+   * records it links (chevron). A task has no editable list entry, so it
+   * never wears a pencil.
    */
   detail?: 'edit' | 'record';
   onToggle: (next: boolean) => void;

@@ -6,6 +6,7 @@ import {
   normalizeItemNumber,
   normalizeSku,
   parseAssignActions,
+  resolveActionAssignee,
   ruleMatchesFacts,
   selectActionsForTrigger,
   shouldPassAllocate,
@@ -66,6 +67,51 @@ describe('parseAssignActions', () => {
       { type: 'assign_work', work_type: 'TEST', staff_id: 7 },
       { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
     ]);
+  });
+
+  it('parses a backup_staff_id', () => {
+    assert.deepEqual(
+      parseAssignActions([{ type: 'assign_work', work_type: 'PACK', staff_id: 12, backup_staff_id: 13 }]),
+      [{ type: 'assign_work', work_type: 'PACK', staff_id: 12, backup_staff_id: 13 }],
+    );
+  });
+
+  it('drops a backup equal to the primary but keeps the action', () => {
+    assert.deepEqual(
+      parseAssignActions([{ type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 7 }]),
+      [{ type: 'assign_work', work_type: 'TEST', staff_id: 7 }],
+    );
+  });
+
+  it('drops an invalid backup but keeps the action', () => {
+    const actions = parseAssignActions([
+      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: -3 },
+      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 'abc' },
+      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 2.5 },
+      { type: 'assign_work', work_type: 'TEST', staff_id: 7, backup_staff_id: 0 },
+    ]);
+    assert.deepEqual(actions, Array(4).fill({ type: 'assign_work', work_type: 'TEST', staff_id: 7 }));
+  });
+});
+
+describe('resolveActionAssignee', () => {
+  const withBackup = { type: 'assign_work', work_type: 'PACK', staff_id: 12, backup_staff_id: 13 } as const;
+  const noBackup = { type: 'assign_work', work_type: 'TEST', staff_id: 7 } as const;
+
+  it('primary when the primary is in', () => {
+    assert.deepEqual(resolveActionAssignee(withBackup, new Set([13])), { staffId: 12, via: 'primary' });
+  });
+
+  it('backup when the primary is out', () => {
+    assert.deepEqual(resolveActionAssignee(withBackup, new Set([12])), { staffId: 13, via: 'backup' });
+  });
+
+  it('null when primary and backup are both out', () => {
+    assert.equal(resolveActionAssignee(withBackup, new Set([12, 13])), null);
+  });
+
+  it('null when the primary is out and there is no backup', () => {
+    assert.equal(resolveActionAssignee(noBackup, new Set([7])), null);
   });
 });
 
@@ -212,17 +258,17 @@ describe('selectActionsForTrigger', () => {
     { type: 'assign_work', work_type: 'PACK', staff_id: 12 },
   ]);
 
-  it('keeps TEST on order.imported', () => {
+  it('runs TEST and PACK on order.imported', () => {
     assert.deepEqual(
       selectActionsForTrigger(actions, 'order.imported').map((a) => a.work_type),
-      ['TEST'],
+      ['TEST', 'PACK'],
     );
   });
 
-  it('keeps TEST on order.item_number_set', () => {
+  it('runs TEST and PACK on order.item_number_set', () => {
     assert.deepEqual(
       selectActionsForTrigger(actions, 'order.item_number_set').map((a) => a.work_type),
-      ['TEST'],
+      ['TEST', 'PACK'],
     );
   });
 

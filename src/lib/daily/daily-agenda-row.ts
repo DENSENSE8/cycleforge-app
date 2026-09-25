@@ -36,10 +36,12 @@
 import {
   taskDeskRecordHref,
   taskDeskRecordLabel,
+  taskDeskTitle,
   type TaskDeskRow,
   type TaskDeskStatus,
 } from '@/lib/tasks/task-desk-row';
 import type { TaskUrgency } from '@/lib/tasks/task-vocabulary';
+import type { TaskLinkFace } from '@/lib/tasks/task-links-shared';
 
 export type DailyAgendaType = 'checklist' | 'task' | 'ticket';
 
@@ -110,6 +112,31 @@ export interface DailyAgendaRow {
   /** `Carton 4412` — the record the task points at. */
   recordLabel: string | null;
   recordHref: string | null;
+
+  // ── schedule (both halves, each in its own grain) ───────────────────────
+  /** Checklist only: civil due time `HH:MM` in the warehouse zone. */
+  dueTime: string | null;
+  /** Checklist only: minutes before {@link dueTime} the phone apps ring. */
+  remindOffsetMinutes: number | null;
+  /** Task only: the absolute "remind me" instant. */
+  remindAtMs: number | null;
+
+  // ── evidence ────────────────────────────────────────────────────────────
+  /** Checklist item context; null on a task (its words ARE the title). */
+  description: string | null;
+  /** Records a task names beyond its anchor; empty on a checklist item. */
+  links: readonly TaskLinkFace[];
+  photoCount: number;
+  videoCount: number;
+  /** Markdown documents / plan files attached to a task. */
+  docCount: number;
+  coverPhotoId: number | null;
+  /**
+   * Does this row carry a Zendesk ticket anywhere — a ticket task, a task
+   * that LINKS a ticket, or a checklist item paired with one. The "Tickets
+   * in tasks" tab is the task half of this; the Tickets tab is the band.
+   */
+  hasTicket: boolean;
 }
 
 /**
@@ -130,6 +157,10 @@ export interface ChecklistAgendaSource {
   teamDone: number;
   teamTotal: number;
   markedAt: string | null;
+  description: string | null;
+  ticketId: number | null;
+  dueTime: string | null;
+  remindOffsetMinutes: number | null;
 }
 
 function ms(iso: string | null | undefined): number | null {
@@ -161,6 +192,16 @@ export function dailyAgendaFromChecklist(item: ChecklistAgendaSource): DailyAgen
     completedAtMs: null,
     recordLabel: null,
     recordHref: null,
+    dueTime: item.dueTime,
+    remindOffsetMinutes: item.remindOffsetMinutes,
+    remindAtMs: null,
+    description: item.description,
+    links: [],
+    photoCount: 0,
+    videoCount: 0,
+    docCount: 0,
+    coverPhotoId: null,
+    hasTicket: item.ticketId != null,
   };
 }
 
@@ -179,7 +220,7 @@ export function dailyAgendaFromTask(row: TaskDeskRow): DailyAgendaRow {
     id: row.id,
     // A handoff with no words is still a row; it names the record instead of
     // painting an empty title.
-    title: row.note || taskDeskRecordLabel(row),
+    title: taskDeskTitle(row),
     done: row.status === 'DONE',
     cadence: null,
     teamDone: null,
@@ -197,6 +238,16 @@ export function dailyAgendaFromTask(row: TaskDeskRow): DailyAgendaRow {
     completedAtMs: row.completedAtMs,
     recordLabel: taskDeskRecordLabel(row),
     recordHref: taskDeskRecordHref(row, 'desk'),
+    dueTime: null,
+    remindOffsetMinutes: null,
+    remindAtMs: row.remindAtMs,
+    description: null,
+    links: row.links,
+    photoCount: row.photoCount,
+    videoCount: row.videoCount,
+    docCount: row.docCount,
+    coverPhotoId: row.coverPhotoId,
+    hasTicket: type === 'ticket' || row.links.some((link) => link.kind === 'ticket'),
   };
 }
 

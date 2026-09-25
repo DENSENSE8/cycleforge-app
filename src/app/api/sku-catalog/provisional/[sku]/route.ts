@@ -6,6 +6,7 @@ import { ProvisionalUpdateBody } from '@/lib/schemas/provisional-sku';
 import {
   findProvisionalMergeTarget,
   getProvisionalSkuDetail,
+  ProvisionalBarcodeError,
   updateProvisionalSku,
 } from '@/lib/neon/provisional-sku-queries';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
@@ -22,7 +23,9 @@ import { publishSkuExceptionChanged } from '@/lib/realtime/publish';
  * GET   → the placeholder with its photos and bins. A placeholder that was
  *         already paired answers 404 with `mergedInto`, so a stale link can
  *         say where the product went instead of "not found".
- * PATCH → rename / describe. Same gate as creating one (`sku_stock.adjust`).
+ * PATCH → rename / describe, or attach the barcode a barcode-less placeholder
+ *         was created without (attach-once; a conflict answers 409 with
+ *         `conflictSku`). Same gate as creating one (`sku_stock.adjust`).
  */
 
 async function readSku(params: Promise<{ sku: string }>): Promise<string | null> {
@@ -75,7 +78,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sk
     }
 
     const item = await updateProvisionalSku(
-      { sku, productTitle: parsed.productTitle, description: parsed.description },
+      { sku, productTitle: parsed.productTitle, description: parsed.description, barcode: parsed.barcode },
       orgId,
     );
     if (!item) {
@@ -87,14 +90,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sk
       action: AUDIT_ACTION.SKU_STOCK_ADJUST,
       entityType: AUDIT_ENTITY.SKU_STOCK,
       entityId: sku,
-      before: { product_title: before.productTitle, description: before.description },
-      after: { product_title: item.productTitle, description: item.description },
-      reasonCode: 'PROVISIONAL_EDIT',
+      before: { product_title: before.productTitle, description: before.description, barcode: before.barcode || null },
+      after: { product_title: item.productTitle, description: item.description, barcode: item.barcode || null },
+      reasonCode: parsed.barcode !== undefined && item.barcode !== before.barcode ? 'PROVISIONAL_BARCODE' : 'PROVISIONAL_EDIT',
     });
 
-    // The title is a catalog fact too (the placeholder's inactive row), so
-    // cached title reads must see the rename.
-    if (parsed.productTitle !== undefined) {
+    // The title and barcode are catalog facts too (the placeholder's inactive
+    // row carries both), so cached title/scan reads must see the change.
+    if (parsed.productTitle !== undefined || parsed.barcode !== undefined) {
       await invalidateCacheTags(orgId, [CACHE_TAGS.skuCatalog]);
     }
 
@@ -109,6 +112,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ sk
 
     return NextResponse.json({ success: true, item });
   } catch (error) {
+    if (error instanceof ProvisionalBarcodeError) {
+      return NextResponse.json(
+        { success: false, error: error.message, reason: error.reason, conflictSku: error.conflictSku },
+        { status: error.reason === 'unusable' ? 400 : 409 },
+      );
+    }
     console.error('Error in PATCH /api/sku-catalog/provisional/[sku]:', error);
     return NextResponse.json({ success: false, error: 'Failed to update on-hold product' }, { status: 500 });
   }

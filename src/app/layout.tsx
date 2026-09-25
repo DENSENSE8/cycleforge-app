@@ -15,7 +15,7 @@ import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
 import { stationDepthStyleText } from '@/design-system/themes/station-depths';
 import { modeRegistryStyleText } from '@/design-system/modes/registry';
-// NOTE: `ReducedMotionProvider` is deliberately NOT imported here. It renders
+import { TRIAL_BOOT_SCRIPT } from '@/lib/design/trials';
 // `MotionConfig`, so a static import in this file shipped the framer runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
 // `WarehouseShell`, which is already behind `next/dynamic` — see the note there.
@@ -112,6 +112,8 @@ export default async function RootLayout({
                     globals.css (iOS only zooms a field under 16px), so the lock
                     was redundant belt-and-braces that cost real users zoom. */}
                 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+                {/* URL-only design trial flags; never persisted. */}
+                <script dangerouslySetInnerHTML={{ __html: TRIAL_BOOT_SCRIPT }} />
                 <style id="app-design-tokens">{designTokenStyleText}</style>
                 {/* Generated theme palettes (light/dark/mono/slate + staff
                     accents) from the theme registry — the single owner of every

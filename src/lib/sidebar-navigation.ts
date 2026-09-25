@@ -456,7 +456,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // ruling: *"it should never display the same child and parent name."* So each
   // altitude now answers a different question — the LANE names the direction
   // (Inbound), the ROW names the object (Deliveries), the TAB names the state
-  // (On the way · History · PO Mailbox). Wire id and path stay `incoming`.
+  // (On the way · History). Wire id and path stay `incoming`.
   // Enforced by `nav-name-collisions.ts`, not by vigilance.
   // `keywords` carry the RETIRED face: the row is no longer called Inbound, but
   // an operator who types "inbound" in ⌘K must still land on it. Renaming a
@@ -1474,7 +1474,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // — but Docked had no way in after the old `Pipeline | Docked` parent pair
     // was deleted, so the whole lane was reachable only by hand-typing a param.
     //
-    // Tab labels are **On the way | History | PO Mailbox**. The first was
+    // Tab labels are **On the way | History**. The first was
     // `Inbound` until 2026-09-14, which made the word appear at all three
     // altitudes (lane → row → tab); it now names the STATE the operator is
     // looking at, which is the same reason History is not "Docked".
@@ -1489,16 +1489,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     children: [
       { id: 'pipeline', label: 'On the way', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { lane: null, view: null } }) },
       { id: 'docked',   label: 'History', icon: History,                      to: () => ({ pathname: INCOMING, params: { lane: 'docked', view: null } }) },
-      // PO Mailbox (admin dissolution): the ex-admin email-PO triage queue is
-      // a third FACE of this desk, not a lane of the carton feed.
-      { id: 'mailbox',  label: 'PO Mailbox', icon: Inbox, requires: 'receiving.view', to: () => ({ pathname: INCOMING, params: { lane: null, view: 'mailbox' } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       // Legacy `/dashboard?mode=inbound` resolves the PAGE to Inbound but is
       // not on either lane yet — the proxy redirects it. Lighting a tab there
       // would claim the operator is somewhere they are not.
       if (pathname !== INCOMING && !pathname.startsWith(`${INCOMING}/`)) return null;
-      if (params.get('view') === 'mailbox') return 'mailbox';
       return parseInboundLane(params.get('lane')) === 'docked' ? 'docked' : 'pipeline';
     },
   },
@@ -1659,19 +1655,23 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // measured to give that width back; every other desk that wears this chrome
     // still has a rail to keep.
     railless: true,
+    // Tab order (owner 2026-09-24): Exceptions · Pending · To ship · Shipped —
+    // the work that is blocked first, then the queue left to right in the order
+    // an order moves through it. Order only; ids, paths and `resolveChild` are
+    // unchanged.
     children: [
-      { id: 'shortage', label: 'Pending',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
-      { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
-      // No `fba` child — FBA is a lane row now (see the docblock above).
-      // `packing.view` because the archive IS the packer log: `/api/packerlogs`
-      // already enforces it, and a tab that 403s is worse than an absent one.
-      { id: 'shipped',  label: 'Shipped',   icon: PackageCheck,                 requires: 'packing.view', to: () => ({ pathname: SHIPPING_SHIPPED_PATH, params: {} }) },
       // Exceptions is a PEER by the same test FBA passes: a process fork whose
       // queue semantics To ship cannot express. Caged / unpaired orders are
       // excluded from that queue by predicate, and the work on them (pair a
       // SKU, fix an item number) is not the work To ship does (pack and ship).
       // It carries a live count so "22 blocked" is legible without navigating.
       { id: 'exceptions', label: 'Exceptions', icon: AlertTriangle,             requires: 'orders.view',  to: () => ({ pathname: SHIPPING_EXCEPTIONS_PATH, params: {} }) },
+      { id: 'shortage', label: 'Pending',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
+      { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
+      // No `fba` child — FBA is a lane row now (see the docblock above).
+      // `packing.view` because the archive IS the packer log: `/api/packerlogs`
+      // already enforces it, and a tab that 403s is worse than an absent one.
+      { id: 'shipped',  label: 'Shipped',   icon: PackageCheck,                 requires: 'packing.view', to: () => ({ pathname: SHIPPING_SHIPPED_PATH, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
       // Packing Review is a Scan Stations L1 — never a Shipping child highlight.

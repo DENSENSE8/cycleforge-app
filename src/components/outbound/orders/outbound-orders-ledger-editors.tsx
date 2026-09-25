@@ -8,9 +8,20 @@
  * the evidence column so one fact has one editor.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
+import { useAppendOrderNote } from '@/hooks/useOrderNotes';
+import { toast } from '@/lib/toast';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
-import { usePlatformAccountCatalog, usePlatformCatalog } from '@/hooks/useCatalog';
+import { usePlatformAccountCatalog, usePlatformCatalog, useStoreLinks } from '@/hooks/useCatalog';
+import { orderPlatformChoices } from '@/lib/platform-display';
 import { useLocationPickerOptions } from '@/hooks/useLocationPickerOptions';
 import {
   Popover,
@@ -29,11 +40,12 @@ import {
   type CompoundSlotValue,
   type CompoundStageStepFacts,
 } from '@/components/tables/compound/compound-row-model';
-import { ExternalLink, Pencil } from '@/components/Icons';
-import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
+import { Pencil, ResizeCorner, Tag } from '@/components/Icons';
+import { conditionGradeTextClass, conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
 import {
   conditionGradeTableLabel,
   conditionOptions,
+  EMPTY_META_DASH,
   resolveConditionGrade,
 } from '@/lib/conditions';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
@@ -43,13 +55,15 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
+  RECORD_CONDITION_CHIP_CLASS,
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_QTY_BADGE_CLASS,
+  RECORD_RECESS_CLASS,
+  RECORD_TRAILING_CELL_CLASS,
+  RECORD_TRAILING_GLYPH_INSET_CLASS,
 } from '@/design-system/tokens/industrial-record';
-import {
-  LEDGER_HIT_CLASS,
-} from './outbound-orders-ledger-geometry';
+import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
 
 /** Stops a control's click from reaching the row's open target. */
 export function stop(event: { stopPropagation: () => void }) {
@@ -69,57 +83,11 @@ export function stageFacts(value: CompoundSlotValue | null): CompoundStageStepFa
 /**
  * The listing — a first-class fact, not a hover menu item (owner 2026-09-24).
  * Opens the marketplace listing in a new tab. Faces: `row` — `LISTING ↗` on
- * the facts band, immediately left of the next step; `value` — `<item #> ↗`
+ * the record's first band, right end, beside the ship-by (owner 2026-09-25); `value` — `<item #> ↗`
  * where a fact row already says "Listing" (evidence column). No listing → a
  * quiet dash, never a dead link. Never opens the row.
  */
-export function LedgerListingLink({
-  href,
-  itemNumber,
-  face = 'row',
-}: {
-  href: string | null;
-  itemNumber: string | null;
-  face?: 'row' | 'value';
-}) {
-  const item = (itemNumber ?? '').trim();
-  if (!href) {
-    return (
-      <span
-        className={cn(RECORD_LABEL_CLASS, LEDGER_HIT_CLASS, 'flex h-full items-center px-2 text-mode-faint')}
-        title="No listing on this order"
-      >
-        {face === 'row' ? 'Listing —' : '—'}
-      </span>
-    );
-  }
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={stop}
-      onPointerDown={stop}
-      aria-label={item ? `Open listing ${item} in a new tab` : 'Open listing in a new tab'}
-      title={item ? `Listing ${item}` : href}
-      data-testid="ledger-listing-link"
-      className={cn(
-        'flex h-full min-w-0 items-center gap-1.5 px-2 text-mode-ink hover:bg-mode-hover',
-        LEDGER_HIT_CLASS,
-        focusRing('cell'),
-      )}
-    >
-      {face === 'row' ? (
-        <span className={RECORD_LABEL_CLASS}>Listing</span>
-      ) : (
-        <span className={cn(RECORD_ID_CLASS, 'min-w-0 truncate underline decoration-mode-edge underline-offset-2')}>
-          {item || 'Open'}
-        </span>
-      )}
-      <ExternalLink aria-hidden className="h-3.5 w-3.5 shrink-0" />
-    </a>
-  );
-}
+export { RecordListingLink as LedgerListingLink } from '@/design-system/components/record-ledger/RecordIdentity';
 
 // ── Inline editors (instant commit, 32px hit, never open the row) ───────────
 
@@ -185,8 +153,8 @@ export function LedgerStageAssign({
   /** Absent ⇒ read-only (the paperwork walk shows who and when, it does not assign). */
   onCommit?: (staffId: number | null, staffName: string | null) => void;
   /**
-   * Paint the step's date + time under the name. Detail columns (evidence,
-   * paperwork) have the width; the ledger's 7rem cell keeps it on hover.
+   * Paint the step's date + time beneath the status face. Compact mounts may
+   * leave it off and retain the same full stamp in the hover label.
    */
   showStamp?: boolean;
 }) {
@@ -204,12 +172,14 @@ export function LedgerStageAssign({
   const hasActor = Boolean(actorId || actorName);
   const tip = formatCompoundStageStepLine(facts);
 
+  // Label muted, value ink (BRIEF §4): the verb is the label; the operator's
+  // name is the value, so it reads in ink. Only the empty `—` stays muted.
   const who = (
     <>
       <span className={cn(RECORD_LABEL_CLASS, done ? 'text-mode-ink' : 'text-mode-muted')}>
         {done ? doneVerb : verb}
       </span>
-      <span className="min-w-0 truncate text-role-caption text-mode-muted">
+      <span className={cn('min-w-0 truncate text-role-caption', actorName ? 'text-mode-ink' : 'text-mode-muted')}>
         {actorName ?? (hasActor ? '' : '—')}
       </span>
     </>
@@ -226,7 +196,14 @@ export function LedgerStageAssign({
           <span className="flex min-w-0 items-center gap-1.5">{who}</span>
           <span
             data-testid={`ledger-stage-stamp-${role}`}
-            className={cn('font-mono text-role-caption tabular-nums', done ? 'text-mode-ink' : 'text-mode-muted')}
+            // The execution band is one 32px ledger line: its completed face
+            // is status + operator over a compact, unbreakable date/time.
+            // A wrapped clock made this three visual rows and bled into the
+            // next record band at the default desk density.
+            className={cn(
+              'whitespace-nowrap font-mono text-[9px] leading-none tracking-[-0.02em] tabular-nums',
+              done ? 'text-mode-ink' : 'text-mode-muted',
+            )}
           >
             {facts?.at ?? 'Not yet'}
           </span>
@@ -286,6 +263,13 @@ export function LedgerStageAssign({
   );
 }
 
+/**
+ * Condition, click to set. The trigger is the condition chip — tag icon +
+ * short grade on a SOLID fill in the grade's colour, like the state badge
+ * (owner 2026-09-25) — inside a full-height 32px hit area. No grade → the same
+ * chip on the well in muted ink with `—`, still clickable. The popover and
+ * commit path are the only editor.
+ */
 export function LedgerCondition({
   value,
   onCommit,
@@ -296,24 +280,34 @@ export function LedgerCondition({
   const [open, setOpen] = useState(false);
   const current = resolveConditionGrade(value);
   const label = conditionGradeTableLabel(value);
+  const empty = label === EMPTY_META_DASH;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`Condition, ${label}`}
+          aria-label={`Condition, ${empty ? 'not set' : label}`}
+          title={empty ? 'Set condition' : label}
           data-testid="ledger-condition"
           onClick={stop}
           onPointerDown={stop}
           className={cn(
-            'ds-raw-button flex h-full w-full items-center px-1 text-left hover:bg-mode-hover',
+            'ds-raw-button flex h-full w-full items-center px-1 hover:bg-mode-hover',
             LEDGER_HIT_CLASS,
-            RECORD_LABEL_CLASS,
             focusRing('cell'),
-            conditionGradeTextClass(value),
           )}
         >
-          <span className="truncate">{label}</span>
+          <span
+            aria-hidden
+            data-testid="ledger-condition-chip"
+            className={cn(
+              RECORD_CONDITION_CHIP_CLASS,
+              empty ? 'bg-mode-well text-mode-muted' : conditionGradeTone(value).solid,
+            )}
+          >
+            <Tag className="h-3 w-3 shrink-0" />
+            <span className="truncate">{empty ? '—' : label}</span>
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" sideOffset={0} className="w-48 rounded-none p-0.5" onClick={stop}>
@@ -412,20 +406,22 @@ export function LedgerQty({
   );
 }
 
-/** One row of {@link LedgerPlatformPicker}'s searchable list. */
-interface PlatformPickerOption {
-  value: string;
-  label: string;
-  meta?: string;
-  group?: string;
-}
+/**
+ * Evidence-column pickers read as a plain fact value (no card, no rule), like
+ * Ship by; the ⌄ sits on the trailing-cell axis with every other right-edge glyph.
+ */
+const INLINE_PICKER_CLASS = cn(
+  'h-8 w-full border-0 bg-transparent pl-2 hover:bg-mode-hover',
+  RECORD_TRAILING_GLYPH_INSET_CLASS,
+);
 
 /**
  * Platform correction in the evidence column: an order the import filed under
- * the wrong channel. Options are the org catalog — each platform (slug) and,
- * grouped under it, its connections (account slug) — because
- * `orders.account_source` is hybrid-grain and the resolver reads either. The
- * current value pre-selects whichever grain it names.
+ * the wrong channel. One flat list ({@link orderPlatformChoices}): every
+ * platform once, and a storefront account only where a ShipStation store is
+ * linked to it (eBay · DRAGON) — no group heading repeating the platform, no
+ * raw slug. `orders.account_source` is hybrid-grain, so the current value
+ * pre-selects whichever grain it names.
  */
 export function LedgerPlatformPicker({
   value,
@@ -436,19 +432,14 @@ export function LedgerPlatformPicker({
 }) {
   const { rows: platforms, options: builtin, isLoading } = usePlatformCatalog();
   const { rows: accounts } = usePlatformAccountCatalog();
-  const options = useMemo<PlatformPickerOption[]>(() => {
-    if (platforms.length === 0) return builtin.map((o) => ({ value: o.value, label: o.label }));
-    const out: PlatformPickerOption[] = [];
-    for (const p of platforms) {
-      if (!p.is_active) continue;
-      out.push({ value: p.slug, label: p.label, group: p.label });
-      for (const a of accounts) {
-        if (a.platform_id !== p.id || !a.is_active || a.slug === p.slug) continue;
-        out.push({ value: a.slug, label: `${p.label} · ${a.label}`, meta: a.slug, group: p.label });
-      }
-    }
-    return out;
-  }, [accounts, builtin, platforms]);
+  const { rows: links, isLoading: linksLoading } = useStoreLinks();
+  const options = useMemo(
+    () =>
+      platforms.length === 0
+        ? builtin.map((o) => ({ value: o.value, label: o.label }))
+        : orderPlatformChoices(platforms, accounts, links),
+    [accounts, builtin, links, platforms],
+  );
   const current = String(value ?? '').trim().toLowerCase();
   const selected =
     options.find((o) => String(o.value).toLowerCase() === current)?.value ??
@@ -462,14 +453,14 @@ export function LedgerPlatformPicker({
         onCommit(String(next));
       }}
       options={options}
-      loading={isLoading}
+      loading={isLoading || linksLoading}
       appearance="flush"
       placeholder={value?.trim() || 'Set platform'}
       searchPlaceholder="Platform or connection…"
       emptyMessage="No matching platform"
       ariaLabel="Change platform"
       testId="evidence-platform-picker"
-      className="w-full"
+      className={INLINE_PICKER_CLASS}
     />
   );
 }
@@ -505,7 +496,7 @@ export function LedgerSkuBinPicker({
       emptyMessage="No matching location"
       ariaLabel={sku ? `Set the bin for SKU ${sku}` : 'Set bin (no SKU)'}
       testId="evidence-sku-bin-picker"
-      className="w-full"
+      className={INLINE_PICKER_CLASS}
     />
   );
 }
@@ -521,7 +512,8 @@ export function LedgerOpenAction({ href, label }: { href: string | null; label: 
       ariaLabel={`Open ${label}`}
       title={`Open ${label}`}
       className={cn(
-        'inline-flex w-8 shrink-0 items-center justify-center border-l border-mode-edge hover:bg-mode-hover',
+        'border-l border-mode-edge hover:bg-mode-hover',
+        RECORD_TRAILING_CELL_CLASS,
         LEDGER_HIT_CLASS,
         focusRing('cell'),
       )}
@@ -559,7 +551,8 @@ export function LedgerTrackingReplace({
           aria-label={current ? 'Replace tracking number' : 'Add tracking number'}
           title={current ? 'Replace tracking number' : 'Add tracking number'}
           className={cn(
-            'ds-raw-button inline-flex w-8 shrink-0 items-center justify-center border-l border-mode-edge text-mode-ink hover:bg-mode-hover',
+            'ds-raw-button border-l border-mode-edge text-mode-ink hover:bg-mode-hover',
+            RECORD_TRAILING_CELL_CLASS,
             LEDGER_HIT_CLASS,
             focusRing('cell'),
           )}
@@ -602,5 +595,189 @@ export function LedgerTrackingReplace({
         </form>
       </PopoverContent>
     </Popover>
+  );
+}
+
+const NOTE_MIN_PX = 32;
+const NOTE_MAX_PX = 480;
+
+type NoteSaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+const NOTE_STATUS_FACE: Readonly<Record<NoteSaveStatus, string>> = {
+  idle: 'Autosaves',
+  saving: 'Saving…',
+  saved: 'Saved',
+  error: 'Not saved',
+};
+
+/**
+ * The order note, edited in place — one field for the row's NOTE overlay and
+ * the evidence column, so both write the same way.
+ *
+ * Autosaves when editing ends: Enter or Escape (both also close an overlay
+ * host via `onDone`; Shift+Enter breaks the line), blur, or the field
+ * unmounting (overlay toggled shut, record switched). Each save appends a
+ * stamped entry to the append-only `order_notes` trail, so it never saves per
+ * keystroke — every pause would become a trail entry. The status microcopy
+ * (Autosaves → Saving… → Saved) sits in the header row beside `label`, or
+ * under the field when there is no header.
+ *
+ * The drag grip is our own element, not the native `resize` corner: the native
+ * one lives in the scrollbar corner and disappears once the note overflows.
+ */
+export function LedgerNoteField({
+  orderId,
+  note,
+  label,
+  onSaved,
+  onDone,
+}: {
+  orderId: number;
+  note: string | null;
+  /** Header label; the save status reads to its right. */
+  label?: string;
+  onSaved?: (note: string) => void;
+  /**
+   * Enter / Escape finished the edit (already saved). An overlay host closes
+   * itself here; without it the field just blurs, which saves the same way.
+   */
+  onDone?: () => void;
+}) {
+  const [draft, setDraft] = useState(note ?? '');
+  const [height, setHeight] = useState<number | null>(null);
+  const [status, setStatus] = useState<NoteSaveStatus>('idle');
+  const areaRef = useRef<HTMLTextAreaElement>(null);
+  const draftRef = useRef(note ?? '');
+  const committedRef = useRef((note ?? '').trim());
+  const onSavedRef = useRef(onSaved);
+  const { mutateAsync } = useAppendOrderNote(orderId);
+
+  useEffect(() => {
+    onSavedRef.current = onSaved;
+  }, [onSaved]);
+
+  // A refreshed note face lands while the field is idle; never under the caret.
+  useEffect(() => {
+    committedRef.current = (note ?? '').trim();
+    if (document.activeElement === areaRef.current) return;
+    draftRef.current = note ?? '';
+    setDraft(note ?? '');
+  }, [note]);
+
+  const commit = useCallback(() => {
+    const next = draftRef.current.trim();
+    const previous = committedRef.current;
+    if (!next || next === previous) return;
+    committedRef.current = next;
+    setStatus('saving');
+    mutateAsync(next).then(
+      () => {
+        setStatus('saved');
+        toast.success('Note saved');
+        onSavedRef.current?.(next);
+      },
+      () => {
+        committedRef.current = previous;
+        setStatus('error');
+        toast.error('Could not save the note');
+      },
+    );
+  }, [mutateAsync]);
+
+  const commitRef = useRef(commit);
+  useEffect(() => {
+    commitRef.current = commit;
+  }, [commit]);
+  useEffect(() => () => commitRef.current(), []);
+
+  const startResize = (event: ReactPointerEvent<HTMLSpanElement>) => {
+    const area = areaRef.current;
+    if (!area) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const handle = event.currentTarget;
+    const startY = event.clientY;
+    const startHeight = area.getBoundingClientRect().height;
+    handle.setPointerCapture(event.pointerId);
+    const move = (moveEvent: PointerEvent) => {
+      setHeight(Math.min(NOTE_MAX_PX, Math.max(NOTE_MIN_PX, startHeight + moveEvent.clientY - startY)));
+    };
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+  };
+
+  const statusId = useId();
+  const finish = () => {
+    commit();
+    if (onDone) onDone();
+    else areaRef.current?.blur();
+  };
+
+  const statusFace = (
+    <span
+      id={statusId}
+      data-testid="ledger-note-status"
+      className={cn(RECORD_LABEL_CLASS, status === 'error' ? 'text-mode-warn' : 'text-mode-muted')}
+    >
+      {NOTE_STATUS_FACE[status]}
+    </span>
+  );
+
+  return (
+    <span className="flex w-full flex-col gap-1" onClick={stop} onPointerDown={stop}>
+      {label ? (
+        <span className="flex items-center justify-between gap-2">
+          <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>{label}</span>
+          {statusFace}
+        </span>
+      ) : null}
+      <span className="relative block w-full">
+        <textarea
+          ref={areaRef}
+          value={draft}
+          onChange={(event) => {
+            draftRef.current = event.target.value;
+            setDraft(event.target.value);
+            if (status !== 'saving') setStatus('idle');
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if ((event.key === 'Enter' && !event.shiftKey) || event.key === 'Escape') {
+              event.preventDefault();
+              event.stopPropagation();
+              finish();
+            }
+          }}
+          rows={2}
+          placeholder="Add a note"
+          aria-label={label ?? 'Order note'}
+          aria-describedby={statusId}
+          data-testid="ledger-note-field"
+          style={height == null ? undefined : { height }}
+          className={cn(
+            'block min-h-mode-hit w-full resize-none rounded-none bg-mode-well p-1.5 text-role-caption text-mode-ink',
+            RECORD_RECESS_CLASS,
+            focusRing('field'),
+          )}
+        />
+        <span
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="Drag to resize note"
+          data-testid="ledger-note-resize"
+          onPointerDown={startResize}
+          className="absolute bottom-px right-px flex h-3.5 w-3.5 cursor-ns-resize touch-none items-center justify-center bg-mode-well text-mode-muted hover:text-mode-ink"
+        >
+          <ResizeCorner className="h-3.5 w-3.5" />
+        </span>
+      </span>
+      {label ? null : <span className="flex justify-end">{statusFace}</span>}
+    </span>
   );
 }

@@ -671,10 +671,15 @@ export function MorphingRowActionMenu({
         return;
       }
       if (!res.ok) {
-        toast.error('Could not delete the order');
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+        };
+        toast.error(body.error ?? body.details ?? 'Could not delete the order');
         return;
       }
       bustFulfillmentCaches(queryClient);
+      await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
       toast.success('Order deleted');
     } catch {
       toast.error('Could not delete the order');

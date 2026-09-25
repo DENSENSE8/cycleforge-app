@@ -16,10 +16,8 @@
  * empty state instead of failing the page.
  */
 
-import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
-import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
+import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeader';
 import Link from 'next/link';
-import { cn } from '@/utils/_cn';
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { listConnections } from '@/lib/integrations/connectors/connections';
@@ -170,148 +168,144 @@ export default async function IntegrationsDiagnosticsPage() {
   const errored = connections.filter((c) => c.state === 'error').length;
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col antialiased', SETTINGS_FLOOR_CLASS)}>
-      <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
-          <SettingsSectionHeader
-            title="Connection diagnostics"
-            backHref="/settings/integrations"
-            backAriaLabel="Back to Apps & integrations"
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-role-caption text-text-soft">
-              Read-only diagnostics for this workspace&apos;s integrations — connection states, credential usage, and
-              recent sync runs.
-            </p>
-            <div className="flex items-center gap-2">
-              {errored > 0 && (
-                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
-                  {errored} connection{errored === 1 ? '' : 's'} in error
-                </span>
-              )}
-              {denied24h > 0 && (
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-role-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
-                  {denied24h} denied credential use{denied24h === 1 ? '' : 's'} · 24h
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* 1 — Connection grid */}
-          <section className="space-y-3">
-            <Eyebrow>Connections</Eyebrow>
-            {connections.length === 0 ? (
-              <EmptyBox>No integration connections yet. Connect a provider under Settings → Integrations.</EmptyBox>
-            ) : (
-              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
-                {connections.map((c) => (
-                  <Link
-                    key={`${c.provider}-${c.scope ?? ''}`}
-                    href={`/settings/integrations/${c.provider}${c.scope ? `?scope=${encodeURIComponent(c.scope)}` : ''}`}
-                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-canvas/80"
-                  >
-                    <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[c.state]}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-semibold text-text-default">
-                        {providerLabel(c.provider)}
-                        {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
-                      </p>
-                      <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                        {c.state}
-                        {c.displayLabel ? ` · ${c.displayLabel}` : ''}
-                        {c.lastError ? ` · ${c.lastError}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      {c.capabilities.map((cap) => (
-                        <Chip key={cap} tone="bg-surface-sunken text-text-muted ring-border-soft">
-                          {cap}
-                        </Chip>
-                      ))}
-                      <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{authKindLabel(c.authKind)}</Chip>
-                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
-                        {relTime(c.lastUsedAt ?? null)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* 2 — Credential usage (24h) */}
-          <section className="space-y-3">
-            <Eyebrow>Credential usage · last 24h</Eyebrow>
-            {credentialUsage === null ? (
-              <EmptyBox>
-                Credential audit log isn&apos;t available yet — apply the 2026-06-20 integration_credential_audit
-                migration to enable this panel.
-              </EmptyBox>
-            ) : credentialUsage.length === 0 ? (
-              <EmptyBox>No credential activity recorded in the last 24 hours.</EmptyBox>
-            ) : (
-              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
-                {credentialUsage.map((r, i) => (
-                  <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-semibold text-text-default">
-                        {providerLabel(r.provider)}
-                        <span className="font-normal text-text-faint"> · {r.operation}</span>
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Chip tone={OUTCOME_CHIP[r.outcome] ?? 'bg-surface-sunken text-text-muted ring-border-soft'}>
-                        {r.outcome}
-                      </Chip>
-                      <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-muted">
-                        ×{r.n}
-                      </span>
-                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
-                        {relTime(r.last_at)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* 3 — Recent sync runs */}
-          <section className="space-y-3">
-            <Eyebrow>Recent sync runs</Eyebrow>
-            {cronRuns === null ? (
-              <EmptyBox>Sync run history isn&apos;t available yet — the cron_runs table hasn&apos;t been applied.</EmptyBox>
-            ) : cronRuns.length === 0 ? (
-              <EmptyBox>No integration sync runs recorded yet.</EmptyBox>
-            ) : (
-              <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
-                {cronRuns.map((r, i) => (
-                  <div key={`${r.job}-${i}`} className="flex items-center gap-3 px-4 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-role-caption font-semibold text-text-default">{r.job}</p>
-                      {r.error ? (
-                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
-                          {r.error}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Chip tone="bg-surface-sunken text-text-muted ring-border-soft">{r.trigger}</Chip>
-                      <Chip tone={RUN_CHIP[r.status]}>{r.status}</Chip>
-                      <span className="w-14 text-right text-role-micro font-semibold tabular-nums text-text-faint">
-                        {r.duration_ms != null ? `${(r.duration_ms / 1000).toFixed(1)}s` : '—'}
-                      </span>
-                      <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
-                        {relTime(r.started_at)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+    <SettingsSectionFrame
+      title="Connection diagnostics"
+      backHref="/settings/integrations"
+      backAriaLabel="Back to Apps & integrations"
+      maxWidth="5xl"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-role-caption text-text-soft">
+          Read-only diagnostics for this workspace&apos;s integrations — connection states, credential usage, and
+          recent sync runs.
+        </p>
+        <div className="flex items-center gap-2">
+          {errored > 0 && (
+            <span className="rounded-full bg-rose-50 px-2.5 py-1 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+              {errored} connection{errored === 1 ? '' : 's'} in error
+            </span>
+          )}
+          {denied24h > 0 && (
+            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-role-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+              {denied24h} denied credential use{denied24h === 1 ? '' : 's'} · 24h
+            </span>
+          )}
         </div>
-      </main>
-    </div>
+      </div>
+
+      {/* 1 — Connection grid */}
+      <section className="space-y-3">
+        <Eyebrow>Connections</Eyebrow>
+        {connections.length === 0 ? (
+          <EmptyBox>No integration connections yet. Connect a provider under Settings → Integrations.</EmptyBox>
+        ) : (
+          <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
+            {connections.map((c) => (
+              <Link
+                key={`${c.provider}-${c.scope ?? ''}`}
+                href={`/settings/integrations/${c.provider}${c.scope ? `?scope=${encodeURIComponent(c.scope)}` : ''}`}
+                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-canvas/80"
+              >
+                <span aria-hidden className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[c.state]}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-role-caption font-semibold text-text-default">
+                    {providerLabel(c.provider)}
+                    {c.scope ? <span className="font-normal text-text-faint"> · {c.scope}</span> : null}
+                  </p>
+                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
+                    {c.state}
+                    {c.displayLabel ? ` · ${c.displayLabel}` : ''}
+                    {c.lastError ? ` · ${c.lastError}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {c.capabilities.map((cap) => (
+                    <Chip key={cap} tone="bg-surface-sunken text-text-muted ring-border-soft">
+                      {cap}
+                    </Chip>
+                  ))}
+                  <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{authKindLabel(c.authKind)}</Chip>
+                  <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
+                    {relTime(c.lastUsedAt ?? null)}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 2 — Credential usage (24h) */}
+      <section className="space-y-3">
+        <Eyebrow>Credential usage · last 24h</Eyebrow>
+        {credentialUsage === null ? (
+          <EmptyBox>
+            Credential audit log isn&apos;t available yet — apply the 2026-06-20 integration_credential_audit
+            migration to enable this panel.
+          </EmptyBox>
+        ) : credentialUsage.length === 0 ? (
+          <EmptyBox>No credential activity recorded in the last 24 hours.</EmptyBox>
+        ) : (
+          <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
+            {credentialUsage.map((r, i) => (
+              <div key={`${r.provider}-${r.operation}-${r.outcome}-${i}`} className="flex items-center gap-3 px-4 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-role-caption font-semibold text-text-default">
+                    {providerLabel(r.provider)}
+                    <span className="font-normal text-text-faint"> · {r.operation}</span>
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Chip tone={OUTCOME_CHIP[r.outcome] ?? 'bg-surface-sunken text-text-muted ring-border-soft'}>
+                    {r.outcome}
+                  </Chip>
+                  <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-muted">
+                    ×{r.n}
+                  </span>
+                  <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
+                    {relTime(r.last_at)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 3 — Recent sync runs */}
+      <section className="space-y-3">
+        <Eyebrow>Recent sync runs</Eyebrow>
+        {cronRuns === null ? (
+          <EmptyBox>Sync run history isn&apos;t available yet — the cron_runs table hasn&apos;t been applied.</EmptyBox>
+        ) : cronRuns.length === 0 ? (
+          <EmptyBox>No integration sync runs recorded yet.</EmptyBox>
+        ) : (
+          <div className="divide-y divide-border-hairline rounded-none border border-border-soft bg-surface-card">
+            {cronRuns.map((r, i) => (
+              <div key={`${r.job}-${i}`} className="flex items-center gap-3 px-4 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-role-caption font-semibold text-text-default">{r.job}</p>
+                  {r.error ? (
+                    <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
+                      {r.error}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Chip tone="bg-surface-sunken text-text-muted ring-border-soft">{r.trigger}</Chip>
+                  <Chip tone={RUN_CHIP[r.status]}>{r.status}</Chip>
+                  <span className="w-14 text-right text-role-micro font-semibold tabular-nums text-text-faint">
+                    {r.duration_ms != null ? `${(r.duration_ms / 1000).toFixed(1)}s` : '—'}
+                  </span>
+                  <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
+                    {relTime(r.started_at)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </SettingsSectionFrame>
   );
 }

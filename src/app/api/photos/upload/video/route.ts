@@ -5,6 +5,7 @@ import { parseMediaEntityTarget, uploadPermissionFor } from '@/lib/photos/entity
 import { isGcsConfigured, signGcsUploadUrl } from '@/lib/photos/storage/gcs-adapter';
 import { resolveVideoMaxBytes, validateVideoUpload } from '@/lib/photos/video-upload-rules';
 import { createPendingVideo } from '@/lib/photos/videos';
+import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!ctx.permissions.has(requiredPerm)) {
       return NextResponse.json({ error: 'FORBIDDEN', permission: requiredPerm }, { status: 403 });
     }
+    // Task media must hang off a FOLLOW_UP task in THIS org — the permission
+    // above is an everyday floor gate, so it cannot stand in for existence.
+    if (entityType === 'WORK_ASSIGNMENT') await assertTaskInOrg(ctx.organizationId, entityId);
 
     const maxBytes = resolveVideoMaxBytes(process.env.PHOTOS_VIDEO_MAX_BYTES);
     const verdict = validateVideoUpload(

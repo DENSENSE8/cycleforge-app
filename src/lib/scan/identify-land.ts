@@ -53,6 +53,10 @@ export function landScanIdentify(
     const line = /^\/m\/l\/(\d+)$/.exec(route.redirect || '');
     if (line) return { kind: 'identify', href: `/m/qc/line/${line[1]}` };
   }
+  if (dispatch.card === 'qc' && route?.type === 'receiving') {
+    const carton = /^\/m\/r\/(\d+)$/.exec(route.redirect || '');
+    if (carton) return { kind: 'identify', href: `/m/r/${carton[1]}/qc` };
+  }
   if (route?.redirect) return { kind: 'identify', href: route.redirect };
   return { kind: 'settle' };
 }

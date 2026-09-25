@@ -36,6 +36,8 @@ export interface TaskRow {
   entityType: TaskEntityType;
   entityId: number;
   assigneeStaffId: number;
+  assigneeStaffIds: number[];
+  projectName: string | null;
   priority: number;
   note: string | null;
 }
@@ -44,6 +46,8 @@ export interface InsertTaskArgs {
   entityType: TaskEntityType;
   entityId: number;
   assigneeStaffId: number;
+  assigneeStaffIds: number[];
+  projectName: string | null;
   /**
    * Who threw it (2026-08-08d) — what makes a "sent" view writable.
    * NULL when the thrower is the SYSTEM (a cron ingesting a helpdesk tag), which
@@ -54,6 +58,11 @@ export interface InsertTaskArgs {
   note: string | null;
   /** ISO instant, or null for "no promised day". Stored in `deadline_at`. */
   deadlineAt: string | null;
+  /**
+   * ISO instant to remind the assignee, or null. Stored in `remind_at`
+   * (2026-09-25b) and read by the native reminder feed (`listStaffReminders`).
+   */
+  remindAt: string | null;
   status: typeof TASK_INITIAL_STATUS;
 }
 
@@ -62,12 +71,13 @@ export type PromoteOutcome = { ok: true; changed: boolean } | { ok: false; reaso
 
 export interface NotifyAssigneeArgs {
   task: TaskRow;
+  recipientStaffId: number;
   actorStaffId: number | null;
   urgent: boolean;
 }
 
 export interface CreateTaskDeps {
-  insertTask(args: InsertTaskArgs): Promise<TaskRow>;
+  insertTask(args: InsertTaskArgs): Promise<TaskRow | null>;
   promoteUrgency(entityType: TaskEntityType, entityId: number): Promise<PromoteOutcome>;
   /** Writes the durable inbox row and pushes it live. Best-effort — see below. */
   notifyAssignee(args: NotifyAssigneeArgs): Promise<void>;
@@ -77,6 +87,8 @@ export interface CreateTaskInput {
   entityType: unknown;
   entityId: unknown;
   assigneeStaffId: unknown;
+  assigneeStaffIds?: unknown;
+  projectName?: unknown;
   /** Free text the thrower typed. Optional — the record is often the whole message. */
   note?: unknown;
   urgency?: TaskUrgency;
@@ -87,6 +99,8 @@ export interface CreateTaskInput {
    * rows. ISO string, or null/absent for none.
    */
   deadlineAt?: unknown;
+  /** Optional reminder instant, ISO string, or null/absent for none. */
+  remindAt?: unknown;
   /**
    * Who is throwing. Used to refuse a self-throw. NULL = thrown by the system,
    * which nobody can self-throw at, so the refusal does not apply.
@@ -120,6 +134,7 @@ export type CreateTaskResult =
        * thrower deserves to know which they got.
        */
       notified: 'sent' | 'skipped_entity' | 'failed';
+      notifications: Array<{ staffId: number; status: 'sent' | 'skipped_entity' | 'failed' }>;
     }
   | {
       ok: false;
@@ -129,7 +144,10 @@ export type CreateTaskResult =
         | 'invalid_assignee'
         | 'self_throw'
         | 'note_too_long'
-        | 'invalid_deadline';
+        | 'project_name_too_long'
+        | 'invalid_project_name'
+        | 'invalid_deadline'
+        | 'invalid_reminder';
     };
 
 /**
@@ -138,6 +156,9 @@ export type CreateTaskResult =
  * for "how much can an operator type at a colleague", not two that disagree.
  */
 export const TASK_NOTE_MAX = 5000;
+export const TASK_PROJECT_NAME_MAX = 160;
+export const TASK_ASSIGNEES_MAX = 20;
+export const TASK_STAFF_ID_MAX = 2_147_483_647;
 
 export async function createTaskCore(
   input: CreateTaskInput,
@@ -149,66 +170,94 @@ export async function createTaskCore(
   const entityId = Number(input.entityId);
   if (!Number.isInteger(entityId) || entityId <= 0) return { ok: false, reason: 'invalid_entity_id' };
 
-  const assigneeStaffId = Number(input.assigneeStaffId);
-  if (!Number.isInteger(assigneeStaffId) || assigneeStaffId <= 0) {
+  const rawAssignees = input.assigneeStaffIds === undefined ? [input.assigneeStaffId] : input.assigneeStaffIds;
+  if (!Array.isArray(rawAssignees) || rawAssignees.length < 1 ||
+      rawAssignees.length > TASK_ASSIGNEES_MAX ||
+      rawAssignees.some((id) => !Number.isSafeInteger(id) || id <= 0 || id > TASK_STAFF_ID_MAX) ||
+      new Set(rawAssignees).size !== rawAssignees.length) {
     return { ok: false, reason: 'invalid_assignee' };
   }
+  const assigneeStaffIds: number[] = rawAssignees;
+  const assigneeStaffId = assigneeStaffIds[0];
 
-  // Throwing at yourself is a no-op that costs the recipient an inbox row and
-  // the thrower a notification of their own action. Refuse it explicitly rather
-  // than letting it look like it worked.
-  if (input.actorStaffId != null && assigneeStaffId === input.actorStaffId) {
+  // A task handed only to yourself is a no-op handoff; joining a team you are
+  // handing work to is not, so the creator may be one member among others.
+  if (input.actorStaffId != null && assigneeStaffIds.length === 1 && assigneeStaffId === input.actorStaffId) {
     return { ok: false, reason: 'self_throw' };
   }
 
   const rawNote = typeof input.note === 'string' ? input.note.trim() : '';
   if (rawNote.length > TASK_NOTE_MAX) return { ok: false, reason: 'note_too_long' };
   const note = rawNote.length > 0 ? rawNote : null;
+  if (input.projectName != null && typeof input.projectName !== 'string') {
+    return { ok: false, reason: 'invalid_project_name' };
+  }
+  const projectName = typeof input.projectName === 'string' ? input.projectName.trim() : null;
+  if (projectName && projectName.length > TASK_PROJECT_NAME_MAX) {
+    return { ok: false, reason: 'project_name_too_long' };
+  }
 
   const urgency: TaskUrgency = input.urgency ?? 'normal';
 
-  // An unparseable deadline is refused, never dropped: a composer that sent a
-  // day and got a task with no day back would be lying to the operator.
-  let deadlineAt: string | null = null;
-  if (input.deadlineAt != null) {
-    if (typeof input.deadlineAt !== 'string') return { ok: false, reason: 'invalid_deadline' };
-    const parsed = Date.parse(input.deadlineAt);
-    if (!Number.isFinite(parsed)) return { ok: false, reason: 'invalid_deadline' };
-    deadlineAt = new Date(parsed).toISOString();
-  }
+  // An unparseable deadline or reminder is refused, never dropped: a composer
+  // that sent a day and got a task with no day back would be lying to the
+  // operator.
+  const deadlineAt = isoInstantOrNull(input.deadlineAt);
+  if (deadlineAt === undefined) return { ok: false, reason: 'invalid_deadline' };
+  const remindAt = isoInstantOrNull(input.remindAt);
+  if (remindAt === undefined) return { ok: false, reason: 'invalid_reminder' };
 
   const task = await deps.insertTask({
     entityType,
     entityId,
     assigneeStaffId,
+    assigneeStaffIds,
+    projectName: projectName || null,
     assignedByStaffId: input.actorStaffId,
     priority: taskPriorityFor(urgency),
     note,
     deadlineAt,
+    remindAt,
     status: TASK_INITIAL_STATUS,
   });
+  if (!task) return { ok: false, reason: 'invalid_assignee' };
 
   const isUrgent = urgency === 'urgent';
 
   // Both of the remaining effects are AMPLIFIERS on a commitment that already
   // landed. Neither may turn a written task into a reported failure.
-  const notified = await notifyQuietly(deps, {
-    task,
-    actorStaffId: input.actorStaffId,
-    urgent: isUrgent,
-  }, entityType);
+  const notifications: Array<{ staffId: number; status: 'sent' | 'skipped_entity' | 'failed' }> = [];
+  // The creator already knows; an inbox row for your own action is noise.
+  for (const recipientStaffId of task.assigneeStaffIds.filter((id) => id !== input.actorStaffId)) {
+    notifications.push({
+      staffId: recipientStaffId,
+      status: await notifyQuietly(deps, {
+        task, recipientStaffId, actorStaffId: input.actorStaffId, urgent: isUrgent,
+      }, entityType),
+    });
+  }
+  const notified = notifications.some(({ status }) => status === 'failed') ? 'failed'
+    : notifications.some(({ status }) => status === 'skipped_entity') ? 'skipped_entity' : 'sent';
 
-  if (!isUrgent) return { ok: true, task, urgency: 'not_urgent', notified };
+  if (!isUrgent) return { ok: true, task, urgency: 'not_urgent', notified, notifications };
 
   let outcome: PromoteOutcome;
   try {
     outcome = await deps.promoteUrgency(entityType, entityId);
   } catch {
-    return { ok: true, task, urgency: 'failed', notified };
+    return { ok: true, task, urgency: 'failed', notified, notifications };
   }
 
-  if (!outcome.ok) return { ok: true, task, urgency: 'failed', notified };
-  return { ok: true, task, urgency: outcome.changed ? 'promoted' : 'already', notified };
+  if (!outcome.ok) return { ok: true, task, urgency: 'failed', notified, notifications };
+  return { ok: true, task, urgency: outcome.changed ? 'promoted' : 'already', notified, notifications };
+}
+
+/** Null/absent → null; a parseable string → canonical ISO; anything else → undefined (refuse). */
+function isoInstantOrNull(raw: unknown): string | null | undefined {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return undefined;
+  const parsed = Date.parse(raw);
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : undefined;
 }
 
 async function notifyQuietly(

@@ -51,9 +51,9 @@ export const MOBILE_FIRST_ROUTE_PREFIXES = [
   '/m/inbox',
   // Assigned tasks are NOT their own surface any more (operator 2026-09-23:
   // one task system). `/m/home` renders checks and `work_assignments`
-  // `FOLLOW_UP` rows as one list and finishes both, so the phone twin of the
-  // desk tasks workbench is Daily. `/m/tasks` survives only as a redirect for
-  // old bookmarks, which is not a surface and is not registered.
+  // `FOLLOW_UP` rows as one list, creates shared tasks from its add button
+  // and finishes both. `/m/tasks` survives only as a bookmark redirect,
+  // not a separate surface and not registered.
   // Identification kernel — the 2026-09-14 ruling's canonical mobile surface.
   // `/m/id/pick/[orderId]` and `/m/id/scan-out/[orderId]` are OUTBOUND verbs
   // and were unregistered until the audit.
@@ -397,26 +397,6 @@ export const MOBILE_FIRST_VERB_GAPS = [
     deskHint: '/inventory/locations?tab=rooms',
     mobileSoT: null as string | null,
     note: 'Rooms CRUD / browse on /m.',
-  },
-  // ── Tasks (2026-09-22) ─────────────────────────────────────────────────────
-  // READING and FINISHING an assigned task landed on /m/tasks in this pass.
-  // THROWING one did not, and this entry is why rather than an omission.
-  //
-  // A task needs a target `(entityType, entityId)`, which only
-  // `POST /api/scan/resolve` can produce from what an operator is holding (a
-  // tracking number has no client-side vocabulary). On the phone that resolve
-  // lives behind the scan kernel at `/m/scan`, which today RESOLVES AND
-  // NAVIGATES — it has no "hand the answer back to the caller" contract. So the
-  // composer would be: scan screen → return with a target → choose a recipient
-  // → note → urgency. That is two screens plus a cross-surface handoff, which
-  // fails R1 (one job per screen), and the only ways to collapse it are a
-  // SECOND resolver on the phone (the drift `throw-targets.ts` exists to stop)
-  // or a stub. Recorded as a gap instead of shipped as either.
-  {
-    id: 'task-throw',
-    deskHint: 'quick access → ThrowTaskPanel',
-    mobileSoT: null as string | null,
-    note: 'Throw a task at a colleague from the phone. Needs a return-path contract on /m/scan (resolve, then hand (entityType, entityId) back to the caller) before a one-screen composer is honest. /m/tasks already owns the read + complete half.',
   },
 ] as const;
 

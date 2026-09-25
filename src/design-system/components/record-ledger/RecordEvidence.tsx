@@ -17,8 +17,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
-import { LIFECYCLE, LIFECYCLE_CLASSES, type LifecycleState } from '../../tokens/lifecycle';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass } from '../../tokens/industrial-record';
+import { STATE_TONE_CLASSES } from '../../tokens/lifecycle';
+import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, recordStateCodeClass, type RecordStateFace } from '../../tokens/industrial-record';
 import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { toast } from '@/lib/toast';
@@ -60,17 +60,16 @@ export function EvidenceTitle({ children, sub }: { children: ReactNode; sub?: Re
 }
 
 /** `HLD · On hold ··· → Photo` — state and the next step, one strip. */
-export function EvidenceStateStrip({ state, next }: { state: LifecycleState; next?: string | null }) {
-  const spec = LIFECYCLE[state];
+export function EvidenceStateStrip({ state, next }: { state: RecordStateFace; next?: string | null }) {
+  const spec = state;
   return (
     <div
       className={cn(
         'flex items-center gap-2 border-b border-mode-ink px-4',
         RECORD_HIT_CLASS,
-        state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
       )}
     >
-      <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[state].dot)} />
+      <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.tone].dot)} />
       <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(state))}>
         {spec.code} · {spec.label}
       </span>

@@ -8,9 +8,10 @@
  * An order is therefore never recorded as `shipstation`; it carries the
  * platform `account_source` the rest of the app already uses:
  *
- *   1. an explicit binding — a `platform_accounts` row whose
- *      `integration_scope` is the ShipStation store id (not the
- *      `shipstation-<id>` rows the store mirror creates) — names the account;
+ *   1. the store's link (`integration_store_links`, set by the operator or
+ *      placed once by the store sync) names its platform and, optionally, the
+ *      storefront account whose slug the order carries; a link without an
+ *      account uses the org's spelling for the linked platform (as in 2);
  *   2. else the store's marketplace → catalog platform slug
  *      (`shipstationMarketplaceSlug`), spelled the way this org's orders already
  *      spell that platform (the most-used account_source that the catalog places
@@ -53,9 +54,10 @@ export type StoreAttribution =
   | { kind: 'unattributed'; storeId: number | null; detail: string };
 
 export interface AttributionCatalog {
-  /** Explicit store bindings: ShipStation store id → the platform account's
-   *  account_source and its platform. */
-  bindings: ReadonlyMap<number, { accountSource: string; platform: string }>;
+  /** Store links: ShipStation store id → the linked platform slug and, when
+   *  the link names an account, that account's slug (else null → the org's
+   *  spelling for the platform). */
+  bindings: ReadonlyMap<number, { platform: string; accountSource: string | null }>;
   /** This org's existing `orders.account_source` values, with how many orders
    *  use each and the platform the catalog places each on (null = unplaced). */
   spellings: ReadonlyArray<{ accountSource: string; platform: string | null; count: number }>;
@@ -91,7 +93,13 @@ export function buildStoreAttributions(
   for (const store of stores) {
     const bound = catalog.bindings.get(store.storeId);
     if (bound) {
-      out.set(store.storeId, { kind: 'platform', storeId: store.storeId, ...bound, via: 'binding' });
+      out.set(store.storeId, {
+        kind: 'platform',
+        storeId: store.storeId,
+        platform: bound.platform,
+        accountSource: bound.accountSource ?? spellingFor(bound.platform, catalog.spellings),
+        via: 'binding',
+      });
       continue;
     }
     const platform = storePlatform(store);

@@ -64,10 +64,7 @@ export const MobileOrderRecord = memo(function MobileOrderRecord({
     <div
       data-testid="mobile-order-record"
       data-state={facts.state}
-      className={cn(
-        'relative flex border-b border-mode-ink bg-mode-panel',
-        facts.state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
-      )}
+      className="relative flex border-b border-mode-ink bg-mode-panel"
     >
       {/* Whole record opens the evidence sheet. */}
       <button
@@ -90,7 +87,7 @@ export const MobileOrderRecord = memo(function MobileOrderRecord({
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-col">
         {/* Band 1 — context: state · platform · order # ··· date */}
         <div className={cn(BAND, 'gap-2 border-b border-mode-rule pl-2')}>
-          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', recordStateCodeClass(facts.state))}>
+          <span className={cn(RECORD_LABEL_CLASS, 'shrink-0', recordStateCodeClass(spec))}>
             <span aria-hidden>{spec.code}</span>
             <span className="sr-only">{spec.label}</span>
           </span>

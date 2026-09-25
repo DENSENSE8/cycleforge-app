@@ -21,7 +21,7 @@ describe('po-intake-store queue', () => {
       ...EMPTY_PO_INTAKE_DRAFT(),
       orderId: 'A-1',
       trackingNumber: 'T',
-      lines: [{ sku: 'S', itemName: '', quantity: '2', lineItemId: '' }],
+      lines: [{ sku: 'S', itemName: '', quantity: '2', lineItemId: '', listingUrl: '' }],
     });
     const snap = getPoIntakeSnapshot();
     assert.equal(snap.queue.length, 1);
@@ -34,13 +34,13 @@ describe('po-intake-store queue', () => {
       ...EMPTY_PO_INTAKE_DRAFT(),
       orderId: 'FIRST',
       trackingNumber: 'T1',
-      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '' }],
+      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '', listingUrl: '' }],
     });
     placeExtractedPoOrder({
       ...EMPTY_PO_INTAKE_DRAFT(),
       orderId: 'SECOND',
       trackingNumber: 'T2',
-      lines: [{ sku: 'B', itemName: '', quantity: '1', lineItemId: '' }],
+      lines: [{ sku: 'B', itemName: '', quantity: '1', lineItemId: '', listingUrl: '' }],
     });
     const snap = getPoIntakeSnapshot();
     assert.equal(snap.queue.length, 2);
@@ -52,7 +52,7 @@ describe('po-intake-store queue', () => {
       ...EMPTY_PO_INTAKE_DRAFT(),
       orderId: 'ONLY',
       trackingNumber: 'T',
-      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '' }],
+      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '', listingUrl: '' }],
     });
     const ids = getPoIntakeSnapshot().queue.map((o) => o.id);
     removePoOrders(ids);

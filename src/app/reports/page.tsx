@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * `/reports` — three reports, three REGISTERED FAMILIES, one engine.
+ * `/reports` — stock, shift and task reports share one desk frame.
  *
  * Off `AdminTable` 2026-09-12 (Wave D). The page carried three hand-written
  * `AdminTableColumn[]` literals (`UTILIZATION_COLUMNS`, `VELOCITY_COLUMNS`,
@@ -36,6 +36,7 @@
  */
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
@@ -66,7 +67,8 @@ import { useReportTasksSpreadsheet } from '@/components/reports/report-tasks-gri
 import { parseTaskDeskReportRows } from '@/lib/reports/report-tasks-feed';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
 
-type Tab = 'staff' | 'packer' | 'utilization' | 'velocity' | 'dead' | 'tasks';
+import { TaskActivityReport } from '@/components/reports/TaskActivityReport';
+type Tab = 'staff' | 'packer' | 'utilization' | 'velocity' | 'dead' | 'tasks' | 'activity';
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
   { id: 'staff', label: 'Staff day' },
@@ -85,10 +87,11 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
    * shift: it is the record one staffer's finished follow-ups leave behind.
    */
   { id: 'tasks', label: 'Tasks' },
+  { id: 'activity', label: 'Task time / activity' },
 ];
 
 /** Unchanged route + limit per tab — the day-scoped and task tabs read below. */
-const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks'>, string>> = {
+const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks' | 'activity'>, string>> = {
   utilization: '/api/reports/bin-utilization?limit=500',
   velocity: '/api/reports/velocity?limit=200',
   dead: '/api/reports/dead-stock?limit=500',
@@ -132,6 +135,7 @@ const FIND_ANSWERED_BY_SERVER: Readonly<Record<Tab, boolean>> = {
   velocity: false,
   dead: false,
   tasks: true,
+  activity: false,
 };
 
 /** `base` + the find text, for the tabs whose route answers it. */
@@ -159,7 +163,7 @@ type ReportFeed =
 /** Shared empty page — a fresh `[]` per render would rebuild every row memo. */
 const NO_ROWS: readonly never[] = [];
 
-async function fetchReportFeed(tab: Tab, dateKey: string, find: string): Promise<ReportFeed> {
+async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, find: string): Promise<ReportFeed> {
   // The staff tab is a different SOURCE, not a fourth REST shape: the
   // daily-check report the phone already reads, flattened by the projection
   // both surfaces share — one truth, two presentations.
@@ -456,6 +460,14 @@ function ReportBody({
   dateKey: string;
   onDateChange: (next: string) => void;
 } & ServerFind) {
+  if (tab === 'activity') {
+    return (
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ReportDayStepper dateKey={dateKey} onDateChange={onDateChange} />
+        <TaskActivityReport dateKey={dateKey} />
+      </section>
+    );
+  }
   if (tab === 'staff') {
     return (
       <StaffDayReportTable
@@ -516,6 +528,7 @@ function ReportBody({
 
 function ReportsPageInner() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
   /*
@@ -563,6 +576,11 @@ function ReportsPageInner() {
   // `find` is part of the fetch KEY, not a filter applied after it: for the
   // tabs in `FIND_ANSWERED_BY_SERVER` the rows that come back ARE the answer.
   const load = useCallback(async () => {
+    if (tab === 'activity') {
+      setLoading(false);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -573,7 +591,6 @@ function ReportsPageInner() {
       setLoading(false);
     }
   }, [tab, dateKey, find]);
-
   useEffect(() => {
     load();
   }, [load]);
@@ -603,15 +620,23 @@ function ReportsPageInner() {
       className="h-full"
     >
       <DeskActionSlotRegistrar>
-        <DeskHeaderAction variant="secondary" size="md" type="button" onClick={load}>
+        <DeskHeaderAction
+          variant="secondary"
+          size="md"
+          type="button"
+          onClick={() => {
+            if (tab === 'activity') void queryClient.invalidateQueries({ queryKey: ['task-activity-report', dateKey] });
+            else void load();
+          }}
+        >
           Refresh
         </DeskHeaderAction>
       </DeskActionSlotRegistrar>
       <main className="flex min-h-0 min-w-0 flex-1 flex-col px-3 py-3">
-        {error && (
+        {error && tab !== 'activity' && (
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
-        {!error && (
+        {(!error || tab === 'activity') && (
           <ReportBody
             tab={tab}
             feed={feed}

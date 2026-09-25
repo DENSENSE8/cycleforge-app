@@ -3,6 +3,18 @@
 /**
  * A triage list row: inspect on the left, commit on the right.
  *
+ * ## BRIEF §4 triage, in one place
+ *
+ * Every phone triage list (exceptions, on-hold, inbox, pair) mounts this row,
+ * so the triage grammar lives here and nowhere else:
+ *   - the row LEADS with its state code (`code`, a {@link StateCode} from
+ *     `LIFECYCLE` or `INTAKE`), then the title;
+ *   - the selected row wears the 2px INK outline — never a coloured one;
+ *   - the region's corner, hit and body size (`rounded-mode`,
+ *     `min-h-mode-hit`, `text-mode-body`);
+ *   - the commit is the one ink-filled decision (`Button variant="ink"`).
+ *   - no motion: nothing on the row moves (opacity-only is the ceiling).
+ *
  * ## Two targets, deliberately, and never nested
  *
  * A row that only commits forces a blind decision; a row that only opens a
@@ -27,17 +39,16 @@
 import type { ReactNode } from 'react';
 import { Button } from '@/design-system/primitives/Button';
 import { ItemRecordThumb } from '@/design-system/components/item-record/ItemRecordThumb';
-import {
-  ITEM_RECORD_MOBILE_THUMB,
-  ITEM_RECORD_MOBILE_TITLE,
-} from '@/design-system/tokens/item-record-mobile';
+import { ITEM_RECORD_MOBILE_THUMB } from '@/design-system/tokens/item-record-mobile';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 export function TriageRow({
   title,
   meta,
   imageUrl,
-  badge,
+  code,
+  selected = false,
   actionLabel,
   actionName,
   inspectName,
@@ -46,11 +57,14 @@ export function TriageRow({
   busy = false,
 }: {
   title: string;
-  /** Second line — SKU, code, counts. */
+  /** Second line — SKU, order #, counts, when. */
   meta?: ReactNode;
+  /** Product photo. Omit (`undefined`) for rows that are not a product; `null` keeps the empty slot. */
   imageUrl?: string | null;
-  /** Small marker beside the meta line (e.g. ON HOLD). */
-  badge?: ReactNode;
+  /** The lead state code — a `StateCode` from `LIFECYCLE` / `INTAKE`. */
+  code?: ReactNode;
+  /** The row the operator is on (e.g. the record they just came back from): the ink outline. */
+  selected?: boolean;
   /** Visible text on the commit button. A verb. */
   actionLabel: string;
   /** Full accessible name for the commit button, naming the subject. */
@@ -62,7 +76,14 @@ export function TriageRow({
   busy?: boolean;
 }) {
   return (
-    <li className="flex items-stretch gap-2 pr-2">
+    <li
+      data-triage-row=""
+      data-selected={selected || undefined}
+      className={cn(
+        'flex items-center gap-2 bg-mode-panel pr-mode-page',
+        selected && 'outline outline-2 -outline-offset-2 outline-text-default',
+      )}
+    >
       {/*
         ds-raw-button: a two-line, left-aligned row with a bled thumb is not a
         Button shape, and forcing one here would mean overriding its height —
@@ -71,36 +92,37 @@ export function TriageRow({
       <button
         type="button"
         aria-label={inspectName}
+        aria-current={selected || undefined}
         onClick={onInspect}
-        className="ds-raw-button flex min-w-0 flex-1 items-stretch gap-3 py-2 pl-2 text-left active:bg-surface-hover"
+        className={cn(
+          'ds-raw-button flex min-h-mode-hit min-w-0 flex-1 items-center gap-3 py-2 pl-mode-page text-left active:bg-mode-hover',
+          focusRing('cell', 'accent'),
+        )}
       >
-        <ItemRecordThumb
-          imageUrl={imageUrl}
-          plainEmpty
-          // The PHONE cube (64px), not the desk's 80px default — this row is
-          // 390px wide and the title is what the operator decides on. Shrinking
-          // it also shortens the row, so more of the list fits on screen.
-          className={cn(
-            'self-center',
-            ITEM_RECORD_MOBILE_THUMB.size,
-            ITEM_RECORD_MOBILE_THUMB.corner,
-          )}
-          iconClassName={ITEM_RECORD_MOBILE_THUMB.packageIcon}
-        />
-        <span className={cn(ITEM_RECORD_MOBILE_TITLE.band, 'flex-1')}>
-          <span className={cn(ITEM_RECORD_MOBILE_TITLE.face, 'block')}>{title}</span>
-          <span className={ITEM_RECORD_MOBILE_TITLE.foot}>
-            {meta}
-            {badge}
+        {imageUrl !== undefined ? (
+          <ItemRecordThumb
+            imageUrl={imageUrl}
+            plainEmpty
+            // The PHONE cube, not the desk's 80px default — this row is 390px
+            // wide and the title is what the operator decides on.
+            className={cn('self-center', ITEM_RECORD_MOBILE_THUMB.size, 'rounded-mode')}
+            iconClassName={ITEM_RECORD_MOBILE_THUMB.packageIcon}
+          />
+        ) : null}
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="flex min-w-0 items-center gap-1.5">
+            {code}
+            <span className="min-w-0 truncate text-mode-body font-semibold text-mode-ink">{title}</span>
           </span>
+          {meta ? <span className="flex min-w-0 items-center gap-1.5">{meta}</span> : null}
         </span>
       </button>
 
       <Button
-        variant="primary"
+        variant="ink"
         size="lg"
-        radius="surface"
-        className="my-2 shrink-0 self-center"
+        radius="mode"
+        className="min-h-mode-hit shrink-0"
         ariaLabel={actionName}
         loading={busy}
         onClick={onAction}

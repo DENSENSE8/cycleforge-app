@@ -271,6 +271,22 @@ function MobileScanIdentifyInner() {
     [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
   );
 
+  // The kernel owns hardware scans on this screen. A ring / HID wedge read is
+  // claimed from the app-wide listener (`useGlobalWedgeScanner`), which would
+  // otherwise navigate straight to the label's UNARMED redirect — so with QC
+  // armed a wedge-scanned unit or carton skipped its checklist / line pick.
+  // Claimed, it resolves through the same dispatch as the camera.
+  useEffect(() => {
+    const onWedge = (event: Event) => {
+      const raw = (event as CustomEvent<{ value?: string }>).detail?.value;
+      if (!raw?.trim()) return;
+      event.preventDefault();
+      onDecode(raw);
+    };
+    window.addEventListener('wedge-scan', onWedge);
+    return () => window.removeEventListener('wedge-scan', onWedge);
+  }, [onDecode]);
+
   /**
    * A carton row opens the carton itself (operator 2026-09-24: the primary
    * record of the job is a full screen with an X back to the job, never a

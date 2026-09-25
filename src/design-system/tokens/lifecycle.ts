@@ -1,4 +1,5 @@
 import { LIFECYCLE, type LifecycleState, type StateName } from '@cycleforge/design-tokens';
+import type { RecordStateFace } from './industrial-record';
 
 /**
  * Web face of the cross-platform lifecycle + state-tone registry
@@ -19,6 +20,10 @@ import { LIFECYCLE, type LifecycleState, type StateName } from '@cycleforge/desi
 
 export { LIFECYCLE, LIFECYCLE_STATES, type LifecycleState, type StateName } from '@cycleforge/design-tokens';
 
+export function lifecycleRecordState(state: LifecycleState): RecordStateFace {
+  return { id: state, ...LIFECYCLE[state] };
+}
+
 export interface StateToneClasses {
   /** Ink as text. */
   text: string;
@@ -32,8 +37,6 @@ export interface StateToneClasses {
   ring: string;
   /** Solid spine colour — a row's left rail (pair with `border-l-*`). */
   spine: string;
-  /** Whole-row wash — the one tinted fill an industrial row may carry. */
-  tint: string;
 }
 
 export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> = {
@@ -44,7 +47,6 @@ export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> =
     border: 'border-fill-info/40',
     ring: 'ring-fill-info/40',
     spine: 'border-fill-info',
-    tint: 'bg-fill-info/5',
   },
   warning: {
     text: 'text-text-warning',
@@ -53,7 +55,6 @@ export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> =
     border: 'border-border-warning',
     ring: 'ring-border-warning',
     spine: 'border-fill-warning',
-    tint: 'bg-surface-warning',
   },
   fulfillment: {
     text: 'text-text-fulfillment',
@@ -62,7 +63,6 @@ export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> =
     border: 'border-fill-fulfillment/40',
     ring: 'ring-fill-fulfillment/40',
     spine: 'border-fill-fulfillment',
-    tint: 'bg-fill-fulfillment/10',
   },
   danger: {
     text: 'text-text-danger',
@@ -71,7 +71,6 @@ export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> =
     border: 'border-border-danger',
     ring: 'ring-border-danger',
     spine: 'border-fill-danger',
-    tint: 'bg-surface-danger',
   },
   success: {
     text: 'text-text-success',
@@ -80,11 +79,14 @@ export const STATE_TONE_CLASSES: Readonly<Record<StateName, StateToneClasses>> =
     border: 'border-border-success',
     ring: 'ring-border-success',
     spine: 'border-fill-success',
-    tint: 'bg-surface-success',
   },
 };
 
-/** Lifecycle state → its tone's classes. */
+/**
+ * Lifecycle state → its tone's classes. No state washes a whole row (owner
+ * 2026-09-25): out of stock is carried by its hatched spine and code, so the
+ * red reads on white instead of fading into a pink ground.
+ */
 export const LIFECYCLE_CLASSES = Object.fromEntries(
   Object.entries(LIFECYCLE).map(([state, spec]) => [state, STATE_TONE_CLASSES[spec.tone]]),
 ) as Readonly<Record<LifecycleState, StateToneClasses>>;

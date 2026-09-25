@@ -3,13 +3,16 @@
 /**
  * Mint an on-hold placeholder for a product the catalog has never heard of.
  *
- * ## Why two fields and not one
+ * ## The name is required, the barcode is not
  *
- * The barcode is what a LATER merge matches on, and the name is what a human
- * reads on the rack today. Collapsing them loses one job or the other: a
- * name-only placeholder can never be auto-matched to the real SKU when it
- * appears (every reconcile becomes somebody's memory), and a barcode-only one
- * is unreadable on every warehouse surface it shows up on.
+ * The name is what a human reads on the rack today, so it is the one required
+ * field. The barcode is what a LATER merge matches on — worth having, but a box
+ * with no label, a torn label or a label nobody can find must still be counted
+ * now, not left on the floor until someone locates a code. Leave the barcode
+ * empty and the placeholder is keyed by a per-sheet `sourceRef` instead (one
+ * `safeRandomUUID()` per mount, so a double tap joins its own placeholder
+ * rather than minting a twin); the real barcode is scanned onto it later from
+ * its `/m/on-hold/[sku]/info` edit (attach-once).
  *
  * The search query the operator already typed seeds whichever field it looks
  * like, so the common path is one field plus Create. A wedge scanner firing
@@ -43,6 +46,7 @@ import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 import { cn } from '@/utils/_cn';
 import type { SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
@@ -86,6 +90,8 @@ export function ProvisionalCreateSheet({
   const [phase, setPhase] = useState<'idle' | 'creating' | 'uploading'>('idle');
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  /** Idempotency key for a barcode-less create — one per sheet mount, never re-rolled. */
+  const [sourceRef] = useState(safeRandomUUID);
   const stagedRef = useRef(staged);
   stagedRef.current = staged;
 
@@ -98,7 +104,8 @@ export function ProvisionalCreateSheet({
   );
 
   const busy = phase !== 'idle';
-  const ready = barcode.trim().length > 0 && title.trim().length >= 2;
+  const ready = title.trim().length >= 2;
+  const hasBarcode = barcode.trim().length > 0;
 
   const addFiles = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -133,7 +140,7 @@ export function ProvisionalCreateSheet({
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          barcode: barcode.trim(),
+          ...(hasBarcode ? { barcode: barcode.trim() } : { sourceRef }),
           productTitle: title.trim(),
           description: description.trim() || undefined,
           staffId: staffId > 0 ? staffId : undefined,
@@ -199,7 +206,7 @@ export function ProvisionalCreateSheet({
       image_url: null,
       is_active: true,
     });
-  }, [barcode, busy, description, onCreated, queryClient, ready, staffId, staged, title]);
+  }, [barcode, busy, description, hasBarcode, onCreated, queryClient, ready, sourceRef, staffId, staged, title]);
 
   return (
     <div
@@ -216,12 +223,17 @@ export function ProvisionalCreateSheet({
       <TextField
         value={barcode}
         onChange={setBarcode}
-        label="Barcode / UPC"
+        label="Barcode / UPC (optional)"
         mono
         inputMode="text"
         autoComplete="off"
         autoFocus={!seedIsBarcode ? false : undefined}
       />
+      {!hasBarcode ? (
+        <p className="text-role-micro text-text-faint">
+          No barcode? Leave it empty — add one later from the product’s details.
+        </p>
+      ) : null}
       <TextField
         value={title}
         onChange={setTitle}

@@ -72,7 +72,6 @@ import type {
   CompoundOrderedAtEdit,
   CompoundShipByEdit,
   CompoundStageAssign,
-  CompoundStaffRoster,
 } from './compound-row-model';
 
 /**
@@ -182,8 +181,8 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    * mark as a staff combo; done stages stay read-only.
    */
   stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
-  /** Present ⇒ the actions track mounts the all-staff Pick/Pack role roster. */
-  staffRoster?: CompoundStaffRoster;
+  /** Present ⇒ the actions track mounts the all-staff Picker / Packer roster. */
+  staffRoster?: boolean;
 }
 
 /**

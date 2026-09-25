@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * Inbound desk header CTA — **Add purchase order** (primary) plus Import menu.
+ * Inbound desk header CTA — **Add** (primary) plus Import menu.
  *
- * Opens the inline PO intake band under the Incoming grid (not a right-rail
- * form). Also consumes Global Header Add intents for Incoming.
+ * Opens Add PO or Add Return in the RecordLedger evidence column. Also
+ * consumes Global Header Add intents for Incoming.
  */
 
 import { useCallback, useEffect, useMemo } from 'react';
@@ -17,7 +17,8 @@ import {
   consumeGlobalAddIntent,
   type GlobalAddIntent,
 } from '@/lib/global-add/catalog';
-import { openPoIntake } from '@/lib/inbound/po-intake-store';
+import { closePoIntake, openPoIntake } from '@/lib/inbound/po-intake-store';
+import { closeReturnIntake, openReturnIntake } from '@/lib/inbound/return-intake-store';
 import { useIncomingSyncActions } from '@/components/sidebar/receiving/incoming/useIncomingSyncActions';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
@@ -27,6 +28,7 @@ function applyIncomingGlobalIntent(
   intent: GlobalAddIntent,
   helpers: {
     openIntake: () => void;
+    openReturn: () => void;
     armReturnsImport: () => void;
     importZoho: () => void;
     importEbay: () => void;
@@ -36,6 +38,10 @@ function applyIncomingGlobalIntent(
     case 'incoming-add':
       if (intent.leaf === 'import-returns') {
         helpers.armReturnsImport();
+        return true;
+      }
+      if (intent.leaf === 'add-return') {
+        helpers.openReturn();
         return true;
       }
       helpers.openIntake();
@@ -59,7 +65,13 @@ export function IncomingDeskAddAction() {
   const returnsCsv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
 
   const openIntake = useCallback(() => {
+    closeReturnIntake();
     openPoIntake({ reset: true });
+  }, []);
+
+  const openReturn = useCallback(() => {
+    closePoIntake();
+    openReturnIntake();
   }, []);
 
   const armReturnsImport = useCallback(() => {
@@ -79,12 +91,13 @@ export function IncomingDeskAddAction() {
     if (parked) {
       applyIncomingGlobalIntent(parked, {
         openIntake,
+        openReturn,
         armReturnsImport,
         importZoho,
         importEbay,
       });
     }
-  }, [openIntake, armReturnsImport, importZoho, importEbay, pathname, searchParams]);
+  }, [openIntake, openReturn, armReturnsImport, importZoho, importEbay, pathname, searchParams]);
 
   useEffect(() => {
     const onGlobalAdd = (event: Event) => {
@@ -100,6 +113,7 @@ export function IncomingDeskAddAction() {
       consumeGlobalAddIntent();
       applyIncomingGlobalIntent(intent, {
         openIntake,
+        openReturn,
         armReturnsImport,
         importZoho,
         importEbay,
@@ -111,6 +125,7 @@ export function IncomingDeskAddAction() {
     window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
     return () => window.removeEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
   }, [
+    openReturn,
     openIntake,
     armReturnsImport,
     importZoho,
@@ -125,12 +140,17 @@ export function IncomingDeskAddAction() {
         <DeskHeaderSplitAction
           tone="blue"
           icon={<Package aria-hidden className="h-3.5 w-3.5" />}
-          label="Add purchase order"
+          label="Add"
           onClick={openIntake}
           menuPlacement="bottom"
           menuChrome="dropdown"
           menuLabel="More inbound intake"
           menu={[
+            {
+              label: 'Add return',
+              icon: <RotateCcw aria-hidden className="h-3.5 w-3.5" />,
+              onClick: openReturn,
+            },
             ...(returnsCsv.live
               ? [
                   {
@@ -161,6 +181,7 @@ export function IncomingDeskAddAction() {
     ),
     [
       openIntake,
+      openReturn,
       armReturnsImport,
       importZoho,
       importEbay,

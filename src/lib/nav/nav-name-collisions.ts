@@ -14,7 +14,7 @@
  * |---|---|---|
  * | Lane | which direction of work? | **Inbound** |
  * | Row | which object? | **Deliveries** · Sourcing |
- * | Tab | which state of it? | **On the way** · History · PO Mailbox |
+ * | Tab | which state of it? | **On the way** · History |
  *
  * ## Why this is a TEST and not a design-mcp refuse rule
  *

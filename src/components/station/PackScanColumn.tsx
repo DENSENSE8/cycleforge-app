@@ -27,7 +27,7 @@ import {
   dispatchPackPrintBundleUi,
   PACKER_FOCUS_SCAN_EVENT,
   triggerPackPrintBundle,
-} from '@/components/packer/pack-print-bundle';
+} from '@/lib/print/pack-print-bundle-client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { safeChannelName, getStaffStationBridgeChannelName } from '@/lib/realtime/channels';

@@ -1,22 +1,28 @@
 /**
- * ShipStation store → org platform catalog sync.
+ * ShipStation store → org platform catalog placement.
  *
  * ShipStation aggregates every storefront the warehouse sells on; its `/stores`
- * list carries each store's marketplace ('eBay', 'Amazon', 'Shopify', …). The
- * unbox platform picker reads the org catalog (`platforms` / `platform_accounts`),
- * so mirroring those marketplaces in makes "the platforms we're already
- * integrated with" appear as classify options without any manual entry —
- * eBay/Amazon/Walmart rows already exist and are reused (ON CONFLICT DO
- * NOTHING); a marketplace the org has never cataloged is added with
- * `provider='shipstation'` so its provenance is visible in the catalog manager.
+ * list carries each store's marketplace ('eBay', 'Amazon', 'Shopify', …). Each
+ * store is placed ONCE, as an `integration_store_links` row on a catalog
+ * platform (`./integration-store-links.ts`):
  *
- * Idempotent by construction: re-running a sync never renames, recolours, or
- * reorders anything an operator has customized — it only adds missing rows.
+ *   • a LINKED store is never touched — the operator's placement (Settings →
+ *     Platforms & Types / the ShipStation connection page) is final, and no
+ *     platform or account is ever created for it;
+ *   • an UNLINKED store is linked to the platform its marketplace names. That
+ *     platform is reused when the org already has it (eBay/Amazon/Walmart/Ecwid);
+ *     a marketplace the org has never cataloged is added with
+ *     `provider='shipstation'` so its orders display, and the operator can
+ *     re-point the store later.
+ *
+ * Never creates `platform_accounts`: a storefront account is only ever one the
+ * operator already has and names on the link.
  */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { invalidateCatalogCache } from '@/lib/catalog/org-catalog';
+import { SHIPSTATION_STORE_PROVIDER } from '@/lib/catalog/integration-store-links';
 import { slugify } from '@/lib/neon/catalog-queries';
 import type { ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 
@@ -61,78 +67,83 @@ export function shipstationMarketplaceSlug(store: Pick<ShipStationV1Store, 'mark
 
 export interface StoreCatalogSyncResult {
   platformsAdded: number;
-  accountsAdded: number;
+  storesLinked: number;
 }
 
 /**
- * Mirror the connected stores into the org's platform catalog. One tenant
- * transaction; additive only. Callers should fire `invalidateCatalogCache`
- * after (done here on success) so every instance's picker cache refreshes.
+ * The stores this sync places: not yet linked, and on a sales marketplace
+ * (ShipStation's own channels are never placed). A linked store is absent by
+ * construction — its placement belongs to the operator.
+ */
+export function storesToPlace<S extends Pick<ShipStationV1Store, 'storeId' | 'marketplace' | 'marketplaceName'>>(
+  stores: readonly S[],
+  linkedStoreIds: ReadonlySet<string>,
+): Array<{ store: S; slug: string }> {
+  return stores.flatMap((store) => {
+    if (linkedStoreIds.has(String(store.storeId))) return [];
+    const slug = shipstationMarketplaceSlug(store);
+    return slug ? [{ store, slug }] : [];
+  });
+}
+
+/**
+ * Link every unlinked store to its marketplace's platform. One tenant
+ * transaction; additive only — an existing platform or link is never renamed,
+ * recoloured or re-pointed. Fires `invalidateCatalogCache` when it placed
+ * anything so every instance's picker cache refreshes.
  */
 export async function syncShipStationStoresToCatalog(
   orgId: OrgId,
   stores: ShipStationV1Store[],
 ): Promise<StoreCatalogSyncResult> {
-  const result: StoreCatalogSyncResult = { platformsAdded: 0, accountsAdded: 0 };
+  const result: StoreCatalogSyncResult = { platformsAdded: 0, storesLinked: 0 };
   if (stores.length === 0) return result;
 
   await withTenantTransaction(orgId, async (client) => {
-    // Distinct marketplaces → platform rows (slug deduped, known slugs reused).
-    const bySlug = new Map<string, { label: string }>();
-    for (const store of stores) {
-      const slug = shipstationMarketplaceSlug(store);
-      if (!slug) continue;
-      const label =
-        String(store.marketplaceName ?? '').trim() ||
-        String(store.marketplace ?? '').trim() ||
-        slug;
-      if (!bySlug.has(slug)) bySlug.set(slug, { label });
-    }
+    const linked = await client.query<{ external_store_id: string }>(
+      `SELECT external_store_id FROM integration_store_links
+        WHERE organization_id = $1 AND provider = $2`,
+      [orgId, SHIPSTATION_STORE_PROVIDER],
+    );
+    const toPlace = storesToPlace(stores, new Set(linked.rows.map((r) => r.external_store_id)));
 
     const platformIds = new Map<string, number>();
-    for (const [slug, { label }] of bySlug) {
-      const inserted = await client.query<{ id: number }>(
-        `INSERT INTO platforms (organization_id, slug, label, provider, sort_order)
-         VALUES ($1, $2, $3, 'shipstation', 80)
-         ON CONFLICT (organization_id, slug) DO NOTHING
-         RETURNING id`,
-        [orgId, slug, label],
-      );
-      if (inserted.rows.length > 0) {
-        result.platformsAdded++;
-        platformIds.set(slug, Number(inserted.rows[0].id));
-        continue;
+    for (const { store, slug } of toPlace) {
+      let platformId = platformIds.get(slug);
+      if (platformId == null) {
+        const label =
+          String(store.marketplaceName ?? '').trim() || String(store.marketplace ?? '').trim() || slug;
+        const inserted = await client.query<{ id: number }>(
+          `INSERT INTO platforms (organization_id, slug, label, provider, sort_order)
+           VALUES ($1, $2, $3, 'shipstation', 80)
+           ON CONFLICT (organization_id, slug) DO NOTHING
+           RETURNING id`,
+          [orgId, slug, label],
+        );
+        if (inserted.rows.length > 0) result.platformsAdded++;
+        const row =
+          inserted.rows[0] ??
+          (
+            await client.query<{ id: number }>(
+              `SELECT id FROM platforms WHERE organization_id = $1 AND slug = $2`,
+              [orgId, slug],
+            )
+          ).rows[0];
+        if (!row) continue;
+        platformId = Number(row.id);
+        platformIds.set(slug, platformId);
       }
-      const existing = await client.query<{ id: number }>(
-        `SELECT id FROM platforms WHERE organization_id = $1 AND slug = $2`,
-        [orgId, slug],
-      );
-      if (existing.rows.length > 0) platformIds.set(slug, Number(existing.rows[0].id));
-    }
-
-    // One platform_account per ACTIVE store, so the type → account → platform
-    // chain can reach the specific ShipStation storefront. Retired stores still
-    // attribute their historical orders, but add no picker entries.
-    for (const store of stores) {
-      if (!store.active) continue;
-      const slug = shipstationMarketplaceSlug(store);
-      const platformId = slug ? platformIds.get(slug) : undefined;
-      if (!platformId) continue;
-      const accountSlug = `shipstation-${store.storeId}`;
-      const label =
-        String(store.storeName ?? '').trim() ||
-        `ShipStation ${String(store.marketplaceName ?? store.marketplace ?? '').trim() || store.storeId}`;
-      const inserted = await client.query<{ id: number }>(
-        `INSERT INTO platform_accounts (organization_id, platform_id, slug, label, integration_scope, is_active)
-         VALUES ($1, $2, $3, $4, $5, true)
-         ON CONFLICT (organization_id, platform_id, slug) DO NOTHING
+      const link = await client.query(
+        `INSERT INTO integration_store_links (organization_id, provider, external_store_id, platform_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (organization_id, provider, external_store_id) DO NOTHING
          RETURNING id`,
-        [orgId, platformId, accountSlug, label, String(store.storeId)],
+        [orgId, SHIPSTATION_STORE_PROVIDER, String(store.storeId), platformId],
       );
-      if (inserted.rows.length > 0) result.accountsAdded++;
+      if (link.rows.length > 0) result.storesLinked++;
     }
   });
 
-  invalidateCatalogCache(orgId);
+  if (result.platformsAdded > 0 || result.storesLinked > 0) invalidateCatalogCache(orgId);
   return result;
 }

@@ -184,12 +184,15 @@ public enum DesignTokens {
         )
     }
 
-    /// One state colour: text ink, solid fill, pastel tint and tint border.
+    /// One state colour: text ink, solid fill, pastel tint, tint border, and
+    /// the solid badge behind a lifecycle code with the ink printed on it.
     public struct Tone: Sendable {
         public let text: Color
         public let fill: Color
         public let tint: Color
         public let edge: Color
+        public let code: Color
+        public let codeInk: Color
     }
 
     /// State colours — what a thing IS; mode- and platform-independent.
@@ -199,55 +202,83 @@ public enum DesignTokens {
             text: Color(red: 37.0 / 255.0, green: 99.0 / 255.0, blue: 235.0 / 255.0), // #2563eb
             fill: Color(red: 37.0 / 255.0, green: 99.0 / 255.0, blue: 235.0 / 255.0), // #2563eb
             tint: Color(red: 239.0 / 255.0, green: 246.0 / 255.0, blue: 255.0 / 255.0), // #eff6ff
-            edge: Color(red: 96.0 / 255.0, green: 165.0 / 255.0, blue: 250.0 / 255.0) // #60a5fa
+            edge: Color(red: 96.0 / 255.0, green: 165.0 / 255.0, blue: 250.0 / 255.0), // #60a5fa
+            code: Color(red: 29.0 / 255.0, green: 78.0 / 255.0, blue: 216.0 / 255.0), // #1d4ed8
+            codeInk: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0) // #ffffff
         )
 
         public static let warning = Tone(
             text: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
             fill: Color(red: 249.0 / 255.0, green: 115.0 / 255.0, blue: 22.0 / 255.0), // #f97316
             tint: Color(red: 255.0 / 255.0, green: 247.0 / 255.0, blue: 237.0 / 255.0), // #fff7ed
-            edge: Color(red: 251.0 / 255.0, green: 146.0 / 255.0, blue: 60.0 / 255.0) // #fb923c
+            edge: Color(red: 251.0 / 255.0, green: 146.0 / 255.0, blue: 60.0 / 255.0), // #fb923c
+            code: Color(red: 249.0 / 255.0, green: 115.0 / 255.0, blue: 22.0 / 255.0), // #f97316
+            codeInk: Color(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0) // #0f172a
         )
 
         public static let fulfillment = Tone(
             text: Color(red: 147.0 / 255.0, green: 51.0 / 255.0, blue: 234.0 / 255.0), // #9333ea
             fill: Color(red: 168.0 / 255.0, green: 85.0 / 255.0, blue: 247.0 / 255.0), // #a855f7
             tint: Color(red: 250.0 / 255.0, green: 245.0 / 255.0, blue: 255.0 / 255.0), // #faf5ff
-            edge: Color(red: 192.0 / 255.0, green: 132.0 / 255.0, blue: 252.0 / 255.0) // #c084fc
+            edge: Color(red: 192.0 / 255.0, green: 132.0 / 255.0, blue: 252.0 / 255.0), // #c084fc
+            code: Color(red: 126.0 / 255.0, green: 34.0 / 255.0, blue: 206.0 / 255.0), // #7e22ce
+            codeInk: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0) // #ffffff
         )
 
         public static let danger = Tone(
             text: Color(red: 220.0 / 255.0, green: 38.0 / 255.0, blue: 38.0 / 255.0), // #dc2626
             fill: Color(red: 239.0 / 255.0, green: 68.0 / 255.0, blue: 68.0 / 255.0), // #ef4444
             tint: Color(red: 254.0 / 255.0, green: 242.0 / 255.0, blue: 242.0 / 255.0), // #fef2f2
-            edge: Color(red: 248.0 / 255.0, green: 113.0 / 255.0, blue: 113.0 / 255.0) // #f87171
+            edge: Color(red: 248.0 / 255.0, green: 113.0 / 255.0, blue: 113.0 / 255.0), // #f87171
+            code: Color(red: 185.0 / 255.0, green: 28.0 / 255.0, blue: 28.0 / 255.0), // #b91c1c
+            codeInk: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0) // #ffffff
         )
 
         public static let success = Tone(
             text: Color(red: 21.0 / 255.0, green: 128.0 / 255.0, blue: 61.0 / 255.0), // #15803d
             fill: Color(red: 22.0 / 255.0, green: 163.0 / 255.0, blue: 74.0 / 255.0), // #16a34a
             tint: Color(red: 240.0 / 255.0, green: 253.0 / 255.0, blue: 244.0 / 255.0), // #f0fdf4
-            edge: Color(red: 74.0 / 255.0, green: 222.0 / 255.0, blue: 128.0 / 255.0) // #4ade80
+            edge: Color(red: 74.0 / 255.0, green: 222.0 / 255.0, blue: 128.0 / 255.0), // #4ade80
+            code: Color(red: 21.0 / 255.0, green: 128.0 / 255.0, blue: 61.0 / 255.0), // #15803d
+            codeInk: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0) // #ffffff
         )
     }
 
     /// One lifecycle state: 3-letter mono code, full word (what the code reads
-    /// as) and its state colour.
+    /// as), its state colour, and the Lucide icon name drawn before the code
+    /// (map it to the nearest SF Symbol).
     public struct LifecycleState: Sendable {
         public let code: String
         public let label: String
         public let tone: Tone
+        public let icon: String
     }
 
     /// Lifecycle states — one meaning, code and colour on every platform.
     /// Packed is `fulfillment`; shipped is `success`.
     public enum Lifecycle {
-        public static let ready = LifecycleState(code: "RDY", label: "Ready", tone: State.info)
-        public static let urgent = LifecycleState(code: "URG", label: "Urgent", tone: State.warning)
-        public static let packed = LifecycleState(code: "PKD", label: "Packed", tone: State.fulfillment)
-        public static let outOfStock = LifecycleState(code: "OOS", label: "Out of stock", tone: State.danger)
-        public static let shipped = LifecycleState(code: "SHP", label: "Shipped", tone: State.success)
-        public static let onHold = LifecycleState(code: "HLD", label: "On hold", tone: State.warning)
+        public static let ready = LifecycleState(code: "RDY", label: "Ready", tone: State.info, icon: "circle-dot")
+        public static let urgent = LifecycleState(code: "URG", label: "Urgent", tone: State.warning, icon: "alarm-clock")
+        public static let packed = LifecycleState(code: "PKD", label: "Packed", tone: State.fulfillment, icon: "package")
+        public static let outOfStock = LifecycleState(code: "OOS", label: "Out of stock", tone: State.danger, icon: "package-x")
+        public static let shipped = LifecycleState(code: "SHP", label: "Shipped", tone: State.success, icon: "truck")
+        public static let onHold = LifecycleState(code: "HLD", label: "On hold", tone: State.warning, icon: "circle-pause")
+    }
+
+    /// Carrier-facing inbound states — never aliases of outbound lifecycle.
+    public enum InboundDelivery {
+        public static let delivered_unopened = LifecycleState(code: "DSC", label: "Delivered · not scanned", tone: State.danger, icon: "inbox")
+        public static let delivered_not_unboxed = LifecycleState(code: "DUB", label: "Delivered · not unboxed", tone: State.danger, icon: "package-open")
+        public static let arriving_today = LifecycleState(code: "TOD", label: "Arriving today", tone: State.warning, icon: "truck")
+        public static let stalled = LifecycleState(code: "STL", label: "Stalled", tone: State.warning, icon: "alarm-clock")
+        public static let in_transit = LifecycleState(code: "TRN", label: "In transit", tone: State.info, icon: "map-pin")
+        public static let tracking_unavailable = LifecycleState(code: "BLK", label: "Tracking unavailable", tone: State.danger, icon: "lock")
+        public static let pending_carrier = LifecycleState(code: "PND", label: "Pending carrier", tone: State.info, icon: "clock")
+        public static let carrier_mismatch = LifecycleState(code: "CAR", label: "Carrier mismatch", tone: State.danger, icon: "unlink")
+        public static let awaiting_tracking = LifecycleState(code: "NTR", label: "Awaiting tracking", tone: State.warning, icon: "hash")
+        public static let wrong_destination = LifecycleState(code: "DST", label: "Wrong destination", tone: State.danger, icon: "map-pin")
+        public static let received = LifecycleState(code: "RCV", label: "Received", tone: State.success, icon: "package-open")
+        public static let unknown = LifecycleState(code: "UNK", label: "Unknown", tone: State.warning, icon: "circle-help")
     }
 
     /// One intake class: 3-letter mono code and the full word it reads as.

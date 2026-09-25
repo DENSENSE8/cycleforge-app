@@ -26,6 +26,10 @@ export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = 
   // Leaving it open here would let the generic /api/photos/upload route attach
   // a photo to any colleague's profile.
   STAFF: 'admin.manage_staff',
+  // Task media rides the SAME gate as throwing and driving a task: every floor
+  // role holds it, and the upload routes additionally require the id to be a
+  // FOLLOW_UP task in the caller's org (`assertTaskInOrg`).
+  WORK_ASSIGNMENT: 'work_orders.claim',
 };
 
 export function uploadPermissionFor(entityType: PhotoEntityType): PermissionString {

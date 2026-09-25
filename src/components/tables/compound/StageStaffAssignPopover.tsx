@@ -1,24 +1,37 @@
 'use client';
 
 /**
- * Staff adapter over {@link AssigneeCombobox} for Pick / Packed / All staff.
- * Lane filter and floor-role persist stay here; the panel is the SoT.
+ * Staff adapter over {@link AssigneeCombobox} for Pick / Pack / full roster.
+ *
+ * Assign mode lists staff holding the lane's FLOOR FUNCTIONAL ROLE (picker /
+ * packer — `staff_functional_roles`), never RBAC access roles. Search sits
+ * left; the Edit pickers / Edit packers button on the right opens the roster:
+ * every active member with that lane's functional-role switch. Flipping it
+ * writes the functional role only; access roles are never touched. A name
+ * click in either mode assigns when that member holds the lane's role.
+ *
  * `role="all"` + `onCommit` is a full-roster assign (scan-out, mark shipped).
- * `role="all"` without `onCommit` stays roster (Picker/Packer switches).
+ * `role="all"` without `onCommit` is roster-only (actions-column switches).
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';
 import { AssigneeCombobox, type AssigneeComboboxRow } from '@/design-system/components/AssigneeCombobox';
-import { getActiveStaff, peekActiveStaff, type StaffMember } from '@/lib/staffCache';
-import type { CompoundStageAssignRole, StaffLaneRoleNotice } from './compound-row-model';
 import {
-  applyStaffLaneRole,
-  oppositeStaffLane,
+  getActiveStaff,
+  peekActiveStaff,
+  saveStaffFunctionalRole,
+  type StaffMember,
+} from '@/lib/staffCache';
+import { toast } from '@/lib/toast';
+import type { CompoundStageAssignRole } from './compound-row-model';
+import {
+  STAFF_LANE_FACES,
   staffLaneEmptyLabel,
   staffLaneFaceLabel,
-  staffLaneRosterFaces,
+  staffLaneFunctionalRole,
   staffMatchesStageLane,
+  withStaffLane,
   type StageStaffLane,
 } from './staff-stage-lane';
 
@@ -28,19 +41,11 @@ export type StageStaffAssignPopoverProps = {
   anchorRef: React.RefObject<HTMLElement | null>;
   /** Accessible name only — never painted as a panel eyebrow. */
   label: string;
-  /** Lane this combo assigns. `all` is the actions-column roster (role edit only). */
+  /** Lane this combo assigns. `all` is the full roster. */
   role: StageStaffLane;
   selectedStaffId: number | null;
   onCommit?: (staffId: number | null, staffName: string | null) => void;
-  onSetLaneRole?: (
-    staffId: number,
-    role: CompoundStageAssignRole,
-    staffName: string,
-    notice?: StaffLaneRoleNotice,
-  ) => void;
 };
-
-type StaffRow = StaffMember;
 
 export function StageStaffAssignPopover({
   open,
@@ -50,17 +55,17 @@ export function StageStaffAssignPopover({
   role,
   selectedStaffId,
   onCommit,
-  onSetLaneRole,
 }: StageStaffAssignPopoverProps) {
   const warm = peekActiveStaff();
-  const [options, setOptions] = useState<StaffRow[]>(() => warm ?? []);
+  const [options, setOptions] = useState<StaffMember[]>(() => warm ?? []);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(() => !warm);
   const [rosterMode, setRosterMode] = useState(false);
-  const rosterAll = role === 'all' && !onCommit;
-  const canRoster = Boolean(onSetLaneRole);
-  const inRoster = rosterAll || (canRoster && rosterMode);
-  const faces = staffLaneRosterFaces(role);
+  const rosterOnly = role === 'all' && !onCommit;
+  // Lane combos always offer the roster; a full-roster assign has no lane to edit.
+  const canRoster = role !== 'all';
+  const inRoster = rosterOnly || (canRoster && rosterMode);
+  const faces = role === 'all' ? STAFF_LANE_FACES : [role];
 
   useEffect(() => {
     if (!open) {
@@ -102,15 +107,11 @@ export function StageStaffAssignPopover({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return options.filter((row) => {
-      if (!inRoster) {
-        if (selectedStaffId != null && row.id === selectedStaffId) {
-          // Keep the current assignee visible even if their floor role drifted.
-        } else if (!staffMatchesStageLane(row, role)) {
-          return false;
-        }
+      // Keep the current assignee visible even if their functional role changed.
+      if (!inRoster && row.id !== selectedStaffId && !staffMatchesStageLane(row, role)) {
+        return false;
       }
-      if (!q) return true;
-      return row.name.toLowerCase().includes(q);
+      return !q || row.name.toLowerCase().includes(q);
     });
   }, [options, query, role, selectedStaffId, inRoster]);
 
@@ -118,7 +119,7 @@ export function StageStaffAssignPopover({
     id: row.id,
     name: row.name,
     selected: selectedStaffId === row.id,
-    assignable: staffMatchesStageLane(row, role),
+    assignable: Boolean(onCommit) && staffMatchesStageLane(row, role),
     leading: <StaffAvatar staffId={row.id} name={row.name} size="sm" colorRing alt="" />,
     faces: faces.map((face) => ({
       id: face,
@@ -128,7 +129,7 @@ export function StageStaffAssignPopover({
   }));
 
   const pick = (row: AssigneeComboboxRow) => {
-    if (!onCommit || rosterAll || inRoster) return;
+    if (!onCommit) return;
     const member = options.find((item) => item.id === row.id);
     if (!member || !staffMatchesStageLane(member, role)) return;
     const next = selectedStaffId === row.id ? null : row.id;
@@ -136,19 +137,23 @@ export function StageStaffAssignPopover({
     onClose();
   };
 
-  const setFace = (row: AssigneeComboboxRow, faceId: string, eligible: boolean) => {
-    const face = faceId as CompoundStageAssignRole;
-    const lane = eligible ? face : oppositeStaffLane(face);
+  const setFace = (row: AssigneeComboboxRow, faceId: string, enabled: boolean) => {
+    const lane = faceId as CompoundStageAssignRole;
+    const before = options.find((member) => member.id === row.id);
+    if (!before) return;
     setOptions((prev) =>
-      prev.map((member) => (member.id === row.id ? applyStaffLaneRole(member, lane) : member)),
+      prev.map((member) => (member.id === row.id ? withStaffLane(member, lane, enabled) : member)),
     );
-    onSetLaneRole?.(row.id, lane, row.name, {
-      face,
-      eligible,
-    });
-    if (!eligible && !rosterAll && selectedStaffId === row.id) {
-      onCommit?.(null, null);
-    }
+    saveStaffFunctionalRole(row.id, staffLaneFunctionalRole(lane), enabled)
+      .then((functionalRoles) => {
+        setOptions((prev) =>
+          prev.map((member) => (member.id === row.id ? { ...member, functionalRoles } : member)),
+        );
+      })
+      .catch(() => {
+        setOptions((prev) => prev.map((member) => (member.id === row.id ? before : member)));
+        toast.error(`Could not update ${staffLaneFaceLabel(lane).toLowerCase()} for ${row.name}`);
+      });
   };
 
   const emptyMessage =
@@ -160,15 +165,15 @@ export function StageStaffAssignPopover({
       onClose={onClose}
       anchorRef={anchorRef}
       label={label}
-      testId={rosterAll ? 'stage-staff-roster-popover' : 'stage-staff-assign-popover'}
+      testId={rosterOnly ? 'stage-staff-roster-popover' : 'stage-staff-assign-popover'}
       query={query}
       onQueryChange={setQuery}
       rows={rows}
       loading={loading}
       emptyMessage={emptyMessage}
       roster={inRoster}
-      showAllStaff={canRoster && !rosterAll}
-      onAllStaff={() => setRosterMode((next) => !next)}
+      editRosterLabel={`${rosterMode ? 'Done editing' : 'Edit'} ${role === 'packer' ? 'packers' : 'pickers'}`}
+      onEditRoster={canRoster ? () => setRosterMode((next) => !next) : undefined}
       onSelect={pick}
       onFaceChange={setFace}
     />

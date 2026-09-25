@@ -5,6 +5,7 @@ import {
   LABEL_QUARANTINE_REASON_CODES,
 } from './types';
 import { buildOutboundWorkComponents, buildOutboundWorkOpenApi } from '@/lib/outbound/work-contract';
+import { buildReminderFeedComponents, buildReminderFeedOpenApi } from '@/lib/reminders/reminder-openapi';
 
 /** The bounded manual-upload contract. Tenant, actor, device and source are server-owned. */
 export const MAX_LABEL_PDF_BYTES = 5 * 1024 * 1024;
@@ -71,7 +72,8 @@ export function buildLabelIngestionOpenApi(): Record<string, unknown> {
       '/api/v1/label-ingestions/{id}/apply': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['expectedRowVersion'], properties: { expectedRowVersion: { type: 'integer', minimum: 0 } } } } } }, responses: { '200': { description: 'Applied or idempotent replay' }, '409': { description: 'State or row-version conflict', content: { 'application/json': { schema: error } } } } } },
       '/api/v1/label-ingestions/{id}/retry': { post: { parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'integer', minimum: 1 } }], responses: { '200': { description: 'Reprocessed staged PDF' }, '409': { description: 'Not retryable', content: { 'application/json': { schema: error } } } } } },
       ...buildOutboundWorkOpenApi(),
+      ...buildReminderFeedOpenApi(),
     },
-    components: { schemas: { LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES }, LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS }, LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES }, Error: error, ...buildOutboundWorkComponents() } },
+    components: { schemas: { LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES }, LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS }, LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES }, Error: error, ...buildOutboundWorkComponents(), ...buildReminderFeedComponents() } },
   };
 }

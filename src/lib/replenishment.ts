@@ -8,15 +8,11 @@ import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { attachShortageReplenishment } from '@/lib/orders/order-line-shortage';
 import { earmarkPoForReplenishmentRequest } from '@/lib/orders/shortage-inbound';
+import {
+  REPLENISHMENT_ALLOWED_TRANSITIONS,
+  type ReplenishmentRequestStatus,
+} from '@/lib/replenishment-request-status';
 
-export type ReplenishmentStatus =
-  | 'detected'
-  | 'pending_review'
-  | 'planned_for_po'
-  | 'po_created'
-  | 'waiting_for_receipt'
-  | 'fulfilled'
-  | 'cancelled';
 
 export interface ReplenishmentRequestRow {
   id: string;
@@ -32,7 +28,7 @@ export interface ReplenishmentRequestRow {
   vendor_zoho_contact_id: string | null;
   vendor_name: string | null;
   unit_cost: string | null;
-  status: ReplenishmentStatus;
+  status: ReplenishmentRequestStatus;
   status_changed_at: string;
   zoho_po_id: string | null;
   zoho_po_number: string | null;
@@ -44,7 +40,7 @@ export interface ReplenishmentRequestRow {
 /** Minimal query surface — a raw pool, a pool client, or a test fake. */
 export type DbClient = Pick<PoolClient, 'query'> | typeof pool;
 
-const ACTIVE_STATUSES: ReplenishmentStatus[] = [
+const ACTIVE_STATUSES: ReplenishmentRequestStatus[] = [
   'detected',
   'pending_review',
   'planned_for_po',
@@ -52,15 +48,6 @@ const ACTIVE_STATUSES: ReplenishmentStatus[] = [
   'waiting_for_receipt',
 ];
 
-export const REPLENISHMENT_ALLOWED_TRANSITIONS: Record<ReplenishmentStatus, ReplenishmentStatus[]> = {
-  detected: ['pending_review', 'cancelled'],
-  pending_review: ['planned_for_po', 'cancelled'],
-  planned_for_po: ['po_created', 'pending_review', 'cancelled'],
-  po_created: ['waiting_for_receipt', 'pending_review'],
-  waiting_for_receipt: ['fulfilled', 'po_created'],
-  fulfilled: [],
-  cancelled: [],
-};
 
 function toNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);
@@ -335,7 +322,7 @@ async function recomputeRequestQuantity(requestId: string, client: DbClient, org
 
 async function transitionReplenishmentStatusBody(
   requestId: string,
-  nextStatus: ReplenishmentStatus,
+  nextStatus: ReplenishmentRequestStatus,
   changedBy: string,
   note: string | null | undefined,
   exec: DbClient,
@@ -348,7 +335,7 @@ async function transitionReplenishmentStatusBody(
   const row = result.rows[0];
   if (!row) throw new Error('Replenishment request not found');
 
-  const current = row.status as ReplenishmentStatus;
+  const current = row.status as ReplenishmentRequestStatus;
   if (current === nextStatus) return;
   if (!REPLENISHMENT_ALLOWED_TRANSITIONS[current].includes(nextStatus)) {
     throw new Error(`Invalid replenishment transition: ${current} -> ${nextStatus}`);
@@ -374,7 +361,7 @@ async function transitionReplenishmentStatusBody(
 
 export async function transitionReplenishmentStatus(
   requestId: string,
-  nextStatus: ReplenishmentStatus,
+  nextStatus: ReplenishmentRequestStatus,
   changedBy: string,
   note: string | null | undefined,
   client: DbClient,
@@ -570,7 +557,7 @@ async function clearReplenishmentForOrderBody(client: PoolClient, orderId: numbe
       [requestId, orgId]
     );
     const quantityNeeded = toNumber(req.rows[0]?.quantity_needed, 0);
-    const status = req.rows[0]?.status as ReplenishmentStatus | undefined;
+    const status = req.rows[0]?.status as ReplenishmentRequestStatus | undefined;
 
     if (quantityNeeded <= 0 && status && ['detected', 'pending_review', 'planned_for_po'].includes(status)) {
       await transitionReplenishmentStatus(requestId, 'cancelled', changedBy, 'Order no longer requires replenishment', client, orgId);
@@ -585,7 +572,7 @@ export async function clearReplenishmentForOrder(orderId: number, changedBy = 's
 }
 
 export async function listNeedToOrder(options: {
-  statuses?: ReplenishmentStatus[];
+  statuses?: ReplenishmentRequestStatus[];
   page?: number;
   limit?: number;
   skuSearch?: string | null;
@@ -658,7 +645,8 @@ async function updateNeedToOrderRequestBody(
   id: string,
   body: {
     quantity_needed?: number;
-    status?: ReplenishmentStatus;
+    quantity_to_order?: number;
+    status?: ReplenishmentRequestStatus;
     notes?: string | null;
     vendor_zoho_contact_id?: string | null;
     vendor_name?: string | null;
@@ -681,15 +669,17 @@ async function updateNeedToOrderRequestBody(
   await client.query(
     `UPDATE replenishment_requests
      SET quantity_needed = COALESCE($2, quantity_needed),
-         notes = COALESCE($3, notes),
-         vendor_zoho_contact_id = COALESCE($4, vendor_zoho_contact_id),
-         vendor_name = COALESCE($5, vendor_name),
-         unit_cost = COALESCE($6, unit_cost),
+         quantity_to_order = COALESCE($3, quantity_to_order),
+         notes = COALESCE($4, notes),
+         vendor_zoho_contact_id = COALESCE($5, vendor_zoho_contact_id),
+         vendor_name = COALESCE($6, vendor_name),
+         unit_cost = COALESCE($7, unit_cost),
          updated_at = NOW()
-     WHERE id = $1 AND organization_id = $7`,
+     WHERE id = $1 AND organization_id = $8`,
     [
       id,
       body.quantity_needed ?? null,
+      body.quantity_to_order ?? null,
       body.notes === undefined ? null : cleanText(body.notes),
       body.vendor_zoho_contact_id === undefined ? null : cleanText(body.vendor_zoho_contact_id),
       body.vendor_name === undefined ? null : cleanText(body.vendor_name),
@@ -703,7 +693,8 @@ export async function updateNeedToOrderRequest(
   id: string,
   body: {
     quantity_needed?: number;
-    status?: ReplenishmentStatus;
+    quantity_to_order?: number;
+    status?: ReplenishmentRequestStatus;
     notes?: string | null;
     vendor_zoho_contact_id?: string | null;
     vendor_name?: string | null;

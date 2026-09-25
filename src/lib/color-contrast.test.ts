@@ -6,6 +6,7 @@ import { describe, it } from 'node:test';
 import {
   INK_DARK,
   INK_LIGHT,
+  blackOrWhiteInk,
   contrastRatio,
   inkForBackground,
   normalizeHex,
@@ -15,6 +16,22 @@ import {
 } from './color-contrast';
 
 describe('color-contrast', () => {
+  it('staff initials use pure black or white for existing arbitrary colours', () => {
+    for (const fill of ['#10b981', '#3b82f6', '#a855f7', '#ef4444', '#777777']) {
+      assert.equal(blackOrWhiteInk(fill), '#000000', fill);
+    }
+    assert.equal(blackOrWhiteInk('#293568'), '#ffffff');
+    assert.equal(blackOrWhiteInk('invalid'), '#ffffff');
+    for (let r = 0; r <= 255; r += 17) {
+      for (let g = 0; g <= 255; g += 17) {
+        for (let b = 0; b <= 255; b += 17) {
+          const fill = `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+          assert.ok((contrastRatio(fill, blackOrWhiteInk(fill)) ?? 0) >= 4.5, fill);
+        }
+      }
+    }
+  });
+
   it('parseHex / normalizeHex accept #RRGGBB and lowercase', () => {
     assert.deepEqual(parseHex('#FF9900'), { r: 255, g: 153, b: 0 });
     assert.equal(normalizeHex('#FF9900'), '#ff9900');

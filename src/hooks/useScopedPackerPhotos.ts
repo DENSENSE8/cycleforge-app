@@ -18,7 +18,7 @@ export function packerPhotosQueryKey(packerLogId: number) {
 async function fetchPackerPhotos(packerLogId: number): Promise<{ photos: PackerPhotoRow[] }> {
   const params = new URLSearchParams({ packerLogId: String(packerLogId) });
   const res = await fetch(`/api/packing-photos?${params.toString()}`, { cache: 'no-store' });
-  if (!res.ok) return { photos: [] };
+  if (!res.ok) throw new Error('Could not load saved packing photos.');
   return res.json();
 }
 
@@ -48,7 +48,7 @@ export function useScopedPackerPhotos(packerLogId: number, opts?: { enabled?: bo
 
   const deletePrior = async (photoId: number): Promise<boolean> => {
     const res = await fetch(`/api/packing-photos?id=${photoId}`, { method: 'DELETE' });
-    if (!res.ok) return false;
+    if (!res.ok) throw new Error('Could not delete packing photo.');
     await queryClient.invalidateQueries({ queryKey });
     queryClient.invalidateQueries({ queryKey: ['packer-photos', packerLogId] });
     queryClient.invalidateQueries({ queryKey: ['packer-logs-mobile'] });

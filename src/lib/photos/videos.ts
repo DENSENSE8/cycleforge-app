@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { resolvePoRef } from './resolve-po-ref';
-import { resolveGcsBucket } from './storage/gcs-adapter';
+import { gcsAdapter, resolveGcsBucket } from './storage/gcs-adapter';
 import { buildGcsVideoObjectKey } from './storage/path-builder';
 import { getDefaultStorageProvider } from './storage/resolve-primary';
 import type { PhotoEntityType } from './types';
@@ -168,4 +168,32 @@ export async function listReadyVideosForEntity(input: {
     );
     return r.rows.map(mapVideoRow);
   });
+}
+
+/**
+ * Delete one video in the caller's org: the row in a tenant transaction, then
+ * the GCS object best-effort (the same non-fatal rule `deletePhoto` follows —
+ * a bucket hiccup must not resurrect a row the operator removed; an orphaned
+ * object is swept, a phantom row is not). Returns the deleted row, or null
+ * when there was none. A pending row's object may not exist; the adapter's
+ * delete ignores not-found.
+ */
+export async function deleteVideo(organizationId: string, videoId: number): Promise<EntityVideoRow | null> {
+  const deleted = await withTenantTransaction(organizationId, async (client) => {
+    const row = await selectVideo(client, organizationId, videoId);
+    if (!row) return null;
+    await client.query(`DELETE FROM entity_videos WHERE organization_id = $1 AND id = $2`, [
+      organizationId,
+      videoId,
+    ]);
+    return row;
+  });
+  if (deleted) {
+    try {
+      await gcsAdapter.deleteObject({ bucket: deleted.bucket, objectKey: deleted.objectKey });
+    } catch (err) {
+      console.warn('[photos.videos] GCS delete failed; object left for sweep', deleted.objectKey, err);
+    }
+  }
+  return deleted;
 }

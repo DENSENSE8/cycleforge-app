@@ -23,6 +23,7 @@ import {
   type TaskDeskWireRow,
 } from '@/lib/tasks/task-desk-row';
 import { isTaskEntityType, type TaskEntityType } from '@/lib/tasks/task-vocabulary';
+import { TASK_LINK_KINDS } from '@/lib/tasks/task-links-shared';
 
 const personSchema = z.object({ id: z.number(), name: z.string() });
 
@@ -48,15 +49,23 @@ const wireRowSchema: z.ZodType<TaskDeskWireRow> = z.object({
   entityType: entityTypeSchema,
   entityId: z.number(),
   note: z.string().nullable(),
+  projectName: z.string().nullable(),
   status: z.string(),
   priority: z.number().nullable(),
   assignee: personSchema.nullable(),
+  assignees: z.array(personSchema),
   assignedBy: personSchema.nullable(),
   assignedAt: z.string(),
   startedAt: z.string().nullable(),
   deadlineAt: z.string().nullable(),
   completedAt: z.string().nullable(),
+  remindAt: z.string().nullable(),
   ticket: ticketSchema.nullable(),
+  links: z.array(z.object({ kind: z.enum(TASK_LINK_KINDS), label: z.string() })),
+  photoCount: z.number(),
+  videoCount: z.number(),
+  coverPhotoId: z.number().nullable(),
+  docCount: z.number(),
 });
 
 const payloadSchema = z.object({

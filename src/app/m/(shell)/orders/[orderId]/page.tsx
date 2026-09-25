@@ -3,32 +3,18 @@
 import { Suspense, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, Copy, FileText, Hash, ScanBarcode } from '@/components/Icons';
+import { Copy, FileText, ScanBarcode } from '@/components/Icons';
 import { MobileOrderDocumentsSheet } from '@/components/mobile/redesign/MobileOrderDocumentsSheet';
 import { OrderInfoCard } from '@/components/mobile/orders/OrderInfoCard';
+import { orderDoors } from '@/components/mobile/orders/order-doors';
 import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
 import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
 import type { OutboundDocumentsResponse, OutboundDocumentType } from '@/lib/documents/types';
-import { detailDoor, type DetailDoor } from '@/lib/mobile/detail-door';
-import { formatOrderStamp, plural, type OrderHubData } from '@/lib/orders/order-hub';
+import { formatOrderStamp, type OrderHubData } from '@/lib/orders/order-hub';
 import { toast } from '@/lib/toast';
 
 type OrderVerb = 'documents' | 'copy' | 'scan';
-
-function orderDoors(data: OrderHubData, base: string, link: (href: string) => string): DetailDoor[] {
-  const serials = data.order.serials.length;
-  const doors = [
-    detailDoor(base, 'units', 'Units', <Hash />, {
-      meta: serials > 0 ? plural(serials, 'serial') : 'No serials recorded on this order yet',
-      enabled: serials > 0,
-    }),
-    detailDoor(base, 'activity', 'Activity', <Activity />, {
-      meta: data.activity.length > 0 ? plural(data.activity.length, 'recent event') : 'Nothing recorded yet',
-    }),
-  ];
-  return doors.map((door) => (door.href ? { ...door, href: link(door.href) } : door));
-}
 
 async function fetchOrderDocuments(pk: number): Promise<OutboundDocumentsResponse> {
   const res = await fetch(`/api/orders/${pk}/documents`, { cache: 'no-store' });

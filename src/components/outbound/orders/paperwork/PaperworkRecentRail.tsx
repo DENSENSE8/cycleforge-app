@@ -129,7 +129,6 @@ function PaperworkRailRecord({
       onClick={() => onSelect(row.id)}
       className={cn(
         'ds-raw-button relative flex w-full border-b border-mode-ink bg-mode-panel text-left text-mode-ink hover:bg-mode-hover',
-        state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
         open && 'outline outline-2 -outline-offset-2 outline-mode-ink',
         focusRing('cell'),
       )}
@@ -145,7 +144,7 @@ function PaperworkRailRecord({
       <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
         {/* Band 1 — state · platform · order # ··· label state */}
         <span className={cn('flex min-w-0 items-center gap-2 border-b border-mode-rule pl-2 pr-3', LEDGER_BAND_CLASS.M)}>
-          <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))}>{spec.code}</span>
+          <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(spec))}>{spec.code}</span>
           <span className="inline-flex w-14 shrink-0 items-center gap-1.5">
             <BrandIdentityDot {...platformMetaBrandDot(channel.meta)} />
             <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>{channel.shortLabel || '—'}</span>

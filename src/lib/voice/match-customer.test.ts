@@ -79,6 +79,7 @@ test('matchCustomer matches on last-10 even when normalization fails', async () 
   assert.deepEqual(seen, ['4155550100']);
 });
 
+
 test('matchCustomer returns null with too few digits to match', async () => {
   const { deps, calls } = fakes();
   const result = await matchCustomer({ orgId: DOGFOOD_ORG_ID, e164: null, rawNumber: '0100' }, deps);

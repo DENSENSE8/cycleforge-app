@@ -28,13 +28,18 @@ import {
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { skuExceptionShareUrl } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSku, ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { shareRecordLink } from '@/lib/share-link';
 import { cn } from '@/utils/_cn';
 import { skuExceptionNextStep, skuExceptionTitle } from './sku-exception-record';
-import { SkuExceptionLocationsSection, SkuExceptionProductSection } from './SkuExceptionEvidenceSections';
+import {
+  SkuExceptionBarcodeValue,
+  SkuExceptionLocationsSection,
+  SkuExceptionProductSection,
+} from './SkuExceptionEvidenceSections';
 import { SkuExceptionPairSection } from './SkuExceptionPairSection';
 import { SkuExceptionPhotosSection } from './SkuExceptionPhotosSection';
 
@@ -151,13 +156,13 @@ function SkuExceptionRecordEvidence({ item, onExit }: { item: ProvisionalSkuDeta
   return (
     <div className="flex min-h-full flex-1 flex-col" data-testid="sku-exception-evidence">
       <EvidenceTitle sub={title}>{item.sku}</EvidenceTitle>
-      <EvidenceStateStrip state="onHold" next={next} />
+      <EvidenceStateStrip state={lifecycleRecordState('onHold')} next={next} />
       <SkuExceptionPhotosSection item={item} onChanged={refresh} fileRef={fileRef} />
       <SkuExceptionProductSection fieldId={fieldId} item={item} onChanged={refresh} />
       <EvidenceSection label="Facts">
         <EvidenceFacts>
           <EvidenceFact label="Barcode">
-            <CopyChip value={item.barcode} display={item.barcode} tone="id" fitDisplayWidth />
+            <SkuExceptionBarcodeValue fieldId={fieldId} item={item} onChanged={refresh} />
           </EvidenceFact>
           <EvidenceFact label="SKU">
             <CopyChip value={item.sku} display={item.sku} tone="sku" fitDisplayWidth />

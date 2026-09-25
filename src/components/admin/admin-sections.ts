@@ -8,7 +8,6 @@ import {
   Layers,
   LayoutDashboard,
   Link2,
-  Mail,
   MapPin,
   Package,
   ShieldCheck,
@@ -24,7 +23,7 @@ export type AdminSection =
   | 'reason_codes' | 'locations' | 'repair_issues' | 'favorites'
   | 'quality'
   | 'bose_models' | 'compatibility' | 'suppliers'
-  | 'station_photos' | 'po_mailbox'
+  | 'station_photos'
   | 'logs' | 'system_sync';
 
 export type AdminGroup = 'Performance' | 'Operations' | 'Data & catalogs' | 'System';
@@ -47,7 +46,6 @@ export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
   { value: 'quality',      label: 'Quality',      description: 'Condition grades, open failures, repair throughput & risk',    group: 'Performance', icon: ShieldCheck, requires: 'sku_stock.view' },
 
   { value: 'staff_schedule', label: 'Staff schedule', description: 'Weekly shifts, availability rules, and shop calendar',       group: 'Operations',  icon: User,         requires: 'admin.manage_staff' },
-  { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in inventory, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
   { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to',          group: 'Operations', icon: Camera },
 
   { value: 'fba',          label: 'Amazon Prep',  description: 'FNSKU catalog rows and CSV imports',                           group: 'Data & catalogs', icon: Package },

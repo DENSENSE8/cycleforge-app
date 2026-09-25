@@ -27,6 +27,7 @@ import {
 } from './registry';
 import { cornerClass, TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/radius';
 import { TRIAGE_PANEL_SEGMENT_ENDS } from '@/design-system/tokens/triage-panel';
+import { contrastRatio } from '@/lib/color-contrast';
 
 const density = new Set<string>(DENSITY_KEYS);
 
@@ -89,4 +90,40 @@ test('triage component corners are square (no rounded escape hatch around the mo
   assert.doesNotMatch(cornerClass('surface'), soft);
   assert.doesNotMatch(TRIAGE_PANEL_INNER_CORNER, soft);
   assert.doesNotMatch(TRIAGE_PANEL_SEGMENT_ENDS, /rounded-[lr]-/);
+});
+
+/** `hex` with `over` composited on top at `alpha` — one noise pixel at full swing. */
+function blend(hex: string, over: string, alpha: number): string {
+  const channel = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return `#${[0, 1, 2]
+    .map((i) => Math.round(channel(hex, i) * (1 - alpha) + channel(over, i) * alpha).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+test('grain never pulls text under 4.5:1 at any depth (BRIEF §8), even at a full-swing noise pixel', () => {
+  const { grain, surfaces, warnText } = OPERATIONAL_BASE;
+  // The inks each depth may carry. Wells take no amber: urgent ink is 4.54:1
+  // on a bare well, so any grain would drop it under the floor.
+  const lightDepths = [
+    ['well', surfaces.well, [surfaces.ink, surfaces.muted]],
+    ['canvas', surfaces.canvas, [surfaces.ink, surfaces.muted, warnText]],
+    ['bar', surfaces.bar, [surfaces.ink, surfaces.muted, warnText]],
+  ] as const;
+  // Light planes: the darkest noise pixel is black at the layer opacity.
+  for (const [depth, plane, inks] of lightDepths) {
+    const ground = blend(plane, '#000000', grain[depth].opacity);
+    for (const ink of inks) {
+      const ratio = contrastRatio(ink, ground) ?? 0;
+      assert.ok(ratio >= 4.5, `${ink} on grained ${depth} ${plane} (${ground}) is ${ratio.toFixed(2)}:1`);
+    }
+  }
+  // Ink fills carry bar-coloured text; the lightest noise pixel is white.
+  const inverse = blend(surfaces.ink, '#ffffff', grain.inverse.opacity);
+  const ratio = contrastRatio(surfaces.bar, inverse) ?? 0;
+  assert.ok(ratio >= 4.5, `${surfaces.bar} on grained ink (${inverse}) is ${ratio.toFixed(2)}:1`);
+});
+
+test('grain reads as depth: specks never get finer going deeper', () => {
+  const { well, canvas, bar } = OPERATIONAL_BASE.grain;
+  assert.ok(well.frequency <= canvas.frequency && canvas.frequency <= bar.frequency);
 });

@@ -148,6 +148,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     receiving_support_notes:  (row.receiving_support_notes as string | null) ?? null,
     receiving_zoho_notes:     (row.receiving_zoho_notes as string | null) ?? null,
     receiving_listing_url:    (row.receiving_listing_url as string | null) ?? null,
+    listing_url:              (row.listing_url as string | null) ?? null,
     // Purchasing-source PO receipt state, and how old that answer is.
     //
     // `zoho_status` was SELECTed by the builders and read by `ReceivingLineRow`

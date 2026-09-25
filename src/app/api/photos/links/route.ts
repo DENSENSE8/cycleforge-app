@@ -5,6 +5,7 @@ import { linkPhoto } from '@/lib/photos/service';
 import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
 import type { PhotoEntityType, PhotoLinkRole } from '@/lib/photos/types';
 import { PHOTO_ENTITY_TYPES, PHOTO_LINK_ROLES } from '@/lib/photos/types';
+import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,6 +39,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: 403 },
       );
     }
+    // Same existence gate as the upload routes: a task photo link must name a
+    // FOLLOW_UP task in THIS org.
+    if (entityType === 'WORK_ASSIGNMENT') await assertTaskInOrg(ctx.organizationId, entityId);
 
     await linkPhoto({
       organizationId: ctx.organizationId,

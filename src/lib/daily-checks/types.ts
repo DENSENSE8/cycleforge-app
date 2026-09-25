@@ -39,6 +39,17 @@ export interface DailyCheckItem {
    * item. The full link list (WO / tracking too) stays in the links call.
    */
   ticketId: number | null;
+  /**
+   * Civil due time in the warehouse zone, `HH:MM`, or null for "any time
+   * today". Recurring items are due at it every day; a one-off on its day.
+   */
+  dueTime: string | null;
+  /**
+   * Minutes before {@link dueTime} the phone apps ring (0 = at the due time),
+   * or null for no reminder. Meaningless without a due time — the route
+   * refuses an offset on an item that has none.
+   */
+  remindOffsetMinutes: number | null;
 }
 
 /** The create-body the composer mounts share — one vocabulary, two mounts. */
@@ -51,6 +62,10 @@ export interface DailyCheckCreateInput {
   assignedStaffId?: number | null;
   /** The emoji character itself (≤8 chars), or null. */
   glyph?: string | null;
+  /** Civil `HH:MM` in the warehouse zone, or null for "any time". */
+  dueTime?: string | null;
+  /** Minutes before `dueTime` to remind; only valid alongside a `dueTime`. */
+  remindOffsetMinutes?: number | null;
 }
 
 /** One confirmation: this staffer ticked this item on the requested day. */

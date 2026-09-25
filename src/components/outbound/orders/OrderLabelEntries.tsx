@@ -37,9 +37,9 @@ import { toast } from '@/lib/toast';
 import { formatCurrency } from '@/utils/_number';
 import { formatMonthDayTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
-import { Fact } from './EvidenceFact';
+import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { orderLabelPdfSrc, useOrderLabelActions } from './order-labels-client';
-import { printDocument } from './paperwork/order-paperwork-client';
+import { printDocument } from '@/lib/orders/order-paperwork-client';
 
 /** Purpose code tone — outbound reads as ink, the second stories stand out. */
 const PURPOSE_TONE: Record<OrderLabelEntry['purpose'], string> = {
@@ -118,30 +118,30 @@ export function OrderLabelEntries({
                 </span>
                 {voided ? <span className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')}>Voided</span> : null}
               </div>
-              <dl className={cn('flex flex-col px-4', voided && 'opacity-60')}>
-                <Fact label="Carrier">
+              <div className={cn('flex flex-col px-4', voided && 'opacity-60')}>
+                <EvidenceFactRow label="Carrier">
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className={RECORD_LABEL_CLASS}>{carrier ?? '—'}</span>
                     {label.serviceCode ? (
                       <span className="min-w-0 truncate text-mode-muted">{label.serviceCode.replace(/_/g, ' ')}</span>
                     ) : null}
                   </span>
-                </Fact>
-                <Fact label="Cost">
+                </EvidenceFactRow>
+                <EvidenceFactRow label="Cost">
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className={RECORD_PRICE_CLASS}>{money(label.cost, label.currency)}</span>
                     {label.insuranceCost ? (
                       <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>+ {money(label.insuranceCost, label.currency)} ins.</span>
                     ) : null}
                   </span>
-                </Fact>
-                <Fact label={LABEL_CREATION_FACE[label.creationType].verb}>
+                </EvidenceFactRow>
+                <EvidenceFactRow label={LABEL_CREATION_FACE[label.creationType].verb}>
                   <span className="flex min-w-0 items-baseline gap-2">
                     <span className="truncate">{label.actor?.name ?? (label.creationType === 'imported_shipstation' ? 'ShipStation' : '—')}</span>
                     <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>{label.at ? formatMonthDayTimePST(label.at) : ''}</span>
                   </span>
-                </Fact>
-                <Fact label="TRK#">
+                </EvidenceFactRow>
+                <EvidenceFactRow label="TRK#">
                   <span className="flex min-w-0 items-center" data-testid="evidence-label-tracking">
                     {label.trackingNumber ? (
                       <TrackingIdentity tracking={label.trackingNumber} carrierHint={carrier} />
@@ -149,9 +149,9 @@ export function OrderLabelEntries({
                       <span className={cn(RECORD_ID_CLASS, 'text-mode-muted')}>—</span>
                     )}
                   </span>
-                </Fact>
+                </EvidenceFactRow>
                 {label.tickets.length > 0 ? (
-                  <Fact label="Tickets">
+                  <EvidenceFactRow label="Tickets">
                     <span className="flex min-w-0 flex-wrap items-center gap-1.5 py-1" data-testid="evidence-label-tickets">
                       {label.tickets.map((t) => (
                         <span
@@ -184,9 +184,9 @@ export function OrderLabelEntries({
                         </span>
                       ))}
                     </span>
-                  </Fact>
+                  </EvidenceFactRow>
                 ) : null}
-              </dl>
+              </div>
               <div className="flex items-stretch bg-mode-bar">
                 <button
                   type="button"

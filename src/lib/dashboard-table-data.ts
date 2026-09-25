@@ -123,6 +123,7 @@ export async function fetchUnshippedOrdersData({
   staffId,
   strictSearchScope = false,
   stage,
+  blockedOnly = false,
   limit,
 }: {
   searchQuery?: string;
@@ -131,6 +132,7 @@ export async function fetchUnshippedOrdersData({
   staffId?: number;
   strictSearchScope?: boolean;
   stage?: 'pending' | 'tested' | 'packed';
+  blockedOnly?: boolean;
   limit?: number;
 }) {
   const params = new URLSearchParams();
@@ -140,6 +142,7 @@ export async function fetchUnshippedOrdersData({
   if (staffId !== undefined) params.set('staff', String(staffId));
   const scoped = !searchQuery.trim() || strictSearchScope;
   if (scoped) params.set('inWarehouse', 'true');
+  if (blockedOnly) params.set('blockedOnly', 'true');
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.
@@ -179,6 +182,21 @@ export async function fetchUnshippedOrderRowById({
   const data = await res.json();
   const records = normalizeUnshippedOrdersPayload(data.orders || []);
   return records.find((record) => Number(record.id) === orderId) ?? null;
+}
+
+/**
+ * Order lookup (the support call): every order line matching `searchQuery` —
+ * order #, customer, email, tracking, SKU — in ANY state, shipped included.
+ * `/api/orders?q=` runs the match server-side and unbounded.
+ */
+export async function fetchOrderLookupData(searchQuery: string): Promise<ShippedOrder[]> {
+  const q = searchQuery.trim();
+  if (!q) return [];
+  const params = new URLSearchParams({ q, includeShipped: 'true' });
+  const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
+  if (!res.ok) throw new Error('Failed to search orders');
+  const data = await res.json();
+  return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 
 

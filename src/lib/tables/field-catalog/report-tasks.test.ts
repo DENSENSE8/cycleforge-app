@@ -41,15 +41,18 @@ function row(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
     entityType: 'support_ticket',
     entityId: 77,
     note: 'Refund the second label',
+    projectName: null,
     status: 'DONE',
     priority: TASK_PRIORITY.normal,
     urgency: 'normal',
     assignee: { id: 9, name: 'Dana' },
+    assignees: [{ id: 9, name: 'Dana' }],
     assignedBy: { id: 3, name: 'Milo' },
     assignedAtMs: Date.parse('2026-09-15T15:00:00.000Z'),
     startedAtMs: null,
     deadlineAtMs: DEADLINE_MS,
     completedAtMs: Date.parse('2026-09-18T16:00:00.000Z'),
+    remindAtMs: null,
     ticket: {
       id: 77,
       provider: 'zendesk',
@@ -57,6 +60,11 @@ function row(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
       status: 'solved',
       externalId: '10577',
     },
+    links: [],
+    photoCount: 0,
+    videoCount: 0,
+    coverPhotoId: null,
+    docCount: 0,
     ...overrides,
   };
 }
@@ -216,42 +224,35 @@ describe('report-tasks row view', () => {
 });
 
 describe('report-tasks feed', () => {
+  const wire = (id: number, note: string, priority: number) => ({
+    id,
+    entityType: 'order',
+    entityId: 54 + id,
+    note,
+    projectName: null,
+    status: 'DONE',
+    priority,
+    assignee: null,
+    assignees: [],
+    assignedBy: null,
+    assignedAt: '2026-09-15T15:00:00.000Z',
+    startedAt: null,
+    deadlineAt: null,
+    completedAt: '2026-09-16T15:00:00.000Z',
+    remindAt: null,
+    ticket: null,
+    links: [],
+    photoCount: 0,
+    videoCount: 0,
+    coverPhotoId: null,
+    docCount: 0,
+  });
+
   it('narrows the wire envelope into desk-ordered rows', () => {
     const rows = parseTaskDeskReportRows({
       ok: true,
       count: 2,
-      tasks: [
-        {
-          id: 1,
-          entityType: 'order',
-          entityId: 55,
-          note: 'Normal',
-          status: 'DONE',
-          priority: TASK_PRIORITY.normal,
-          assignee: null,
-          assignedBy: null,
-          assignedAt: '2026-09-15T15:00:00.000Z',
-          startedAt: null,
-          deadlineAt: null,
-          completedAt: '2026-09-16T15:00:00.000Z',
-          ticket: null,
-        },
-        {
-          id: 2,
-          entityType: 'order',
-          entityId: 56,
-          note: 'Urgent',
-          status: 'DONE',
-          priority: TASK_PRIORITY.urgent,
-          assignee: null,
-          assignedBy: null,
-          assignedAt: '2026-09-15T15:00:00.000Z',
-          startedAt: null,
-          deadlineAt: null,
-          completedAt: '2026-09-16T15:00:00.000Z',
-          ticket: null,
-        },
-      ],
+      tasks: [wire(1, 'Normal', TASK_PRIORITY.normal), wire(2, 'Urgent', TASK_PRIORITY.urgent)],
     });
     // Desk order, from the shared comparator: urgent first.
     assert.deepEqual(rows.map((r) => r.id), [2, 1]);

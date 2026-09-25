@@ -1,35 +1,43 @@
 /**
- * Which active staff belong in a Pick vs Packed assign list.
+ * Which active staff belong in a Pick vs Pack assign list.
  *
- * Floor language is picker / packer. The staff row still stores
- * `technician` for Pick (legacy column + RBAC key). A member matches if
- * any of `role` / `roles` canonicalizes into that lane. `all` is the
- * actions-column roster (every active member).
+ * Membership is the staffer's FLOOR FUNCTIONAL ROLES (`staff_functional_roles`:
+ * picker, packer) — what they DO — never their RBAC access roles (what they
+ * may ACCESS). The two are independent and non-exclusive: one person may pick
+ * and pack, and flipping either never changes access. The lane keeps its
+ * legacy `technician` name for Pick (compound stage role + work_type TEST).
+ * `all` is the full roster (every active member).
  */
 
+import type { StaffFunctionalRoleKey } from '@/lib/schemas/staff-functional-roles';
 import type { CompoundStageAssignRole } from './compound-row-model';
 
 export type StageStaffLane = CompoundStageAssignRole | 'all';
 
-const PICKER_KEYS = new Set(['technician', 'picker', 'pick', 'tech']);
-const PACKER_KEYS = new Set(['packer', 'pack']);
+/** Roster switches every Pick / Pack list offers, in paint order. */
+export const STAFF_LANE_FACES: readonly CompoundStageAssignRole[] = ['technician', 'packer'];
 
-export function staffLaneKeys(member: {
-  role?: string | null;
-  roles?: readonly string[] | null;
-}): string[] {
-  return [member.role, ...(member.roles ?? [])]
-    .map((key) => String(key ?? '').trim().toLowerCase())
-    .filter(Boolean);
+export function staffLaneFunctionalRole(lane: CompoundStageAssignRole): StaffFunctionalRoleKey {
+  return lane === 'packer' ? 'packer' : 'picker';
 }
 
 export function staffMatchesStageLane(
-  member: { role?: string | null; roles?: readonly string[] | null },
+  member: { functionalRoles?: readonly StaffFunctionalRoleKey[] | null },
   lane: StageStaffLane,
 ): boolean {
   if (lane === 'all') return true;
-  const bag = lane === 'packer' ? PACKER_KEYS : PICKER_KEYS;
-  return staffLaneKeys(member).some((key) => bag.has(key));
+  return (member.functionalRoles ?? []).includes(staffLaneFunctionalRole(lane));
+}
+
+/** Toggle one functional role on a roster row; the other role is untouched. */
+export function withStaffLane<T extends { functionalRoles: readonly StaffFunctionalRoleKey[] }>(
+  member: T,
+  lane: CompoundStageAssignRole,
+  enabled: boolean,
+): T {
+  const key = staffLaneFunctionalRole(lane);
+  const rest = member.functionalRoles.filter((k) => k !== key);
+  return { ...member, functionalRoles: enabled ? [...rest, key].sort() : rest };
 }
 
 export function staffLaneEmptyLabel(lane: StageStaffLane): string {
@@ -38,35 +46,6 @@ export function staffLaneEmptyLabel(lane: StageStaffLane): string {
   return 'No pickers';
 }
 
-/** Roster switches for this combo: Pick = Picker, Packed = Packer, All = both. */
-export function staffLaneRosterFaces(lane: StageStaffLane): CompoundStageAssignRole[] {
-  if (lane === 'all') return ['technician', 'packer'];
-  return [lane === 'packer' ? 'packer' : 'technician'];
-}
-
 export function staffLaneFaceLabel(lane: CompoundStageAssignRole): string {
   return lane === 'packer' ? 'Packer' : 'Picker';
-}
-
-const FLOOR_LANE_KEYS = new Set([...PICKER_KEYS, ...PACKER_KEYS]);
-
-/** Persist a floor lane onto a roster row without dropping unrelated roles. */
-/** Floor roles are exclusive in `/api/staff` (`technician` | `packer`). */
-export function oppositeStaffLane(lane: CompoundStageAssignRole): CompoundStageAssignRole {
-  return lane === 'packer' ? 'technician' : 'packer';
-}
-
-export function applyStaffLaneRole<T extends { role?: string | null; roles?: readonly string[] | null }>(
-  member: T,
-  lane: CompoundStageAssignRole,
-): T {
-  const kept = (member.roles ?? []).filter((key) => {
-    const lower = String(key).trim().toLowerCase();
-    return lower && !FLOOR_LANE_KEYS.has(lower);
-  });
-  return {
-    ...member,
-    role: lane,
-    roles: [lane, ...kept],
-  };
 }

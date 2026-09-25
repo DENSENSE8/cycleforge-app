@@ -17,8 +17,9 @@ import { publishSkuExceptionChanged } from '@/lib/realtime/publish';
  *
  * GET  → every unreconciled placeholder in the org (the "still needs a real
  *        SKU" list).
- * POST → mint one from a scanned barcode + a typed name, or return the one
- *        that already exists for that barcode.
+ * POST → mint one from a typed name plus a scanned barcode (or, without one,
+ *        the caller's `sourceRef` idempotency key), or return the one that
+ *        already exists for that key.
  *
  * Gate is `sku_stock.adjust` — the same permission as putting stock in a bin,
  * because that is what this is for. Merging a placeholder away is a different,
@@ -51,7 +52,8 @@ export const POST = withAuth(
     try {
       item = await createProvisionalSku(
         {
-          barcode: parsed.barcode,
+          barcode: parsed.barcode ?? null,
+          sourceRef: parsed.sourceRef ?? null,
           productTitle: parsed.productTitle,
           description: parsed.description ?? null,
           staffId: parsed.staffId ?? ctx.staffId ?? null,
@@ -71,10 +73,10 @@ export const POST = withAuth(
       entityType: AUDIT_ENTITY.SKU_STOCK,
       entityId: item.sku,
       after: { sku: item.sku, product_title: item.productTitle, description: item.description },
-      method: 'scan',
+      method: item.barcode ? 'scan' : 'manual',
       reasonCode: 'PROVISIONAL_CREATE',
       actorStaffIdOverride: parsed.staffId ?? ctx.staffId ?? null,
-      extra: { provisional_barcode: item.barcode },
+      extra: { provisional_barcode: item.barcode || null },
     });
 
     // This INSERTED a `sku_catalog` row (see createProvisionalSku), and every

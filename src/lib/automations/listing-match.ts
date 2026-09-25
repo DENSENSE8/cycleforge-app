@@ -13,7 +13,12 @@ export type AssignWorkAction = {
   type: 'assign_work';
   work_type: 'TEST' | 'PACK';
   staff_id: number;
+  /** Takes the action when `staff_id` is out that PST day. Never equals staff_id. */
+  backup_staff_id?: number;
 };
+
+/** Who actually takes an action today, and whether the backup stood in. */
+export type ResolvedAssignee = { staffId: number; via: 'primary' | 'backup' };
 
 export type AutomationAction = AssignWorkAction;
 
@@ -115,9 +120,48 @@ export function parseAssignActions(raw: unknown): AssignWorkAction[] {
     if (workType !== 'TEST' && workType !== 'PACK') continue;
     const staffId = Number(r.staff_id);
     if (!Number.isFinite(staffId) || staffId <= 0) continue;
-    out.push({ type: 'assign_work', work_type: workType, staff_id: staffId });
+    const action: AssignWorkAction = { type: 'assign_work', work_type: workType, staff_id: staffId };
+    // An invalid backup, or one equal to the primary, is dropped — the
+    // primary still applies.
+    const backupId = r.backup_staff_id == null ? NaN : Number(r.backup_staff_id);
+    if (Number.isInteger(backupId) && backupId > 0 && backupId !== staffId) {
+      action.backup_staff_id = backupId;
+    }
+    out.push(action);
   }
   return out;
+}
+
+/** Every primary + backup staff id the actions could resolve to (deduped). */
+export function collectActionStaffIds(actions: readonly AssignWorkAction[]): number[] {
+  const ids = new Set<number>();
+  for (const a of actions) {
+    ids.add(a.staff_id);
+    if (a.backup_staff_id != null) ids.add(a.backup_staff_id);
+  }
+  return [...ids];
+}
+
+/**
+ * Primary unless out today; else the backup unless also out; else null —
+ * the work stays unassigned so anyone can claim it.
+ */
+export function resolveActionAssignee(
+  action: AssignWorkAction,
+  outToday: ReadonlySet<number>,
+): ResolvedAssignee | null {
+  if (!outToday.has(action.staff_id)) return { staffId: action.staff_id, via: 'primary' };
+  const backup = action.backup_staff_id;
+  if (backup != null && !outToday.has(backup)) return { staffId: backup, via: 'backup' };
+  return null;
+}
+
+/**
+ * Reason code when {@link resolveActionAssignee} returns null. Persisted in
+ * automation_runs.error and order results — keep the strings stable.
+ */
+export function unassignedReason(action: AssignWorkAction): string {
+  return `${action.work_type}:${action.backup_staff_id == null ? 'primary_out' : 'primary_and_backup_out'}`;
 }
 
 /**
@@ -164,9 +208,14 @@ export function filterActionsForCsvOverride(
 }
 
 /**
- * Import / item_number_set apply TEST immediately; PACK waits for
- * unit.test_passed (after PASS allocate). Pure — used by applyListingAssignment
+ * Which assign actions a trigger runs. Pure — used by applyListingAssignment
  * and unit-tested without a DB.
+ *
+ * - order.imported / order.item_number_set: TEST (pick) and PACK — the To Ship
+ *   page assigns picker and packer by item # the moment the order lands.
+ * - unit.test_passed: PACK only, re-resolving primary→backup for that day
+ *   once the unit is allocated after a PASS.
+ * - identification.completed: nothing (dock scans never assign).
  */
 export function selectActionsForTrigger(
   actions: readonly AssignWorkAction[],
@@ -181,7 +230,7 @@ export function selectActionsForTrigger(
   if (triggerKey === 'unit.test_passed') {
     return actions.filter((a) => a.work_type === 'PACK');
   }
-  return actions.filter((a) => a.work_type === 'TEST');
+  return [...actions];
 }
 
 /**

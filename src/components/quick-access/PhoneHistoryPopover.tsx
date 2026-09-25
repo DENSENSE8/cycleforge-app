@@ -147,6 +147,7 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
   const [entries, setEntries] = useState<HistoryEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [scans, setScans] = useState<ScanHistoryEntry[] | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   const fetchScans = useCallback(async () => {
     try {
@@ -154,14 +155,14 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
         credentials: 'include',
         cache: 'no-store',
       });
-      if (!res.ok) {
-        setScans([]);
-        return;
-      }
+      if (!res.ok) throw new Error('Could not load scan history');
       const data = (await res.json()) as { entries?: ScanHistoryEntry[] };
-      setScans(Array.isArray(data.entries) ? data.entries : []);
+      if (!Array.isArray(data.entries)) throw new Error('Invalid scan history response');
+      setScans(data.entries);
+      setScanError(null);
     } catch {
-      setScans([]);
+      setScanError('Could not load scan history. Try again.');
+      setScans((current) => current ?? []);
     }
   }, []);
 
@@ -171,17 +172,14 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
         credentials: 'include',
         cache: 'no-store',
       });
-      if (!res.ok) {
-        setError('Could not load history');
-        setEntries([]);
-        return;
-      }
+      if (!res.ok) throw new Error('Could not load packing history');
       const data = (await res.json()) as { entries?: HistoryEntry[] };
-      setEntries(Array.isArray(data.entries) ? data.entries : []);
+      if (!Array.isArray(data.entries)) throw new Error('Invalid packing history response');
+      setEntries(data.entries);
       setError(null);
     } catch {
-      setEntries([]);
-      setError('Could not load history');
+      setEntries((current) => current ?? []);
+      setError('Could not load packing history. Try again.');
     }
   }, []);
 
@@ -223,6 +221,7 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
       subtitle="Packs and scans from your phone"
       onClose={onClose}
     >
+      {scanError ? <p role="alert" className="mx-2 text-role-caption text-text-soft">{scanError}</p> : null}
       {scans && scans.length > 0 ? (
         <PanelSection label="Recent scans">
           {scans.map((s) => (
@@ -242,15 +241,18 @@ export function PhoneHistoryPopover({ onClose }: PhoneHistoryPopoverProps) {
         </PanelSection>
       ) : null}
 
+      {error ? <p role="alert" className="mx-2 text-role-caption text-text-soft">{error}</p> : null}
       {entries === null ? (
         <div className="flex items-center justify-center gap-2 py-8 text-role-caption text-text-soft">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading packs…
         </div>
       ) : entries.length === 0 ? (
-        <p className="mx-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
-          {error ?? 'No recent packs yet. Pack an order on your phone to see it here.'}
-        </p>
+        error ? null : (
+          <p className="mx-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center text-role-caption text-text-soft">
+            No recent packs yet. Pack an order on your phone to see it here.
+          </p>
+        )
       ) : (
         <PanelSection label="Recent packs">
           {entries.map((entry, index) => {

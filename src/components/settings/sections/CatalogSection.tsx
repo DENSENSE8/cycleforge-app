@@ -2,6 +2,7 @@
 
 import { CatalogManagerList } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
 import { PlatformAccountsManager } from '@/components/receiving/workspace/line-edit/PlatformAccountsManager';
+import { ShipStationStoreLinks } from '@/components/settings/ShipStationStoreLinks';
 
 /**
  * Settings → Platforms & Types. Full-page home for the org platform / storefront
@@ -30,6 +31,15 @@ export function CatalogSection() {
           no rules accepts every type.
         </p>
         <CatalogManagerList kind="platform" enablePlatformRules />
+      </div>
+
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold text-text-default">ShipStation stores</h3>
+        <p className="mb-3 text-xs text-text-soft">
+          Where each store&apos;s orders go: an existing platform, and the storefront account when
+          the store is one. The sync never adds a platform or account for a linked store.
+        </p>
+        <ShipStationStoreLinks />
       </div>
 
       <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">

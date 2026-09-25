@@ -110,7 +110,6 @@ import {
   type CompoundShipByEdit,
   type CompoundSlotValue,
   type CompoundStageAssign,
-  type CompoundStaffRoster,
   type CompoundStageStepFacts,
   type CompoundStateTone,
   type CompoundSubtitlePart,
@@ -1481,7 +1480,6 @@ export function CompoundStageStep({
           role={assign.role}
           selectedStaffId={assign.selectedStaffId}
           onCommit={assign.onCommit}
-          onSetLaneRole={assign.onSetLaneRole}
         />
       ) : null}
     </>
@@ -1652,7 +1650,8 @@ export function CompoundActions({
   actions?: readonly CompoundRowAction[];
   /** Names WHICH row the menu belongs to, for screen readers. */
   label?: string;
-  staffRoster?: CompoundStaffRoster;
+  /** Present ⇒ the actions track mounts the all-staff Picker / Packer roster. */
+  staffRoster?: boolean;
 }) {
   const items: CompoundRowAction[] = [
     ...(onOpen ? [{ key: 'open', label: 'Open', onSelect: onOpen }] : []),
@@ -1662,7 +1661,7 @@ export function CompoundActions({
 
   return (
     <div className="flex items-center justify-start gap-0.5">
-      {staffRoster ? <CompoundStaffRosterButton roster={staffRoster} label={label} /> : null}
+      {staffRoster ? <CompoundStaffRosterButton label={label} /> : null}
       {items.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

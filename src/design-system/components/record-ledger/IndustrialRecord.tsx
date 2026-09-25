@@ -21,13 +21,14 @@
 
 import type { ReactNode } from 'react';
 import Image from 'next/image';
-import { LIFECYCLE, LIFECYCLE_CLASSES, type LifecycleState } from '../../tokens/lifecycle';
+import { STATE_TONE_CLASSES } from '../../tokens/lifecycle';
 import {
   RECORD_ID_CLASS,
   RECORD_LABEL_CLASS,
   RECORD_QTY_BADGE_CLASS,
   RECORD_TITLE_CLASS,
   recordStateCodeClass,
+  type RecordStateFace,
 } from '../../tokens/industrial-record';
 import { focusRing } from '../../tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -47,7 +48,7 @@ export interface RecordBandSlots {
 }
 
 export interface IndustrialRecordProps {
-  state: LifecycleState;
+  state: RecordStateFace;
   open: boolean;
   /** Accessible name of the open target — the record read as one sentence. */
   openLabel: string;
@@ -67,11 +68,10 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
   return (
     <div
       data-record-key={recordKey}
-      data-state={state}
+      data-state={state.id}
       className={cn(
         'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover',
         RECORD_ROW_CLASS,
-        state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
         open && 'outline outline-2 -outline-offset-2 outline-mode-ink',
       )}
     >
@@ -88,8 +88,8 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
         className={cn(
           RECORD_SPINE_CLASS,
           'pointer-events-none relative z-10',
-          LIFECYCLE_CLASSES[state].dot,
-          state === 'outOfStock' && RECORD_SPINE_HATCH_CLASS,
+          STATE_TONE_CLASSES[state.tone].dot,
+          state.hatched && RECORD_SPINE_HATCH_CLASS,
         )}
       />
       <span
@@ -121,10 +121,10 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
 }
 
 /** The state code on band 1: `HLD`, read aloud as the full word. */
-export function RecordStateCode({ state }: { state: LifecycleState }) {
-  const spec = LIFECYCLE[state];
+export function RecordStateCode({ state }: { state: RecordStateFace }) {
+  const spec = state;
   return (
-    <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))}>
+    <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))} title={spec.label}>
       <span aria-hidden>{spec.code}</span>
       <span className="sr-only">{spec.label}</span>
     </span>

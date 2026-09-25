@@ -18,6 +18,7 @@
  * see `src/lib/user-issues/issues.ts`).
  */
 
+import { TASK_ASSIGNEES_MAX, TASK_STAFF_ID_MAX } from './create-task-core';
 import {
   isTaskDeskStatus,
   taskDeskLaneStatuses,
@@ -33,6 +34,7 @@ import {
   taskEntityEnum,
   taskEntityFromEnum,
 } from './task-vocabulary';
+import { isTaskLinkKind, TASK_MEDIA_ENTITY_TYPE, type TaskLinkFace } from './task-links-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
@@ -65,14 +67,18 @@ export interface ListTaskDeskOptions {
   lane?: TaskDeskLane;
   /** Already resolved: `assignee=me` becomes `ctx.staffId` at the route. */
   assigneeStaffId?: number | null;
+  /**
+   * The thrower — `assignedBy=me` becomes `ctx.staffId` at the route, so
+   * "what I handed off" is one read beside "what I was handed".
+   */
+  assignedByStaffId?: number | null;
   /** Binary urgency rung, mapped onto the stored `priority` int. */
   urgency?: 'urgent' | 'normal' | null;
   limit?: number;
   /**
-   * The desk/report find text, answered in SQL. The columns are the facts a
-   * task row paints (its id, the note, the record phrase and its ticket
-   * subject, both people, the status) — a search that matched columns the row
-   * does not show would be as wrong as one that missed the ones it does.
+   * The desk/report find text, answered in SQL. It searches the visible
+   * project label, instructions, record/ticket fields, every member's name,
+   * the thrower, status, and linked labels, not just the page already loaded.
    */
   q?: string | null;
   /** Narrow to one row — how the patch re-reads its own result. */
@@ -84,6 +90,8 @@ interface TaskDeskSqlRow {
   entity_type: unknown;
   entity_id: unknown;
   notes: unknown;
+  project_name: unknown;
+  assignees: unknown;
   status: unknown;
   priority: unknown;
   assignee_staff_id: unknown;
@@ -94,38 +102,56 @@ interface TaskDeskSqlRow {
   started_at: unknown;
   deadline_at: unknown;
   completed_at: unknown;
+  remind_at: unknown;
   ticket_id: unknown;
   ticket_provider: unknown;
   ticket_subject: unknown;
   ticket_status: unknown;
   ticket_external_id: unknown;
+  links: unknown;
+  photo_count: unknown;
+  cover_photo_id: unknown;
+  video_count: unknown;
+  doc_count: unknown;
 }
 
 /**
- * ONE statement. The two `staff` joins are the assignee and the thrower; the
- * `support_tickets` join is the paired ticket's local caches, and it is
- * org-led on both sides so a foreign ticket can never paint a row.
+ * ONE statement. The lead and thrower `staff` joins retain the legacy faces;
+ * an org-scoped LATERAL aggregates members without multiplying assignment
+ * rows. The `support_tickets` join reads paired ticket local caches. Other
+ * LATERALs enrich links, photo count + cover, ready videos, media links and
+ * documents — each scoped to this assignment and its organization.
+ * A photo / video attached by URL counts beside the uploaded ones, so the
+ * row's PHOTO n / VIDEO n is every photo / video the task carries.
  */
 const TASK_DESK_SQL = `
   SELECT wa.id,
          wa.entity_type::text        AS entity_type,
          wa.entity_id,
+         wa.project_name,
          wa.notes,
          wa.status::text             AS status,
          wa.priority,
          wa.assignee_staff_id,
          sa.name                     AS assignee_name,
+         members.assignees,
          wa.assigned_by_staff_id,
          sb.name                     AS assigned_by_name,
          wa.assigned_at,
          wa.started_at,
          wa.deadline_at,
          wa.completed_at,
+         wa.remind_at,
          st.id                       AS ticket_id,
          st.provider                 AS ticket_provider,
          st.subject_cache            AS ticket_subject,
          st.status_cache             AS ticket_status,
-         st.external_ticket_id       AS ticket_external_id
+         st.external_ticket_id       AS ticket_external_id,
+         lk.links,
+         ph.photo_count + ml.photo_link_count AS photo_count,
+         ph.cover_photo_id,
+         vd.video_count + ml.video_link_count AS video_count,
+         dc.doc_count
     FROM work_assignments wa
     LEFT JOIN staff sa
       ON sa.id = wa.assignee_staff_id
@@ -137,22 +163,101 @@ const TASK_DESK_SQL = `
       ON wa.entity_type::text = $2
      AND st.id = wa.entity_id
      AND st.organization_id = wa.organization_id
+    LEFT JOIN LATERAL (
+      SELECT json_agg(json_build_object('id', a.staff_id, 'name', COALESCE(ms.name, 'Staff #' || a.staff_id))
+                      ORDER BY CASE WHEN a.staff_id = wa.assignee_staff_id THEN 0 ELSE 1 END, a.staff_id) AS assignees
+        FROM work_assignment_assignees a
+        LEFT JOIN staff ms ON ms.organization_id = a.organization_id AND ms.id = a.staff_id
+       WHERE a.organization_id = wa.organization_id AND a.assignment_id = wa.id
+    ) members ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT json_agg(
+               json_build_object(
+                 'kind', CASE l.entity_type
+                           WHEN 'ORDER' THEN 'order'
+                           WHEN 'TRACKING' THEN 'tracking'
+                           WHEN 'SUPPORT_TICKET' THEN 'ticket'
+                         END,
+                 'label', l.label)
+               ORDER BY l.created_at, l.id) AS links
+        FROM work_assignment_links l
+       WHERE l.organization_id = wa.organization_id
+         AND l.assignment_id = wa.id
+    ) lk ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(DISTINCT pl.photo_id) AS photo_count,
+             MIN(pl.photo_id)            AS cover_photo_id
+        FROM photo_entity_links pl
+       WHERE pl.organization_id = wa.organization_id
+         AND pl.entity_type = $11
+         AND pl.entity_id = wa.id
+         AND pl.link_role = 'primary'
+    ) ph ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS video_count
+        FROM entity_videos v
+       WHERE v.organization_id = wa.organization_id
+         AND v.entity_type = $11
+         AND v.entity_id = wa.id
+         AND v.status = 'ready'
+    ) vd ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) FILTER (WHERE m.kind = 'photo') AS photo_link_count,
+             COUNT(*) FILTER (WHERE m.kind = 'video') AS video_link_count
+        FROM work_assignment_media_links m
+       WHERE m.organization_id = wa.organization_id
+         AND m.assignment_id = wa.id
+    ) ml ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT COUNT(*) AS doc_count
+        FROM work_assignment_documents d
+       WHERE d.organization_id = wa.organization_id
+         AND d.assignment_id = wa.id
+    ) dc ON TRUE
    WHERE wa.organization_id = $1::uuid
      AND wa.work_type::text = $3
      AND ($4::text[] IS NULL OR wa.status::text = ANY($4::text[]))
-     AND ($5::int IS NULL OR wa.assignee_staff_id = $5)
+     AND ($5::int IS NULL OR EXISTS (
+       SELECT 1 FROM work_assignment_assignees ma
+        WHERE ma.organization_id = wa.organization_id
+          AND ma.assignment_id = wa.id AND ma.staff_id = $5))
+     AND ($12::int IS NULL OR wa.assigned_by_staff_id = $12)
      AND ($6::int IS NULL OR wa.priority <= $6)
      AND ($7::int IS NULL OR wa.priority > $7)
      AND ($8::bigint IS NULL OR wa.id = $8)
      AND ($10::text IS NULL OR (
             wa.id::text ILIKE $10
          OR wa.notes ILIKE $10
+         OR wa.project_name ILIKE $10
          OR wa.status::text ILIKE $10
          OR wa.entity_type::text ILIKE $10
          OR sa.name ILIKE $10
          OR sb.name ILIKE $10
+         OR EXISTS (
+              SELECT 1 FROM work_assignment_assignees qa
+              JOIN staff qs ON qs.id = qa.staff_id AND qs.organization_id = qa.organization_id
+               WHERE qa.organization_id = wa.organization_id
+                 AND qa.assignment_id = wa.id AND qs.name ILIKE $10)
          OR st.subject_cache ILIKE $10
          OR st.external_ticket_id ILIKE $10
+         OR EXISTS (
+              SELECT 1
+                FROM work_assignment_links ql
+               WHERE ql.organization_id = wa.organization_id
+                 AND ql.assignment_id = wa.id
+                 AND ql.label ILIKE $10)
+         OR EXISTS (
+              SELECT 1
+                FROM work_assignment_documents qd
+               WHERE qd.organization_id = wa.organization_id
+                 AND qd.assignment_id = wa.id
+                 AND qd.title ILIKE $10)
+         OR EXISTS (
+              SELECT 1
+                FROM work_assignment_media_links qm
+               WHERE qm.organization_id = wa.organization_id
+                 AND qm.assignment_id = wa.id
+                 AND (qm.title ILIKE $10 OR qm.url ILIKE $10))
         ))
    ORDER BY wa.priority ASC, wa.deadline_at ASC NULLS LAST, wa.assigned_at DESC
    LIMIT $9`;
@@ -175,6 +280,30 @@ function toTextOrNull(value: unknown): string | null {
 }
 
 /**
+ * `json_agg` output → link faces. `pg` parses `json` columns already; a
+ * string is tolerated for drivers that do not. A kind outside the vocabulary
+ * (a discriminator added in SQL before the TS) is dropped, not guessed.
+ */
+function linkFaces(value: unknown): TaskLinkFace[] {
+  let raw: unknown = value;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(raw)) return [];
+  const faces: TaskLinkFace[] = [];
+  for (const item of raw) {
+    const kind = (item as { kind?: unknown } | null)?.kind;
+    const label = (item as { label?: unknown } | null)?.label;
+    if (isTaskLinkKind(kind) && typeof label === 'string') faces.push({ kind, label });
+  }
+  return faces;
+}
+
+/**
  * A staffer with no readable `staff` row (deleted mid-org-move, or a row that
  * outlived its tenant) still has an id, and the desk must not silently drop
  * the "who". The placeholder is deliberately machine-looking so it reads as
@@ -185,6 +314,20 @@ function person(id: unknown, name: unknown): TaskDeskPerson | null {
   if (staffId == null) return null;
   const label = toTextOrNull(name)?.trim();
   return { id: staffId, name: label || `Staff #${staffId}` };
+}
+
+function memberFaces(value: unknown, lead: TaskDeskPerson | null): TaskDeskPerson[] {
+  let raw: unknown = value;
+  if (typeof raw === 'string') {
+    try { raw = JSON.parse(raw); } catch { raw = null; }
+  }
+  if (!Array.isArray(raw)) return lead ? [lead] : [];
+  const members = raw.flatMap((item): TaskDeskPerson[] => {
+    if (!item || typeof item !== 'object' || !('id' in item) || !('name' in item)) return [];
+    const face = person(item.id, item.name);
+    return face ? [face] : [];
+  });
+  return members.length ? members : lead ? [lead] : [];
 }
 
 function ticket(row: TaskDeskSqlRow): TaskDeskTicket | null {
@@ -214,20 +357,29 @@ function mapRow(raw: Record<string, unknown>): TaskDeskWireRow | null {
   const entityId = toIntOrNull(row.entity_id);
   if (id == null || entityId == null) return null;
 
+  const assignee = person(row.assignee_staff_id, row.assignee_name);
   return {
     id,
     entityType,
     entityId,
     note: toTextOrNull(row.notes),
+    projectName: toTextOrNull(row.project_name),
     status: String(row.status ?? ''),
     priority: toIntOrNull(row.priority),
-    assignee: person(row.assignee_staff_id, row.assignee_name),
+    assignee,
+    assignees: memberFaces(row.assignees, assignee),
     assignedBy: person(row.assigned_by_staff_id, row.assigned_by_name),
     assignedAt: toIso(row.assigned_at) ?? new Date(0).toISOString(),
     startedAt: toIso(row.started_at),
     deadlineAt: toIso(row.deadline_at),
     completedAt: toIso(row.completed_at),
+    remindAt: toIso(row.remind_at),
     ticket: ticket(row),
+    links: linkFaces(row.links),
+    photoCount: toIntOrNull(row.photo_count) ?? 0,
+    videoCount: toIntOrNull(row.video_count) ?? 0,
+    docCount: toIntOrNull(row.doc_count) ?? 0,
+    coverPhotoId: toIntOrNull(row.cover_photo_id),
   };
 }
 
@@ -246,6 +398,10 @@ function priorityBounds(urgency: ListTaskDeskOptions['urgency']): {
   return { atMost: null, above: null };
 }
 
+function positiveIntOrNull(raw: number | null | undefined): number | null {
+  return typeof raw === 'number' && raw > 0 ? Math.floor(raw) : null;
+}
+
 export async function listTaskDeskRows(
   orgId: OrgId,
   opts: ListTaskDeskOptions,
@@ -253,12 +409,9 @@ export async function listTaskDeskRows(
 ): Promise<TaskDeskWireRow[]> {
   const lane: TaskDeskLane = opts.lane ?? 'open';
   const laneStatuses = taskDeskLaneStatuses(lane);
-  const assigneeStaffId =
-    typeof opts.assigneeStaffId === 'number' && opts.assigneeStaffId > 0
-      ? Math.floor(opts.assigneeStaffId)
-      : null;
-  const taskId =
-    typeof opts.taskId === 'number' && opts.taskId > 0 ? Math.floor(opts.taskId) : null;
+  const assigneeStaffId = positiveIntOrNull(opts.assigneeStaffId);
+  const assignedByStaffId = positiveIntOrNull(opts.assignedByStaffId);
+  const taskId = positiveIntOrNull(opts.taskId);
   const { atMost, above } = priorityBounds(opts.urgency ?? null);
   const q = opts.q?.trim() || null;
 
@@ -277,6 +430,8 @@ export async function listTaskDeskRows(
     taskId,
     clampTaskDeskLimit(q ? TASK_DESK_MAX_LIMIT : opts.limit),
     q ? `%${q}%` : null,
+    TASK_MEDIA_ENTITY_TYPE,
+    assignedByStaffId,
   ]);
 
   const rows: TaskDeskWireRow[] = [];
@@ -296,12 +451,20 @@ export interface TaskDeskPatch {
   deadlineAt?: string | null;
   startedAt?: string | null;
   assigneeStaffId?: number;
+  assigneeStaffIds?: number[];
+  projectName?: string | null;
+  /** `work_assignments.notes`. Trimmed here; empty or null clears it. */
+  note?: string | null;
+  /** `work_assignments.remind_at` — an absolute instant, null clears it. */
+  remindAt?: string | null;
 }
 
 /** What the row looked like before the patch — the audit row's `before`. */
 export interface TaskDeskBefore {
   status: TaskDeskStatus;
   assigneeStaffId: number | null;
+  assigneeStaffIds: number[];
+  projectName: string | null;
 }
 
 export type PatchTaskDeskResult =
@@ -356,6 +519,17 @@ function patchAssignments(
   if (patch.assigneeStaffId !== undefined) {
     set.set('assignee_staff_id', `assignee_staff_id = ${push(patch.assigneeStaffId)}`);
   }
+  if (patch.projectName !== undefined) {
+    set.set('project_name', `project_name = ${push(patch.projectName?.trim() || null)}`);
+  }
+  if (patch.note !== undefined) {
+    // A blank note is no note: store NULL, never '' — the desk paints the two
+    // identically and a search must not tell them apart either.
+    set.set('notes', `notes = ${push(patch.note?.trim() || null)}`);
+  }
+  if (patch.remindAt !== undefined) {
+    set.set('remind_at', `remind_at = ${push(patch.remindAt)}::timestamptz`);
+  }
   return set;
 }
 
@@ -375,7 +549,7 @@ export async function patchTaskDeskRowInTx(
   const readerDeps: TaskDeskDeps = { query: (_orgId, sql, params) => tx.query(sql, params) };
 
   const current = await tx.query(
-    `SELECT status::text AS status, assignee_staff_id
+    `SELECT status::text AS status, assignee_staff_id, project_name
        FROM work_assignments
       WHERE organization_id = $1::uuid AND id = $2 AND work_type::text = $3
       FOR UPDATE`,
@@ -393,22 +567,39 @@ export async function patchTaskDeskRowInTx(
     return { ok: false, reason: 'illegal_transition', detail: `${currentStatus} → ${patch.status}` };
   }
 
-  if (patch.assigneeStaffId !== undefined) {
+  const assigneeStaffIds = patch.assigneeStaffIds ??
+    (patch.assigneeStaffId === undefined ? undefined : [patch.assigneeStaffId]);
+  if (assigneeStaffIds !== undefined) {
+    if (assigneeStaffIds.length < 1 || assigneeStaffIds.length > TASK_ASSIGNEES_MAX ||
+        assigneeStaffIds.some((id) => !Number.isSafeInteger(id) || id <= 0 || id > TASK_STAFF_ID_MAX) ||
+        new Set(assigneeStaffIds).size !== assigneeStaffIds.length ||
+        (patch.assigneeStaffId !== undefined && patch.assigneeStaffIds !== undefined &&
+         patch.assigneeStaffId !== assigneeStaffIds[0])) {
+      return { ok: false, reason: 'invalid_assignee' };
+    }
     const staffRes = await tx.query(
-      `SELECT 1 FROM staff WHERE id = $1 AND organization_id = $2::uuid LIMIT 1`,
-      [patch.assigneeStaffId, orgId],
+      `SELECT id FROM staff WHERE organization_id = $1::uuid AND id = ANY($2::int[])`,
+      [orgId, assigneeStaffIds],
     );
-    if (staffRes.rowCount === 0) {
-      return { ok: false, reason: 'invalid_assignee', detail: String(patch.assigneeStaffId) };
+    if (staffRes.rowCount !== assigneeStaffIds.length) {
+      return { ok: false, reason: 'invalid_assignee' };
     }
   }
+  const previousMembers = await tx.query(
+    `SELECT staff_id FROM work_assignment_assignees
+      WHERE organization_id = $1::uuid AND assignment_id = $2
+      ORDER BY CASE WHEN staff_id = $3 THEN 0 ELSE 1 END, staff_id`,
+    [orgId, taskId, currentRow.assignee_staff_id],
+  );
 
   const params: unknown[] = [orgId, taskId];
   const push = (value: unknown): string => {
     params.push(value);
     return `$${params.length}`;
   };
-  const assignments = [...patchAssignments(patch, push).values(), 'updated_at = now()'];
+  const assignments = [...patchAssignments({
+    ...patch, assigneeStaffId: assigneeStaffIds?.[0],
+  }, push).values(), 'updated_at = now()'];
 
   const updated = await tx.query(
     `UPDATE work_assignments
@@ -418,6 +609,20 @@ export async function patchTaskDeskRowInTx(
     params,
   );
   if (updated.rowCount === 0) return { ok: false, reason: 'not_found' };
+  if (assigneeStaffIds !== undefined) {
+    await tx.query(
+      `DELETE FROM work_assignment_assignees
+        WHERE organization_id = $1::uuid AND assignment_id = $2
+          AND staff_id <> ALL($3::int[])`,
+      [orgId, taskId, assigneeStaffIds],
+    );
+    await tx.query(
+      `INSERT INTO work_assignment_assignees (organization_id, assignment_id, staff_id)
+       SELECT $1::uuid, $2, unnest($3::int[])
+       ON CONFLICT (organization_id, assignment_id, staff_id) DO NOTHING`,
+      [orgId, taskId, assigneeStaffIds],
+    );
+  }
 
   const rows = await listTaskDeskRows(orgId, { lane: 'all', taskId, limit: 1 }, readerDeps);
   const task = rows[0];
@@ -432,6 +637,8 @@ export async function patchTaskDeskRowInTx(
     before: {
       status: currentStatus,
       assigneeStaffId: toIntOrNull(currentRow?.assignee_staff_id),
+      assigneeStaffIds: previousMembers.rows.map((member) => Number(member.staff_id)),
+      projectName: toTextOrNull(currentRow.project_name),
     },
     changed: Object.keys(patch) as Array<keyof TaskDeskPatch>,
   };

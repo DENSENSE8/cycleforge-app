@@ -46,6 +46,7 @@ export interface FileReceivingClaimInput {
   ccEmails?: string[];
   notePublic?: boolean;
   poReceivingLink?: string;
+  listingUrl?: string;
   /** Client idempotency key forwarded to helpdesk.createTicket. */
   idempotencyKey?: string | null;
   /** When set, share-pack links use this origin (route handler only). */
@@ -214,6 +215,7 @@ export async function fileReceivingClaim(
       claimType: input.claimType,
       reason: input.reason,
       poReceivingLink: input.poReceivingLink,
+      listingUrl: input.listingUrl,
     },
     input.orgId,
   );

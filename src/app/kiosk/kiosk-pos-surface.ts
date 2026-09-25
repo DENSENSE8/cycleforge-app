@@ -298,8 +298,7 @@ export const KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE = 'pb-24 md:pb-24';
  * walk-in is watching. The cheaper win is transparency: the bands keep their
  * controls but stop being opaque sheets, so the product field reads as one
  * continuous surface with glass over it (the same ruling the mobile station
- * shells took — see `CartonMobileOpsClient`'s `bg-surface-card/95
- * backdrop-blur-md` and `MobileCaptureWindow`'s "ONE blurred bar floating on
+ * shells took — see `MobileCaptureWindow`'s "ONE blurred bar floating on
  * top").
  *
  * `backdrop-blur` rather than raw transparency: product photos scrolling under

@@ -61,8 +61,6 @@ import {
   normalizeShortLabelInput,
   PLATFORM_SHORT_LABEL_MAX,
 } from '@/lib/platform-display';
-import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { catalogIdentityDot } from './classify-pill-options';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
 import { PlatformTypeRulesEditor } from './PlatformTypeRulesEditor';
@@ -235,20 +233,12 @@ export function CatalogManagerList({
         colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
         shortLabel: isPlatform ? (r as PlatformRow).short_label : null,
       }));
-  const editable = entries.length > 0;
+  // The catalog is always seeded (seedOrgCatalog on org creation); the only
+  // empty moment is the first load, which gets a spinner — never a stale
+  // "built-in defaults / apply migration" banner.
+  const loading = kind === 'platform' ? platformQ.isLoading : kind === 'type' ? typeQ.isLoading : false;
   const active = entries.filter((e) => e.isActive);
   const hidden = entries.filter((e) => !e.isActive);
-  // Deduped: two built-in platform options share the display name `Amazon`
-  // (marketplace + FBA), and this list is keyed by label.
-  const fallbackLabels = [
-    ...new Set(
-      kind === 'platform'
-        ? SOURCE_PLATFORM_OPTS.map((o) => o.label)
-        : kind === 'priority'
-          ? PRIORITY_OVERRIDE_TIERS.map((t) => t.label)
-          : RECEIVING_TYPE_OPTS.map((o) => o.label),
-    ),
-  ];
 
   const [adding, setAdding] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -341,22 +331,10 @@ export function CatalogManagerList({
 
   return (
     <div>
-      {!editable ? (
-        <>
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 inset-field text-role-micro font-semibold text-amber-800">
-            Showing built-in defaults. Apply migration <code>2026-06-13g</code> to add or edit your own.
-          </div>
-          <ul className="space-y-1.5">
-            {fallbackLabels.map((label) => (
-              <li
-                key={label}
-                className="rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-faint"
-              >
-                {label}
-              </li>
-            ))}
-          </ul>
-        </>
+      {loading ? (
+        <div className="flex items-center gap-2 px-1 py-3 text-role-caption text-text-faint">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </div>
       ) : (
         <ul className="space-y-1.5">
           {active.map((e, i) => {
@@ -623,8 +601,8 @@ export function CatalogManagerList({
           onKeyDown={(e) => {
             if (e.key === 'Enter') void add();
           }}
-          disabled={!editable}
-          placeholder={editable ? `New ${kind}…` : 'Apply the migration to add'}
+          disabled={loading}
+          placeholder={`New ${kind}…`}
           className={`${TEXT_INPUT} flex-1 disabled:cursor-not-allowed disabled:opacity-60`}
         />
         <Button
@@ -632,7 +610,7 @@ export function CatalogManagerList({
           variant="primary"
           size="sm"
           onClick={() => void add()}
-          disabled={!editable || !adding.trim() || busyId != null}
+          disabled={loading || !adding.trim() || busyId != null}
           loading={busyId === 'new'}
           icon={<Plus className="h-3.5 w-3.5" />}
           className="text-role-micro uppercase tracking-wider"

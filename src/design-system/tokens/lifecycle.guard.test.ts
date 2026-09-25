@@ -22,6 +22,8 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, relative } from 'node:path';
 import { test } from 'node:test';
+import { STATE_NAMES, STATE_TONES } from '@cycleforge/design-tokens';
+import { contrastRatio } from '@/lib/color-contrast';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
@@ -82,4 +84,12 @@ test('packed / shipped status maps colour through LIFECYCLE', () => {
       '`LIFECYCLE.packed.tone` (a STATE_TONES key) for tone vocabularies:\n' +
       offenders.join('\n'),
   );
+});
+
+test('every solid state-code badge prints its code at ≥ 4.5:1 (BRIEF §8)', () => {
+  for (const tone of STATE_NAMES) {
+    const { code, codeInk } = STATE_TONES[tone];
+    const ratio = contrastRatio(codeInk, code) ?? 0;
+    assert.ok(ratio >= 4.5, `${tone}: ${codeInk} on ${code} is ${ratio.toFixed(2)}:1`);
+  }
 });

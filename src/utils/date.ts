@@ -166,6 +166,18 @@ export function warehouseDayUtcBounds(
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
+/**
+ * Warehouse civil day + wall clock (`HH:MM`) → the true instant. DST-honest:
+ * `09:00` on a PDT day and on a PST day are different UTC hours, which is the
+ * whole reason this is not `dayStart + minutes`. Null when either part is
+ * malformed.
+ */
+export function warehouseCivilTimeToInstant(dateKey: string, hhmm: string): Date | null {
+  if (!parseDateKey(dateKey) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return null;
+  const instant = fromZonedTime(`${dateKey}T${hhmm}:00.000`, PST_TIME_ZONE);
+  return Number.isNaN(instant.getTime()) ? null : instant;
+}
+
 /** Yesterday’s warehouse civil date key. */
 export function getYesterdayPSTDateKey(anchor?: string): string {
   const today = anchor && parseDateKey(anchor) ? anchor : getCurrentPSTDateKey();

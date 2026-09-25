@@ -91,7 +91,6 @@ function draftFromApiPayload(payload: {
   account_name?: string;
   tracking_number?: string;
   carrier_code?: string;
-  listing_url?: string;
   priority?: string;
   notes?: string;
   lines?: Array<{
@@ -99,6 +98,7 @@ function draftFromApiPayload(payload: {
     item_name?: string;
     quantity?: string;
     line_item_id?: string;
+    listing_url?: string;
   }>;
 }): PoIntakeDraft {
   return {
@@ -108,7 +108,6 @@ function draftFromApiPayload(payload: {
     accountName: payload.account_name?.trim() || '',
     trackingNumber: payload.tracking_number?.trim() || '',
     carrierCode: payload.carrier_code?.trim() || '',
-    listingUrl: payload.listing_url?.trim() || '',
     priority: payload.priority?.trim() || 'auto',
     notes: payload.notes?.trim() || '',
     lines:
@@ -118,8 +117,9 @@ function draftFromApiPayload(payload: {
             itemName: l.item_name?.trim() || '',
             quantity: l.quantity?.trim() || '',
             lineItemId: l.line_item_id?.trim() || '',
+            listingUrl: l.listing_url?.trim() || '',
           }))
-        : [{ sku: '', itemName: '', quantity: '', lineItemId: '' }],
+        : [{ sku: '', itemName: '', quantity: '', lineItemId: '', listingUrl: '' }],
   };
 }
 
@@ -163,13 +163,13 @@ async function postConfirm(draft: PoIntakeDraft): Promise<{ created: number; upd
       account_name: draft.accountName,
       tracking_number: draft.trackingNumber,
       carrier_code: draft.carrierCode,
-      listing_url: draft.listingUrl,
       priority: draft.priority,
       lines: draft.lines.map((l) => ({
         sku: l.sku,
         item_name: l.itemName,
         quantity: l.quantity,
         line_item_id: l.lineItemId,
+        listing_url: l.listingUrl,
       })),
     }),
   });
@@ -183,7 +183,11 @@ async function postConfirm(draft: PoIntakeDraft): Promise<{ created: number; upd
   };
 }
 
-export function IncomingPoIntakeBand() {
+export function IncomingPoIntakeBand({
+  placement = 'band',
+}: {
+  placement?: 'band' | 'evidence';
+}) {
   const snap = useSyncExternalStore(
     subscribePoIntake,
     getPoIntakeSnapshot,
@@ -501,7 +505,12 @@ export function IncomingPoIntakeBand() {
 
   return (
     <div
-      className="flex max-h-[min(48vh,28rem)] min-h-0 shrink-0 flex-col border-t border-border-hairline bg-surface-card"
+      className={cn(
+        'flex min-h-0 flex-col bg-surface-card',
+        placement === 'evidence'
+          ? 'min-h-full flex-1'
+          : 'max-h-[min(48vh,28rem)] shrink-0 border-t border-border-hairline',
+      )}
       data-testid="incoming-po-intake-band"
       {...dz.rootProps}
     >
@@ -649,6 +658,16 @@ export function IncomingPoIntakeBand() {
                   icon={<Trash2 className="h-3.5 w-3.5" />}
                   disabled={busy || draft.lines.length <= 1}
                   onClick={() => setPoIntakeDraft(removePoIntakeLine(draft, index))}
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <TextField
+                  label="Listing URL"
+                  value={line.listingUrl}
+                  onChange={(v) =>
+                    setPoIntakeDraft(updatePoIntakeLine(draft, index, { listingUrl: v }))
+                  }
+                  appearance="flush"
                 />
               </div>
             </li>

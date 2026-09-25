@@ -77,6 +77,14 @@ export const qk = {
     /** One repair's signed documents (`GET /api/repair-service/document/[id]`). */
     documents: (id: number) => ['repairs', 'documents', id] as const,
   },
+  cartons: {
+    /**
+     * One carton's mobile hub and its doors share this read. Rooted under
+     * `receiving` so the receiving realtime feed (`invalidateQueries(['receiving'])`)
+     * refreshes it with the rest of the pipeline.
+     */
+    hub: (id: number, facet: string) => ['receiving', 'carton-hub', id, facet] as const,
+  },
   orders: {
     /**
      * One order's phone hub (`/m/orders/[orderId]`) and its doors share these

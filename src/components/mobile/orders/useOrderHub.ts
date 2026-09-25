@@ -50,12 +50,15 @@ async function fetchWork(pk: number, signal?: AbortSignal): Promise<OutboundWork
  * `back` is the job the record was opened from (`?back=`, `mobileJobReturn`).
  * `link()` carries it — and `?by=id` — onto door and `/info` hrefs, so the X
  * still returns to the job after a detour through the record's own screens.
+ *
+ * `byId` forces the pk read for a job route whose param is always `orders.id`
+ * (`/m/pack/start/[orderId]`), so a numeric marketplace order # cannot shadow it.
  */
-export function useOrderHub() {
+export function useOrderHub({ byId: forceById = false }: { byId?: boolean } = {}) {
   const params = useParams<{ orderId: string }>();
   const searchParams = useSearchParams();
   const param = params?.orderId ? decodeURIComponent(params.orderId).trim() : '';
-  const byId = searchParams?.get('by') === 'id';
+  const byId = forceById || searchParams?.get('by') === 'id';
   const back = mobileJobReturn(searchParams?.get('back'));
 
   const record = useQuery({

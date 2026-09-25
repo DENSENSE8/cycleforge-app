@@ -21,6 +21,7 @@ import { compoundIdentityFace } from '@/components/tables/compound/compound-row-
 import {
   isTaskDeskOpen,
   taskDeskRecordLabel,
+  taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
 import { workStatusLabel } from '@/lib/work-orders/work-status-display';
@@ -87,7 +88,7 @@ export function taskDeskCompoundView(
     // A task has no photo. The typed placeholder keeps the track's geometry so
     // Tasks and Unbox still line up scanline for scanline.
     thumbUrl: null,
-    title: row.note || taskDeskRecordLabel(row),
+    title: taskDeskTitle(row),
     // The TITLE column's second line is what somebody wrote about this row;
     // for a handoff that is who it went to and who sent it.
     note: handoffNote(row),

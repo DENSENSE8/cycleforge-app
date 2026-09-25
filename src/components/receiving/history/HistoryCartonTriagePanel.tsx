@@ -100,6 +100,11 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { toast } from '@/lib/toast';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
+import { ReceivingRecordItem, ReceivingRecordPlatform } from '@/components/receiving/ReceivingRecordIdentity';
+import { receivingDetailLine, receivingRecordSerials, receivingSerialCountWarning } from '@/lib/receiving/record-identity';
+import { dockedReceivingState } from '@/lib/receiving/docked-record-state';
+import { fmtDateTime } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
+import { Button } from '@/design-system/primitives';
 
 const HISTORY_TRIAGE_RAIL_ID = 'detail:history';
 
@@ -126,18 +131,19 @@ type CartonPayload = {
   source?: string | null;
 };
 
-async function fetchCarton(receivingId: number): Promise<CartonPayload | null> {
-  const res = await fetch(`/api/receiving/${receivingId}`);
-  if (!res.ok) return null;
+async function fetchCarton(receivingId: number, signal?: AbortSignal): Promise<CartonPayload | null> {
+  const res = await fetch(`/api/receiving/${receivingId}`, { signal });
+  if (!res.ok) throw new Error(`Carton details failed (${res.status})`);
   const json = (await res.json().catch(() => null)) as { receiving?: CartonPayload } | null;
   return json?.receiving ?? null;
 }
 
-async function fetchMatchLines(receivingId: number): Promise<ReceivingMatchLine[]> {
+async function fetchMatchLines(receivingId: number, signal?: AbortSignal): Promise<ReceivingMatchLine[]> {
   const res = await fetch(
     `/api/receiving/match?receiving_id=${encodeURIComponent(String(receivingId))}`,
+    { signal },
   );
-  if (!res.ok) return [];
+  if (!res.ok) throw new Error(`Purchase matching failed (${res.status})`);
   const json = await res.json().catch(() => null);
   return Array.isArray(json?.matched_lines) ? (json.matched_lines as ReceivingMatchLine[]) : [];
 }
@@ -145,29 +151,32 @@ async function fetchMatchLines(receivingId: number): Promise<ReceivingMatchLine[
 async function fetchLineRow(
   receivingId: number,
   lineId: number | null,
+  signal?: AbortSignal,
 ): Promise<ReceivingLineRow | null> {
   const res = await fetch(
     `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
+    { signal },
   );
-  if (!res.ok) return null;
+  if (!res.ok) throw new Error(`Line details failed (${res.status})`);
   const data = await res.json().catch(() => null);
   const rows = Array.isArray(data?.receiving_lines)
     ? (data.receiving_lines as ReceivingLineRow[])
     : [];
-  if (lineId != null) {
-    const hit = rows.find((r) => r.id === lineId);
-    if (hit) return hit;
-  }
-  return rows[0] ?? null;
+  return receivingDetailLine(rows, lineId);
 }
 
 export function HistoryCartonTriagePanel({
   target,
   onClose,
+  embedded = false,
+  seedRow,
 }: {
   /** Null = View-only shell (sheet layout / refine; no carton identity). */
   target: HistoryTriageTarget | null;
   onClose: () => void;
+  /** Render the existing history reader in a RecordLedger evidence column. */
+  embedded?: boolean;
+  seedRow?: ReceivingLineRow;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -186,27 +195,29 @@ export function HistoryCartonTriagePanel({
 
   const cartonQuery = useQuery({
     queryKey: ['history-triage-carton', receivingId] as const,
-    queryFn: () => fetchCarton(receivingId!),
+    queryFn: ({ signal }) => fetchCarton(receivingId!, signal),
     staleTime: 10_000,
     enabled: receivingId != null,
   });
 
   const matchQuery = useQuery({
     queryKey: ['history-triage-match', receivingId] as const,
-    queryFn: () => fetchMatchLines(receivingId!),
+    queryFn: ({ signal }) => fetchMatchLines(receivingId!, signal),
     staleTime: 10_000,
     enabled: receivingId != null,
   });
 
   const lineQuery = useQuery({
     queryKey: ['history-triage-line', receivingId, target?.receivingLineId] as const,
-    queryFn: () => fetchLineRow(receivingId!, target!.receivingLineId),
+    queryFn: ({ signal }) => fetchLineRow(receivingId!, target!.receivingLineId, signal),
     staleTime: 10_000,
     enabled: receivingId != null,
   });
 
   const carton = cartonQuery.data;
   const line = lineQuery.data;
+  const serials = line ? receivingRecordSerials(line) : [];
+  const serialCountWarning = line ? receivingSerialCountWarning(line) : null;
 
   const poNumber =
     (carton?.zoho_purchaseorder_number || target?.poNumber || '').trim() || null;
@@ -226,7 +237,9 @@ export function HistoryCartonTriagePanel({
   const statusRaw =
     (line?.workflow_status || carton?.current_status || target?.status || '').trim() ||
     null;
-  const statusLabel = statusRaw ? workflowStageLabel(statusRaw) : null;
+  const statusLabel = embedded && (line || seedRow)
+    ? dockedReceivingState((line || seedRow)!).label
+    : statusRaw ? workflowStageLabel(statusRaw) : null;
 
   const unfound = useMemo(() => {
     if (viewOnly) return false;
@@ -489,7 +502,7 @@ export function HistoryCartonTriagePanel({
    * nav (topics live in the shell's index), and it never appears in the
    * View-only shell, where the cluster is the whole job and forced open.
    */
-  const viewToggle = viewOnly ? null : (
+  const viewToggle = viewOnly || embedded ? null : (
     <span className="flex h-full items-center" data-testid="history-triage-view-chrome">
       <IconButton
         size="xs"
@@ -503,23 +516,7 @@ export function HistoryCartonTriagePanel({
     </span>
   );
 
-  return (
-    <DetailStackRailRegistrar
-      id={HISTORY_TRIAGE_RAIL_ID}
-      onClose={onClose}
-      modal={false}
-      // Park via Band 3 toggle / Cmd+\ / edge chevron — keep target mounted.
-      edgeCollapse
-      // Band 3 owns the sole reopen icon — no parked 32px host rail.
-      collapsedStrip={false}
-      ariaLabel={
-        viewOnly
-          ? 'Unbox view controls'
-          : poNumber
-            ? `History triage for PO ${poNumber}`
-            : `History triage for receiving ${target!.receivingId}`
-      }
-    >
+  const body = (
       <div
         className="flex h-full min-h-0 flex-col overflow-hidden"
         data-testid="history-carton-triage-panel"
@@ -610,6 +607,39 @@ export function HistoryCartonTriagePanel({
                         )}
                       </section>
                       )}
+                      {(cartonQuery.isError || lineQuery.isError || matchQuery.isError) ? (
+                        <div role="alert" className="space-y-2 text-role-data text-mode-warn">
+                          <p>Some receiving evidence could not be verified. Missing data is not proof of non-receipt.</p>
+                          <Button variant="secondary" size="sm" onClick={() => {
+                            void cartonQuery.refetch();
+                            void lineQuery.refetch();
+                            void matchQuery.refetch();
+                          }}>Retry details</Button>
+                        </div>
+                      ) : null}
+                      {lineQuery.isLoading ? <SkeletonList count={3} type="row" /> : line ? (
+                        <section className="space-y-2" aria-label="Item and receiving evidence" data-testid="receiving-line-evidence">
+                          <OrderFactList>
+                            <OrderFactRow label="Platform" value={<ReceivingRecordPlatform row={line} />} />
+                            <OrderFactRow label="Item number" value={<ReceivingRecordItem row={line} />} />
+                            <OrderFactRow label="SKU" value={line.sku || 'Not recorded'} mono />
+                            <OrderFactRow label="Received / expected" value={`${line.quantity_received ?? 0} / ${line.quantity_expected ?? 'unknown'}`} mono />
+                            <OrderFactRow label="Door scan" value={fmtDateTime(line.scanned_at || line.received_at)} mono />
+                            <OrderFactRow label="Unboxed" value={fmtDateTime(line.unboxed_at)} mono />
+                            <OrderFactRow label="Line receive completed" value={fmtDateTime(line.received_done_at)} mono />
+                            <OrderFactRow label="Receipt ID" value={line.zoho_purchase_receive_id || 'Not recorded'} mono />
+                            <OrderFactRow label="Serial numbers" value={serials.length ? (
+                              <ul className="space-y-1" data-testid="receiving-serials">
+                                {serials.map((serial) => <li key={serial} className="select-all break-all font-mono" title={serial}>{serial}</li>)}
+                              </ul>
+                            ) : line.serial_absent ? `Waived${line.serial_absent_reason ? ` · ${line.serial_absent_reason}` : ''}` : 'Not recorded'} />
+                          </OrderFactList>
+                          {serialCountWarning && (
+                            <p role="status" className="text-role-data text-mode-warn">{serialCountWarning}</p>
+                          )}
+                          <p className="text-role-caption text-mode-muted">Door scan, unboxing, and completed line receipt are separate events. A missing timestamp is unverified, not proof the item was never received.</p>
+                        </section>
+                      ) : !lineQuery.isError ? <p role="status" className="text-role-data text-mode-muted">No item-line record was returned for this selection. Serial numbers and inventory receipt are unverified.</p> : null}
                     </div>
                   ),
                   logistics: (
@@ -761,6 +791,24 @@ export function HistoryCartonTriagePanel({
           </InspectorActionFloor>
         ) : null}
       </div>
+  );
+  if (embedded) return body;
+  return (
+    <DetailStackRailRegistrar
+      id={HISTORY_TRIAGE_RAIL_ID}
+      onClose={onClose}
+      modal={false}
+      edgeCollapse
+      collapsedStrip={false}
+      ariaLabel={
+        viewOnly
+          ? 'Unbox view controls'
+          : poNumber
+            ? `History triage for PO ${poNumber}`
+            : `History triage for receiving ${target!.receivingId}`
+      }
+    >
+      {body}
     </DetailStackRailRegistrar>
   );
 }

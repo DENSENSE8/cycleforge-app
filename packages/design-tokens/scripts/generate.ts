@@ -15,6 +15,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   INTAKE,
+  INBOUND_DELIVERY,
+  INBOUND_DELIVERY_STATES,
   INTAKE_CLASSES,
   LIFECYCLE,
   LIFECYCLE_STATES,
@@ -24,11 +26,16 @@ import {
   MODE_REGISTRY,
   STATE_NAMES,
   STATE_TONES,
+  TRIALS,
+  GRAIN_DEPTHS,
   baseColors,
   lightThemeCssText,
   modeRegistryCssText,
+  stateCodeCssText,
+  trialCssText,
   type ModeSpec,
   type ModeSurfaces,
+  type TrialSpec,
 } from '../src/index';
 
 const PACKAGE_DIR = path.resolve(__dirname, '..');
@@ -46,6 +53,7 @@ function resolveMode(spec: ModeSpec) {
     // Light scheme: the mode literal, else the theme's warning text.
     warnText: spec.warnText ?? LIGHT_THEME.vars['text-warning'],
     brand: spec.brand,
+    grain: spec.grain,
     radius: spec.radius,
     radiusPill: spec.radiusPill,
     pagePad: spec.pagePad,
@@ -60,10 +68,8 @@ function resolveMode(spec: ModeSpec) {
   };
 }
 
-// ── tokens.css ──────────────────────────────────────────────────────────────
-
 function renderCss(): string {
-  return `/* ${HEADER} */\n\n${lightThemeCssText()}\n\n${modeRegistryCssText()}\n`;
+  return `/* ${HEADER} */\n\n${lightThemeCssText()}\n\n${modeRegistryCssText()}\n\n${stateCodeCssText()}\n\n${trialCssText()}\n`;
 }
 
 // ── tokens.json ─────────────────────────────────────────────────────────────
@@ -80,6 +86,11 @@ function renderJson(): string {
   for (const state of LIFECYCLE_STATES) {
     for (const [field, value] of Object.entries(LIFECYCLE[state])) flat[`lifecycle.${state}.${field}`] = value;
   }
+  for (const state of INBOUND_DELIVERY_STATES) {
+    for (const [field, value] of Object.entries(INBOUND_DELIVERY[state])) {
+      flat[`inboundDelivery.${state}.${field}`] = String(value);
+    }
+  }
   for (const cls of INTAKE_CLASSES) {
     for (const [field, value] of Object.entries(INTAKE[cls])) flat[`intake.${cls}.${field}`] = value;
   }
@@ -92,6 +103,12 @@ function renderJson(): string {
     for (const key of SURFACE_KEYS) flat[`${p}.surface.${key}`] = m.surfaces[key];
     flat[`${p}.warnText`] = m.warnText;
     if (m.brand) flat[`${p}.brand`] = m.brand;
+    if (m.grain) {
+      for (const depth of GRAIN_DEPTHS) {
+        flat[`${p}.grain.${depth}.opacity`] = String(m.grain[depth].opacity);
+        flat[`${p}.grain.${depth}.frequency`] = String(m.grain[depth].frequency);
+      }
+    }
     flat[`${p}.radius`] = m.radius;
     flat[`${p}.radiusPill`] = m.radiusPill;
     for (const [measure, value] of Object.entries({
@@ -107,6 +124,12 @@ function renderJson(): string {
   }
   for (const [themeKey, surface] of Object.entries(MODE_NEUTRAL_REMAP)) {
     flat[`modeNeutralRemap.${themeKey}`] = surface;
+  }
+  for (const [trial, spec] of Object.entries(TRIALS) as [string, TrialSpec][]) {
+    for (const [mode, values] of Object.entries(spec.modes ?? {})) {
+      for (const [key, value] of Object.entries(values)) flat[`trial.${trial}.mode.${mode}.${key}`] = value;
+    }
+    for (const [key, value] of Object.entries(spec.components ?? {})) flat[`trial.${trial}.component.${key}`] = value;
   }
   return `${JSON.stringify({ $comment: HEADER, tokens: flat }, null, 2)}\n`;
 }
@@ -215,12 +238,15 @@ function renderSwift(): string {
   out.push(
     `${I1}}`,
     '',
-    `${I1}/// One state colour: text ink, solid fill, pastel tint and tint border.`,
+    `${I1}/// One state colour: text ink, solid fill, pastel tint, tint border, and`,
+    `${I1}/// the solid badge behind a lifecycle code with the ink printed on it.`,
     `${I1}public struct Tone: Sendable {`,
     `${I2}public let text: Color`,
     `${I2}public let fill: Color`,
     `${I2}public let tint: Color`,
     `${I2}public let edge: Color`,
+    `${I2}public let code: Color`,
+    `${I2}public let codeInk: Color`,
     `${I1}}`,
     '',
     `${I1}/// State colours — what a thing IS; mode- and platform-independent.`,
@@ -241,11 +267,13 @@ function renderSwift(): string {
     `${I1}}`,
     '',
     `${I1}/// One lifecycle state: 3-letter mono code, full word (what the code reads`,
-    `${I1}/// as) and its state colour.`,
+    `${I1}/// as), its state colour, and the Lucide icon name drawn before the code`,
+    `${I1}/// (map it to the nearest SF Symbol).`,
     `${I1}public struct LifecycleState: Sendable {`,
     `${I2}public let code: String`,
     `${I2}public let label: String`,
     `${I2}public let tone: Tone`,
+    `${I2}public let icon: String`,
     `${I1}}`,
     '',
     `${I1}/// Lifecycle states — one meaning, code and colour on every platform.`,
@@ -253,9 +281,21 @@ function renderSwift(): string {
     `${I1}public enum Lifecycle {`,
   );
   for (const state of LIFECYCLE_STATES) {
-    const { code, label, tone } = LIFECYCLE[state];
+    const { code, label, tone, icon } = LIFECYCLE[state];
     out.push(
-      `${I2}public static let ${state} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone})`,
+      `${I2}public static let ${state} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)})`,
+    );
+  }
+  out.push(
+    `${I1}}`,
+    '',
+    `${I1}/// Carrier-facing inbound states — never aliases of outbound lifecycle.`,
+    `${I1}public enum InboundDelivery {`,
+  );
+  for (const state of INBOUND_DELIVERY_STATES) {
+    const { code, label, tone, icon } = INBOUND_DELIVERY[state];
+    out.push(
+      `${I2}public static let ${swiftIdent(state.toLowerCase())} = LifecycleState(code: ${JSON.stringify(code)}, label: ${JSON.stringify(label)}, tone: State.${tone}, icon: ${JSON.stringify(icon)})`,
     );
   }
   out.push(

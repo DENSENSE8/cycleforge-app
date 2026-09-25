@@ -13,6 +13,7 @@
  */
 
 import type { PlatformAccountRow, PlatformRow } from '@/lib/neon/catalog-queries';
+import type { StoreLinkRow } from '@/lib/catalog/integration-store-links';
 import { inferMarketplaceFromOrderId, resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
@@ -194,4 +195,59 @@ export function buildPlatformShortLabelLookup(
     const key = lower(String(value ?? ''));
     return key ? (byKey.get(key) ?? null) : null;
   };
+}
+
+/**
+ * The account that IS its platform — the seeded `<platform>-main` default (or
+ * one slugged like the platform). Listing it beside the platform printed the
+ * same channel twice ("ECW" and "ECW · ECWID").
+ */
+export function isPlatformDefaultAccount(
+  platform: Pick<PlatformRow, 'slug'>,
+  account: Pick<PlatformAccountRow, 'slug'>,
+): boolean {
+  const slug = lower(account.slug);
+  return slug === lower(platform.slug) || slug === `${lower(platform.slug)}-main`;
+}
+
+export interface OrderPlatformChoice {
+  /** What `orders.account_source` gets: the platform slug or the account slug. */
+  value: string;
+  label: string;
+}
+
+/**
+ * The order platform picker's options, flat. Every active platform once — the
+ * same set the receiving pickers list — each followed by its storefront
+ * accounts, where a storefront is an active, non-default account that a
+ * ShipStation store is LINKED to (eBay · DRAGON). Unlinked accounts (buyer
+ * logins, retired mirrors, Zoho scopes) are not places an order is sold, so
+ * they stay out.
+ */
+export function orderPlatformChoices(
+  platforms: readonly Pick<PlatformRow, 'id' | 'slug' | 'label' | 'is_active'>[],
+  accounts: readonly Pick<PlatformAccountRow, 'id' | 'platform_id' | 'slug' | 'label' | 'is_active'>[],
+  links: readonly Pick<StoreLinkRow, 'platform_account_id'>[],
+): OrderPlatformChoice[] {
+  const linkedAccountIds = new Set(
+    links.flatMap((l) => (l.platform_account_id == null ? [] : [String(l.platform_account_id)])),
+  );
+  const seen = new Set<string>();
+  const out: OrderPlatformChoice[] = [];
+  const push = (choice: OrderPlatformChoice) => {
+    const key = lower(choice.value);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(choice);
+  };
+  for (const p of platforms) {
+    if (!p.is_active) continue;
+    push({ value: p.slug, label: p.label });
+    for (const a of accounts) {
+      if (String(a.platform_id) !== String(p.id) || !a.is_active) continue;
+      if (!linkedAccountIds.has(String(a.id)) || isPlatformDefaultAccount(p, a)) continue;
+      push({ value: a.slug, label: `${p.label} · ${a.label}` });
+    }
+  }
+  return out;
 }

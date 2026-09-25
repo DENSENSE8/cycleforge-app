@@ -44,7 +44,7 @@ import { mintTotesForPrint, toteReprintFromTyped } from '@/lib/print/tote-mint-a
 import { platesPerTote } from '@/lib/print/labelCopies';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
-import { triggerPackPrintBundle } from '@/components/packer/pack-print-bundle';
+import { triggerPackPrintBundle } from '@/lib/print/pack-print-bundle-client';
 import { printRepairStationJob } from '@/lib/print/printRepairStationJob';
 import type { RackSegments } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';

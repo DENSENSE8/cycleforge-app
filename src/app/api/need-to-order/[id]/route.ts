@@ -20,6 +20,7 @@ export async function PATCH(
       id,
       {
         quantity_needed: body?.quantity_needed,
+        quantity_to_order: body?.quantity_to_order,
         status: body?.status,
         notes: body?.notes,
         vendor_zoho_contact_id: body?.vendor_zoho_contact_id,

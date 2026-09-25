@@ -67,7 +67,7 @@ import {
   useOrderPaperworkActions,
   type OrderManual,
   type PaperworkKind,
-} from './order-paperwork-client';
+} from '@/lib/orders/order-paperwork-client';
 import {
   CAPTION,
   FIELD_CLASS,

@@ -1,12 +1,14 @@
 /**
  * WCAG contrast helpers — single SoT for deriving readable ink from a free-form
- * background / accent hex (org platform colors, future staff/role reuse).
+ * background / accent hex (org platform colors and staff initials).
  *
  * Marketplace platforms may store a custom `#RRGGBB` accent; paint always goes
  * through {@link platformPaintFromHex} so a bright yellow never forces white
  * text. Carrier brand hex stays in {@link carrier-brand.ts} and is never
  * tenant-overridable.
  */
+
+import { baseColors } from '@cycleforge/design-tokens';
 
 /** Canonical dark / light ink when a solid fill must carry text. */
 export const INK_DARK = '#0f172a'; // slate-900
@@ -49,6 +51,13 @@ export function contrastRatio(a: string, b: string): number | null {
   const lighter = Math.max(la, lb);
   const darker = Math.min(la, lb);
   return (lighter + 0.05) / (darker + 0.05);
+}
+
+/** Highest-contrast black or white initials, without changing the saved fill. */
+export function blackOrWhiteInk(bgHex: string): string {
+  return (contrastRatio(bgHex, baseColors.black) ?? 0) > (contrastRatio(bgHex, baseColors.white) ?? 0)
+    ? baseColors.black
+    : baseColors.white;
 }
 
 /**

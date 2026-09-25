@@ -5,14 +5,8 @@ import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { tenantQuery } from '@/lib/tenancy/db';
-import { upsertSupportTicket } from '@/lib/support/tickets';
-import { getTicket } from '@/lib/zendesk';
-import {
-  resolveTicketTarget,
-  type RegisteredTicket,
-  type TicketTargetDeps,
-} from '@/lib/tasks/resolve-ticket-target';
+import { resolveTicketTarget } from '@/lib/tasks/resolve-ticket-target';
+import { ticketTargetDbDeps } from '@/lib/tasks/ticket-target-deps';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,58 +54,10 @@ export const POST = withAuth(
         );
       }
 
-      const deps: TicketTargetDeps = {
-        async findRegistered(providerTicketId) {
-          const res = await tenantQuery<{
-            id: string;
-            external_ticket_id: string | null;
-            subject_cache: string | null;
-            status_cache: string | null;
-          }>(
-            ctx.organizationId,
-            `SELECT id, external_ticket_id, subject_cache, status_cache
-               FROM support_tickets
-              WHERE organization_id = $1
-                AND provider = 'zendesk'
-                AND external_ticket_id = $2
-              LIMIT 1`,
-            [ctx.organizationId, String(providerTicketId)],
-          );
-          const row = res.rows[0];
-          if (!row) return null;
-          return {
-            id: Number(row.id),
-            providerTicketId,
-            subject: row.subject_cache,
-            status: row.status_cache,
-          } satisfies RegisteredTicket;
-        },
-
-        async fetchProviderTicket(providerTicketId) {
-          const ticket = await getTicket(providerTicketId, ctx.organizationId);
-          if (!ticket) return null;
-          return { subject: ticket.subject ?? null, status: ticket.status ?? null };
-        },
-
-        async register({ providerTicketId, subject, status }) {
-          const row = await upsertSupportTicket({
-            orgId: ctx.organizationId,
-            provider: 'zendesk',
-            externalTicketId: String(providerTicketId),
-            subjectCache: subject,
-            statusCache: status,
-            staffId: ctx.staffId ?? null,
-          });
-          return {
-            id: row.id,
-            providerTicketId,
-            subject: row.subjectCache,
-            status: row.statusCache,
-          } satisfies RegisteredTicket;
-        },
-      };
-
-      const result = await resolveTicketTarget(parsed.data.ticket, deps);
+      const result = await resolveTicketTarget(
+        parsed.data.ticket,
+        ticketTargetDbDeps(ctx.organizationId, ctx.staffId ?? null),
+      );
       if (!result.ok) {
         return NextResponse.json(
           { error: result.reason },

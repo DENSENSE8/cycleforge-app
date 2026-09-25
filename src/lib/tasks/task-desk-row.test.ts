@@ -17,6 +17,7 @@ import { test } from 'node:test';
 import {
   taskDeskRecordHref,
   taskDeskRecordLabel,
+  taskDeskTitle,
   taskDeskTicketNumber,
   type TaskDeskRow,
 } from './task-desk-row';
@@ -26,17 +27,25 @@ function row(overrides: Partial<TaskDeskRow> = {}): TaskDeskRow {
     id: 41,
     entityType: 'receiving',
     entityId: 4412,
+    projectName: null,
     note: 'Re-test the battery',
     status: 'OPEN',
     priority: 100,
     urgency: 'normal',
     assignee: { id: 3, name: 'Dana' },
+    assignees: [{ id: 3, name: 'Dana' }],
     assignedBy: { id: 9, name: 'Lee' },
     assignedAtMs: Date.parse('2026-09-22T15:00:00.000Z'),
     startedAtMs: null,
     deadlineAtMs: null,
     completedAtMs: null,
+    remindAtMs: null,
     ticket: null,
+    links: [],
+    photoCount: 0,
+    videoCount: 0,
+    coverPhotoId: null,
+    docCount: 0,
     ...overrides,
   };
 }
@@ -109,4 +118,10 @@ test('a non-ticket row never reports a ticket number', () => {
     ),
     null,
   );
+});
+
+test('project label titles the shared work; instructions remain the fallback', () => {
+  assert.equal(taskDeskTitle(row({ projectName: '  Returns launch  ', note: '# Check packaging' })),
+    'Returns launch');
+  assert.equal(taskDeskTitle(row({ note: '# Check packaging' })), 'Check packaging');
 });

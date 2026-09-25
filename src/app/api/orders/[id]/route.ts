@@ -6,6 +6,7 @@ import {
   getOrderById,
   updateOrder,
   deleteOrder,
+  OrderDeleteBlockedError,
 } from '@/lib/neon/orders-queries';
 import { parseBody } from '@/lib/schemas/parse';
 import { OrderUpdateBody } from '@/lib/schemas/orders';
@@ -162,6 +163,12 @@ export async function DELETE(
     return NextResponse.json({ success: true, deleted: 1 });
   } catch (error: any) {
     console.error('[DELETE /api/orders/[id]] error:', error);
+    if (error instanceof OrderDeleteBlockedError) {
+      return NextResponse.json(
+        { error: error.message, code: error.code },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to delete order', details: error?.message },
       { status: 500 },

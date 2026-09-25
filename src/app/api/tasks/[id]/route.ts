@@ -1,10 +1,11 @@
 /**
  * PATCH /api/tasks/[id] — edit one thrown task from the desk.
  *
- * The desk's four verbs (mark done, re-prioritise, move the deadline, hand it
- * to someone else) are ONE route because they are one row and one audit story:
- * every successful call writes a `work_task.update` row naming exactly which
- * fields moved, so "who moved this deadline" stays answerable.
+ * The desk's verbs (mark done, re-prioritise, move the deadline, hand it to
+ * someone else, rewrite the description, set a reminder) are ONE route because
+ * they are one row and one audit story: every successful call writes a
+ * `work_task.update` row naming exactly which fields moved, so "who moved this
+ * deadline" stays answerable.
  *
  * ## The body is a strict allowlist, and an unknown key is a REFUSAL
  * `work_assignments` carries station columns (`assigned_tech_id`,
@@ -28,7 +29,10 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { type TaskDeskPatch } from '@/lib/tasks/list-tasks';
+import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX, TASK_STAFF_ID_MAX } from '@/lib/tasks/create-task-core';
+import { createTaskDeps } from '@/lib/tasks/create-task-deps';
 import { patchTaskDeskRow } from '@/lib/tasks/list-tasks-db';
+import { isInboxAnchorable, TASK_PRIORITY } from '@/lib/tasks/task-vocabulary';
 import { isTaskDeskStatus } from '@/lib/tasks/task-desk-row';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +49,17 @@ const PatchSchema = z.strictObject({
   priority: z.number().int().min(0).max(PRIORITY_MAX).optional(),
   deadlineAt: isoish.nullable().optional(),
   startedAt: isoish.nullable().optional(),
-  assigneeStaffId: z.number().int().positive().optional(),
+  assigneeStaffId: z.number().int().positive().max(TASK_STAFF_ID_MAX).optional(),
+  assigneeStaffIds: z.array(z.number().int().positive().max(TASK_STAFF_ID_MAX)).min(1).max(TASK_ASSIGNEES_MAX)
+    .refine((ids) => new Set(ids).size === ids.length, 'Duplicate assignee').optional(),
+  projectName: z.string().trim().max(TASK_PROJECT_NAME_MAX).nullable().optional(),
+  /** The task description (`notes`). Trimmed by the store; blank clears it. */
+  note: z.string().max(TASK_NOTE_MAX).nullable().optional(),
+  /** "Remind me" instant; null clears it. */
+  remindAt: isoish.nullable().optional(),
+}).refine((body) => body.assigneeStaffId === undefined || body.assigneeStaffIds === undefined ||
+  body.assigneeStaffId === body.assigneeStaffIds[0], {
+  message: 'Primary assignee must be first member',
 });
 
 /** Domain refusal → HTTP. Each one is something the operator can act on. */
@@ -96,7 +110,7 @@ export const PATCH = withAuth(
       }
 
       // Tenant from the auth context, never the body.
-      const result = await patchTaskDeskRow(ctx.organizationId, taskId, patch);
+      const result = await patchTaskDeskRow(ctx.organizationId, taskId, patch, ctx.staffId);
       if (!result.ok) {
         return NextResponse.json(
           { error: result.reason, detail: result.detail ?? null },
@@ -115,14 +129,22 @@ export const PATCH = withAuth(
         before: {
           status: result.before.status,
           assigneeStaffId: result.before.assigneeStaffId,
+          assigneeStaffIds: result.before.assigneeStaffIds,
+          projectName: result.before.projectName,
         },
         after: {
           status: result.task.status,
           assigneeStaffId: result.task.assignee?.id ?? null,
+          assigneeStaffIds: result.task.assignees.map(({ id }) => id),
+          projectName: result.task.projectName,
           priority: result.task.priority,
           deadlineAt: result.task.deadlineAt,
           startedAt: result.task.startedAt,
           completedAt: result.task.completedAt,
+          remindAt: result.task.remindAt,
+          // The text itself is not copied into the audit trail; that the
+          // description moved (and who moved it) is the fact worth keeping.
+          noteChanged: patch.note !== undefined,
         },
         extra: {
           // Which fields this call actually carried — distinguishes "moved the
@@ -132,6 +154,33 @@ export const PATCH = withAuth(
           targetEntityId: result.task.entityId,
         },
       });
+
+      // Handing the task to someone new must reach them the way a fresh throw
+      // does. Best-effort per member: the edit already landed.
+      const before = new Set(result.before.assigneeStaffIds);
+      const added = result.task.assignees
+        .map(({ id }) => id)
+        .filter((id) => !before.has(id) && id !== ctx.staffId);
+      if (added.length > 0 && isInboxAnchorable(result.task.entityType)) {
+        const deps = createTaskDeps(ctx.organizationId);
+        const ids = result.task.assignees.map(({ id }) => id);
+        const task = {
+          id: result.task.id,
+          entityType: result.task.entityType,
+          entityId: result.task.entityId,
+          assigneeStaffId: ids[0],
+          assigneeStaffIds: ids,
+          projectName: result.task.projectName,
+          priority: result.task.priority ?? TASK_PRIORITY.normal,
+          note: result.task.note,
+        };
+        const urgent = task.priority <= TASK_PRIORITY.urgent;
+        await Promise.allSettled(
+          added.map((recipientStaffId) =>
+            deps.notifyAssignee({ task, recipientStaffId, actorStaffId: ctx.staffId, urgent }),
+          ),
+        );
+      }
 
       return NextResponse.json({ ok: true, task: result.task });
     } catch (error) {

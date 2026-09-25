@@ -1,140 +1,122 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Loader2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { useAuth } from '@/contexts/AuthContext';
-import { safeRandomUUID } from '@/lib/safe-uuid';
+import { Suspense, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Camera, Printer } from '@/components/Icons';
+import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
+import { OrderInfoCard } from '@/components/mobile/orders/OrderInfoCard';
+import { orderDoors } from '@/components/mobile/orders/order-doors';
+import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
+import { DetailDock } from '@/design-system/components/DetailDock';
+import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
+import { withJobReturn } from '@/lib/mobile/nav-trail';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';
+import type { OrderHubData } from '@/lib/orders/order-hub';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { toast } from '@/lib/toast';
 
-type StartResponse = {
-  success: true;
-  packerLogId: number;
-  orderId: string;
-  trackingNumber: string;
-};
+type PackVerb = 'paperwork' | 'photos';
+
+type StartResponse = { success: true; packerLogId: number; orderId: string };
 
 function isStartResponse(value: unknown): value is StartResponse {
   if (!value || typeof value !== 'object') return false;
   const response = value as Partial<StartResponse>;
-  return response.success === true
-    && typeof response.packerLogId === 'number'
-    && typeof response.orderId === 'string'
-    && typeof response.trackingNumber === 'string';
+  return response.success === true && typeof response.packerLogId === 'number' && typeof response.orderId === 'string';
 }
 
 function startFailureMessage(value: unknown): string {
-  if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string') {
-    return value.error;
-  }
+  if (value && typeof value === 'object' && 'error' in value && typeof value.error === 'string') return value.error;
   return 'Could not start packing.';
 }
 
 /**
- * Mobile pack entry from a completed pick. It creates (or resumes) only the
- * CAPTURING evidence parent, then enters the existing guided photo studio.
- * The studio's Finish action owns the physical PACKED transition.
+ * `/m/pack/start/[orderId]` (`orders.id`) — the pack JOB for one order, on
+ * {@link DetailHubScreen}: a scanned tote (`/api/packing/resolve-tote`) or a
+ * Pack verb lands here. The order card opens its `/info`, the doors open the
+ * order's Units · Activity, and the X returns to `/m/pack`. Every order screen
+ * opened from here carries `?back=` so its X returns to this job.
+ *
+ * Dock: Paperwork (view, pair, print / reprint the bundle) · Take photos
+ * (primary). A CAPTURING draft is created only when the camera opens; nothing
+ * here marks the order packed — the guided camera finalizes after evidence.
  */
-export default function MobilePackStartPage() {
-  const params = useParams<{ orderId: string }>();
+function PackJobInner() {
   const router = useRouter();
-  const { user, isLoaded } = useAuth();
-  const orderRowId = Number(params?.orderId);
-  const startedFor = useRef<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const pathname = usePathname();
+  const hub = useOrderHub({ byId: true });
+  const [paperworkOpen, setPaperworkOpen] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const link = (href: string) => withJobReturn(hub.link(href), pathname);
 
-  const returnToPick = useCallback(() => {
-    if (Number.isSafeInteger(orderRowId) && orderRowId > 0) {
-      router.replace(`/m/pick/${orderRowId}`);
-      return;
-    }
-    router.replace('/m/pick');
-  }, [orderRowId, router]);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) {
-      router.replace(`/signin?next=/m/pack/start/${params?.orderId ?? ''}`);
-      return;
-    }
-    if (!Number.isSafeInteger(orderRowId) || orderRowId <= 0) {
-      setError('This pick does not have a valid order. Return to the queue and try again.');
-      return;
-    }
-    if (startedFor.current === orderRowId && attempt === 0) return;
-    startedFor.current = orderRowId;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        setError(null);
-        // A held order (buyer note) opens the note first; acknowledging it
-        // retries under a fresh key — see sendWithBuyerNoteAck.
-        const response = await sendWithBuyerNoteAck(() => {
-          const idempotencyKey = safeRandomUUID();
-          return fetch('/api/packing-logs/draft', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Idempotency-Key': idempotencyKey,
-            },
-            body: JSON.stringify({ orderId: orderRowId, clientEventId: idempotencyKey }),
-          });
+  const startCapture = async (order: OrderHubData['order']) => {
+    if (starting) return;
+    setStarting(true);
+    try {
+      const response = await sendWithBuyerNoteAck(() => {
+        const idempotencyKey = safeRandomUUID();
+        return fetch('/api/packing-logs/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+          body: JSON.stringify({ orderId: order.id, clientEventId: idempotencyKey }),
         });
-        const body: unknown = await response.json().catch(() => null);
-        if (!response.ok || !isStartResponse(body)) {
-          throw new Error(startFailureMessage(body));
-        }
-        if (cancelled) return;
-        const query = new URLSearchParams({
-          orderId: body.orderId,
-          complete: '1',
-        });
-        router.replace(`/m/p/${body.packerLogId}/photos?${query.toString()}`);
-      } catch (cause) {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : 'Could not start packing.');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [attempt, isLoaded, orderRowId, params?.orderId, router, user]);
+      });
+      const body: unknown = await response.json().catch(() => null);
+      if (!response.ok || !isStartResponse(body)) throw new Error(startFailureMessage(body));
+      const query = new URLSearchParams({ orderId: body.orderId, orderRowId: String(order.id), complete: '1' });
+      router.push(`/m/p/${body.packerLogId}/photos?${query}`);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not start packing.');
+    } finally {
+      setStarting(false);
+    }
+  };
 
   return (
-    <div className="grid min-h-[100dvh] place-items-center bg-surface-card px-6 py-10 text-center">
-      <div className="max-w-sm border border-border-hairline bg-surface-card px-5 py-6">
-        {error ? (
-          <>
-            <p className="text-role-eyebrow font-semibold uppercase tracking-wide text-text-danger">Packing not started</p>
-            <p className="mt-2 text-sm text-text-soft">{error}</p>
-            <div className="mt-5 grid gap-2">
-              <Button
-                type="button"
-                variant="brand"
-                radius="flush"
-                onClick={() => {
-                  startedFor.current = null;
-                  setAttempt((value) => value + 1);
-                }}
-              >
-                Retry starting pack
-              </Button>
-              <Button type="button" variant="secondary" radius="flush" onClick={returnToPick}>
-                Back to pick
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <Loader2 className="mx-auto h-7 w-7 animate-spin text-text-muted" aria-hidden />
-            <p className="mt-3 text-role-eyebrow font-semibold uppercase tracking-wide text-text-muted">Preparing pack evidence</p>
-            <p className="mt-2 text-sm text-text-soft">Opening guided slip and box capture…</p>
-          </>
-        )}
-      </div>
-    </div>
+    <DetailHubScreen<OrderHubData>
+      record={hub.data}
+      state={{ loading: hub.loading, error: hub.error, onRetry: hub.reload }}
+      bar={{
+        title: hub.data?.order.order_id ?? hub.param,
+        mono: true,
+        subtitle: 'Pack',
+        backHref: '/m/pack',
+        close: true,
+      }}
+      card={(d) => <OrderInfoCard data={d} href={link(`${hub.base}/info`)} stagePending={hub.workPending} />}
+      rowsLabel="Order screens"
+      rows={(d) => orderDoors(d, hub.base, link)}
+      dock={(d) => (
+        <DetailDock<PackVerb>
+          label="Pack actions"
+          verbs={[
+            { id: 'paperwork', label: 'Paperwork', icon: <Printer /> },
+            { id: 'photos', label: starting ? 'Starting…' : 'Take photos', icon: <Camera />, primary: true, disabled: starting },
+          ]}
+          onVerb={(verb) => {
+            if (verb === 'paperwork') setPaperworkOpen(true);
+            else void startCapture(d.order);
+          }}
+        />
+      )}
+    >
+      {(d) => (
+        <MobileOrderPaperworkSheet
+          open={paperworkOpen}
+          onClose={() => setPaperworkOpen(false)}
+          orderId={d.order.id}
+          orderRef={d.order.order_id}
+          pack={{ packerLogId: null }}
+        />
+      )}
+    </DetailHubScreen>
+  );
+}
+
+export default function PackJobPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface-card" />}>
+      <PackJobInner />
+    </Suspense>
   );
 }

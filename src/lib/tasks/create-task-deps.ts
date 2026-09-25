@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { promoteUrgency } from '@/lib/urgency/promote-urgency';
 import { publishInboxItem } from '@/lib/realtime/publish';
@@ -38,48 +38,63 @@ import type {
  */
 export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
   return {
-    async insertTask(args: InsertTaskArgs): Promise<TaskRow> {
-      const result = await tenantQuery<{
-        id: number;
-        entity_id: string | number;
-        priority: number;
-        notes: string | null;
-      }>(
-        organizationId,
-        `INSERT INTO work_assignments
-           (organization_id, entity_type, entity_id, work_type,
-            assignee_staff_id, assigned_by_staff_id, status, priority, notes,
-            deadline_at)
-         VALUES ($1, $2::work_entity_type_enum, $3, $4::work_type_enum,
-                 $5, $6, $7::assignment_status_enum, $8, $9,
-                 $10::timestamptz)
-         RETURNING id, entity_id, priority, notes`,
-        [
-          organizationId,
-          taskEntityEnum(args.entityType),
-          args.entityId,
-          TASK_WORK_TYPE,
-          args.assigneeStaffId,
-          args.assignedByStaffId,
-          args.status,
-          args.priority,
-          args.note,
-          args.deadlineAt,
-        ],
-      );
+    async insertTask(args: InsertTaskArgs): Promise<TaskRow | null> {
+      return withTenantTransaction(organizationId, async (client) => {
+        const staff = await client.query(
+          `SELECT id FROM staff WHERE organization_id = $1::uuid AND id = ANY($2::int[])`,
+          [organizationId, args.assigneeStaffIds],
+        );
+        if (staff.rowCount !== args.assigneeStaffIds.length) return null;
+        const result = await client.query<{
+          id: number;
+          entity_id: string | number;
+          priority: number;
+          notes: string | null;
+        }>(
+          `INSERT INTO work_assignments
+             (organization_id, entity_type, entity_id, work_type,
+              assignee_staff_id, assigned_by_staff_id, status, priority, notes,
+              deadline_at, remind_at, project_name)
+           VALUES ($1, $2::work_entity_type_enum, $3, $4::work_type_enum,
+                   $5, $6, $7::assignment_status_enum, $8, $9,
+                   $10::timestamptz, $11::timestamptz, $12)
+           RETURNING id, entity_id, priority, notes`,
+          [
+            organizationId,
+            taskEntityEnum(args.entityType),
+            args.entityId,
+            TASK_WORK_TYPE,
+            args.assigneeStaffId,
+            args.assignedByStaffId,
+            args.status,
+            args.priority,
+            args.note,
+            args.deadlineAt,
+            args.remindAt,
+            args.projectName,
+          ],
+        );
 
-      const row = result.rows[0];
-      return {
-        id: Number(row.id),
-        entityType: args.entityType,
-        // entity_id is BIGINT since 2026-08-08b, and node-postgres returns
-        // bigint as a STRING to avoid silent precision loss. Number() here is
-        // safe for real ids and keeps the DTO numeric for every caller.
-        entityId: Number(row.entity_id),
-        assigneeStaffId: args.assigneeStaffId,
-        priority: row.priority,
-        note: row.notes,
-      };
+        const row = result.rows[0];
+        await client.query(
+          `INSERT INTO work_assignment_assignees (organization_id, assignment_id, staff_id)
+           SELECT $1::uuid, $2, unnest($3::int[])`,
+          [organizationId, row.id, args.assigneeStaffIds],
+        );
+        return {
+          id: Number(row.id),
+          entityType: args.entityType,
+          // entity_id is BIGINT since 2026-08-08b, and node-postgres returns
+          // bigint as a STRING to avoid silent precision loss. Number() here is
+          // safe for real ids and keeps the DTO numeric for every caller.
+          entityId: Number(row.entity_id),
+          assigneeStaffId: args.assigneeStaffId,
+          assigneeStaffIds: args.assigneeStaffIds,
+          projectName: args.projectName,
+          priority: row.priority,
+          note: row.notes,
+        };
+      });
     },
 
     /**
@@ -94,7 +109,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
      * task was already delivered to this staffer, so there is nothing new to
      * announce and the push is skipped rather than re-fired.
      */
-    async notifyAssignee({ task, actorStaffId, urgent }: NotifyAssigneeArgs): Promise<void> {
+    async notifyAssignee({ task, recipientStaffId, actorStaffId, urgent }: NotifyAssigneeArgs): Promise<void> {
       /**
        * One extra read, on the ticket arm only, so the inbox row can print the
        * number the operator quotes. `entity_id` stays the LOCAL registry id —
@@ -124,7 +139,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
         organizationId,
         ASSIGN_INBOX_ITEM_SQL,
         assignInboxItemParams(organizationId, {
-          staffId: task.assigneeStaffId,
+          staffId: recipientStaffId,
           entityType: task.entityType,
           entityId: task.entityId,
           workAssignmentId: task.id,
@@ -140,7 +155,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
 
       await publishInboxItem({
         organizationId,
-        recipientId: task.assigneeStaffId,
+        recipientId: recipientStaffId,
         itemId: Number(itemId),
         entityType: task.entityType,
         entityId: task.entityId,

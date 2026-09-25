@@ -1026,4 +1026,3 @@ export const fbaSidebarThemeChrome: Record<StationTheme, FbaSidebarThemeChrome> 
     lineItemLabel: 'text-role-micro uppercase tracking-widest text-pink-700',
   },
 };
-

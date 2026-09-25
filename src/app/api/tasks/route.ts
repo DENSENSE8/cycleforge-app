@@ -7,7 +7,7 @@ import { errorResponse } from '@/lib/api';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
 import { createTask } from '@/lib/tasks/create-task';
-import { TASK_NOTE_MAX } from '@/lib/tasks/create-task-core';
+import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX, TASK_STAFF_ID_MAX } from '@/lib/tasks/create-task-core';
 import { listTaskDeskRows } from '@/lib/tasks/list-tasks';
 import { taskDeskDbDeps } from '@/lib/tasks/list-tasks-db';
 import { parseTaskDeskLane, type TaskDeskListPayload } from '@/lib/tasks/task-desk-row';
@@ -39,7 +39,10 @@ export const dynamic = 'force-dynamic';
 const BodySchema = z.object({
   entityType: z.enum(urgencyEntityTypes() as unknown as [string, ...string[]]),
   entityId: z.number().int().positive(),
-  assigneeStaffId: z.number().int().positive(),
+  assigneeStaffId: z.number().int().positive().max(TASK_STAFF_ID_MAX).optional(),
+  assigneeStaffIds: z.array(z.number().int().positive().max(TASK_STAFF_ID_MAX)).min(1).max(TASK_ASSIGNEES_MAX)
+    .refine((ids) => new Set(ids).size === ids.length, 'Duplicate assignee').optional(),
+  projectName: z.string().trim().max(TASK_PROJECT_NAME_MAX).optional(),
   note: z.string().max(TASK_NOTE_MAX).optional(),
   urgency: z.enum(['urgent', 'normal']).optional(),
   /**
@@ -47,8 +50,15 @@ const BodySchema = z.object({
    * priority · deadline in ONE audited create instead of POST-then-PATCH.
    */
   deadlineAt: z.string().datetime().nullish(),
+  /** Optional reminder instant (`remind_at`), read by `GET /api/v1/reminders`. */
+  remindAt: z.string().datetime({ offset: true }).nullish(),
   /** Accepted in-body as well as via the Idempotency-Key header. */
   idempotencyKey: z.string().min(1).max(255).optional(),
+}).refine((body) => body.assigneeStaffIds !== undefined || body.assigneeStaffId !== undefined, {
+  message: 'At least one assignee is required',
+}).refine((body) => body.assigneeStaffIds === undefined || body.assigneeStaffId === undefined ||
+  body.assigneeStaffIds[0] === body.assigneeStaffId, {
+  message: 'Primary assignee must be first member',
 });
 
 /** Domain refusal → HTTP. Each one is something the operator can act on. */
@@ -57,8 +67,11 @@ const REFUSAL_STATUS: Record<string, number> = {
   invalid_entity_id: 400,
   invalid_assignee: 400,
   note_too_long: 400,
+  project_name_too_long: 400,
+  invalid_project_name: 400,
   self_throw: 409,
   invalid_deadline: 400,
+  invalid_reminder: 400,
 };
 
 export const POST = withAuth(
@@ -93,9 +106,12 @@ export const POST = withAuth(
             entityType: body.entityType,
             entityId: body.entityId,
             assigneeStaffId: body.assigneeStaffId,
+            assigneeStaffIds: body.assigneeStaffIds,
+            projectName: body.projectName,
             note: body.note,
             urgency: body.urgency,
             deadlineAt: body.deadlineAt ?? null,
+            remindAt: body.remindAt ?? null,
             actorStaffId: ctx.staffId,
           });
 
@@ -115,6 +131,8 @@ export const POST = withAuth(
               targetEntityType: result.task.entityType,
               targetEntityId: result.task.entityId,
               assigneeStaffId: result.task.assigneeStaffId,
+              assigneeStaffIds: result.task.assigneeStaffIds,
+              projectName: result.task.projectName,
               // What happened to the RECORD, not the task row — 'failed' here
               // means the throw landed but the promotion did not.
               urgency: result.urgency,
@@ -122,6 +140,7 @@ export const POST = withAuth(
               // "thrown but nobody notified" is the failure an operator would
               // otherwise only discover by asking.
               notified: result.notified,
+              notifications: result.notifications,
             },
           });
 
@@ -132,6 +151,7 @@ export const POST = withAuth(
               task: result.task,
               urgency: result.urgency,
               notified: result.notified,
+              notifications: result.notifications,
             },
           };
         },
@@ -159,12 +179,17 @@ export const POST = withAuth(
  * it can only ever find tasks that already arrived, and it re-narrows the
  * answer to the facts the mounted columns happen to paint.
  *
+ * `?assignedBy=me` narrows to tasks the caller THREW (`assigned_by_staff_id`);
+ * combined with `assignee=all` it is "what I handed off". Only `me` is
+ * accepted — the thrower filter reads the caller's own ledger, not a colleague's.
+ *
  * No `recordAudit`: reads are covered by the route-level access log, and an
  * audit row per desk refresh would bury the writes it exists to surface.
  */
 const QuerySchema = z.object({
   lane: z.enum(['open', 'done', 'all']).optional(),
   assignee: z.union([z.literal('me'), z.literal('all'), z.string().regex(/^\d+$/)]).optional(),
+  assignedBy: z.literal('me').optional(),
   priority: z.enum(['urgent', 'normal']).optional(),
   limit: z.string().regex(/^\d+$/).optional(),
   q: z.string().max(200).optional(),
@@ -193,6 +218,7 @@ export const GET = withAuth(
         {
           lane: parseTaskDeskLane(query.lane),
           assigneeStaffId,
+          assignedByStaffId: query.assignedBy === 'me' ? ctx.staffId : null,
           urgency: query.priority ?? null,
           limit: query.limit ? Number(query.limit) : undefined,
           q: query.q ?? null,

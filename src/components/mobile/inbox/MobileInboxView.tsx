@@ -32,12 +32,14 @@
  */
 
 import { useCallback, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Inbox, Loader2, Plus, X } from '@/components/Icons';
 import { EmptyState, IconButton, Inset, TextField } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { TAP_MIN_H_CLASS, TAPPABLE_ROW_CLASS } from '@/design-system/tokens/interaction';
+import { TAP_MIN_H_CLASS } from '@/design-system/tokens/interaction';
+import { IntakeStateCode } from '@/components/mobile/triage/StateCode';
+import { TriageRow } from '@/components/mobile/triage/TriageRow';
 import {
   listTrackingWatches,
   startTrackingWatch,
@@ -80,11 +82,6 @@ async function fetchTrackingWatches(): Promise<TrackingWatchRow[] | null> {
 }
 
 const FACT_CLASS = 'text-role-micro text-text-muted';
-const ROW_CLASS = cn(
-  'flex w-full items-center gap-3 border-b border-border-hairline px-3 py-2 text-left',
-  TAP_MIN_H_CLASS,
-  TAPPABLE_ROW_CLASS,
-);
 
 /** Section label over a list — the phone's own eyebrow, same as `/m/pick`. */
 function SectionLabel({ children }: { children: string }) {
@@ -244,38 +241,58 @@ function WatchRow({
 }
 
 /**
- * One inbox row. The whole row is the link, and tapping it marks it read — a
- * separate "mark read" control would be a second tap for something the operator
- * has, by opening it, already done.
+ * What the row is about, in words: the provider ticket number an operator
+ * quotes (`ticketNumber`, never the local registry id), a carton by its `R-`
+ * id, or the kind in plain words.
  */
-function InboxRow({ item, onRead }: { item: InboxItemDto; onRead: (id: number) => void }) {
+function inboxSubject(item: InboxItemDto): string {
+  if (item.trackingNumber) return item.trackingNumber;
+  if (item.entityType === 'support_ticket') return item.ticketNumber != null ? `Ticket #${item.ticketNumber}` : 'Ticket';
+  if (item.entityType === 'receiving') return `Carton R-${item.entityId}`;
+  if (item.entityType === 'receiving_line') return `Receiving line ${item.entityId}`;
+  return item.entityType.replace(/_/g, ' ');
+}
+
+/**
+ * One inbox row on the triage grammar ({@link TriageRow}). Inspect opens the
+ * thing and marks it read — a separate "mark read" control would be a second
+ * tap for something the operator has, by opening it, already done. The ink
+ * decision is Done: clear it without opening. A ticket leads with `TKT`
+ * (`INTAKE`); other kinds have no registry code, so none is invented.
+ */
+function InboxRow({
+  item,
+  onOpen,
+  onDone,
+}: {
+  item: InboxItemDto;
+  onOpen: (item: InboxItemDto) => void;
+  onDone: (id: number) => void;
+}) {
+  const subject = inboxSubject(item);
+  const title = `${item.eventLabel}${item.collapseCount > 1 ? ` · ${item.collapseCount}×` : ''}`;
   return (
-    <Link
-      href={item.href}
-      onClick={() => onRead(item.id)}
-      data-testid="m-inbox-item"
-      className={ROW_CLASS}
-    >
-      <div className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-role-caption text-text-default">
-          {item.eventLabel}
-          {item.collapseCount > 1 ? ` · ${item.collapseCount}×` : ''}
-        </span>
-        <span className={cn(FACT_CLASS, 'truncate')}>
-          {item.trackingNumber ? (
-            <span className="font-mono">{item.trackingNumber}</span>
-          ) : (
-            `${item.entityType} #${item.entityId}`
-          )}
+    <TriageRow
+      code={item.entityType === 'support_ticket' ? <IntakeStateCode intake="ticket" /> : undefined}
+      title={title}
+      meta={
+        <span className="min-w-0 truncate text-role-caption text-text-soft" data-testid="m-inbox-item">
+          <span className={item.trackingNumber ? 'font-mono' : undefined}>{subject}</span>
           {` · ${formatOpsStageTime(item.lastEventAt)}`}
         </span>
-      </div>
-    </Link>
+      }
+      actionLabel="Done"
+      actionName={`Done: ${subject} — ${item.eventLabel}`}
+      inspectName={`Open ${subject} — ${item.eventLabel}`}
+      onInspect={() => onOpen(item)}
+      onAction={() => onDone(item.id)}
+    />
   );
 }
 
 export function MobileInboxView() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -343,20 +360,20 @@ export function MobileInboxView() {
     },
   });
 
-  const markRead = useMutation({
-    mutationFn: async (itemId: number) => {
-      const res = await fetch(`/api/inbox/${itemId}`, {
+  const triage = useMutation({
+    mutationFn: async ({ id, action }: { id: number; action: 'read' | 'done' }) => {
+      const res = await fetch(`/api/inbox/${id}`, {
         ...FRESH,
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'read' }),
+        body: JSON.stringify({ action }),
       });
-      if (!res.ok) throw new Error(`Could not mark that read (${res.status})`);
+      if (!res.ok) throw new Error(`Could not mark that ${action} (${res.status})`);
     },
-    onMutate: (itemId: number) => {
-      // The feed is `filter=unread`, so a read row leaves it. Done before the
-      // navigation the tap also starts — the operator must not come back to a
-      // row they already opened.
+    onMutate: ({ id: itemId }: { id: number; action: 'read' | 'done' }) => {
+      // The feed is `filter=unread`, so a read or done row leaves it. Done
+      // before the navigation an open also starts — the operator must not come
+      // back to a row they already handled.
       const previous = queryClient.getQueryData<InboxFeedDto | null>(INBOX_QUERY_KEY);
       if (previous) {
         queryClient.setQueryData<InboxFeedDto>(INBOX_QUERY_KEY, {
@@ -366,7 +383,7 @@ export function MobileInboxView() {
       }
       return { previous };
     },
-    onError: (_err, _itemId, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(INBOX_QUERY_KEY, context.previous);
     },
     onSettled: () => {
@@ -433,11 +450,17 @@ export function MobileInboxView() {
                     description="Arrivals you watch land here."
                   />
                 ) : (
-                  <ul className="flex flex-col">
+                  <ul className="flex flex-col divide-y divide-border-hairline border-y border-border-hairline">
                     {items.map((item) => (
-                      <li key={item.id}>
-                        <InboxRow item={item} onRead={markRead.mutate} />
-                      </li>
+                      <InboxRow
+                        key={item.id}
+                        item={item}
+                        onOpen={(row) => {
+                          triage.mutate({ id: row.id, action: 'read' });
+                          router.push(row.href);
+                        }}
+                        onDone={(id) => triage.mutate({ id, action: 'done' })}
+                      />
                     ))}
                   </ul>
                 )}

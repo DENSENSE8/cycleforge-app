@@ -48,8 +48,8 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
     entity: 'receiving carton',
     route: '/m/r/[id]',
     hub: 'src/app/m/(shell)/r/[id]/page.tsx',
-    info: null,
-    status: 'unported',
+    info: 'src/app/m/(shell)/r/[id]/info/page.tsx',
+    status: 'ported',
   },
   {
     entity: 'bin / barcode',
@@ -62,6 +62,15 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
     entity: 'order',
     route: '/m/orders/[orderId]',
     hub: 'src/app/m/(shell)/orders/[orderId]/page.tsx',
+    info: 'src/app/m/(shell)/orders/[orderId]/info/page.tsx',
+    status: 'ported',
+  },
+  {
+    // The pack job wears the order's exoskeleton: its card, doors and /info
+    // are the order hub's; the dock is Paperwork · Take photos.
+    entity: 'order (pack job)',
+    route: '/m/pack/start/[orderId]',
+    hub: 'src/app/m/(shell)/pack/start/[orderId]/page.tsx',
     info: 'src/app/m/(shell)/orders/[orderId]/info/page.tsx',
     status: 'ported',
   },
@@ -79,4 +88,4 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
  * it is the one edit this module exists to stop. At 0 every scanned thing on a
  * phone wears the exoskeleton by machine.
  */
-export const DETAIL_HUB_UNPORTED_BASELINE = 5;
+export const DETAIL_HUB_UNPORTED_BASELINE = 4;

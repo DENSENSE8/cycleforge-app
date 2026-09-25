@@ -8,6 +8,7 @@ import { SkuExceptionScreen } from '@/components/mobile/onhold/SkuExceptionScree
 import {
   SkuExceptionEditSheet,
   type SkuExceptionDraft,
+  type SkuExceptionEditError,
 } from '@/components/mobile/onhold/SkuExceptionEditSheet';
 import { IconButton, Panel } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
@@ -17,7 +18,8 @@ import { formatMonthDayTimePST } from '@/utils/date';
 
 /**
  * `/m/on-hold/[sku]/info` — every fact of the SKU exception in full, and its
- * one edit (title + description), opened from the pencil in the bar.
+ * one edit (title + description, plus the barcode while it has none), opened
+ * from the pencil in the bar or the Barcode row's "Add barcode".
  */
 function SkuExceptionInfoInner() {
   const params = useParams<{ sku: string }>();
@@ -25,8 +27,13 @@ function SkuExceptionInfoInner() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editError, setEditError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<SkuExceptionEditError | null>(null);
   const [ack, setAck] = useState<string | null>(null);
+
+  const openEdit = useCallback(() => {
+    setEditError(null);
+    setEditOpen(true);
+  }, []);
 
   const save = useCallback(
     async (draft: SkuExceptionDraft, changed: string[]) => {
@@ -40,16 +47,24 @@ function SkuExceptionInfoInner() {
           body: JSON.stringify({
             productTitle: draft.productTitle.trim(),
             description: draft.description.trim() || null,
+            ...(changed.includes('barcode') ? { barcode: draft.barcode.trim() } : {}),
           }),
         });
-        const body = (await res.json().catch(() => null)) as { error?: string; item?: { updatedAt?: string } } | null;
-        if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
+        const body = (await res.json().catch(() => null)) as {
+          error?: string;
+          conflictSku?: string | null;
+          item?: { updatedAt?: string };
+        } | null;
+        if (!res.ok) {
+          setEditError({ message: body?.error || `HTTP ${res.status}`, conflictSku: body?.conflictSku ?? null });
+          return;
+        }
         await invalidateSkuExceptions(queryClient);
         const stamp = body?.item?.updatedAt;
         setAck(`Saved — ${changed.join(', ')}${stamp ? ` · ${formatMonthDayTimePST(stamp)}` : ''}`);
         setEditOpen(false);
       } catch (err) {
-        setEditError(err instanceof Error ? err.message : 'Save failed');
+        setEditError({ message: err instanceof Error ? err.message : 'Save failed' });
       } finally {
         setSaving(false);
       }
@@ -65,10 +80,7 @@ function SkuExceptionInfoInner() {
       right={() => (
         <IconButton
           ariaLabel="Edit details"
-          onClick={() => {
-            setEditError(null);
-            setEditOpen(true);
-          }}
+          onClick={openEdit}
           icon={<Pencil className="h-5 w-5" />}
           className="flex h-11 w-11 items-center justify-center text-mode-ink"
         />
@@ -83,7 +95,14 @@ function SkuExceptionInfoInner() {
             <DetailFactRow label="SKU" value={<span className="font-mono">{item.sku}</span>} />
             <DetailFactRow
               label="Barcode"
-              value={item.barcode ? <span className="font-mono">{item.barcode}</span> : '—'}
+              value={
+                item.barcode ? (
+                  <span className="font-mono">{item.barcode}</span>
+                ) : (
+                  <span className="text-mode-muted">No barcode</span>
+                )
+              }
+              hint={item.barcode ? undefined : 'Add one with the pencil'}
             />
             <DetailFactRow label="On hand" value={String(item.stock)} />
             <DetailFactRow

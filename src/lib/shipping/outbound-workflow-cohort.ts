@@ -30,7 +30,6 @@ export const OUTBOUND_WORKFLOW_COHORT_FILES = {
   row: 'src/components/mobile/redesign/MobileToShipRow.tsx',
   pickerSheet: 'src/components/mobile/redesign/MobileToShipPickerSheet.tsx',
   itemCard: 'src/components/mobile/redesign/ItemCardRow.tsx',
-  pickQueueRow: 'src/components/mobile/redesign/PickQueueRow.tsx',
   microListingTrigger: 'src/components/mobile/redesign/MicroListingTrigger.tsx',
   sheet: 'src/components/mobile/redesign/MobileToShipSheet.tsx',
   facts: 'src/lib/shipping/outbound-workflow-facts.ts',
@@ -319,7 +318,6 @@ export function evaluateOutboundWorkflowCohort(
   requireText(sources, 'queue', 'to-ship-platform-filter', 'missing-connected-platform-control', 'Orders must expose the connected-platform filter control.', violations);
   requireText(sources, 'row', 'min-h-11 flex-1', 'missing-selected-row-touch-target', 'Selected Orders row controls must retain 44px minimum targets.', violations);
   requireText(sources, 'row', 'price={toShipPriceText(row)}', 'missing-governed-orders-price', 'Orders must project the canonical sale amount through the shared price formatter.', violations);
-  requireText(sources, 'pickQueueRow', 'price={formatSalePrice(row.saleAmount, row.currency) || null}', 'missing-governed-pick-price', 'Pick rows must project the canonical sale amount through the shared price formatter.', violations);
   requireText(sources, 'itemCard', 'item-card-price', 'missing-governed-tactical-price', 'Tactical rows must render the governed Row 3 price fact when the canonical amount exists.', violations);
   requireText(sources, 'mobilePackingRow', 'mobile-packing-row-price', 'missing-governed-packing-price', 'Packing rows must render the canonical sale amount when the packing feed provides it.', violations);
   requireText(sources, 'actions', "persistedAs: 'discrepancy'", 'missing-discrepancy-persistence', 'Flag discrepancy must persist as a named order fact.', violations);

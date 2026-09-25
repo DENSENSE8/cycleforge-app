@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from '@/components/Icons';
 import AiAnswerCard from '@/components/ai/AiAnswerCard';
 import AgentStepTimeline from '@/components/ai/AgentStepTimeline';
-import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useAiChat, type ChatMessage } from '@/components/ai/useAiChat';
 import AiOrderList from '@/components/ai/AiOrderList';

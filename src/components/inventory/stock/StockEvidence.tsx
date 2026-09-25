@@ -29,6 +29,7 @@ import {
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
 import { skuExceptionHref } from '@/lib/inventory/sku-exception-links';
@@ -124,7 +125,7 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
   return (
     <div className="flex min-h-full flex-1 flex-col" data-testid="stock-evidence">
       <EvidenceTitle sub={title}>{face ?? 'No location'}</EvidenceTitle>
-      <EvidenceStateStrip state={state} next={countable ? 'Count' : placeholder ? 'Pair' : null} />
+      <EvidenceStateStrip state={lifecycleRecordState(state)} next={countable ? 'Count' : placeholder ? 'Pair' : null} />
       <div className="relative aspect-[4/3] w-full border-b border-mode-rule bg-mode-well">
         {record.image_url ? (
           <Image src={record.image_url} alt="" fill unoptimized sizes="24vw" className="object-contain" />

@@ -146,13 +146,10 @@ export function MobileOrderEvidenceSheet({
       {/* BottomSheet portals out of the page's region; re-declare industrial. */}
       <ModeRegion mode="industrial" className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-mode-bar text-mode-ink" data-testid="mobile-order-evidence">
         <div
-          className={cn(
-            'flex min-h-12 items-center gap-2 border-y border-mode-ink px-4',
-            facts.state === 'outOfStock' && LIFECYCLE_CLASSES.outOfStock.tint,
-          )}
+          className="flex min-h-12 items-center gap-2 border-y border-mode-ink px-4"
         >
           <span aria-hidden className={cn('h-2 w-2 shrink-0', LIFECYCLE_CLASSES[facts.state].dot)} />
-          <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(facts.state))}>
+          <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(spec))}>
             {spec.code} · {spec.label}
           </span>
           <span

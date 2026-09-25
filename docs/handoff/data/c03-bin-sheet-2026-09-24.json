@@ -1,0 +1,46 @@
+{
+  "source": "Owner paste 2026-09-24 — bay C-03 bin sheet. Original ITEM / SKU / QTY text is retained verbatim in every temp-SKU description; uncertain identities, conditions, and counts deliberately remain on hold for staff review.",
+  "rows": [
+    { "location": "C-03-18-1", "item": "Bose Wave Music System III - Backlit Remote Control (BAD) Parts", "sku_raw": "00066-P-2", "sku_kind": "zoho", "raw_qty": "", "units": null, "flags": ["BAD / Parts; count missing"] },
+    { "location": "C-03-18-2", "item": "NA", "sku_kind": "empty" },
+    { "location": "C-03-18-3", "item": "Bose WMS RC (BAD)", "sku_raw": "00279-P-1", "sku_kind": "zoho", "raw_qty": "", "units": null, "flags": ["BAD; count missing"] },
+    { "location": "C-03-18-4", "item": "M1 Interface (BAD)", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "", "units": null },
+    { "location": "C-03-18-5", "item": "Optical AV Converter", "sku_raw": "00235-P-1", "sku_kind": "zoho", "raw_qty": "???", "units": null },
+    { "location": "C-03-18-6", "item": "Rubber Legs for Subwoofer", "sku_raw": "00306-P-5", "sku_kind": "zoho", "raw_qty": "???", "units": null },
+
+    { "location": "C-03-16-1", "item": "Sounddock controler", "sku_raw": "00269-P-1", "sku_kind": "zoho", "raw_qty": "1 New 13 Used", "units": 14 },
+    { "location": "C-03-16-2", "item": "OEM Bose Solo TV RC black", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "", "units": null },
+    { "location": "C-03-16-3", "item": "WMS III backlit", "sku_raw": "00066-P-2", "sku_kind": "zoho", "raw_qty": "1", "units": 1, "note": "In box" },
+    { "location": "C-03-16-4", "item": "WMS RC (OEM)", "sku_raw": "", "sku_kind": "none", "raw_qty": "OOS", "units": 0 },
+    { "location": "C-03-16-5", "item": "Wave Soundtouch RC", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "Black: 4 . Gray: 1", "units": 5, "variants": { "Black": 4, "Gray": 1 } },
+    { "location": "C-03-16-6", "item": "plastic dust cover Dock for iPad", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "Black : 9 . White : 6", "units": 15, "variants": { "Black": 9, "White": 6 } },
+
+    { "location": "C-03-14-1", "item": "SoundDock OEM RC", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "67", "units": 67 },
+    { "location": "C-03-14-2", "item": "OEM Solo TV II 5, 10 RC", "sku_raw": "00326-P-1", "sku_kind": "zoho", "raw_qty": "2", "units": 2 },
+    { "location": "C-03-14-3", "item": "CInemate RC 4 buttons small BOSE", "sku_raw": "00044-P-2", "sku_kind": "zoho", "raw_qty": "6", "units": 6 },
+    { "location": "C-03-14-4", "item": "OEM Bose RC III Black", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "10 in box + 4", "units": 14 },
+    { "location": "C-03-14-5", "item": "WAVE OEM REMOTES", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "9 + 1", "units": 10 },
+    { "location": "C-03-14-6", "item": "Wave radio I/ II/ III/ IV RC", "sku_raw": "NO SKU / NO SKU / NO SKU / 00366-P-1 - WRONG IMAGE", "sku_kind": "none", "raw_qty": "I = 2W/ II= 0B/ III= 4W/ IV= 10B + 1 new", "units": 17, "variants": { "I white": 2, "II black": 0, "III white": 4, "IV black": 10, "new (model unknown)": 1 } },
+
+    { "location": "C-03-12-1", "item": "Backlit Cradle", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "33", "units": 33 },
+    { "location": "C-03-12-2", "item": "Backlit CD Changer II", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "1", "units": 1 },
+    { "location": "C-03-12-3", "item": "Backlit RC II Good A", "sku_raw": "00066-P-2", "sku_kind": "zoho", "raw_qty": "41", "units": 41 },
+    { "location": "C-03-12-4", "item": "", "sku_kind": "empty" },
+    { "location": "C-03-12-5", "item": "", "sku_kind": "empty" },
+    { "location": "C-03-12-6", "item": "", "sku_kind": "empty" },
+
+    { "location": "C-03-10-1", "item": "WMS RC black BIG", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "36", "units": 36 },
+    { "location": "C-03-10-2", "item": "WMS RC White BIG", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "12", "units": 12 },
+    { "location": "C-03-10-3", "item": "Soundtouch RC III / IV", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "III WH 1 / BLK 4 / IV BLK 9 / NEW 1 III, 2 NEW IV", "units": 17, "variants": { "III white": 1, "III black": 4, "IV black": 9, "III new": 1, "IV new": 2 } },
+    { "location": "C-03-10-4", "item": "Wave MS II/ III RC", "sku_raw": "00279-P-1 / 00066-P-1", "sku_kind": "none", "raw_qty": "II = 77/ III= 1 WHITE 7 BLK", "units": 85, "variants": { "II": 77, "III white": 1, "III black": 7 } },
+    { "location": "C-03-10-5", "item": "Wave MS IV RC", "sku_raw": "00366-P-1", "sku_kind": "zoho", "raw_qty": "12 NEW 28 USED", "units": 40, "note": "WRONG IMAGE" },
+    { "location": "C-03-10-6", "item": "Acoustic Wave RC II", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "White: 1 / Black: 1", "units": 2, "variants": { "White": 1, "Black": 1 } },
+
+    { "location": "C-03-08-1", "item": "Bose Sounddock I RC black", "sku_raw": "00099-P-1", "sku_kind": "zoho", "raw_qty": "42", "units": 42 },
+    { "location": "C-03-08-2", "item": "Sounddock 1 RC white", "sku_raw": "00099-P-1", "sku_kind": "zoho", "raw_qty": "15", "units": 15 },
+    { "location": "C-03-08-3", "item": "Bose sounddock II RC Black", "sku_raw": "832", "sku_kind": "numeric", "raw_qty": "12", "units": 12 },
+    { "location": "C-03-08-4", "item": "Bose Sounddock II RC", "sku_raw": "NO SKU", "sku_kind": "none", "raw_qty": "Gray: 9/ Red: 2/ Green: 4", "units": 15, "variants": { "Gray": 9, "Red": 2, "Green": 4 } },
+    { "location": "C-03-08-5", "item": "Sound Touch 10 - 20 - 30", "sku_raw": "", "sku_kind": "none", "raw_qty": "ST10 9 NEW - 1 USED / ST 30 1 USED", "units": 11, "variants": { "ST10 new": 9, "ST10 used": 1, "ST30 used": 1 } },
+    { "location": "C-03-08-6", "item": "", "sku_kind": "empty" }
+  ]
+}

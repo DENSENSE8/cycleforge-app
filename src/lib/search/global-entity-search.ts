@@ -87,6 +87,7 @@ export interface GlobalSearchResult {
 
 const ORDER_SEARCH_SELECT = `SELECT o.id,
             o.order_id,
+            o.item_number,
             o.product_title,
             o.sku,
             o.account_source,
@@ -143,7 +144,7 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
       title: String(row.product_title || `Order #${row.id}`),
       // Customer leads: a support call opens with a person's name, so that is
       // what tells the operator "this is the row" without opening it.
-      subtitle: [row.customer_name, row.order_id, row.serial_number, row.sku, row.account_source]
+      subtitle: [row.customer_name, row.order_id, row.item_number, row.serial_number, row.sku, row.account_source]
         .filter(Boolean)
         .join(' · '),
       // Search feedback shell — kept in sync with searchHitHref('ORDER').
@@ -183,9 +184,8 @@ function looksLikeTrackingIdentifier(
 }
 
 async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // Marketplace order # / tracking identifier: exact (dash-insensitive) or
-  // last-8 when the paste has ≥8 digits. Never ILIKE-substring a longer id,
-  // and never treat the query as `orders.id` (that is Internal ID).
+  // Marketplace order # / item number / tracking identifier: exact
+  // (separator-insensitive) or last-8 when the paste has ≥8 digits.
   //
   // Identifier path MUST NOT OR order-number equality with a correlated
   // tracking EXISTS — that plan seq-scans every order's shipment and times
@@ -196,13 +196,14 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   const keys = orderTrackingMatchKeys(query);
   const like = identifier ? query : `%${query}%`;
   const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$2');
+  const itemNumberExact = sqlIdentifierEqualsQuery('o.item_number', '$2');
 
   if (identifier) {
     const byNumber = await tenantQuery(
       orgId,
       `${ORDER_SEARCH_SELECT}
      WHERE o.organization_id = $1
-       AND ${orderNumberExact}
+       AND (${orderNumberExact} OR ${itemNumberExact})
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
      LIMIT $3`,
@@ -278,6 +279,7 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   // dead $3 bind made Postgres reject the statement before it could run.
   const broadMatch = `(
             o.order_id ILIKE $2
+         OR o.item_number ILIKE $2
          OR o.product_title ILIKE $2
          OR o.sku ILIKE $2
          OR tsn.serial_number ILIKE $2

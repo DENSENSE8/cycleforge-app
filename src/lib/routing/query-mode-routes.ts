@@ -550,8 +550,12 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     /** Room funnel — a comma-separated multi-select over `locations.room`. */
     room: paramText,
+    /** Operational state funnel: open placeholders or catalog-paired stock. */
+    status: paramText,
     /** The open stock pair (its record key) — the evidence column. */
     open: paramText,
+    /** An on-hold SKU named by a compatibility/share link. */
+    sku: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -770,6 +774,11 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** The query. Typing happens in the global header pill; this is the state. */
     q: paramText,
+    /**
+     * Entry treatment for a named workflow. `label` keeps an owned order-number
+     * field visible on desktop instead of landing on the generic blank plane.
+     */
+    entry: paramText,
     /**
      * Durable selection on the search workbench — `order:123`, `receiving:50200`, …
      * Parsed by {@link parseSearchSel}. Deliberately NOT `openOrderId` / entity

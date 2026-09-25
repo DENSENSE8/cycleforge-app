@@ -11,14 +11,18 @@
 
 import { useState } from 'react';
 import { ChevronRight } from '@/components/Icons';
-import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
-import { RECORD_ID_CLASS, RECORD_LABEL_CLASS, RECORD_PRICE_CLASS } from '@/design-system/tokens/industrial-record';
+import { EvidenceDisclosure, EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
+import {
+  RECORD_ID_CLASS,
+  RECORD_LABEL_CLASS,
+  RECORD_PRICE_CLASS,
+  RECORD_TRAILING_CELL_CLASS,
+} from '@/design-system/tokens/industrial-record';
 import { STATE_TONE_CLASSES } from '@/design-system/tokens/lifecycle';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { LABEL_PURPOSES, LABEL_PURPOSE_FACE } from '@/lib/shipping/label-purpose';
 import { formatCurrency } from '@/utils/_number';
 import { cn } from '@/utils/_cn';
-import { Fact } from './EvidenceFact';
 import { useOrderPriceBreakdown } from './order-labels-client';
 
 const dash = (value: number | null | undefined) => (value == null ? '—' : formatCurrency(value));
@@ -39,25 +43,26 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
   const net = b?.net ?? null;
 
   return (
-    <section aria-label="Price" data-testid="evidence-price" className="border-b border-mode-ink">
-      <details>
-        <summary className={cn('flex cursor-pointer list-none items-center gap-2 border-b border-mode-edge px-4', LEDGER_HIT_CLASS, focusRing('control'))}>
-          <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>Price</span>
-          <span
-            data-testid="evidence-price-net"
-            title={b ? `Net = ${NET_BASIS_LABEL[b.netBasis ?? 'amount_paid']} − tax − label costs. No marketplace fees.` : undefined}
-            className={cn(
-              RECORD_ID_CLASS,
-              query.isError ? 'text-mode-warn' : net == null ? 'text-mode-muted' : net < 0 ? STATE_TONE_CLASSES.danger.text : STATE_TONE_CLASSES.success.text,
-            )}
-          >
-            {query.isError ? 'Unreadable' : b == null ? '…' : net == null ? '—' : `Net ${formatCurrency(net)}${b.incomplete ? '*' : ''}`}
-          </span>
-        </summary>
+    <EvidenceDisclosure
+      label="Price"
+      testId="evidence-price"
+      summary={
+        <span
+          data-testid="evidence-price-net"
+          title={b ? `Net = ${NET_BASIS_LABEL[b.netBasis ?? 'amount_paid']} − tax − label costs. No marketplace fees.` : undefined}
+          className={cn(
+            RECORD_ID_CLASS,
+            query.isError ? 'text-mode-warn' : net == null ? 'text-mode-muted' : net < 0 ? STATE_TONE_CLASSES.danger.text : STATE_TONE_CLASSES.success.text,
+          )}
+        >
+          {query.isError ? 'Unreadable' : b == null ? '…' : net == null ? '—' : `Net ${formatCurrency(net)}${b.incomplete ? '*' : ''}`}
+        </span>
+      }
+    >
       {b ? (
-        <dl className="flex flex-col px-4">
+        <div className="flex flex-col px-4">
           {b.lines.length > 0 ? (
-            <Fact label="Items">
+            <EvidenceFactRow label="Items">
               <button
                 type="button"
                 aria-expanded={linesOpen}
@@ -69,9 +74,11 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
                 <span className="min-w-0 flex-1 truncate text-mode-muted">
                   {b.lines.length} line{b.lines.length === 1 ? '' : 's'}
                 </span>
-                <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform', linesOpen && 'rotate-90')} aria-hidden />
+                <span aria-hidden className={RECORD_TRAILING_CELL_CLASS}>
+                  <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', linesOpen && 'rotate-90')} />
+                </span>
               </button>
-            </Fact>
+            </EvidenceFactRow>
           ) : null}
           {linesOpen ? (
             <div className="border-b border-mode-edge py-1" data-testid="evidence-price-lines">
@@ -89,39 +96,39 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
             </div>
           ) : null}
           {b.adjustments != null ? (
-            <Fact label="Adjust.">
+            <EvidenceFactRow label="Adjust.">
               <span className={RECORD_ID_CLASS}>{formatCurrency(b.adjustments)}</span>
-            </Fact>
+            </EvidenceFactRow>
           ) : null}
           {b.saleAmount != null ? (
-            <Fact label="Sale">
+            <EvidenceFactRow label="Sale">
               <span className={RECORD_ID_CLASS}>{formatCurrency(b.saleAmount)}</span>
-            </Fact>
+            </EvidenceFactRow>
           ) : null}
           {b.source === 'shipstation' ? (
             <>
-              <Fact label="Shipping">
+              <EvidenceFactRow label="Shipping">
                 <span className={RECORD_ID_CLASS}>{dash(b.shippingCharged)}</span>
-              </Fact>
-              <Fact label="Tax">
+              </EvidenceFactRow>
+              <EvidenceFactRow label="Tax">
                 <span className={RECORD_ID_CLASS}>{dash(b.tax)}</span>
-              </Fact>
-              <Fact label="Total">
+              </EvidenceFactRow>
+              <EvidenceFactRow label="Total">
                 <span className={RECORD_ID_CLASS}>{dash(b.orderTotal)}</span>
-              </Fact>
-              <Fact label="Paid">
+              </EvidenceFactRow>
+              <EvidenceFactRow label="Paid">
                 <span className={RECORD_PRICE_CLASS}>{dash(b.amountPaid)}</span>
-              </Fact>
+              </EvidenceFactRow>
             </>
           ) : null}
           {LABEL_PURPOSES.filter((p) => b.labelCostByPurpose[p] != null).map((p) => (
-            <Fact key={p} label={`${LABEL_PURPOSE_FACE[p].code} label${b.labels.filter((l) => l.purpose === p).length > 1 ? 's' : ''}`}>
+            <EvidenceFactRow key={p} label={`${LABEL_PURPOSE_FACE[p].code} label${b.labels.filter((l) => l.purpose === p).length > 1 ? 's' : ''}`}>
               <span className={cn(RECORD_ID_CLASS, STATE_TONE_CLASSES.danger.text)} data-testid={`evidence-price-label-${p}`}>
                 {debit(b.labelCostByPurpose[p]!)}
               </span>
-            </Fact>
+            </EvidenceFactRow>
           ))}
-          <Fact label="Net">
+          <EvidenceFactRow label="Net">
             <span className="flex min-w-0 flex-col py-1">
               <span className={cn(RECORD_ID_CLASS, 'font-black', net != null && net < 0 ? STATE_TONE_CLASSES.danger.text : 'text-mode-ink')}>
                 {dash(net)}
@@ -130,15 +137,14 @@ export function OrderPriceEvidence({ orderId }: { orderId: number }) {
                 {b.netBasis ? NET_BASIS_LABEL[b.netBasis] : 'paid'} − tax − label costs · no marketplace fees
               </span>
             </span>
-          </Fact>
+          </EvidenceFactRow>
           {b.gaps.length > 0 ? (
             <p className={cn(RECORD_LABEL_CLASS, 'normal-case tracking-normal py-2 text-mode-warn')} data-testid="evidence-price-gaps">
               * {b.gaps.join(' · ')}
             </p>
           ) : null}
-        </dl>
+        </div>
       ) : null}
-      </details>
-    </section>
+    </EvidenceDisclosure>
   );
 }

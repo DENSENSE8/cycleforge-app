@@ -431,6 +431,7 @@ test('scannedReceivingId reads a carton id out of EVERY printed carton form', ()
   // strips it, so the decoder is right to refuse it and let the text helper run.
   strictEqual(scannedReceivingId('#R-1234'), null);
   strictEqual(scannedReceivingId('RCV-1234'), 1234);
+  strictEqual(scannedReceivingId('r/1234'), 1234);
   strictEqual(scannedReceivingId('/m/r/1234'), 1234);
 });
 

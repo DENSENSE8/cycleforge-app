@@ -15,9 +15,7 @@
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import Link from 'next/link';
-import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
-import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
-import { cn } from '@/utils/_cn';
+import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeader';
 import { getIntegrationCredentials, type IntegrationProvider } from '@/lib/integrations/credentials';
 import { isNangoConfigured } from '@/lib/integrations/nango';
 import { getConnector } from '@/lib/integrations/connectors/registry';
@@ -168,76 +166,71 @@ export default async function IntegrationsPage({
   const connectedCount = PROVIDER_CATALOG.filter((p) => buildState(p).status === 'connected').length;
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col antialiased', SETTINGS_FLOOR_CLASS)}>
-      <main className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
-        <SettingsSectionHeader title="Apps & integrations" />
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-role-data text-text-soft">
-            Connect this workspace to the marketplaces and services it runs on. Credentials are encrypted at rest in the workspace vault.
-          </p>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/settings/integrations/sync"
-              className="text-role-caption font-semibold text-blue-600 hover:underline"
-            >
-              Sync tools →
-            </Link>
-            <Link
-              href="/settings/integrations/diagnostics"
-              className="text-role-caption font-semibold text-blue-600 hover:underline"
-            >
-              Connection diagnostics →
-            </Link>
-            {!limit.unlimited && (
-              <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
-                {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
-              </span>
-            )}
-            <span className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted">
-              {connectedCount} / {PROVIDER_CATALOG.length} connected
+    <SettingsSectionFrame title="Apps & integrations" maxWidth="5xl">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-role-data text-text-soft">
+          Connect this workspace to the marketplaces and services it runs on. Credentials are encrypted at rest in the workspace vault.
+        </p>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/settings/integrations/sync"
+            className="text-role-caption font-semibold text-blue-600 hover:underline"
+          >
+            Sync tools →
+          </Link>
+          <Link
+            href="/settings/integrations/diagnostics"
+            className="text-role-caption font-semibold text-blue-600 hover:underline"
+          >
+            Connection diagnostics →
+          </Link>
+          {!limit.unlimited && (
+            <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
+              {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
             </span>
-          </div>
+          )}
+          <span className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted">
+            {connectedCount} / {PROVIDER_CATALOG.length} connected
+          </span>
         </div>
+      </div>
 
-        {(success || error) && (
-          <ResultBanner success={success} error={error} ebayOauthError={ebayOauthError} />
-        )}
+      {(success || error) && (
+        <ResultBanner success={success} error={error} ebayOauthError={ebayOauthError} />
+      )}
 
-        {INTEGRATION_CATEGORIES.map((category) => {
-          const providers = PROVIDER_CATALOG.filter((p) => p.category === category);
-          if (providers.length === 0) return null;
-          return (
-            <section key={category} className="space-y-3">
-              <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{category}</h2>
-              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                {providers.map((def) => {
-                  const state = buildState(def);
-                  const connector = getConnector(def.key);
-                  return (
-                    <IntegrationCard
-                      key={def.key}
-                      def={def}
-                      state={state}
-                      nangoReady={nangoReady}
-                      canSync={state.status === 'connected' && !!connector?.sync}
-                      capabilities={[...(connector?.capabilities ?? [])]}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+      {INTEGRATION_CATEGORIES.map((category) => {
+        const providers = PROVIDER_CATALOG.filter((p) => p.category === category);
+        if (providers.length === 0) return null;
+        return (
+          <section key={category} className="space-y-3">
+            <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{category}</h2>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {providers.map((def) => {
+                const state = buildState(def);
+                const connector = getConnector(def.key);
+                return (
+                  <IntegrationCard
+                    key={def.key}
+                    def={def}
+                    state={state}
+                    nangoReady={nangoReady}
+                    canSync={state.status === 'connected' && !!connector?.sync}
+                    capabilities={[...(connector?.capabilities ?? [])]}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
 
-        <section className="space-y-3">
-          <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">Import</h2>
-          <Panel radius="xl" padding="sm">
-            <CsvOrderImport />
-          </Panel>
-        </section>
-        </div>
-      </main>
-    </div>
+      <section className="space-y-3">
+        <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">Import</h2>
+        <Panel radius="xl" padding="sm">
+          <CsvOrderImport />
+        </Panel>
+      </section>
+    </SettingsSectionFrame>
   );
 }

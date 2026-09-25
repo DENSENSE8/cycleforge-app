@@ -16,10 +16,11 @@
  * the loader, debounced so a burst costs one refresh.
  */
 
-import { memo, useCallback, useEffect, useMemo, useRef, useTransition } from 'react';
-import Link from 'next/link';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from 'date-fns';
+import { Plus } from '@/components/Icons';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
 import {
@@ -36,24 +37,30 @@ import {
 import { RECORD_LOCATION_CLASS } from '@/design-system/components/record-ledger/record-ledger-geometry';
 import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { isStockDeltaActivity } from '@/lib/inventory/stock-live-refresh';
-import { skuExceptionHref } from '@/lib/inventory/sku-exception-links';
 import {
   locationStockRowId,
   type LocationStockRoomFacet,
+  type LocationStockStateFilter,
   type LocationStockTableRow,
 } from '@/lib/inventory/location-stock-row';
 import { INVENTORY_STOCK_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { cn } from '@/utils/_cn';
+import { useProvisionalSku, useProvisionalSkus, useSkuExceptionsRealtime } from '@/hooks/useProvisionalSkus';
+import { SkuExceptionCreateForm } from '@/components/inventory/sku-exceptions/SkuExceptionCreateForm';
+import { SkuExceptionEvidence } from '@/components/inventory/sku-exceptions/SkuExceptionEvidence';
 import { stockLocationFace, stockRecordCountable, stockRecordState, stockRecordTitle } from './stock-record';
 import { StockEvidence } from './StockEvidence';
 
 const STOCK_PATH = '/inventory/stock';
+/** Evidence key while the shared ledger holds the new on-hold SKU form. */
+const CREATE_KEY = 'new-temp-sku';
 
 /** A burst of counts (a gun session) costs one loader re-read. */
 const LIVE_REFRESH_DEBOUNCE_MS = 400;
@@ -65,13 +72,15 @@ export interface StockLedgerProps {
   rooms: LocationStockRoomFacet[];
   /** The selected rooms (`?room=`). */
   selectedRooms: string[];
+  /** The operational-state funnel (`?status=`). */
+  selectedStates: LocationStockStateFilter[];
   /** Pairs matching `?q=` across the whole org, before the row cap. */
   totalCount: number;
   /** The loader hit its row cap — some matches are not on screen. */
   capped: boolean;
 }
 
-export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: StockLedgerProps) {
+export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalCount, capped }: StockLedgerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -87,9 +96,53 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
     [router, searchParams],
   );
 
+  const requestedSku = searchParams.get('sku')?.trim() || null;
   const openKey = searchParams.get('open')?.trim() || null;
-  const openRecordKey = useCallback((key: string) => replace((params) => params.set('open', key)), [replace]);
-  const closeRecord = useCallback(() => replace((params) => params.delete('open')), [replace]);
+  // Legacy/share links name an exception by SKU, while stock rows are keyed by
+  // (location, SKU, source). Focus its first row without needing a second URL.
+  const requestedSkuRow = useMemo(
+    () => (requestedSku ? (rows.find((row) => row.is_provisional && row.sku === requestedSku) ?? null) : null),
+    [requestedSku, rows],
+  );
+  const resolvedOpenKey = openKey ?? (requestedSkuRow ? locationStockRowId(requestedSkuRow) : null);
+  const openRecord = useMemo(
+    () => (resolvedOpenKey ? (rows.find((row) => locationStockRowId(row) === resolvedOpenKey) ?? null) : null),
+    [resolvedOpenKey, rows],
+  );
+  const openProvisionalSku = openRecord?.is_provisional ? openRecord.sku : requestedSku;
+  const provisionalList = useProvisionalSkus();
+  const provisionalRecord = useProvisionalSku(openProvisionalSku);
+  useSkuExceptionsRealtime();
+  const [creating, setCreating] = useState(false);
+
+  const openRow = useCallback(
+    (row: LocationStockTableRow) => {
+      setCreating(false);
+      replace((params) => {
+        params.set('open', locationStockRowId(row));
+        if (row.is_provisional) params.set('sku', row.sku);
+        else params.delete('sku');
+      });
+    },
+    [replace],
+  );
+  const openRecordKey = useCallback(
+    (key: string) => {
+      const row = rows.find((item) => locationStockRowId(item) === key);
+      if (row) openRow(row);
+    },
+    [openRow, rows],
+  );
+  const closeRecord = useCallback(
+    () => {
+      setCreating(false);
+      replace((params) => {
+        params.delete('open');
+        params.delete('sku');
+      });
+    },
+    [replace],
+  );
 
   const { value: query, setValue: setQuery } = useOptimisticUrlParam<string>({
     urlValue: searchParams.get('q') ?? '',
@@ -114,6 +167,51 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
         else params.delete('room');
       }),
     [replace, selectedRooms],
+  );
+
+  const toggleState = useCallback(
+    (state: LocationStockStateFilter | null) =>
+      replace((params) => {
+        if (state == null) {
+          params.delete('status');
+          return;
+        }
+        const next = selectedStates.includes(state)
+          ? selectedStates.filter((item) => item !== state)
+          : [...selectedStates, state];
+        if (next.length) params.set('status', next.join(','));
+        else params.delete('status');
+      }),
+    [replace, selectedStates],
+  );
+
+  const toggleCreate = useCallback(() => {
+    if (creating) {
+      setCreating(false);
+      return;
+    }
+    setCreating(true);
+    replace((params) => {
+      params.delete('open');
+      params.delete('sku');
+    });
+  }, [creating, replace]);
+
+  const createAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="primary"
+        size="md"
+        icon={<Plus aria-hidden />}
+        aria-pressed={creating}
+        onClick={toggleCreate}
+        data-testid="stock-new-temp-sku"
+      >
+        New temp SKU
+      </DeskHeaderAction>
+    ),
+    [creating, toggleCreate],
   );
 
   // Live: any STOCK_DELTA_* re-reads the loader (debounced).
@@ -141,26 +239,24 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
   );
   useAblyChannel(channel, 'activity.logged', onActivity, !!channel, { coalesce: 'frame' });
 
-  const openRecord = useMemo(
-    () => (openKey ? (rows.find((row) => locationStockRowId(row) === openKey) ?? null) : null),
-    [openKey, rows],
-  );
-
   const renderRecord = useCallback(
-    (row: LocationStockTableRow, open: boolean) => <StockRecord row={row} open={open} onOpen={openRecordKey} />,
-    [openRecordKey],
+    (row: LocationStockTableRow, open: boolean) => <StockRecord row={row} open={open} onOpen={() => openRow(row)} />,
+    [openRow],
   );
 
-  const narrowed = Boolean(query.trim()) || selectedRooms.length > 0;
+  const narrowed = Boolean(query.trim()) || selectedRooms.length > 0 || selectedStates.length > 0;
+  const evidenceOpenKey = creating ? CREATE_KEY : resolvedOpenKey;
 
   return (
-    <RecordLedger
+    <>
+      <DeskActionSlotRegistrar role="primary">{createAction}</DeskActionSlotRegistrar>
+      <RecordLedger
       testId="stock-ledger"
       label="Stock by location"
       records={rows}
       recordKey={locationStockRowId}
       renderRecord={renderRecord}
-      openKey={openKey}
+      openKey={evidenceOpenKey}
       onOpenKey={openRecordKey}
       onClose={closeRecord}
       loading={pending && rows.length === 0}
@@ -206,6 +302,31 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
               );
             })}
           </div>
+          <div
+            role="group"
+            aria-label="Stock state"
+            className="flex min-w-0 items-stretch overflow-x-auto border-l border-mode-edge"
+            data-testid="stock-states"
+          >
+            {([
+              [null, 'All stock'],
+              ['on-hold', 'On hold'],
+              ['catalog', 'Catalog paired'],
+            ] as const).map(([state, label]) => {
+              const active = state == null ? selectedStates.length === 0 : selectedStates.includes(state);
+              return (
+                <button
+                  key={state ?? 'all'}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => toggleState(state)}
+                  className={cn(DESK_BAR_SEGMENT_CLASS, 'border-r border-mode-edge', deskBarSegmentTone(active))}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </>
       }
       empty={
@@ -218,6 +339,7 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
                 replace((params) => {
                   params.delete('q');
                   params.delete('room');
+                  params.delete('status');
                 })
               }
               className={cn(RECORD_LABEL_CLASS, 'underline underline-offset-2 text-mode-ink')}
@@ -238,17 +360,47 @@ export function StockLedger({ rows, rooms, selectedRooms, totalCount, capped }: 
           {capped ? ` · first ${rows.length} of ${totalCount} — narrow the search` : ''}
         </span>
       }
-      evidenceNoun="stock"
+      evidenceNoun={openRecord?.is_provisional || creating ? 'SKU exception' : 'stock'}
+      evidenceHead={creating ? 'New temp SKU' : undefined}
       evidence={
-        <StockEvidence
-          openKey={openKey}
-          record={openRecord}
-          rows={rows}
-          rooms={rooms}
-          onCounted={() => router.refresh()}
-        />
+        creating ? (
+          <SkuExceptionCreateForm
+            onCreated={(sku) => {
+              setCreating(false);
+              replace((params) => {
+                params.set('status', 'on-hold');
+                params.set('sku', sku);
+                params.delete('open');
+              });
+              router.refresh();
+            }}
+            onCancel={closeRecord}
+          />
+        ) : openRecord?.is_provisional ? (
+          <SkuExceptionEvidence
+            sku={openProvisionalSku}
+            item={provisionalRecord.data}
+            loading={provisionalRecord.isLoading}
+            error={provisionalRecord.isError ? provisionalRecord.error : null}
+            mergedInto={provisionalRecord.mergedInto}
+            rows={provisionalList.data ?? []}
+            onExit={() => {
+              closeRecord();
+              router.refresh();
+            }}
+          />
+        ) : (
+          <StockEvidence
+            openKey={resolvedOpenKey}
+            record={openRecord}
+            rows={rows}
+            rooms={rooms}
+            onCounted={() => router.refresh()}
+          />
+        )
       }
-    />
+      />
+    </>
   );
 }
 
@@ -259,10 +411,11 @@ const StockRecord = memo(function StockRecord({
 }: {
   row: LocationStockTableRow;
   open: boolean;
-  onOpen: (key: string) => void;
+  onOpen: () => void;
 }) {
   const key = locationStockRowId(row);
   const state = stockRecordState(row);
+  const stateFace = lifecycleRecordState(state);
   const title = stockRecordTitle(row);
   const face = stockLocationFace(row);
   const moved = row.last_moved ? new Date(row.last_moved) : null;
@@ -272,16 +425,16 @@ const StockRecord = memo(function StockRecord({
   return (
     <IndustrialRecord
       recordKey={key}
-      state={state}
+      state={stateFace}
       open={open}
       openLabel={`${title} at ${face ?? 'no location'}, ${row.qty} on hand`}
-      onOpen={() => onOpen(key)}
+      onOpen={onOpen}
       photo={<RecordPhoto src={row.image_url} fallback={title} />}
       bands={[
         {
           main: (
             <>
-              <RecordStateCode state={state} />
+              <RecordStateCode state={stateFace} />
               <RecordBin faces={face ? [face] : []} className={RECORD_LOCATION_CLASS} />
               <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')}>{row.room ?? 'No room'}</span>
             </>
@@ -297,17 +450,9 @@ const StockRecord = memo(function StockRecord({
           main: (
             <>
               <RecordIdFact label="SKU" value={row.sku} className="w-44 shrink-0" />
-              {state === 'onHold' ? (
-                <Link
-                  href={skuExceptionHref(row.sku)}
-                  onClick={(event) => event.stopPropagation()}
-                  className={cn(RECORD_LABEL_CLASS, 'pointer-events-auto shrink-0 text-mode-warn underline underline-offset-2')}
-                >
-                  SKU exception ↗
-                </Link>
-              ) : null}
+              {state === 'onHold' ? <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-warn')}>Pair · photo · count</span> : null}
               <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>
-                {row.source === 'bin' ? 'Bin count' : 'Units'}
+                {row.source === 'bin' ? 'Bin count' : row.source === 'unit' ? 'Units' : 'On hold'}
               </span>
             </>
           ),

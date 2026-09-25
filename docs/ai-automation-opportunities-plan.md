@@ -123,6 +123,14 @@ money/shipping decision without confirmation.
 | D8 | **Repair cost estimate** | `RepairIntakeForm.tsx`; `repair/submit/route.ts:24` | historical repair price, Ecwid pricing |
 | D9 | **Inventory count reconciliation** — accept/recount on variance | `inventory/counts/route.ts` | count variance history |
 
+**Deterministic baseline shipped (2026-09-25):** `automation_rules` can key an
+order line by item number + SKU and assign both Pick and Pack immediately.
+Each action stores a primary plus optional backup staffer; the backup takes
+over when the primary is inactive, unscheduled, denied by an availability
+rule, or on approved time off. `staff_functional_roles` separately controls
+who appears in Picker / Packer rosters and never changes RBAC access. D3 now
+means load-balancing *on top of* that explicit operator rule, not replacing it.
+
 ### E. See (vision) — judge a photo (HIGH VALUE, needs a multimodal model)
 
 The highest-frequency warehouse judgments are visual and currently 100% human. **All of

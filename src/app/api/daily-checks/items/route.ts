@@ -10,8 +10,15 @@ import {
   updateDailyCheckItem,
 } from '@/lib/daily-checks/queries';
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { CIVIL_TIME_RE, REMIND_OFFSET_MAX_MINUTES } from '@/lib/reminders/reminder-contract';
 
 export const runtime = 'nodejs';
+
+/** Civil `HH:MM` (warehouse zone) — what `daily_check_items.due_time` stores. */
+const DueTime = z.string().regex(CIVIL_TIME_RE, 'dueTime must be HH:MM (24h)');
+const RemindOffset = z.number().int().min(0).max(REMIND_OFFSET_MAX_MINUTES);
+
+const OFFSET_NEEDS_DUE_TIME = 'A reminder needs a due time';
 
 const CreateBody = z
   .object({
@@ -23,13 +30,23 @@ const CreateBody = z
     assignedStaffId: z.number().int().positive().nullish(),
     /** The emoji character itself, ≤8 chars (ZWJ sequences run long). */
     glyph: z.string().min(1).max(8).nullish(),
+    /** Due every live day at this civil time; read by `GET /api/v1/reminders`. */
+    dueTime: DueTime.nullish(),
+    remindOffsetMinutes: RemindOffset.nullish(),
   })
-  .superRefine(({ kind, assignedStaffId }, ctx) => {
+  .superRefine(({ kind, assignedStaffId, dueTime, remindOffsetMinutes }, ctx) => {
     if (kind === 'recurring' && assignedStaffId != null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['assignedStaffId'],
         message: 'Only a just-today task can be assigned to one staff member',
+      });
+    }
+    if (remindOffsetMinutes != null && dueTime == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['remindOffsetMinutes'],
+        message: OFFSET_NEEDS_DUE_TIME,
       });
     }
   });
@@ -57,6 +74,8 @@ export const POST = withAuth(
       );
     }
     const { title, description, kind, glyph } = parsed.data;
+    const dueTime = parsed.data.dueTime ?? null;
+    const remindOffsetMinutes = parsed.data.remindOffsetMinutes ?? null;
     const assignedStaffId = parsed.data.assignedStaffId ?? null;
 
     // A stale client can name an owner who no longer exists; the FK would 500,
@@ -80,6 +99,8 @@ export const POST = withAuth(
         kind,
         assignedStaffId: assignedStaffId ?? null,
         glyph: glyph ?? null,
+        dueTime,
+        remindOffsetMinutes,
       });
 
       await recordAudit(pool, ctx, request, {
@@ -94,6 +115,8 @@ export const POST = withAuth(
           kind: item.kind,
           assignedStaffId: item.assignedStaffId,
           glyph: item.glyph,
+          dueTime: item.dueTime,
+          remindOffsetMinutes: item.remindOffsetMinutes,
         },
       });
 
@@ -107,22 +130,48 @@ export const POST = withAuth(
   { permission: 'admin.manage_staff' },
 );
 
-const UpdateBody = z.object({
-  title: z.string().trim().min(1).max(200),
-});
+/**
+ * Every field optional, at least one present. `dueTime: null` clears the due
+ * time AND its reminder; an offset with `dueTime: null` in the same body is a
+ * contradiction and refused here, while an offset on an item whose STORED due
+ * time is null is refused by the named CHECK (see `updateDailyCheckItem`).
+ */
+const UpdateBody = z
+  .object({
+    title: z.string().trim().min(1).max(200).optional(),
+    dueTime: DueTime.nullable().optional(),
+    remindOffsetMinutes: RemindOffset.nullable().optional(),
+  })
+  .superRefine((body, ctx) => {
+    if (body.title === undefined && body.dueTime === undefined && body.remindOffsetMinutes === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Send a title, dueTime or remindOffsetMinutes',
+      });
+    }
+    if (body.dueTime === null && body.remindOffsetMinutes != null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['remindOffsetMinutes'],
+        message: OFFSET_NEEDS_DUE_TIME,
+      });
+    }
+  });
 
 /**
- * PATCH /api/daily-checks/items?id=123 — correct a live item's title.
+ * PATCH /api/daily-checks/items?id=123 — correct a live item's title, and/or
+ * set its due time and reminder.
  *
- * TITLE ONLY. `kind` and `assignedStaffId` feed the per-staff denominator in
- * `buildDailyCheckReport`, so editing them re-does the arithmetic of every past
- * report, not just its wording; the correction verb for those is retire + add.
- * A title, by contrast, is not versioned on purpose — the marks keep pointing
- * at the same item id, and the audit row below is how a manager sees that last
- * month's wording changed.
+ * NOT cadence or owner. `kind` and `assignedStaffId` feed the per-staff
+ * denominator in `buildDailyCheckReport`, so editing them re-does the
+ * arithmetic of every past report, not just its wording; the correction verb
+ * for those is retire + add. A title, by contrast, is not versioned on
+ * purpose — the marks keep pointing at the same item id, and the audit row
+ * below is how a manager sees that last month's wording changed. A due time
+ * only moves when the item rings.
  *
- * Audited with BEFORE and AFTER, which is the whole point of auditing a
- * rename: the action alone says nothing a reader can act on.
+ * Audited with BEFORE and AFTER of exactly the fields sent, which is the whole
+ * point of auditing an edit: the action alone says nothing a reader can act on.
  *
  * "Live" is the item's WINDOW on today's civil day, not `retired_at IS NULL` —
  * a `once` item is born already carrying tomorrow's `retired_at`, so the
@@ -141,33 +190,53 @@ export const PATCH = withAuth(
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       return NextResponse.json(
-        { error: first?.message ?? 'title is required (1–200 chars)' },
+        { error: first?.message ?? 'Send a title, dueTime or remindOffsetMinutes' },
         { status: 400 },
       );
     }
 
+    const patch = parsed.data;
     try {
       const updated = await updateDailyCheckItem({
         orgId: ctx.organizationId,
         itemId,
-        title: parsed.data.title,
+        patch,
         // The warehouse civil day, never `now()::date`: the server clock is UTC
         // and rolls over mid-afternoon, which would drop a one-off out of its
         // own window and 404 an edit the operator is looking straight at.
         dayKey: getCurrentPSTDateKey(),
       });
-      // Null = nothing by that id on today's list in this tenant (gone, or
-      // never here). 404: the operator is editing something the list does not
-      // have.
-      if (!updated) return NextResponse.json({ error: 'No such item' }, { status: 404 });
+      if (!updated.ok) {
+        // not_found = nothing by that id on today's list in this tenant (gone,
+        // or never here): the operator is editing something the list does not
+        // have.
+        return updated.reason === 'not_found'
+          ? NextResponse.json({ error: 'No such item' }, { status: 404 })
+          : NextResponse.json({ error: OFFSET_NEEDS_DUE_TIME }, { status: 400 });
+      }
+
+      // Exactly the fields this edit touched. Clearing the due time also
+      // clears the reminder, so that change is recorded too.
+      const touched = (Object.keys(patch) as Array<keyof typeof patch>).filter(
+        (key) => patch[key] !== undefined,
+      );
+      if (patch.dueTime === null && !touched.includes('remindOffsetMinutes')) {
+        touched.push('remindOffsetMinutes');
+      }
+      const before: Record<string, unknown> = {};
+      const after: Record<string, unknown> = {};
+      for (const key of touched) {
+        before[key] = updated.previous[key];
+        after[key] = updated.item[key];
+      }
 
       await recordAudit(pool, ctx, request, {
         source: 'home-daily',
         action: AUDIT_ACTION.DAILY_CHECK_ITEM_UPDATE,
         entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
         entityId: String(itemId),
-        before: { title: updated.previousTitle },
-        after: { title: updated.item.title },
+        before,
+        after,
       });
 
       return NextResponse.json(updated.item);

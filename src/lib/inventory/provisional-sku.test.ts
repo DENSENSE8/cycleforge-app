@@ -6,6 +6,7 @@ import {
   isProvisionalSku,
   planProvisionalMerge,
   provisionalSkuForBarcode,
+  provisionalSkuForSourceRef,
 } from './provisional-sku';
 
 describe('provisionalSkuForBarcode', () => {
@@ -21,6 +22,30 @@ describe('provisionalSkuForBarcode', () => {
   it('refuses a read with nothing usable in it', () => {
     assert.equal(provisionalSkuForBarcode('   '), null);
     assert.equal(provisionalSkuForBarcode('---'), null);
+  });
+});
+
+describe('provisionalSkuForSourceRef', () => {
+  it('resolves a re-run or double tap to the same placeholder', () => {
+    const sku = provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000001', 'c04-bin-sheet-2026-09-24:C-04-15-1');
+    assert.match(sku ?? '', /^TMP-[0-9A-HJKMNP-TV-Z]{5}-[0-9A-HJKMNP-TV-Z]{5}$/);
+    assert.equal(provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000001', '  C04-BIN-SHEET-2026-09-24:c-04-15-1 '), sku);
+  });
+
+  it('keeps sibling keys apart and out of the barcode keyspace', () => {
+    const skus = new Set<string | null>();
+    for (let i = 0; i < 2000; i += 1) skus.add(provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000001', `sheet:C-04-${i}`));
+    assert.equal(skus.size, 2000);
+    // Barcode normalisation strips hyphens, so no barcode can mint this shape.
+    const minted = provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000001', 'sheet:C-04-1') ?? '';
+    assert.notEqual(provisionalSkuForBarcode(minted.slice('TMP-'.length)), minted);
+    // sku_catalog.sku is globally unique: the QA rehearsal and the real org
+    // must not mint the same string for the same import key.
+    assert.notEqual(provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000002', 'sheet:C-04-1'), minted);
+  });
+
+  it('refuses an empty key', () => {
+    assert.equal(provisionalSkuForSourceRef('00000000-0000-0000-0000-000000000001', '   '), null);
   });
 });
 

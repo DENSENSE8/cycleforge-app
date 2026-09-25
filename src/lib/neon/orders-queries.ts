@@ -1602,19 +1602,90 @@ export async function updateOrder(
 }
 
 /**
- * Delete an order by ID
+ * A hard delete is intentionally blocked when the order still owns an
+ * inventory allocation or an immutable shipping-label ingestion reference.
+ * Callers can show this message instead of leaking a raw foreign-key error.
+ */
+export class OrderDeleteBlockedError extends Error {
+  readonly code = 'ORDER_DELETE_BLOCKED';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'OrderDeleteBlockedError';
+  }
+}
+
+/**
+ * Delete an order by ID.
+ *
+ * The tenant-scoped path locks the parent row before checking restrictive
+ * children, so a concurrent allocation or label-ingestion insert cannot race
+ * the preflight and turn into an opaque 500.
  */
 export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
-  // When orgId is threaded, gate the DELETE on the org so a row owned by another
-  // tenant is never removed.
-  const sql = orgId
-    ? 'DELETE FROM orders WHERE id = $1 AND organization_id = $2'
-    : 'DELETE FROM orders WHERE id = $1';
-  const params = orgId ? [id, orgId] : [id];
-  const result = orgId
-    ? await tenantQuery(orgId, sql, params)
-    : await pool.query(sql, params);
-  return (result.rowCount ?? 0) > 0;
+  if (!orgId) {
+    const result = await pool.query('DELETE FROM orders WHERE id = $1', [id]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  return withTenantTransaction(orgId, async (client) => {
+    const order = await client.query<{ id: number }>(
+      `SELECT id
+         FROM orders
+        WHERE id = $1 AND organization_id = $2
+        FOR UPDATE`,
+      [id, orgId],
+    );
+    if (order.rows.length === 0) return false;
+
+    const blockers = await client.query<{
+      has_allocations: boolean;
+      has_applied_labels: boolean;
+      has_label_ingestion_links: boolean;
+    }>(
+      `SELECT
+         EXISTS (
+           SELECT 1
+             FROM order_unit_allocations
+            WHERE organization_id = $2 AND order_id = $1
+         ) AS has_allocations,
+         EXISTS (
+           SELECT 1
+             FROM label_ingestions
+            WHERE organization_id = $2
+              AND matched_order_id = $1
+              AND state = 'APPLIED'
+         ) AS has_applied_labels,
+         EXISTS (
+           SELECT 1
+             FROM label_ingestion_orders
+            WHERE organization_id = $2 AND order_id = $1
+         ) AS has_label_ingestion_links`,
+      [id, orgId],
+    );
+    const blocker = blockers.rows[0];
+    if (blocker?.has_applied_labels) {
+      throw new OrderDeleteBlockedError(
+        'This order has an applied shipping-label ingestion. Void or unlink the label before deleting the order.',
+      );
+    }
+    if (blocker?.has_allocations) {
+      throw new OrderDeleteBlockedError(
+        'This order has inventory allocations. Release the allocations before deleting it.',
+      );
+    }
+    if (blocker?.has_label_ingestion_links) {
+      throw new OrderDeleteBlockedError(
+        'This order has a shipping-label ingestion link. Resolve the label ingestion before deleting it.',
+      );
+    }
+
+    const result = await client.query(
+      'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
+      [id, orgId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  });
 }
 
 /** Fetch one raw `orders` row by id (record-route GET). */

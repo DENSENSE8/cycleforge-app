@@ -1,183 +1,234 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { motion } from '@/design-system/motion';
-import { Loader2 } from '@/components/Icons';
-import { sectionLabel, fieldLabel } from '@/design-system/tokens/typography/presets';
-import { mainStickyHeaderClass, mainStickyHeaderRowClass } from '@/components/layout/header-shell';
-import { CopyChip, HashIcon } from '@/components/ui/CopyChip';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PlatformChip } from '@/components/ui/CopyChip';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
-import { SourceThisButton } from '@/components/sourcing/SourceThisButton';
-import {
-  type NeedToOrderRow,
-  type ReplenishmentStatus,
-  ACTIVE_STATUSES,
-  numText,
-} from './replenish-types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import type { GroupedRenderOrder } from '@/lib/group-rows';
+import type { ReplenishmentRequestStatus } from '@/lib/replenishment-request-status';
+import { refreshDomain } from '@/lib/refresh/bus';
+import { toast } from '@/lib/toast';
+import { ReplenishmentPlanEvidence, type ReplenishmentPlanPatch } from './ReplenishmentPlanEvidence';
+import { ReplenishmentPlanRecord } from './ReplenishmentPlanRecord';
+import { ACTIVE_STATUSES, type NeedToOrderRow } from './replenish-types';
 
 interface ReplenishmentNeedTableProps {
   skuSearch: string;
   statusFilter: string | null;
 }
 
-/** SKU chip — gray / hash icon, same style as OrderIdChip but shows full SKU. */
-function SkuChip({ sku }: { sku: string }) {
-  const display = sku || '---';
-  return (
-    <CopyChip
-      value={sku}
-      display={display}
-      icon={<HashIcon />}
-      iconClass="text-text-soft"
-      truncateDisplay={false}
-    />
-  );
-}
+const replenishmentId = (row: NeedToOrderRow): string => row.id;
 
 export function ReplenishmentNeedTable({ skuSearch, statusFilter }: ReplenishmentNeedTableProps) {
-  const statuses = statusFilter && ACTIVE_STATUSES.includes(statusFilter as ReplenishmentStatus)
+  const queryClient = useQueryClient();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [creatingPo, setCreatingPo] = useState(false);
+  const statuses = statusFilter && ACTIVE_STATUSES.includes(statusFilter as ReplenishmentRequestStatus)
     ? statusFilter
     : ACTIVE_STATUSES.join(',');
-
   const queryKey = ['replenish-need', { statuses, skuSearch }] as const;
 
   const query = useQuery({
     queryKey,
     queryFn: async () => {
-      const params = new URLSearchParams({
-        status: statuses,
-        limit: '200',
-        sort: 'fifo',
-      });
+      const params = new URLSearchParams({ status: statuses, limit: '200', sort: 'fifo' });
       if (skuSearch) params.set('sku', skuSearch);
-      const res = await fetch(`/api/need-to-order?${params.toString()}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error('Failed to load replenishment requests');
-      const payload = await res.json();
-      return (Array.isArray(payload.items) ? payload.items : []) as NeedToOrderRow[];
+      const response = await fetch(`/api/need-to-order?${params.toString()}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Failed to load purchasing plan');
+      const payload = await response.json() as { items?: NeedToOrderRow[]; total?: number };
+      return {
+        rows: Array.isArray(payload.items) ? payload.items : [],
+        total: Number(payload.total ?? 0),
+      };
     },
     staleTime: 60_000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
-  const rows = query.data || [];
+  const rows = query.data?.rows ?? [];
+  const openRow = useMemo(
+    () => rows.find((row) => row.id === openId) ?? null,
+    [openId, rows],
+  );
+  const cursorOrder = useMemo<GroupedRenderOrder<NeedToOrderRow>>(
+    () => [['plan', [{ key: 'plan', rows }]]],
+    [rows],
+  );
 
-  if (query.isLoading) {
-    return (
-      <div className="flex-1 flex items-center justify-center bg-surface-canvas">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-text-muted">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (openId && !rows.some((row) => row.id === openId)) setOpenId(null);
+    setSelectedIds((current) => {
+      const next = new Set([...current].filter((id) => rows.some((row) => row.id === id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [openId, rows]);
+
+  const open = useCallback((row: NeedToOrderRow) => {
+    setOpenId(row.id);
+  }, []);
+  const close = useCallback(() => {
+    setOpenId(null);
+  }, []);
+
+  usePublishRecordCursor({
+    surfaceId: 'replenishment-purchasing-plan',
+    scope: 'record',
+    enabled: true,
+    order: cursorOrder,
+    openId,
+    getId: replenishmentId,
+    onOpen: open,
+    onClose: close,
+  });
+  const navigation = useRecordCursor('record');
+
+  const refresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['replenish-need'] });
+    refreshDomain('replenish');
+  }, [queryClient]);
+
+  const save = useCallback(async (row: NeedToOrderRow, patch: ReplenishmentPlanPatch) => {
+    setSavingId(row.id);
+    try {
+      const response = await fetch(`/api/need-to-order/${encodeURIComponent(row.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string; details?: string } | null;
+      if (!response.ok) throw new Error(payload?.details || payload?.error || 'Update failed');
+      await refresh();
+      toast.success('Purchasing plan saved');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Update failed');
+    } finally {
+      setSavingId(null);
+    }
+  }, [refresh]);
+
+  const transition = useCallback(async (
+    row: NeedToOrderRow,
+    status: ReplenishmentRequestStatus,
+  ) => {
+    await save(row, { status });
+  }, [save]);
+
+  const toggle = useCallback((row: NeedToOrderRow) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.add(row.id);
+      return next;
+    });
+  }, []);
+
+  const plannedIds = useMemo(
+    () => rows
+      .filter((row) => selectedIds.has(row.id) && row.status === 'planned_for_po')
+      .map((row) => row.id),
+    [rows, selectedIds],
+  );
+  const createDraftPos = useCallback(async () => {
+    if (plannedIds.length === 0) return;
+    setCreatingPo(true);
+    try {
+      const response = await fetch('/api/replenish/bulk-create-po', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replenishment_request_ids: plannedIds }),
+      });
+      const payload = await response.json().catch(() => null) as {
+        error?: string;
+        created_pos?: Array<{ zoho_po_number: string }>;
+      } | null;
+      if (!response.ok) throw new Error(payload?.error || 'Draft PO creation failed');
+      setSelectedIds(new Set());
+      await refresh();
+      const count = payload?.created_pos?.length ?? 0;
+      toast.success(count === 1 ? 'Created 1 Zoho draft PO' : `Created ${count} Zoho draft POs`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Draft PO creation failed');
+    } finally {
+      setCreatingPo(false);
+    }
+  }, [plannedIds, refresh]);
+
+  const renderRecord = useCallback(
+    (row: NeedToOrderRow, isOpen: boolean) => (
+      <ReplenishmentPlanRecord
+        row={row}
+        open={isOpen}
+        selected={selectedIds.has(row.id)}
+        onOpen={open}
+        onToggle={toggle}
+      />
+    ),
+    [open, selectedIds, toggle],
+  );
 
   return (
-    <div className="flex h-full min-w-0 flex-1 bg-surface-card relative">
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className={mainStickyHeaderClass}>
-          <div className={mainStickyHeaderRowClass}>
-            <div>
-              <p className={`${sectionLabel} text-red-700`}>Need to Order</p>
-              <p className={`${fieldLabel} mt-0.5`}>
-                {rows.length} item{rows.length !== 1 ? 's' : ''} · oldest first
-              </p>
-            </div>
-            <div className="min-w-[18px] flex items-center justify-end">
-              {(query.isFetching && !query.isLoading) && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-auto no-scrollbar">
-          {rows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-40 text-center">
-              <div className="max-w-xs mx-auto animate-in fade-in zoom-in duration-300">
-                <p className="text-text-soft font-semibold italic opacity-40">
-                  {skuSearch ? `No items match "${skuSearch}"` : 'Nothing to order right now'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col w-full">
-              {rows.map((row, index) => {
-                const waitingOrders = Array.isArray(row.orders_waiting) ? row.orders_waiting : [];
-                const waitingCount = waitingOrders.length;
-                const qtyToOrder = numText(row.quantity_to_order);
-                const sku = String(row.sku || '').trim();
-                // Bridge to secondary-market sourcing: escalate this vendor-restock
-                // need to the sourcing queue keyed on the item title (avoids the
-                // items↔sku_catalog SKU-string collision — see that memory).
-                const qtyNum = Math.round(Number(row.quantity_to_order) || 0);
-
-                return (
-                  <motion.div
-                    key={row.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition-all border-b border-border-hairline cursor-default hover:bg-blue-50/50 ${
-                      index % 2 === 0 ? 'bg-surface-card' : 'bg-surface-canvas/10'
-                    }`}
-                  >
-                    {/* Left: two-line info */}
-                    <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <HoverTooltip label="Needs reorder" asChild>
-                          <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
-                        </HoverTooltip>
-                        <div className="text-role-caption font-semibold text-text-default truncate">
-                          {row.item_name || 'Unknown Item'}
-                        </div>
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <div className="text-role-micro text-text-soft uppercase tracking-widest truncate min-w-0 flex-1 pl-4">
-                          <span className="text-red-600">{qtyToOrder}</span>
-                          {' • '}
-                          {row.vendor_name || 'No Vendor'}
-                          {waitingCount > 0 && (
-                            <>
-                              {' • '}
-                              <span className="text-amber-600">{waitingCount} order{waitingCount !== 1 ? 's' : ''}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: SKU chip + Ecwid link + scour bridge */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {sku && (
-                        <PlatformChip
-                          label={sku}
-                          iconClass="text-text-soft"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const url = getExternalUrlByItemNumber(sku);
-                            if (url) window.open(url, '_blank', 'noopener,noreferrer');
-                          }}
-                        />
-                      )}
-                      <SkuChip sku={sku} />
-                      <SourceThisButton
-                        searchQuery={row.item_name}
-                        targetQty={qtyNum > 1 ? qtyNum : null}
-                        label="Scour"
-                        doneLabel="Queued"
-                        variant="ghost"
-                      />
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+    <RecordLedger
+      testId="replenishment-plan-ledger"
+      label="Purchasing plan"
+      records={rows}
+      recordKey={replenishmentId}
+      renderRecord={renderRecord}
+      openKey={openId}
+      onOpenKey={(id) => {
+        const row = rows.find((candidate) => candidate.id === id);
+        if (row) open(row);
+      }}
+      onClose={close}
+      loading={query.isLoading}
+      navigation={navigation.available ? navigation : undefined}
+      toolbar={
+        <>
+          <span className="min-w-0 flex-1 truncate px-2 font-mono text-role-micro font-bold uppercase tracking-[0.08em] text-mode-muted">
+            {statusFilter ? statusFilter.replaceAll('_', ' ') : 'Active requests'}
+          </span>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            icon={<Plus aria-hidden />}
+            disabled={plannedIds.length === 0 || creatingPo}
+            loading={creatingPo}
+            onClick={() => void createDraftPos()}
+          >
+            Create draft PO{plannedIds.length > 0 ? ` · ${plannedIds.length}` : ''}
+          </Button>
+        </>
+      }
+      empty={
+        <b className="text-role-body font-bold text-mode-ink">
+          {query.isError
+            ? 'Purchasing plan could not be loaded'
+            : skuSearch
+              ? `No requests match “${skuSearch}”`
+              : 'No active purchasing requests'}
+        </b>
+      }
+      evidenceNoun="request"
+      evidence={
+        <ReplenishmentPlanEvidence
+          row={openRow}
+          rows={rows}
+          saving={savingId === openRow?.id}
+          onSave={save}
+          onTransition={transition}
+        />
+      }
+      footer={
+        <>
+          <span>{rows.length.toLocaleString()} of {(query.data?.total ?? rows.length).toLocaleString()} requests</span>
+          {selectedIds.size > 0 ? <span className="ml-auto">{selectedIds.size.toLocaleString()} selected</span> : null}
+        </>
+      }
+    />
   );
 }

@@ -99,8 +99,8 @@ export function DailyAgendaComposer({
   queue: ReactNode;
   /** Leave the composer: the ✕ and Escape both land here. */
   onExit: () => void;
-  /** A row landed — the agenda refetches and leaves the composer. */
-  onCreated: () => void;
+  /** A row landed — the agenda refetches, leaves the composer and opens the new task. */
+  onCreated: (taskId: number | null) => void;
   /**
    * The checklist LIST is org-managed, so adding to it is gated on
    * `admin.manage_staff`. Without it the type switch offers Task only — an

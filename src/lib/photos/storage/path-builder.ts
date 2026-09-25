@@ -6,9 +6,9 @@ export function buildGcsObjectKey(opts: {
   entityType: PhotoEntityType;
   photoId: number;
   /**
-   * The polymorphic parent id. Only STAFF files under it today
-   * (`staff/{id}/avatar/…`) — every other flow partitions by date, PO, or unit
-   * uid, so passing it is optional and ignored elsewhere.
+   * The polymorphic parent id. Only STAFF (`staff/{id}/avatar/…`) and
+   * WORK_ASSIGNMENT (`tasks/{id}/…`) file under it today — every other flow
+   * partitions by date, PO, or unit uid, so passing it is optional and ignored elsewhere.
    */
   entityId?: number | null;
   poRef?: string | null;
@@ -98,6 +98,10 @@ function entityFlowDirectory(opts: {
       // in place over a career, so grouping by staffer keeps every version of
       // one face in one prefix instead of scattered across months.
       return `staff/${sanitizePathSegment(String(opts.entityId ?? opts.fallbackId))}/avatar`;
+    case 'WORK_ASSIGNMENT':
+      // Task-partitioned: a task's evidence accrues over its whole life, so
+      // one prefix per task keeps it together across months.
+      return `tasks/${sanitizePathSegment(String(opts.entityId ?? opts.fallbackId))}`;
     default:
       return `misc/${yyyy}/${mm}`;
   }

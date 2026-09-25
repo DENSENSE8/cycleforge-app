@@ -157,17 +157,26 @@ export function useItemActions(dateKey: string) {
   });
 
   /**
-   * Rename a live item. NOT optimistic, unlike the tick: a tick is a personal
-   * attestation the operator repeats a hundred times a shift, while a rename
-   * changes the LIST every staffer reads — showing the new wording before the
-   * server has taken it would show four people a title that might roll back.
+   * Edit a live item — its title, or its due time / reminder. NOT optimistic,
+   * unlike the tick: a tick is a personal attestation the operator repeats a
+   * hundred times a shift, while an item edit changes the LIST every staffer
+   * reads — showing it before the server has taken it would show four people
+   * a schedule that might roll back. Only the keys given are sent.
    */
   const updateItem = useMutation({
-    mutationFn: async (input: { itemId: number; title: string }): Promise<DailyCheckItem> => {
-      const res = await fetch(`/api/daily-checks/items?id=${input.itemId}`, {
+    mutationFn: async ({
+      itemId,
+      ...fields
+    }: {
+      itemId: number;
+      title?: string;
+      dueTime?: string | null;
+      remindOffsetMinutes?: number | null;
+    }): Promise<DailyCheckItem> => {
+      const res = await fetch(`/api/daily-checks/items?id=${itemId}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title: input.title }),
+        body: JSON.stringify(fields),
       });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;

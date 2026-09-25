@@ -219,3 +219,58 @@ export async function listUnitTimelinePhotos(
       };
     });
 }
+
+/**
+ * Pack evidence belongs to the PACKER_LOG's shipment, including capture
+ * drafts: an operator must be able to find photos before final verification.
+ * A photo can have multiple entity links; DISTINCT keeps one row per photo.
+ */
+export async function listOrderPackerTimelinePhotos(
+  organizationId: string,
+  orderId: number,
+): Promise<UnitTimelinePhoto[]> {
+  const result = await tenantQuery<Pick<DbRow, 'id' | 'created_at' | 'taken_by_staff_id'>>(
+    organizationId,
+    `SELECT DISTINCT p.id, p.created_at, p.taken_by_staff_id
+       FROM orders o
+       JOIN packer_logs pl
+         ON pl.organization_id = o.organization_id
+        AND pl.shipment_id IS NOT NULL
+        AND (
+          pl.shipment_id = o.shipment_id
+          OR EXISTS (
+            SELECT 1 FROM shipment_links sl
+             WHERE sl.owner_type = 'ORDER'
+               AND sl.owner_id = o.id
+               AND sl.organization_id = o.organization_id
+               AND sl.shipment_id = pl.shipment_id
+          )
+        )
+       JOIN photo_entity_links l
+         ON l.entity_type = 'PACKER_LOG'
+        AND l.entity_id = pl.id
+        AND l.organization_id = o.organization_id
+        AND l.link_role = 'primary'
+       JOIN photos p
+         ON p.id = l.photo_id
+        AND p.organization_id = l.organization_id
+      WHERE o.id = $2
+        AND o.organization_id = $1
+      ORDER BY p.created_at DESC, p.id DESC
+      LIMIT 200`,
+    [organizationId, orderId],
+  );
+  return result.rows.map((row) => {
+    const photoId = Number(row.id);
+    return {
+      photoId,
+      at: row.created_at,
+      source: 'packing' as const,
+      takenByStaffId: row.taken_by_staff_id == null ? null : Number(row.taken_by_staff_id),
+      thumbUrl: photoContentUrl(photoId, 'thumb'),
+      fullUrl: photoContentUrl(photoId),
+      serial: null,
+      sku: null,
+    };
+  });
+}

@@ -192,21 +192,14 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
 
 /**
  * `/incoming` — Inbound desk: Pipeline (expected/in-transit) + Docked (landed
- * activity, former Receiving Board) + PO Mailbox. `?lane=docked` selects
- * Docked; omit = Pipeline. `?view=mailbox` replaces the browse body with the
- * ex-admin email-PO triage queue (admin dissolution).
+ * activity, former Receiving Board). `?lane=docked` selects Docked; omit =
+ * Pipeline. Retired PO Mailbox links fall back to the delivery ledger.
  */
 export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   route: INCOMING_SURFACE_ROUTE,
   owns: {
     /** Desk lane (`pipeline` default, omitted | `docked`). */
     lane: paramEnum(['pipeline', 'docked'] as const),
-    /**
-     * PO Mailbox face (admin dissolution): the emailed-PO / unmatched-carton
-     * triage queue that used to be `/admin?section=po_mailbox`. It owns the
-     * whole desk body while set, so it is a face, not a filter.
-     */
-    view: paramEnum(['mailbox'] as const),
     /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
     /**

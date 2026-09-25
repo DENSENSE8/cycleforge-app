@@ -652,42 +652,17 @@ export interface CompoundStageStepFacts {
  */
 export type CompoundStageAssignRole = 'technician' | 'packer';
 
-/** Roster switch copy: Packed face = packer on/off, not the persisted opposite role. */
-export type StaffLaneRoleNotice = {
-  face: CompoundStageAssignRole;
-  eligible: boolean;
-};
-
 export interface CompoundStageAssign {
   /** Current assignee for this lane (not the scan-completion actor). */
   selectedStaffId: number | null;
   /** Accessible name for the assign combobox — e.g. Pick / Packer; not painted. */
   label: string;
+  /**
+   * Assign mode lists staff holding this lane's functional role; the combo's
+   * pencil roster edits functional roles itself (never RBAC).
+   */
   role: CompoundStageAssignRole;
   onCommit: (staffId: number | null, staffName: string | null) => void;
-  /**
-   * Persist a member's floor role from roster mode (All staff).
-   * Assign mode still name-clicks only when they already match `role`.
-   */
-  onSetLaneRole?: (
-    staffId: number,
-    role: CompoundStageAssignRole,
-    staffName: string,
-    notice?: StaffLaneRoleNotice,
-  ) => void;
-}
-
-/**
- * Far-right actions-column roster. Sets a member's floor role (picker /
- * packer) only — it does not assign the order.
- */
-export interface CompoundStaffRoster {
-  onSetLaneRole: (
-    staffId: number,
-    role: CompoundStageAssignRole,
-    staffName: string,
-    notice?: StaffLaneRoleNotice,
-  ) => void;
 }
 
 /** Assign chrome only when the host armed a handler and the step has no stamp. */

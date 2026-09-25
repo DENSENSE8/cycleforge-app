@@ -26,18 +26,21 @@ export type MobileSheetRole = 'edit' | 'dock-verb' | 'confirm' | 'picker' | 'lin
 /** Repo-relative file (POSIX) → the role of the sheet(s) it mounts. A file with several sheets takes the heaviest role. */
 export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
   // daily
+  'src/components/mobile/daily/MobileDailyChecklist.tsx': 'picker', // plus button chooses checklist or shared task
   'src/components/mobile/daily/MobileDailyComposerSheet.tsx': 'dock-verb', // add-a-task form
   'src/components/mobile/daily/MobileDailySheets.tsx': 'edit', // a checklist row's pencil lands here, title focused
+  'src/components/mobile/daily/MobileTaskSheet.tsx': 'dock-verb', // a handed task's row CTA: instructions + Start / Mark done / Add media
+  'src/components/mobile/daily/MobileSharedTaskComposerSheet.tsx': 'dock-verb', // create one task for several staff
   // on-hold
   'src/components/mobile/onhold/SkuExceptionEditSheet.tsx': 'edit', // /m/on-hold/[sku]/info pencil
   // orders
   'src/components/mobile/orders/MobileOrderEvidenceSheet.tsx': 'record', // the order, from the to-ship ledger
+  'src/components/mobile/orders/MobileOrderPaperworkSheet.tsx': 'dock-verb', // order documents and pair/print actions from pick or pack
   // packer
   'src/components/mobile/packer/MobilePackingSheet.tsx': 'record', // one packed order (packer log entry)
   // pair
   'src/components/mobile/pair/PairDetailSheet.tsx': 'linked-peek', // where this SKU already lives, before pairing a bin
   // picker
-  'src/components/mobile/picker/PickPairToteSheet.tsx': 'dock-verb', // the pick queue's Pair CTA
   'src/components/mobile/picker/ShortPickSheet.tsx': 'confirm', // short-pick reason, a deliberate decision
   'src/components/mobile/picker/directed/DirectedPickNotesSheet.tsx': 'dock-verb', // note on this pick
   // receiving

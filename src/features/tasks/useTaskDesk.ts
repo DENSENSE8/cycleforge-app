@@ -39,7 +39,29 @@ export interface TaskDeskPatch {
   deadlineAt?: string | null;
   startedAt?: string | null;
   assigneeStaffId?: number;
+  /** Replace the shared assignment membership (first member is the lead). */
+  assigneeStaffIds?: number[];
+  /** The umbrella project label; null clears it. */
+  projectName?: string | null;
+  /** The description staff work from; empty clears it. */
+  note?: string | null;
+  /** "Remind me" instant, ISO, or `null` to clear. */
+  remindAt?: string | null;
 }
+
+/**
+ * WHOSE work the desk reads. `mine` is the default desk; `handed` is what I
+ * threw at colleagues (the manager's follow-through list — without it a thrown
+ * task vanishes from the thrower's screen the moment it lands); `everyone` is
+ * the team board.
+ */
+export type TaskDeskScope = 'mine' | 'handed' | 'everyone';
+
+const SCOPE_PARAMS: Readonly<Record<TaskDeskScope, Record<string, string>>> = {
+  mine: { assignee: 'me' },
+  handed: { assignee: 'all', assignedBy: 'me' },
+  everyone: { assignee: 'all' },
+};
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
   const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -49,7 +71,7 @@ async function readJson(res: Response): Promise<Record<string, unknown>> {
   return data;
 }
 
-export function useTaskDesk(lane: TaskDeskLane) {
+export function useTaskDesk(lane: TaskDeskLane, scope: TaskDeskScope = 'mine') {
   const queryClient = useQueryClient();
 
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -59,9 +81,9 @@ export function useTaskDesk(lane: TaskDeskLane) {
   }, []);
 
   const query = useQuery({
-    queryKey: ['tasks', 'desk', lane],
+    queryKey: ['tasks', 'desk', lane, scope],
     queryFn: async (): Promise<TaskDeskWireRow[]> => {
-      const params = new URLSearchParams({ lane, assignee: 'me' });
+      const params = new URLSearchParams({ lane, ...SCOPE_PARAMS[scope] });
       const res = await fetch(`/api/tasks?${params}`, { credentials: 'same-origin' });
       const data = (await readJson(res)) as unknown as TaskDeskListPayload;
       return data.tasks ?? [];

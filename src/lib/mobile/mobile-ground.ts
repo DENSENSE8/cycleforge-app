@@ -217,7 +217,7 @@ export function findMobileGrayGrounds(): MobileGrayGround[] {
  * by what you removed, and add the file to {@link MOBILE_GRAY_GROUND_ZERO} so
  * it can never regress. Raising it is the one edit this module exists to stop.
  */
-export const MOBILE_GRAY_GROUND_BASELINE = 38;
+export const MOBILE_GRAY_GROUND_BASELINE = 35;
 
 export function formatMobileGrayGround(hit: MobileGrayGround): string {
   return `${hit.file}:${hit.line} — ${hit.match}`;

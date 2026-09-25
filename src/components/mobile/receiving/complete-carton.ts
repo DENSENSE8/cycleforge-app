@@ -54,6 +54,16 @@ export interface CompleteCartonRequest {
 }
 
 /**
+ * The carton facts the receive lane reads — exactly what the routing SoT
+ * (`shouldUseLocalReceiveOnly`) needs, so the carton hub can build it from the
+ * carton read instead of pretending to hold a full line row.
+ */
+export type CompleteCartonRow = Pick<
+  ReceivingLineRow,
+  'receiving_id' | 'receiving_source' | 'zoho_purchaseorder_id' | 'intake_type' | 'receiving_type' | 'carton_intake_type'
+>;
+
+/**
  * Body for `POST /api/receiving/mark-received-po`.
  *
  * `station: 'MOBILE'` tags the audit + inventory events as phone-originated
@@ -64,7 +74,7 @@ export interface CompleteCartonRequest {
  * than re-derived from `receiving_source` here.
  */
 export function completeCartonRequestBody(
-  row: ReceivingLineRow,
+  row: CompleteCartonRow,
   receivingId: number,
   clientEventId: string,
 ): CompleteCartonRequest {

@@ -44,7 +44,7 @@ _Prioritized. Agent implements **one** per session._
 <!-- eval-ledger:auto:machine-gates -->
 | Date | Gate | Result | Snapshot |
 |------|------|--------|----------|
-| 2026-09-24 | verify:fast | pass | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-verify-fast.log` |
+| 2026-09-24 | verify:fast | **FAIL** | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Tripwire result
@@ -128,6 +128,10 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
+| KeyboardKey | `component:src/design-system/primitives/KeyboardKey.tsx:KeyboardKey` | 18 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-KeyboardKey.json` |
+| KeyboardShortcutsCheatSheet | `component:src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx:KeyboardShortcutsCheatSheet` | 3 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-KeyboardShortcutsCheatSheet.json` |
+| useSelectionStatusBarHotkeys | `function:src/hooks/useSelectionStatusBarHotkeys.ts:useSelectionStatusBarHotkeys` | 7 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-useSelectionStatusBarHotkeys.json` |
+| TableStatusBar | `component:src/components/tables/TableStatusBar.tsx:TableStatusBar` | 6 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-TableStatusBar.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
@@ -135,53 +139,60 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
 <!-- eval-ledger:auto:design-critique -->
 - `src/design-system/primitives/KeyboardKey.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-critique-KeyboardKey.txt`
 ```
-node:internal/child_process:285
-      const err = new ErrnoException(exitCode, syscall);
-                  ^
-
-Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
+{
+  "file": "src/design-system/primitives/KeyboardKey.tsx",
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [],
 ```
 - `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-critique-KeyboardShortcutsCheatSheet.txt`
 ```
-node:internal/child_process:285
-      const err = new ErrnoException(exitCode, syscall);
-                  ^
-
-Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
+{
+  "file": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
 ```
 - `src/components/tables/TableStatusBar.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-critique-TableStatusBar.txt`
 ```
-node:internal/child_process:285
-      const err = new ErrnoException(exitCode, syscall);
-                  ^
-
-Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
+{
+  "file": "src/components/tables/TableStatusBar.tsx",
+  "summary": "1 problem, worst first: 447 lines — past the point reviewers read",
+  "problems": [
+    {
 ```
 - `src/components/tables/DataTableColumnActionRow.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-critique-DataTableColumnActionRow.txt`
 ```
-node:internal/child_process:285
-      const err = new ErrnoException(exitCode, syscall);
-                  ^
-
-Error: spawn /root/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh ENOENT
+{
+  "file": "src/components/tables/DataTableColumnActionRow.tsx",
+  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
+  "problems": [
+    {
 ```
 <!-- /eval-ledger:auto:design-critique -->
 
 ## graph_stats
 
 <!-- eval-ledger:auto:graph-stats -->
-_code-graph CLI unavailable_
+- project: `cycleforge-app`
+- status: `ready`
+- last_built_at: `2026-09-23T15:13:40.909Z`
+- nodes: 34084 · edges: 149901 · embedded: 34084
+- snapshot: `docs/eval/cohorts/shortcuts/snapshots/2026-09-24-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-24T20:39:53.642Z · cohort `shortcuts` · run id `2026-09-24T20-38-06-111Z`_
+_Updated 2026-09-24T23:44:09.030Z · cohort `shortcuts` · run id `2026-09-24T23-42-39-117Z`_
 <!-- /eval-ledger:auto:last-run -->
 
 
 <!-- eval-ledger:auto:graph-impact -->
-_No graph symbols configured or code-graph CLI unavailable._
+- **KeyboardKey** — 18 files, 25 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-KeyboardKey.json`)
+- **KeyboardShortcutsCheatSheet** — 3 files, 3 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-KeyboardShortcutsCheatSheet.json`)
+- **useSelectionStatusBarHotkeys** — 7 files, 7 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-useSelectionStatusBarHotkeys.json`)
+- **TableStatusBar** — 6 files, 6 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-24-impact-TableStatusBar.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 

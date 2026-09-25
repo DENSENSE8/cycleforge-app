@@ -144,7 +144,7 @@ export function MobilePairLocation({ code }: { code: string }) {
                 </span>
               }
               imageUrl={candidate.imageUrl}
-              badge={
+              code={
                 candidate.isProvisional || isProvisionalSku(candidate.sku) ? <OnHoldBadge /> : null
               }
               actionLabel="Pair"

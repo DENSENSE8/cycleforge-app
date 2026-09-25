@@ -440,7 +440,7 @@ export function IncomingAddInboundForm({
           {!error && !ticketDraftBody ? (
             <p className="text-role-caption text-text-faint">
               {isReturn
-                ? 'Return Add files an internal support ticket with order, tracking, and SKU context.'
+                ? 'Return Add files an internal support ticket with order, tracking, SKU, and listing context.'
                 : 'Amazon / Goodwill CSV bulk upload lives under Import → Upload CSV. Priority applies when a carton is linked (e.g. tracking).'}
             </p>
           ) : null}

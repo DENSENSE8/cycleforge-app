@@ -67,11 +67,21 @@ export const LEDGER_GROUP_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
   L: 'h-[37px]',
 };
 
+/**
+ * Photo lane WIDTH. A seed-group band puts its fold chevron in a lane of this
+ * width, so the group's columns start on the records' x (owner 2026-09-25).
+ */
+export const LEDGER_PHOTO_LANE_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
+  S: 'w-8',
+  M: 'w-24',
+  L: 'w-[108px]',
+};
+
 /** Photo lane: a full-bleed square, no inset. */
 export const LEDGER_PHOTO_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
-  S: 'w-8 h-8',
-  M: 'w-24 h-24',
-  L: 'w-[108px] h-[108px]',
+  S: `${LEDGER_PHOTO_LANE_CLASS.S} h-8`,
+  M: `${LEDGER_PHOTO_LANE_CLASS.M} h-24`,
+  L: `${LEDGER_PHOTO_LANE_CLASS.L} h-[108px]`,
 };
 
 /** The 5px state spine. */
@@ -94,6 +104,17 @@ export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
   M: 'w-60 shrink-0',
   L: 'w-60 shrink-0',
 };
+
+/**
+ * The record's LEAD column on bands 1 and 3 — one box, so the fact that
+ * follows it starts on the same x on both bands (owner 2026-09-25: the SKU
+ * under the customer). Band 1 fills it exactly: select 8 · state 11 · note 11
+ * · platform 24 · order # 40, plus four gap-3 (12) = 106 steps (424px). Band 3
+ * puts condition · BIN in it; BIN takes the rest. The seed-group band wears it
+ * too, its state code across the state + note slots (w-25). Change a band-1
+ * lane → change this width.
+ */
+export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
 
 /**
  * The evidence column beside the ledger — the desktop terminal's

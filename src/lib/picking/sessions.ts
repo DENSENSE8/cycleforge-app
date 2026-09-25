@@ -25,6 +25,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { Queryable } from '@/lib/neon/serial-units-queries';
 import { parseToteScan, toteBindRefusal } from '@/lib/picking/tote-scan';
+import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -177,6 +178,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         serial_number: string | null;
         sku: string;
         product_title: string | null;
+        zoho_item_title?: string | null;
         bin: string | null;
         condition_grade: string | null;
         current_status: string;
@@ -188,6 +190,9 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
                 su.serial_number,
                 su.sku,
                 sc.product_title,
+                (SELECT i.name FROM items i
+                  WHERE i.sku = su.sku AND i.organization_id = su.organization_id AND i.status = 'active'
+                  ORDER BY i.id LIMIT 1) AS zoho_item_title,
                 -- Prefer the human-readable barcode (e.g. 'UNSORTED', 'A-12');
                 -- fall back to the raw current_location string when no
                 -- locations row matches (orphan / legacy data).
@@ -217,7 +222,11 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
           WHERE oua.order_id = $1
             AND oua.organization_id = $2
             AND oua.state IN ('ALLOCATED', 'PICKING')
-          ORDER BY oua.id ASC`,
+          -- Walk order: bin sequence, then bin face, then SKU — not allocation id.
+          ORDER BY l.sort_order ASC NULLS LAST,
+                   COALESCE(l.barcode, l.name, su.current_location) ASC NULLS LAST,
+                   su.sku ASC,
+                   oua.id ASC`,
         [orderId, orgId],
       )
     : await pool.query<{
@@ -226,6 +235,7 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
         serial_number: string | null;
         sku: string;
         product_title: string | null;
+        zoho_item_title?: string | null;
         bin: string | null;
         condition_grade: string | null;
         current_status: string;
@@ -279,7 +289,8 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
       serialNumber: r.serial_number,
       lineId: i + 1,
       sku: r.sku,
-      productTitle: r.product_title,
+      productTitle:
+        resolveSkuIdentityTitle({ zoho_item_title: r.zoho_item_title, catalog_product_title: r.product_title }) || null,
       bin: r.bin,
       conditionGrade: r.condition_grade,
       plannedQty: 1, // one allocation row = one unit; aggregate elsewhere if needed
@@ -291,6 +302,49 @@ export async function loadPickTasks(orderId: number, orgId?: OrgId): Promise<Pic
 
 // ─── Sessions ────────────────────────────────────────────────────────────────
 
+/**
+ * Open (or reuse) the (order, picker) session on a caller's transaction —
+ * the directed feed claims an order and opens its session under one lock.
+ */
+export async function openPickingSessionOn(
+  client: Queryable,
+  input: StartSessionInput,
+  orgId: OrgId,
+): Promise<StartSessionResult> {
+  const orderQ = await client.query<{ id: number }>(
+    `SELECT id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    [input.orderId, orgId],
+  );
+  if (orderQ.rowCount === 0) {
+    return { ok: false, status: 404, error: `order ${input.orderId} not found` };
+  }
+
+  // Reuse an existing open session for this (order, picker) so a worker who
+  // navigates away and back doesn't fragment the audit trail.
+  const reuseQ = await client.query<{ id: number }>(
+    `SELECT ps.id FROM picking_sessions ps
+       JOIN orders o ON o.id = ps.order_id
+      WHERE ps.order_id = $1
+        AND ps.picker_staff_id = $2
+        AND ps.ended_at IS NULL
+        AND o.organization_id = $3
+      ORDER BY ps.started_at DESC
+      LIMIT 1`,
+    [input.orderId, input.pickerStaffId, orgId],
+  );
+  if ((reuseQ.rowCount ?? 0) > 0) {
+    return { ok: true, sessionId: Number(reuseQ.rows[0].id), reopen: true };
+  }
+
+  const insertQ = await client.query<{ id: number }>(
+    `INSERT INTO picking_sessions (order_id, picker_staff_id, device_id)
+     VALUES ($1, $2, $3)
+     RETURNING id`,
+    [input.orderId, input.pickerStaffId, input.deviceId ?? null],
+  );
+  return { ok: true, sessionId: Number(insertQ.rows[0].id), reopen: false };
+}
+
 export async function startSession(input: StartSessionInput, orgId?: OrgId): Promise<StartSessionResult> {
   // ── Org-scoped path: GUC-wrapped transaction. picking_sessions has NO
   // organization_id column (child of orders) → scope via the parent order
@@ -298,40 +352,7 @@ export async function startSession(input: StartSessionInput, orgId?: OrgId): Pro
   // INSERT carries no org column to stamp; the GUC wrap + org-validated
   // parent order are the isolation boundary.
   if (orgId) {
-    return withTenantTransaction<StartSessionResult>(orgId, async (client) => {
-      const orderQ = await client.query<{ id: number }>(
-        `SELECT id FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-        [input.orderId, orgId],
-      );
-      if (orderQ.rowCount === 0) {
-        return { ok: false, status: 404, error: `order ${input.orderId} not found` };
-      }
-
-      // Reuse an existing open session for this (order, picker) so a worker who
-      // navigates away and back doesn't fragment the audit trail.
-      const reuseQ = await client.query<{ id: number }>(
-        `SELECT ps.id FROM picking_sessions ps
-           JOIN orders o ON o.id = ps.order_id
-          WHERE ps.order_id = $1
-            AND ps.picker_staff_id = $2
-            AND ps.ended_at IS NULL
-            AND o.organization_id = $3
-          ORDER BY ps.started_at DESC
-          LIMIT 1`,
-        [input.orderId, input.pickerStaffId, orgId],
-      );
-      if ((reuseQ.rowCount ?? 0) > 0) {
-        return { ok: true, sessionId: reuseQ.rows[0].id, reopen: true };
-      }
-
-      const insertQ = await client.query<{ id: number }>(
-        `INSERT INTO picking_sessions (order_id, picker_staff_id, device_id)
-         VALUES ($1, $2, $3)
-         RETURNING id`,
-        [input.orderId, input.pickerStaffId, input.deviceId ?? null],
-      );
-      return { ok: true, sessionId: insertQ.rows[0].id, reopen: false };
-    });
+    return withTenantTransaction<StartSessionResult>(orgId, (client) => openPickingSessionOn(client, input, orgId));
   }
 
   const client = await pool.connect();
@@ -434,6 +455,54 @@ async function readToteForOrder(
   const refusal = toteBindRefusal(tote, orderId);
   if (refusal) return { ok: false, ...refusal };
   return { ok: true, tote };
+}
+
+/**
+ * Reserve the scanned tote for the picker's open order before the first unit
+ * leaves its bin. Confirming a unit still rechecks the same locked tote and
+ * attaches the unit in its own transaction; a rejected scan cannot arm the UI.
+ */
+export async function pairPickingTote(
+  orgId: OrgId,
+  input: { sessionId: number; orderId: number; toteScan: string; staffId: number },
+): Promise<
+  | { ok: true; toteId: number; toteCode: string; alreadyPaired: boolean }
+  | { ok: false; status: 404 | 409; error: string }
+> {
+  return withTenantTransaction(orgId, async (client) => {
+    const session = await client.query(
+      `SELECT ps.id
+         FROM picking_sessions ps
+         JOIN orders o ON o.id = ps.order_id AND o.organization_id = $4
+        WHERE ps.id = $1 AND ps.order_id = $2 AND ps.picker_staff_id = $3
+          AND ps.ended_at IS NULL
+          AND EXISTS (
+            SELECT 1 FROM order_unit_allocations oua
+             WHERE oua.order_id = o.id AND oua.organization_id = $4
+               AND oua.state IN ('ALLOCATED', 'PICKING')
+          )
+        FOR UPDATE OF ps`,
+      [input.sessionId, input.orderId, input.staffId, orgId],
+    );
+    if (!session.rows.length) {
+      return { ok: false as const, status: 409 as const, error: 'This pick session is no longer active' };
+    }
+    const read = await readToteForOrder(client, orgId, input.toteScan, input.orderId);
+    if (!read.ok) return read;
+    const alreadyPaired = read.tote.pairedOrderId === input.orderId;
+    const result = await client.query(
+      `UPDATE handling_units
+          SET paired_order_id = $1,
+              paired_at = COALESCE(paired_at, NOW()),
+              paired_by_staff_id = COALESCE(paired_by_staff_id, $2)
+        WHERE id = $3 AND organization_id = $4
+          AND (paired_order_id IS NULL OR paired_order_id = $1)
+          AND status IN ('OPEN', 'STAGED')`,
+      [input.orderId, input.staffId, read.tote.id, orgId],
+    );
+    if (result.rowCount !== 1) throw new Error('Tote pairing changed under lock');
+    return { ok: true as const, toteId: read.tote.id, toteCode: read.tote.code, alreadyPaired };
+  });
 }
 
 /**
@@ -708,29 +777,59 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
 
       // Short means the worker picked fewer than planned. Release this allocation
       // back to STOCKED so re-allocation can hand it to another order.
-      const unitResult = await transition(
-        {
-          unitId: alloc.serial_unit_id,
-          to: 'STOCKED',
-          eventType: 'NOTE',
-          actorStaffId: input.actorStaffId,
-          station: 'MOBILE',
-          clientEventId: input.clientEventId ?? null,
-          notes: `short-pick: ${input.reason}${input.note ? ` — ${input.note}` : ''}`,
-          payload: {
-            source: 'picking.short_pick',
-            sessionId: input.sessionId,
-            allocationId: alloc.id,
-            reason: input.reason,
-            pickedQty: input.pickedQty,
-            plannedQty: input.plannedQty,
-          },
-        },
-        client,
-        orgId,
+      //
+      // The allocator reserves a unit WITHOUT moving it off STOCKED
+      // (`auto-allocate.ts`), so for most shorts the unit is already STOCKED and
+      // a transition would be refused as an identity move — which failed every
+      // short on a live allocation. Then the release is the allocation update
+      // alone, and the reason still lands on the unit's timeline as a NOTE.
+      const statusQ = await client.query<{ current_status: string }>(
+        `SELECT current_status::text AS current_status
+           FROM serial_units
+          WHERE id = $1 AND organization_id = $2`,
+        [alloc.serial_unit_id, orgId],
       );
-      if (!unitResult.ok) {
-        return { ok: false, status: unitResult.status, error: unitResult.error };
+      const shortNotes = `short-pick: ${input.reason}${input.note ? ` — ${input.note}` : ''}`;
+      const shortPayload = {
+        source: 'picking.short_pick',
+        sessionId: input.sessionId,
+        allocationId: alloc.id,
+        reason: input.reason,
+        pickedQty: input.pickedQty,
+        plannedQty: input.plannedQty,
+      };
+      if (statusQ.rows[0]?.current_status === 'STOCKED') {
+        await recordInventoryEvent(
+          {
+            event_type: 'NOTE',
+            actor_staff_id: input.actorStaffId,
+            station: 'MOBILE',
+            serial_unit_id: alloc.serial_unit_id,
+            client_event_id: input.clientEventId ?? null,
+            notes: shortNotes,
+            payload: shortPayload,
+          },
+          client,
+          orgId,
+        );
+      } else {
+        const unitResult = await transition(
+          {
+            unitId: alloc.serial_unit_id,
+            to: 'STOCKED',
+            eventType: 'NOTE',
+            actorStaffId: input.actorStaffId,
+            station: 'MOBILE',
+            clientEventId: input.clientEventId ?? null,
+            notes: shortNotes,
+            payload: shortPayload,
+          },
+          client,
+          orgId,
+        );
+        if (!unitResult.ok) {
+          return { ok: false, status: unitResult.status, error: unitResult.error };
+        }
       }
 
       await client.query(
@@ -813,6 +912,53 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
   } finally {
     client.release();
   }
+}
+
+/**
+ * A picker's free-text note on a line (the directed screen's Notes verb).
+ * Written as a NOTE inventory event per unit, so it lands on each unit's
+ * timeline beside its PICKED / short-pick events. Every allocation must
+ * belong to the session's order.
+ */
+export async function recordPickNote(
+  input: { sessionId: number; allocationIds: number[]; text: string; actorStaffId: number },
+  orgId: OrgId,
+): Promise<{ ok: true; recorded: number } | { ok: false; status: 400 | 404; error: string }> {
+  const text = input.text.trim();
+  if (!text) return { ok: false, status: 400, error: 'note is empty' };
+  const ids = [...new Set(input.allocationIds)].filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length === 0) return { ok: false, status: 400, error: 'no allocations' };
+
+  return withTenantTransaction(orgId, async (client) => {
+    const units = await client.query<{ allocation_id: number; serial_unit_id: number; sku: string | null }>(
+      `SELECT oua.id AS allocation_id, oua.serial_unit_id, su.sku
+         FROM picking_sessions ps
+         JOIN orders o ON o.id = ps.order_id AND o.organization_id = $1
+         JOIN order_unit_allocations oua ON oua.order_id = ps.order_id AND oua.organization_id = $1
+         JOIN serial_units su ON su.id = oua.serial_unit_id AND su.organization_id = $1
+        WHERE ps.id = $2 AND oua.id = ANY($3::int[])`,
+      [orgId, input.sessionId, ids],
+    );
+    if (units.rows.length !== ids.length) {
+      return { ok: false as const, status: 404 as const, error: 'allocation not on this session' };
+    }
+    for (const unit of units.rows) {
+      await recordInventoryEvent(
+        {
+          event_type: 'NOTE',
+          actor_staff_id: input.actorStaffId,
+          station: 'MOBILE',
+          serial_unit_id: unit.serial_unit_id,
+          sku: unit.sku,
+          notes: text,
+          payload: { source: 'picking.note', sessionId: input.sessionId, allocationId: unit.allocation_id },
+        },
+        client,
+        orgId,
+      );
+    }
+    return { ok: true as const, recorded: units.rows.length };
+  });
 }
 
 export async function completeSession(

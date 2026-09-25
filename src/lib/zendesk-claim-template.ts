@@ -43,6 +43,8 @@ export interface ClaimTemplateInput {
   reason?: string;
   /** "View the PO receiving" link to embed in the body (built from req origin). */
   poReceivingLink?: string;
+  /** Marketplace product URL captured during inbound intake. */
+  listingUrl?: string;
 }
 
 export interface ClaimTemplateResult {
@@ -80,7 +82,7 @@ export async function buildReceivingClaimTemplate(
   input: ClaimTemplateInput,
   orgId?: OrgId,
 ): Promise<ClaimTemplateResult> {
-  const { receivingId, lineId, claimType, reason, poReceivingLink } = input;
+  const { receivingId, lineId, claimType, reason, poReceivingLink, listingUrl } = input;
 
   // When orgId is present, scope the read to the tenant: filter the
   // org-bearing `receiving_carton` row and align the org-bearing `receiving_line`
@@ -345,6 +347,10 @@ export async function buildReceivingClaimTemplate(
     descriptionLines.push(`Unboxed: ${unboxedAtText}`);
   }
   descriptionLines.push('');
+  const trimmedListingUrl = String(listingUrl ?? '').trim();
+  if (trimmedListingUrl) {
+    descriptionLines.push(`Listing: ${trimmedListingUrl}`);
+  }
   // Photos ride along as real Zendesk attachments (uploaded at submit from the
   // operator's selection) — no boilerplate line about them in the body. A link
   // back to the carton's receiving workspace gives the agent full context.

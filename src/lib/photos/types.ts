@@ -14,6 +14,8 @@ export const PHOTO_ENTITY_TYPES = [
   'ZENDESK_TICKET',
   'REPAIR_SERVICE',
   'STAFF',
+  // A thrown FOLLOW_UP task (`work_assignments`) — the task desk's evidence.
+  'WORK_ASSIGNMENT',
 ] as const;
 
 export type PhotoEntityType = (typeof PHOTO_ENTITY_TYPES)[number];

@@ -44,6 +44,7 @@ import type {
   ShipStationV1Shipment,
 } from '@/lib/shipping/shipstation/orders-v1';
 import { syncShipStationStoresToCatalog } from '@/lib/catalog/shipstation-store-sync';
+import { listStoreLinks, SHIPSTATION_STORE_PROVIDER } from '@/lib/catalog/integration-store-links';
 import { listPlatformAccounts, listPlatforms } from '@/lib/neon/catalog-queries';
 import { buildAccountSourceLookup } from '@/lib/platform-display';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -114,8 +115,8 @@ interface SyncContext {
 
 async function loadContext(orgId: OrgId, client: ShipStationV1Client, apply: boolean, progress: SyncProgress): Promise<SyncContext> {
   const stores = await client.listStores();
-  // Mirror the storefronts' platforms into the catalog first (additive,
-  // idempotent) so attribution and the classify picker see the same platforms.
+  // Place unlinked stores on their platforms first (additive, idempotent) so
+  // attribution and the pickers read the same links.
   // Best-effort: a mirror failure must never fail the order sync.
   if (apply) {
     try {
@@ -124,9 +125,10 @@ async function loadContext(orgId: OrgId, client: ShipStationV1Client, apply: boo
       console.warn('[shipstation-sync] store catalog mirror skipped:', e);
     }
   }
-  const [platforms, accounts, spellingRows] = await Promise.all([
+  const [platforms, accounts, links, spellingRows] = await Promise.all([
     listPlatforms(orgId, { includeInactive: true }),
     listPlatformAccounts(orgId, { includeInactive: true }),
+    listStoreLinks(orgId, SHIPSTATION_STORE_PROVIDER),
     tenantQuery<{ account_source: string; n: number }>(
       orgId,
       `SELECT account_source, count(*)::int AS n
@@ -140,13 +142,17 @@ async function loadContext(orgId: OrgId, client: ShipStationV1Client, apply: boo
   const platformOf: PlatformOf = (source) => lookup(source).platform?.slug.trim().toLowerCase() ?? null;
   const platformSlugById = new Map(platforms.map((p) => [String(p.id), p.slug.trim().toLowerCase()]));
 
+  // A link naming an account that has since been retired attributes to the
+  // platform (org spelling) rather than to a hidden account.
+  const activeAccountSlugById = new Map(accounts.filter((a) => a.is_active).map((a) => [String(a.id), a.slug]));
   const bindings: AttributionCatalog['bindings'] = new Map(
-    accounts
-      .filter((a) => /^\d+$/.test(String(a.integration_scope ?? '').trim()) && !a.slug.startsWith('shipstation-'))
-      .flatMap((a) => {
-        const platform = platformSlugById.get(String(a.platform_id));
-        return platform ? [[Number(a.integration_scope), { accountSource: a.slug, platform }] as const] : [];
-      }),
+    links.flatMap((link) => {
+      const platform = platformSlugById.get(String(link.platform_id));
+      if (!platform) return [];
+      const accountSource =
+        link.platform_account_id != null ? activeAccountSlugById.get(String(link.platform_account_id)) ?? null : null;
+      return [[Number(link.external_store_id), { platform, accountSource }] as const];
+    }),
   );
   const spellings = spellingRows.rows.map((r) => ({
     accountSource: r.account_source,

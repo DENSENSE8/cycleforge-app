@@ -23,6 +23,7 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { blackOrWhiteInk } from '@/lib/color-contrast';
 
 export type IdentityMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
@@ -64,7 +65,9 @@ interface IdentityMarkProps {
   /**
    * `round` (default) — the spine / nav mark. `square` — industrial surfaces
    * (radius 0), where a circle beside square cells reads as a foreign part
-   * (To-ship ledger pick / pack, owner 2026-09-24).
+   * (To-ship ledger pick / pack, owner 2026-09-24). The square mark is the
+   * terminal face (owner 2026-09-25): no hairline ring — the hard edge of the
+   * fill is the shape — and the initials in the mono bold uppercase label face.
    */
   shape?: 'round' | 'square';
   className?: string;
@@ -93,20 +96,24 @@ export function IdentityMark({
 
   const showPhoto = !!src && !failed;
   const a11y = alt ? { role: 'img' as const, 'aria-label': alt } : { 'aria-hidden': true };
+  // Preserve the saved staff colour; only initials switch to black or white.
+  const initialsInk = !showPhoto && colorHex ? blackOrWhiteInk(colorHex) : null;
+  const square = shape === 'square';
 
   return (
     <span
       {...a11y}
       className={cn(
-        'relative flex shrink-0 items-center justify-center overflow-hidden font-semibold text-white',
-        shape === 'square' ? cornerClass('flush') : 'rounded-full',
+        'relative flex shrink-0 items-center justify-center overflow-hidden text-white',
+        square ? cn(cornerClass('flush'), 'font-mono font-bold uppercase tracking-[0.04em]') : 'rounded-full font-semibold',
         SIZE_CLASS[size],
-        ring && 'ring-1 ring-border-soft',
+        ring && !square && 'ring-1 ring-border-soft',
         !showPhoto && !colorHex && 'bg-surface-inverse',
         className,
       )}
       style={{
         ...(!showPhoto && colorHex ? { backgroundColor: colorHex } : null),
+        ...(initialsInk ? { color: initialsInk } : null),
         // box-shadow, not border: it paints outside the box, so the photo
         // keeps its full diameter and nothing reflows between the two states.
         ...(showPhoto && ringHex ? { boxShadow: `0 0 0 2px ${ringHex}` } : null),

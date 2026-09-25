@@ -1,4 +1,4 @@
-import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, real, interval, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, boolean, timestamp, integer, smallint, date, time, primaryKey, jsonb, pgEnum, bigserial, bigint, uuid, numeric, real, interval, uniqueIndex, index, customType } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // ─── Multi-tenancy Helper ─────────────
@@ -2135,6 +2135,11 @@ export const workAssignments = pgTable('work_assignments', {
   assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
   startedAt: timestamp('started_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  /**
+   * "Remind me" instant (2026-09-25b). NULL = no explicit reminder; the native
+   * apps schedule a LOCAL notification from `GET /api/v1/reminders`.
+   */
+  remindAt: timestamp('remind_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -6176,6 +6181,10 @@ export const dailyCheckItems = pgTable('daily_check_items', {
   kind: text('kind').notNull().default('recurring'),
   assignedStaffId: integer('assigned_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   glyph: text('glyph'),
+  /** Civil clock time (warehouse zone) the item is due each live day. Migration: 2026-09-25b. */
+  dueTime: time('due_time'),
+  /** Minutes before `dueTime` to remind (0..1440); requires `dueTime`. */
+  remindOffsetMinutes: integer('remind_offset_minutes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
@@ -6230,6 +6239,99 @@ export const dailyCheckItemLinks = pgTable('daily_check_item_links', {
 
 export type DailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferSelect;
 export type NewDailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferInsert;
+
+/**
+ * The records a thrown task names beyond its anchor (2026-09-25b): extra
+ * orders, tracking numbers and helpdesk tickets. Discriminator CHECK
+ * (`work_assignment_links_entity_type_chk`) and the orders / support_tickets
+ * parent-delete triggers live in the migration; the label is always derived
+ * server-side (`src/lib/tasks/task-links-db.ts`), so the natural key dedupes.
+ */
+export const workAssignmentLinks = pgTable('work_assignment_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  assignmentId: integer('assignment_id').notNull().references(() => workAssignments.id, { onDelete: 'cascade' }),
+  /** Discriminator: ORDER | SUPPORT_TICKET | TRACKING (named CHECK in SQL). */
+  entityType: text('entity_type').notNull(),
+  /** orders.id / LOCAL support_tickets.id; NULL for TRACKING. */
+  entityId: bigint('entity_id', { mode: 'number' }),
+  label: text('label').notNull(),
+  /** TRACKING only: the order `findOrderByTrackingKey` matched at link time. */
+  resolvedOrderId: integer('resolved_order_id').references(() => orders.id, { onDelete: 'set null' }),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  naturalUq: uniqueIndex('work_assignment_links_natural_uq').on(t.organizationId, t.assignmentId, t.entityType, t.label),
+  assignmentIdx: index('idx_work_assignment_links_assignment').on(t.organizationId, t.assignmentId),
+  entityIdx: index('idx_work_assignment_links_entity').on(t.organizationId, t.entityType, t.entityId),
+}));
+
+export type WorkAssignmentLinkRow = typeof workAssignmentLinks.$inferSelect;
+export type NewWorkAssignmentLinkRow = typeof workAssignmentLinks.$inferInsert;
+
+/**
+ * Markdown documents on a thrown task (2026-09-25c). `upload` stores the text
+ * in `content`; `repo` stores only `repo_path` (a plan file read live from
+ * disk by `src/lib/tasks/plan-files.ts`). The source discriminator CHECK
+ * (`work_assignment_documents_source_chk`) and the partial repo-path UNIQUE
+ * live in the migration.
+ */
+export const workAssignmentDocuments = pgTable('work_assignment_documents', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  assignmentId: integer('assignment_id').notNull().references(() => workAssignments.id, { onDelete: 'cascade' }),
+  /** Discriminator: upload | repo (named CHECK in SQL). */
+  source: text('source').notNull(),
+  title: text('title').notNull(),
+  /** upload only: the markdown text (≤ 200 000 chars). */
+  content: text('content'),
+  /** repo only: repo-relative plan-file path, forward slashes. */
+  repoPath: text('repo_path'),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  repoPathUq: uniqueIndex('ux_work_assignment_documents_repo_path')
+    .on(t.organizationId, t.assignmentId, t.repoPath)
+    .where(sql`source = 'repo'`),
+  assignmentIdx: index('idx_work_assignment_documents_assignment').on(t.organizationId, t.assignmentId),
+}));
+
+export type WorkAssignmentDocumentRow = typeof workAssignmentDocuments.$inferSelect;
+export type NewWorkAssignmentDocumentRow = typeof workAssignmentDocuments.$inferInsert;
+
+/**
+ * Photos / videos attached to a thrown task by URL (2026-09-25d): YouTube,
+ * Vimeo, Loom, Drive, or a direct https image / video file. `kind`,
+ * `provider`, `url`, `embed_url` and `thumbnail_url` are always
+ * `parseMediaLink`'s answer (`src/lib/tasks/media-links.ts`); the kind /
+ * provider / length CHECKs live in the migration.
+ */
+export const workAssignmentMediaLinks = pgTable('work_assignment_media_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  assignmentId: integer('assignment_id').notNull().references(() => workAssignments.id, { onDelete: 'cascade' }),
+  /** video | photo (named CHECK in SQL). */
+  kind: text('kind').notNull(),
+  /** youtube | vimeo | loom | drive | image | video_file (named CHECK in SQL). */
+  provider: text('provider').notNull(),
+  /** Canonical URL (≤ 2000), the dedupe key per task. */
+  url: text('url').notNull(),
+  embedUrl: text('embed_url').notNull(),
+  thumbnailUrl: text('thumbnail_url'),
+  /** Operator caption (≤ 200); null shows the provider's name. */
+  title: text('title'),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  urlUq: uniqueIndex('ux_work_assignment_media_links_url').on(t.organizationId, t.assignmentId, t.url),
+  assignmentIdx: index('idx_work_assignment_media_links_assignment').on(t.organizationId, t.assignmentId),
+}));
+
+export type WorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferSelect;
+export type NewWorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferInsert;
 
 // ─── Tool Forge: the self-evolving capability pipeline (2026-08-22c) ─────────
 // Three tables, one rule: a request that duplicates an existing tool cannot be
@@ -6421,3 +6523,21 @@ export const skuStaffPairings = pgTable('sku_staff_pairings', {
 
 export type SkuStaffPairing = typeof skuStaffPairings.$inferSelect;
 export type NewSkuStaffPairing = typeof skuStaffPairings.$inferInsert;
+
+/**
+ * Floor functional roles — what a staff member DOES (picker, packer), apart
+ * from RBAC access roles (`staff_roles`). Non-exclusive: one person may hold
+ * both. Drives the Pick / Pack assign lists; editing never touches access.
+ */
+export const staffFunctionalRoles = pgTable('staff_functional_roles', {
+  organizationId: orgIdCol(),
+  staffId: integer('staff_id').notNull(),
+  roleKey: text('role_key').$type<'picker' | 'packer'>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdByStaffId: integer('created_by_staff_id'),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.organizationId, table.staffId, table.roleKey], name: 'staff_functional_roles_pk' }),
+  orgRoleIdx: index('idx_staff_functional_roles_role').on(table.organizationId, table.roleKey, table.staffId),
+}));
+
+export type StaffFunctionalRole = typeof staffFunctionalRoles.$inferSelect;

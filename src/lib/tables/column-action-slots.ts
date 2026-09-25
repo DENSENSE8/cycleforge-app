@@ -24,7 +24,6 @@ export function columnKeyForSelectionAction(
       return has('fulfillment') ? 'fulfillment' : null;
     case 'condition':
     case 'qty':
-    case 'notes':
       return has('item') ? 'item' : null;
     case 'ship-by':
       return has('state') ? 'state' : null;

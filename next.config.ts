@@ -116,6 +116,13 @@ const nextConfig: NextConfig = {
     // same checkout — dev clobbers `.next`. Unset ⇒ default `.next`.
     distDir: process.env.NEXT_DIST_DIR || '.next',
     outputFileTracingRoot: process.cwd(),
+    // Task `repo` documents read plan files from disk at request time
+    // (src/lib/tasks/plan-files.ts); the tracer cannot see those reads, so
+    // ship the allowlisted roots with the two routes that make them.
+    outputFileTracingIncludes: {
+        '/api/tasks/plan-files': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
+        '/api/tasks/[id]/documents': ['./docs/**/*.md', './docs/**/*.mdx', './master-plan.mdx', './*.md'],
+    },
     // Keep the production build fail-closed. CI typechecks earlier for faster
     // feedback, while Next repeats the check so a deployment cannot bypass CI
     // and publish a revision that does not compile.

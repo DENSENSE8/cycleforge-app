@@ -8,6 +8,7 @@ import {
   normalizeProvisionalBarcode,
   planProvisionalMerge,
   provisionalSkuForBarcode,
+  provisionalSkuForSourceRef,
   PROVISIONAL_MERGE_REASON,
   type ProvisionalBinRow,
 } from '../inventory/provisional-sku';
@@ -137,29 +138,58 @@ const PROVISIONAL_SELECT = `
    WHERE ss.organization_id = $1 AND ss.is_provisional = true`;
 
 /**
- * Mint a placeholder for a scanned barcode, or return the one that already
- * exists for it.
+ * Mint a placeholder, or return the one that already exists for the same key.
+ *
+ * The key is the scanned barcode when there is one (`TMP-<barcode>`), else
+ * the caller's `sourceRef` idempotency key (`TMP-XXXXX-XXXXX`, see
+ * `provisionalSkuForSourceRef`) — a bin-sheet import passes a stable ref per
+ * product, a phone/desk form passes one ref per open form so a double tap
+ * joins its own placeholder. With neither, a random ref mints a fresh one.
  *
  * Idempotent on (org, barcode) by the partial unique index, so a second
  * operator scanning the same box joins the existing placeholder rather than
- * starting a rival one holding half the count. A repeat call may supply a
+ * starting a rival one holding half the count — including a barcode that was
+ * attached later to a barcode-less placeholder. A repeat call may supply a
  * better title or description; it does NOT overwrite one that is already
  * there, because the first person to name the thing was looking at it and a
  * later caller might only be echoing a default.
  */
 export async function createProvisionalSku(
-  input: { barcode: string; productTitle: string; description?: string | null; staffId?: number | null },
+  input: {
+    barcode?: string | null;
+    sourceRef?: string | null;
+    productTitle: string;
+    description?: string | null;
+    staffId?: number | null;
+  },
   orgId: OrgId,
 ): Promise<ProvisionalSku> {
-  const sku = provisionalSkuForBarcode(input.barcode);
-  if (!sku) throw new Error('Barcode has no usable characters');
+  const hasBarcode = input.barcode != null && input.barcode.trim() !== '';
+  const barcode = hasBarcode ? normalizeProvisionalBarcode(input.barcode as string) : null;
+  if (hasBarcode && !barcode) throw new Error('Barcode has no usable characters');
+  const derivedSku = barcode
+    ? provisionalSkuForBarcode(barcode)
+    : provisionalSkuForSourceRef(orgId, input.sourceRef?.trim() || globalThis.crypto.randomUUID());
+  if (!derivedSku) throw new Error('Could not derive an on-hold SKU');
   const title = input.productTitle.trim();
   if (!title) throw new Error('A name is required for an on-hold product');
   const description = input.description?.trim() || null;
 
-  const barcode = normalizeProvisionalBarcode(input.barcode);
-
   return withTenantTransaction(orgId, async (db) => {
+    // A barcode attached to a barcode-less placeholder after the fact keeps
+    // that placeholder's key; scanning the box again must join it, not trip
+    // the unique index minting `TMP-<barcode>` beside it.
+    let sku = derivedSku;
+    if (barcode) {
+      const existing = await db.query<{ sku: string }>(
+        `SELECT sku FROM sku_stock
+          WHERE organization_id = $1 AND is_provisional = true AND provisional_barcode = $2
+          LIMIT 1`,
+        [orgId, barcode],
+      );
+      sku = existing.rows[0]?.sku ?? derivedSku;
+    }
+
     // The catalog row FIRST: `bin_contents.sku` has a FK onto
     // `sku_catalog(sku)` (fk_bin_contents_sku, ON DELETE RESTRICT), so without
     // it the placeholder could never be put in a bin — which is the only thing
@@ -262,20 +292,91 @@ export async function findProvisionalMergeTarget(sku: string, orgId: OrgId): Pro
 }
 
 /**
- * Rename / describe an open placeholder. The title is written to both the
+ * Why a barcode could not be attached to a placeholder. The route maps
+ * `unusable` to 400 and the rest to 409 with `conflictSku`, so the operator is
+ * told which record already owns the barcode instead of "failed".
+ */
+export class ProvisionalBarcodeError extends Error {
+  constructor(
+    readonly reason: 'unusable' | 'has-barcode' | 'barcode-taken' | 'barcode-is-catalog',
+    readonly conflictSku: string | null = null,
+  ) {
+    super(
+      reason === 'unusable'
+        ? 'Barcode has no usable characters'
+        : reason === 'has-barcode'
+          ? 'This on-hold product already has a different barcode'
+          : reason === 'barcode-taken'
+            ? `Barcode already belongs to on-hold product ${conflictSku}`
+            : `Barcode already belongs to catalog SKU ${conflictSku} — pair to it instead`,
+    );
+    this.name = 'ProvisionalBarcodeError';
+  }
+}
+
+/**
+ * Rename / describe an open placeholder, or attach the barcode a
+ * barcode-less one was created without. The title is written to both the
  * warehouse row and the inactive catalog row, since bins paint from either.
+ * The SKU key never changes — photos, bins and links already point at it.
+ *
+ * A barcode is attach-once: setting the one it already has is a no-op, a
+ * different one throws `ProvisionalBarcodeError` (as does a barcode another
+ * placeholder or a real catalog SKU already owns).
  * Returns `null` when no open placeholder has that SKU.
  */
 export async function updateProvisionalSku(
-  input: { sku: string; productTitle?: string; description?: string | null },
+  input: { sku: string; productTitle?: string; description?: string | null; barcode?: string },
   orgId: OrgId,
 ): Promise<ProvisionalSku | null> {
   const sku = input.sku.trim();
   const title = input.productTitle?.trim();
   const hasDescription = input.description !== undefined;
   const description = input.description?.trim() || null;
+  const barcode = input.barcode === undefined ? null : normalizeProvisionalBarcode(input.barcode);
+  if (input.barcode !== undefined && !barcode) throw new ProvisionalBarcodeError('unusable');
 
   return withTenantTransaction(orgId, async (db) => {
+    if (barcode) {
+      const current = await db.query<{ provisional_barcode: string | null }>(
+        `SELECT provisional_barcode FROM sku_stock
+          WHERE organization_id = $1 AND sku = $2 AND is_provisional = true
+          FOR UPDATE`,
+        [orgId, sku],
+      );
+      if (current.rows.length === 0) return null;
+      const had = current.rows[0].provisional_barcode;
+      if (had && had !== barcode) throw new ProvisionalBarcodeError('has-barcode');
+      if (!had) {
+        const taken = await db.query<{ sku: string }>(
+          `SELECT sku FROM sku_stock
+            WHERE organization_id = $1 AND is_provisional = true AND provisional_barcode = $2 AND sku <> $3
+            LIMIT 1`,
+          [orgId, barcode, sku],
+        );
+        if (taken.rows[0]) throw new ProvisionalBarcodeError('barcode-taken', taken.rows[0].sku);
+        const catalog = await db.query<{ sku: string }>(
+          `SELECT sku FROM sku_catalog
+            WHERE organization_id = $1 AND is_provisional = false AND upc = $2
+            LIMIT 1`,
+          [orgId, barcode],
+        );
+        if (catalog.rows[0]) throw new ProvisionalBarcodeError('barcode-is-catalog', catalog.rows[0].sku);
+        await db.query(
+          `UPDATE sku_stock SET provisional_barcode = $3, updated_at = NOW()
+            WHERE organization_id = $1 AND sku = $2 AND is_provisional = true`,
+          [orgId, sku, barcode],
+        );
+        await db.query(
+          `UPDATE sku_catalog
+              SET provisional_barcode = $3, upc = COALESCE(NULLIF(upc, ''), $3), updated_at = NOW()
+            WHERE organization_id = $1 AND sku = $2 AND is_provisional = true
+              AND ${skuCatalogNoZohoTwinPredicateSql()}`,
+          [orgId, sku, barcode],
+        );
+      }
+    }
+
     const updated = await db.query(
       `UPDATE sku_stock
           SET product_title = COALESCE($3, product_title),

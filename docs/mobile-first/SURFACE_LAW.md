@@ -152,8 +152,8 @@ Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
 
 | Verb area | Mobile SoT |
 |---|---|
-| Pick queue (line-grained, location-directed) | `/m/pick` |
-| Pick session | `/m/pick/[orderId]` · claim `/m/id/pick/[orderId]` |
+| Pick session (system-fed, one line at a time; no queue, no start button — opening it starts picking) | `/m/pick` |
+| Pick one named order | `/m/pick/[orderId]` · claim `/m/id/pick/[orderId]` |
 | Orders / to-ship | `/m/orders` (canonical) · `/m/work` (compatibility alias; never a second nav door) |
 | Unbox / receive / location scan | `/m/unbox`, `/m/receive`, `/m/receiving`, `/m/scan` |
 | Identification kernel (QC-done, claim, scan-out) | `/m/id/*` — `/m/id/methods`, `/m/id/[job]/[entityId]`, `/m/id/scan-out/[orderId]` |

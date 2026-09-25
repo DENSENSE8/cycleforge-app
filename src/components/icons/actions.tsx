@@ -84,6 +84,13 @@ export const Check = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/** Resize corner — the drag grip on a hand-resizable text field. */
+export const ResizeCorner = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeWidth={2} d="M20 10L10 20M20 16l-4 4" />
+    </svg>
+);
+
 /**
  * Check-square — the rail row menu's "Select" verb (enters bulk multi-select).
  * Lucide `check-square` path, house stroke conventions.

@@ -27,7 +27,7 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
 const CommandInput = React.forwardRef<
   React.ComponentRef<typeof CommandPrimitive.Input>,
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
-    /** Combobox header accessory (All staff). Never forwarded to the input. */
+    /** Combobox header accessory (e.g. the roster-edit pencil). Never forwarded to the input. */
     trailing?: React.ReactNode;
   }
 >(function CommandInput({ className, trailing, ...props }, ref) {

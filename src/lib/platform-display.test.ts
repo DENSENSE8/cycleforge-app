@@ -5,6 +5,7 @@ import {
   buildOrderChannelResolver,
   buildPlatformShortLabelLookup,
   normalizeShortLabelInput,
+  orderPlatformChoices,
 } from './platform-display';
 
 let nextId = 1;
@@ -115,4 +116,31 @@ test('short-label lookup matches a platform by slug or display label, org overri
 test('short-label input is trimmed and upper-cased; blank clears', () => {
   assert.equal(normalizeShortLabelInput('  amzrn '), 'AMZRN');
   assert.equal(normalizeShortLabelInput('   '), null);
+});
+
+test('order platform choices: each platform once; an account only when a store is linked to it', () => {
+  const ecwid = platform('ecwid', 'ECW');
+  const ebay = platform('ebay', 'eBay');
+  const hidden = platform('other', 'Other', { is_active: false });
+  const ecwidMain = account(ecwid, 'ecwid-main', 'ECWID');
+  const dragon = account(ebay, 'DRAGON', 'DRAGON');
+  const zoho = account(ebay, 'ZOHO_MAIN', 'ZOHO_MAIN'); // no store sells as it
+  const mirror = { ...account(ebay, 'shipstation-216566', 'eBay Dragonhn'), is_active: false };
+  const choices = orderPlatformChoices(
+    [ecwid, ebay, hidden],
+    [ecwidMain, dragon, zoho, mirror],
+    // Linked: Ecwid store → platform only; eBay Dragonhn → DRAGON; a stale link
+    // to the retired mirror and one to the default account list nothing extra.
+    [
+      { platform_account_id: null },
+      { platform_account_id: dragon.id },
+      { platform_account_id: mirror.id },
+      { platform_account_id: ecwidMain.id },
+    ],
+  );
+  assert.deepEqual(choices, [
+    { value: 'ecwid', label: 'ECW' },
+    { value: 'ebay', label: 'eBay' },
+    { value: 'DRAGON', label: 'eBay · DRAGON' },
+  ]);
 });

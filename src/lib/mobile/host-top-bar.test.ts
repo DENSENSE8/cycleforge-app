@@ -17,11 +17,17 @@ test('a detail route owns its bar, and with it the scan seat', () => {
   }
 });
 
+test('/m/pick is the pick session itself — its progress band is the only chrome', () => {
+  // The bare route stopped being a queue (operator 2026-09-25): a host header
+  // above the directed screen would stack a second bar over its progress band.
+  assert.equal(mobileRouteOwnsTopBar('/m/pick'), true);
+});
+
 test('a queue route keeps the host header — the trailing slash is the whole rule', () => {
-  // `/m/pick/` excludes the pick DETAIL screen while `/m/pick` itself, the
-  // queue, still gets the host header. Drop the slash and the queue loses its
-  // header (and its only scan door, because a queue has no record bar).
-  assert.equal(mobileRouteOwnsTopBar('/m/pick'), false);
+  // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions`
+  // itself, the queue, still gets the host header. Drop the slash and the
+  // queue loses its header (and its only scan door, because a queue has no
+  // record bar).
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/exceptions'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/scan'), false);

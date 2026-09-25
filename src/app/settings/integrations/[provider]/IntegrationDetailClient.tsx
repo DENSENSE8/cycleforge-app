@@ -19,6 +19,7 @@ import { EbayConnectPopover, EbayAccountNameChip } from '../EbayAccountPopover';
 import { IntegrationConnectSuccess } from '../IntegrationConnectSuccess';
 import { parseHealthResult } from '../integration-health';
 import { ZohoReceiveBackfillControl } from '../ZohoReceiveBackfillControl';
+import { ShipStationStoreLinks } from '@/components/settings/ShipStationStoreLinks';
 
 const STATUS_PILL: Record<string, { dot: string; text: string; bg: string; label: string }> = {
   active: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
@@ -307,6 +308,17 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
           <p className="text-role-micro uppercase tracking-widest text-text-faint">Webhook URL</p>
           <code className="block break-all rounded-lg bg-surface-canvas px-3 py-2 text-role-caption text-text-default">{summary.webhookUrl}</code>
           <p className="text-role-caption text-text-faint">Copy this URL into your provider&apos;s webhook settings.</p>
+        </section>
+      )}
+
+      {def.key === 'shipstation' && summary.connected && (
+        <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-2">
+          <p className="text-role-micro uppercase tracking-widest text-text-faint">Stores</p>
+          <p className="text-role-caption text-text-soft">
+            Link each store to an existing platform (and account). Its orders import there; the sync
+            never adds a platform or account for a linked store.
+          </p>
+          <ShipStationStoreLinks canEdit={canManage} />
         </section>
       )}
 

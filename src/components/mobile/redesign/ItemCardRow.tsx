@@ -2,7 +2,7 @@
 
 /**
  * The phone item card — ONE component for every queue that lists sellable
- * units (to-ship on `/m/work`, picks on `/m/pick`).
+ * units (to-ship on `/m/work`, the shipping and exception queues).
  *
  *   [48px photo] [BIN] PLATFORM · ORDER .. SLA
  *               SKU / title              QTY
@@ -18,7 +18,7 @@
  *     of the meta row, where it was already second in the eye's order.
  *
  * Data arrives as PLAIN values, not a row type — each queue maps its own feed
- * (WorkOrderRow, PickListRow) onto the same face. The row only selects work;
+ * (WorkOrderRow, …) onto the same face. The row only selects work;
  * typed swipe triage is opt-in. Orders may add the governed SKU-adjacent
  * marketplace inspection trigger without creating a second row destination.
  */
@@ -102,9 +102,10 @@ export interface ItemCardTriageAction {
  * Ship-by corner. Read-only on purpose: the card can swipe to commit, so a
  * tappable date here would be a second commit target inside a drag surface.
  * (`DateRangePickerField variant="compact"` is the in-CELL editor for slot
- * tables — a different job, a different surface.)
+ * tables — a different job, a different surface.) The directed picker's
+ * order card paints the same face, so an order reads one SLA everywhere.
  */
-function ItemCardShipBy({ deadlineAt, now }: { deadlineAt: string | null; now?: number }) {
+export function ItemCardShipBy({ deadlineAt, now }: { deadlineAt: string | null; now?: number }) {
   const key = deadlineAt ? toPSTDateKey(deadlineAt) : null;
   const sla = resolveOutboundSlaCountdown(deadlineAt, now);
   const band = sla.tone === 'danger' ? 'overdue' : sla.tone === 'warning' ? 'today' : classifyDeadlineBand(deadlineAt);
@@ -177,7 +178,6 @@ export function ItemCardRow({
   reference,
   outboundOrderId,
   location,
-  locationTone,
   itemNumber,
   listing = null,
   qty,
@@ -208,7 +208,7 @@ export function ItemCardRow({
   /** Stable order-row identity for non-visual browser observability only. */
   outboundOrderId?: string | number | null;
   /**
-   * Pick rows only — the shelf the picker walks to. Mono, default ink.
+   * The shelf the unit sits on. Mono, default ink.
    *
    * TEXT, and only text. A DataMatrix of the bin barcode used to render beside
    * it so a bench scanner could read the code off the screen; operator
@@ -219,8 +219,6 @@ export function ItemCardRow({
    * symbol, which is where a scanner is pointed anyway.
    */
   location?: string | null;
-  /** Ink override for `location` — a pick row with no shelf reads warning. */
-  locationTone?: string | null;
   /** Listing identity rendered only through the governed SKU-adjacent trigger. */
   itemNumber?: string | null;
   /** Context-preserving marketplace inspection; never a row destination. */
@@ -430,7 +428,7 @@ export function ItemCardRow({
                 <div className={ITEM_RECORD_MOBILE_TITLE.context}>
                   <span
                     data-testid="item-card-location-context"
-                    className={cn(ITEM_RECORD_MOBILE_TITLE.locationContext, locationTone)}
+                    className={ITEM_RECORD_MOBILE_TITLE.locationContext}
                   >
                     {storageContext}
                   </span>
@@ -501,7 +499,7 @@ export function ItemCardRow({
                   qty={qty ?? '—'}
                   price={price}
                   condition={condition ? <span className={condition.tone}>{condition.label}</span> : null}
-                  notes={location ? <span data-testid="item-card-location" className={locationTone ?? 'text-text-default'}>{location}</span> : null}
+                  notes={location ? <span data-testid="item-card-location" className="text-text-default">{location}</span> : null}
                 />
                 {primary ? (
                 <div

@@ -1,66 +1,38 @@
-/**
- * Run: node --import tsx --test src/components/tables/compound/staff-stage-lane.test.ts
- */
-
-import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  applyStaffLaneRole,
-  oppositeStaffLane,
-  staffLaneEmptyLabel,
-  staffLaneFaceLabel,
-  staffLaneRosterFaces,
-  staffMatchesStageLane,
-} from './staff-stage-lane';
+import assert from 'node:assert/strict';
+import { staffLaneEmptyLabel, staffMatchesStageLane, withStaffLane } from './staff-stage-lane';
 
 describe('staffMatchesStageLane', () => {
   it('keeps the all-staff roster unfiltered', () => {
-    assert.equal(staffMatchesStageLane({ role: 'sales', roles: [] }, 'all'), true);
+    assert.equal(staffMatchesStageLane({ functionalRoles: [] }, 'all'), true);
   });
 
-  it('maps picker aliases onto the Pick lane', () => {
-    assert.equal(staffMatchesStageLane({ role: 'technician', roles: [] }, 'technician'), true);
-    assert.equal(staffMatchesStageLane({ role: '', roles: ['picker'] }, 'technician'), true);
-    assert.equal(staffMatchesStageLane({ role: 'packer', roles: [] }, 'technician'), false);
+  it('reads functional roles, never RBAC access keys', () => {
+    const rbacOnly = { role: 'technician', roles: ['technician', 'packer'], functionalRoles: [] };
+    assert.equal(staffMatchesStageLane(rbacOnly, 'technician'), false);
+    assert.equal(staffMatchesStageLane(rbacOnly, 'packer'), false);
+    assert.equal(staffMatchesStageLane({ functionalRoles: ['picker'] }, 'technician'), true);
+    assert.equal(staffMatchesStageLane({ functionalRoles: ['packer'] }, 'packer'), true);
   });
 
-  it('maps pack aliases onto the Packed lane', () => {
-    assert.equal(staffMatchesStageLane({ role: 'packer', roles: [] }, 'packer'), true);
-    assert.equal(staffMatchesStageLane({ role: '', roles: ['pack'] }, 'packer'), true);
-    assert.equal(staffMatchesStageLane({ role: 'technician', roles: [] }, 'packer'), false);
-  });
-});
-
-describe('oppositeStaffLane', () => {
-  it('swaps picker and packer', () => {
-    assert.equal(oppositeStaffLane('packer'), 'technician');
-    assert.equal(oppositeStaffLane('technician'), 'packer');
+  it('lets one person be both picker and packer', () => {
+    const both = { functionalRoles: ['packer', 'picker'] as const };
+    assert.equal(staffMatchesStageLane(both, 'technician'), true);
+    assert.equal(staffMatchesStageLane(both, 'packer'), true);
   });
 });
 
-describe('applyStaffLaneRole', () => {
-  it('moves a packer onto the Pick lane without dropping unrelated roles', () => {
-    const next = applyStaffLaneRole(
-      { role: 'packer', roles: ['packer', 'admin.manage_staff'] },
-      'technician',
-    );
-    assert.equal(next.role, 'technician');
-    assert.deepEqual(next.roles, ['technician', 'admin.manage_staff']);
-    assert.equal(staffMatchesStageLane(next, 'technician'), true);
-    assert.equal(staffMatchesStageLane(next, 'packer'), false);
-  });
-});
-
-describe('staffLaneRosterFaces', () => {
-  it('gives Pick the Picker switch and Packed the Packer switch', () => {
-    assert.deepEqual(staffLaneRosterFaces('technician'), ['technician']);
-    assert.deepEqual(staffLaneRosterFaces('packer'), ['packer']);
-    assert.equal(staffLaneFaceLabel('technician'), 'Picker');
-    assert.equal(staffLaneFaceLabel('packer'), 'Packer');
+describe('withStaffLane', () => {
+  it('granting packer keeps picker (non-exclusive)', () => {
+    const next = withStaffLane({ id: 1, functionalRoles: ['picker'] as ('picker' | 'packer')[] }, 'packer', true);
+    assert.deepEqual(next.functionalRoles, ['packer', 'picker']);
   });
 
-  it('gives the all-staff roster both floor faces', () => {
-    assert.deepEqual(staffLaneRosterFaces('all'), ['technician', 'packer']);
+  it('revoking picker leaves packer and is idempotent', () => {
+    const start = { functionalRoles: ['packer', 'picker'] as ('picker' | 'packer')[] };
+    const once = withStaffLane(start, 'technician', false);
+    assert.deepEqual(once.functionalRoles, ['packer']);
+    assert.deepEqual(withStaffLane(once, 'technician', false).functionalRoles, ['packer']);
   });
 });
 

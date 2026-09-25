@@ -37,6 +37,7 @@
 import {
   isTaskDeskOpen,
   taskDeskRecordLabel,
+  taskDeskTitle,
   taskDeskTicketNumber,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
@@ -127,7 +128,7 @@ function entryFromTask(row: TaskDeskRow, doneAt: string | null): StaffDayEntry {
     id: row.id,
     // A handoff with no words still gets a row; it names the record rather
     // than painting an empty title.
-    title: row.note || taskDeskRecordLabel(row),
+    title: taskDeskTitle(row),
     cadence: null,
     ticketId: taskDeskTicketNumber(row),
     recordLabel: taskDeskRecordLabel(row),

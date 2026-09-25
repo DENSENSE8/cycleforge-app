@@ -9,6 +9,7 @@ import {
   platformTypeRulesQuery,
   prioritiesQuery,
   typesQuery,
+  storeLinksQuery,
   workflowNodesQuery,
 } from '@/lib/queries/catalog-queries';
 import type {
@@ -211,6 +212,12 @@ export function usePlatformAccountCatalog(opts: { includeInactive?: boolean; pla
     return m;
   }, [rows]);
   return { ...q, rows, byPlatform };
+}
+
+/** Where each ShipStation store sells (`integration_store_links`). */
+export function useStoreLinks() {
+  const q = useQuery(storeLinksQuery());
+  return { ...q, rows: q.data ?? [] };
 }
 
 /** Bindable workflow-graph nodes for the type editor's custom-flow picker. */

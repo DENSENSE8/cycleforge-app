@@ -34,6 +34,8 @@ import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
 import { IncomingPoIntakeTableShell } from '@/components/receiving/incoming/IncomingPoIntakeBand';
+import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
+import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -87,6 +89,7 @@ import { useIncomingTableLayout } from '@/components/station/incoming-grid/useIn
 import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
@@ -281,7 +284,7 @@ export default function ReceivingLinesTable({
   // workbench, whose three tabs share one strip and one bulk bar: it opens the
   // LineEditPanel workspace in place, while the standalone History surface
   // navigates to the carton read page.
-  const isHistorySurface = isHistoryMode && !embedded;
+  const isHistorySurface = isHistoryMode && !embedded && !isInboundDocked;
   // The Unbox workbench — all three of its tabs. Measured on dogfood before the
   // flip: Recent 117 rows, Queue 12, Viewed 22, every one of them ticking a
   // checkbox on click with zero `receiving-select-line` events, i.e. its own
@@ -289,18 +292,10 @@ export default function ReceivingLinesTable({
   // `useReceivingWorkspacePane` says operators "open a line via click or scan".
   // Flipped as a SET so no tab diverges from its siblings.
   const isUnboxWorkbench = embedded;
-  // History triage plane (2026-08-04, extended to the Inbound desk 2026-09-14):
-  // left-click opens the History triage rail (`detail:history`); the gutter
-  // checkbox owns bulk; double-click / Enter opens LineEditPanel.
-  //
-  // Operator 2026-09-14: the Inbound desk's History tab must behave like Unbox
-  // History, so the Docked lane joins this plane. Both hosts mount
-  // `ReceivingRightPane`, which is what `detail:history` needs — that is why
-  // this is a flag widening and not a second open path.
-  //
-  // Never `mode.id === 'history'` alone: standalone `/receiving/history` has no
-  // overlay host, and still takes the `/carton/[id]` READ record below.
-  const isHistoryTriage = isHistoryMode && (embedded || isInboundDocked);
+  // Unbox History keeps the legacy triage rail. Inbound Docked now renders the
+  // same history reader inside RecordLedger evidence and therefore must not
+  // publish or dispatch the right-rail triage path.
+  const isHistoryTriage = isHistoryMode && embedded;
   // Incoming Pipeline: click toggles bulk; double-click / Enter opens the
   // inspector (not carton).
   const incomingClickSelect = isIncomingMode;
@@ -397,7 +392,7 @@ export default function ReceivingLinesTable({
   const exportRowsRef = useRef<typeof orderedVisibleRows>(orderedVisibleRows);
   exportRowsRef.current = orderedVisibleRows;
   useEffect(() => {
-    if (!isHistoryTriage) return;
+    if (!isHistoryTriage && !isInboundDocked) return;
     const onExport = () => {
       const rows = exportRowsRef.current;
       const csv = buildReceivingHistoryExportCsv(rows);
@@ -414,7 +409,7 @@ export default function ReceivingLinesTable({
     };
     window.addEventListener('receiving-export-history', onExport);
     return () => window.removeEventListener('receiving-export-history', onExport);
-  }, [isHistoryTriage]);
+  }, [isHistoryTriage, isInboundDocked]);
 
   const {
     selectedId,
@@ -441,7 +436,7 @@ export default function ReceivingLinesTable({
     // its `receiving-select-line` already opens the LineEditPanel in place —
     // exactly what its own recent rail has always done — so the default
     // dispatch IS the right destination. It only ever lacked the gesture.
-    rowClickOpens: isIncomingMode || isHistorySurface || isUnboxWorkbench,
+    rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
     // History's default `receiving-select-line` branch does
     // `router.replace('/unbox?openReceivingId=…')`, i.e. it drops a browse click
     // into the scan bench — a Workbench map handing off to a Station, which
@@ -462,6 +457,7 @@ export default function ReceivingLinesTable({
         : embedded && isIncomingMode
           ? openIncomingDetails
           : undefined,
+    localRecordOpen: isInboundDeskHost && (isIncomingMode || isInboundDocked),
     // A click on the Unbox FEED opens the carton but does NOT stamp the
     // operator's recents. Browsing a queue is navigation; Recent answers "which
     // cartons did I actually open", and if the map itself counted it would
@@ -477,11 +473,13 @@ export default function ReceivingLinesTable({
     handleSelectRow,
     selectedIdRef,
     selectModeRef,
-    rowClickOpens: isIncomingMode || isHistorySurface || isUnboxWorkbench,
+    rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
     scrollRef,
     selectedId,
     // History / Incoming / Unbox workbench table own the chevron channel.
-    tableNavEnabled: isHistoryMode || isIncomingMode || isUnboxTableMode || embedded,
+    tableNavEnabled:
+      (isHistoryMode || isIncomingMode || isUnboxTableMode || embedded) &&
+      !(isInboundDeskHost && (isIncomingMode || isInboundDocked)),
   });
 
   // Unbox History — publish on-screen order for ambient ↑↓ / j/k / Esc
@@ -581,6 +579,7 @@ export default function ReceivingLinesTable({
     sort: incomingColumnSort,
     dir: incomingSortDir,
     setSort: setIncomingSort,
+    toggleColumnSort: toggleIncomingSort,
   } = useUrlColumnSort<IncomingGridColumnKey>({
     isColumn: isIncomingGridSortable,
     defaultDir: defaultDirForIncomingGridSort,
@@ -630,6 +629,16 @@ export default function ReceivingLinesTable({
     return { incomingGroups: banded, incomingFlatRows: flat };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir, receivingSearchValue]);
+  const setIncomingPage = useCallback(
+    (nextPage: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextPage <= 1) params.delete('page');
+      else params.set('page', String(nextPage));
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   /**
    * Inline note commit for an Incoming row.
@@ -933,58 +942,48 @@ export default function ReceivingLinesTable({
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-                <IncomingPoIntakeTableShell>
-                <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
-                  binding={INCOMING_TABLE_BINDING}
-                  search={receivingSearch}
-                  filter={incomingChrome.filter}
-                  selectionScope={RECEIVING_SELECTION_SCOPE}
-                  // COMPOUND (two-row) WMS layout — see the embedded mount above.
-                  columns={incomingColumns}
-                  fields={incomingFields}
-                  orderGroupsByDate={incomingGroups}
+                <IncomingDeliveriesLedger
+                  groups={incomingGroups}
                   rows={incomingFlatRows}
-                  sort={incomingColumnSort}
-                  dir={incomingSortDir}
-                  onSortChange={setIncomingSort}
                   loading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
+                  query={receivingSearchValue}
+                  onQueryChange={setReceivingSearchValue}
+                  filter={incomingChrome.filter}
+                  sort={incomingColumnSort}
+                  sortDir={incomingSortDir}
+                  onSort={(key) => {
+                    if (incomingColumnSort === key) toggleIncomingSort(key);
+                    else setIncomingSort(key);
+                  }}
+                  selectedId={selectedId}
+                  selectedIds={selectedIds}
+                  onOpenRow={handleSelectRow}
+                  onCloseRow={() => setSelectedId(null)}
+                  onToggleRow={handleToggleRow}
+                  page={incomingPage}
+                  pageSize={INCOMING_PAGE_SIZE}
+                  total={Number(data?.total ?? incomingFlatRows.length)}
+                  onPage={setIncomingPage}
                   scrollRef={scrollRef}
-                  renderGroup={(group, baseStripeIndex, { columns: visible }) => (
-                    <IncomingGridGroupRow
-                      group={group}
-                      baseStripeIndex={baseStripeIndex}
-                      isMobile={isMobile}
-                      selectMode={selectMode}
-                      selectedId={selectedId}
-                      selectedIds={selectedIds}
-                      handleSelectRow={handleSelectRow}
-                      handleToggleRow={handleToggleRow}
-                      clickSelect={incomingClickSelect}
-                      selectGutterChrome={selectGutterChrome}
-                      columns={visible}
-                    />
-                  )}
-                  renderRow={(row, stripeIndex, { columns: visible }) => (
-                    <IncomingGridGroupRow
-                      group={{ key: `k:${row.id}`, rows: [row] }}
-                      baseStripeIndex={stripeIndex}
-                      isMobile={isMobile}
-                      selectMode={selectMode}
-                      selectedId={selectedId}
-                      selectedIds={selectedIds}
-                      handleSelectRow={handleSelectRow}
-                      handleToggleRow={handleToggleRow}
-                      clickSelect={incomingClickSelect}
-                      selectGutterChrome={selectGutterChrome}
-                      columns={visible}
-                    />
-                  )}
                 />
-                </IncomingPoIntakeTableShell>
               )
             ) : (
-              receivingGrid()
+              <DockedReceiptsLedger
+                rows={orderedVisibleRows}
+                loading={isLoading && localRows.length === 0}
+                emptyMessage={emptyMessage}
+                query={receivingSearchValue}
+                onQueryChange={setReceivingSearchValue}
+                activityAxis={historyAxis}
+                toolbarExtra={chromePill}
+                selectedId={selectedId}
+                selectedIds={selectedIds}
+                onOpenRow={handleSelectRow}
+                onCloseRow={() => setSelectedId(null)}
+                onToggleRow={handleToggleRow}
+                scrollRef={scrollRef}
+              />
             )
           }
       </>

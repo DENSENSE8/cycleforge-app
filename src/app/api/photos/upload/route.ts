@@ -16,6 +16,7 @@ import { isAspectLegalForStage, parsePhotoAspect } from '@/lib/photos/photo-aspe
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { publishEntityMediaInsert } from '@/lib/photos/publish-entity-media';
+import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +62,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         { status: 403 },
       );
     }
+    // Task media must hang off a FOLLOW_UP task in THIS org — the permission
+    // above is an everyday floor gate, so it cannot stand in for existence.
+    if (entityType === 'WORK_ASSIGNMENT') await assertTaskInOrg(ctx.organizationId, entityId);
 
     const file = form.get('file');
     if (!(file instanceof Blob) || file.size === 0) {

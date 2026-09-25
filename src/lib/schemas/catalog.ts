@@ -142,3 +142,14 @@ export const PlatformAccountUpdateBody = z
   })
   .strict()
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field must be provided' });
+
+// ─── integration_store_links ──────────────────────────────────────────────────
+
+export const StoreLinkUpsertBody = z
+  .object({
+    provider: z.literal('shipstation'),
+    externalStoreId: z.string().trim().regex(/^\d+$/, 'externalStoreId must be a store id'),
+    platformId: z.number().int().positive(),
+    platformAccountId: z.number().int().positive().nullable(),
+  })
+  .strict();

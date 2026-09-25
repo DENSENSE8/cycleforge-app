@@ -1,37 +1,33 @@
 'use client';
 
 /**
- * Throw a task at a colleague — scan or paste what you are holding, pick who,
- * send.
+ * Throw one named record task to a team — scan or paste, pick members, send.
  *
  * ## Why one panel and not a wizard
  *
- * Three fields (what · who · why) that all stay on screen at once. A stepped
- * wizard would hide the record while the operator picks a person, and hide the
- * person while they type the note — and the whole value of this surface is that
- * it is faster than writing a number on paper. Everything is mounted from the
- * first frame and fills in as it resolves (spatial predictability), so the panel
- * never reflows under a hand that is already moving toward Throw.
+ * Record, team, project name and instructions stay visible together. A stepped
+ * wizard would hide the record while the operator picks people, and hide the
+ * team while they write instructions; this panel avoids that extra navigation.
  *
  * ## This file is CHROME
  *
  * The sequence — resolve the record server-side, load the roster, POST the
  * task, report a degraded amplifier honestly — moved to {@link useThrowTask}
  * when the task desk grew a composer that needed the same four steps with a
- * different layout and a deadline. Two copies of that sequence is how one
- * surface comes to report `skipped_entity` and the other reports a flat
- * success. Everything below is this panel's arrangement and nothing else.
+ * different layout and a deadline. The phone sheet uses that same sequence,
+ * so all three surfaces report the actual notification outcome.
  */
 
 import { useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Inbox, Loader2, Package, Search, Send, Zap } from '@/components/Icons';
+import { StaffAvatar } from '@/components/identity';
+import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { useThrowTask, throwTargetKey } from '@/hooks/useThrowTask';
-import { TASK_NOTE_MAX } from '@/lib/tasks/create-task-core';
-import { Button, Switch } from '@/design-system/primitives';
+import { TASK_ASSIGNEES_MAX, TASK_NOTE_MAX, TASK_PROJECT_NAME_MAX } from '@/lib/tasks/create-task-core';
+import { Button, Switch, TextField } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
-import { StaffRecipientList } from './StaffRecipientList';
 
 interface ThrowTaskPanelProps {
   onClose: () => void;
@@ -47,8 +43,10 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
     picked,
     setPicked,
     staff,
-    assignee,
-    setAssignee,
+    assignees,
+    toggleAssignee,
+    projectName,
+    setProjectName,
     note,
     setNote,
     urgent,
@@ -67,7 +65,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
   return (
     <QuickAccessPanelShell
       title="Throw a task"
-      subtitle="Hand a record to a colleague"
+      subtitle="Hand a record to a team"
       onClose={onClose}
       widthClass="w-[380px]"
       maxHeightClass="max-h-[560px]"
@@ -116,7 +114,8 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <>
-                <Send className="h-3.5 w-3.5" aria-hidden /> Throw
+                <Send className="h-3.5 w-3.5" aria-hidden />
+                {!picked ? 'Find record' : !assignees.length ? 'Pick staff' : 'Throw'}
               </>
             )}
           </Button>
@@ -193,22 +192,34 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
 
         {/* ── Who ──────────────────────────────────────────────────────── */}
         <section className="space-y-1 border-t border-border-hairline pt-2">
+          <p className="px-1 text-role-micro uppercase tracking-widest text-text-soft">
+            Assign to {assignees.length ? `· ${assignees.length} selected` : ''}
+          </p>
           {staff === null ? (
             <p className="flex items-center gap-2 px-1 py-2 text-role-caption text-text-faint">
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Loading staff…
             </p>
           ) : (
-            <StaffRecipientList
-              staff={staff}
-              title="Throw to…"
-              emptyLabel="No other staff to throw to."
-              currentStaffId={assignee?.id ?? null}
-              onPick={setAssignee}
-            />
+            <div className="max-h-44 space-y-1 overflow-y-auto" role="group" aria-label="Task assignees">
+              {staff.map((person) => {
+                const selected = assignees.some((member) => member.id === person.id);
+                return (
+                  <label key={person.id} className={cn('flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-role-caption', selected ? 'bg-surface-selected' : 'hover:bg-surface-card')}>
+                    <Checkbox checked={selected} disabled={!selected && assignees.length >= TASK_ASSIGNEES_MAX} onCheckedChange={() => toggleAssignee(person)} aria-label={`Assign ${person.name}`} />
+                    <StaffAvatar staffId={person.id} name={person.name} size="sm" colorRing alt="" />
+                    <span className="truncate">{person.name}</span>
+                  </label>
+                );
+              })}
+            </div>
           )}
         </section>
 
         {/* ── Why ──────────────────────────────────────────────────────── */}
+        <section className="space-y-1 border-t border-border-hairline pt-2">
+          <TextField label="Project name" value={projectName} onChange={setProjectName} maxLength={TASK_PROJECT_NAME_MAX} />
+          <p className="px-1 text-role-micro text-text-faint">Optional. Group shared work under one name, e.g. Return and replacement.</p>
+        </section>
         <section className="space-y-1 border-t border-border-hairline pt-2">
           <label
             htmlFor="throw-task-note"

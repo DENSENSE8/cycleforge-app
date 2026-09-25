@@ -38,6 +38,8 @@ const P = {
   taskId: 7,
   limit: 8,
   q: 9,
+  mediaEntityType: 10,
+  assignedBy: 11,
 } as const;
 
 interface Captured {
@@ -63,6 +65,8 @@ function sqlRow(over: Record<string, unknown> = {}): Record<string, unknown> {
     entity_type: 'ORDER',
     entity_id: '4242',
     notes: 'check the serial',
+    project_name: null,
+    assignees: [{ id: 9, name: 'Dana' }],
     status: 'OPEN',
     priority: 100,
     assignee_staff_id: 9,
@@ -73,11 +77,17 @@ function sqlRow(over: Record<string, unknown> = {}): Record<string, unknown> {
     started_at: null,
     deadline_at: null,
     completed_at: null,
+    remind_at: null,
     ticket_id: null,
     ticket_provider: null,
     ticket_subject: null,
     ticket_status: null,
     ticket_external_id: null,
+    links: null,
+    photo_count: '0',
+    cover_photo_id: null,
+    video_count: '0',
+    doc_count: '0',
     ...over,
   };
 }
@@ -177,6 +187,17 @@ test('the assignee filter is bound as an int, and absent means everyone', async 
   assert.equal(team.calls[0].params[P.assignee], null);
 });
 
+test('the thrower filter is bound as an int, independent of the assignee filter', async () => {
+  const handedOff = fakes();
+  await listTaskDeskRows(ORG, { assigneeStaffId: null, assignedByStaffId: 7 }, handedOff.deps);
+  assert.equal(handedOff.calls[0].params[P.assignedBy], 7);
+  assert.equal(handedOff.calls[0].params[P.assignee], null);
+
+  const plain = fakes();
+  await listTaskDeskRows(ORG, { assigneeStaffId: 9 }, plain.deps);
+  assert.equal(plain.calls[0].params[P.assignedBy], null);
+});
+
 test('urgency maps onto the stored priority bounds, not a second column', async () => {
   const urgent = fakes();
   await listTaskDeskRows(ORG, { urgency: 'urgent' }, urgent.deps);
@@ -214,6 +235,7 @@ test('rows cross the wire as ISO strings, with the ticket folded in', async () =
   assert.equal(row.startedAt, null);
   assert.equal(row.entityId, 77, 'bigint comes back as a string and must be numeric on the wire');
   assert.deepEqual(row.assignee, { id: 9, name: 'Dana' });
+  assert.deepEqual(row.assignees, [{ id: 9, name: 'Dana' }]);
   assert.deepEqual(row.assignedBy, { id: 7, name: 'Sam' });
   assert.deepEqual(row.ticket, {
     id: 77,
@@ -222,6 +244,55 @@ test('rows cross the wire as ISO strings, with the ticket folded in', async () =
     status: 'open',
     externalId: 'ZD-501',
   });
+});
+
+test('one shared assignment maps once with its lead, secondary members and project', async () => {
+  const { deps } = fakes([sqlRow({
+    project_name: 'Returns launch',
+    assignees: [{ id: 9, name: 'Dana' }, { id: 11, name: 'Lee' }],
+  })]);
+  const rows = await listTaskDeskRows(ORG, {}, deps);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].projectName, 'Returns launch');
+  assert.deepEqual(rows[0].assignee, { id: 9, name: 'Dana' });
+  assert.deepEqual(rows[0].assignees, [
+    { id: 9, name: 'Dana' }, { id: 11, name: 'Lee' },
+  ]);
+});
+
+test('link faces, media counts and the reminder fold into the wire row', async () => {
+  const { deps } = fakes([
+    sqlRow({
+      remind_at: new Date('2026-09-26T15:30:00.000Z'),
+      links: [
+        { kind: 'order', label: '112-0000000-1' },
+        // A discriminator the TS does not know yet is dropped, not guessed.
+        { kind: null, label: 'mystery' },
+        { kind: 'tracking', label: '1Z999AA10123456784' },
+      ],
+      photo_count: '3',
+      cover_photo_id: '501',
+      video_count: '1',
+      doc_count: '2',
+    }),
+    sqlRow({ id: 12 }),
+  ]);
+
+  const [withMedia, bare] = await listTaskDeskRows(ORG, {}, deps);
+  assert.equal(withMedia.remindAt, '2026-09-26T15:30:00.000Z');
+  assert.deepEqual(withMedia.links, [
+    { kind: 'order', label: '112-0000000-1' },
+    { kind: 'tracking', label: '1Z999AA10123456784' },
+  ]);
+  assert.equal(withMedia.photoCount, 3);
+  assert.equal(withMedia.coverPhotoId, 501);
+  assert.equal(withMedia.videoCount, 1);
+  assert.equal(withMedia.docCount, 2);
+
+  assert.deepEqual(bare.links, [], 'no links is an empty list, not null');
+  assert.equal(bare.coverPhotoId, null);
+  assert.equal(bare.docCount, 0);
+  assert.equal(bare.remindAt, null);
 });
 
 test('an unassigned task has no assignee rather than an invented one', async () => {
@@ -261,9 +332,13 @@ function txFakes(script: TxScript = {}) {
       }
       if (/FROM staff/.test(sql)) {
         const found = script.staffInOrg !== false;
-        return { rows: found ? [{ '?column?': 1 }] : [], rowCount: found ? 1 : 0 };
+        const count = found ? (Array.isArray(params[1]) ? params[1].length : 1) : 0;
+        return { rows: Array.from({ length: count }, () => ({ id: 1 })), rowCount: count };
       }
-      if (/^\s*UPDATE/.test(sql)) return { rows: [{ id: 11 }], rowCount: 1 };
+      if (/SELECT staff_id FROM work_assignment_assignees/.test(sql)) {
+        return { rows: [{ staff_id: 9 }], rowCount: 1 };
+      }
+      if (/^\s*(UPDATE|DELETE|INSERT)/.test(sql)) return { rows: [{ id: 11 }], rowCount: 1 };
       return { rows: script.read ?? [sqlRow()], rowCount: 1 };
     },
   };
@@ -336,9 +411,26 @@ test('a successful patch reports the pre-image and which fields moved', async ()
   );
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.deepEqual(result.before, { status: 'OPEN', assigneeStaffId: 9 });
+  assert.deepEqual(result.before, {
+    status: 'OPEN', assigneeStaffId: 9, assigneeStaffIds: [9], projectName: null,
+  });
   assert.deepEqual([...result.changed].sort(), ['deadlineAt', 'status']);
   assert.equal(result.task.id, 11);
+});
+
+test('a blank note clears the column; a real note is stored trimmed', async () => {
+  const blank = txFakes();
+  await patchTaskDeskRowInTx(ORG, 11, { note: '   ' }, blank.tx);
+  const blankUpdate = blank.statements.find((s) => /^\s*UPDATE/.test(s.sql));
+  assert.match(blankUpdate?.sql ?? '', /notes = \$3/);
+  assert.equal(blankUpdate?.params[2], null);
+
+  const real = txFakes();
+  await patchTaskDeskRowInTx(ORG, 11, { note: '  call the carrier  ', remindAt: null }, real.tx);
+  const realUpdate = real.statements.find((s) => /^\s*UPDATE/.test(s.sql));
+  assert.equal(realUpdate?.params[2], 'call the carrier');
+  assert.match(realUpdate?.sql ?? '', /remind_at = \$4::timestamptz/);
+  assert.equal(realUpdate?.params[3], null, 'null clears the reminder');
 });
 
 test('the patch re-reads through the list mapper, on the same connection', async () => {
@@ -350,4 +442,52 @@ test('the patch re-reads through the list mapper, on the same connection', async
   assert.equal(reread.params[P.org], ORG);
   assert.equal(reread.params[P.taskId], 11, 'the re-read is narrowed to the patched row');
   assert.equal(reread.params[P.statuses], null, 'and reads it in the all lane, whatever it became');
+});
+
+test('replacing members keeps the first lead and writes one membership set inside the transaction', async () => {
+  const { tx, statements } = txFakes({ read: [sqlRow({
+    assignee_staff_id: 11,
+    assignee_name: 'Lee',
+    project_name: 'Launch B',
+    assignees: [{ id: 11, name: 'Lee' }, { id: 12, name: 'Kai' }],
+  })] });
+  const result = await patchTaskDeskRowInTx(ORG, 11, {
+    assigneeStaffIds: [11, 12], projectName: ' Launch B ',
+  }, tx);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.equal(result.task.assignee?.id, 11);
+  assert.deepEqual(result.task.assignees.map(({ id }) => id), [11, 12]);
+  assert.equal(result.task.projectName, 'Launch B');
+  assert.deepEqual(result.before.assigneeStaffIds, [9]);
+  const update = statements.find(({ sql }) => /^\s*UPDATE/.test(sql));
+  assert.ok(update?.params.includes(11), 'lead moves with membership');
+  assert.ok(statements.some(({ sql, params }) =>
+    /^\s*INSERT INTO work_assignment_assignees/.test(sql) &&
+    params[0] === ORG && params[1] === 11 &&
+    Array.isArray(params[2]) && params[2].join(',') === '11,12'));
+});
+
+test('foreign or repeated replacement members refuse every write', async () => {
+  for (const ids of [[11, 11], [], [11, 12]]) {
+    const { tx, statements } = txFakes({ staffInOrg: ids.length !== 2 || ids[1] === 11 });
+    const result = await patchTaskDeskRowInTx(ORG, 11, { assigneeStaffIds: ids }, tx);
+    assert.equal(result.ok, false);
+    assert.equal(result.ok === false && result.reason, 'invalid_assignee');
+    assert.equal(statements.some(({ sql }) => /^\s*(UPDATE|INSERT|DELETE)/.test(sql)), false);
+  }
+});
+
+test('legacy single-assignee patch replaces the shared membership with one recipient', async () => {
+  const { tx, statements } = txFakes({ read: [sqlRow({
+    assignee_staff_id: 12, assignee_name: 'Kai',
+    assignees: [{ id: 12, name: 'Kai' }],
+  })] });
+  const result = await patchTaskDeskRowInTx(ORG, 11, { assigneeStaffId: 12 }, tx);
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.task.assignees, [{ id: 12, name: 'Kai' }]);
+  assert.equal(result.task.assignee?.id, 12);
+  const membershipWrite = statements.find(({ sql }) => /^\s*INSERT INTO work_assignment_assignees/.test(sql));
+  assert.deepEqual(membershipWrite?.params, [ORG, 11, [12]]);
 });

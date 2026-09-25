@@ -94,21 +94,6 @@ test('tactical Orders rows retain touch targets and require the governed sale-pr
   assert.ok(ids.includes('missing-governed-orders-price'));
 });
 
-test('tactical Pick rows require the governed sale-price fact', () => {
-  const sources = Object.fromEntries(
-    Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),
-  ) as Parameters<typeof evaluateOutboundWorkflowCohort>[0];
-  const regressed = {
-    ...sources,
-    pickQueueRow: sources.pickQueueRow.replace('price={formatSalePrice(row.saleAmount, row.currency) || null}', 'price={null}'),
-  };
-  assert.ok(
-    evaluateOutboundWorkflowCohort(regressed).violations.some(
-      (violation) => violation.id === 'missing-governed-pick-price',
-    ),
-  );
-});
-
 test('the governed Order row retains its non-visual realtime measurement identity', () => {
   const sources = Object.fromEntries(
     Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),

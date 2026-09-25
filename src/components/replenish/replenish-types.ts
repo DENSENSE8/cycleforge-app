@@ -1,11 +1,4 @@
-export type ReplenishmentStatus =
-  | 'detected'
-  | 'pending_review'
-  | 'planned_for_po'
-  | 'po_created'
-  | 'waiting_for_receipt'
-  | 'fulfilled'
-  | 'cancelled';
+import type { ReplenishmentRequestStatus } from '@/lib/replenishment-request-status';
 
 export interface NeedToOrderWaitingOrder {
   order_id?: number;
@@ -18,7 +11,8 @@ export interface NeedToOrderRow {
   sku: string | null;
   item_name: string;
   vendor_name: string | null;
-  status: ReplenishmentStatus;
+  vendor_zoho_contact_id: string | null;
+  status: ReplenishmentRequestStatus;
   quantity_needed: string | null;
   quantity_to_order: string | null;
   zoho_quantity_available: string | null;
@@ -27,6 +21,8 @@ export interface NeedToOrderRow {
   zoho_po_id: string | null;
   zoho_po_number: string | null;
   notes: string | null;
+  unit_cost: string | null;
+  status_changed_at: string;
   orders_waiting?: NeedToOrderWaitingOrder[] | null;
   created_at: string;
   updated_at: string;
@@ -74,7 +70,7 @@ export interface ShippedFifoRow {
   zoho_po_number: string | null;
 }
 
-export const ACTIVE_STATUSES: ReplenishmentStatus[] = [
+export const ACTIVE_STATUSES: ReplenishmentRequestStatus[] = [
   'detected',
   'pending_review',
   'planned_for_po',

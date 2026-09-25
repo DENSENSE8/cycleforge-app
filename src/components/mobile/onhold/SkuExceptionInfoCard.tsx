@@ -10,8 +10,9 @@ const ON_HOLD_CHIP = `${STATE_TONE_CLASSES.warning.pill} ${STATE_TONE_CLASSES.wa
 /**
  * The SKU exception hub's summary card: the product as the operator named it,
  * what it looks like (description), where it is and how many, and the scanned
- * barcode bottom-left beside the On hold chip. The whole card opens `/info`,
- * which owns every fact and the only edit. Layout is {@link DetailSummaryCard}.
+ * barcode bottom-left beside the On hold chip ("No barcode" for a placeholder
+ * created without one — its `/info` edit attaches it). The whole card opens
+ * `/info`, which owns every fact and the only edit. Layout is {@link DetailSummaryCard}.
  */
 export function SkuExceptionInfoCard({ item }: { item: ProvisionalSku }) {
   const locations = item.locations.length;
@@ -28,7 +29,7 @@ export function SkuExceptionInfoCard({ item }: { item: ProvisionalSku }) {
           muted: true,
         },
       ]}
-      foot={item.barcode ? `UPC ${item.barcode}` : undefined}
+      foot={item.barcode ? `UPC ${item.barcode}` : 'No barcode'}
       chip={{ label: 'On hold', className: ON_HOLD_CHIP }}
     />
   );

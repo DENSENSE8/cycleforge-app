@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { AiStructuredAnswer } from '@/lib/ai/types';
 import { sectionLabel, tableCell } from '@/design-system/tokens/typography/presets';
-import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
+import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CopyIconButton } from '@/design-system/primitives';
 

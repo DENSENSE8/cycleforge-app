@@ -260,6 +260,16 @@ test('ARMED FOR QC: a line label opens QC to pick one of its units', () => {
   strictEqual(unitsOnly.parks, false);
 });
 
+test('ARMED FOR QC: a carton label opens QC to pick one of its lines', () => {
+  for (const scan of ['R-77', 'r-77', 'r/77', 'RCV-77', 'https://usav.app.cycleforge.ai/m/r/77']) {
+    const d = dispatchScan({ scan, armedSession: QC_SCAN_SESSION });
+    strictEqual(d.card, 'qc', scan);
+    strictEqual(d.mode, 'act', scan);
+    strictEqual(d.parks, true, scan);
+    strictEqual(d.title, 'QC · Carton R-77', scan);
+  }
+});
+
 // ─── The tie ────────────────────────────────────────────────────────────────
 
 test('A TIE ASKS: an LPN both in QC and staged for pack names both candidates', () => {

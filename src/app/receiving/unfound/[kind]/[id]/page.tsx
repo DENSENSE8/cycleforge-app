@@ -1,10 +1,10 @@
 /**
  * /receiving/unfound/[kind]/[id] — relocated.
  *
- * The Unfound queue moved to Admin › PO Mailbox. Deep links here now redirect:
+ * The PO Mailbox queue was retired. Deep links here now redirect:
  *   • unmatched_receiving → the receiving workspace (?id=<id>), where the
  *     carton editor mounts — unchanged, that flow never lived in the queue UI.
- *   • everything else     → Admin › PO Mailbox (the triage queue).
+ *   • everything else     → the inbound ledger.
  */
 
 import { redirect } from 'next/navigation';
@@ -22,5 +22,5 @@ export default async function UnfoundDetailPage({ params }: PageProps) {
     redirect(`/receiving?id=${encodeURIComponent(id)}`);
   }
 
-  redirect('/incoming?view=mailbox');
+  redirect('/incoming');
 }

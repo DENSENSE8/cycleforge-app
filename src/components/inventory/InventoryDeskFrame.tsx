@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
@@ -21,7 +21,11 @@ const LEDGER_PATHS: readonly string[] = ['/inventory/stock', '/inventory/sku-exc
  */
 export function InventoryDeskFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  if (!LEDGER_PATHS.includes(pathname)) {
+  const searchParams = useSearchParams();
+  const isLedger =
+    LEDGER_PATHS.includes(pathname)
+    || (pathname === '/inventory' && searchParams.get('section') === 'replenish');
+  if (!isLedger) {
     return <DeskPageLayout className="h-full">{children}</DeskPageLayout>;
   }
   return (

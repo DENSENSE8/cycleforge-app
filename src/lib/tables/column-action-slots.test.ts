@@ -21,7 +21,6 @@ describe('columnKeyForSelectionAction', () => {
     assert.equal(columnKeyForSelectionAction('copy', COLUMNS), 'fulfillment');
     assert.equal(columnKeyForSelectionAction('condition', COLUMNS), 'item');
     assert.equal(columnKeyForSelectionAction('qty', COLUMNS), 'item');
-    assert.equal(columnKeyForSelectionAction('notes', COLUMNS), 'item');
     assert.equal(columnKeyForSelectionAction('ship-by', COLUMNS), 'state');
     assert.equal(columnKeyForSelectionAction('assign', COLUMNS), 'status:1');
     assert.equal(columnKeyForSelectionAction('assign-pick', COLUMNS), 'status:1');

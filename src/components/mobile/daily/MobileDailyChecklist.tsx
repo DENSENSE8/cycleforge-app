@@ -28,7 +28,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { Button } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { elevationClass } from '@/design-system/tokens/shadows';
@@ -52,14 +55,16 @@ import {
 import { MobileDailyRow } from './MobileDailyRow';
 import { MobileDailyDetailSheet } from './MobileDailySheets';
 import { MobileDailyComposerSheet } from './MobileDailyComposerSheet';
+import { MobileTaskSheet } from './MobileTaskSheet';
+import { MobileSharedTaskComposerSheet } from './MobileSharedTaskComposerSheet';
 import { MobileCurrentSession } from '@/components/mobile/session/MobileCurrentSession';
 import { AgendaKindFilter as AgendaKindFilterRow, useAgendaKindPrefs } from './AgendaKindFilter';
 import { agendaKindVisible } from '@/lib/daily/agenda-kind-filter';
 import { useMyTasks, useToggleTaskDone } from '@/lib/tasks/use-my-tasks';
 import { taskDeadlineFact, taskRecordLabel } from '@/lib/tasks/task-row-facts';
 import {
-  taskDeskRecordHref,
   taskDeskTicketNumber,
+  taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
 
@@ -71,7 +76,6 @@ interface MobileAgendaTask {
   overdue: boolean;
   done: boolean;
   ticketId: number | null;
-  href: string | null;
 }
 
 type MobileDailyStatus = 'all' | 'open' | 'done';
@@ -95,8 +99,9 @@ const EMPTY_COPY: Readonly<Record<MobileDailyStatus, string>> = {
 };
 
 export function MobileDailyChecklist() {
+  const queryClient = useQueryClient();
   const router = useRouter();
-  const { has } = useAuth();
+  const { has, isLoaded: authLoaded } = useAuth();
   /** The LIST is org-managed; the items route gates on the same permission. */
   const canManage = has('admin.manage_staff');
   /**
@@ -122,6 +127,8 @@ export function MobileDailyChecklist() {
   const [status, setStatus] = useState<MobileDailyStatus>('all');
   const [openItemId, setOpenItemId] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [sharedTaskOpen, setSharedTaskOpen] = useState(false);
+  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
   const [draft, setDraft] = useState<DailyComposerDraft>(newDailyComposerDraft);
 
   const doneSet = useMemo(() => new Set(data?.mine.doneItemIds ?? []), [data?.mine.doneItemIds]);
@@ -147,8 +154,35 @@ export function MobileDailyChecklist() {
    * checklist. The tick is the same gesture as a check's — see
    * {@link useToggleTaskDone}.
    */
-  const { data: myTasks } = useMyTasks(canSeeTasks);
+  const { data: myTasks, isLoading: myTasksLoading } = useMyTasks(canSeeTasks);
   const toggleTask = useToggleTaskDone();
+
+  /**
+   * `?task=<id>` owns the open task sheet — a reminder notification deep-links
+   * `/m/home?task=<id>`, and Back/refresh keep the sheet. `replace`, not
+   * `push`: opening a task is a look inside this list, not a new page. Other
+   * params ride along untouched.
+   */
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const rawTaskParam = Number(searchParams.get('task'));
+  const openTaskId = Number.isInteger(rawTaskParam) && rawTaskParam > 0 ? rawTaskParam : null;
+  const setTaskParam = useCallback(
+    (taskId: number | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (taskId == null) params.delete('task');
+      else params.set('task', String(taskId));
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+  const closeTask = useCallback(() => setTaskParam(null), [setTaskParam]);
+  /** Off the FULL list, not the filtered rows — a notification ignores the Done tab. */
+  const openTaskRow = useMemo(
+    () => (openTaskId == null ? null : (myTasks ?? []).find((row) => row.id === openTaskId) ?? null),
+    [myTasks, openTaskId],
+  );
 
   /** One clock for every "Due today / Overdue" caption on the screen. */
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -163,9 +197,10 @@ export function MobileDailyChecklist() {
         const done = row.status === 'DONE';
         const due = taskDeadlineFact(row.deadlineAtMs, nowMs);
         const record = taskRecordLabel(row);
-        // A handoff with no words still names the record it is about, so the
-        // row is never a blank line with a checkbox.
-        const title = row.note || record;
+        // Instructions are markdown: the row prints their first line as plain
+        // text, and a handoff with no words still names its record — never a
+        // blank line with a checkbox, never a raw `# **…`.
+        const title = taskDeskTitle(row);
         const captionParts = [due?.text, title === record ? null : record].filter(Boolean);
         return {
           row,
@@ -174,7 +209,6 @@ export function MobileDailyChecklist() {
           subtitle: captionParts.length > 0 ? captionParts.join(' · ') : null,
           overdue: Boolean(due?.overdue) && !done,
           ticketId: taskDeskTicketNumber(row),
-          href: taskDeskRecordHref(row, 'phone'),
         };
       })
       .filter((task) => (status === 'all' ? true : status === 'open' ? !task.done : task.done))
@@ -271,9 +305,10 @@ export function MobileDailyChecklist() {
       ticketId={task.ticketId}
       detail="record"
       onToggle={(next) => toggleTask.mutate({ taskId: task.row.id, done: next })}
-      onOpenDetail={() => {
-        if (task.href) router.push(task.href);
-      }}
+      // The chevron opens the TASK — its instructions, media, documents and
+      // linked records — in the sheet `?task=` drives; the record itself is
+      // one tap further, under Linked records.
+      onOpenDetail={() => setTaskParam(task.row.id)}
       onOpenTicket={
         canOpenTickets && task.ticketId != null
           ? () => router.push(`/m/t/${task.ticketId}`)
@@ -370,9 +405,13 @@ export function MobileDailyChecklist() {
        * to wash this primitive. `aria-label` is the ONLY name it has now that
        * the visible label is gone.
        */}
-      {canManage ? (
+      {(canManage || canSeeTasks) ? (
         <IconButton
-          onClick={() => setComposerOpen(true)}
+          onClick={() => {
+            if (canManage && canSeeTasks) setCreateChoiceOpen(true);
+            else if (canSeeTasks) setSharedTaskOpen(true);
+            else setComposerOpen(true);
+          }}
           ariaLabel="Add task"
           size="touch"
           radius="pill"
@@ -382,6 +421,23 @@ export function MobileDailyChecklist() {
             'bg-accent-bg text-text-inverse hover:bg-accent-hover hover:text-text-inverse',
             elevationClass('raised'),
           )}
+        />
+      ) : null}
+
+      <BottomSheet open={createChoiceOpen} onClose={() => setCreateChoiceOpen(false)} forceVariant="sheet" compact>
+        <div className="flex flex-col gap-3 px-1 pb-2">
+          <p className="text-role-data font-semibold text-text-default">What are you adding?</p>
+          <Button variant="primary" size="lg" onClick={() => { setCreateChoiceOpen(false); setSharedTaskOpen(true); }}>Shared task · record or ticket</Button>
+          <Button variant="secondary" size="lg" onClick={() => { setCreateChoiceOpen(false); setComposerOpen(true); }}>Daily checklist item</Button>
+        </div>
+      </BottomSheet>
+      {sharedTaskOpen ? (
+        <MobileSharedTaskComposerSheet
+          onClose={() => setSharedTaskOpen(false)}
+          onCreated={() => {
+            setSharedTaskOpen(false);
+            void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+          }}
         />
       ) : null}
 
@@ -407,6 +463,15 @@ export function MobileDailyChecklist() {
           retireItem.mutate(openItemId, { onSuccess: () => setOpenItemId(null) });
         }}
         onClose={() => setOpenItemId(null)}
+      />
+      <MobileTaskSheet
+        taskId={openTaskId}
+        row={openTaskRow}
+        // Auth still resolving means the task query has not even been asked.
+        loading={!authLoaded || myTasksLoading}
+        nowMs={nowMs}
+        canOpenTickets={canOpenTickets}
+        onClose={closeTask}
       />
       <MobileDailyComposerSheet
         open={composerOpen}

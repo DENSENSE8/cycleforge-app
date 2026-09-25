@@ -6,6 +6,8 @@ import type {
   PriorityTierRow,
   TypeRow,
 } from '@/lib/neon/catalog-queries';
+import type { StoreLinkRow } from '@/lib/catalog/integration-store-links';
+import type { ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 
 /** One bindable workflow-graph node (from /api/catalog/workflow-nodes). */
 export interface WorkflowNodeOption {
@@ -37,6 +39,8 @@ export const catalogKeys = {
   workflowNodes: () => ['catalog', 'workflow-nodes'] as const,
   priorities: () => ['catalog', 'priorities'] as const,
   platformTypeRules: () => ['catalog', 'platform-type-rules'] as const,
+  storeLinks: () => ['catalog', 'store-links'] as const,
+  shipstationStores: () => ['catalog', 'shipstation-stores'] as const,
 };
 
 /**
@@ -122,5 +126,30 @@ export function workflowNodesQuery() {
     queryFn: () => fetchJson<{ success: boolean; nodes: WorkflowNodeOption[] }>('/api/catalog/workflow-nodes'),
     staleTime: 5 * 60_000,
     select: (d) => d.nodes ?? [],
+  });
+}
+
+/** Where each aggregator store sells — `integration_store_links`. */
+export function storeLinksQuery() {
+  return queryOptions({
+    queryKey: catalogKeys.storeLinks(),
+    queryFn: () => fetchJson<{ success: boolean; links: StoreLinkRow[] }>('/api/catalog/store-links'),
+    staleTime: 5 * 60_000,
+    select: (d) => d.links ?? [],
+  });
+}
+
+/**
+ * The org's ShipStation storefronts, live from ShipStation (Settings only).
+ * Under the catalog key so a link save refreshes it with the links.
+ */
+export function shipstationStoresQuery() {
+  return queryOptions({
+    queryKey: catalogKeys.shipstationStores(),
+    queryFn: () =>
+      fetchJson<{ success: boolean; connected: boolean; stores: ShipStationV1Store[] }>(
+        '/api/integrations/shipstation/stores',
+      ),
+    staleTime: 60_000,
   });
 }

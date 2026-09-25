@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * SKU exception evidence — Product (title + description) and Locations &
- * count. Every write is the same endpoint the phone uses, then `onChanged`
+ * SKU exception evidence — Product (title + description), the Barcode fact
+ * (attach one to a placeholder created without) and Locations & count. Every
+ * write is the same endpoint the phone uses, then `onChanged`
  * (→ `invalidateSkuExceptions`), so the phone and this desk repaint each other.
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { CopyChip } from '@/components/ui/CopyChip';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import {
   EVIDENCE_CONTROL_CLASS,
@@ -17,7 +20,7 @@ import {
 import { RECORD_ID_CLASS, RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocationPickerOptions } from '@/hooks/useLocationPickerOptions';
-import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
+import { SKU_EXCEPTIONS_PATH, skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import { commitStockRequest, stockAdjustRequest } from '@/lib/inventory/stock-bin-verb-writes';
 import type { StockBinWriteTarget } from '@/lib/inventory/stock-bin-writes';
 import type { ProvisionalSkuDetail, ProvisionalSkuLocation } from '@/lib/neon/provisional-sku-queries';
@@ -148,11 +151,159 @@ export function SkuExceptionProductSection({
   );
 }
 
+// ── Barcode ─────────────────────────────────────────────────────────────────
+
+interface BarcodeConflict {
+  message: string;
+  reason: string | null;
+  conflictSku: string | null;
+}
+
+/**
+ * The Barcode fact's value. A placeholder created without one (`barcode === ''`)
+ * reads **No barcode** with an attach field: `PATCH { barcode }` attaches it
+ * once, and a barcode another record already owns comes back 409 with the
+ * owner (`conflictSku`) — linked, so the operator opens THAT record instead.
+ */
+export function SkuExceptionBarcodeValue({
+  fieldId,
+  item,
+  onChanged,
+}: {
+  fieldId: string;
+  item: ProvisionalSkuDetail;
+  onChanged: OnChanged;
+}) {
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [conflict, setConflict] = useState<BarcodeConflict | null>(null);
+
+  if (item.barcode) {
+    return <CopyChip value={item.barcode} display={item.barcode} tone="id" fitDisplayWidth />;
+  }
+
+  const barcode = draft.trim();
+  const attach = async () => {
+    if (!barcode || busy) return;
+    setBusy(true);
+    setConflict(null);
+    try {
+      const res = await fetch(`/api/sku-catalog/provisional/${encodeURIComponent(item.sku)}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+        reason?: string;
+        conflictSku?: string | null;
+      } | null;
+      if (!res.ok || !data?.success) {
+        setConflict({
+          message: data?.error || `Attach failed (${res.status})`,
+          reason: data?.reason ?? null,
+          conflictSku: data?.conflictSku ?? null,
+        });
+        return;
+      }
+      await onChanged();
+      setDraft('');
+      toast.success(`Barcode ${barcode} attached`, { id: `sku-exception-barcode-${item.sku}` });
+    } catch (err) {
+      setConflict({ message: err instanceof Error ? err.message : 'Could not attach.', reason: null, conflictSku: null });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="sku-exception-barcode-attach">
+      <span className={cn(RECORD_LABEL_CLASS, 'text-mode-warn')}>No barcode</span>
+      <div className="flex items-center gap-2">
+        <input
+          id={`${fieldId}-barcode`}
+          value={draft}
+          maxLength={64}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setConflict(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') void attach();
+          }}
+          placeholder="Scan or type barcode"
+          aria-label="Barcode to attach"
+          aria-invalid={conflict ? true : undefined}
+          autoComplete="off"
+          spellCheck={false}
+          className={cn(EVIDENCE_CONTROL_CLASS, RECORD_ID_CLASS, 'min-w-0 flex-1')}
+          data-testid="sku-exception-barcode-input"
+        />
+        <button
+          type="button"
+          className={evidenceVerbClass(true)}
+          disabled={!barcode || busy}
+          onClick={() => void attach()}
+          data-testid="sku-exception-barcode-attach-submit"
+        >
+          {busy ? 'Attaching…' : 'Attach'}
+        </button>
+      </div>
+      {conflict ? (
+        <p role="alert" className="text-role-caption text-mode-warn" data-testid="sku-exception-barcode-conflict">
+          {conflict.message}
+          {conflict.conflictSku ? (
+            <>
+              {' · '}
+              <Link
+                href={
+                  conflict.reason === 'barcode-taken'
+                    ? `${SKU_EXCEPTIONS_PATH}?sku=${encodeURIComponent(conflict.conflictSku)}`
+                    : `/inventory/sku/${encodeURIComponent(conflict.conflictSku)}`
+                }
+                className="font-mono font-bold underline underline-offset-2"
+              >
+                Open {conflict.conflictSku}
+              </Link>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Locations & count ───────────────────────────────────────────────────────
 
 function countTarget(sku: string, barcode: string, qty: number): StockBinWriteTarget {
   const face = skuExceptionLocationFace(barcode);
   return { rowId: `${barcode}:${sku}`, barcode, sku, qty, face: `${face} · ${sku}` };
+}
+
+/**
+ * Put `qty` of a placeholder into one bin — the phone's own bin verb
+ * (`PATCH /api/locations/[barcode]` `put`, reason `BIN_ADD`). Shared by Add to
+ * location and the New temp SKU form, so both read as one verb in the ledger.
+ */
+export async function putSkuExceptionStock(args: {
+  sku: string;
+  barcode: string;
+  /** What the bin holds now — the target's face, never the amount written. */
+  existing: number;
+  qty: number;
+  staffId: number | undefined;
+}): Promise<void> {
+  await commitStockRequest(
+    stockAdjustRequest(countTarget(args.sku, args.barcode, args.existing), {
+      direction: 'in',
+      qty: args.qty,
+      staffId: args.staffId,
+      // The reason the phone's pairing commit sends, so both read as one verb.
+      reasonCode: 'BIN_ADD',
+    }),
+  );
 }
 
 /**
@@ -187,15 +338,7 @@ export function SkuExceptionLocationsSection({
     if (!ready || !barcode) return;
     setBusy(true);
     try {
-      await commitStockRequest(
-        stockAdjustRequest(countTarget(item.sku, barcode, existing), {
-          direction: 'in',
-          qty,
-          staffId,
-          // The reason the phone's pairing commit sends, so both read as one verb.
-          reasonCode: 'BIN_ADD',
-        }),
-      );
+      await putSkuExceptionStock({ sku: item.sku, barcode, existing, qty, staffId });
       setQtyDraft('');
       setBarcode(null);
       await onChanged();

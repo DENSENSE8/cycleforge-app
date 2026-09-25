@@ -8,10 +8,10 @@
  * checklist and type task."* A tab is a place you have to already be; what is
  * on my plate today is one list with two labelled bands.
  *
- * The page's own frame (`DeskPageLayout`, mounted by `app/page.tsx`) draws the
- * title from the nav entry — the spine row is "Daily" with the lucide
- * ListChecks glyph — and, with no `SIDEBAR_PAGE_NAV` children, no tab row:
- * the honest shape for a single-surface desk.
+ * The page frame (`DeskPageLayout`) is mounted by `DailyAgenda` itself: its tab
+ * row carries the agenda's LENS tabs (local view state with live counts), the
+ * way Reports passes its own. The title still comes from the nav entry — the
+ * spine row is "Daily" with the lucide ListChecks glyph.
  *
  * `?mode=` tokens from removed modes (today / tasks / forge) are swallowed by
  * `parseHomeMode` rather than 404ing a bookmark.

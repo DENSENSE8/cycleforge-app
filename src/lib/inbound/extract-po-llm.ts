@@ -110,6 +110,7 @@ const REPORT_TOOL = {
               item_name: { type: 'string' },
               quantity: { type: 'integer', minimum: 1, maximum: 10_000 },
               line_item_id: { type: 'string' },
+              listing_url: { type: 'string' },
               confidence: { type: 'string', enum: ['high', 'medium', 'low'] },
             },
           },
@@ -134,6 +135,7 @@ type RawExtract = {
     item_name?: string;
     quantity?: number;
     line_item_id?: string;
+    listing_url?: string;
     confidence?: PoIntakeConfidence;
   }>;
   notes?: string;
@@ -173,6 +175,7 @@ function fieldValue(f: ConfField | undefined): string {
 export function draftFromExtractArgs(raw: RawExtract): PoIntakeDraft {
   const base = EMPTY_PO_INTAKE_DRAFT();
   const platform = fieldValue(raw.platform).toLowerCase() || base.platform;
+  const fallbackListingUrl = fieldValue(raw.listing_url);
   const lines: PoIntakeLineDraft[] = (raw.line_items ?? [])
     .map((li) => ({
       sku: String(li.sku ?? '').trim(),
@@ -182,6 +185,7 @@ export function draftFromExtractArgs(raw: RawExtract): PoIntakeDraft {
           ? String(Math.floor(li.quantity))
           : '',
       lineItemId: String(li.line_item_id ?? '').trim(),
+      listingUrl: String(li.listing_url ?? fallbackListingUrl).trim(),
     }))
     .filter((l) => l.sku || l.itemName || l.quantity);
 
@@ -192,8 +196,9 @@ export function draftFromExtractArgs(raw: RawExtract): PoIntakeDraft {
     seller: fieldValue(raw.seller),
     trackingNumber: fieldValue(raw.tracking_number),
     carrierCode: fieldValue(raw.carrier_code),
-    listingUrl: fieldValue(raw.listing_url),
-    lines: lines.length > 0 ? lines : [base.lines[0]!],
+    lines: lines.length > 0
+      ? lines
+      : [{ ...base.lines[0]!, listingUrl: fallbackListingUrl }],
     notes: String(raw.notes ?? '').trim(),
   };
 }

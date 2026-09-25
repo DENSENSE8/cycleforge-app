@@ -38,7 +38,7 @@ import type { CompoundRowView } from '@/components/tables/compound/compound-row-
 import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 import {
   taskDeskRecordHref,
-  taskDeskRecordLabel,
+  taskDeskTitle,
   type TaskDeskRow,
 } from '@/lib/tasks/task-desk-row';
 import { reportTasksRecordText } from '@/lib/tables/field-catalog/report-tasks-resolve';
@@ -80,7 +80,7 @@ export function reportTasksCompoundView(row: TaskDeskRow): CompoundRowView {
     // A task has no photo. The typed placeholder keeps the track's geometry so
     // this report and every other slot peer line up scanline for scanline.
     thumbUrl: null,
-    title: row.note || taskDeskRecordLabel(row),
+    title: taskDeskTitle(row),
     titleHref: taskDeskRecordHref(row, 'desk'),
     // The record the task was about — omitted when the title already IS that
     // phrase, because a note repeating the line above it is a lie by

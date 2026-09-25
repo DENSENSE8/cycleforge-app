@@ -11,11 +11,9 @@
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
-import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
-import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
+import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeader';
 import { StaffTable } from './StaffTable';
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
-import { cn } from '@/utils/_cn';
 
 /**
  * The SQL row this page selects. Wider than the desk's wire row on purpose —
@@ -56,25 +54,22 @@ export default async function StaffPage() {
   );
 
   return (
-    <div className={cn('min-h-screen antialiased', SETTINGS_FLOOR_CLASS)}>
-      <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
-        <SettingsSectionHeader title="Team" />
-        <p className="text-role-caption text-text-soft">
-          Invite teammates, change roles, deactivate access. Active sessions are revoked the moment you deactivate.
-        </p>
+    <SettingsSectionFrame title="Team" maxWidth="5xl">
+      <p className="text-role-caption text-text-soft">
+        Invite teammates, change roles, deactivate access. Active sessions are revoked the moment you deactivate.
+      </p>
 
-        <StaffTable initialStaff={r.rows.map((s): StaffDirectoryRow => ({
-          id: s.id,
-          name: s.name,
-          role: s.role,
-          status: s.status,
-          active: s.active,
-          has_pin: s.has_pin,
-          auth_method: s.auth_method,
-          requires_sensitive_stepup: s.requires_sensitive_stepup,
-          last_login_at: s.last_login_at ? s.last_login_at.toISOString() : null,
-        }))} />
-      </div>
-    </div>
+      <StaffTable initialStaff={r.rows.map((s): StaffDirectoryRow => ({
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        status: s.status,
+        active: s.active,
+        has_pin: s.has_pin,
+        auth_method: s.auth_method,
+        requires_sensitive_stepup: s.requires_sensitive_stepup,
+        last_login_at: s.last_login_at ? s.last_login_at.toISOString() : null,
+      }))} />
+    </SettingsSectionFrame>
   );
 }

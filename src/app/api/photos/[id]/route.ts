@@ -23,6 +23,7 @@ const PERM_BY_ENTITY_TYPE: Record<string, PermissionString> = {
   SKU_STOCK: 'sku_stock.adjust',
   BIN_ADJUSTMENT: 'bin.adjust',
   SERIAL_UNIT: 'tech.scan_serial',
+  WORK_ASSIGNMENT: 'work_orders.claim',
 };
 
 export async function DELETE(

@@ -6,9 +6,10 @@
  * counters shut and cost legibility instead of buying hierarchy. Hierarchy here
  * comes from color contrast, tracking, and the role scale — not from ink.
  *
- * The 700 cut is no longer loaded by `next/font` (`src/lib/fonts.ts`), so
- * asking for one only gets a synthesized faux-bold. Guard:
- * `src/components/ui/typography-tokens.guard.test.ts`.
+ * The sans and condensed 700 cuts are not loaded by `next/font`
+ * (`src/lib/fonts.ts`), so asking for one renders the 600 cut. Exception: IBM
+ * Plex Mono loads 700 (owner 2026-09-25, BRIEF §4 industrial — mono labels and
+ * IDs are heavy); mono `font-bold` renders a real 700.
  */
 export const fontWeights = {
   regular: 400,
