@@ -18,16 +18,11 @@ import {
 import Image from 'next/image';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { Button, SearchField } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import {
-  DataTableFilterMenu,
-  DataTablePageSizeMenu,
-  DataTableSortMenu,
   type DataTableFilterOption,
 } from '@/components/tables/DataTable';
-import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
 import { TableStatusBar } from '@/components/tables/TableStatusBar';
-import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { RecordPlatformFace } from '@/design-system/components/record-ledger/RecordIdentity';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
@@ -47,8 +42,8 @@ import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane, useDeskRecordView } from '@/d
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
-import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
-import { emitSelectionTotal, emitToggleAll } from '@/lib/selection/table-selection';
+import { useTableSelection } from '@/hooks/useTableSelection';
+import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import {
   clearSlotTableVisibleIds,
@@ -56,12 +51,9 @@ import {
 } from '@/lib/tables/slot-table-visible';
 import {
   SLOT_TABLE_PAGE_SIZE,
-  SLOT_TABLE_PAGE_SIZES,
-  isSlotTablePageSize,
   pageGroupedRenderOrder,
   pageIndexForRowId,
   readSlotTablePageSize,
-  writeSlotTablePageSize,
   type SlotTablePageSize,
 } from '@/lib/tables/slot-table-page';
 import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
@@ -93,7 +85,6 @@ import {
 import { RecordNoteSlot } from '@/design-system/components/RecordNoteSlot';
 import { LifecycleCode } from '@/design-system/components/record-ledger/LifecycleCode';
 import { useLedgerRowZoom } from './useLedgerRowZoom';
-import { CatalogManagerPopover } from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { OrderRecordView } from './OrderRecordView';
@@ -124,12 +115,9 @@ import {
   LEDGER_PHOTO_LANE_CLASS,
   LEDGER_ROW_CLASS,
   LEDGER_ROW_PX,
-  LEDGER_ROW_ZOOMS,
   LEDGER_SPINE_CLASS,
   LEDGER_SPINE_HATCH_CLASS,
-  LEDGER_TOOLBAR_CLASS,
   LEDGER_NESTED_HIT_CLASS,
-  LEDGER_ZOOM_LABEL,
   type LedgerRowZoom,
 } from './outbound-orders-ledger-geometry';
 
@@ -213,17 +201,13 @@ export function OutboundOrdersLedger({
     surfaceId: 'pending-grid-body',
   });
   const { plane, orderGroupsByDate, displayedRecords, painted } = feed;
-  const { zoom, setZoom } = useLedgerRowZoom('orders');
+  const { zoom } = useLedgerRowZoom('orders');
   // One note overlay across the whole ledger: opening a row's note closes any other.
   const [noteOpenId, setNoteOpenId] = useState<number | null>(null);
   const openNote = useCallback((orderId: number) => setNoteOpenId(orderId), []);
   const closeNote = useCallback((orderId: number) => {
     setNoteOpenId((current) => (current === orderId ? null : current));
   }, []);
-  // "Edit platforms" — the same catalog manager Unbox's platform pill opens, so
-  // the short label the band paints (`AMZRN`) is edited where it is read.
-  const [platformsOpen, setPlatformsOpen] = useState(false);
-
   // The plane publishes the record cursor; this surface turns J / K on. Esc
   // belongs to the record plane (first press closes the record, the next
   // leaves fullscreen), so the ambient hook stands down on it.
@@ -330,9 +314,7 @@ export function OutboundOrdersLedger({
     DASHBOARD_ORDERS_SELECTION_SCOPE,
     (r) => Number(r.id),
   );
-  const selectionTotal = useTableSelectionTotal(DASHBOARD_ORDERS_SELECTION_SCOPE);
   const selectedCount = selectedRows.length;
-  const allSelected = selectionTotal > 0 && selectedCount >= selectionTotal;
 
   const filterActive = chrome.filter.options.some((o: DataTableFilterOption) => o.active);
   const isNarrowed = Boolean(searchValue.trim()) || filterActive;
@@ -361,10 +343,6 @@ export function OutboundOrdersLedger({
     seededOpenIdRef.current = openRecordId;
     if (openId !== openRecordId) openRow(target);
   }, [openRecordId, displayedRecords, openId, openRow]);
-
-  const focusFirstRow = useCallback(() => {
-    scrollRef.current?.querySelector<HTMLElement>('[data-ledger-open]')?.focus();
-  }, []);
 
   // Stable across renders so a memoized record repaints only when ITS facts move.
   const {
@@ -420,136 +398,11 @@ export function OutboundOrdersLedger({
       testId="order-record"
       list={
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* ── The list anchor: toolbar + the open record's action strip. In
-          place the record opens below it; both stay live over the record. ── */}
+      {/* ── The list anchor: the open record's action strip. No toolbar above
+          the records (operator 2026-09-26): search, selection, filter, sort,
+          views, page size, platforms, density and fullscreen move to the
+          contextual sidebar. ── */}
       <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
-      {/* ── Toolbar: read · narrow · order · views · page — gap — draw ─────── */}
-      <div
-        data-testid="data-table-toolbar"
-        className={cn(LEDGER_TOOLBAR_CLASS, LEDGER_NESTED_HIT_CLASS)}
-      >
-        <GridRowCheckbox
-          checked={allSelected ? true : selectedCount > 0 ? 'mixed' : false}
-          onToggle={() =>
-            emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, allSelected ? 'none' : 'all')
-          }
-          label={allSelected ? 'Clear selection' : 'Select all orders on this page'}
-          className={cn(LEDGER_HIT_CLASS, 'w-8 items-center pt-0')}
-        />
-        <SearchField
-          value={searchValue}
-          onChange={chrome.search.onChange}
-          placeholder={chrome.search.placeholder}
-          isSearching={searchPending}
-          onNavigateResults={focusFirstRow}
-          inputRef={(el) => {
-            if (el) el.setAttribute('aria-label', chrome.search.placeholder);
-          }}
-          className="min-w-0 max-w-[22rem] flex-1 overflow-hidden rounded-none"
-          tone="neutral"
-          hideUnderline
-          fillHost
-        />
-        <DataTableFilterMenu {...chrome.filter} />
-        <DataTableSortMenu {...feed.sortMenu} />
-        {feed.views ? (
-          <div data-testid="data-table-views" className="inline-flex shrink-0 items-center">
-            <WorkbenchViewsMenu
-              storageKey={feed.views.storageKey}
-              paramKeys={feed.views.paramKeys}
-              emptyHint={feed.views.emptyHint}
-            />
-          </div>
-        ) : null}
-        <DataTablePageSizeMenu
-          pageSize={pageSize}
-          pageSizes={SLOT_TABLE_PAGE_SIZES}
-          onPageSizeChange={(size) => {
-            if (!isSlotTablePageSize(size)) return;
-            writeSlotTablePageSize(size);
-            setPageSize(size);
-          }}
-        />
-        <span className="ml-auto inline-flex shrink-0 items-stretch">
-          <button
-            type="button"
-            data-testid="ledger-edit-platforms"
-            aria-haspopup="dialog"
-            onClick={() => setPlatformsOpen(true)}
-            className={cn(
-              'ds-raw-button inline-flex items-center border-l border-mode-edge px-3',
-              LEDGER_HIT_CLASS,
-              RECORD_LABEL_CLASS,
-              focusRing('cell'),
-              'text-mode-muted hover:bg-mode-hover hover:text-mode-ink',
-            )}
-          >
-            Edit platforms
-          </button>
-          <div role="group" aria-label="Row size" className="inline-flex items-stretch border-l border-mode-edge">
-            {LEDGER_ROW_ZOOMS.map((step) => (
-              <button
-                key={step}
-                type="button"
-                aria-pressed={zoom === step}
-                aria-label={LEDGER_ZOOM_LABEL[step]}
-                data-testid={`ledger-zoom-${step}`}
-                onClick={() => setZoom(step)}
-                className={cn(
-                  'ds-raw-button inline-flex w-8 items-center justify-center border-r border-mode-edge',
-                  LEDGER_HIT_CLASS,
-                  RECORD_LABEL_CLASS,
-                  focusRing('cell'),
-                  zoom === step ? 'bg-mode-ink text-mode-bar' : 'text-mode-muted hover:bg-mode-hover',
-                )}
-              >
-                {step}
-              </button>
-            ))}
-          </div>
-          <div role="group" aria-label="Adjust row density" className="inline-flex items-stretch border-l border-mode-edge">
-            <button
-              type="button"
-              data-testid="ledger-density-decrease"
-              aria-label="Decrease row density"
-              disabled={zoom === LEDGER_ROW_ZOOMS[0]}
-              onClick={() => {
-                const index = LEDGER_ROW_ZOOMS.indexOf(zoom);
-                if (index > 0) setZoom(LEDGER_ROW_ZOOMS[index - 1]);
-              }}
-              className={cn(
-                'ds-raw-button inline-flex w-8 items-center justify-center border-r border-mode-edge',
-                LEDGER_HIT_CLASS,
-                RECORD_LABEL_CLASS,
-                focusRing('cell'),
-                'text-mode-muted hover:bg-mode-hover disabled:cursor-not-allowed disabled:opacity-40',
-              )}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              data-testid="ledger-density-increase"
-              aria-label="Increase row density"
-              disabled={zoom === LEDGER_ROW_ZOOMS[LEDGER_ROW_ZOOMS.length - 1]}
-              onClick={() => {
-                const index = LEDGER_ROW_ZOOMS.indexOf(zoom);
-                if (index < LEDGER_ROW_ZOOMS.length - 1) setZoom(LEDGER_ROW_ZOOMS[index + 1]);
-              }}
-              className={cn(
-                'ds-raw-button inline-flex w-8 items-center justify-center border-r border-mode-edge',
-                LEDGER_HIT_CLASS,
-                RECORD_LABEL_CLASS,
-                focusRing('cell'),
-                'text-mode-muted hover:bg-mode-hover disabled:cursor-not-allowed disabled:opacity-40',
-              )}
-            >
-              +
-            </button>
-          </div>
-          <DataTableFullscreenToggle />
-        </span>
-      </div>
       {openRecord ? (
         <OrderRecordActionStrip
           key={openRecord.id}
@@ -561,7 +414,6 @@ export function OutboundOrdersLedger({
         />
       ) : null}
       </div>
-      <CatalogManagerPopover open={platformsOpen} kind="platform" onClose={() => setPlatformsOpen(false)} />
 
       {banner}
 
