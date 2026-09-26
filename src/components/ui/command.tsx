@@ -9,6 +9,7 @@ import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from '@/components/Icons';
 import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { cn } from '@/utils/_cn';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
@@ -110,7 +111,7 @@ function CommandItem({ className, ...props }: React.ComponentProps<typeof Comman
     <CommandPrimitive.Item
       data-slot="command-item"
       className={cn(
-        'relative flex cursor-default select-none items-center gap-2 rounded-none px-3 py-2 text-sm outline-none',
+        'relative flex cursor-default select-none items-center gap-2 rounded-mode-control px-3 py-2 text-sm outline-none',
         'data-[selected=true]:bg-surface-hover data-[selected=true]:text-text-default',
         'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -144,24 +145,28 @@ function CommandDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        hideClose
-        overlayClassName="z-command bg-scrim/40 backdrop-blur-md"
-        onOpenAutoFocus={(e) => {
-          // cmdk owns focus; prevent Radix from focusing the dialog chrome.
-          e.preventDefault();
-        }}
-        onCloseAutoFocus={(e) => {
-          e.preventDefault();
-        }}
-        className={cn(
-          'left-1/2 top-[12vh] z-command max-h-[70vh] w-[calc(100%-2rem)] max-w-[560px] -translate-x-1/2 translate-y-0 gap-0 overflow-hidden rounded-2xl border-border-soft p-0 md:top-[16vh]',
-          className,
-        )}
-      >
-        <DialogTitle className="sr-only">Find records</DialogTitle>
-        {children}
-      </DialogContent>
+      {/* Portals out of every page region; the palette is a desk surface, so it
+          declares triage itself (industrial when opened on a phone). */}
+      <ModeRegion mode="triage" asChild>
+        <DialogContent
+          hideClose
+          overlayClassName="z-command bg-scrim/40 backdrop-blur-md"
+          onOpenAutoFocus={(e) => {
+            // cmdk owns focus; prevent Radix from focusing the dialog chrome.
+            e.preventDefault();
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+          }}
+          className={cn(
+            'left-1/2 top-[12vh] z-command max-h-[70vh] w-[calc(100%-2rem)] max-w-[560px] -translate-x-1/2 translate-y-0 gap-0 overflow-hidden rounded-mode border-border-soft p-0 md:top-[16vh]',
+            className,
+          )}
+        >
+          <DialogTitle className="sr-only">Find records</DialogTitle>
+          {children}
+        </DialogContent>
+      </ModeRegion>
     </Dialog>
   );
 }

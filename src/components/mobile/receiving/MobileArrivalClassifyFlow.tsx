@@ -105,8 +105,8 @@ export function MobileArrivalClassifyFlow({
       urgencyClassifyOptions({
         derivedLabel: 'platform',
         derivedTierEquivalent: null,
-        // Mode vars, not raw slate: the triage region shares the industrial
-        // identity (one language, two densities — modes.ts OPERATIONAL_BASE).
+        // Mode vars, not raw slate: the chip paints in whichever mode the
+        // region resolves to (industrial on the phone).
         autoActiveClass: 'border-mode-rule bg-mode-well text-mode-ink',
       }),
     [],

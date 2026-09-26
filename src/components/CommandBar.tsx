@@ -520,7 +520,7 @@ export function CommandBar() {
               onClick={() => setTypeFilter(null)}
               aria-pressed={typeFilter === null}
               className={cn(
-                'rounded px-2 py-0.5 text-role-eyebrow uppercase tracking-wide',
+                'rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide',
                 typeFilter === null
                   ? 'bg-accent-bg text-text-accent'
                   : 'text-text-faint hover:text-text-muted',
@@ -537,7 +537,7 @@ export function CommandBar() {
                   onClick={() => setTypeFilter(on ? null : entityType)}
                   aria-pressed={on}
                   className={cn(
-                    'rounded px-2 py-0.5 text-role-eyebrow uppercase tracking-wide ring-1 ring-inset transition-colors',
+                    'rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide ring-1 ring-inset transition-colors',
                     on
                       ? CHIP_TONE_CLASSES[ENTITY_TONE[entityType] ?? 'gray']
                       : 'text-text-faint ring-transparent hover:text-text-muted',
@@ -567,7 +567,7 @@ export function CommandBar() {
                   aria-pressed={on}
                   title={meta.label}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-role-eyebrow uppercase tracking-wide transition-colors',
+                    'inline-flex items-center gap-1.5 rounded-mode-pill px-2 py-0.5 text-role-eyebrow uppercase tracking-wide transition-colors',
                     on
                       ? 'bg-surface-sunken text-text-default'
                       : 'text-text-faint hover:text-text-muted',
@@ -596,7 +596,7 @@ export function CommandBar() {
         ) : null}
         </div>
 
-        <CommandList className="max-h-[min(60vh,24rem)]">
+        <CommandList className="max-h-[min(60vh,24rem)] p-1">
           <CommandEmpty>{emptyCopy}</CommandEmpty>
           {showRecents ? (
             <CommandGroup heading="Recent">

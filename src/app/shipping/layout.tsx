@@ -35,9 +35,9 @@ function ShippingFrame({ children }: { children: ReactNode }) {
 
   return (
     <SurfaceGate surfaceKey="outbound">
-      {/* Industrial task mode: the To-ship desk, FBA and the scan-out station
+      {/* Triage on desktop (BRIEF §12): the To-ship desk, FBA and the scan-out station
           all live under this frame. */}
-      <ModeRegion mode="industrial" className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
+      <ModeRegion mode="triage" className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
         <RouteShell
           actions={null}
           history={(

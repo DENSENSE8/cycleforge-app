@@ -7,7 +7,7 @@ export default function PackPage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <ModeRegion mode="industrial" className="contents">
+      <ModeRegion mode="triage" className="contents">
         <PackerSurfacePage fallbackPath="/pack" />
       </ModeRegion>
     </>

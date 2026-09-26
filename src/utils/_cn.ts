@@ -38,7 +38,7 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
       // Task-mode vars (src/design-system/modes/registry.ts). Not named steps,
       // so twMerge cannot place them unaided; registered so `rounded-mode`
       // vs `rounded-lg` (etc.) resolve last-wins instead of both surviving.
-      rounded: [{ rounded: ['mode', 'mode-pill'] }],
+      rounded: [{ rounded: ['mode', 'mode-control', 'mode-pill'] }],
       p: [{ p: ['mode-page'] }],
       px: [{ px: ['mode-page'] }],
       py: [{ py: ['mode-page'] }],

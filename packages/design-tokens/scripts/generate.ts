@@ -55,6 +55,7 @@ function resolveMode(spec: ModeSpec) {
     brand: spec.brand,
     grain: spec.grain,
     radius: spec.radius,
+    radiusControl: spec.radiusControl,
     radiusPill: spec.radiusPill,
     pagePad: spec.pagePad,
     hit: spec.hit,
@@ -108,6 +109,7 @@ function renderJson(): string {
       }
     }
     flat[`${p}.radius`] = m.radius;
+    flat[`${p}.radiusControl`] = m.radiusControl;
     flat[`${p}.radiusPill`] = m.radiusPill;
     for (const [measure, value] of Object.entries({
       pagePad: m.pagePad,
@@ -192,7 +194,8 @@ function renderSwift(): string {
     ...SURFACE_KEYS.map((k): [string, string, string] => [k, 'Color', surfaceDocs[k]]),
     ['warnText', 'Color', 'Warning ink as text.'],
     ['brand', 'Color?', 'Default tenant brand colour, when the mode has one.'],
-    ['radius', 'CGFloat', 'Corner radius.'],
+    ['radius', 'CGFloat', 'Card / panel corner radius.'],
+    ['radiusControl', 'CGFloat', 'Control corner radius (fields, buttons, menu rows).'],
     ['radiusPill', 'CGFloat', 'Pill corner radius.'],
     ['pagePad', 'CGFloat', 'Page padding (pointer).'],
     ['pagePadTouch', 'CGFloat', 'Page padding (touch).'],
@@ -216,6 +219,7 @@ function renderSwift(): string {
     values.warnText = `${swiftColor(m.warnText)}, // ${m.warnText}`;
     values.brand = m.brand ? `${swiftColor(m.brand)}, // ${m.brand}` : 'nil,';
     values.radius = `${swiftLength(m.radius)},`;
+    values.radiusControl = `${swiftLength(m.radiusControl)},`;
     values.radiusPill = `${swiftLength(m.radiusPill)},`;
     values.pagePad = `${swiftLength(m.pagePad.base)},`;
     values.pagePadTouch = `${swiftLength(m.pagePad.coarse)},`;

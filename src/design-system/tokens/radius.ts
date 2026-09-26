@@ -61,9 +61,9 @@ const CORNER_CLASS: Record<CornerRole, string> = {
   field: 'rounded-none',
   card: 'rounded-none',
   canvas: 'rounded-none',
-  // Square since 2026-09-24: triage shares industrial identity (one language,
-  // two densities — packages/design-tokens/src/modes.ts OPERATIONAL_BASE).
-  surface: 'rounded-none',
+  // Follows the region (owner 2026-09-26, BRIEF §12): 10px card in triage,
+  // square in industrial, square outside any ModeRegion (var unset).
+  surface: 'rounded-mode',
   pill: 'rounded-full',
 };
 
@@ -76,7 +76,7 @@ const CORNER_PX: Record<CornerRole, number> = {
   field: 12,
   card: 16,
   canvas: 24,
-  surface: 0,
+  surface: 10,
   pill: 9999,
 };
 
@@ -126,8 +126,8 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
  * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers, fields and buttons an operator works in the exception editor.
  * Operator 2026-08-31, on the order-exceptions display: round it off. The
  */
-// Square since 2026-09-24 (owner ruling):
-export const TRIAGE_PANEL_INNER_CORNER = 'rounded-none';
+// Follows the region's control corner: 8px in triage, square in industrial (owner 2026-09-26).
+export const TRIAGE_PANEL_INNER_CORNER = 'rounded-mode-control';
 
 /** ── The mobile family (operator 2026-09-15) ────────────────────────────────── */
 const MOBILE_CARD_CORNER = 'rounded-2xl';

@@ -17,7 +17,7 @@ export function triagePanelControl(...extra: Parameters<typeof cn>): string {
 }
 
 /** The END corners of a flush segmented strip inside a triage panel — a condition bar, a grade picker, any joined row of cells. */
-// Square since 2026-09-24 (one language, two densities): the strip's ends are
-// flush like the panel around them. Kept as a named slot so call sites keep
-// saying "this is a segmented strip"; the modes guard keeps it square.
+// Empty: the hosts disagree on where it lands (a container in Paperwork, the
+// end cells in ConditionPills), so rounding here would clip one of them. Kept
+// as a named slot so call sites keep saying "this is a segmented strip".
 export const TRIAGE_PANEL_SEGMENT_ENDS = '';

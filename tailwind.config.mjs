@@ -290,6 +290,7 @@ const config = {
             // they conflict-resolve against stock `rounded-*`.
             borderRadius: {
                 mode: 'var(--mode-radius)',
+                'mode-control': 'var(--mode-radius-control)',
                 'mode-pill': 'var(--mode-radius-pill)',
             },
             minHeight: {

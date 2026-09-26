@@ -271,8 +271,8 @@ function LabelTicketDialog({
   return (
     <Dialog open={label != null} onOpenChange={(next) => !next && close()}>
       <DialogContent className="max-w-sm" data-testid="label-ticket-dialog">
-        {/* Portals out of the ledger's industrial region; re-declare it. */}
-        <ModeRegion mode="industrial" className="contents">
+        {/* Portals out of the ledger's mode region; re-declare it. */}
+        <ModeRegion mode="triage" className="contents">
           <DialogHeader>
             <DialogTitle>Link a support ticket</DialogTitle>
             <DialogDescription>

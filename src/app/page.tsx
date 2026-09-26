@@ -6,7 +6,7 @@ import { ModeRegion } from '@/design-system/providers/ModeRegion';
 export default function Home() {
   return (
     <Suspense>
-      <ModeRegion mode="industrial" className="contents">
+      <ModeRegion mode="triage" className="contents">
         <HomeWorkspace />
       </ModeRegion>
     </Suspense>

@@ -103,9 +103,9 @@ export function LinkLabelDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="flex max-h-[88dvh] max-w-xl flex-col gap-3" data-testid="link-label-dialog">
-        {/* The dialog portals out of the ledger's industrial region; re-declare it
+        {/* The dialog portals out of the ledger's mode region; re-declare it
             so the mode ink / bar / hit tokens (purpose segments) resolve here. */}
-        <ModeRegion mode="industrial" className="contents">
+        <ModeRegion mode="triage" className="contents">
           <DialogHeader>
             <DialogTitle>Link label · {orderRef}</DialogTitle>
             <DialogDescription>

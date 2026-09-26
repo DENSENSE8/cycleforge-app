@@ -152,7 +152,7 @@ export function RepairRecordView({ repair, onUpdate }: RepairRecordViewProps) {
   );
 
   return (
-    <ModeRegion mode="industrial" className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="repair-record-view">
+    <ModeRegion mode="triage" className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="repair-record-view">
       <RepairStatusStrip repair={repair} zendeskUrl={c.zendeskTicketUrl} />
       <DeskRecordLayout main={main} aside={aside} />
     </ModeRegion>

@@ -36,8 +36,10 @@ public enum DesignTokens {
         public let warnText: Color
         /// Default tenant brand colour, when the mode has one.
         public let brand: Color?
-        /// Corner radius.
+        /// Card / panel corner radius.
         public let radius: CGFloat
+        /// Control corner radius (fields, buttons, menu rows).
+        public let radiusControl: CGFloat
         /// Pill corner radius.
         public let radiusPill: CGFloat
         /// Page padding (pointer).
@@ -63,7 +65,7 @@ public enum DesignTokens {
         /// Indeterminate pulse period (0 = none).
         public let motionPulse: Double
 
-        /// Industrial: Floor queues and scan stations — dense: flush rows, 13px, no page padding.
+        /// Industrial: Phones and scan stations — dense: flush rows, square, 13px, no page padding, 0 ms.
         public static let industrial = Mode(
             canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
             bar: Color(red: 248.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0), // #f8f8f4
@@ -79,6 +81,7 @@ public enum DesignTokens {
             warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
             brand: nil,
             radius: 0.0,
+            radiusControl: 0.0,
             radiusPill: 0.0,
             pagePad: 0.0,
             pagePadTouch: 0.0,
@@ -93,23 +96,24 @@ public enum DesignTokens {
             motionPulse: 0.0
         )
 
-        /// Triage: Decide-and-route work — record detail, arrival triage. Industrial identity, roomier density.
+        /// Triage: Every desktop route — decide-and-route work: shadcn neutral, 10px cards, 8px controls, pill chips.
         public static let triage = Mode(
             canvas: Color(red: 250.0 / 255.0, green: 250.0 / 255.0, blue: 250.0 / 255.0), // #fafafa
-            bar: Color(red: 248.0 / 255.0, green: 248.0 / 255.0, blue: 244.0 / 255.0), // #f8f8f4
+            bar: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
             panel: Color(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0), // #ffffff
-            well: Color(red: 230.0 / 255.0, green: 231.0 / 255.0, blue: 225.0 / 255.0), // #e6e7e1
-            hover: Color(red: 244.0 / 255.0, green: 244.0 / 255.0, blue: 239.0 / 255.0), // #f4f4ef
-            ink: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
-            muted: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
-            faint: Color(red: 83.0 / 255.0, green: 86.0 / 255.0, blue: 80.0 / 255.0), // #535650
-            rule: Color(red: 202.0 / 255.0, green: 203.0 / 255.0, blue: 197.0 / 255.0), // #cacbc5
-            edge: Color(red: 183.0 / 255.0, green: 184.0 / 255.0, blue: 176.0 / 255.0), // #b7b8b0
-            control: Color(red: 16.0 / 255.0, green: 17.0 / 255.0, blue: 15.0 / 255.0), // #10110f
+            well: Color(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 245.0 / 255.0), // #f5f5f5
+            hover: Color(red: 245.0 / 255.0, green: 245.0 / 255.0, blue: 245.0 / 255.0), // #f5f5f5
+            ink: Color(red: 10.0 / 255.0, green: 10.0 / 255.0, blue: 10.0 / 255.0), // #0a0a0a
+            muted: Color(red: 82.0 / 255.0, green: 82.0 / 255.0, blue: 82.0 / 255.0), // #525252
+            faint: Color(red: 112.0 / 255.0, green: 112.0 / 255.0, blue: 112.0 / 255.0), // #707070
+            rule: Color(red: 229.0 / 255.0, green: 229.0 / 255.0, blue: 229.0 / 255.0), // #e5e5e5
+            edge: Color(red: 212.0 / 255.0, green: 212.0 / 255.0, blue: 212.0 / 255.0), // #d4d4d4
+            control: Color(red: 138.0 / 255.0, green: 138.0 / 255.0, blue: 138.0 / 255.0), // #8a8a8a
             warnText: Color(red: 138.0 / 255.0, green: 95.0 / 255.0, blue: 0.0 / 255.0), // #8a5f00
             brand: nil,
-            radius: 0.0,
-            radiusPill: 0.0,
+            radius: 10.0,
+            radiusControl: 8.0,
+            radiusPill: 9999.0,
             pagePad: 12.0,
             pagePadTouch: 16.0,
             hitMin: 32.0,
@@ -118,7 +122,7 @@ public enum DesignTokens {
             hitCtaTouch: 48.0,
             bodyText: 14.0,
             bodyTextTouch: 16.0,
-            motionFeedback: 0.12,
+            motionFeedback: 0.16,
             motionPress: 0.12,
             motionPulse: 0.0
         )
@@ -139,6 +143,7 @@ public enum DesignTokens {
             warnText: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
             brand: Color(red: 31.0 / 255.0, green: 49.0 / 255.0, blue: 109.0 / 255.0), // #1f316d
             radius: 12.0,
+            radiusControl: 12.0,
             radiusPill: 9999.0,
             pagePad: 16.0,
             pagePadTouch: 24.0,
@@ -169,6 +174,7 @@ public enum DesignTokens {
             warnText: Color(red: 194.0 / 255.0, green: 65.0 / 255.0, blue: 12.0 / 255.0), // #c2410c
             brand: nil,
             radius: 12.0,
+            radiusControl: 12.0,
             radiusPill: 9999.0,
             pagePad: 16.0,
             pagePadTouch: 16.0,

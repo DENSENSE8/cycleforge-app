@@ -42,7 +42,10 @@ export interface ModeSpec {
   /** The job this mode serves — one line. */
   hint: string;
   surfaces: ModeSurfaces;
+  /** Card / panel / dialog corner. */
   radius: string;
+  /** Control corner — fields, buttons, menu rows, filter chips that are not pills. */
+  radiusControl: string;
   radiusPill: string;
   pagePad: ModeMeasure;
   /** Minimum hit target. */
@@ -102,8 +105,8 @@ export const SLATE_SURFACES: ModeSurfaces = {
 };
 
 /**
- * The warm industrial palette — the floor, the ledger, the desktop terminal.
- * No light-grey text on the floor: `faint` is `muted`.
+ * The warm industrial palette — the phone floor (`/m/*`, scan stations, the
+ * hardware mirror). No light-grey text on the floor: `faint` is `muted`.
  */
 export const WARM_SURFACES: ModeSurfaces = {
   canvas: '#fafafa',
@@ -119,44 +122,47 @@ export const WARM_SURFACES: ModeSurfaces = {
   control: '#10110f',
 };
 
-/** ── One language, two densities (owner ruling 2026-09-24) ────────────────── */
-export const OPERATIONAL_BASE = {
-  surfaces: WARM_SURFACES,
-  radius: '0',
-  radiusPill: '0',
-  // #d39200 fails contrast as text; this is its readable ink.
-  warnText: '#8a5f00',
-  // Owner 2026-09-25:
-  // Owner 2026-09-25: a hardware finish that reads as DEPTH — rougher is
-  grain: {
-    well: { opacity: 0.03, frequency: 0.45 },
-    canvas: { opacity: 0.07, frequency: 0.65 },
-    bar: { opacity: 0.07, frequency: 0.85 },
-    inverse: { opacity: 0.12, frequency: 0.85 },
-  },
-} as const satisfies Pick<ModeSpec, 'surfaces' | 'radius' | 'radiusPill' | 'warnText' | 'grain'>;
-
-/** The keys a mode in the operational family may set for itself. */
-export const DENSITY_KEYS = ['name', 'label', 'hint', 'pagePad', 'hit', 'hitCta', 'bodyText', 'motion'] as const;
-
-/** Modes that share {@link OPERATIONAL_BASE}. */
-export const OPERATIONAL_MODES = ['industrial', 'triage'] as const satisfies readonly ModeName[];
-
 /**
- * Modes with their own identity, and why — each a separately ratified surface
- * (BRIEF §4c / §4d), never an operator desk.
+ * shadcn/ui new-york "neutral" — the desktop triage palette (owner 2026-09-26,
+ * BRIEF §12). Two departures from stock, both for the §8 floor: `faint` is
+ * #707070 (stock #737373 is 4.35:1 on the muted well) and `control` is
+ * #8a8a8a (stock input border #e5e5e5 is 1.3:1; non-text needs 3:1).
  */
-export const IDENTITY_EXEMPT_MODES = {
-  counter: 'Customer-facing counter tablet (kiosk v2): tenant brand, 12px + pill, 56px CTA.',
-  assistant: 'Conversational AI surfaces: transcript column, 12px + pill.',
-} as const satisfies Partial<Record<ModeName, string>>;
+export const NEUTRAL_SURFACES: ModeSurfaces = {
+  canvas: '#fafafa',
+  bar: '#ffffff',
+  panel: '#ffffff',
+  well: '#f5f5f5',
+  hover: '#f5f5f5',
+  ink: '#0a0a0a',
+  muted: '#525252',
+  faint: '#707070',
+  rule: '#e5e5e5',
+  edge: '#d4d4d4',
+  control: '#8a8a8a',
+};
 
+/** #d39200 fails contrast as text; this is its readable ink on warm and neutral planes. */
+const WARN_INK = '#8a5f00';
+
+/** Industrial on phones, triage on desktop (owner 2026-09-26, BRIEF §12). */
 export const MODE_REGISTRY = {
   industrial: {
-    ...OPERATIONAL_BASE,
     name: 'industrial',
     label: 'Industrial',
-    hint: 'Floor queues and scan stations — dense: flush rows, 13px, no page padding.',
+    hint: 'Phones and scan stations — dense: flush rows, square, 13px, no page padding, 0 ms.',
+    surfaces: WARM_SURFACES,
+    radius: '0',
+    radiusControl: '0',
+    radiusPill: '0',
+    warnText: WARN_INK,
+    // Owner 2026-09-25: a hardware finish that reads as DEPTH — rougher is deeper.
+    grain: {
+      well: { opacity: 0.03, frequency: 0.45 },
+      canvas: { opacity: 0.07, frequency: 0.65 },
+      bar: { opacity: 0.07, frequency: 0.85 },
+      inverse: { opacity: 0.12, frequency: 0.85 },
+    },
     pagePad: { base: '0', coarse: '0' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '13px', coarse: '13px' },
@@ -164,14 +170,19 @@ export const MODE_REGISTRY = {
     motion: { feedback: '150ms' },
   },
   triage: {
-    ...OPERATIONAL_BASE,
     name: 'triage',
     label: 'Triage',
-    hint: 'Decide-and-route work — record detail, arrival triage. Industrial identity, roomier density.',
+    hint: 'Every desktop route — decide-and-route work: shadcn neutral, 10px cards, 8px controls, pill chips.',
+    surfaces: NEUTRAL_SURFACES,
+    // shadcn new-york `--radius: 0.625rem`: card = radius, control = radius − 2px.
+    radius: '10px',
+    radiusControl: '8px',
+    radiusPill: '9999px',
+    warnText: WARN_INK,
     pagePad: { base: '12px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
     bodyText: { base: '14px', coarse: '16px' },
-    motion: { feedback: '120ms' },
+    motion: { feedback: '160ms', press: '120ms' },
   },
   counter: {
     name: 'counter',
@@ -179,6 +190,7 @@ export const MODE_REGISTRY = {
     hint: 'Customer-facing counter tablet — soft corners, 16px, big targets.',
     surfaces: SLATE_SURFACES,
     radius: '12px',
+    radiusControl: '12px',
     radiusPill: '9999px',
     pagePad: { base: '16px', coarse: '24px' },
     hit: { base: '40px', coarse: '48px' },
@@ -195,6 +207,7 @@ export const MODE_REGISTRY = {
     hint: 'Conversational AI surfaces — the assistant dock and /ai-chat.',
     surfaces: SLATE_SURFACES,
     radius: '12px',
+    radiusControl: '12px',
     radiusPill: '9999px',
     pagePad: { base: '16px', coarse: '16px' },
     hit: { base: '32px', coarse: '48px' },
@@ -280,6 +293,7 @@ function baseDeclarations(spec: ModeSpec): string[] {
   lines.push(
     `  --mode-warn-text: var(--ds-color-text-warning);`,
     `  --mode-radius: ${spec.radius};`,
+    `  --mode-radius-control: ${spec.radiusControl};`,
     `  --mode-radius-pill: ${spec.radiusPill};`,
     `  --mode-page-pad: ${spec.pagePad.base};`,
     `  --mode-hit: ${spec.hit.base};`,

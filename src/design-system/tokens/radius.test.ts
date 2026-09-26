@@ -56,9 +56,9 @@ describe('radius SoT', () => {
     );
   });
 
-  it('surface (triage panels) is square — triage shares the industrial identity', () => {
-    assert.equal(cornerClass('surface'), 'rounded-none');
-    assert.equal(nestedCorner('surface', 0), 'flush');
+  it('surface (triage panels) follows the region corner — 10px triage, square industrial', () => {
+    assert.equal(cornerClass('surface'), 'rounded-mode');
+    assert.equal(nestedCorner('surface', 0), 'control'); // 10 → the 8px rung
   });
 
   it('dropdown shells are the 8px control rung — ladder stays flush', () => {
