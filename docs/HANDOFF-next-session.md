@@ -32,10 +32,11 @@ Net since `92a32d00d`: ~6.8k files touched, ~397k lines deleted. `docs/` 36 MB �
 
 **Gates now in `pnpm verify:fast`:** Lint, Typecheck, Cron contract, Tenancy isolation,
 Schema drift, Boundary, Nav names, Sku identity, Design tokens, V1 OpenAPI.
-**Known red:** 10 unit tests, identical before and after the diet (compound
-title strike, orders shared-tracks derivation, daily field-catalog slot values,
-walk-in history target, V1 label-ingestion live DB invariants). The pushed tree
-at `6033c6715` was verified green on every gate in a clean checkout.
+**Known red:** none in the unit sweep. Phase 0 (2026-09-26) fixed the 10 stale tests
+(Orders Pick+Pack tracks, strike via `text-decoration-thickness`, repairs default tab
+`all`, full `TaskDeskRow` fixture) and moved the live-DB test to
+`label-ingestions/database.live-db-test.ts` — it runs only under `test:v1:data` with
+`scripts/v1-disposable-db.sh` env, never in the generic sweep.
 
 **Owner rulings (BRIEF §12):** motion and density follow the task, never the device;
 industrial = 0 ms except the scan-status flash (kept); triage/assistant = expressive
@@ -61,8 +62,11 @@ completely; iOS/Android/desktop call CycleForge server routes); owner cherry-pic
 
 ## 4. Phases (owner-reviewed order; work top-down, one face at a time)
 
-**Phase 0 — trunk you can trust (1–2 sessions).** Fix or delete the 10 red unit
-tests; add knip's false positives to `knip.json` entries.
+**Phase 0 — trunk you can trust. DONE 2026-09-26.** Unit sweep green; knip's false
+positives are in `knip.json` (script/tool/test/vision entries, `tailwind.config.mjs`,
+generated + `public/` ignored). What knip still lists (21 `src/` files) is real dead
+code — cut it in Phase 1; the `shipped-filter/*` cluster sits beside another session's
+in-flight `ShippedLedger` work, so confirm with the owner first.
 
 **Phase 1 — cut by usage (2–4 sessions).** Owner names the desk routes he actually
 dogfoods; delete the rest, as `/m` was pruned. Pick ONE table primitive

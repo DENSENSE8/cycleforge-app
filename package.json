@@ -13,7 +13,7 @@
     "tokens:check": "tsx packages/design-tokens/scripts/generate.ts --check",
     "ds:trial-shots": "tsx scripts/ds-trial-shots.ts",
     "verify:v1:schema": "node --import tsx scripts/verify-v1-label-ingestion-schema.ts",
-    "test:v1:data": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/label-ingestions/apply.test.ts src/lib/label-ingestions/tenancy.test.ts src/lib/label-ingestions/database.test.ts",
+    "test:v1:data": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/label-ingestions/apply.test.ts src/lib/label-ingestions/tenancy.test.ts src/lib/label-ingestions/database.live-db-test.ts",
     "test:v1:ingestion": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/label-ingestions/pdf-parser.test.ts src/lib/label-ingestions/exact-resolver.test.ts src/lib/label-ingestions/ingestion-service.test.ts",
     "test:v1:api": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/label-ingestions/contracts.test.ts src/lib/label-ingestions/native-adapters.test.ts src/lib/label-ingestions/ledger-view.test.ts",
     "verify:v1:openapi": "node --import tsx scripts/verify-v1-openapi.ts",

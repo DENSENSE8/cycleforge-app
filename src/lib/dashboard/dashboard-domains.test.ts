@@ -93,5 +93,6 @@ test('retiredWalkInHistoryTarget: Sales / Local Pickup / Repairs land on the das
   assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=draft')), '/dashboard?mode=pickup&tab=draft');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=pickup&tab=completed')), '/dashboard?mode=pickup');
   assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=active')), '/dashboard?mode=repairs&tab=active');
-  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=done')), '/dashboard?mode=repairs');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=done')), '/dashboard?mode=repairs&tab=done');
+  assert.equal(retiredWalkInHistoryTarget(sp('mode=repairs&tab=all')), '/dashboard?mode=repairs');
 });

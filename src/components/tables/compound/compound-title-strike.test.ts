@@ -60,17 +60,15 @@ describe('compound title strike', () => {
     assert.doesNotMatch(html, /text-text-muted"[^>]*>Front door locked/);
   });
 
-  it('mounts the lane closed for an unchecked row', () => {
+  it('mounts the strike invisible for an unchecked row', () => {
     const html = paintItem({ ...CHECK, titleStruck: false });
-    assert.match(html, /data-struck="false"/);
-    assert.match(html, /aria-hidden="true"[^>]*style="[^"]*width:0%/);
+    assert.match(html, /data-struck="false"[^>]*decoration-transparent[^>]*text-decoration-thickness:0px/);
+    assert.doesNotMatch(html, /text-text-muted"[^>]*>Front door locked/);
   });
 
   it('strikes and mutes a checked row', () => {
     const html = paintItem({ ...CHECK, titleStruck: true, stateLabel: 'DONE', stateTone: 'done' });
-    assert.match(html, /data-struck="true"/);
-    assert.match(html, /text-text-muted/);
-    assert.match(html, /aria-hidden="true"[^>]*style="[^"]*width:100%/);
+    assert.match(html, /data-struck="true"[^>]*text-text-muted[^>]*text-decoration-thickness:1px/);
   });
 });
 

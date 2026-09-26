@@ -65,10 +65,20 @@ const ORDERS_KEYS = [
   'dates',
   'state',
   'status:1',
+  'status:2',
   '_fill',
 ] as const;
 
-const DAILY_KEYS = [...ORDERS_KEYS] as const;
+const DAILY_KEYS = [
+  'select',
+  'fulfillment',
+  'thumb',
+  'item',
+  'dates',
+  'state',
+  'status:1',
+  '_fill',
+] as const;
 
 describe('compound layout is shared, not forked', () => {
   it('every shared family declares the SAME tracks, in the same order', () => {
@@ -87,14 +97,18 @@ describe('compound layout is shared, not forked', () => {
     }
   });
 
-  it('Orders derives the shared tracks plus a materialized status band after state', () => {
+  it('Orders derives the shared tracks plus Pick and Pack status bands after state', () => {
     assert.deepEqual(keys(ORDERS_COMPOUND_COLUMNS), [...ORDERS_KEYS]);
     const stateIdx = ORDERS_COMPOUND_COLUMNS.findIndex((c) => c.key === 'state');
     const status1 = ORDERS_COMPOUND_COLUMNS[stateIdx + 1];
+    const status2 = ORDERS_COMPOUND_COLUMNS[stateIdx + 2];
     assert.equal(status1?.key, 'status:1');
     // The track KEY is the slot; the FIELD is the product default binding.
     assert.equal(status1?.fieldId, 'orders.picked');
     assert.equal(status1?.label, 'Pick');
+    assert.equal(status2?.key, 'status:2');
+    assert.equal(status2?.fieldId, 'orders.packed');
+    assert.equal(status2?.label, 'Pack');
   });
 
   it('Daily derives the same tracks with its identity bound into the id track', () => {
