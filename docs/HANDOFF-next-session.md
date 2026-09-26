@@ -89,6 +89,23 @@ completely; iOS/Android/desktop call CycleForge server routes); owner cherry-pic
 8. **Prove, then record:** after screenshot + numbers, `pnpm verify:fast`, the
    affected unit tests, commit by path (never sweep another session's files), push.
    Record rulings in BRIEF in the owner's words.
+9. **Commit only files you changed.** Build the list from your own edits, never
+   from `git diff --name-only` / `git add -A` on this shared tree (that is how
+   `740492be5` swept another session's half-done refactor into history; fixed in
+   the next two commits). Verify the COMMITTED tree in a throwaway
+   `git worktree` (`next typegen` + tsc + verify), not the working tree.
+
+## Notes
+
+- `animejs` is v4: modular API, `import { animate, createTimeline } from 'animejs'`
+  — not the v3 `anime({...})` global most tutorials show. `lenis` (not the
+  deprecated `@studio-freight/lenis`): `import Lenis from 'lenis'`.
+- `c82fed463` cut every long comment to its first sentence; invariant sentences
+  (MUST / NEVER / stable-array, no-layout-shift contracts) may be gone. When
+  touching a file, read `git show c82fed463^:<path>` for the original reasoning.
+- knip still reports ~56 "unused files" that are false positives (generated
+  `tokens.css`, `public/` service-worker builds, guard scripts `verify` runs as
+  child processes). Add them to `knip.json` entries before trusting knip again.
 
 ## 5. Paste-ready prompt
 
