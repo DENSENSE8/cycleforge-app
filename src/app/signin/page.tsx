@@ -140,8 +140,6 @@ const ROLE_HOME: Record<string, string> = {
 };
 
 const MOBILE_ROLE_HOME: Record<string, string> = {
-  receiver: '/m/receiving',
-  receiving: '/m/receiving',
   packer: '/m/pick',
 };
 

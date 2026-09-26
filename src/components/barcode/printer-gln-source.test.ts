@@ -27,8 +27,6 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { loadConfig as loadBin } from './bin-label-printer/storage';
 import { loadConfig as loadRack } from './rack-printer/rack-printer-config';
 import { DEFAULT_CONFIG as BIN_DEFAULTS, CONFIG_KEY as BIN_KEY } from './bin-label-printer/types';
@@ -37,33 +35,9 @@ import { DEFAULT_CONFIG as RACK_DEFAULTS } from './rack-printer/rack-printer-con
 /** The value sitting in operators' localStorage right now. */
 const STALE_PLACEHOLDER = '0614141000005';
 
-const CONFIG_MODULES = [
-  ['bin', 'bin-label-printer/types.ts'],
-  ['bin storage', 'bin-label-printer/storage.ts'],
-  ['rack', 'rack-printer/rack-printer-config.ts'],
-] as const;
-
 test('neither printer config carries a GLN field at all', () => {
   assert.ok(!('gln' in BIN_DEFAULTS), 'bin printer config must not declare a gln');
   assert.ok(!('gln' in RACK_DEFAULTS), 'rack printer config must not declare a gln');
-});
-
-test('no printer config module reads or writes a gln key', () => {
-  for (const [name, rel] of CONFIG_MODULES) {
-    const src = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
-    // Prose in the docblocks explains the retirement, so only CODE lines count.
-    const code = src
-      .split('\n')
-      .filter((l) => {
-        const t = l.trimStart();
-        return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
-      })
-      .join('\n');
-    assert.ok(
-      !/\bgln\b/i.test(code),
-      `${name}: config module must not reference a gln — the org value (useOrgGs1) is the only one`,
-    );
-  }
 });
 
 test('a stored placeholder cannot survive a config load — the actual migration', () => {

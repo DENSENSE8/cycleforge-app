@@ -1,8 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   STATION_GLYPH_KEYS,
   PACKING_MODE_ICONS,
@@ -95,18 +92,4 @@ test('STATION_GLYPH_KEYS covers every floor mode map entry', () => {
     ...Object.keys(PACKING_MODE_ICONS).map((id) => `packing.${id}`),
   ].sort();
   assert.deepEqual(Object.keys(STATION_GLYPH_KEYS).sort(), expected);
-});
-
-test('Scan Stations and Scan out use lucide ScanBarcode, not a vanishing h.01 grid', () => {
-  const nav = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '../../components/icons/nav.tsx'),
-    'utf8',
-  );
-  const stations = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), '../../components/icons/stations.tsx'),
-    'utf8',
-  );
-  assert.match(nav, /ScanBarcode as LucideScanBarcode/);
-  assert.match(stations, /ShippingModeScanOut: IconComponent = ScanBarcode/);
-  assert.equal(STATION_GLYPH_KEYS['shipping.scan-out'], 'ScanBarcode');
 });

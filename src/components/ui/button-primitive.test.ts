@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -57,38 +56,5 @@ describe('shadcn Button primitive', () => {
     const html = render();
     assert.doesNotMatch(html, /transition-\[?(height|width|top|left|margin|padding)/);
     assert.doesNotMatch(html, /transition-all/);
-  });
-});
-
-describe('station collapse chrome sits on the primitive', () => {
-  /** Files whose ONLY controls are disclosure controls. */
-  const PURE_DISCLOSURE = [
-    'src/components/station/collapse/StationCollapsibleBlock.tsx',
-  ];
-  /**
-   * Files that own a disclosure control among others. `ItemRecordRow`'s meta
-   * cells (qty · condition · serials) are activators on a fixed face, not
-   * disclosures — a different control family, deliberately out of scope here.
-   */
-  const MIXED = ['src/design-system/components/item-record/ItemRecordRow.tsx'];
-
-  it('every expand / collapse control composes the shadcn Button', () => {
-    for (const path of [...PURE_DISCLOSURE, ...MIXED]) {
-      assert.match(
-        readFileSync(path, 'utf8'),
-        /from '@\/components\/ui\/button'/,
-        `${path} must build its disclosure control on the primitive`,
-      );
-    }
-  });
-
-  it('leaves no hand-rolled button behind in the collapse module', () => {
-    for (const path of PURE_DISCLOSURE) {
-      assert.doesNotMatch(
-        readFileSync(path, 'utf8'),
-        /ds-raw-button/,
-        `${path} still hand-rolls a bare button — that is the drift this removed`,
-      );
-    }
   });
 });

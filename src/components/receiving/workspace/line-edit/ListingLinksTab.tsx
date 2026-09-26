@@ -51,7 +51,6 @@ import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import { recordCopy } from '@/lib/clipboard-history';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { ListingVendorViewPanel } from './ListingVendorViewPanel';
 import { useCartonListingLinks, type CartonListingLinkRow } from './useCartonListingLinks';
 
 /** Flush Displays body — parent push column owns inset; no glass island. */
@@ -337,220 +336,200 @@ export function ListingLinksTab({
     }
   }, [draft, store]);
 
-  /**
-   * While a listing is embedded, the viewport IS the display — the verbs and
-   * the rows below them were the exact height the marketplace page needed, and
-   * they say nothing the page in front of the operator does not show.
-   */
-  const [embedOpen, setEmbedOpen] = useState(false);
-  const handleEmbedOpenChange = useCallback((next: boolean) => setEmbedOpen(next), []);
-
   return (
     <div className={cn(FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col')}>
-      <ListingVendorViewPanel
-        links={listingLinks}
-        listingLink={listingLink}
-        setListingLink={setListingLink}
-        onOpenChange={handleEmbedOpenChange}
-        className={embedOpen ? 'min-h-0 flex-1' : undefined}
-      />
+      {/* 1 — the band verbs: the SELECTED link, then the whole carton.
+          Station chrome: full-bleed, one hairline seam. Open reads the
+          combo below it; Open all never needs a selection. Copy all is not
+          here — it heads the rows' Copy column on the combo seam. */}
+      <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
+        <HoverTooltip
+          label={selected ? `Open ${selected.name}` : 'Pick a listing link below'}
+          asChild
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant="primarySoft"
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            onClick={() => {
+              if (selected?.href) window.open(selected.href, '_blank', 'noopener,noreferrer');
+            }}
+            disabled={!selected?.href}
+            ariaLabel="Open the selected listing link in a new tab"
+            className="w-full"
+          >
+            Open
+          </Button>
+        </HoverTooltip>
+        <HoverTooltip label="Open every listing link on this carton" asChild>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            onClick={openAll}
+            disabled={links.length === 0}
+            ariaLabel="Open every listing link in a new tab"
+            className="w-full"
+          >
+            Open all
+          </Button>
+        </HoverTooltip>
+      </div>
 
-      {embedOpen ? null : (
-        <>
-          {/* 1 — the band verbs: the SELECTED link, then the whole carton.
-              Station chrome: full-bleed, one hairline seam. Open reads the
-              combo below it; Open all never needs a selection. Copy all is not
-              here — it heads the rows' Copy column on the combo seam. */}
-          <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
-            <HoverTooltip
-              label={selected ? `Open ${selected.name}` : 'Pick a listing link below'}
-              asChild
-            >
-              <Button
-                type="button"
-                size="sm"
-                variant="primarySoft"
-                icon={<ExternalLink className="h-3.5 w-3.5" />}
-                onClick={() => {
-                  if (selected?.href) window.open(selected.href, '_blank', 'noopener,noreferrer');
-                }}
-                disabled={!selected?.href}
-                ariaLabel="Open the selected listing link in a new tab"
-                className="w-full"
-              >
-                Open
-              </Button>
-            </HoverTooltip>
-            <HoverTooltip label="Open every listing link on this carton" asChild>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                icon={<ExternalLink className="h-3.5 w-3.5" />}
-                onClick={openAll}
-                disabled={links.length === 0}
-                ariaLabel="Open every listing link in a new tab"
-                className="w-full"
-              >
-                Open all
-              </Button>
-            </HoverTooltip>
-          </div>
-
-          {/* 2 — the header row, on the rows' own four columns:
-              ＋ · picker | Copy all | count | Delete all. ＋ leads the wide
-              cell exactly where a row's open glyph sits, so the picker's text
-              lands on the same rail as every link name. */}
-          <div className={LISTING_COMBO_GRID}>
-            {/* pl only: the picker's chevron is right-aligned, so the shared
-                `px-3` showed as a gap between it and the Copy-all seam. A row's
-                name is left-aligned and truncates, so it never showed there. */}
-            <div className="flex min-w-0 items-center gap-2 pl-3">
-              {store.supported ? (
-                <HoverTooltip label="Add a listing link" asChild>
-                  <IconButton
-                    type="button"
-                    icon={<Plus className={LISTING_LEAD_GLYPH} />}
-                    onClick={() => setDraft({ href: '', label: '' })}
-                    ariaLabel="Add a listing link"
-                    className={cn(cornerClass('flush'), 'shrink-0 text-blue-600 hover:text-blue-700')}
-                  />
-                </HoverTooltip>
-              ) : null}
-              <SearchableSelectField
-                value={selected?.href ?? null}
-                onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
-                options={links.map((l) => ({ value: l.href, label: l.name }))}
-                appearance="flush"
-                placeholder={store.loading ? 'Loading links…' : 'No listing links'}
-                searchPlaceholder="Filter listings…"
-                emptyMessage="No listing links"
-                ariaLabel="Selected listing link"
-                // The CELL owns the left gutter; the trigger owns only the
-                // breathing room its right-aligned chevron needs.
-                className="min-w-0 flex-1 pl-0 pr-2"
-              />
-            </div>
-            {/* Copy all heads the rows' Copy column: the same verb, whole
-                carton, directly above the per-row twins. */}
-            <HoverTooltip label="Copy every listing link on this carton" asChild>
+      {/* 2 — the header row, on the rows' own four columns:
+          ＋ · picker | Copy all | count | Delete all. ＋ leads the wide
+          cell exactly where a row's open glyph sits, so the picker's text
+          lands on the same rail as every link name. */}
+      <div className={LISTING_COMBO_GRID}>
+        {/* pl only: the picker's chevron is right-aligned, so the shared
+            `px-3` showed as a gap between it and the Copy-all seam. A row's
+            name is left-aligned and truncates, so it never showed there. */}
+        <div className="flex min-w-0 items-center gap-2 pl-3">
+          {store.supported ? (
+            <HoverTooltip label="Add a listing link" asChild>
               <IconButton
                 type="button"
-                size="fill"
-                icon={<Copy className={LISTING_LEAD_GLYPH} />}
-                onClick={copyAll}
-                disabled={links.length === 0}
-                ariaLabel="Copy every listing link"
-                className={LISTING_TRAIL_SQUARE}
+                icon={<Plus className={LISTING_LEAD_GLYPH} />}
+                onClick={() => setDraft({ href: '', label: '' })}
+                ariaLabel="Add a listing link"
+                className={cn(cornerClass('flush'), 'shrink-0 text-blue-600 hover:text-blue-700')}
               />
             </HoverTooltip>
-            {/* A READOUT, never a control. The count is what the collapsed
-                picker hides; the rows below spend this column on Edit, so
-                nothing here may be clickable. */}
-            <span className="flex items-center justify-center">
-              <CursorPositionReadout total={links.length} totalOnly />
-            </span>
-            {/* Delete all heads the rows' Delete column, on the same armed
-                face every delete in this leaf uses. */}
-            {store.supported ? (
-              <ArmedDeleteCell
-                label={
-                  deletableCount === 0
-                    ? 'Nothing here can be deleted — these links are derived'
-                    : 'Delete every listing link on this carton'
-                }
-                armedLabel={`Click again to delete ${deletableCount} link${deletableCount === 1 ? '' : 's'}`}
-                ariaLabel="Delete every listing link"
-                armedAriaLabel={`Confirm deleting ${deletableCount} listing link${deletableCount === 1 ? '' : 's'}`}
-                disabled={deletableCount === 0}
-                onConfirm={() => {
-                  if (store.rows.length > 0) void store.removeAll();
-                  if (scalarDeletable) setListingLink('');
-                  setSelectedHref(null);
-                }}
-              />
-            ) : (
-              <span />
-            )}
-          </div>
-
-          {store.error ? (
-            <p className={cn(LISTING_ROW_EDITOR_RAIL, 'pt-2 text-role-caption text-rose-600')}>
-              {store.error}
-            </p>
           ) : null}
+          <SearchableSelectField
+            value={selected?.href ?? null}
+            onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
+            options={links.map((l) => ({ value: l.href, label: l.name }))}
+            appearance="flush"
+            placeholder={store.loading ? 'Loading links…' : 'No listing links'}
+            searchPlaceholder="Filter listings…"
+            emptyMessage="No listing links"
+            ariaLabel="Selected listing link"
+            // The CELL owns the left gutter; the trigger owns only the
+            // breathing room its right-aligned chevron needs.
+            className="min-w-0 flex-1 pl-0 pr-2"
+          />
+        </div>
+        {/* Copy all heads the rows' Copy column: the same verb, whole
+            carton, directly above the per-row twins. */}
+        <HoverTooltip label="Copy every listing link on this carton" asChild>
+          <IconButton
+            type="button"
+            size="fill"
+            icon={<Copy className={LISTING_LEAD_GLYPH} />}
+            onClick={copyAll}
+            disabled={links.length === 0}
+            ariaLabel="Copy every listing link"
+            className={LISTING_TRAIL_SQUARE}
+          />
+        </HoverTooltip>
+        {/* A READOUT, never a control. The count is what the collapsed
+            picker hides; the rows below spend this column on Edit, so
+            nothing here may be clickable. */}
+        <span className="flex items-center justify-center">
+          <CursorPositionReadout total={links.length} totalOnly />
+        </span>
+        {/* Delete all heads the rows' Delete column, on the same armed
+            face every delete in this leaf uses. */}
+        {store.supported ? (
+          <ArmedDeleteCell
+            label={
+              deletableCount === 0
+                ? 'Nothing here can be deleted — these links are derived'
+                : 'Delete every listing link on this carton'
+            }
+            armedLabel={`Click again to delete ${deletableCount} link${deletableCount === 1 ? '' : 's'}`}
+            ariaLabel="Delete every listing link"
+            armedAriaLabel={`Confirm deleting ${deletableCount} listing link${deletableCount === 1 ? '' : 's'}`}
+            disabled={deletableCount === 0}
+            onConfirm={() => {
+              if (store.rows.length > 0) void store.removeAll();
+              if (scalarDeletable) setListingLink('');
+              setSelectedHref(null);
+            }}
+          />
+        ) : (
+          <span />
+        )}
+      </div>
 
-          {/* 3 — the rows. Selection highlights; durable rows edit in place. */}
-          <div className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto">
-            {links.map((link) => {
-              const row = link.id ? store.rows.find((r) => r.id === link.id) ?? null : null;
-              return (
-                <ListingLinkRow
-                  key={link.id ?? link.href}
-                  link={link}
-                  row={row}
-                  selected={selected?.href === link.href}
-                  onSelect={() => setSelectedHref(link.href)}
-                  onSave={store.update}
-                  onPromote={
-                    store.supported
-                      ? () => setDraft({ href: link.href, label: link.name })
-                      : undefined
-                  }
-                  onDelete={async (id) => {
-                    const ok = await store.remove(id);
-                    if (ok) setSelectedHref(null);
-                  }}
-                  onClearScalar={
-                    !link.id && link.source === 'manual' && listingLink.trim()
-                      ? () => {
-                          setListingLink('');
-                          setSelectedHref(null);
-                        }
-                      : undefined
-                  }
-                />
-              );
-            })}
+      {store.error ? (
+        <p className={cn(LISTING_ROW_EDITOR_RAIL, 'pt-2 text-role-caption text-rose-600')}>
+          {store.error}
+        </p>
+      ) : null}
 
-            {store.supported && draft ? (
-              <ListingLinkEditor
-                // The CREATE editor is full-bleed: it is a compose dock, not a
-                // row, so its fields run edge to edge and its Save fills the
-                // width. Only the editor opened FROM a row takes that row's
-                // rail ({@link LISTING_ROW_EDITOR_RAIL}).
-                className="pb-2"
-                name={draft.label}
-                href={draft.href}
-                onNameChange={(v) => setDraft({ ...draft, label: v })}
-                onHrefChange={(v) => setDraft({ ...draft, href: v })}
-                onSave={() => void commitDraft()}
-                onCancel={() => setDraft(null)}
-                saveDisabled={!draft.href.trim()}
-                autoFocusHref
-              />
-            ) : null}
-          </div>
+      {/* 3 — the rows. Selection highlights; durable rows edit in place. */}
+      <div className="min-h-0 flex-1 divide-y divide-border-hairline overflow-y-auto">
+        {links.map((link) => {
+          const row = link.id ? store.rows.find((r) => r.id === link.id) ?? null : null;
+          return (
+            <ListingLinkRow
+              key={link.id ?? link.href}
+              link={link}
+              row={row}
+              selected={selected?.href === link.href}
+              onSelect={() => setSelectedHref(link.href)}
+              onSave={store.update}
+              onPromote={
+                store.supported
+                  ? () => setDraft({ href: link.href, label: link.name })
+                  : undefined
+              }
+              onDelete={async (id) => {
+                const ok = await store.remove(id);
+                if (ok) setSelectedHref(null);
+              }}
+              onClearScalar={
+                !link.id && link.source === 'manual' && listingLink.trim()
+                  ? () => {
+                      setListingLink('');
+                      setSelectedHref(null);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })}
 
-          {/* No carton to write against: the legacy single field stays the edit
-              surface, unchanged, rather than painting verbs that cannot write. */}
-          {!store.supported ? (
-            <div className={cn(DISPLAYS_BODY_INSET, 'group min-w-0 border-t border-border-hairline py-3')}>
-              <SearchBar
-                value={listingLink}
-                onChange={setListingLink}
-                placeholder="https://…"
-                variant="blue"
-                size="compact"
-                hideUnderline
-                leadingIcon={<Pencil className="h-3.5 w-3.5 text-text-soft" />}
-                className="w-full"
-              />
-              <div className={RECEIVING_SCAN_RULE_LINE_CLASS} aria-hidden />
-            </div>
-          ) : null}
-        </>
-      )}
+        {store.supported && draft ? (
+          <ListingLinkEditor
+            // The CREATE editor is full-bleed: it is a compose dock, not a
+            // row, so its fields run edge to edge and its Save fills the
+            // width. Only the editor opened FROM a row takes that row's
+            // rail ({@link LISTING_ROW_EDITOR_RAIL}).
+            className="pb-2"
+            name={draft.label}
+            href={draft.href}
+            onNameChange={(v) => setDraft({ ...draft, label: v })}
+            onHrefChange={(v) => setDraft({ ...draft, href: v })}
+            onSave={() => void commitDraft()}
+            onCancel={() => setDraft(null)}
+            saveDisabled={!draft.href.trim()}
+            autoFocusHref
+          />
+        ) : null}
+      </div>
+
+      {/* No carton to write against: the legacy single field stays the edit
+          surface, unchanged, rather than painting verbs that cannot write. */}
+      {!store.supported ? (
+        <div className={cn(DISPLAYS_BODY_INSET, 'group min-w-0 border-t border-border-hairline py-3')}>
+          <SearchBar
+            value={listingLink}
+            onChange={setListingLink}
+            placeholder="https://…"
+            variant="blue"
+            size="compact"
+            hideUnderline
+            leadingIcon={<Pencil className="h-3.5 w-3.5 text-text-soft" />}
+            className="w-full"
+          />
+          <div className={RECEIVING_SCAN_RULE_LINE_CLASS} aria-hidden />
+        </div>
+      ) : null}
     </div>
   );
 }

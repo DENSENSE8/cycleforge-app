@@ -27,7 +27,6 @@ const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/Products
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
 const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarPanel').then((m) => m.TechSidebarPanel));
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
-const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
 
 /**
@@ -92,7 +91,9 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // drops the key so the column collapses rather than reserving 360px of empty
  // chrome. SoT:.
   if (routeKey === 'packer') return <PackerSidebarPanel />;
-  if (routeKey === 'outbound') return <OutboundSidebarPanel />;
+  // `outbound` has no branch: the Shipping desk's search · views · focus ·
+  // saved views live IN the master nav (`OutboundDeskSpine`), not in a
+  // second left column (operator 2026-09-26).
   if (routeKey === 'review') return <ReviewSidebarPanel />;
   // `/search` has NO context rail. It used to carry a find bar over "Recently
   // searched" — the documented exception to "find lives only in

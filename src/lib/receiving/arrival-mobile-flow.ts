@@ -1,6 +1,6 @@
 /**
  * Arrival mobile flow SoT — classify step URLs + parse helpers for the door
- * Station (`/m/triage`): scan → guided photos → Platform → Type → Priority.
+ * Station (`/m/scan`): scan → guided photos → Platform → Type → Priority.
  *
  * Pure + client-safe. Photos deep-links compose {@link mobileArrivalGuidedPhotosHref}.
  */

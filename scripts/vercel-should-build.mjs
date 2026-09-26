@@ -21,8 +21,6 @@ const DEPLOY_PATHS = [
   'postcss.config.js',
   'postcss.config.mjs',
   'tsconfig.json',
-  'scripts/prebuild-if-local.mjs',
-  'scripts/generate-release-notes.mjs',
 ];
 
 function hasDeployRelevantChanges() {

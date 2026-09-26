@@ -1,6 +1,5 @@
 /** FROZEN BASELINE — 2026-09-14 audit (C1). SHRINK-ONLY. */
 export const BOUNDARY_EXEMPTIONS: readonly string[] = [
-  "src/app/m/(immersive)/consult/page.tsx => src/components/kiosk/KioskRealtimeProvider.tsx",
   "src/app/m/(shell)/h/[id]/page.tsx => src/components/receiving/HandlingUnitChip.tsx",
   "src/app/m/(shell)/id/[job]/[entityId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
   "src/app/m/(shell)/id/pick/[orderId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
@@ -13,24 +12,10 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/app/serial/[id]/page.tsx => src/components/mobile/receiving/ScanAgainBar.tsx",
   "src/components/auth/SignInQrScanDialog.tsx => src/components/mobile/ScanSurface.tsx",
   "src/components/layout/MobileRouteShell.tsx => src/components/mobile/receiving/ReceivingPhoneBridgeMount.tsx",
-  "src/components/mobile/identify/useMobileIdentify.ts => src/components/receiving/label-identify/useLabelIdentify.ts",
-  "src/components/mobile/identify/useMobileIdentify.ts => src/components/receiving/label-identify/useLiveLabelScan.ts",
   "src/components/mobile/orders/MobileOrderIntakeForm.tsx => src/components/outbound/orders/intake/IntakeCombobox.tsx",
   "src/components/mobile/packer/MobilePackingRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/packing/OrderPackChecklist.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/shipped/PhotoGallery.tsx",
-  // Operator ruling 2026-09-15: the /m/print tote preview must render the REAL
-  // print HTML, like the location and Unbox previews. That means the shared
-  // LabelFacePreview iframe, reached through its per-family wrapper — the same
-  // crossing already sanctioned on the line below for the location family.
-  // Hand-rolling a second sticker to dodge this edge is expressly forbidden by
-  // the label-face law (LabelFacePreview.tsx, operator 2026-08-31).
-  "src/components/mobile/print/MobilePrintPreviewStep.tsx => src/components/labels/HandlingUnitLabelFacePreview.tsx",
-  "src/components/mobile/print/MobilePrintPreviewStep.tsx => src/components/labels/LocationLabelFacePreview.tsx",
-  "src/components/mobile/print/MobilePrintPrinterStep.tsx => src/components/settings/PrintPreferences.tsx",
-  "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/bin-label-printer/NumericStep.tsx",
-  "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/label-builder-layout.ts",
-  "src/components/mobile/print/MobilePrintWorkspace.tsx => src/components/barcode/rack-printer/rack-printer-config.ts",
   // Operator 2026-09-15: Inventory › Locations › Totes consumes the /m tote
   // printer chrome. Copies is LabelPrintRunNumField, same field as other 2×1
   // printers — do not fork a second stepper.
@@ -38,12 +23,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/warehouse/TotePlateWorkspace.tsx => src/components/mobile/print/TotePrintRunFields.tsx",
   "src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx => src/components/receiving/workspace/line-edit/InlinePillPicker.tsx",
   "src/components/mobile/receiving/MobileArrivalClassifyFlow.tsx => src/components/receiving/workspace/line-edit/classify-pill-options.tsx",
-  "src/components/mobile/receiving/MobileArrivalDetailsSheet.tsx => src/components/receiving/workspace/line-edit/InlinePillPicker.tsx",
-  "src/components/mobile/receiving/MobileArrivalDetailsSheet.tsx => src/components/receiving/workspace/line-edit/classify-pill-options.tsx",
-  "src/components/mobile/receiving/MobileReceivingList.tsx => src/components/receiving/incoming/IncomingFirstPaint.tsx",
-  "src/components/mobile/receiving/MobileReceivingRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
-  "src/components/mobile/receiving/MobileReceivingRow.tsx => src/components/station/receiving-lines-table-helpers.ts",
-  "src/components/mobile/receiving/MobileReceivingUnitRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
   "src/components/mobile/receiving/PhotoUploadToaster.tsx => src/components/station/capture-upload/capture-upload-model.ts",
   "src/components/mobile/redesign/MobileSettingsList.tsx => src/components/settings/settings-sections.ts",
   "src/components/mobile/redesign/MobileSidebarDrawer.tsx => src/components/icons/nav-weight.tsx",

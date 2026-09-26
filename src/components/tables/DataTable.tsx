@@ -1494,8 +1494,8 @@ const DATA_TABLE_TEXT_ENTRY_SELECTOR =
  *
  * Rows are family code painted through `renderRow`, and the body is
  * VIRTUALIZED — only a window of rows is ever in the DOM. A per-row React
- * handler would have to be added to every family (the cell-map fork
- * `table-engine-law.ts` forbids), and a rover holding a row INDEX would point
+ * handler would have to be added to every family (a cell-map
+ * fork), and a rover holding a row INDEX would point
  * at an unmounted node the moment the list scrolled. One delegated `keydown`
  * on the grid host reads the rows that exist right now, which is also the only
  * set focus can legally move to.

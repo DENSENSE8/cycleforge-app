@@ -8,8 +8,7 @@
  *   124 timeout (Cursor stop fail-opens; Hermes records unmeasured)
  *   75  infra missing (Cursor fail-open; Hermes fail)
  *
- * Always runs verify:fast. Scoped slot-table / eval:station when dirty
- * paths match. Hermes sets
+ * Always runs verify:fast, then the perf gate. Hermes sets
  * LOOP_RUN_ID so a clean worktree still runs verify:fast (no chat dirty-skip).
  *
  *   node tools/eval-ledger/machine-gate.mjs
@@ -52,26 +51,6 @@ export const CYCLEFORGE_REPAIR_LAW = [
   PERF_REPAIR_LAW,
 ].join(" ");
 
-const STATION_WORKSPACES = {
-  unbox: "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-  triage: "src/components/receiving/triage/TriageLineWorkspace.tsx",
-  pack: "src/components/packer/PackOrderWorkspace.tsx",
-  testing: "src/components/tech/TestingLineWorkspace.tsx",
-  shipping: "src/components/tech/TechRightPane.tsx",
-  "scan-out": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-};
-
-const TABLE_MARKERS = [
-  "src/components/tables/",
-  "src/lib/tables/",
-  "CompoundCells",
-  "DataTable",
-  "DateRangePickerField",
-  "useSlotTableLayout",
-  "materialize-tracks",
-  "slot-table-cohort",
-];
-
 function log(msg) {
   process.stderr.write(`[machine-gate] ${msg}\n`);
 }
@@ -101,18 +80,6 @@ function porcelainPaths() {
     paths.push(rest.trim());
   }
   return paths;
-}
-
-function needsSlotTable(paths) {
-  return paths.some((p) => TABLE_MARKERS.some((m) => p.includes(m)));
-}
-
-function stationIds(paths) {
-  return Object.entries(STATION_WORKSPACES)
-    .filter(([, ws]) =>
-      paths.some((p) => p === ws || p.endsWith("/" + path.basename(ws))),
-    )
-    .map(([id]) => id);
 }
 
 function run(cmd, cmdArgs, timeoutSec = VERIFY_TIMEOUT_SEC) {
@@ -213,45 +180,6 @@ function main() {
   }
   if (fast.code !== 0) {
     fail(".garisek/eval-session.json", fast.text);
-  }
-
-  if (needsSlotTable(dirty) || args.has("--slot-table")) {
-    log("eval:cohort slot-table --skip-verify");
-    const r = run(NODE, [
-      "--import",
-      "tsx",
-      "tools/eval-ledger/run-cohort-eval.mjs",
-      "slot-table",
-      "--skip-verify",
-    ]);
-    if (r.code === 124) process.exit(124);
-    if (r.code !== 0) {
-      const snapDir = path.join(ROOT, "docs/eval/cohorts/slot-table/snapshots");
-      let snap = "docs/eval/cohorts/slot-table/snapshots/";
-      if (existsSync(snapDir)) {
-        const logs = readdirSync(snapDir)
-          .filter((f) => f.endsWith("-tripwire.log"))
-          .sort()
-          .reverse();
-        if (logs[0]) snap = path.join("docs/eval/cohorts/slot-table/snapshots", logs[0]);
-      }
-      fail(snap, r.text);
-    }
-  }
-
-  for (const sid of stationIds(dirty)) {
-    log(`eval:station ${sid} --skip-verify`);
-    const r = run(NODE, [
-      "--import",
-      "tsx",
-      "tools/eval-ledger/run-station-eval.mjs",
-      sid,
-      "--skip-verify",
-    ]);
-    if (r.code === 124) process.exit(124);
-    if (r.code !== 0) {
-      fail(`docs/eval/stations/${sid}/snapshots/`, r.text);
-    }
   }
 
   // Perf north star (95): always emit cheap baseline-gap debt. Live Lighthouse

@@ -57,13 +57,6 @@ import {
  *
  * Below the map sits {@link MobileAccountFooter}: a single identity icon that
  * opens `/m/settings`. It intentionally does not reuse the desktop account footer.
- *
- * The "Receiving" item is a drill-down group: tapping it expands the modes
- * that have dedicated phone support for capturing/updating photos.
- *
- * Chrome law: **pages are text; modes own icons.** Top-level page rows and the
- * Receiving group header are label-only; mode children keep glyphs. Scan keeps
- * a tool icon (not a page destination).
  */
 
 // Destinations, LANE faces, PARENT icons and active-route identification all

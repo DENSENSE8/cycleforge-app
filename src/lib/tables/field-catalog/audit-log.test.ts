@@ -162,7 +162,7 @@ describe('audit-log materialization', () => {
     const identity = AUDITLOG_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'audit-log.entity_id');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-id-header-law.ts`). "Entity id" is now the Fields-picker row
+    // (`slot-table-family.ts`). "Entity id" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');

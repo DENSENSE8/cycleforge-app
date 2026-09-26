@@ -122,9 +122,8 @@ describe('report-staff-day materialization', () => {
     const header = (key: string) =>
       REPORT_STAFF_DAY_COMPOUND_COLUMNS.find((c) => c.key === key)?.label;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-id-header-law.ts`); this desk used to print
+    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
     // "Staff", which is now the Fields-picker word and the cell's hover word.
-    // Pinned by slot-table-id-header-law.test.ts, not re-pinned here.
     assert.equal(header('fulfillment'), 'Id');
     assert.equal(header('item'), 'Task');
     assert.equal(header('dates'), 'Checked at');

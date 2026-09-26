@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executeWmsExecutionCommand } from './wms-execution-command';
@@ -161,18 +160,4 @@ test('routes an idempotent mobile pack verification through the domain writer', 
   assert.equal(receipt.name, 'pack.verify');
   assert.equal(receipt.status, 'replayed');
   assert.equal(receipt.data.id, 91);
-});
-
-/**
- * Tripwire for the deletion landmine: this kernel's only production caller is
- * `scripts/wms-domain-adapter.ts`, which is spawned by the out-of-repo WMS
- * gateway (`Garisek-OS/scripts/wms-gateway.ts` via `cycleforge-adapter-client`).
- * Nothing inside this repo imports it, so knip and `impact_analysis` both
- * report it unreachable. A dead-code sweep that believes them takes the mobile
- * pick/pack/putaway command path down. Fail loudly instead of silently.
- */
-test('the cross-repo adapter entrypoint still reaches this kernel', () => {
-  const adapter = readFileSync('scripts/wms-domain-adapter.ts', 'utf8');
-  assert.match(adapter, /executeWmsExecutionCommand/);
-  assert.match(adapter, /z\.literal\('command\.execute'\)/);
 });

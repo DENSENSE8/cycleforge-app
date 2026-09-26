@@ -32,10 +32,8 @@ export const SHIPPING_EXCEPTIONS_PATH = '/shipping/exceptions';
  * Outbound LANE beside Shipping, like FBA: its queue is ingestions, not
  * orders, so it is not a To-ship facet. Outside the `(desk)` group on purpose —
  * the ledger is an edge-to-edge terminal surface, not a capped desk stage.
- * Phone twin: `/m/label-intake` (same component).
  */
 export const SHIPPING_LABEL_INTAKE_PATH = '/shipping/label-intake';
-export const MOBILE_LABEL_INTAKE_PATH = '/m/label-intake';
 
 /** Wire value that selects Support Inquiries context on the shared desk. */
 export const ORDERS_DESK_SUPPORT_CONTEXT = 'support' as const;

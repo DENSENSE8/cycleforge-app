@@ -9,7 +9,7 @@
  * It was born inside `QueueGroupRow` (orders) while Unbox, Pickup, Unfound,
  * Repair, Bins, Warranty, Catalog and the report tables each hand-rolled their
  * own `renderGroup` — twenty-four of them, most painting no parent at all. That
- * is the fork `table-engine-law.ts` exists to end: a family adds DATA, never
+ * is the fork the one engine exists to end: a family adds DATA, never
  * display. So the band moved here and every peer passes it facts.
  *
  * **Props are DATA, never `ReactNode`.** A family hands an identity, a carrier

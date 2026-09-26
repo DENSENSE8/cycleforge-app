@@ -22,7 +22,7 @@
  *   about (`taskDeskRecordHref` — the same route the desk and `/m` open, never
  *   a second spelling). A task with no note is named by that record.
  * - IDS — the assignment's own id, and nothing else. A task has two people and
- *   neither may enter column one (`slot-table-identity-purity-law.ts`).
+ *   neither may enter column one.
  * - STATE — `Done` or `Canceled`, from `workStatusLabel`. No local map.
  * - DATES — Hash line = WHEN it landed, Calendar line = the day it was promised
  *   for, toned by whether it landed after that day. That comparison is the

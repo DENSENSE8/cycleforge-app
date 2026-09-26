@@ -239,6 +239,47 @@ const EXCEPTION_SELECT = `
 `;
 
 /**
+ * Queue membership for a scope — the ONE predicate both the list and the
+ * desk-sidebar count read, so the badge cannot disagree with the rows.
+ * Expects `o` = orders and `stn` = its shipping_tracking_numbers join.
+ */
+function exceptionScopeWhere(scope: OrderExceptionScope): string {
+  let where = `WHERE o.organization_id = $1
+    AND (
+      ${exceptionHeldSql('o')}
+      OR o.is_out_of_stock
+      OR NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL
+      OR COALESCE(stn.has_exception, false)
+    )`;
+  if (scope === 'all') {
+    where += `
+      AND NOT EXISTS (
+        SELECT 1 FROM station_activity_logs sal
+         WHERE sal.shipment_id = o.shipment_id
+           AND sal.organization_id = o.organization_id
+           AND sal.activity_type = 'SHIP_CONFIRM'
+      )`;
+  }
+  return where;
+}
+
+/** How many orders the exception queue holds for `scope` — uncapped, no search/category. */
+export async function countOrderExceptions(
+  orgId: OrgId,
+  scope: OrderExceptionScope = 'actionable',
+): Promise<number> {
+  const res = await tenantQuery<{ n: number }>(
+    orgId,
+    `SELECT COUNT(*)::int AS n
+       FROM orders o
+       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     ${exceptionScopeWhere(scope)}`,
+    [orgId],
+  );
+  return Number(res.rows[0]?.n) || 0;
+}
+
+/**
  * The exception queue. The category CASE is deliberately explicit: missing
  * facts are not silently promoted into a new exception class.
  */
@@ -259,24 +300,7 @@ export async function listOrderExceptions(
     : null;
 
   const params: unknown[] = [orgId];
-  let where = `WHERE o.organization_id = $1`;
-  const activeException = `(
-    ${exceptionHeldSql('o')}
-    OR o.is_out_of_stock
-    OR NULLIF(TRIM(COALESCE(o.buyer_note, '')), '') IS NOT NULL
-    OR COALESCE(stn.has_exception, false)
-  )`;
-
-  where += ` AND ${activeException}`;
-  if (scope === 'all') {
-    where += `
-      AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-         WHERE sal.shipment_id = o.shipment_id
-           AND sal.organization_id = o.organization_id
-           AND sal.activity_type = 'SHIP_CONFIRM'
-      )`;
-  }
+  let where = exceptionScopeWhere(scope);
 
   if (category) {
     params.push(category);

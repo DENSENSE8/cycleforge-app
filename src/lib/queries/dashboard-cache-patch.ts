@@ -18,6 +18,7 @@ import { toOrderRecord } from '@/lib/orders/order-record-normalize';
 
 const UNSHIPPED_LIST_KEY = ['dashboard-table', 'unshipped'] as const;
 const UNSHIPPED_COUNTS_KEY = ['dashboard-table', 'unshipped-counts'] as const;
+const DESK_COUNTS_KEY = ['dashboard-table', 'desk-counts'] as const;
 
 type OrderRow = { id?: number | string } & Record<string, unknown>;
 
@@ -120,11 +121,13 @@ export function removeUnshippedOrderFromCache(queryClient: QueryClient, orderId:
 
 /**
  * Refresh the lightweight Unshipped counts (sidebar legend + stage dropdown + nav
- * badge) — a cheap `COUNT(*)`, no row payload. Call this alongside any patch/remove
- * so the tallies stay in step without downloading rows.
+ * badge) and the desk-sidebar view badges (`desk-counts`) — cheap `COUNT(*)`s,
+ * no row payload. Call this alongside any patch/remove so the tallies stay in
+ * step without downloading rows.
  */
 export function invalidateUnshippedCounts(queryClient: QueryClient): void {
   queryClient.invalidateQueries({ queryKey: UNSHIPPED_COUNTS_KEY });
+  queryClient.invalidateQueries({ queryKey: DESK_COUNTS_KEY });
 }
 
 /**

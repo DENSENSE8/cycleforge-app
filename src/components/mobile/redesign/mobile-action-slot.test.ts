@@ -129,12 +129,8 @@ const barButtons = (host: Element) =>
     (b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim(),
   );
 
-/**
- * The scan CTA's accessible name. It carries BOTH of the control's acts since
- * the press-and-hold Find door landed (2026-09-23) — the tap is unchanged, but
- * a secondary gesture nobody announces is a secret, so the name states it.
- */
-const SCAN_LABEL = 'Go to scan. Press and hold, or Alt+Enter, to open Find.';
+/** The scan CTA's accessible name off the scan surface. */
+const SCAN_LABEL = 'Go to scan';
 
 const scanCtas = (host: Element) =>
   host.querySelectorAll(`header button[aria-label="${SCAN_LABEL}"]`).length;

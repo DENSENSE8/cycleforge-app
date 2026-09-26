@@ -143,7 +143,7 @@ describe('report-velocity materialization', () => {
     const identity = col('fulfillment');
     assert.equal(identity?.fieldId, 'report-velocity.sku');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-id-header-law.ts`). "SKU" is now the Fields-picker row
+    // (`slot-table-family.ts`). "SKU" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');

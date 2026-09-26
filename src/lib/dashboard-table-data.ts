@@ -15,6 +15,13 @@ import {
   normalizeUnshippedOrdersPayload,
   toOrderRecord,
 } from '@/lib/orders/order-record-normalize';
+import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
+import {
+  normalizeDeskCounts,
+  type DeskCounts,
+  type DeskPairFilter,
+  type DeskQueueFilter,
+} from '@/lib/orders/desk-view-filters';
 
 const FRESH_FETCH_OPTIONS: RequestInit = { cache: 'no-store' };
 
@@ -124,6 +131,8 @@ export async function fetchUnshippedOrdersData({
   strictSearchScope = false,
   stage,
   blockedOnly = false,
+  pair,
+  queue,
   limit,
 }: {
   searchQuery?: string;
@@ -133,6 +142,10 @@ export async function fetchUnshippedOrdersData({
   strictSearchScope?: boolean;
   stage?: 'pending' | 'tested' | 'packed';
   blockedOnly?: boolean;
+  /** Shortage desk lens (`?pair=po`) — forwarded as `pair`; the server implies blockedOnly. */
+  pair?: DeskPairFilter;
+  /** To-ship lens (`?queue=pick`) — forwarded as `queue`; the server implies inWarehouse. */
+  queue?: DeskQueueFilter;
   limit?: number;
 }) {
   const params = new URLSearchParams();
@@ -143,6 +156,8 @@ export async function fetchUnshippedOrdersData({
   const scoped = !searchQuery.trim() || strictSearchScope;
   if (scoped) params.set('inWarehouse', 'true');
   if (blockedOnly) params.set('blockedOnly', 'true');
+  if (pair) params.set(DESK_PAIR_PARAM, pair);
+  if (queue) params.set(DESK_QUEUE_PARAM, queue);
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.
@@ -220,6 +235,16 @@ export async function fetchUnshippedQueueCounts({
   const data = await res.json().catch(() => null);
   // Zeros are the browser fallback; the seed leaves the key unset instead.
   return normalizeQueueCountsPayload(data) ?? ZERO_QUEUE_COUNTS;
+}
+
+/**
+ * The outbound desk sidebar's five badges (`GET /api/orders/desk-counts`).
+ * Throws on failure — a badge that silently reads 0 is a false all-clear.
+ */
+export async function fetchDeskCounts(): Promise<DeskCounts> {
+  const res = await fetch('/api/orders/desk-counts', FRESH_FETCH_OPTIONS);
+  if (!res.ok) throw new Error(`Failed to fetch desk counts (${res.status})`);
+  return normalizeDeskCounts(await res.json());
 }
 
 export interface DashboardShippedSearchMeta {

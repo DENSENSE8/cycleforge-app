@@ -26,14 +26,10 @@ export function idleBrowseLayerProps(
   return {
     // Pointer-events is expressed BOTH ways, and deliberately.
     //
-    // This helper is asserted by two contracts that disagree about the
-    // mechanism while describing the same behaviour: its unit test
-    // (`idle-overlay.test.ts`) reads the `pointer-events-none` utility off
-    // `className`, and the cohort tripwire
-    // (`scan-station-overlay-cohort.test.ts`) requires the helper to OWN a
-    // `pointerEvents` style next to `visibility` / `zIndex.panel`. Picking one
-    // makes the other station-wide red for a surface that behaves correctly,
-    // so the helper states the intent in both places — the class and the
+    // Its unit test (`idle-overlay.test.ts`) reads the `pointer-events-none`
+    // utility off `className`, and the helper also OWNS a `pointerEvents`
+    // style next to `visibility`, so it states the intent in both places —
+    // the class and the
     // style resolve to the same computed value, so there is nothing to
     // conflict at runtime.
     className: cn(className, overlayOpen ? 'pointer-events-none' : ''),

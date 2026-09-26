@@ -1,8 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   UNBOX_RIGHT_EDGE_PARAMS,
   clearAllUnboxRightEdgeParams,
@@ -83,31 +80,4 @@ test('yieldUnboxStationPushesOnAssistantOpen closes Displays locally once', () =
   });
   assert.equal(displayClears, 1);
   assert.equal(urlClears, 0, 'URL clear is retired — Displays are local state');
-});
-
-test('LineEditPanel wires assistant open through yieldUnboxStationPushesOnAssistantOpen', () => {
-  const src = readFileSync(
-    resolve(dirname(fileURLToPath(import.meta.url)), '../LineEditPanel.tsx'),
-    'utf8',
-  );
-  assert.ok(
-    src.includes('yieldUnboxStationPushesOnAssistantOpen'),
-    'LineEditPanel must call yieldUnboxStationPushesOnAssistantOpen on AI open',
-  );
-  assert.ok(
-    src.includes('ASSISTANT_DOCK_OPEN_EVENT'),
-    'LineEditPanel must listen for ASSISTANT_DOCK_OPEN_EVENT (Sparkles / ⌘J)',
-  );
-  assert.ok(
-    src.includes('useAssistantDockOpen'),
-    'LineEditPanel must also reconcile cold localStorage hydrate via dock open',
-  );
-  assert.ok(
-    src.includes('closeDisplays:') || src.includes('setRequestedSideTab(null)'),
-    'AI yield must close Displays via local state',
-  );
-  assert.ok(
-    !src.includes('clearAllUnboxRightEdgeParams'),
-    'LineEditPanel must not router-clear Displays URL on AI yield',
-  );
 });

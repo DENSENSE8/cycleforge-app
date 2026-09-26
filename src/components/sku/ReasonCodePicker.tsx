@@ -94,7 +94,7 @@ export function ReasonCodePicker({
    * The `requires_note` line was a conditional `<p>` INSIDE the same
    * `<label>`, so this control had no fixed height: picking a reason that
    * needs a note made it taller, and anything laid out beside it reflowed.
-   * That is the exact failure `slot-table-action-bar-law.ts` forbids. Every
+   * That is the exact failure a fixed-height action bar forbids. Every
    * caller already reads `requires_note` off the `ReasonCode` this component
    * hands to `onChange` and renders its own note field — so the internal line
    * was duplicating a fact the host was already acting on.

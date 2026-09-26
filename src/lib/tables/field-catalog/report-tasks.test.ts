@@ -4,7 +4,7 @@
  * Three assertions here are load-bearing beyond the usual shape checks:
  *
  * - IDENTITY PURITY. A task carries two people, and the identity slot is the
- *   one place neither may land (`slot-table-identity-purity-law.ts`). The
+ *   one place neither may land. The
  *   layout parse pins the assignment id there.
  * - LATENESS IS MEASURED AGAINST THE DEADLINE, NOT `now`. A record does not
  *   become later while it is read, so the DATES cell's age is computed from

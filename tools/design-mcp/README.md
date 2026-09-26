@@ -9,10 +9,7 @@ agent session must show `design-mcp` in its MCP list and must have
 |---|---|---|
 | What already exists for this job? | writes a new primitive | `ds_contract` |
 | What values may I use on **one** axis? | `#1a1a1d`, `text-[13px]`, `axis: "all"` | `ds_tokens` (`axis` required) |
-| Is the canonical table still one industrial instrument? | split by line count, add a page toolbar slot | `ds_data_table` |
-| How does the pasted industrial brief enter this system? | copy its palette, component or spring literals | `ds_industrial_translation` |
 | Why is this component bad? | rewrites it from scratch | `ds_critique` |
-| Is this phone record screen the exoskeleton? | hand-rolls a card, a heading, an Edit button, a fourth verb | `ds_detail_hub` (`ds.mjs detail-hub [file]`) |
 
 ## When the agent catalog is empty
 
@@ -32,8 +29,7 @@ tree.
 - Dumb / gun station → `showModeFaces={false}` (keep context ring); never
   `showModeRow={false}` to hide Unbox|Ticket
 - Mobile scanned-entity hub / mobile record / phone drill-in → **DetailHubScreen**
-  (the only record grammar on `/m`; law `src/lib/mobile/detail-hub-law.ts`,
-  gate `Detail hub` in `verify:fast`, MCP face `ds_detail_hub`)
+  (the only record grammar on `/m`)
   - card slot → a **DetailSummaryCard** mapper; whole card → `/info`, which
     holds every fact and the only edit (the bar pencil)
   - rows → `DetailNav` doors built with `detailDoor()`; one per exact job
@@ -102,14 +98,11 @@ it manufactures confidence. **ESLint is the gate here.** When a shared
 adjudicator exists, `server.mjs` is where it plugs in.
 
 Everything `ds_critique` reports is heuristic text matching, not AST proof.
-`ds_data_table` is the exception: it returns the versioned verdict from the
-shared TypeScript-AST adjudicator used by the guard, tests, and eval cohort.
 
 ## Verify
 
 ```bash
 node "$GARISEK_OS_ROOT/tools/design-mcp/smoke.mjs"   # the engine's smoke (stdio JSON-RPC: axes, resources, critique per-axis fixes)
-node_modules/.bin/tsx scripts/detail-hub-guard.ts    # the exoskeleton law (also in verify:fast)
 ```
 
 The variant extractor has been wrong twice: it once anchored on the

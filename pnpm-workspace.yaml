@@ -1,5 +1,4 @@
 packages:
-  - 'apps/*'
   - 'packages/*'
 
 overrides:
@@ -18,11 +17,6 @@ overrides:
   'tar@>=7.0.0 <8.0.0': 7.5.21
 
 allowBuilds:
-  # Desktop shell — electron's postinstall downloads the Chromium binary, so the
-  # shell cannot launch without it. electron-winstaller only runs when building
-  # the Windows installer. Plan: docs/todo/electron-desktop-shell-PLAN.md
-  electron: true
-  electron-winstaller: true
   esbuild: true
   protobufjs: true
   sharp: true

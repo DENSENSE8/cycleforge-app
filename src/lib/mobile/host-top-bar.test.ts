@@ -39,9 +39,6 @@ test('pairing owns its back bar — two headers: back, then search', () => {
   // search. The seat moves into the pair bar and still exists exactly once.
   assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101'), true);
   assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101/00157'), true);
-  assert.equal(mobileRouteOwnsTopBar('/m/on-hold'), false);
-  // …and an on-hold RECORD and its doors own the bar (one header, one seat).
-  assert.equal(mobileRouteOwnsTopBar('/m/on-hold/TMP-X/locations'), true);
 });
 
 test('no pathname is not an own-bar route', () => {

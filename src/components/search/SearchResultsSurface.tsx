@@ -9,8 +9,7 @@
  *
  * ## Two MOUNTS of one family, chosen by measure
  *
- * This was a hand-rolled `<ul>` of result links. `table-engine-law.ts` §5
- * (`READ_PLANE_IS_A_MOUNT`) withdrew the licence that made that legal: a
+ * This was a hand-rolled `<ul>` of result links. That is no longer legal: a
  * display surface is a mount of the one engine at a read-only TIER, and
  * "read-only" buys no exemption from sort, selection or the family's verbs.
  *

@@ -41,10 +41,6 @@ export const LIGHT_THEME = {
     //
     // `surface-hover` (#f8fafc) is now DARKER than the canvas it washes, which
     // is correct: a row hover reads against card white, not against the plane.
-    //
-    // PINNED: `scripts/mobile-ground-guard.ts` asserts this exact hex in THIS
-    // file (verify `Ground`, `ds_mobile_ground`). Change it there in the same
-    // commit or the gate fails — which is the point.
     'background-canvas': '#fafafa',
     'background-surface': '#ffffff',
     'surface-sunken': '#f1f5f9',

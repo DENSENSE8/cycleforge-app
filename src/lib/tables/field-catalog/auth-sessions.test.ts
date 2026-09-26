@@ -125,9 +125,8 @@ describe('the mounted auth-sessions compound model', () => {
   it('renames the chrome headers to this desk’s vocabulary', () => {
     const label = (key: string) => AUTHSESSIONS_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-id-header-law.ts`); this desk used to print
+    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
     // "Session", which is now the Fields-picker word and the cell's hover word.
-    // Pinned by slot-table-id-header-law.test.ts, not re-pinned here.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Staff');
     assert.equal(label('state'), 'Device');

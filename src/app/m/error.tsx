@@ -45,8 +45,8 @@ export default function MobileError({
         <Button variant="secondary" onClick={() => reset()} className="h-12 w-full">
           Try again
         </Button>
-        <Button variant="primary" onClick={() => router.push('/m/receiving')} className="h-12 w-full">
-          Back to Unbox
+        <Button variant="primary" onClick={() => router.push('/m/home')} className="h-12 w-full">
+          Back to Daily
         </Button>
       </div>
     </div>

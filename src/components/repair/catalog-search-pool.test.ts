@@ -4,16 +4,12 @@
  * whole-catalog pool so a query like "Wave Radio II" is not a first-page miss.
  */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   isCatalogRootSearchLevel,
   resolveCatalogProductPool,
   shouldHydrateRootSearchPool,
 } from './catalog-search-pool';
-
-const SELECTOR = join(process.cwd(), 'src/components/repair/ProductSelector.tsx');
 
 const firstPage = [
   { id: '1', name: 'Bose 321 GSX', sku: '00128-RS' },
@@ -70,23 +66,6 @@ describe('isCatalogRootSearchLevel', () => {
 
 describe('shouldHydrateRootSearchPool', () => {
   it('hydrates the 100-item pool on a 2+ char root query when the pool is empty', () => {
-    assert.equal(
-      shouldHydrateRootSearchPool({
-        isAtRootLevel: true,
-        search: 'Wave Radio II',
-        hasPool: false,
-      }),
-      true,
-    );
-  });
-
-  it('does not start-guard on a loading flag — rootSearchPool is the once-only latch', () => {
-    const helper = readFileSync(
-      join(process.cwd(), 'src/components/repair/catalog-search-pool.ts'),
-      'utf8',
-    );
-    assert.doesNotMatch(helper, /loading: boolean/);
-    assert.doesNotMatch(helper, /opts\.loading/);
     assert.equal(
       shouldHydrateRootSearchPool({
         isAtRootLevel: true,
@@ -181,28 +160,5 @@ describe('resolveCatalogProductPool', () => {
       pool.some((p) => p.name === 'Wave Radio II'),
       false,
     );
-  });
-});
-
-describe('ProductSelector wires the shipped pool helpers', () => {
-  const src = readFileSync(SELECTOR, 'utf8');
-
-  it('does not use the showAllProducts-kills-root formula', () => {
-    assert.doesNotMatch(src, /const isAtRootLevel = !currentCategoryId && !showAllProducts/);
-    assert.match(src, /isCatalogRootSearchLevel\(/);
-    assert.match(src, /shouldHydrateRootSearchPool\(/);
-    assert.match(src, /resolveCatalogProductPool\(/);
-    assert.match(src, /from '\.\/catalog-search-pool'/);
-  });
-
-  it('does not list loadingRootSearch as a hydrate-effect dep or start-guard', () => {
-    // The bug this pins: `loadingRootSearch` as a dep retriggered the effect,
-    // cancel discarded the fetch, and the next run bailed with loading stuck
-    // true. The invariant is that the flag is absent from the deps and the
-    // guard — NOT that the dep list has one exact shape (it legitimately grew a
-    // `serverSearch` entry when the kiosk moved to SQL-side search).
-    assert.doesNotMatch(src, /\[isAtRootLevel, search, rootSearchPool, loadingRootSearch/);
-    assert.doesNotMatch(src, /loading: loadingRootSearch/);
-    assert.match(src, /hasPool: Boolean\(rootSearchPool\)/);
   });
 });

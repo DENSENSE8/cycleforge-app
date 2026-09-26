@@ -36,7 +36,6 @@ export interface KioskSlotEventsGridColumn
 export function kioskSlotEventsCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly KioskSlotEventsGridColumn[] {
-  // Arrow param unparen'd so table-engine-law skeleton-filter tripwire sees the cut.
   const base = compoundColumnsFor<KioskSlotEventsGridColumn>().filter(
     c => c.key !== 'dates' && c.key !== 'select',
   );
@@ -46,7 +45,7 @@ export function kioskSlotEventsCompoundColumnsFor(
     base,
   });
   // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-id-header-law.ts`); this
+  // the engine's `Id` on every peer (`slot-table-family.ts`); this
   // family supplies only the FACT the chip paints and its header sorts by.
   const identity = KIOSKSLOTEVENTS_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
   return tracks.map((t) => {

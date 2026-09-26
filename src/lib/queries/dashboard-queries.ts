@@ -25,11 +25,13 @@ import {
   fetchPendingOrdersData,
   fetchUnshippedOrdersData,
   fetchUnshippedQueueCounts,
+  fetchDeskCounts,
   fetchDashboardPackedRecords,
 } from '@/lib/dashboard-table-data';
 import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
+import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
 
 export interface OrderQueryParams {
   searchQuery?: string;
@@ -43,6 +45,10 @@ export interface OrderQueryParams {
   stage?: 'pending' | 'tested' | 'packed';
   /** Shortage desk: only operator-blocked rows. */
   blockedOnly?: boolean;
+  /** Shortage desk lens — `?pair=po` (PO / receiving-line paired shortages). */
+  pair?: DeskPairFilter;
+  /** To-ship lens — `?queue=pick` (not packed, not fully picked, newest first). */
+  queue?: DeskQueueFilter;
   /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
    *  server truncates + the counts endpoint's total drives whether more exist. */
   limit?: number;
@@ -113,6 +119,8 @@ export function unshippedOrdersQuery({
   strictSearchScope = false,
   stage,
   blockedOnly = false,
+  pair,
+  queue,
   limit,
 }: OrderQueryParams = {}) {
   return queryOptions({
@@ -127,6 +135,10 @@ export function unshippedOrdersQuery({
         strictSearchScope,
         stage: stage ?? null,
         blockedOnly,
+        // `undefined` when off (dropped from the hashed key), so the key stays
+        // byte-identical to the pre-lens key for every other desk.
+        pair,
+        queue,
         limit: limit ?? null,
       },
     ],
@@ -139,6 +151,8 @@ export function unshippedOrdersQuery({
         strictSearchScope,
         stage,
         blockedOnly,
+        pair,
+        queue,
         limit,
       }),
     staleTime: 60_000,
@@ -156,6 +170,20 @@ export function unshippedQueueCountsQuery({ staffId }: { staffId?: number } = {}
   return queryOptions({
     queryKey: ['dashboard-table', 'unshipped-counts', { staffId: staffId ?? null }],
     queryFn: () => fetchUnshippedQueueCounts({ staffId }),
+    staleTime: 60_000,
+    gcTime: 15 * 60 * 1000,
+  });
+}
+
+/**
+ * The outbound desk sidebar's five badges — `{ exceptions, po, pick, triage,
+ * shippedToday }` in one request. Under `dashboard-table` so every existing
+ * prefix invalidation (Ably reconnect, order mutations) refreshes it too.
+ */
+export function deskCountsQuery() {
+  return queryOptions({
+    queryKey: ['dashboard-table', 'desk-counts'],
+    queryFn: fetchDeskCounts,
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

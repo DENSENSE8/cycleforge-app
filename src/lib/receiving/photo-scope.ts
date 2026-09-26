@@ -256,7 +256,7 @@ export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest
       // arrival-mobile-flow import cycle).
       params.set(
         'back',
-        `/m/triage?rid=${req.receivingId}&step=platform`,
+        `/m/scan?rid=${req.receivingId}&step=platform`,
       );
     }
     return `?${params.toString()}`;

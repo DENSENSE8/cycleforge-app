@@ -7,7 +7,7 @@
  * those come from `inventory-events-resolve.ts` through the engine.
  *
  * It replaced `events-grid/cells/index.tsx`, a per-family cell map that
- * invariant 1 of `table-engine-law.ts` forbids outright. The faces that map
+ * the one-engine rule forbids outright. The faces that map
  * carried (a relative age, a mono event tag, a copyable code) were never about
  * inventory events, so they moved into the engine as display-type faces
  * (`compound-slot-face.ts`) where every family inherits them.

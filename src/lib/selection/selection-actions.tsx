@@ -23,10 +23,9 @@ const DIRECTION_PRECEDENCE: readonly VerbDirection[] = ['do', 'undo', 'done'];
  *
  * ## Declared ONCE, per family — never at a page
  *
- * A verb belongs to its family's catalog (`VERB_CATALOG_MODULES` in
- * `@/lib/tables/table-engine-law`) and is BOUND by every surface that mounts
+ * A verb belongs to its family's catalog and is BOUND by every surface that mounts
  * that family. A `SelectionAction` literal at a page or a mount is the fork
- * this law exists to refuse, and `table-engine-law.test.ts` fails on one.
+ * this law exists to refuse.
  *
  * ## It binds to a FIELD, not to a lane
  *

@@ -152,17 +152,8 @@ const SEEDED_ROUTES = [
     ],
   },
   {
-    route: '/m/triage',
+    route: '/m/scan',
     module: 'src/lib/queries/mobile-feed-seed.server.ts',
-    seeds: [
-      { label: 'Mobile Arrival feed', keyPrefix: ['receiving-lines-table', 'rail', 'scanned'] },
-    ],
-  },
-  {
-    route: '/m/receive',
-    module: 'src/lib/queries/mobile-feed-seed.server.ts',
-    // Deprecated alias for `/m/triage` and seeds the same Arrival feed on
-    // purpose (`seedMobileReceivingFeed('triage')`).
     seeds: [
       { label: 'Mobile Arrival feed', keyPrefix: ['receiving-lines-table', 'rail', 'scanned'] },
     ],

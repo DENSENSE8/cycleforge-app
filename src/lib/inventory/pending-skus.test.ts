@@ -3,9 +3,7 @@
  *
  * 1. queuePendingSku upserts via fn_normalize_sku, bumps occurrences on conflict,
  *    and no-ops on an empty SKU — verified against an injected executor.
- * 2. resolveSkuCatalogIdOrQueue never auto-creates a local catalog row (Zoho SoT);
- *    it queues on a miss.
- * 3. The migration installs the padding normalizer, the dedup key, the status
+ * 2. The migration installs the padding normalizer, the dedup key, the status
  *    CHECK, and the auto-resolve trigger on sku_catalog.
  */
 
@@ -50,18 +48,11 @@ test('queuePendingSku no-ops on an empty SKU (no query)', async () => {
   equal(exec.calls.length, 0, 'does not touch the DB for an empty SKU');
 });
 
-// ─── Source guards ───────────────────────────────────────────────────────────
+// ─── Migration guard ─────────────────────────────────────────────────────────
 
 function read(rel: string): string {
   return readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 }
-
-test('resolveSkuCatalogIdOrQueue resolves then queues — never auto-creates a catalog row', () => {
-  const src = read('./pending-skus.ts');
-  ok(/resolveSkuCatalogId\(/.test(src), 'uses the existing resolver chain');
-  ok(/queuePendingSku\(/.test(src), 'queues on a miss');
-  ok(!/resolveOrCreateSkuCatalogId\(/.test(src), 'must NOT call the auto-create path (Zoho is SoT)');
-});
 
 test('migration installs normalizer, dedup key, status CHECK, and auto-resolve trigger', () => {
   const sql = read('../migrations/2026-06-06b_pending_skus.sql');

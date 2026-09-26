@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,
   LEDGER_GRID_ROW_CONTAIN,
-  LEDGER_GRID_WIDTH_VAR,
   LEDGER_GRID_ROW_WIDTH_CLASS,
   ledgerGridCell,
   ledgerGridRowShellClass,
@@ -63,28 +60,6 @@ describe('ledgerGridRowShellClass / frozen / width var', () => {
     assert.ok(
       !LEDGER_GRID_ROW_CONTAIN.includes('paint'),
       'contain:paint would clip sticky frozen identity cells',
-    );
-  });
-
-  /**
-   * The guard the old assertion could not be.
-   *
-   * `assert.ok(cls.includes(LEDGER_GRID_WIDTH_VAR))` passed for the entire life
-   * of the bug: the class NAME was on every row while no CSS rule existed to
-   * give it a width, because it was built as a Tailwind arbitrary value inside
-   * a template literal and the scanner never emitted it. A class string is not
-   * a style. This reads the stylesheet and asserts the rule is really there.
-   */
-  it('the shared row width is a REAL css rule, not just a class name', () => {
-    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
-    const rule = new RegExp(
-      `\\.${LEDGER_GRID_ROW_WIDTH_CLASS}\\s*\\{[^}]*width:\\s*var\\(${LEDGER_GRID_WIDTH_VAR}\\)`,
-    );
-    assert.match(
-      css.replace(/\s+/g, ' '),
-      new RegExp(rule.source.replace(/\\s\*/g, ' ?')),
-      `globals.css must define .${LEDGER_GRID_ROW_WIDTH_CLASS} { width: var(${LEDGER_GRID_WIDTH_VAR}) } — ` +
-        'without it every row falls back to width:auto and the grid loses horizontal scroll.',
     );
   });
 

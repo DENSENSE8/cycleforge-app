@@ -82,6 +82,9 @@ export interface SlotTableChromeBinding {
   sortable?: false;
 }
 
+/** The identity column's header word — the engine's, on every peer. */
+export const SLOT_TABLE_ID_HEADER_WORD = 'Id' as const;
+
 /**
  * What a family may say about the IDENTITY header: which fact it binds, and
  * nothing else.

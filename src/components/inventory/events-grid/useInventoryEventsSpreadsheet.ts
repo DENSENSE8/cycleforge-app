@@ -15,7 +15,7 @@
  * `CompoundCells`), so the family contributes an adapter, a resolver and a
  * column array and nothing else. It replaced `InventoryEventsTable.tsx` (a
  * host) and `events-grid/cells/index.tsx` (a per-family cell map), both of
- * which invariant 1 of `table-engine-law.ts` names outright.
+ * which the one-engine rule forbids outright.
  *
  * Two feeds already prove the seam — the Ledger's last-50 org feed
  * (`PulseView`) and one unit's chain of custody (`PulseWorkspace`). A third

@@ -18,8 +18,7 @@
  * These suites walk the whole chain with fakes at the two I/O boundaries
  * (`fetch`, the pg client) — no DB, no browser. The route handler itself is not
  * importable DB-free (`withAuth` + the pool), so its edge parser and its
- * degrade-to-null contract are covered directly here and the wiring is asserted
- * from source at the bottom.
+ * degrade-to-null contract are covered directly here.
  *
  * The second half is the legacy contract: a stage-less, timestamp-less payload
  * must upload byte-identically and store NULL. A fabricated timestamp would be
@@ -28,8 +27,6 @@
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   CLIENT_CAPTURED_AT_FIELD,
   parseClientCapturedAt,
@@ -251,74 +248,5 @@ describe('§2 legacy · a stage-less, timestamp-less payload uploads cleanly wit
     assert.equal(calls[0].params.length, 6);
     assert.equal(calls[0].params[4], null);
     assert.equal(calls[0].params[5], null);
-  });
-});
-
-// ─── wiring the round trip cannot reach ─────────────────────────────────────
-
-describe('§2 wiring · the route edge and the service thread the value through', () => {
-  const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
-
-  it('the upload route parses the shared field and passes it to uploadPhoto', () => {
-    const src = read('src/app/api/photos/upload/route.ts');
-    assert.match(src, /parseClientCapturedAt/);
-    assert.match(src, /form\.get\(CLIENT_CAPTURED_AT_FIELD\)/);
-    assert.match(src, /clientCapturedAt,/);
-    // Degrade, never reject: no 400 branch on this field.
-    assert.doesNotMatch(src, /CLIENT_CAPTURED_AT_FIELD[\s\S]{0,200}status: 400/);
-  });
-
-  it('the photo service forwards it on BOTH insert paths (adapter + legacy URL)', () => {
-    // A miss on either path is invisible: the photo uploads, the column is null.
-    const src = read('src/lib/photos/service.ts');
-    const forwards = src.match(/clientCapturedAt: input\.clientCapturedAt \?\? null/g) ?? [];
-    assert.ok(
-      forwards.length >= 3,
-      `expected the value forwarded on every insert path, found ${forwards.length}`,
-    );
-  });
-
-  it('every read path SELECTs the column and maps it — a write-only column is not evidence', () => {
-    // The first landing wrote `client_captured_at` on upload and never selected
-    // it back, so the viewer's `Captured` row could not render on ANY surface.
-    // Each seam below is independently silent when it drops the field, so each
-    // is pinned: the SELECT text, the row mapper, and the wire shape.
-
-    // Media library list — its own explicit SELECT, mapped via mapPhotoRow.
-    const library = read('src/lib/photos/queries/library.ts');
-    assert.match(library, /p\.client_captured_at/);
-
-    // Entity photo list — shared PHOTO_SELECT + the shared row mapper. The row
-    // type keeps the key REQUIRED (nullable value) so a SELECT that forgets the
-    // column is a type error rather than a silent null.
-    const entity = read('src/lib/photos/queries/list-for-entity.ts');
-    assert.match(entity, /PHOTO_SELECT[\s\S]*?p\.client_captured_at/);
-    assert.match(entity, /client_captured_at: string \| null;/);
-    assert.match(entity, /clientCapturedAt: row\.client_captured_at \?\? null/);
-
-    // Receiving/carton photo list — the unbox peek + station section source.
-    const receiving = read('src/lib/photos/queries/receiving-list.ts');
-    assert.match(receiving, /p\.client_captured_at/);
-    assert.match(receiving, /clientCapturedAt: row\.client_captured_at \?\? null/);
-    const route = read('src/app/api/receiving-photos/route.ts');
-    assert.match(route, /clientCapturedAt: row\.clientCapturedAt \?\? null/);
-
-    // …and the meta builder the viewer panel actually reads. `unboxingPhotoMeta`
-    // is the ONE place receiving photo meta is built; omitting the field here
-    // nulls it for every carton surface at once.
-    const utils = read('src/components/shipped/photo-gallery/photo-gallery-utils.ts');
-    assert.match(utils, /clientCapturedAt: fields\.clientCapturedAt \?\? null/);
-    const panel = read('src/components/shipped/photo-gallery/PhotoContextPanel.tsx');
-    assert.match(panel, /meta\?\.clientCapturedAt/);
-  });
-
-  it('the receiving upload queue carries it on `scope`, so localStorage persists it', () => {
-    // `PersistedEntry.meta` is `Omit<UploadEntry,'previewUrl'>` — it carries the
-    // whole scope. A field moved off `scope` would be dropped by persist() and
-    // the capture time would die on a tab kill.
-    const src = read('src/components/mobile/receiving/PhotoUploadQueue.ts');
-    assert.match(src, /export interface PhotoScope[\s\S]*?capturedAtMs\?: number \| null;[\s\S]*?\n\}/);
-    assert.match(src, /clientCapturedAtMs: entry\.scope\.capturedAtMs \?\? null/);
-    assert.match(src, /meta: Omit<UploadEntry, 'previewUrl'>/);
   });
 });

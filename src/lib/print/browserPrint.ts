@@ -68,8 +68,6 @@ export interface PrinterProfile {
   vendorId?: number;
   productId?: number;
   serialNumber?: string | null;
-  /** os only — OS printer name (matches the Electron preset deviceName). */
-  deviceName?: string | null;
   language: LabelLanguage;
   paperSizeId: string;
   baudRate?: number;
@@ -417,7 +415,7 @@ export async function printRawToProfile(
 }
 
 export function profileSummary(p: PrinterProfile): string {
-  if (p.kind === 'os') return `OS · ${p.deviceName || 'system default'}`;
+  if (p.kind === 'os') return 'OS · system default';
   return `${p.kind === 'serial' ? 'Serial' : 'USB'} · ${hex(p.vendorId)}:${hex(p.productId)
     .replace(/^0x/, '')}`;
 }

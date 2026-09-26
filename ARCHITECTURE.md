@@ -29,12 +29,12 @@ primitives, logic, and data — nothing that paints a feature.
 |---|---|---|
 | **Platform primitives** | every web surface | `src/design-system/**`, `src/components/ui/**`, `src/components/Icons`, `components/identity` (StaffAvatar etc. — primitives by shape, consumed by both surfaces; amended 2026-09-14 at C1), `components/providers`, `components/error` |
 | **Surface components** | only the owning surface | `src/components/mobile/**` + `src/app/m/**` on one side; desktop feature dirs (`station/`, `receiving/`, `shipped/`, `packing/`, `outbound/`, `inventory/`, `search/`, `identification/`, `kiosk/`, `auth/`, `qr/`, `barcode/`, desk routes) on the other. **Imports across this line are forbidden, both directions.** |
-| **Logic** | everything | `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/utils/**`. The platform-neutral subset graduates to `packages/shared` when Expo needs it. |
+| **Logic** | everything | `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/utils/**`. |
 
 Rules:
 
-1. `apps/mobile` imports only itself and `@cycleforge/shared` — never `src/**`,
-   never `apps/web`.
+1. (Retired 2026-09-26 — the Expo app `apps/mobile` and `packages/shared` were
+   deleted; numbering kept so "rule N" references stay valid.)
 2. Web surface components do not cross: `components/mobile/**` and `app/m/**`
    never import desktop feature-component dirs, and non-mobile components
    never import `components/mobile/**`. Desktop consumes the mobile SoT by
@@ -42,9 +42,9 @@ Rules:
    A component in the mobile tree that desktop needs (`ScanAgainBar`,
    `NetworkChip`, `ScanSurface` today) is a platform primitive misplaced —
    promote it to `components/ui/**` or fork it; it does not stay shared.
-3. Shared domain vocabulary, types, and hooks move to `src/lib/**` (or
-   `packages/shared`) — a component file is not a home for another surface's
-   types. Type-only imports across the line are still crossings: move the type.
+3. Shared domain vocabulary, types, and hooks move to `src/lib/**` — a
+   component file is not a home for another surface's types. Type-only
+   imports across the line are still crossings: move the type.
 4. Mobile components live under `src/components/mobile/**` or colocated in
    `/m` (e.g. `_picker/`). Scatter is judged by what renders on the phone
    surface, never by a Mobile-prefixed name — admin's

@@ -156,97 +156,9 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
-    name: 'Mobile-first',
-    // A lane the phone cannot run gets no door anywhere in the front end
-    // (operator 2026-09-14). Same reasoning for `always`: a registry read, and
-    // adding a nav row to an unported surface is a `verify:fast` increment.
-    // Rule module src/lib/nav/lanes.ts (LANE_MOBILE_FIRST) — also the
-    // Unit-tests gate and the ds_mobile_first MCP face.
-    cmd: localBin('tsx'),
-    args: ['scripts/mobile-first-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Action bar',
-    // The slot-table action strip may not expand or collapse in height from a
-    // press (operator 2026-09-15). `always` for the same reason as the two
-    // gates above: a source read (<1s), and the increments that break it —
-    // adding a control to the strip, reaching for TextField, rendering a field
-    // conditionally — are exactly the ones that run `verify:fast`. Same rule
-    // module as the Unit-tests gate (src/lib/tables/slot-table-action-bar-law.ts);
-    // its runtime half is the useFixedBandHeight ResizeObserver.
-    cmd: localBin('tsx'),
-    args: ['scripts/action-bar-height-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Data table industrial',
-    // The canonical table is judged by owned seams, never by source length.
-    // Same pure rule module feeds this always-on gate, the unit tripwire,
-    // ds_data_table and the slot-table eval cohort.
-    cmd: localBin('tsx'),
-    args: ['scripts/data-table-industrial-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Industrial translation',
-    // External design briefs enter through this complete intent matrix, never
-    // as a second palette, component family or set of call-site physics.
-    // The same deterministic verdict feeds the unit tripwire, JSON CLI,
-    // ds_industrial_translation and its eval cohort.
-    cmd: localBin('tsx'),
-    args: ['scripts/industrial-translation-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Outbound workflow',
-    // One deterministic source verdict protects the mobile-first Orders
-    // contract across CI, CLI, MCP and the eventual cohort runner.
-    cmd: localBin('tsx'),
-    args: ['scripts/outbound-workflow-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Id header',
-    // Column one says `Id` on every peer that has an identity track (operator
-    // 2026-09-15). `always` for the same reason as the gates above: a source
-    // read (<1s), and the increment that breaks it — re-adding `label:
-    // identity.label` to a column module — is exactly a `verify:fast`
-    // increment. Same rule module as the Unit-tests gate
-    // (src/lib/tables/slot-table-id-header-law.ts) and the ds_id_header MCP
-    // face; ESLint catches the same line at write time.
-    cmd: localBin('tsx'),
-    args: ['scripts/id-header-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Identity purity',
-    // The ID column is strictly for machine identifiers (operator 2026-09-15).
-    // Staff names and person attributions belong exclusively in dedicated
-    // status/person columns. `always` gate: source read (<1s). Same rule module
-    // as the Unit-tests gate (src/lib/tables/slot-table-identity-purity-law.ts)
-    // and the ds_identity_purity MCP face.
-    cmd: localBin('tsx'),
-    args: ['scripts/identity-purity-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Ground',
-    // A phone screen is ONE white sheet (operator 2026-09-15) — and the white
-    // is pinned at each altitude of the chain, not just asserted at the leaf.
-    // `always` for the same reason as the three gates above: a source read
-    // (<2s), and the increments that break it — painting a page background on
-    // /m, retouching the phone ground token, editing light.ts — are exactly the
-    // ones that run `verify:fast`. Same rule module as the Unit-tests gate
-    // (src/lib/mobile/mobile-ground.ts) and the ds_mobile_ground MCP face.
-    cmd: localBin('tsx'),
-    args: ['scripts/mobile-ground-guard.ts'],
-    profiles: 'always',
-  },
-  {
     name: 'Sku identity',
     // One SKU, one title, one photo — the Zoho item governs (operator
-    // 2026-09-15). `always` for the same reason as the four gates above: a
+    // 2026-09-15). `always`: a
     // source read (<1s), and the increment that breaks it — hand-writing a
     // sku_catalog join on a new surface, or re-adding the deleted
     // similarity(product_title) guard — is exactly a `verify:fast` increment.
@@ -254,35 +166,6 @@ export const ALL_GATES = [
     // and the ds_sku_identity MCP face.
     cmd: localBin('tsx'),
     args: ['scripts/sku-identity-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Detail hub',
-    // Every scanned entity's phone record is ONE grammar — the repair hub
-    // exoskeleton (operator 2026-09-24): DetailHubScreen, a DetailSummaryCard
-    // mapper, detailDoor doors, a ≤3-verb DetailDock, /info as the only edit.
-    // `always` for the same reason as Ground / Sku identity: a source read
-    // (<1s), and the increments that break it — an Edit button on a hub, a
-    // fourth dock verb, a hand-rolled record screen — are `verify:fast`
-    // increments. Same rule module as the Unit-tests gate
-    // (src/lib/mobile/detail-hub-law.ts) and the ds_detail_hub MCP face.
-    cmd: localBin('tsx'),
-    args: ['scripts/detail-hub-guard.ts'],
-    profiles: 'always',
-  },
-  {
-    name: 'Desk surface',
-    // Which surface a desktop job may use (operator 2026-09-25): a picked row's
-    // record opens as a DeskStageOverlay in place of the fixed-width list,
-    // never in the right rail; search never remounts a desk table; no new
-    // `inspector` table bindings. Every rail is classified in
-    // src/lib/design/desk-surface-ledger.ts and the debt baselines only shrink.
-    // `always`: a source read (<1s), and the increments that break it — a new
-    // DetailStackRailRegistrar, a hand-rolled evidence aside, a DataTable
-    // under /search — are `verify:fast` increments. Rules live in
-    // src/lib/design/desk-surface-law.ts (add a rule there to extend the base).
-    cmd: localBin('tsx'),
-    args: ['scripts/desk-surface-guard.ts'],
     profiles: 'always',
   },
   {

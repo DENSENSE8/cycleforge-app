@@ -115,7 +115,6 @@
 | medium | `/api/receiving/inbound/extract-po` | POST | ✅ | ✅ | — | sku |
 | medium | `/api/receiving/pending-check` | GET | ✅ | ✅ | — | pending_skus, sku |
 | medium | `/api/serial-units/[id]/data-wipe` | POST | ✅ | ✅ | — | sku |
-| medium | `/api/shipping/mark-staged` | GET/POST | ✅ | ✅ | — | orders |
 | medium | `/api/shipping/track/register` | POST | ✅ | ✅ | — | types |
 | medium | `/api/shipping/track/sync-one` | POST | ✅ | ✅ | — | types |
 | medium | `/api/sku-catalog/composition/batch` | POST | ✅ | ✅ | — | sku_stock, orders, sku |
@@ -243,7 +242,6 @@
 | low | `/api/fba/items/queue` | GET | ✅ | ✅ | ✅ | fba_shipment_items, fba_shipments, fba_fnskus, items, staff, sku |
 | low | `/api/fba/items/ready` | POST | ✅ | ✅ | ✅ | fba_shipment_items, fba_fnsku_logs, fba_shipments, items, staff |
 | low | `/api/fba/items/scan` | POST | ✅ | ✅ | ✅ | fba_shipment_items, fba_fnsku_logs, fba_shipments, items, staff, sku |
-| low | `/api/fba/items/verify` | POST | ✅ | ✅ | ✅ | fba_shipment_items, fba_fnsku_logs, items, staff |
 | low | `/api/fba/labels/bind` | POST | ✅ | ✅ | ✅ | fba_shipment_items, fba_fnsku_logs, fba_shipments, staff |
 | low | `/api/fba/logs` | GET/POST | ✅ | ✅ | ✅ | fba_fnsku_logs, fba_shipments, fba_fnskus, staff, sku |
 | low | `/api/fba/logs/[id]` | GET/DELETE | — | ✅ | ✅ | fba_fnsku_logs, fba_shipments, fba_fnskus, staff, sku |
@@ -275,7 +273,6 @@
 | low | `/api/handling-units/[id]` | GET/DELETE | ✅ | ✅ | ✅ | handling_units |
 | low | `/api/handling-units/bulk` | POST | ✅ | ✅ | ✅ | handling_units |
 | low | `/api/identification/jobs/[jobId]` | GET | ✅ | ✅ | ✅ | orders |
-| low | `/api/identification/methods` | GET/POST | ✅ | ✅ | ✅ | items |
 | low | `/api/inbox/support` | GET | ✅ | ✅ | ✅ | items |
 | low | `/api/inbox/tech-queue` | GET | ✅ | ✅ | ✅ | items |
 | low | `/api/integrations/[provider]/sync` | POST | ✅ | ✅ | ✅ | orders |
@@ -917,7 +914,6 @@
 
 - ✅ `/api/fba/items/ready` (low)
 - ✅ `/api/fba/items/scan` (low)
-- ✅ `/api/fba/items/verify` (low)
 - ✅ `/api/fba/labels/bind` (low)
 - ✅ `/api/fba/logs` (low)
 - ✅ `/api/fba/logs/[id]` (low)
@@ -972,7 +968,6 @@
 - ✅ `/api/fba/items/queue` (low)
 - ✅ `/api/fba/items/ready` (low)
 - ✅ `/api/fba/items/scan` (low)
-- ✅ `/api/fba/items/verify` (low)
 - ✅ `/api/fba/labels/bind` (low)
 - ✅ `/api/fba/logs/summary` (low)
 - ✅ `/api/fba/print-queue` (low)
@@ -1124,7 +1119,6 @@
 - ✅ `/api/fba/items/queue` (low)
 - ✅ `/api/fba/items/ready` (low)
 - ✅ `/api/fba/items/scan` (low)
-- ✅ `/api/fba/items/verify` (low)
 - ✅ `/api/fba/print-queue` (low)
 - ✅ `/api/fba/shipments` (low)
 - ✅ `/api/fba/shipments/[id]/items` (low)
@@ -1138,7 +1132,6 @@
 - ✅ `/api/fba/shipments/today/items` (low)
 - ✅ `/api/get-title-by-sku` (low)
 - ✅ `/api/handling-units` (low)
-- ✅ `/api/identification/methods` (low)
 - ✅ `/api/inbox/support` (low)
 - ✅ `/api/inbox/tech-queue` (low)
 - ✅ `/api/inventory/alerts` (low)
@@ -1493,7 +1486,6 @@
 - ✅ `/api/shipped/scan-out` (low)
 - ✅ `/api/shipped/search` (low)
 - ✅ `/api/shipped/submit` (low)
-- ⛔ `/api/shipping/mark-staged` (medium)
 - ✅ `/api/shipping/order-labels/purchase` (low)
 - ✅ `/api/shipping/order-labels/void` (low)
 - ✅ `/api/shipping/order-rates` (low)
@@ -2561,7 +2553,6 @@
 - ✅ `/api/fba/items/queue` (low)
 - ✅ `/api/fba/items/ready` (low)
 - ✅ `/api/fba/items/scan` (low)
-- ✅ `/api/fba/items/verify` (low)
 - ✅ `/api/fba/labels/bind` (low)
 - ✅ `/api/fba/logs` (low)
 - ✅ `/api/fba/logs/[id]` (low)

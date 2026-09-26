@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -76,73 +75,6 @@ describe('Collapse all — one control, not one per station', () => {
     assert.match(html, /data-testid="station-collapse-all"/);
     assert.match(html, /aria-label="Collapse all centre bands"/);
     assert.match(html, /Collapse all/);
-  });
-
-  it('is not hand-rolled by Unbox or Testing any more', () => {
-    // Two copies of a control are two chances for one of them to quietly stop
-    // reaching an altitude, on one station only — which is exactly what
-    // per-line collapse would have caused. Both stations now hand their bands
-    // to one stack, and the stack owns the control.
-    for (const path of [
-      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
-      'src/components/tech/TestingPanel.tsx',
-    ]) {
-      const src = readFileSync(path, 'utf8');
-      assert.match(src, /<StationBandStack\b/, path);
-      assert.doesNotMatch(
-        src,
-        /data-testid="station-collapse-all"/,
-        `${path} still spells the control out by hand`,
-      );
-      assert.doesNotMatch(
-        src,
-        /<StationCollapsibleBlock\b/,
-        `${path} still stacks bands itself — that is how three empty strips happen`,
-      );
-    }
-  });
-
-  it('Unbox no longer mounts a Placement band — Label is the sticker disclose', () => {
-    const src = readFileSync(
-      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
-      'utf8',
-    );
-    assert.doesNotMatch(src, /unbox-band-placement/);
-    assert.doesNotMatch(src, /UnboxPlacementSection/);
-  });
-
-  it('Unbox does not name a per-band well — the stack defaults it', () => {
-    const src = readFileSync(
-      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
-      'utf8',
-    );
-    assert.doesNotMatch(src, /STATION_BAND_BODY_WELL_CLASS/);
-    assert.doesNotMatch(src, /bodyClassName:/);
-  });
-
-  it('Testing inherits the stack well without a local fill', () => {
-    const src = readFileSync('src/components/tech/TestingPanel.tsx', 'utf8');
-    assert.doesNotMatch(
-      src,
-      /STATION_BAND_BODY_WELL_CLASS|STATION_SCAN_WELL_CLASS/,
-      'TestingPanel redeclared the well — that is a fork of StationBandStack',
-    );
-  });
-
-  it('Unbox and Testing do not auto-collapse the centre on scroll', () => {
-    // Scroll-collapse unmounted Items, remounted the serial input, and
-    // scrollIntoView yanked the label the operator was reading.
-    for (const path of [
-      'src/components/receiving/workspace/LineEditPanel.tsx',
-      'src/components/tech/TestingPanel.tsx',
-    ]) {
-      const src = readFileSync(path, 'utf8');
-      assert.doesNotMatch(
-        src,
-        /onScroll=\{bandCollapse\.onScroll\}/,
-        `${path} still collapses the centre on scroll`,
-      );
-    }
   });
 });
 

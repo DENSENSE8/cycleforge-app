@@ -370,9 +370,7 @@ export const SLOT_LAYOUT_TABLES: Readonly<
     morphs: ['compound'],
   },
   // Reports › Packer day — COMPOUND only. Without this line the org column
-  // layout 404s and the catalog reads as a false orphan; the cohort's
-  // `eval:discover` names exactly that (`layout-registry-gap:report-packer-day`),
-  // which is how this omission was caught rather than shipped.
+  // layout 404s and the catalog reads as a false orphan.
   [REPORT_PACKER_DAY_TABLE_LAYOUT_ID]: {
     catalog: REPORT_PACKER_DAY_FIELD_CATALOG,
     morphs: ['compound'],

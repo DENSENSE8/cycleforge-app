@@ -12,8 +12,8 @@
  * it — the last port copied the ~150 lines around `DataTable` instead
  * (`DeadStockTable`, `SkuVelocityTable`, `SessionsReportTable`,
  * `InventoryEventsTable` are four copies of one file), and one of them wrote a
- * per-family cell map to get its faces back. Invariant 1 of
- * `table-engine-law.ts` forbids the cell map; this hook removes the reason
+ * per-family cell map to get its faces back. The one-engine
+ * rule forbids the cell map; this hook removes the reason
  * anybody wrote one.
  *
  * What a family supplies is exactly the five artifacts the acceptance test

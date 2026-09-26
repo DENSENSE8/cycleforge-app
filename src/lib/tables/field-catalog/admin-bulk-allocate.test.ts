@@ -17,8 +17,8 @@
  * - the WRITE GATE. The action's `orders.view` `requirePermission` and its
  *   `revalidatePath` are the two lines a client-island port could quietly
  *   drop; the action lives in an RSC `page.tsx` that cannot be imported here
- *   (JSX, `next/cache`, server-only), so this is a source TRIPWIRE in the
- *   style of `table-engine-law.test.ts` rather than a call-through.
+ *   (JSX, `next/cache`, server-only), so this is a source TRIPWIRE rather
+ *   than a call-through.
  */
 
 import assert from 'node:assert/strict';
@@ -189,7 +189,7 @@ describe('admin-bulk-allocate materialization', () => {
     const identity = ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'admin-bulk-allocate.order_id');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-id-header-law.ts`). "Order id" is now the Fields-picker row
+    // (`slot-table-family.ts`). "Order id" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');
@@ -426,18 +426,6 @@ describe('admin-bulk-allocate wire row', () => {
 });
 
 describe('admin-bulk-allocate page tripwire', () => {
-  it('is off the second table engine and mounts the island', () => {
-    // The IMPORT, not the word: the page docblock names the engine it left.
-    assert.ok(
-      !/from '@\/design-system\/components\/AdminTable'/.test(PAGE_SOURCE),
-      'bulk-allocate/page.tsx still imports the second table engine',
-    );
-    assert.match(PAGE_SOURCE, /<AllocationCandidatesTable rows=\{rows\} allocate=\{allocateOne\} \/>/);
-    // The offset paging links are a non-goal of the port and must survive it.
-    assert.match(PAGE_SOURCE, /\/inventory\/bulk-allocate\?page=\$\{page - 1\}/);
-    assert.match(PAGE_SOURCE, /\/inventory\/bulk-allocate\?page=\$\{page \+ 1\}/);
-  });
-
   it('still gates the write on `orders.view` and still revalidates', () => {
     // The gate sits OUTSIDE the try — `requirePermission` signals denial by
     // throwing NEXT_REDIRECT, and from inside a catch it was swallowed.

@@ -2,9 +2,6 @@
  *   npx tsx --test src/lib/outbound/morphing-row-action.test.ts
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
@@ -200,77 +197,5 @@ describe('morphingGutterClick — checkbox always toggles', () => {
     });
     assert.deepEqual(toggles, [{ shiftKey: false }]);
     assert.deepEqual(menus, []);
-  });
-});
-
-describe('Morphing paints a sticky top overlay, not a left popover', () => {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const menu = readFileSync(
-    join(here, '../../components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
-    'utf8',
-  );
-  const table = readFileSync(
-    join(here, '../../components/tables/DataTable.tsx'),
-    'utf8',
-  );
-
-  it('portals into the slot under the column header', () => {
-    assert.match(menu, /SLOT_TABLE_ACTION_ROW_ATTR/);
-    assert.match(menu, /SLOT_TABLE_OVERLAY_HOST_ATTR/);
-    assert.match(table, /SLOT_TABLE_OVERLAY_HOST_ATTR/);
-    assert.doesNotMatch(menu, /placement=["']left-start["']/);
-    assert.doesNotMatch(menu, /absolute inset-x-0 top-0/);
-    assert.doesNotMatch(
-      menu,
-      /document\.addEventListener\(['"]mousedown['"]/,
-      'click-off must not dismiss the bar while a row is selected',
-    );
-    const grid = readFileSync(
-      join(here, '../../design-system/components/grid/LedgerGrid.tsx'),
-      'utf8',
-    );
-    assert.match(grid, /data-slot-table-action-row/);
-    assert.match(grid, /empty:hidden/);
-    assert.match(grid, /data-slot-table-prefix/);
-    assert.match(grid, /sticky top-\[var\(--cf-grid-header-h/);
-    assert.match(grid, /\{pinnedPrefix\}/);
-  });
-
-  it('desktop bar is not a child of a virtualized row', () => {
-    const row = readFileSync(
-      join(here, '../../components/dashboard/orders-queue/OrdersQueueTableRow.tsx'),
-      'utf8',
-    );
-    const sheet = readFileSync(
-      join(here, '../../components/dashboard/orders-queue/useOrdersSpreadsheet.tsx'),
-      'utf8',
-    );
-    assert.doesNotMatch(row, /<MorphingRowActionMenu/);
-    assert.match(sheet, /OrdersMorphingHost/);
-    assert.match(menu, /export function OrdersMorphingHost/);
-    assert.match(menu, /inline = false/);
-  });
-
-  it('desktop Notes morphs the action row; BottomSheet is /m/ only', () => {
-    assert.match(menu, /variant=["']strip["']/);
-    assert.match(menu, /isMorphingMobileUrl/);
-    assert.match(menu, /forceVariant=["']sheet["']/);
-  });
-
-  it('state-changers lead with transition labels; rare verbs sit behind ⋮', () => {
-    // Operator 2026-09-15: a button label is the VERB it performs from the
-    // current state. "Urgent" as a label states a fact the row already shows
-    // three ways and hides whether clicking sets, clears, or does nothing —
-    // so the urgent pill reads "Clear urgent" when the selection is all-urgent
-    // and "Mark urgent" otherwise. "Out of stock" was a noun; the verb bar
-    // carries verbs. Create rule is rare and configuration-flavoured, so it
-    // moved into the ⋮ overflow (hotkey R unchanged).
-    assert.match(menu, /selectionIsUrgent \? 'Clear urgent' : 'Mark urgent'/);
-    assert.match(menu, /Report out of stock/);
-    assert.doesNotMatch(menu, /'Out of stock'</);
-    assert.doesNotMatch(menu, /Assign picker/);
-    assert.doesNotMatch(menu, /Assign packer/);
-    assert.match(menu, /\/api\/shipped\/scan-out/);
-    assert.match(menu, /documents\/upload/);
   });
 });

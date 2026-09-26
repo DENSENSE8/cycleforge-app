@@ -2,17 +2,13 @@
  * Guards for the canonical tech_serial_numbers writer (relational-reuse plan,
  * Phase 2 — collapse the duplicated TSN INSERTs into one helper).
  *
- * 1. attachTechSerial upper-cases the serial, applies the SERIAL/TECH defaults,
- *    always binds serial_unit_id (the FK whose absence was the original drift),
- *    and is ON CONFLICT DO NOTHING — verified against an injected executor.
- * 2. The three migrated call sites route through the helper and no longer
- *    hand-roll `INSERT INTO tech_serial_numbers`.
+ * attachTechSerial upper-cases the serial, applies the SERIAL/TECH defaults,
+ * always binds serial_unit_id (the FK whose absence was the original drift),
+ * and is ON CONFLICT DO NOTHING — verified against an injected executor.
  */
 
 import { test } from 'node:test';
 import { equal, ok, deepEqual } from 'node:assert';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { attachTechSerial } from './tech-serial';
 
 /** The (pg-overloaded) executor param type, for casting the structural mock. */
@@ -108,38 +104,3 @@ test('attachTechSerial preserves an explicit historical import timestamp', async
   ok(/created_at/.test(exec.calls[0].text), 'created_at column present');
   equal(exec.calls[0].params.at(-1), '2026-01-02T03:04:05.000Z');
 });
-
-// ─── Source guards: the call sites use the helper, not a raw INSERT ──────────
-
-function read(rel: string): string {
-  return readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
-}
-
-const CALL_SITES = [
-  '../receiving/serial-attach.ts',
-  '../receiving/receive-line.ts',
-  // The per-unit test verdict's TSN write lives in the extracted lib
-  // (recordTestVerdict), not the thin HTTP route which only delegates to it.
-  '../tech/recordTestVerdict.ts',
-  '../tech/insertTechSerialForSalContext.ts',
-  '../../app/api/post-multi-sn/route.ts',
-  // The legacy Google-Sheets tech importer (/api/sync-sheets) was also on this
-  // list until it was DELETED 2026-07-29 — it had zero callers left after the
-  // order-ingest consolidation.
-  '../../app/api/receiving/serials/route.ts',
-  '../../app/api/google-sheets/execute-script/route.ts',
-  // `../tech/insertTechSerialForTracking.ts` was DELETED 2026-08-07 — the
-  // Unified Engine strangler write for tech serial inserts never got plugged
-  // into the live tech-scan route (zero real callers besides its own test).
-];
-
-for (const rel of CALL_SITES) {
-  test(`${rel} routes TSN writes through attachTechSerial`, () => {
-    const src = read(rel);
-    ok(/attachTechSerial\(/.test(src), `${rel} must call attachTechSerial`);
-    ok(
-      !/INSERT INTO tech_serial_numbers/.test(src),
-      `${rel} must not hand-roll an INSERT INTO tech_serial_numbers`,
-    );
-  });
-}

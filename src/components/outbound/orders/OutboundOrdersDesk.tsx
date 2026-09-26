@@ -316,7 +316,7 @@ function OutboundOrdersDeskContent({
         }
       />
       {/*
-        Pattern E (rail-less) does not mount OutboundSidebarPanel on desktop —
+        The desk has no left column (its search · views live in the master nav);
         desk owns Add / ingest / ?new=true so Band-1 Add always has a host.
       */}
       {/*

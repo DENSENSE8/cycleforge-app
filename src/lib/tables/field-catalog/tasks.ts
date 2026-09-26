@@ -17,8 +17,7 @@
  * `work_assignments.entity_type` / `entity_id` are NOT NULL, so `tasks.record`
  * always resolves to something and `tasks.ticket` resolves only for the
  * SUPPORT_TICKET arm. The ticket is not a second identity — column one prints
- * the task handle (`slot-table-id-header-law`), and the identity-purity law
- * forbids a person's name there, which is why `tasks.assignee` is bindable
+ * the task handle and never a person's name, which is why `tasks.assignee` is bindable
  * into the status/subtitle bands and nowhere near `identity`.
  *
  * Nothing here names lateness. Whether a task is past its deadline depends on

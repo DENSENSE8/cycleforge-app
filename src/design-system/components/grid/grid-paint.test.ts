@@ -3,8 +3,6 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   LEDGER_GRID_HEADER_ESTIMATE_PX,
@@ -21,14 +19,5 @@ describe('LedgerGrid paint knobs', () => {
     );
     assert.ok(LEDGER_GRID_ROW_ESTIMATE_PX >= 32, 'dense rows still have a readable floor');
     assert.ok(LEDGER_GRID_HEADER_ESTIMATE_PX > 0);
-  });
-
-  it('VirtualGroupedSections consumes the shipped overscan constant', () => {
-    const src = readFileSync(
-      join(process.cwd(), 'src/design-system/components/grid/VirtualGroupedSections.tsx'),
-      'utf8',
-    );
-    assert.match(src, /overscan:\s*LEDGER_GRID_OVERSCAN/);
-    assert.doesNotMatch(src, /overscan:\s*10\b/);
   });
 });

@@ -8,7 +8,7 @@
  * and fails the first time the number changes, which catches the cause nobody
  * thought of.
  *
- * The law it enforces is `slot-table-action-bar-law.ts`
+ * It enforces a fixed-height action bar
  * (operator 2026-09-15: *"the action buttons bar should not expand or collapse
  * in height from clicking on an action"*).
  *
@@ -68,7 +68,7 @@ export function useFixedBandHeight(
         console.error(
           `${FIXED_BAND_HEIGHT_VIOLATION} ${label} measured ${measured.toFixed(2)}px but ` +
             `declares ${expectedPx}px. A control in this band is sizing it from content — ` +
-            'see src/lib/tables/slot-table-action-bar-law.ts. Common causes: a TextField ' +
+            'Common causes: a TextField ' +
             '(h-11), a conditionally rendered control, or flex-wrap on the band.',
         );
         return;

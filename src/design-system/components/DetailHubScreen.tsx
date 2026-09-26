@@ -117,7 +117,6 @@ export function DetailRecordFrame<T>({
  * Edge to edge (operator 2026-09-25): no page padding and no gaps. Card, ack,
  * content and door rows run the full width, separated by one mode rule; only
  * text keeps its inset. `content` owns its own inset (or none).
- * Gate: `scripts/detail-hub-guard.ts` (`src/lib/mobile/detail-hub-law.ts`).
  */
 export function DetailHubScreen<T>({
   record,

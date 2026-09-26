@@ -25,7 +25,7 @@ module.exports = {
     {
       name: 'mobile-no-desktop-surface-components',
       comment:
-        'ARCHITECTURE.md rule 2 — /m surfaces never import desktop feature components; shared domain vocab/types/hooks belong in src/lib or packages/shared.',
+        'ARCHITECTURE.md rule 2 — /m surfaces never import desktop feature components; shared domain vocab/types/hooks belong in src/lib.',
       severity: 'error',
       from: { path: '^src/(components/mobile|app/m)(/|$)' },
       to: {

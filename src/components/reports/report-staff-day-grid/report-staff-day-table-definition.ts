@@ -75,6 +75,6 @@ export const REPORT_STAFF_DAY_TABLE_BINDING: TableSurfaceBinding<
   recordPlane: {
     kind: 'none',
     reason:
-      'Honest absence. A staff-day row is a projection of the daily-check report (items × one staffer’s marks) — there is no record behind it to open, and the interactive per-person view is the phone report at /m/reports, which consumes the same buildStaffDay projection. A record plane here would either duplicate that surface or invent an editor over an attestation.',
+      'Honest absence. A staff-day row is a projection of the daily-check report (items × one staffer’s marks) — there is no record behind it to open. A record plane here would invent an editor over an attestation.',
   },
 };

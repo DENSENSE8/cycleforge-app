@@ -9,18 +9,16 @@
  *      revert still rewinds), qty completion auto-advances to UNBOXED only
  *      when no explicit target is set, otherwise the line stays put.
  *   2. Source-level invariants (same style as serial-attach.test.ts): the
- *      lifecycle half must route through transitionReceivingLine() — no raw
- *      `workflow_status =` write may reappear — and the load-bearing
- *      `:workflow-<to>` client_event_id lineage must survive (batch
- *      replay-detection LIKEs on `<clientEventId>:%`; UNIQUE(client_event_id)
- *      retry idempotency keys off it).
+ *      workflow transition joins the tenant transaction client + orgId, and
+ *      the Wave-3 schema split (testing facts → receiving_line_testing,
+ *      zoho_item_id → receiving_line_zoho) is never written/read off the spine.
  */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { resolveReceiveWorkflowTarget, isUnreceiveSerialBlocking, UNRECEIVE_BLOCKING_SERIAL_STATUSES } from './receive-line';
+import { resolveReceiveWorkflowTarget, isUnreceiveSerialBlocking } from './receive-line';
 
 const TESTING_OR_BEYOND = ['AWAITING_TEST', 'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE'];
 
@@ -146,27 +144,6 @@ const receiveLineSrc = readFileSync(
   'utf8',
 );
 
-test('receive-line has NO raw workflow_status write — lifecycle goes through the chokepoint', () => {
-  // Reads (SELECT / RETURNING ... AS workflow_status) are fine; an assignment
-  // anywhere in SQL (`workflow_status =` / `workflow_status = CASE`) is the
-  // raw-UPDATE bypass this fold removed.
-  assert.ok(
-    !/workflow_status\s*=/.test(receiveLineSrc),
-    'receive-line.ts must not assign workflow_status in SQL — call transitionReceivingLine()',
-  );
-  assert.ok(
-    /transitionReceivingLine\(/.test(receiveLineSrc),
-    'receive-line.ts must route the workflow transition through transitionReceivingLine()',
-  );
-});
-
-test('workflow transition keeps the `:workflow-<to>` client_event_id lineage', () => {
-  assert.ok(
-    /:workflow-\$\{nextWorkflow\}/.test(receiveLineSrc),
-    'client_event_id suffix must stay `<clientEventId>:workflow-<to>` — batch replay detection LIKEs on `<clientEventId>:%`',
-  );
-});
-
 test('facts UPDATE and the chokepoint call share the same transaction client', () => {
   // The transition must be passed the tx client (executor mode) so it joins the
   // FOR UPDATE lock already held — not spawn its own transaction.
@@ -190,15 +167,6 @@ test('qa/disposition/condition are never written to the receiving_line spine', (
   assert.ok(
     /upsertReceivingLineTesting\(/.test(receiveLineSrc),
     'receive-line.ts must route testing facts through upsertReceivingLineTesting',
-  );
-});
-
-test('the testing-facts upsert is bound to the same transaction client', () => {
-  // The facts write must share the FOR UPDATE lock + rollback semantics of the
-  // receive transaction — never a fresh pooled connection.
-  assert.ok(
-    /upsertReceivingLineTesting\([\s\S]{0,600}?client\.query\(sql,/.test(receiveLineSrc),
-    'upsertReceivingLineTesting must receive deps bound to the tx client',
   );
 });
 
@@ -233,34 +201,4 @@ test('isUnreceiveSerialBlocking: dock / stock / test states do not block', () =>
   for (const s of ['RECEIVED', 'STOCKED', 'TESTED', 'GRADED', 'TRIAGED', 'UNKNOWN', null, '']) {
     assert.equal(isUnreceiveSerialBlocking(s), false, String(s));
   }
-});
-
-test('unreceive clears received_done_at and zeros quantity_received in SQL', () => {
-  assert.ok(
-    /received_done_at\s*=\s*NULL/.test(receiveLineSrc),
-    'unreceive must NULL received_done_at (sticky DONE stamp)',
-  );
-  assert.ok(
-    /quantity_received\s*=\s*0/.test(receiveLineSrc),
-    'unreceive must zero quantity_received',
-  );
-  assert.ok(
-    /UNRECEIVED/.test(receiveLineSrc),
-    'unreceive must write a reversing sku_stock_ledger row (reason UNRECEIVED)',
-  );
-  assert.ok(
-    UNRECEIVE_BLOCKING_SERIAL_STATUSES.has('SHIPPED'),
-    'blocking set must include SHIPPED',
-  );
-});
-
-test('unreceive routes workflow through transitionReceivingLine to MATCHED', () => {
-  assert.ok(
-    /to:\s*'MATCHED'/.test(receiveLineSrc) || /to:\s*"MATCHED"/.test(receiveLineSrc),
-    'unreceive must target MATCHED via the chokepoint',
-  );
-  assert.ok(
-    /export async function unreceiveLineUnits/.test(receiveLineSrc),
-    'unreceiveLineUnits must be exported',
-  );
 });

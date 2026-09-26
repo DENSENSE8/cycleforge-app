@@ -39,6 +39,7 @@ import { compoundColumnsFor } from '@/components/tables/compound/compound-column
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import {
+  SLOT_TABLE_ID_HEADER_WORD,
   slotTableChromeField,
   slotTableIdentityField,
   type SlotTableChromeKey,
@@ -47,7 +48,6 @@ import {
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /**
@@ -103,7 +103,7 @@ export function slotTableColumnsFor(
     // The identity header is the LAW's word on every peer. The family still
     // supplies the FACT (which is what the cell paints and the header sorts
     // by); it supplies no word, and `SlotTableIdentityBinding` has no field
-    // for one. `slot-table-id-header-law.ts`.
+    // for one (`slot-table-family.ts`).
     if (track.key === 'fulfillment' && identity) {
       return {
         ...track,

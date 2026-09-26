@@ -38,9 +38,8 @@
  *
  * This module deliberately exports NO `*_FIELD_CATALOG`. Aliasing the shared
  * catalog under a second name looked like convenience for the org-layout
- * registry and is a second NAME for one source of truth — the exact fork
- * `slot-table-discover`'s `catalog-orphan` scanner exists to catch (integration
- * ruling 2026-09-12). Consumers import `UNIT_ALLOCATIONS_FIELD_CATALOG` from
+ * registry and is a second NAME for one source of truth (integration ruling
+ * 2026-09-12). Consumers import `UNIT_ALLOCATIONS_FIELD_CATALOG` from
  * the catalog module itself; the only new symbols here are the layout document
  * and its id.
  */

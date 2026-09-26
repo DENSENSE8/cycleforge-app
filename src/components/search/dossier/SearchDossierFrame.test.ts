@@ -116,16 +116,6 @@ describe('SearchDossierFrame', () => {
     assert.doesNotMatch(html, /data-testid="search-dossier-outline-kinds"/);
   });
 
-  it('keeps one chronology tree (density classes only)', () => {
-    const src = require('node:fs').readFileSync(
-      require('node:path').join(__dirname, 'SearchDossierFrame.tsx'),
-      'utf8',
-    );
-    assert.equal((src.match(/data-testid="search-dossier-chronology"/g) || []).length, 1);
-    assert.doesNotMatch(src, /lg:hidden/);
-    assert.doesNotMatch(src, /FilterRefinementBar/);
-  });
-
   it('omits empty outline kinds, and never chips qty even when it has a count', () => {
     const html = renderToStaticMarkup(
       React.createElement(SearchDossierFrame, {

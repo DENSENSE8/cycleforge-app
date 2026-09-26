@@ -5,7 +5,7 @@
  *
  * ## Why this exists
  *
- * `/search` and `/m/search` mount the same tree (`SearchFindSurface`), and
+ * `/search` and the scan-station preview pane mount the same FIND tree, and
  * before this module they disagreed about how to ask "how wide am I?":
  *
  * | site | asked by |

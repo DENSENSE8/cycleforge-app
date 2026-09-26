@@ -2,8 +2,9 @@
  * Server seed for the To-ship Unshipped queue — Packer-style dehydrate so the
  * desk's `useQuery(unshippedOrdersQuery(…))` paints from cache on first HTML.
  *
- * Key + limit must match {@link UnshippedTable}'s default mount
- * (`strictSearchScope: true`, `limit: 200`, empty search, no stage).
+ * Key + limit must match {@link UnshippedTable}'s mount for the page's view
+ * (`strictSearchScope: true`, `limit: 200`, empty search, no stage, plus the
+ * desk's `blockedOnly` and desk-sidebar lens — `pair` / `queue`).
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
@@ -15,6 +16,8 @@ import {
   normalizeQueueCountsPayload,
   type UnshippedQueueCounts,
 } from '@/lib/orders/queue-counts-normalize';
+import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
+import type { DeskPairFilter, DeskQueueFilter } from '@/lib/orders/desk-view-filters';
 
 /** Default page size — keep in lockstep with `UnshippedTable` `rowLimit` initial. */
 const UNSHIPPED_SEED_LIMIT = 200;
@@ -24,7 +27,16 @@ interface UnshippedQueueSeed {
   rows: ShippedOrder[];
 }
 
-function unshippedListKey() {
+/** Which queue view the page mounts — the server-filtered facts of its key. */
+interface UnshippedSeedView {
+  /** Shortage desk (`lockedFulfillmentState="BLOCKED"`). */
+  blockedOnly?: boolean;
+  pair?: DeskPairFilter;
+  queue?: DeskQueueFilter;
+}
+
+/** Mirrors `unshippedOrdersQuery`'s key for that mount. */
+function unshippedListKey({ blockedOnly = false, pair, queue }: UnshippedSeedView) {
   return [
     'dashboard-table',
     'unshipped',
@@ -35,6 +47,9 @@ function unshippedListKey() {
       staffId: undefined,
       strictSearchScope: true,
       stage: null,
+      blockedOnly,
+      pair,
+      queue,
       limit: UNSHIPPED_SEED_LIMIT,
     },
   ] as const;
@@ -44,7 +59,7 @@ function unshippedCountsKey() {
   return ['dashboard-table', 'unshipped-counts', { staffId: null }] as const;
 }
 
-async function fetchUnshippedRows(): Promise<ShippedOrder[] | null> {
+async function fetchUnshippedRows({ blockedOnly, pair, queue }: UnshippedSeedView): Promise<ShippedOrder[] | null> {
   // Must match `fetchUnshippedOrdersData` (inWarehouse), not fulfillmentScope.
   // fulfillmentScope ignores dock SHIP_CONFIRM, so a seed of never-packed rows
   // painted hundreds of already-scanned-out orders against a queue-counts
@@ -54,6 +69,10 @@ async function fetchUnshippedRows(): Promise<ShippedOrder[] | null> {
     listShape: 'queue',
     limit: String(UNSHIPPED_SEED_LIMIT),
   });
+  // Same params `fetchUnshippedOrdersData` sends for this view.
+  if (blockedOnly) params.set('blockedOnly', 'true');
+  if (pair) params.set(DESK_PAIR_PARAM, pair);
+  if (queue) params.set(DESK_QUEUE_PARAM, queue);
   const res = await serverSelfFetch(`/api/orders?${params.toString()}`);
   if (!res.ok) {
     // 401/403: no session on the self-fetch (sign-in / cold cookie). Soft miss —
@@ -99,12 +118,12 @@ async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
  * the desk an emptier seed than the one it actually paid for. Each result is
  * still consumed under its own branch, so one failing seeds the other.
  */
-export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
+export async function seedUnshippedQueue(view: UnshippedSeedView = {}): Promise<UnshippedQueueSeed> {
   const queryClient = new QueryClient();
   let rows: ShippedOrder[] = [];
 
   const [listResult, countsResult] = await Promise.allSettled([
-    fetchUnshippedRows(),
+    fetchUnshippedRows(view),
     fetchUnshippedCounts(),
   ]);
   // `allSettled` would otherwise swallow Next's static-prerender bailout.
@@ -115,7 +134,7 @@ export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
   if (listResult.status === 'fulfilled') {
     if (listResult.value != null) {
       rows = listResult.value;
-      queryClient.setQueryData(unshippedListKey(), rows);
+      queryClient.setQueryData(unshippedListKey(view), rows);
     }
   } else {
     console.warn('seedUnshippedQueue list failed; client will fetch', listResult.reason);

@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * Pending desk — BLOCKED / out-of-stock orders on the shared Unshipped table.
+ * Picking desk — orders waiting to be picked (BLOCKED / out-of-stock lines,
+ * PO paired) on the shared Unshipped table. Tab label "Picking" (operator
+ * 2026-09-26; was "Pending").
  */
 
 import { Suspense, useCallback } from 'react';
@@ -37,8 +39,8 @@ function ShortageDeskContent({
           railSelection={selectionEnabled}
           ledger
           onPrimaryPainted={onPrimaryPainted}
-          searchResultLabel="pending orders"
-          clearSearchLabel="Show All Pending Orders"
+          searchResultLabel="orders to pick"
+          clearSearchLabel="Show all orders to pick"
           fulfillmentLane="pending"
           lockedFulfillmentState="BLOCKED"
         />

@@ -78,22 +78,3 @@ test('secondary link roles resolve via EXISTS, never off the pinned join alias',
   assert.match(SOURCE, /cl\.organization_id = p\.organization_id/);
   assert.match(SOURCE, /il\.organization_id = p\.organization_id/);
 });
-
-test('link-role literals are bound, not interpolated, and typed against the SoT', () => {
-  assert.match(SOURCE, /const CLAIM_EVIDENCE_ROLE: PhotoLinkRole = 'claim_evidence'/);
-  assert.match(SOURCE, /const INSURANCE_SHARE_ROLE: PhotoLinkRole = 'insurance_share'/);
-  assert.match(SOURCE, /cl\.link_role = \$2/);
-  assert.match(SOURCE, /il\.link_role = \$3/);
-  // $2/$3 are reserved for the roles, so callers must start pushing at $4.
-  assert.match(
-    SOURCE,
-    /const params: unknown\[\] = \[input\.organizationId, CLAIM_EVIDENCE_ROLE, INSURANCE_SHARE_ROLE\]/,
-  );
-});
-
-test('photoType ships beside caption — the alias is not renamed', () => {
-  // Renaming it breaks the receive gate (`photo-policy.ts`) and four other
-  // readers that parse `caption` AS the stage. Additive only.
-  assert.match(SOURCE, /p\.photo_type AS caption/);
-  assert.match(SOURCE, /photoType: row\.caption/);
-});

@@ -34,7 +34,6 @@
  *   `list` gets focus back (the exact row, even after J/K walked the record).
  *
  * @see docs/handoff/HANDOFF-desk-surface-law-2026-09-25.md
- * @see src/lib/design/desk-surface-law.ts — rule `record-plane`
  */
 
 import {

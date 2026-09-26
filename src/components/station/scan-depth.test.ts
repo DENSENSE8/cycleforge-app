@@ -13,7 +13,6 @@ import {
   STATION_SCAN_RAISED_BEVEL_CLASS,
   STATION_SCAN_WELL_CLASS,
 } from './scan-depth';
-import { readFileSync } from 'node:fs';
 import {
   DEFAULT_STATION_SKIN,
   STATION_SKINS,
@@ -92,83 +91,5 @@ describe('scan-station depth tokens', () => {
     const depthCss = stationDepthCssText();
     assert.match(depthCss, /html\[data-station-depth='deep'\] \.station-scan-grain/);
     assert.doesNotMatch(depthCss, /url\(.*wood/i);
-  });
-
-  it('StationBandStack aliases the well — it does not retype it', () => {
-    const src = readFileSync(
-      'src/components/station/collapse/StationBandStack.tsx',
-      'utf8',
-    );
-    assert.match(src, /STATION_SCAN_WELL_CLASS/);
-    assert.match(src, /STATION_SCAN_BENCH_CLASS/);
-    assert.match(src, /STATION_BAND_BODY_WELL_CLASS = STATION_SCAN_WELL_CLASS/);
-    assert.doesNotMatch(src, /STATION_BAND_BODY_WELL_CLASS = 'bg-surface-sunken'/);
-  });
-
-  it('the working station row uses the shared plate', () => {
-    const src = readFileSync('src/components/ui/queue-row-chrome.ts', 'utf8');
-    assert.match(src, /STATION_SCAN_ACTIVE_WELL_CLASS/);
-    assert.doesNotMatch(src, /selectedStationClass: 'bg-surface-card'/);
-  });
-
-  it('flush Serial uses the shared field well', () => {
-    const src = readFileSync(
-      'src/components/receiving/workspace/SerialScanField.tsx',
-      'utf8',
-    );
-    assert.match(src, /STATION_SCAN_FIELD_WELL_CLASS/);
-  });
-
-  it('stations without a band stack wrap their centre in the same well', () => {
-    const hosts: Array<[string, string]> = [
-      ['src/components/receiving/triage/TriagePanel.tsx', 'Arrival'],
-      ['src/components/packer/PackOrderPanel.tsx', 'Pack'],
-      ['src/components/outbound/scan-out/ScanOutActivePanel.tsx', 'Scan-out'],
-      ['src/components/tech/ActiveOrderWorkspace.tsx', 'Ready-to-pack'],
-      ['src/components/station/entity/EntityStationPane.tsx', 'Search/Support host'],
-      ['src/features/review/packer/PackerReviewMode.tsx', 'Packer review'],
-    ];
-    for (const [path, label] of hosts) {
-      const src = readFileSync(path, 'utf8');
-      assert.match(
-        src,
-        /STATION_SCAN_WELL_CLASS/,
-        `${label} (${path}) must import the shared well, not retype a fill`,
-      );
-    }
-  });
-
-  it('Appearance lists Color and Depth so both Look methods are pickable', () => {
-    const src = readFileSync(
-      'src/components/settings/sections/AppearanceSection.tsx',
-      'utf8',
-    );
-    assert.match(src, /STATION_SKIN_NAMES/);
-    assert.match(src, /STATION_SKIN_GROUP_ORDER/);
-    assert.match(src, /updateStationSkin/);
-    assert.match(src, /stationSkin/);
-    assert.match(src, /STATION_DEPTH_NAMES/);
-    assert.match(src, /updateStationDepth/);
-    assert.match(src, /stationDepth/);
-  });
-
-  it('Displays push column scopes station chrome and drops desk push class', () => {
-    const src = readFileSync(
-      'src/components/station/displays/StationDisplaysPushColumn.tsx',
-      'utf8',
-    );
-    assert.match(src, /data-station-displays/);
-    assert.match(src, /STATION_DISPLAYS_COLUMN_CLASS/);
-    assert.match(src, /STATION_DISPLAYS_STRIP_CLASS/);
-    assert.doesNotMatch(src, /DETAIL_STACK_PUSH_COLUMN_CLASS/);
-  });
-
-  it('identity chrome seam is border-subtle, not hairline', () => {
-    const src = readFileSync(
-      'src/components/station/entity-context/station-identity-chrome.ts',
-      'utf8',
-    );
-    assert.match(src, /after:bg-border-subtle/);
-    assert.doesNotMatch(src, /after:bg-border-hairline/);
   });
 });

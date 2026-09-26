@@ -30,9 +30,6 @@
  * `--serial` restores one-at-a-time streaming output for debugging a gate;
  * `--jobs=N` overrides the pool size.
  *
- * The one ordering coupling is already handled upstream: run-unit-tests.mjs
- * excludes the jscpd integration driver (which writes probe files into src/ and
- * shells the real gate) precisely so it cannot race the Clone-baseline gate.
  * A gate that ever WRITES to the tree must be added to the serial set below.
  */
 import { spawn, spawnSync } from 'node:child_process';

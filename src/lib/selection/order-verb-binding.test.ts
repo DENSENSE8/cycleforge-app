@@ -67,10 +67,7 @@ const PACKED_STAGED: OutboundVerbRow = {
  * The scan-out verb, exactly as the orders catalog declares it.
  *
  * `useDashboardBulkSelection` is a React hook wired to react-query, auth and
- * the router, so it is not mounted here; what IS pinned mechanically is that
- * the hook declares this verb ONCE with these two properties — see
- * `table-engine-law.test.ts`, which greps the catalog module for exactly the
- * `writesField` / `direction` pair below. This test owns the behaviour.
+ * the router, so it is not mounted here. This test owns the behaviour.
  */
 const scanOut: SelectionAction<OutboundVerbRow> = {
   key: 'scan-out',

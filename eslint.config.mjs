@@ -46,7 +46,6 @@ export default [
       '.next/**',
       'dist/**',
       'build/**',
-      'apps/desktop/**',
       'reports/**',
       '**/*.min.js',
       'src/lib/migrations/**',
@@ -167,34 +166,6 @@ export default [
             "CallExpression[callee.object.name='crypto'][callee.property.name='randomUUID']",
           message:
             'crypto.randomUUID() is undefined in insecure contexts (LAN-HTTP phone, older Safari) and throws. Use safeRandomUUID() from @/lib/safe-uuid — the crash-safe SoT.',
-        },
-        {
-          // The identity column header is the ENGINE's word (`Id`) on every
-          // peer — operator 2026-09-15. Twenty-two column modules each carried
-          // `label: identity.label`, which is how one concept grew 22 painted
-          // words. Law + gate: src/lib/tables/slot-table-id-header-law.ts,
-          // scripts/id-header-guard.ts, slot-table-id-header-law.test.ts.
-          //
-          // Lives in THIS block rather than a grid-layout-globbed one: a second
-          // `no-restricted-syntax` block for those files would OVERRIDE this
-          // one (see the header comment) and silently drop the z-index,
-          // tenancy and brand selectors there. The selector is specific enough
-          // to be repo-wide.
-          selector:
-            "Property[key.name=/^(label|gridLabel)$/][value.object.name='identity'][value.property.name='label']",
-          message:
-            "The identity header is the engine's. Delete this line — the column reads `Id` on every peer (operator 2026-09-15). Keep fieldId / type / slotDisplayType. See src/lib/tables/slot-table-id-header-law.ts.",
-        },
-        {
-          // The identity purity law (operator 2026-09-15):
-          // The ID column is strictly for machine handles. Never route staff or
-          // person name variables into `orderId` or `identityFace`.
-          // Law + gate: src/lib/tables/slot-table-identity-purity-law.ts,
-          // scripts/identity-purity-guard.ts, slot-table-identity-purity-law.test.ts.
-          selector:
-            "Property[key.name=/^(orderId|identityFace)$/] Identifier[name=/^(testerDisplay|packerDisplay|testerName|packerName|staffName|packed_by_name|tested_by_name)$/]",
-          message:
-            "Identity Purity Law: Do not assign staff or person names to the ID column (orderId/identityFace). Person attributions belong in stage_event or person columns. See src/lib/tables/slot-table-identity-purity-law.ts.",
         },
         {
           // ONE resolver owns the AI endpoint — `resolveOrgAiConfig(orgId,

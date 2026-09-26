@@ -182,9 +182,8 @@ describe('the mounted part-compatibility compound model', () => {
     const label = (key: string) =>
       PART_COMPATIBILITY_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-id-header-law.ts`); this desk used to print
+    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
     // "SKU", which is now the Fields-picker word and the cell's hover word.
-    // Pinned by slot-table-id-header-law.test.ts, not re-pinned here.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Part');
     assert.equal(label('dates'), 'Linked');

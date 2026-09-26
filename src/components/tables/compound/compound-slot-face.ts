@@ -6,8 +6,8 @@
  *
  * The inventory-events port (2026-09-04) shipped a per-family cell map so its
  * ledger could paint a relative age, a mono event tag and a copyable code.
- * Invariant 1 of `table-engine-law.ts` forbids exactly that — "a family
- * contributes an adapter and a column array, never a cell" — and invariant 3
+ * The one-engine rule forbids exactly that — "a family
+ * contributes an adapter and a column array, never a cell" — and it
  * names the remedy: *the engine gains the capability for everyone, or the mount
  * does without.* None of those three faces is about inventory events. A `date`
  * fact reads as an age on every family; a `tag` fact is a short enum everywhere;

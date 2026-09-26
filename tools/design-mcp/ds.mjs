@@ -28,16 +28,9 @@ function usage(code = 1) {
   node tools/design-mcp/ds.mjs contract <intent> [--limit N]
   node tools/design-mcp/ds.mjs tokens <axis> [--filter substring]
   node tools/design-mcp/ds.mjs critique <repo-relative-file>
-  node tools/design-mcp/ds.mjs data-table
-  node tools/design-mcp/ds.mjs industrial-translation
-  node tools/design-mcp/ds.mjs outbound-workflow
   node tools/design-mcp/ds.mjs boundary <repo-relative-file>
   node tools/design-mcp/ds.mjs nav-names
-  node tools/design-mcp/ds.mjs mobile-first
-  node tools/design-mcp/ds.mjs sku-identity
-  node tools/design-mcp/ds.mjs mobile-ground
-  node tools/design-mcp/ds.mjs detail-hub [repo-relative-file]
-  node tools/design-mcp/ds.mjs identity-purity`)
+  node tools/design-mcp/ds.mjs sku-identity`)
   process.exit(code)
 }
 
@@ -167,53 +160,6 @@ if (cmd === 'critique') {
   process.exit(0)
 }
 
-if (cmd === 'data-table') {
-  const res = await rpcCall('ds_data_table', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-
-if (cmd === 'industrial-translation') {
-  const res = await rpcCall('ds_industrial_translation', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-
-if (cmd === 'outbound-workflow') {
-  const res = await rpcCall('ds_outbound_workflow', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try { ok = JSON.parse(text)?.ok !== false } catch { /* MCP text remains usable */ }
-  process.exit(ok ? 0 : 1)
-}
-
 if (cmd === 'boundary') {
   const file_path = argv[1]
   if (!file_path) usage()
@@ -246,76 +192,8 @@ if (cmd === 'nav-names') {
   process.exit(ok ? 0 : 1)
 }
 
-if (cmd === 'mobile-first') {
-  const res = await rpcCall('ds_mobile_first', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-
 if (cmd === 'sku-identity') {
   const res = await rpcCall('ds_sku_identity', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-
-if (cmd === 'mobile-ground') {
-  const res = await rpcCall('ds_mobile_ground', {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-if (cmd === 'detail-hub') {
-  const file_path = argv[1]
-  const res = await rpcCall('ds_detail_hub', file_path ? { file_path } : {})
-  const text = extractText(res)
-  if (res.result?.isError) {
-    console.error(text)
-    process.exit(2)
-  }
-  console.log(text)
-  let ok = true
-  try {
-    ok = JSON.parse(text)?.ok !== false
-  } catch {
-    ok = true
-  }
-  process.exit(ok ? 0 : 1)
-}
-
-if (cmd === 'identity-purity') {
-  const res = await rpcCall('ds_identity_purity', {})
   const text = extractText(res)
   if (res.result?.isError) {
     console.error(text)

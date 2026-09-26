@@ -37,7 +37,6 @@ tools/design-mcp/design-mcp.profile.json
 .gemini
 .obsidian
 .impeccable
-.cycle_forge_ops
 
 # Env and local-only files
 .env
@@ -45,5 +44,4 @@ tools/design-mcp/design-mcp.profile.json
 .env.*.local
 
 # Electron/desktop extras not needed for web deploy
-/electron
 server/storage

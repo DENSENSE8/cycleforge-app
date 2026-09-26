@@ -163,7 +163,6 @@ function SectionTriggerFace({
   label,
   icon: SectionIcon,
   open,
-  rowCount,
   ownsCurrent,
   bodyId,
   onToggle,
@@ -173,7 +172,6 @@ function SectionTriggerFace({
   label: string;
   icon: SidebarIconComponent;
   open: boolean;
-  rowCount: number;
   ownsCurrent: boolean;
   bodyId: string;
   onToggle: () => void;
@@ -207,10 +205,9 @@ function SectionTriggerFace({
         <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={label}>
           {label}
         </span>
+        {/* No count on a lane (operator 2026-09-26, Vercel sidebar law): the
+            nav names places; numbers live in the page. */}
         <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          {open ? null : (
-            <span className="tabular-nums text-role-micro text-text-default">{rowCount}</span>
-          )}
           <ChevronDown
             aria-hidden
             className={cn(
@@ -231,7 +228,6 @@ function SortableSectionTrigger({
   label,
   icon,
   open,
-  rowCount,
   ownsCurrent,
   bodyId,
   onToggle,
@@ -240,7 +236,6 @@ function SortableSectionTrigger({
   label: string;
   icon: SidebarIconComponent;
   open: boolean;
-  rowCount: number;
   ownsCurrent: boolean;
   bodyId: string;
   onToggle: () => void;
@@ -267,7 +262,6 @@ function SortableSectionTrigger({
         label={label}
         icon={icon}
         open={open}
-        rowCount={rowCount}
         ownsCurrent={ownsCurrent}
         bodyId={bodyId}
         onToggle={onToggle}
@@ -444,7 +438,6 @@ export function SidebarNavList({
           label={opts.label}
           icon={opts.icon}
           open={open}
-          rowCount={opts.rowCount}
           ownsCurrent={opts.ownsCurrent}
           bodyId={bodyId}
           onToggle={() => setSectionOpen(opts.sectionKey, !open)}

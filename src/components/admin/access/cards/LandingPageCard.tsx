@@ -17,8 +17,6 @@ import { cn } from '@/utils/_cn';
 const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '/m/work',     label: 'Orders (hub)' },
   { value: '/m/scan',      label: 'Scan' },
-  { value: '/m/receive',   label: 'Receive (door scan)' },
-  { value: '/m/receiving', label: 'Receiving' },
   { value: '/m/pick',      label: 'Pick' },
 ];
 
@@ -29,7 +27,7 @@ const DESKTOP_ROLE_DEFAULTS: Record<string, string> = {
   viewer: '/dashboard', readonly: '/dashboard',
 };
 const MOBILE_ROLE_DEFAULTS: Record<string, string> = {
-  receiver: '/m/receiving', receiving: '/m/receiving', packer: '/m/pick',
+  packer: '/m/pick',
 };
 
 interface LandingPageCardProps {

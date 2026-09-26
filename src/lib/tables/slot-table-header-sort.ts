@@ -8,7 +8,6 @@
  * it does not offer click-to-sort. The toolbar sort dropdown lists DATA facts
  * (`queueColumnSortOptions`) so Pick / Status are selectable rows.
  *
- * Eval: `SLOT_TABLE_PAINT_LAW.headerSort` + tripwire in `slot-table-cohort.test.ts`.
  * Graph KEEP: `engine:slot-table-header-sort` + `engine:queueSortForColumnKey`.
  */
 

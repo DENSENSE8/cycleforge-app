@@ -5,7 +5,7 @@ import { mobileJobReturn, withJobReturn } from '@/lib/mobile/nav-trail';
 import { useShipmentRecord } from '@/lib/shipments/shipment-record-client';
 
 /** Where a package hub's Back lands when it was not opened from a job. */
-export const SHIPMENT_HUB_PARENT = '/m/shipping/history';
+export const SHIPMENT_HUB_PARENT = '/m/scan';
 
 /** `/m/shipping/shipments/<id>` — the package hub for one `shipping_tracking_numbers.id`. */
 export function shipmentHubHref(shipmentId: number): string {

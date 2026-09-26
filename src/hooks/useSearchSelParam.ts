@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
   SEARCH_SEL_PARAM,
@@ -14,6 +14,8 @@ import {
   parseSearchSel,
   type SearchSelection,
 } from '@/lib/search/search-selection';
+
+const FIND_PATH = '/search';
 
 function searchSelEquals(a: SearchSelection | null, b: SearchSelection | null): boolean {
   if (a === null && b === null) return true;
@@ -26,10 +28,7 @@ export function useSearchSelParam(): {
   setSel: (next: SearchSelection | null) => void;
 } {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const findPath =
-    pathname === '/m/search' || pathname.startsWith('/m/search/') ? '/m/search' : '/search';
 
   const urlSel = useMemo(
     () => parseSearchSel(searchParams.get(SEARCH_SEL_PARAM)),
@@ -41,9 +40,9 @@ export function useSearchSelParam(): {
       const params = new URLSearchParams(searchParams.toString());
       mutate(params);
       const qs = params.toString();
-      router.replace(qs ? `${findPath}?${qs}` : findPath, { scroll: false });
+      router.replace(qs ? `${FIND_PATH}?${qs}` : FIND_PATH, { scroll: false });
     },
-    [findPath, router, searchParams],
+    [router, searchParams],
   );
 
   const write = useCallback((params: URLSearchParams, next: SearchSelection | null) => {

@@ -20,8 +20,8 @@
  * - **Body** is the step ledger: one row per step, each carrying its own
  *   measured number. This is the trust surface — "214 rows read", "35 orders",
  *   "0 orders" — not a spinner and not a percentage.
- * - **It is NOT a table.** No `*GridRow`, no column catalog, no second grid
- *   (`slot-table-cohort.test.ts` fails the build for either). The desk has one
+ * - **It is NOT a table.** No `*GridRow`, no column catalog, no second grid.
+ *   The desk has one
  *   table; this is a status list that stands in front of it.
  * - **One floor, and it is white.** `bg-surface-card` on the section and
  *   nothing else — the bands carry hairlines, never a second wash. This shipped

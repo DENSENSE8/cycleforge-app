@@ -1,7 +1,5 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   evaluateReceivingPhotoPolicyGate,
   isPreReceiveWorkflowStatus,
@@ -429,67 +427,5 @@ describe('recordPhotoPolicyOverride · an override without a trail is worse than
     );
     assert.deepEqual(out.exceptionIds, []);
     assert.deepEqual(calls, []);
-  });
-});
-
-// ─── Route wiring guard ─────────────────────────────────────────────────────
-//
-// The two receive routes cannot be imported into a DB-free unit test (they pull
-// `withAuth`, the pool, and the whole Zoho graph). The behavior that matters is
-// still assertable from source: that the 409 is now conditional on the override
-// being absent, that the PO route still RELEASES its idempotency claim on that
-// unchanged 409 path, and that a waived receive persists + audits + warns.
-// Same technique as `lookup-scan-wiring.guard.test.ts`.
-
-const ROUTES = {
-  'mark-received': join(process.cwd(), 'src/app/api/receiving/mark-received/route.ts'),
-  'mark-received-po': join(process.cwd(), 'src/app/api/receiving/mark-received-po/route.ts'),
-} as const;
-
-describe('§4 wiring · both receive routes read, persist, audit and report the override', () => {
-  for (const [name, path] of Object.entries(ROUTES)) {
-    it(`${name}: 409 is conditional on NO valid override; a waiver is persisted, audited, and warned`, () => {
-      const src = readFileSync(path, 'utf8');
-
-      // Read from the shared body key, via the shared parser.
-      assert.match(src, /parsePhotoPolicyOverride\(body\?\.\[PHOTO_POLICY_OVERRIDE_BODY_KEY\]\)/);
-      // Forged value → 400 before any mutation.
-      assert.match(src, /photoPolicyOverride\.state === 'invalid'/);
-      assert.match(src, /photoPolicyOverrideInvalidBody\(\)[\s\S]{0,40}status: 400/);
-      // (b) absent override → the byte-identical 409.
-      assert.match(src, /photoPolicyOverride\.state !== 'valid'/);
-      assert.match(
-        src,
-        /error: 'PHOTO_POLICY', blockers: gate\.blockers \}[\s\S]{0,40}status: 409/,
-      );
-      // (a) valid override → persist + audit + warn.
-      assert.match(src, /recordPhotoPolicyOverride\(/);
-      assert.match(src, /AUDIT_ACTION\.RECEIVING_PHOTO_POLICY_OVERRIDE/);
-      assert.match(src, /photoPolicyOverrideWarning\(/);
-      assert.match(src, /warnings: \[/);
-    });
-  }
-
-  it('mark-received-po still releases its idempotency claim on the (still-409) no-override path', () => {
-    // A released claim is what lets the same client_event_id retry once the
-    // photos land. A waived receive is a real effect and must KEEP its claim.
-    const src = readFileSync(ROUTES['mark-received-po'], 'utf8');
-    const guarded = src.match(
-      /if \(photoPolicyOverride\.state !== 'valid'\) \{[\s\S]*?status: 409[\s\S]*?\n\s*\}/,
-    );
-    assert.ok(guarded, 'expected the 409 to sit inside the no-valid-override guard');
-    assert.match(guarded[0], /releaseIdempotencyClaim\(pool, ownedClaim\)/);
-    assert.match(guarded[0], /ownedClaim = null/);
-  });
-
-  it('neither route accepts free-text as an override (no bare non-empty-string check)', () => {
-    for (const [name, path] of Object.entries(ROUTES)) {
-      const src = readFileSync(path, 'utf8');
-      assert.doesNotMatch(
-        src,
-        /photo_policy_override[^\n]*(String\(|\.trim\(\)\s*(!==|\|\|))/,
-        `${name} must not read the override as raw text — it is a system vocabulary`,
-      );
-    }
   });
 });

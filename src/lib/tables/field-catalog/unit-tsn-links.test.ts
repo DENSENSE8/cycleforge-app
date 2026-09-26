@@ -134,9 +134,8 @@ describe('the mounted unit-tsn-links compound model', () => {
     const label = (key: string) =>
       UNIT_TSN_LINKS_COMPOUND_COLUMNS.find((c) => c.key === key)?.gridLabel;
     // The identity header is the ENGINE's `Id` on every peer since
-    // 2026-09-15 (`slot-table-id-header-law.ts`); this desk used to print
+    // 2026-09-15 (`slot-table-family.ts`); this desk used to print
     // "TSN id", which is now the Fields-picker word and the cell's hover word.
-    // Pinned by slot-table-id-header-law.test.ts, not re-pinned here.
     assert.equal(label('fulfillment'), 'Id');
     assert.equal(label('item'), 'Station');
     assert.equal(label('dates'), 'When');

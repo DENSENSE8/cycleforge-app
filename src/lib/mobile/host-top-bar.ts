@@ -34,13 +34,11 @@ export const OWN_TOP_BAR_PREFIXES = [
   // The ticket thread owns MobileDetailTopBar — the back chevron returns to
   // the checklist row that sent the operator here.
   '/m/t/',
-  '/m/b/',
   // The scanned location record owns MobileDetailTopBar (X back to /m/scan).
   '/m/loc/',
   // The scanned FBA label record owns MobileDetailTopBar (X back to /m/scan).
   '/m/fnsku/',
   '/m/pick',
-  '/m/print',
   '/m/id/',
   // The order hub and its doors own MobileDetailTopBar (X back to the job);
   // order import (`/m/orders/sync`) owns an X + title bar. A host header above
@@ -48,16 +46,12 @@ export const OWN_TOP_BAR_PREFIXES = [
   '/m/orders/',
   // Exception records own MobileDetailTopBar; the queue keeps the host bar.
   '/m/exceptions/',
-  // SKU exception records and their doors own MobileDetailTopBar; the on-hold
-  // queue keeps the host bar. Without this the record stacked two headers.
-  '/m/on-hold/',
   // Pairing a location (search, then the count keypad) owns its back bar
   // (operator 2026-09-25: "the back button would cover the header … two
   // headers, the back button and the search bar"). This reverses the
   // 2026-09-15 host-header ruling: the seat now rides the pair bar, once.
   '/m/pair/',
-  // The package hub (one tracking number) and its doors own MobileDetailTopBar;
-  // the Shipped history list above it keeps the host bar.
+  // The package hub (one tracking number) and its doors own MobileDetailTopBar.
   '/m/shipping/shipments/',
   // The QC line pick (landed from the scan kernel armed for QC) owns its bar.
   '/m/qc/',

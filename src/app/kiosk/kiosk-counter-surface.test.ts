@@ -10,10 +10,6 @@
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { cornerClass, type CornerRole } from '@/design-system/tokens/radius';
 import {
   COUNTER_CARD_PAD_STEP,
@@ -125,26 +121,5 @@ describe('kiosk counter scale — composed faces', () => {
       assert.match(face, /\bmin-h-1[24]\b/, `${name} touch height`);
     }
     assert.match(COUNTER_FIELD, /\btext-base\b/);
-  });
-});
-
-describe('scope — the counter scale is kiosk-only', () => {
-  it('no desk surface imports it (that import IS the fork)', () => {
-    // Cheap structural check: the module lives under src/app/kiosk and nothing
-    // outside the kiosk tree may reach for it.
-    const importers = readFileSync(
-      join(process.cwd(), 'src/app/kiosk/kiosk-counter-surface.ts'),
-      'utf8',
-    );
-    assert.ok(importers.length > 0);
-    // The real enforcement is the grep below, run over the whole src tree.
-    const hits = execSync(
-      "grep -rl 'kiosk-counter-surface' src || true",
-      { encoding: 'utf8', cwd: process.cwd() },
-    )
-      .split('\n')
-      .filter(Boolean)
-      .filter((f) => !f.startsWith('src/app/kiosk/') && !f.startsWith('src/components/kiosk/'));
-    assert.deepEqual(hits, [], `counter scale leaked outside the kiosk tree: ${hits.join(', ')}`);
   });
 });

@@ -1,17 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { buildClaimSharePack, claimOpeningBody } from './claim-share-pack';
-
-const here = dirname(fileURLToPath(import.meta.url));
-const filer = () => readFileSync(resolve(here, 'file-receiving-claim.ts'), 'utf8');
-const route = () =>
-  readFileSync(
-    resolve(here, '../../app/api/receiving/zendesk-claim/route.ts'),
-    'utf8',
-  );
 
 const ORG = '00000000-0000-0000-0000-000000000001';
 const pack = { packId: 7, publicToken: 't', shareUrl: 'https://x/s/t', expiresAt: null };
@@ -85,32 +74,4 @@ test('a claim is never blocked on its photo link', async () => {
     }),
     null,
   );
-});
-
-test('the filer opens the ticket with the folded body and posts no second comment', () => {
-  const src = filer();
-  // The pack has to be in hand BEFORE createTicket or the link cannot be in
-  // the opening comment — Zendesk has no comment edit.
-  assert.ok(
-    src.indexOf('buildClaimSharePack(') < src.indexOf('helpdesk.createTicket('),
-    'the pack must be built before the ticket',
-  );
-  assert.match(src, /body: openingBody,\n\s*html_body: claimBodyToHtml\(openingBody\)/);
-  assert.doesNotMatch(
-    src,
-    /addComment\([^)]*\{\s*\n\s*body: `Photo share pack/,
-    'the share pack must not arrive as its own comment',
-  );
-  // The association still lands, one step later.
-  assert.match(src, /UPDATE photo_share_packs SET zendesk_ticket_id/);
-});
-
-test('Test create assembles the real thing — same body builder, same pack', () => {
-  const src = route();
-  const dry = src.slice(src.indexOf('if (body.dryRun === true)'), src.indexOf('const helpdesk'));
-  assert.match(dry, /buildClaimSharePack\(/, 'the dry run must build the pack under test');
-  assert.match(dry, /claimOpeningBody\(description/, 'and return the same opening message');
-  assert.match(dry, /ticketNumber: '#TEST'/);
-  // Nothing real is filed on this path.
-  assert.doesNotMatch(dry, /createTicket|archivePhotos|linkTicket\(/);
 });

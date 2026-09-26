@@ -35,6 +35,3 @@ export {
   IdentificationGrammarError,
   type CompiledIdentificationMethod,
 } from './compile-grammar';
-// Studio author + methods-store talk to tenantQuery / generateText — import
-// those modules from API routes only. Do not re-export them here: `/m/id/*`
-// client pages consume this barrel.

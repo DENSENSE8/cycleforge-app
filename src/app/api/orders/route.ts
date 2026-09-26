@@ -31,6 +31,8 @@ import {
 import { withAuth } from '@/lib/auth/withAuth';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
+import { readDeskViewFilters } from '@/lib/orders/desk-view-filters';
+import { sqlOrderAwaitingPick, sqlOrderHasPoPairedShortage } from '@/lib/orders/desk-view-sql';
 
 let replenishmentSchemaCheck:
   | { value: boolean; checkedAt: number }
@@ -150,9 +152,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
      * Union of pre-pack + packed-staged: no SHIP_CONFIRM / carrier leave.
      * Labels (awaitingOnly) and Scan-out history stay on their own routes.
      */
-    const inWarehouse        = searchParams.get('inWarehouse') === 'true';
+    /**
+     * Desk-sidebar lenses (`@/lib/orders/desk-view-filters`). Each IMPLIES its
+     * base scope so the param alone answers the view: `queue=pick` is a
+     * refinement of the in-warehouse To-ship queue, `pair=po` of the blocked
+     * (Shortage) queue.
+     */
+    const { pair: pairFilter, queue: queueFilter } = readDeskViewFilters(searchParams);
+    const pickQueue          = queueFilter === 'pick';
+    const poPaired           = pairFilter === 'po';
+    const inWarehouse        = searchParams.get('inWarehouse') === 'true' || pickQueue;
     /** blockedOnly=true → every unshipped out-of-stock order, including no-label/caged rows. */
-    const blockedOnly         = searchParams.get('blockedOnly') === 'true';
+    const blockedOnly         = searchParams.get('blockedOnly') === 'true' || poPaired;
     /** stagedOnly=true → packed (PACK event) but not yet dock scan-out (no SHIP_CONFIRM) */
     const stagedOnly         = searchParams.get('stagedOnly') === 'true';
     /** exceptionsOnly=true → only orders whose shipment has an exception or has been stalled (no carrier scan in >stallHours, default 72h) */
@@ -226,6 +237,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       stage:              stageFilter,
       inWarehouse,
       blockedOnly,
+      pairFilter:         pairFilter ?? '',
+      queueFilter:        queueFilter ?? '',
       membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
       // Payloads cached before the price projection existed have no price_*
@@ -930,6 +943,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
+    // Shortage desk · PO paired: an open shortage line earmarked onto a PO or
+    // receiving line (same fragment the desk-counts `po` badge reads). No
+    // shortage tables ⇒ nothing can be paired.
+    if (poPaired) {
+      sql += hasShortage ? ` AND ${sqlOrderHasPoPairedShortage('o')}` : ` AND false`;
+    }
+
+    // To-ship · Pick list: not packed, not every allocated unit picked (same
+    // fragment the desk-counts `pick` badge reads).
+    if (pickQueue) {
+      sql += ` AND ${sqlOrderAwaitingPick('o')}`;
+    }
+
     if (stagedOnly) {
       sql += ` AND EXISTS (
         SELECT 1 FROM station_activity_logs sal_pack
@@ -1160,7 +1186,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Keyset cursor: fulfillment is `o.id DESC`; everything else is
     // `deadline_at ASC NULLS LAST, id ASC`.
     if (cursor) {
-      if (fulfillmentScope) {
+      if (fulfillmentScope || pickQueue) {
         sql += ` AND o.id < $${paramCount++}`;
         params.push(cursor.id);
       } else if (cursor.d != null) {
@@ -1177,7 +1203,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    sql += fulfillmentScope
+    // Pick list is newest-synced first: `orders.created_at` defaults to the
+    // insert time, so `id DESC` is that order and keeps the id-only cursor.
+    sql += fulfillmentScope || pickQueue
       ? ` ORDER BY o.id DESC`
       : ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
 

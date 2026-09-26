@@ -249,7 +249,6 @@ const nextConfig: NextConfig = {
         'drizzle-orm',
         'ebay-api',
         'google-auth-library',
-        'googleapis-common',
         'nodemailer',
         'pdfjs-dist',
         'pg',

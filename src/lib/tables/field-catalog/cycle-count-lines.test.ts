@@ -231,7 +231,7 @@ describe('cycle-count-lines materialization', () => {
     const identity = CYCLECOUNTLINES_COMPOUND_COLUMNS.find((c) => c.key === 'fulfillment');
     assert.equal(identity?.fieldId, 'cycle-count-lines.bin');
     // The identity header is the ENGINE's `Id` on every peer since 2026-09-15
-    // (`slot-table-id-header-law.ts`). "Bin" is now the Fields-picker row
+    // (`slot-table-family.ts`). "Bin" is now the Fields-picker row
     // and the cell's hover word, not the column header.
     assert.equal(identity?.label, 'Id');
     assert.equal(identity?.type, 'id');

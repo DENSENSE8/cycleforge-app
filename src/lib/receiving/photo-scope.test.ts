@@ -187,7 +187,7 @@ test('mobileCaptureHrefForRequest routes carton stages to /m/r/{id}/photos', () 
       poRef: null,
       requestId: null,
     }),
-    '/m/r/9/photos?stage=arrival_package&guided=1&back=%2Fm%2Ftriage%3Frid%3D9%26step%3Dplatform',
+    '/m/r/9/photos?stage=arrival_package&guided=1&back=%2Fm%2Fscan%3Frid%3D9%26step%3Dplatform',
   );
   assert.equal(
     mobileCaptureHrefForRequest({
@@ -229,8 +229,8 @@ test('mobileCaptureHrefForRequest — item without a PO degrades to the carton p
 
 test('mobileArrivalGuidedPhotosHref always stamps arrival_package + guided', () => {
   assert.equal(
-    mobileArrivalGuidedPhotosHref(42, { back: '/m/triage', title: '1Z999' }),
-    '/m/r/42/photos?stage=arrival_package&guided=1&back=%2Fm%2Ftriage&title=1Z999',
+    mobileArrivalGuidedPhotosHref(42, { back: '/m/scan', title: '1Z999' }),
+    '/m/r/42/photos?stage=arrival_package&guided=1&back=%2Fm%2Fscan&title=1Z999',
   );
   assert.equal(
     mobileArrivalGuidedPhotosHref(7),

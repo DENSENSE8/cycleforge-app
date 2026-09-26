@@ -41,33 +41,15 @@ export function getMobileAppTitle(
   // word on the phone.
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Daily';
   if (pathname === '/m/settings' || pathname.startsWith('/m/settings/')) return 'Settings';
-  // `/m/tasks` retired 2026-09-23 — it redirects to Daily, which owns the one
-  // task list, so the bar has no second word for it.
   if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Order management';
   if (pathname === '/m/orders/new' || pathname.startsWith('/m/orders/new/')) return 'Add order';
   if (pathname === '/m/orders' || pathname.startsWith('/m/orders/')) return 'Order management';
-  if (pathname === '/m/shipping/history' || pathname.startsWith('/m/shipping/history/')) return 'Shipped history';
-  if (pathname === '/m/shipping/stage' || pathname.startsWith('/m/shipping/stage/')) return 'Stage at rack';
-  if (pathname === '/m/shipping/scan-out' || pathname.startsWith('/m/shipping/scan-out/')) return 'Carrier scan-out';
-  if (pathname === '/m/shipping' || pathname.startsWith('/m/shipping/')) return 'Shipping & packing';
   if (pathname === '/m/exceptions' || pathname.startsWith('/m/exceptions/')) return 'Exceptions';
-  if (pathname === '/m/search' || pathname.startsWith('/m/search/')) return 'Find';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
-  if (pathname === '/m/print' || pathname.startsWith('/m/print/')) return 'Print';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
   if (pathname === '/m/id/pick' || pathname.startsWith('/m/id/pick/')) return 'Picks';
   if (pathname === '/m/id' || pathname.startsWith('/m/id/')) return 'Scan out';
-  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Scan';
-  if (pathname === '/m/identify' || pathname.startsWith('/m/identify/')) return 'Identify';
-  // `/m/receive` is the deprecated alias that redirects to the scan kernel; it
-  // keeps a title only so the shell has one during the redirect frame.
-  if (pathname === '/m/receive' || pathname.startsWith('/m/receive/')) return 'Scan';
-  // Inbound on the phone is the photo feed and nothing else (operator
-  // 2026-09-15: *"remove the inbound walk-in, consult, repair and unbox — just
-  // keep the photo feed only"*). `/m/unbox` and the `?mode=` sub-surfaces are
-  // gone, so no branch reads a mode here.
-  if (pathname === '/m/receiving' || pathname.startsWith('/m/receiving/')) return 'Photo feed';
   const pageId = getSidebarNavPageId(pathname, searchParams);
   const nav = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
   return nav?.label || PRODUCT_NAME;

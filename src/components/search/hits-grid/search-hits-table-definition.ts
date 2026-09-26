@@ -24,7 +24,7 @@ import {
 
 /**
  * A READ plane. `/search` is a FIND surface — "query is the object, the hit is
- * a confirmation, work happens on the handoff" (`search-find-law.ts`) — so
+ * a confirmation, work happens on the handoff" — so
  * there is no verb here and `multiSelect` stays off: the gutter checkbox would
  * be a control with no verb behind it, and a find plane that could mutate six
  * entity families at once is the second engine this law exists to refuse.
@@ -95,7 +95,7 @@ export const SEARCH_HITS_TABLE_BINDING: TableSurfaceBinding<
    * the honest arm rather than a panel stacked over a table that is no longer
    * on screen.
    *
-   * This is `READ_PLANE_IS_A_MOUNT`'s first sanctioned action verbatim: hand
+   * This is a read plane's first sanctioned action verbatim: hand
    * off to the desk that owns the family. The second (invoke a declared verb)
    * has nothing to invoke here, because a find plane declares none.
    */

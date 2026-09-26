@@ -27,7 +27,6 @@ import {
 } from '@/design-system/primitives';
 import { CONVERSATION_HEADER_ACTION_GLYPH } from '@/design-system/primitives/conversation-chrome';
 import type { SupportContextTicket } from '@/lib/support/context-types';
-import { openHelpdeskTicketUrl } from '@/lib/desktop/desktop-host';
 import { SupportTicketIdentity } from './SupportTicketIdentity';
 
 export function SupportTicketPaneHeader({
@@ -73,7 +72,7 @@ export function SupportTicketPaneHeader({
               label={openLabel}
               icon={<ExternalLink className={CONVERSATION_HEADER_ACTION_GLYPH} aria-hidden />}
               onClick={() => {
-                void openHelpdeskTicketUrl(openUrl, { title: openLabel });
+                window.open(openUrl, '_blank', 'noopener,noreferrer');
               }}
               data-testid="support-ticket-open-helpdesk"
             />

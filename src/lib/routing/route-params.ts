@@ -241,10 +241,10 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   c3: 'Compare pane-3 recipe; shares its owner set with `clayout`.',
   composerMode:
     'Station composer destination (unbox|ticket). Same question on Unbox, Arrival, and Testing — independent scan stations that cannot both be current. Legacy `label` aliases to unbox.',
-  sel: 'FIND confirmation identity (`order:123`). Same question on `/search` and `/m/search` — one case-file, two pathnames.',
-  etype: 'FIND browse entity-type refine. Same question on `/search` and `/m/search`.',
-  hstat: 'FIND browse status refine. Same question on `/search` and `/m/search`.',
-  chan: 'FIND browse channel refine. Same question on `/search` and `/m/search`.',
+  sel: 'FIND confirmation identity (`order:123`).',
+  etype: 'FIND browse entity-type refine.',
+  hstat: 'FIND browse status refine.',
+  chan: 'FIND browse channel refine.',
 };
 
 /** One route's param contract. */

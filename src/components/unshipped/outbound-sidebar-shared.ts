@@ -1,58 +1,8 @@
 /**
- * Shared constants for the Outbound dashboard sidebar (filter map).
- * Saved-view param keys must match the board table menus so a view saved in
- * either place applies the same URL subset.
+ * Outbound saved-view contract — one resolver for every surface that lists or
+ * saves an Outbound view (the ledger's Views menu and the master-nav desk
+ * section), so a view saved in either place applies the same URL subset.
  */
-
-/**
- * Facet ownership on the To-ship / Outbound desk — the deduplication contract.
- *
- * Every triage facet has exactly ONE surface that owns it, so the left Focus
- * rail can never restate a lifecycle tab (Band 1) or a KPI attention tile
- * (Band 2). This is the SoT the rail builds its rows from, and the one the
- * guard (`outbound-rail-dedup.guard.test.ts`) reads to prove no drift.
- *
- *   'tabs' — lifecycle stages, owned by the Band-1 tab band:
- *            `unshipped` (Pending) · `tested` · `packed` · `shipped`, and the
- *            `PENDING` / `TESTED` fulfillment lanes those tabs resolve to.
- *   'kpi'  — attention facets, owned by the Band-2 `OutboundKpiStrip`:
- *            `attention` (Urgent) · `BLOCKED` (Out of stock).
- *   'rail' — the left Focus rail's own job: `mine` (personal scope).
- *
- * Why this exists: the rail once carried All / Urgent / Pending / Tested /
- * Out-of-stock rows that duplicated the tabs + KPI (report P1/P5/P8 — single
- * primary nav for stage · metrics are not a third nav · one count, one home).
- * Deleting the rows once is not enough; nothing stopped them coming back. The
- * ownership map + guard make re-adding a stage or KPI facet to the rail a test
- * failure, and the `RailOwnedSegmentId` type makes it a compile error.
- */
-export const OUTBOUND_FACET_OWNER = {
-  unshipped: 'tabs',
-  tested: 'tabs',
-  packed: 'tabs',
-  shipped: 'tabs',
-  PENDING: 'tabs',
-  TESTED: 'tabs',
-  attention: 'kpi',
-  BLOCKED: 'kpi',
-  packPlaced: 'kpi',
-  packStation: 'kpi',
-  mine: 'rail',
-} as const satisfies Record<string, 'tabs' | 'kpi' | 'rail'>;
-
-export type OutboundFacetId = keyof typeof OUTBOUND_FACET_OWNER;
-
-/**
- * The facet ids the left Focus rail may render — derived from the ownership map,
- * never hand-listed. Adding a `'rail'` owner grows this; nothing else can enter.
- */
-export type RailOwnedSegmentId = {
-  [K in OutboundFacetId]: (typeof OUTBOUND_FACET_OWNER)[K] extends 'rail' ? K : never;
-}[OutboundFacetId];
-
-export const RAIL_OWNED_SEGMENT_IDS = (
-  Object.keys(OUTBOUND_FACET_OWNER) as OutboundFacetId[]
-).filter((id): id is RailOwnedSegmentId => OUTBOUND_FACET_OWNER[id] === 'rail');
 
 /** Unshipped board saved views — filters + sort pin, never search text. */
 const UNSHIPPED_VIEW_PARAMS = [

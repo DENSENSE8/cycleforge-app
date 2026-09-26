@@ -34,7 +34,6 @@ export interface KioskDevicesGridColumn extends Omit<LedgerGridColumnModel, 'key
 export function kioskDevicesCompoundColumnsFor(layout: SlotLayout): readonly KioskDevicesGridColumn[] {
   // Select stays — row multi-select. Thumb stays off (no photo gutter). Dates
   // stays — last seen · enrolled on the Hash line beside Device id.
-  // Arrow param unparen'd so table-engine-law's skeleton-filter tripwire sees the cut.
   const base = compoundColumnsFor<KioskDevicesGridColumn>().filter(c => c.key !== 'thumb');
   const tracks = materializeTracks<KioskDevicesGridColumn>({
     layout,
@@ -42,7 +41,7 @@ export function kioskDevicesCompoundColumnsFor(layout: SlotLayout): readonly Kio
     base,
   });
   // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-id-header-law.ts`); this
+  // the engine's `Id` on every peer (`slot-table-family.ts`); this
   // family supplies only the FACT the chip paints and its header sorts by.
   const identity = KIOSKDEVICES_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
   return tracks.map((t) => {

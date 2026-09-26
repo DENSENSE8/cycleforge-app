@@ -1,10 +1,10 @@
 {
   "summary": {
-    "total": 1028,
-    "withAuth": 756,
-    "tenantWrapped": 795,
-    "delegatedTenantWrapped": 730,
-    "orgIdRef": 904,
+    "total": 1023,
+    "withAuth": 751,
+    "tenantWrapped": 792,
+    "delegatedTenantWrapped": 727,
+    "orgIdRef": 899,
     "rawPool": 298,
     "drizzle": 21,
     "transitional": 7,
@@ -12,9 +12,9 @@
     "byRisk": {
       "critical": 16,
       "high": 23,
-      "medium": 59,
-      "low": 585,
-      "info": 345
+      "medium": 58,
+      "low": 583,
+      "info": 343
     }
   },
   "routes": [
@@ -1822,28 +1822,6 @@
       "mutates": true,
       "touched": [
         "sku"
-      ],
-      "risk": "medium"
-    },
-    {
-      "route": "/api/shipping/mark-staged",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "shipping.view",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "orders"
       ],
       "risk": "medium"
     },
@@ -4716,30 +4694,6 @@
       "risk": "low"
     },
     {
-      "route": "/api/fba/items/verify",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "fba.stage_shipments",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "fba_shipment_items",
-        "fba_fnsku_logs",
-        "items",
-        "staff"
-      ],
-      "risk": "low"
-    },
-    {
       "route": "/api/fba/labels/bind",
       "methods": [
         "POST"
@@ -5512,28 +5466,6 @@
       "mutates": false,
       "touched": [
         "orders"
-      ],
-      "risk": "low"
-    },
-    {
-      "route": "/api/identification/methods",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "admin.view",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
-      "touched": [
-        "items"
       ],
       "risk": "low"
     },
@@ -17606,44 +17538,6 @@
       "isCron": false,
       "isPathParam": false,
       "mutates": false,
-      "touched": [],
-      "risk": "info"
-    },
-    {
-      "route": "/api/identification/methods/[jobId]/publish",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "admin.view",
-      "orgIdRef": true,
-      "tenantWrapped": true,
-      "delegatedTenantWrapped": true,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": true,
-      "mutates": true,
-      "touched": [],
-      "risk": "info"
-    },
-    {
-      "route": "/api/identification/methods/author",
-      "methods": [
-        "POST"
-      ],
-      "withAuth": true,
-      "permission": "admin.view",
-      "orgIdRef": true,
-      "tenantWrapped": false,
-      "delegatedTenantWrapped": false,
-      "rawPool": false,
-      "drizzle": false,
-      "transitional": false,
-      "isCron": false,
-      "isPathParam": false,
-      "mutates": true,
       "touched": [],
       "risk": "info"
     },

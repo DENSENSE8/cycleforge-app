@@ -47,9 +47,6 @@
   ],
   "exclude": [
     "node_modules",
-    "apps/mobile",
-    "packages/shared",
-    "apps/web",
     "**/*.test.ts",
     "**/*.test.tsx"
   ]

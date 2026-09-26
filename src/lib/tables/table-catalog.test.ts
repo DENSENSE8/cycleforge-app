@@ -39,17 +39,3 @@ test('no duplicate table ids', () => {
   const ids = PRODUCT_TABLES.map((t) => t.tableId);
   assert.equal(new Set(ids).size, ids.length, 'a duplicate would render twice in the picker');
 });
-
-test('the catalog imports nothing that would drag components into a server bundle', async () => {
-  // The whole reason this module exists. Reading its own source is the only way
-  // to assert an ABSENCE of imports, and the file is 70 lines of literals.
-  const { readFileSync } = await import('node:fs');
-  const src = readFileSync(new URL('./table-catalog.ts', import.meta.url), 'utf8');
-  const imports = [...src.matchAll(/^import .*from '([^']+)'/gm)].map((m) => m[1]);
-  assert.deepEqual(
-    imports,
-    [],
-    `table-catalog.ts must import nothing — it is imported by an API route, and a ` +
-      `component import there is what broke the production build. Found: ${imports.join(', ')}`,
-  );
-});

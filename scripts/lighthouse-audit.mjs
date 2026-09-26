@@ -154,7 +154,6 @@ export const ROUTES = [
   // throttled 3x-mobile CPU against a desk surface no phone ever loads.
   { path: '/test', tier: 1, auth: true, formFactor: 'desktop' },
   { path: '/search', tier: 1, auth: true, formFactor: 'desktop' },
-  { path: '/m/receive', tier: 1, auth: true, formFactor: 'mobile' },
   { path: '/m/scan', tier: 1, auth: true, formFactor: 'mobile' },
   { path: '/m/home', tier: 1, auth: true, formFactor: 'mobile' },
   // `/shipping` 308s to the labels desk (`resolveShippingSurfaceRedirect`);
@@ -166,8 +165,6 @@ export const ROUTES = [
   { path: '/settings/integrations', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/incoming', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/m/pack', tier: 2, auth: true, formFactor: 'mobile' },
-  { path: '/m/triage', tier: 2, auth: true, formFactor: 'mobile' },
-  { path: '/m/unbox', tier: 2, auth: true, formFactor: 'mobile' },
   // Tablet POS is landscape — desktop form factor, same reason as /unbox.
   // Auth is the device principal (`cf_kiosk`), not staff `cf_sid`. Mint with
   // `scripts/lighthouse-mint-kiosk.mjs`. A pair-screen landing is discarded.

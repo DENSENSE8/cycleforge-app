@@ -105,6 +105,12 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     paperwork: paramPositiveInt,
     /** Caged facet on the To-ship queue — shows the held set instead of the live one. */
     cage: paramFlag,
+    /**
+     * Desk-sidebar lens: `pick` = the pick list (not packed, not fully picked,
+     * newest synced first). Filtered server-side via `GET /api/orders?queue=`.
+     * MUST stay declared — hygiene drops undeclared keys on the next tick.
+     */
+    queue: paramEnum(['pick'] as const),
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),

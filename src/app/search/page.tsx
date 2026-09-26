@@ -3,8 +3,7 @@
 /**
  * `/search` — cross-entity FIND workbench. Consumes {@link SearchFindSurface}.
  *
- * Callers: desktop shell. Query: `?q=` / `?sel=`. Phone SoT is `/m/search`,
- * which mounts the same body at `density="compact"`.
+ * Callers: desktop shell. Query: `?q=` / `?sel=`.
  * User: searching for orders I must see who packed/picked/scanned out and identifier routing.
  */
 

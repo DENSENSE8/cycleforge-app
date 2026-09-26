@@ -55,7 +55,7 @@ export function skuLedgerCompoundColumnsFor(layout: SlotLayout): readonly SkuLed
     base: compoundColumnsFor<SkuLedgerGridColumn>(),
   });
   // The identity slot IS the shared `fulfillment` chrome track. Its WORD is
-  // the engine's `Id` on every peer (`slot-table-id-header-law.ts`); this
+  // the engine's `Id` on every peer (`slot-table-family.ts`); this
   // family supplies only the FACT the chip paints and its header sorts by.
   const identity = SKU_LEDGER_FIELD_CATALOG.find((f) => f.id === layout.identityFieldId);
   return tracks.map((t) => {

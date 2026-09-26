@@ -47,12 +47,6 @@ function walk(dir, out = []) {
 const files = walk(SRC)
   .map((abs) => relative(ROOT, abs).split('\\').join('/'))
   .filter((rel) => {
-    // Integration driver: writes src/ probe files and shells the real jscpd
-    // gate. `npm run verify` already runs `jscpd-gate.mjs` after unit tests;
-    // keeping this file in the unit pass races leftover probes into that
-    // later scan (ENOENT on deleted probes). Run it directly when changing
-    // the gate: node --import tsx --test src/lib/governance/jscpd-gate.test.ts
-    if (rel === 'src/lib/governance/jscpd-gate.test.ts') return false;
     if (!rel.endsWith('.guard.test.ts')) return true;
     return !QUARANTINE.has(rel);
   })

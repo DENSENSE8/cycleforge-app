@@ -174,37 +174,10 @@ const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
 // Exact path match only — sub-pages (e.g. /receiving/lines/[id]) are not
 // rewritten because they have no /m/ counterpart.
 const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
-  ['/receiving', '/m/receiving'],
-  ['/receiving/', '/m/receiving'],
-  // Unbox + Triage surfaces (operator-surfaces refactor) → the mobile receiving
-  // shell, whose bottom nav already labels itself "Unbox".
-  ['/unbox', '/m/receiving'],
-  ['/unbox/', '/m/receiving'],
-  ['/triage', '/m/triage'],
-  ['/triage/', '/m/triage'],
-  ['/incoming', '/m/receiving'],
-  ['/incoming/', '/m/receiving'],
-  // Walk-In station + Receiving History surfaces (operator-surfaces refactor Phase 9)
-  // → the mobile receiving shell (same feed, its bottom nav labels itself).
-  //
-  // FOH/BOH split (lane 05·P6): the Walk-In station decoupled from Receiving on
-  // desktop (own nav key + `walk_in.view` gate), but the phone rewrite STAYS on
-  // `/m/receiving` — there is no `/m/walk-in` shell, and inventing one is out of
-  // scope here. Revisit with lane 02's mobile pass; until then a phone hitting
-  // `/pickup` gets the receiving feed exactly as it does today.
-  ['/pickup', '/m/receiving'],
-  ['/pickup/', '/m/receiving'],
-  ['/receiving/history', '/m/receiving'],
-  ['/receiving/history/', '/m/receiving'],
   // Packing has a dedicated phone history and capture-evidence face. It stays
   // a partial completion path until mobile pack confirmation is implemented.
   ['/pack', '/m/pack'],
   ['/pack/', '/m/pack'],
-  // SKU Exceptions: the shared record link is the desk URL
-  // (`/inventory/sku-exceptions?sku=TMP-…`); on a phone it lands on the
-  // on-hold queue, which redirects `?sku=` to the phone record.
-  ['/inventory/sku-exceptions', '/m/on-hold'],
-  ['/inventory/sku-exceptions/', '/m/on-hold'],
   ['/signin', '/m/signin'],
   ['/signin/', '/m/signin'],
 ]);

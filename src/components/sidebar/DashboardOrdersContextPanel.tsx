@@ -1,7 +1,6 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import UnshippedSidebar from '@/components/unshipped/UnshippedSidebar';
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
 import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
@@ -16,7 +15,8 @@ import {
  * for the dashboard Workbench.
  *
  * Three domains (`getDashboardDomainFromSearch`), each with a picker:
- *   • outbound — the order feed (`UnshippedSidebar`), the only branch
+ *   • outbound — no picker. Bare `/dashboard` redirects to `/shipping/orders`,
+ *     whose search · views · focus · saved views live in the master nav.
  *   • inbound  — recents (`DashboardRecentsPanel`)
  *   • sales    — station hand-offs (`WalkInHistorySidebar`); Repairs L2
  *     (`?mode=repairs`) has no context sidebar.
@@ -53,31 +53,13 @@ export function DashboardOrdersContextPanel() {
     return <WalkInHistorySidebar />;
   }
 
+  // Outbound: `/dashboard` is a redirect shell onto `/shipping/orders`. Only
+  // the `?new=true` intake overlay survives so a legacy intake link still opens.
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1">
-        {/* One branch by design. `DashboardOrderView` is a 4-member URL
-            presence-flag type and `getDashboardOrderViewFromSearch` returns the
-            literal 'unshipped' (`dashboard-search-state.ts:98`), so the old
-            `isOutbound ? … : <DashboardManagementPanel/>` else-arm was
-            unreachable — and it was the last door onto the legacy import stream
-            (`useOrdersImport` → `OrderSyncDialog`, the second implementation
-            reporting its own numbers). Import is the measured run surface now:
-            the desk CTA over the table, `/m/orders/sync` on the phone.
-            Deleted 2026-09-15. Do not reintroduce a picker-shaped import card
-            here; a lane with one page paints one row. */}
-        <UnshippedSidebar
-          embedded
-          hideSectionHeader
-          searchValue={dashboardSearch.searchQuery}
-          onSearchChange={dashboardSearch.setSearch}
-        />
-      </div>
-      <OrderIngestRail
-        open={dashboardSearch.showIntakeForm}
-        onClose={dashboardSearch.closeIntakeForm}
-        initialLeaf="manual"
-      />
-    </div>
+    <OrderIngestRail
+      open={dashboardSearch.showIntakeForm}
+      onClose={dashboardSearch.closeIntakeForm}
+      initialLeaf="manual"
+    />
   );
 }

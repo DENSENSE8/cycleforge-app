@@ -50,7 +50,7 @@ import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 export const REPORT_TASKS_FIELD_CATALOG: FieldCatalog = [
   /**
    * The IDENTITY fact — the assignment's own row id, and the ONLY thing column
-   * one prints (`slot-table-identity-purity-law.ts`: machine handles only, and
+   * one prints (machine handles only, and
    * a task's two people are two person tracks, never the Id chip).
    */
   {

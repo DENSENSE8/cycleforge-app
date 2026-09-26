@@ -46,7 +46,7 @@
  */
 
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
-import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-id-header-law';
+import { SLOT_TABLE_ID_HEADER_WORD } from '@/lib/tables/slot-table-family';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import {
   COMPOUND_GUTTER_TRACK_REM,
@@ -175,8 +175,8 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     // grid. An operator who works longer ids drags this wider once (it is the
     // resizable track it always was) and it sticks.
     width: 'minmax(6.5rem, 6.5rem)',
-    // The identity header is the ENGINE's word, in BOTH faces — the law module
-    // is `slot-table-id-header-law.ts` and the families may not re-declare it
+    // The identity header is the ENGINE's word, in BOTH faces — the word
+    // lives in `slot-table-family.ts` and the families may not re-declare it
     // (operator 2026-09-15: "the ID as the first column … instead of
     // differences"). `'Fulfillment'` was an Orders-era leftover from when this
     // track was carrier data; it survived in `label` because only `gridLabel`
