@@ -11,40 +11,32 @@ export const dynamic = 'force-dynamic';
 
 /** POST /api/orders/print-packet — "the packer print station is down": */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(PaperworkPrintBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(PaperworkPrintBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    const orgId = ctx.organizationId as OrgId;
-    const packets = await buildPaperworkPackets(orgId, {
-      orderIds: parsed.orderIds,
-      batchId: parsed.batchId,
-      actorStaffId: ctx.staffId ?? null,
+  const orgId = ctx.organizationId as OrgId;
+  const packets = await buildPaperworkPackets(orgId, {
+    orderIds: parsed.orderIds,
+    batchId: parsed.batchId,
+    actorStaffId: ctx.staffId ?? null,
+  });
+
+  for (const packet of packets) {
+    if (packet.items.length === 0) continue;
+    await recordAudit(pool, ctx, req, {
+      source: 'api.orders.print-packet',
+      action: AUDIT_ACTION.ORDER_DOCUMENT_BUNDLE_PRINT,
+      entityType: 'ORDER',
+      entityId: String(packet.orderId),
+      extra: {
+        fallback: 'browser',
+        batch_id: parsed.batchId,
+        pages: packet.items.length,
+        missing_types: packet.missingTypes,
+      },
     });
-
-    for (const packet of packets) {
-      if (packet.items.length === 0) continue;
-      await recordAudit(pool, ctx, req, {
-        source: 'api.orders.print-packet',
-        action: AUDIT_ACTION.ORDER_DOCUMENT_BUNDLE_PRINT,
-        entityType: 'ORDER',
-        entityId: String(packet.orderId),
-        extra: {
-          fallback: 'browser',
-          batch_id: parsed.batchId,
-          pages: packet.items.length,
-          missing_types: packet.missingTypes,
-        },
-      });
-    }
-
-    return NextResponse.json({ success: true, packets });
-  } catch (error) {
-    console.error('[POST /api/orders/print-packet]', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Could not build the paperwork packet' },
-      { status: 500 },
-    );
   }
+
+  return NextResponse.json({ success: true, packets });
 }, { permission: 'shipping.view' });

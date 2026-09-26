@@ -27,48 +27,40 @@ export const GET = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid definition id' }, { status: 400 });
   }
 
-  try {
-    const [def] = await db
-      .select({ id: workflowDefinitions.id, name: workflowDefinitions.name })
-      .from(workflowDefinitions)
-      .where(and(eq(workflowDefinitions.id, id), eq(workflowDefinitions.organizationId, ctx.organizationId)))
-      .limit(1);
-    if (!def) {
-      return NextResponse.json({ ok: false, error: 'definition not found' }, { status: 404 });
-    }
-
-    const [nodeRows, edgeRows] = await Promise.all([
-      db.select().from(workflowNodes).where(eq(workflowNodes.workflowDefinitionId, def.id)),
-      db.select().from(workflowEdges).where(eq(workflowEdges.workflowDefinitionId, def.id)),
-    ]);
-
-    const graph: TemplateGraph = {
-      nodes: nodeRows.map((n) => ({
-        id: n.id,
-        type: n.type,
-        x: Number(n.positionX),
-        y: Number(n.positionY),
-        config: (n.config ?? {}) as Record<string, unknown>,
-      })),
-      edges: edgeRows.map((e) => ({
-        id: e.id,
-        source: e.sourceNode,
-        sourcePort: e.sourcePort,
-        target: e.targetNode,
-      })),
-    };
-
-    const pkg = buildTemplatePackage({
-      metadata: { slug: slugify(def.name), name: def.name, description: null, category: null },
-      graph,
-    });
-
-    return NextResponse.json({ ok: true, package: pkg });
-  } catch (err) {
-    console.error('[GET /api/studio/definitions/[id]/export] error:', err);
-    return NextResponse.json(
-      { ok: false, error: err instanceof Error ? err.message : 'export failed' },
-      { status: 500 },
-    );
+  const [def] = await db
+    .select({ id: workflowDefinitions.id, name: workflowDefinitions.name })
+    .from(workflowDefinitions)
+    .where(and(eq(workflowDefinitions.id, id), eq(workflowDefinitions.organizationId, ctx.organizationId)))
+    .limit(1);
+  if (!def) {
+    return NextResponse.json({ ok: false, error: 'definition not found' }, { status: 404 });
   }
+
+  const [nodeRows, edgeRows] = await Promise.all([
+    db.select().from(workflowNodes).where(eq(workflowNodes.workflowDefinitionId, def.id)),
+    db.select().from(workflowEdges).where(eq(workflowEdges.workflowDefinitionId, def.id)),
+  ]);
+
+  const graph: TemplateGraph = {
+    nodes: nodeRows.map((n) => ({
+      id: n.id,
+      type: n.type,
+      x: Number(n.positionX),
+      y: Number(n.positionY),
+      config: (n.config ?? {}) as Record<string, unknown>,
+    })),
+    edges: edgeRows.map((e) => ({
+      id: e.id,
+      source: e.sourceNode,
+      sourcePort: e.sourcePort,
+      target: e.targetNode,
+    })),
+  };
+
+  const pkg = buildTemplatePackage({
+    metadata: { slug: slugify(def.name), name: def.name, description: null, category: null },
+    graph,
+  });
+
+  return NextResponse.json({ ok: true, package: pkg });
 }, { permission: 'studio.view', feature: 'studio' });

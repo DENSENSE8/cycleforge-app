@@ -53,51 +53,45 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ ...cached, throttled: true });
   }
 
+  // Scope to EXACTLY the shipments backing the Incoming table — the tracking#s an operator actually sees in the list — not every active…
+  const rows = await selectIncomingShipmentIds(BATCH_CAP, ctx.organizationId);
+
+  const capped = rows.length > BATCH_CAP;
+  const batch = rows.slice(0, BATCH_CAP);
+  const result = await syncShipmentsByIds(batch, { concurrency: 5 });
+
+  // Universal Incoming (plan §9.4):
+  let ebayIngested = 0;
+  let ebayCreated = 0;
   try {
-    // Scope to EXACTLY the shipments backing the Incoming table — the tracking#s an operator actually sees in the list — not every active…
-    const rows = await selectIncomingShipmentIds(BATCH_CAP, ctx.organizationId);
-
-    const capped = rows.length > BATCH_CAP;
-    const batch = rows.slice(0, BATCH_CAP);
-    const result = await syncShipmentsByIds(batch, { concurrency: 5 });
-
-    // Universal Incoming (plan §9.4):
-    let ebayIngested = 0;
-    let ebayCreated = 0;
-    try {
-      if (await isIncomingUniversal(ctx.organizationId)) {
-        const ebay = await syncEbayPurchasesToReceiving(ctx.organizationId);
-        ebayIngested = ebay.ingested;
-        ebayCreated = ebay.created;
-      }
-    } catch (e) {
-      console.warn('[incoming/refresh] eBay purchase sync failed (non-fatal)', e);
+    if (await isIncomingUniversal(ctx.organizationId)) {
+      const ebay = await syncEbayPurchasesToReceiving(ctx.organizationId);
+      ebayIngested = ebay.ingested;
+      ebayCreated = ebay.created;
     }
-
-    // Carrier statuses changed or new eBay lines landed → drop the row/summary
-    // caches so the next refetch reflects freshly-delivered/imported purchases.
-    if (result.terminal > 0 || result.synced > 0 || ebayCreated > 0) {
-      try {
-        await invalidateReceivingViews(ctx.organizationId);
-      } catch { /* non-fatal */ }
-    }
-
-    const summary: RefreshSummary = {
-      ok: true,
-      scanned: batch.length,
-      delivered: result.terminal,
-      updated: result.synced,
-      errors: result.errors,
-      capped,
-      ebay_ingested: ebayIngested,
-      ebay_created: ebayCreated,
-    };
-
-    await setCachedJson('incoming-refresh', cooldownKey, summary, COOLDOWN_SECONDS);
-    return NextResponse.json(summary);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Refresh failed';
-    console.error('incoming/refresh failed:', error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch (e) {
+    console.warn('[incoming/refresh] eBay purchase sync failed (non-fatal)', e);
   }
+
+  // Carrier statuses changed or new eBay lines landed → drop the row/summary
+  // caches so the next refetch reflects freshly-delivered/imported purchases.
+  if (result.terminal > 0 || result.synced > 0 || ebayCreated > 0) {
+    try {
+      await invalidateReceivingViews(ctx.organizationId);
+    } catch { /* non-fatal */ }
+  }
+
+  const summary: RefreshSummary = {
+    ok: true,
+    scanned: batch.length,
+    delivered: result.terminal,
+    updated: result.synced,
+    errors: result.errors,
+    capped,
+    ebay_ingested: ebayIngested,
+    ebay_created: ebayCreated,
+  };
+
+  await setCachedJson('incoming-refresh', cooldownKey, summary, COOLDOWN_SECONDS);
+  return NextResponse.json(summary);
 }, { permission: 'receiving.view' });

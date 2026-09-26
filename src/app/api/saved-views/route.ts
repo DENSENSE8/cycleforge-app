@@ -13,25 +13,19 @@ function readSurface(raw: unknown): string | null {
 
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const surface = readSurface(req.nextUrl.searchParams.get('surface'));
-      if (!surface || !isGenericSavedViewSurface(surface)) {
-        return NextResponse.json(
-          { success: false, error: 'A valid generic surface query param is required' },
-          { status: 400 },
-        );
-      }
-      const views: SavedViewRow[] = await listSavedViews(
-        ctx.organizationId,
-        ctx.staffId,
-        surface,
+    const surface = readSurface(req.nextUrl.searchParams.get('surface'));
+    if (!surface || !isGenericSavedViewSurface(surface)) {
+      return NextResponse.json(
+        { success: false, error: 'A valid generic surface query param is required' },
+        { status: 400 },
       );
-      return NextResponse.json({ success: true, views });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to list saved views';
-      console.error('[GET /api/saved-views] error:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
+    const views: SavedViewRow[] = await listSavedViews(
+      ctx.organizationId,
+      ctx.staffId,
+      surface,
+    );
+    return NextResponse.json({ success: true, views });
   },
   { permission: 'dashboard.view' },
 );

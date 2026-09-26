@@ -22,11 +22,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   // stacks) so a bad caller can't ask for an unbounded IN-list.
   const bounded = salIds.slice(0, 4000);
 
-  try {
-    const map = await fetchPackerLogHydration({ organizationId: ctx.organizationId, salIds: bounded });
-    return NextResponse.json(map, { headers: { 'Cache-Control': 'private, max-age=30' } });
-  } catch (error: any) {
-    console.error('Error hydrating packer logs:', error);
-    return NextResponse.json({ error: 'Failed to hydrate', details: error?.message }, { status: 500 });
-  }
+  const map = await fetchPackerLogHydration({ organizationId: ctx.organizationId, salIds: bounded });
+  return NextResponse.json(map, { headers: { 'Cache-Control': 'private, max-age=30' } });
 }, { permission: 'packing.view' });

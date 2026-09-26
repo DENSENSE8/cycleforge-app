@@ -150,23 +150,9 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
 }
 
 export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
-  try {
-    return await createTokenRequest(req, ctx);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to create realtime token', details: error?.message || 'Unknown error' },
-      { status: 500 }
-    );
-  }
+  return await createTokenRequest(req, ctx);
 }, { permission: 'dashboard.view' });
 
 export const POST = withAuth(async (req: NextRequest, ctx: AuthContext) => {
-  try {
-    return await createTokenRequest(req, ctx);
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to create realtime token', details: error?.message || 'Unknown error' },
-      { status: 500 }
-    );
-  }
+  return await createTokenRequest(req, ctx);
 }, { permission: 'dashboard.view' });

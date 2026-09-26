@@ -8,34 +8,26 @@ import { withAuth } from '@/lib/auth/withAuth';
  * List paired Square Terminal devices.
  */
 export const GET = withAuth(async (req: NextRequest) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-    }
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
-    const result = await squareFetch<{ devices?: Array<Record<string, unknown>> }>(
-      '/devices',
-      { method: 'GET' },
-    );
+  const result = await squareFetch<{ devices?: Array<Record<string, unknown>> }>(
+    '/devices',
+    { method: 'GET' },
+  );
 
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: formatSquareErrors(result.errors) },
-        { status: 502 },
-      );
-    }
-
-    // Filter to terminal devices only
-    const devices = (result.data.devices || []).filter(
-      (d: any) => d.product_type === 'TERMINAL_API' || d.components?.some?.((c: any) => c.type === 'APPLICATION' && c.application_details?.application_type === 'TERMINAL_API'),
-    );
-
-    return NextResponse.json({ devices });
-  } catch (error: unknown) {
-    console.error('GET /api/walk-in/terminal/devices error:', error);
+  if (!result.ok) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
+      { error: formatSquareErrors(result.errors) },
+      { status: 502 },
     );
   }
+
+  // Filter to terminal devices only
+  const devices = (result.data.devices || []).filter(
+    (d: any) => d.product_type === 'TERMINAL_API' || d.components?.some?.((c: any) => c.type === 'APPLICATION' && c.application_details?.application_type === 'TERMINAL_API'),
+  );
+
+  return NextResponse.json({ devices });
 }, { permission: 'walk_in.view', feature: 'walkIn' });

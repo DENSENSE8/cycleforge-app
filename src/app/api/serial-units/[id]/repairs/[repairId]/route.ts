@@ -27,35 +27,29 @@ export const PATCH = withAuth(async (request, ctx) => {
   const parsed = parseBody(RepairUpdateBody, raw);
   if (parsed instanceof NextResponse) return parsed;
 
-  try {
-    const repair = await updateRepair(repairId, {
-      status: parsed.status,
-      summary: parsed.summary,
-      partsUsed: parsed.partsUsed,
-      laborMinutes: parsed.laborMinutes,
-      costCents: parsed.costCents,
-      staffId: ctx.staffId,
-      clientEventId: parsed.clientEventId ?? null,
-    }, ctx.organizationId);
-    if (!repair) {
-      return NextResponse.json({ ok: false, error: 'repair not found' }, { status: 404 });
-    }
-
-    const terminal = repair.status === 'completed' || repair.status === 'failed' || repair.status === 'scrapped';
-    await recordAudit(pool, ctx, request, {
-      source: 'serial-unit-repairs',
-      action: terminal ? AUDIT_ACTION.REPAIR_COMPLETE : AUDIT_ACTION.REPAIR_UPDATE,
-      entityType: AUDIT_ENTITY.UNIT_REPAIR,
-      entityId: repairId,
-      after: { ...repair },
-      extra: { serial_unit_id: repair.serial_unit_id, status: repair.status },
-    });
-
-    await recomputeUnitQualitySafe(repair.serial_unit_id, ctx.organizationId);
-    return NextResponse.json({ ok: true, repair });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to update repair';
-    console.error('[PATCH /api/serial-units/[id]/repairs/[repairId]] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  const repair = await updateRepair(repairId, {
+    status: parsed.status,
+    summary: parsed.summary,
+    partsUsed: parsed.partsUsed,
+    laborMinutes: parsed.laborMinutes,
+    costCents: parsed.costCents,
+    staffId: ctx.staffId,
+    clientEventId: parsed.clientEventId ?? null,
+  }, ctx.organizationId);
+  if (!repair) {
+    return NextResponse.json({ ok: false, error: 'repair not found' }, { status: 404 });
   }
+
+  const terminal = repair.status === 'completed' || repair.status === 'failed' || repair.status === 'scrapped';
+  await recordAudit(pool, ctx, request, {
+    source: 'serial-unit-repairs',
+    action: terminal ? AUDIT_ACTION.REPAIR_COMPLETE : AUDIT_ACTION.REPAIR_UPDATE,
+    entityType: AUDIT_ENTITY.UNIT_REPAIR,
+    entityId: repairId,
+    after: { ...repair },
+    extra: { serial_unit_id: repair.serial_unit_id, status: repair.status },
+  });
+
+  await recomputeUnitQualitySafe(repair.serial_unit_id, ctx.organizationId);
+  return NextResponse.json({ ok: true, repair });
 }, { permission: 'repair.mark_repaired' });

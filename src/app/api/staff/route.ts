@@ -264,133 +264,109 @@ async function handleGet(request: NextRequest, ctx: AuthContext) {
 // caller's tenant (was previously unprotected — any unauthenticated POST
 // could create rows in the global staff table).
 async function handlePost(request: NextRequest, ctx: AuthContext) {
-    try {
-        const body = await request.json();
-        const { name, role, employee_id, active } = body;
+    const body = await request.json();
+    const { name, role, employee_id, active } = body;
 
-        if (!name || !role) {
-            return NextResponse.json({ error: 'name and role are required' }, { status: 400 });
-        }
-
-        if (!['technician', 'packer'].includes(role)) {
-            return NextResponse.json({ error: 'role must be technician or packer' }, { status: 400 });
-        }
-
-        const [result] = await db.insert(staff).values({
-            name,
-            role,
-            organizationId: ctx.organizationId,
-            employeeId: employee_id || null,
-            active: typeof active === 'boolean' ? active : true,
-        }).returning();
-
-        await db
-            .insert(staffWeeklySchedule)
-            .values(
-                Array.from({ length: 7 }, (_, day) => ({
-                    staffId: result.id,
-                    dayOfWeek: day,
-                    isScheduled: true,
-                }))
-            )
-            .onConflictDoNothing();
-
-        await invalidateCacheTags(['staff']);
-        return NextResponse.json(result, { status: 201 });
-    } catch (error) {
-        console.error('Error creating staff:', error);
-        return NextResponse.json({
-            error: 'Failed to create staff',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+    if (!name || !role) {
+        return NextResponse.json({ error: 'name and role are required' }, { status: 400 });
     }
+
+    if (!['technician', 'packer'].includes(role)) {
+        return NextResponse.json({ error: 'role must be technician or packer' }, { status: 400 });
+    }
+
+    const [result] = await db.insert(staff).values({
+        name,
+        role,
+        organizationId: ctx.organizationId,
+        employeeId: employee_id || null,
+        active: typeof active === 'boolean' ? active : true,
+    }).returning();
+
+    await db
+        .insert(staffWeeklySchedule)
+        .values(
+            Array.from({ length: 7 }, (_, day) => ({
+                staffId: result.id,
+                dayOfWeek: day,
+                isScheduled: true,
+            }))
+        )
+        .onConflictDoNothing();
+
+    await invalidateCacheTags(['staff']);
+    return NextResponse.json(result, { status: 201 });
 }
 
 async function handlePut(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { id, name, role, employee_id, active, color_hex, default_home_path } = body;
+    const body = await request.json();
+    const { id, name, role, employee_id, active, color_hex, default_home_path } = body;
 
-        if (!id) {
-            return NextResponse.json({ error: 'id is required' }, { status: 400 });
-        }
-
-        const updateData: any = {};
-        if (name !== undefined) updateData.name = name;
-        if (role !== undefined) {
-            if (!['technician', 'packer'].includes(role)) {
-                return NextResponse.json({ error: 'role must be technician or packer' }, { status: 400 });
-            }
-            updateData.role = role;
-        }
-        if (employee_id !== undefined) updateData.employeeId = employee_id || null;
-        if (active !== undefined) updateData.active = active;
-        if (color_hex !== undefined) {
-            if (typeof color_hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color_hex)) {
-                return NextResponse.json({ error: 'color_hex must be a #RRGGBB hex string' }, { status: 400 });
-            }
-            updateData.colorHex = color_hex.toLowerCase();
-        }
-        if (default_home_path !== undefined) {
-            if (default_home_path === null || default_home_path === '') {
-                updateData.defaultHomePath = null;
-            } else if (typeof default_home_path === 'string' && default_home_path.startsWith('/') && default_home_path.length < 200) {
-                updateData.defaultHomePath = default_home_path;
-            } else {
-                return NextResponse.json({ error: 'default_home_path must start with "/" or be null' }, { status: 400 });
-            }
-        }
-
-        const [result] = await db
-            .update(staff)
-            .set(updateData)
-            .where(eq(staff.id, id))
-            .returning();
-
-        if (!result) {
-            return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
-        }
-
-        await invalidateCacheTags(['staff']);
-        return NextResponse.json(result);
-    } catch (error) {
-        console.error('Error updating staff:', error);
-        return NextResponse.json({ 
-            error: 'Failed to update staff',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+    if (!id) {
+        return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (role !== undefined) {
+        if (!['technician', 'packer'].includes(role)) {
+            return NextResponse.json({ error: 'role must be technician or packer' }, { status: 400 });
+        }
+        updateData.role = role;
+    }
+    if (employee_id !== undefined) updateData.employeeId = employee_id || null;
+    if (active !== undefined) updateData.active = active;
+    if (color_hex !== undefined) {
+        if (typeof color_hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color_hex)) {
+            return NextResponse.json({ error: 'color_hex must be a #RRGGBB hex string' }, { status: 400 });
+        }
+        updateData.colorHex = color_hex.toLowerCase();
+    }
+    if (default_home_path !== undefined) {
+        if (default_home_path === null || default_home_path === '') {
+            updateData.defaultHomePath = null;
+        } else if (typeof default_home_path === 'string' && default_home_path.startsWith('/') && default_home_path.length < 200) {
+            updateData.defaultHomePath = default_home_path;
+        } else {
+            return NextResponse.json({ error: 'default_home_path must start with "/" or be null' }, { status: 400 });
+        }
+    }
+
+    const [result] = await db
+        .update(staff)
+        .set(updateData)
+        .where(eq(staff.id, id))
+        .returning();
+
+    if (!result) {
+        return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
+    }
+
+    await invalidateCacheTags(['staff']);
+    return NextResponse.json(result);
 }
 
 async function handleDelete(request: NextRequest) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const id = searchParams.get('id');
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
 
-        if (!id) {
-            return NextResponse.json({ error: 'id is required' }, { status: 400 });
-        }
-
-        // Soft delete - set active to false
-        const [result] = await db
-            .update(staff)
-            .set({ active: false })
-            .where(eq(staff.id, parseInt(id)))
-            .returning();
-
-        if (!result) {
-            return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
-        }
-
-        await invalidateCacheTags(['staff']);
-        return NextResponse.json({ success: true, staff: result });
-    } catch (error) {
-        console.error('Error deleting staff:', error);
-        return NextResponse.json({
-            error: 'Failed to delete staff',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 });
+    if (!id) {
+        return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
+
+    // Soft delete - set active to false
+    const [result] = await db
+        .update(staff)
+        .set({ active: false })
+        .where(eq(staff.id, parseInt(id)))
+        .returning();
+
+    if (!result) {
+        return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
+    }
+
+    await invalidateCacheTags(['staff']);
+    return NextResponse.json({ success: true, staff: result });
 }
 
 // ─── Auth-gated exports ───────────────────────────────────────────────────── Phase 2d:

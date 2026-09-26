@@ -25,12 +25,6 @@ export const GET = withAuth(async (request, ctx) => {
     );
   }
 
-  try {
-    const coverage = await lookupCoverage(parsed.data.q, ctx.organizationId ?? null);
-    return NextResponse.json({ ok: true, coverage });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'warranty coverage lookup failed';
-    console.error('[GET /api/warranty/lookup] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const coverage = await lookupCoverage(parsed.data.q, ctx.organizationId ?? null);
+  return NextResponse.json({ ok: true, coverage });
 }, { permission: 'warranty.view', feature: 'repair' });

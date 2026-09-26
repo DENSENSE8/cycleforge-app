@@ -15,40 +15,39 @@ import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
-  try {
-    // 60s-polled Incoming "delivered · not scanned" lane. Cached org-scoped;
-    // every receiving write busts receiving-lines (org-scoped).
-    const payload = await getOrSet(
-      CACHE_NS.receivingIncomingLanes,
-      ctx.organizationId,
-      'delivered-unscanned',
-      CACHE_TTL.rollup,
-      [CACHE_TAGS.receivingLines],
-      async () => {
-    // SKU/PO enrichment always joins via receiving_line.shipment_id when a line is stamped (unified inbound model is always-on for this read…
-    const { rows } = await tenantQuery<{
-      shipment_id: number;
-      carrier: string;
-      tracking_number_raw: string;
-      tracking_number_normalized: string;
-      delivered_at: string | null;
-      source_system: string | null;
-      age_band: DeliveredUnscannedAgeBand;
-      zoho_purchaseorder_id: string | null;
-      zoho_status: string | null;
-      po_number: string | null;
-      vendor_name: string | null;
-      expected_delivery_date: string | null;
-      po_date: string | null;
-      first_item_name: string | null;
-      first_sku: string | null;
-      item_count: number | null;
-    }>(
-      ctx.organizationId,
-      // `base` is the canonical delivered-unscanned set — identical to the
-      // count's, so count === list length. PO context is resolved in the outer
-      // query (adding columns can't change the row count).
-      `WITH base AS (
+  // 60s-polled Incoming "delivered · not scanned" lane. Cached org-scoped;
+  // every receiving write busts receiving-lines (org-scoped).
+  const payload = await getOrSet(
+    CACHE_NS.receivingIncomingLanes,
+    ctx.organizationId,
+    'delivered-unscanned',
+    CACHE_TTL.rollup,
+    [CACHE_TAGS.receivingLines],
+    async () => {
+  // SKU/PO enrichment always joins via receiving_line.shipment_id when a line is stamped (unified inbound model is always-on for this read…
+  const { rows } = await tenantQuery<{
+    shipment_id: number;
+    carrier: string;
+    tracking_number_raw: string;
+    tracking_number_normalized: string;
+    delivered_at: string | null;
+    source_system: string | null;
+    age_band: DeliveredUnscannedAgeBand;
+    zoho_purchaseorder_id: string | null;
+    zoho_status: string | null;
+    po_number: string | null;
+    vendor_name: string | null;
+    expected_delivery_date: string | null;
+    po_date: string | null;
+    first_item_name: string | null;
+    first_sku: string | null;
+    item_count: number | null;
+  }>(
+    ctx.organizationId,
+    // `base` is the canonical delivered-unscanned set — identical to the
+    // count's, so count === list length. PO context is resolved in the outer
+    // query (adding columns can't change the row count).
+    `WITH base AS (
          ${deliveredUnscannedBaseSql('$1')}
        ),
        enriched AS (
@@ -111,27 +110,22 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
               AND rl.organization_id = $2
               AND COALESCE(rl.item_name, '') <> ''
          ) agg ON TRUE`,
-      [String(WINDOW_DAYS), ctx.organizationId],
-    );
+    [String(WINDOW_DAYS), ctx.organizationId],
+  );
 
-    // Oldest-first burn-down (claims clock); cap defensively.
-    const items = rows
-      .sort((a, b) => (a.delivered_at ?? '').localeCompare(b.delivered_at ?? ''))
-      .slice(0, CAP);
+  // Oldest-first burn-down (claims clock); cap defensively.
+  const items = rows
+    .sort((a, b) => (a.delivered_at ?? '').localeCompare(b.delivered_at ?? ''))
+    .slice(0, CAP);
 
-        return {
-          count: items.length,
-          window_days: WINDOW_DAYS,
-          claims_count: items.filter((i) => i.age_band === 'gt_48h').length,
-          items,
-        };
-      },
-    );
+      return {
+        count: items.length,
+        window_days: WINDOW_DAYS,
+        claims_count: items.filter((i) => i.age_band === 'gt_48h').length,
+        items,
+      };
+    },
+  );
 
-    return NextResponse.json({ success: true, ...payload });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to load delivered-unscanned';
-    console.error('incoming/delivered-unscanned failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({ success: true, ...payload });
 }, { permission: 'receiving.view' });

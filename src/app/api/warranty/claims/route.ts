@@ -29,21 +29,15 @@ export const GET = withAuth(async (request, ctx) => {
     );
   }
 
-  try {
-    const claims = await listClaims({
-      status: parsed.data.status ?? null,
-      search: parsed.data.search ?? null,
-      expiringWithinDays: parsed.data.expiringWithinDays ?? null,
-      provisionalOnly: parsed.data.provisionalOnly ?? false,
-      limit: parsed.data.limit,
-      offset: parsed.data.offset,
-    }, ctx.organizationId);
-    return NextResponse.json({ ok: true, claims });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'list warranty claims failed';
-    console.error('[GET /api/warranty/claims] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const claims = await listClaims({
+    status: parsed.data.status ?? null,
+    search: parsed.data.search ?? null,
+    expiringWithinDays: parsed.data.expiringWithinDays ?? null,
+    provisionalOnly: parsed.data.provisionalOnly ?? false,
+    limit: parsed.data.limit,
+    offset: parsed.data.offset,
+  }, ctx.organizationId);
+  return NextResponse.json({ ok: true, claims });
 }, { permission: 'warranty.view', feature: 'repair' });
 
 /** POST /api/warranty/claims */

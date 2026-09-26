@@ -18,30 +18,24 @@ export const POST = withAuth(async (request, ctx) => {
 
   const orgId = ctx.organizationId;
 
-  try {
-    // Org-ownership 404 gate (never 403).
-    const owns = await tenantQuery<{ id: number }>(
-      orgId,
-      `SELECT id FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-      [serialUnitId, orgId],
-    );
-    if (owns.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'serial_units row not found' }, { status: 404 });
-    }
-
-    const result = await releaseUnit({
-      serialUnitId,
-      reason: String(body?.reason || '').trim() || null,
-      forceStatus: String(body?.force_status || '').trim() || null,
-      clientEventId: String(body?.client_event_id || '').trim() || null,
-      actorStaffId,
-      organizationId: orgId,
-    });
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'release-hold failed';
-    console.error('[POST /api/serial-units/[id]/release] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  // Org-ownership 404 gate (never 403).
+  const owns = await tenantQuery<{ id: number }>(
+    orgId,
+    `SELECT id FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    [serialUnitId, orgId],
+  );
+  if (owns.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'serial_units row not found' }, { status: 404 });
   }
+
+  const result = await releaseUnit({
+    serialUnitId,
+    reason: String(body?.reason || '').trim() || null,
+    forceStatus: String(body?.force_status || '').trim() || null,
+    clientEventId: String(body?.client_event_id || '').trim() || null,
+    actorStaffId,
+    organizationId: orgId,
+  });
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result);
 }, { permission: 'sku_stock.adjust' });

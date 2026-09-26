@@ -21,24 +21,18 @@ export const POST = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid manifest id' }, { status: 400 });
     }
 
-    try {
-      const dissolved = await dissolveManifest(id, orgId);
-      if (!dissolved) {
-        return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
-      }
-      await recordAudit(pool, ctx, request, {
-        source: 'label-manifests-api',
-        action: AUDIT_ACTION.MANIFEST_DISSOLVE,
-        entityType: AUDIT_ENTITY.LABEL_MANIFEST,
-        entityId: dissolved.id,
-        after: { manifest_uid: dissolved.manifest_uid, status: dissolved.status },
-      });
-      return NextResponse.json({ ok: true, manifest: dissolved });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'dissolve manifest failed';
-      console.error('[POST /api/label-manifests/[id]/dissolve] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const dissolved = await dissolveManifest(id, orgId);
+    if (!dissolved) {
+      return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
     }
+    await recordAudit(pool, ctx, request, {
+      source: 'label-manifests-api',
+      action: AUDIT_ACTION.MANIFEST_DISSOLVE,
+      entityType: AUDIT_ENTITY.LABEL_MANIFEST,
+      entityId: dissolved.id,
+      after: { manifest_uid: dissolved.manifest_uid, status: dissolved.status },
+    });
+    return NextResponse.json({ ok: true, manifest: dissolved });
   },
   { permission: 'label.manifest.manage' },
 );

@@ -74,38 +74,32 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const safeName = sanitizeAttractFileName(file.name);
   const blobKey = attractBlobKey(orgId, safeName);
 
-  try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const uploaded = await put(blobKey, buffer, {
-      access: 'public',
-      contentType: mime,
-      cacheControlMaxAge: ATTRACT_BLOB_CACHE_MAX_AGE_SEC,
-    });
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const uploaded = await put(blobKey, buffer, {
+    access: 'public',
+    contentType: mime,
+    cacheControlMaxAge: ATTRACT_BLOB_CACHE_MAX_AGE_SEC,
+  });
 
-    const previous = await replaceAttractUrl(orgId, uploaded.url);
-    if (previous === null) {
-      try {
-        await del(uploaded.url);
-      } catch {
-        /* ignore */
-      }
-      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+  const previous = await replaceAttractUrl(orgId, uploaded.url);
+  if (previous === null) {
+    try {
+      await del(uploaded.url);
+    } catch {
+      /* ignore */
     }
-
-    if (previous && previous !== uploaded.url && isOrgAttractBlobUrl(previous, orgId)) {
-      try {
-        await del(previous);
-      } catch {
-        /* stale blob is harmless */
-      }
-    }
-
-    return NextResponse.json({ ok: true, attractMediaUrl: uploaded.url });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'upload failed';
-    console.error('[attract-media] upload error:', err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
   }
+
+  if (previous && previous !== uploaded.url && isOrgAttractBlobUrl(previous, orgId)) {
+    try {
+      await del(previous);
+    } catch {
+      /* stale blob is harmless */
+    }
+  }
+
+  return NextResponse.json({ ok: true, attractMediaUrl: uploaded.url });
 }, { permission: 'admin.view' });
 
 export const DELETE = withAuth(async (_request: NextRequest, ctx) => {

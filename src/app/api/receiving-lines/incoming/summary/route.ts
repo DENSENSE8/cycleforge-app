@@ -19,32 +19,31 @@ import { isIncomingUniversal } from '@/lib/feature-flags';
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    // 30s-polled Incoming attention filter counts. Cache the composed
-    // aggregate org-scoped; every receiving write busts receiving-lines.
-    const payload = await getOrSet(
-      CACHE_NS.receivingIncomingSummary,
-      orgId,
-      'summary',
-      CACHE_TTL.rollup,
-      [CACHE_TAGS.receivingLines],
-      async () => {
-    const r = await tenantQuery<{
-      issued: number;
-      delivered_unopened: number;
-      arriving_today: number;
-      stalled: number;
-      in_transit: number;
-      pending_carrier: number;
-      carrier_mismatch: number;
-      tracking_unavailable: number;
-      awaiting_tracking: number;
-      expected_today: number;
-    }>(
-      orgId,
-      // Wave-2 reader cutover:
-      `SELECT
+  const orgId = ctx.organizationId;
+  // 30s-polled Incoming attention filter counts. Cache the composed
+  // aggregate org-scoped; every receiving write busts receiving-lines.
+  const payload = await getOrSet(
+    CACHE_NS.receivingIncomingSummary,
+    orgId,
+    'summary',
+    CACHE_TTL.rollup,
+    [CACHE_TAGS.receivingLines],
+    async () => {
+  const r = await tenantQuery<{
+    issued: number;
+    delivered_unopened: number;
+    arriving_today: number;
+    stalled: number;
+    in_transit: number;
+    pending_carrier: number;
+    carrier_mismatch: number;
+    tracking_unavailable: number;
+    awaiting_tracking: number;
+    expected_today: number;
+  }>(
+    orgId,
+    // Wave-2 reader cutover:
+    `SELECT
          COUNT(DISTINCT rz.zoho_purchaseorder_id)::int AS issued,
          COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
            WHERE stn.is_delivered = true
@@ -111,39 +110,39 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
          -- exclude it here too — keeps these chip counts in sync with the list's
          -- view=incoming rows, which now apply the same scan guard.
          AND NOT ${SHIPMENT_SCANNED_PREDICATE}`,
-      [orgId],
-    );
+    [orgId],
+  );
 
-    const row = r.rows[0] ?? {
-      issued: 0,
-      delivered_unopened: 0,
-      arriving_today: 0,
-      stalled: 0,
-      in_transit: 0,
-      pending_carrier: 0,
-      carrier_mismatch: 0,
-      tracking_unavailable: 0,
-      awaiting_tracking: 0,
-      expected_today: 0,
-    };
+  const row = r.rows[0] ?? {
+    issued: 0,
+    delivered_unopened: 0,
+    arriving_today: 0,
+    stalled: 0,
+    in_transit: 0,
+    pending_carrier: 0,
+    carrier_mismatch: 0,
+    tracking_unavailable: 0,
+    awaiting_tracking: 0,
+    expected_today: 0,
+  };
 
-    // `delivered_unopened` is shipment-anchored, not PO-line-anchored:
-    row.delivered_unopened = await getDeliveredUnscannedCount(pool, undefined, orgId);
-    const delivered_not_unboxed = await getDeliveredNotUnboxedCount(orgId);
-    // Claims-attention sub-band of the hunt queue (>48h since delivered, still unscanned).
-    const delivered_unscanned_claims = await getDeliveredUnscannedClaimsCount(pool, undefined, orgId);
+  // `delivered_unopened` is shipment-anchored, not PO-line-anchored:
+  row.delivered_unopened = await getDeliveredUnscannedCount(pool, undefined, orgId);
+  const delivered_not_unboxed = await getDeliveredNotUnboxedCount(orgId);
+  // Claims-attention sub-band of the hunt queue (>48h since delivered, still unscanned).
+  const delivered_unscanned_claims = await getDeliveredUnscannedClaimsCount(pool, undefined, orgId);
 
-    // Universal Incoming (flag-gated): eBay buyer lines still awaiting their Zoho
-    // PO — the "Needs Zoho link (n)" pill (plan §6.2/§8.2). 0 when the flag is off
-    // so the response shape and the legacy Zoho-only tiles are unchanged.
-    let ebay_pending = 0;
-    let ebay_incoming = 0;
-    // `universal_incoming` gates the eBay purchasing-source search filter + KPI on the incoming workbench:
-    const universal_incoming = await isIncomingUniversal(orgId);
-    if (universal_incoming) {
-      const er = await tenantQuery<{ ebay_pending: number; ebay_incoming: number }>(
-        orgId,
-        `SELECT
+  // Universal Incoming (flag-gated): eBay buyer lines still awaiting their Zoho
+  // PO — the "Needs Zoho link (n)" pill (plan §6.2/§8.2). 0 when the flag is off
+  // so the response shape and the legacy Zoho-only tiles are unchanged.
+  let ebay_pending = 0;
+  let ebay_incoming = 0;
+  // `universal_incoming` gates the eBay purchasing-source search filter + KPI on the incoming workbench:
+  const universal_incoming = await isIncomingUniversal(orgId);
+  if (universal_incoming) {
+    const er = await tenantQuery<{ ebay_pending: number; ebay_incoming: number }>(
+      orgId,
+      `SELECT
                 COUNT(*) FILTER (
                   WHERE rl.inbound_source_type = 'ebay' AND rz.zoho_purchaseorder_id IS NULL
                 )::int AS ebay_pending,
@@ -156,27 +155,22 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
           WHERE rl.organization_id = $1
             AND rl.workflow_status = 'EXPECTED'
             AND COALESCE(rl.quantity_received, 0) = 0`,
-        [orgId],
-      );
-      ebay_pending = er.rows[0]?.ebay_pending ?? 0;
-      ebay_incoming = er.rows[0]?.ebay_incoming ?? 0;
-    }
-
-    return {
-      ...row,
-      delivered_not_unboxed,
-      delivered_unscanned_claims,
-      ebay_pending,
-      ebay_incoming,
-      universal_incoming,
-    };
-      },
+      [orgId],
     );
-
-    return NextResponse.json({ success: true, ...payload });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to compute summary';
-    console.error('receiving-lines/incoming/summary failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    ebay_pending = er.rows[0]?.ebay_pending ?? 0;
+    ebay_incoming = er.rows[0]?.ebay_incoming ?? 0;
   }
+
+  return {
+    ...row,
+    delivered_not_unboxed,
+    delivered_unscanned_claims,
+    ebay_pending,
+    ebay_incoming,
+    universal_incoming,
+  };
+    },
+  );
+
+  return NextResponse.json({ success: true, ...payload });
 }, { permission: 'receiving.view' });

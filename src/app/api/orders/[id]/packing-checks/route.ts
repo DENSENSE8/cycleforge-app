@@ -39,41 +39,35 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'no staff identity on request' }, { status: 401 });
   }
 
-  try {
-    const result = await recordPackingTick(ctx.organizationId, {
-      orderRowId,
-      kind: parsed.kind,
-      stepId: parsed.stepId,
-      checked: parsed.checked,
-      verifiedBy,
-      origin: parsed.origin,
-    });
+  const result = await recordPackingTick(ctx.organizationId, {
+    orderRowId,
+    kind: parsed.kind,
+    stepId: parsed.stepId,
+    checked: parsed.checked,
+    verifiedBy,
+    origin: parsed.origin,
+  });
 
-    if (!result.ok) {
-      return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
-    }
-
-    await recordAudit(pool, ctx, request, {
-      source: 'order-packing-checks',
-      action: AUDIT_ACTION.QC_RESULT_RECORD,
-      entityType: AUDIT_ENTITY.ORDER,
-      entityId: orderRowId,
-      // Print is a system-adjacent confirmation; the tap is the human override.
-      method: parsed.origin === 'print' ? 'system' : 'manual',
-      extra: {
-        kind: parsed.kind,
-        step_type: result.stepType,
-        step_id: parsed.stepId,
-        checked: parsed.checked,
-        origin: parsed.origin ?? 'acknowledgement',
-        client_event_id: parsed.clientEventId ?? null,
-      },
-    });
-
-    return NextResponse.json({ ok: true, verification: result.verification });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to record packing check';
-    console.error('[POST /api/orders/[id]/packing-checks] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
   }
+
+  await recordAudit(pool, ctx, request, {
+    source: 'order-packing-checks',
+    action: AUDIT_ACTION.QC_RESULT_RECORD,
+    entityType: AUDIT_ENTITY.ORDER,
+    entityId: orderRowId,
+    // Print is a system-adjacent confirmation; the tap is the human override.
+    method: parsed.origin === 'print' ? 'system' : 'manual',
+    extra: {
+      kind: parsed.kind,
+      step_type: result.stepType,
+      step_id: parsed.stepId,
+      checked: parsed.checked,
+      origin: parsed.origin ?? 'acknowledgement',
+      client_event_id: parsed.clientEventId ?? null,
+    },
+  });
+
+  return NextResponse.json({ ok: true, verification: result.verification });
 }, { permission: 'packing.complete_order' });

@@ -27,39 +27,33 @@ export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
-  try {
-    const result = await processReturnsIntake({
-      serials: normalizedSerials,
-      serialUnitIds,
-      trackingNumber: String(body?.tracking_number || '').trim() || null,
-      orderId: Number.isFinite(orderIdRaw) && orderIdRaw > 0 ? Math.floor(orderIdRaw) : null,
-      reason: String(body?.reason || '').trim() || null,
-      clientEventId: String(body?.client_event_id || '').trim() || null,
-      actorStaffId,
-      organizationId: ctx.organizationId,
-    });
+  const result = await processReturnsIntake({
+    serials: normalizedSerials,
+    serialUnitIds,
+    trackingNumber: String(body?.tracking_number || '').trim() || null,
+    orderId: Number.isFinite(orderIdRaw) && orderIdRaw > 0 ? Math.floor(orderIdRaw) : null,
+    reason: String(body?.reason || '').trim() || null,
+    clientEventId: String(body?.client_event_id || '').trim() || null,
+    actorStaffId,
+    organizationId: ctx.organizationId,
+  });
 
-    if (!result.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: result.error,
-          ...(result.missingSerials ? { missing_serials: result.missingSerials } : {}),
-          ...(result.missingIds ? { missing_ids: result.missingIds } : {}),
-        },
-        { status: result.status },
-      );
-    }
-    return NextResponse.json({
-      ok: true,
-      returned_unit_count: result.returnedUnitCount,
-      order_id: result.orderId,
-      tracking_number: result.trackingNumber,
-      units: result.units,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'returns intake failed';
-    console.error('[POST /api/returns/intake] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: result.error,
+        ...(result.missingSerials ? { missing_serials: result.missingSerials } : {}),
+        ...(result.missingIds ? { missing_ids: result.missingIds } : {}),
+      },
+      { status: result.status },
+    );
   }
+  return NextResponse.json({
+    ok: true,
+    returned_unit_count: result.returnedUnitCount,
+    order_id: result.orderId,
+    tracking_number: result.trackingNumber,
+    units: result.units,
+  });
 }, { permission: 'receiving.mark_received' });

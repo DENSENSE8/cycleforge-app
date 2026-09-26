@@ -12,31 +12,23 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'Invalid action id' }, { status: 400 });
     }
 
-    try {
-      const outcome = await postRepairActionToTicket(ctx.organizationId, id);
-      switch (outcome.status) {
-        case 'posted':
-          return NextResponse.json({ success: true, outcome });
-        case 'failed':
-          return NextResponse.json({ success: false, error: outcome.error, outcome }, { status: 502 });
-        case 'skipped':
-          if (outcome.reason === 'not-found') {
-            return NextResponse.json({ error: 'Action not found' }, { status: 404 });
-          }
-          if (outcome.reason === 'not-linked') {
-            return NextResponse.json(
-              { error: 'This repair is not linked to a helpdesk ticket.', outcome },
-              { status: 409 },
-            );
-          }
-          return NextResponse.json({ success: true, outcome });
-      }
-    } catch (error: unknown) {
-      console.error('POST /api/repair/actions/[id]/ticket-post error:', error);
-      return NextResponse.json(
-        { error: 'Failed to post to the ticket', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 },
-      );
+    const outcome = await postRepairActionToTicket(ctx.organizationId, id);
+    switch (outcome.status) {
+      case 'posted':
+        return NextResponse.json({ success: true, outcome });
+      case 'failed':
+        return NextResponse.json({ success: false, error: outcome.error, outcome }, { status: 502 });
+      case 'skipped':
+        if (outcome.reason === 'not-found') {
+          return NextResponse.json({ error: 'Action not found' }, { status: 404 });
+        }
+        if (outcome.reason === 'not-linked') {
+          return NextResponse.json(
+            { error: 'This repair is not linked to a helpdesk ticket.', outcome },
+            { status: 409 },
+          );
+        }
+        return NextResponse.json({ success: true, outcome });
     }
   },
   { permission: 'repair.mark_repaired' },

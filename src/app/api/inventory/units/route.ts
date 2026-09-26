@@ -4,58 +4,57 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 // GET /api/inventory/units Paginated serial_units list for the ByFilter view on /inventory.
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const { searchParams } = new URL(req.url);
-        const states = readList(searchParams.getAll('state'));
-        const conditions = readList(searchParams.getAll('condition'));
-        const sku = (searchParams.get('sku') || '').trim();
-        const location = (searchParams.get('location') || '').trim();
-        const q = (searchParams.get('q') || '').trim();
-        const limit = Math.min(Math.max(Number(searchParams.get('limit') || 100), 1), 500);
-        const offset = Math.max(Number(searchParams.get('offset') || 0), 0);
+    const { searchParams } = new URL(req.url);
+    const states = readList(searchParams.getAll('state'));
+    const conditions = readList(searchParams.getAll('condition'));
+    const sku = (searchParams.get('sku') || '').trim();
+    const location = (searchParams.get('location') || '').trim();
+    const q = (searchParams.get('q') || '').trim();
+    const limit = Math.min(Math.max(Number(searchParams.get('limit') || 100), 1), 500);
+    const offset = Math.max(Number(searchParams.get('offset') || 0), 0);
 
-        const where: string[] = [];
-        const params: unknown[] = [];
+    const where: string[] = [];
+    const params: unknown[] = [];
 
-        // Tenant ownership filter — never list another org's units. Always the
-        // first clause so it's present regardless of the optional filters.
-        params.push(ctx.organizationId);
-        where.push(`su.organization_id = $${params.length}`);
+    // Tenant ownership filter — never list another org's units. Always the
+    // first clause so it's present regardless of the optional filters.
+    params.push(ctx.organizationId);
+    where.push(`su.organization_id = $${params.length}`);
 
-        if (states.length > 0) {
-            params.push(states);
-            where.push(`su.current_status::text = ANY($${params.length}::text[])`);
-        }
-        if (conditions.length > 0) {
-            params.push(conditions);
-            where.push(`su.condition_grade::text = ANY($${params.length}::text[])`);
-        }
-        if (sku) {
-            params.push(sku);
-            where.push(`UPPER(su.sku) = UPPER($${params.length})`);
-        }
-        if (location) {
-            params.push(location);
-            where.push(`UPPER(su.current_location) = UPPER($${params.length})`);
-        }
-        if (q) {
-            params.push(`%${q}%`);
-            const idx = params.length;
-            where.push(`(
+    if (states.length > 0) {
+        params.push(states);
+        where.push(`su.current_status::text = ANY($${params.length}::text[])`);
+    }
+    if (conditions.length > 0) {
+        params.push(conditions);
+        where.push(`su.condition_grade::text = ANY($${params.length}::text[])`);
+    }
+    if (sku) {
+        params.push(sku);
+        where.push(`UPPER(su.sku) = UPPER($${params.length})`);
+    }
+    if (location) {
+        params.push(location);
+        where.push(`UPPER(su.current_location) = UPPER($${params.length})`);
+    }
+    if (q) {
+        params.push(`%${q}%`);
+        const idx = params.length;
+        where.push(`(
                 su.serial_number ILIKE $${idx}
                 OR COALESCE(sc.product_title, '') ILIKE $${idx}
                 OR su.notes ILIKE $${idx}
             )`);
-        }
+    }
 
-        const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-        params.push(limit);
-        const limitIdx = params.length;
-        params.push(offset);
-        const offsetIdx = params.length;
+    params.push(limit);
+    const limitIdx = params.length;
+    params.push(offset);
+    const offsetIdx = params.length;
 
-        const listSql = `
+    const listSql = `
             SELECT
                 su.id,
                 su.serial_number,
@@ -72,32 +71,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LIMIT $${limitIdx} OFFSET $${offsetIdx}
         `;
 
-        const countSql = `
+    const countSql = `
             SELECT COUNT(*)::int AS total
             FROM serial_units su
             LEFT JOIN sku_catalog sc ON (sc.id = su.sku_catalog_id OR sc.sku = su.sku) AND sc.organization_id = su.organization_id
             ${whereClause}
         `;
-        const countParams = params.slice(0, params.length - 2);
+    const countParams = params.slice(0, params.length - 2);
 
-        // tenantQuery sets the org GUC + runs against the tenant pool.
-        const [listResult, countResult] = await Promise.all([
-            tenantQuery(ctx.organizationId, listSql, params),
-            tenantQuery(ctx.organizationId, countSql, countParams),
-        ]);
+    // tenantQuery sets the org GUC + runs against the tenant pool.
+    const [listResult, countResult] = await Promise.all([
+        tenantQuery(ctx.organizationId, listSql, params),
+        tenantQuery(ctx.organizationId, countSql, countParams),
+    ]);
 
-        return NextResponse.json({
-            success: true,
-            items: listResult.rows,
-            total: countResult.rows[0]?.total ?? 0,
-            limit,
-            offset,
-        });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to list units';
-        console.error('[api/inventory/units] Error:', error);
-        return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    return NextResponse.json({
+        success: true,
+        items: listResult.rows,
+        total: countResult.rows[0]?.total ?? 0,
+        limit,
+        offset,
+    });
 }, { permission: 'sku_stock.view' });
 
 // Accept both repeated `?state=A&state=B` and comma-separated `?state=A,B`.

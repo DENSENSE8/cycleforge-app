@@ -250,231 +250,215 @@ async function upsertAssignment(client: PoolClient, orgId: string, params: {
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const queue = normalizeQueue(searchParams.get('queue'));
-    const query = String(searchParams.get('q') || '').trim();
+  const { searchParams } = new URL(request.url);
+  const queue = normalizeQueue(searchParams.get('queue'));
+  const query = String(searchParams.get('q') || '').trim();
 
-    const allRows = await fetchAllWorkOrderQueues(ctx.organizationId);
+  const allRows = await fetchAllWorkOrderQueues(ctx.organizationId);
 
-    const counts: Record<QueueKey, number> = {
-      all: allRows.length,
-      done: allRows.filter((row) => matchesQueue(row, 'done')).length,
-      all_unassigned: allRows.filter((row) => matchesQueue(row, 'all_unassigned')).length,
-      all_assigned: allRows.filter((row) => matchesQueue(row, 'all_assigned')).length,
-      orders: allRows.filter((row) => row.queueKey === 'orders').length,
-      test_returns: allRows.filter((row) => row.queueKey === 'test_returns').length,
-      fba_shipments: allRows.filter((row) => row.queueKey === 'fba_shipments').length,
-      repair_services: allRows.filter((row) => row.queueKey === 'repair_services').length,
-      test_receiving: allRows.filter((row) => row.queueKey === 'test_receiving').length,
-      local_pickups: allRows.filter((row) => row.queueKey === 'local_pickups').length,
-      stock_replenish: allRows.filter((row) => row.queueKey === 'stock_replenish').length,
-    };
+  const counts: Record<QueueKey, number> = {
+    all: allRows.length,
+    done: allRows.filter((row) => matchesQueue(row, 'done')).length,
+    all_unassigned: allRows.filter((row) => matchesQueue(row, 'all_unassigned')).length,
+    all_assigned: allRows.filter((row) => matchesQueue(row, 'all_assigned')).length,
+    orders: allRows.filter((row) => row.queueKey === 'orders').length,
+    test_returns: allRows.filter((row) => row.queueKey === 'test_returns').length,
+    fba_shipments: allRows.filter((row) => row.queueKey === 'fba_shipments').length,
+    repair_services: allRows.filter((row) => row.queueKey === 'repair_services').length,
+    test_receiving: allRows.filter((row) => row.queueKey === 'test_receiving').length,
+    local_pickups: allRows.filter((row) => row.queueKey === 'local_pickups').length,
+    stock_replenish: allRows.filter((row) => row.queueKey === 'stock_replenish').length,
+  };
 
-    const rows = allRows
-      .filter((row) => matchesQueue(row, queue))
-      .filter((row) => matchesSearch(row, query))
-      .sort(compareRows);
+  const rows = allRows
+    .filter((row) => matchesQueue(row, queue))
+    .filter((row) => matchesSearch(row, query))
+    .sort(compareRows);
 
-    return NextResponse.json({ rows, counts });
-  } catch (error: any) {
-    console.error('Failed to fetch work orders:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch work orders', details: error?.message || 'Unknown error' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ rows, counts });
 }, { permission: 'work_orders.view' });
 
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json();
-    const entityType = String(body?.entityType || '').trim().toUpperCase() as EntityType;
-    const entityId = Number(body?.entityId);
-    const techIdRaw = Number(body?.assignedTechId);
-    const packerIdRaw = Number(body?.assignedPackerId);
-    const priorityRaw = Number(body?.priority);
-    const status = normalizeStatus(body?.status);
-    const deadlineAt = normalizePSTTimestamp(body?.deadlineAt);
-    const notes = String(body?.notes || '').trim() || null;
+  const body = await request.json();
+  const entityType = String(body?.entityType || '').trim().toUpperCase() as EntityType;
+  const entityId = Number(body?.entityId);
+  const techIdRaw = Number(body?.assignedTechId);
+  const packerIdRaw = Number(body?.assignedPackerId);
+  const priorityRaw = Number(body?.priority);
+  const status = normalizeStatus(body?.status);
+  const deadlineAt = normalizePSTTimestamp(body?.deadlineAt);
+  const notes = String(body?.notes || '').trim() || null;
 
-    // Track whether assignedPackerId was explicitly included in the request body.
-    const packerIdProvided = 'assignedPackerId' in (body ?? {});
+  // Track whether assignedPackerId was explicitly included in the request body.
+  const packerIdProvided = 'assignedPackerId' in (body ?? {});
 
-    if (!['ORDER', 'REPAIR', 'FBA_SHIPMENT', 'RECEIVING', 'SKU_STOCK'].includes(entityType)) {
-      return NextResponse.json({ error: 'Invalid entityType' }, { status: 400 });
-    }
-    if (!Number.isFinite(entityId) || entityId <= 0) {
-      return NextResponse.json({ error: 'Invalid entityId' }, { status: 400 });
-    }
+  if (!['ORDER', 'REPAIR', 'FBA_SHIPMENT', 'RECEIVING', 'SKU_STOCK'].includes(entityType)) {
+    return NextResponse.json({ error: 'Invalid entityType' }, { status: 400 });
+  }
+  if (!Number.isFinite(entityId) || entityId <= 0) {
+    return NextResponse.json({ error: 'Invalid entityId' }, { status: 400 });
+  }
 
-    const assignedTechId = Number.isFinite(techIdRaw) && techIdRaw > 0 ? techIdRaw : null;
-    const assignedPackerId = Number.isFinite(packerIdRaw) && packerIdRaw > 0 ? packerIdRaw : null;
-    const priority = Number.isFinite(priorityRaw) ? Math.max(1, Math.min(priorityRaw, 9999)) : 100;
+  const assignedTechId = Number.isFinite(techIdRaw) && techIdRaw > 0 ? techIdRaw : null;
+  const assignedPackerId = Number.isFinite(packerIdRaw) && packerIdRaw > 0 ? packerIdRaw : null;
+  const priority = Number.isFinite(priorityRaw) ? Math.max(1, Math.min(priorityRaw, 9999)) : 100;
 
-    // Map each entity type to its org-bearing parent table for the ownership
-    // gate. Keys are the validated EntityType union — never user input — so the
-    // identifier interpolated into the SQL below cannot be attacker-controlled.
-    const parentTable: Record<EntityType, string> = {
-      ORDER: 'orders',
-      REPAIR: 'repair_service',
-      FBA_SHIPMENT: 'fba_shipments',
-      RECEIVING: 'receiving_carton',
-      SKU_STOCK: 'sku_stock',
-    };
+  // Map each entity type to its org-bearing parent table for the ownership
+  // gate. Keys are the validated EntityType union — never user input — so the
+  // identifier interpolated into the SQL below cannot be attacker-controlled.
+  const parentTable: Record<EntityType, string> = {
+    ORDER: 'orders',
+    REPAIR: 'repair_service',
+    FBA_SHIPMENT: 'fba_shipments',
+    RECEIVING: 'receiving_carton',
+    SKU_STOCK: 'sku_stock',
+  };
 
-    const owned = await withTenantTransaction(ctx.organizationId, async (client) => {
-      // Verify the target entity belongs to the caller's org before any write.
-      // A cross-tenant entityId returns false → 404 (hide existence), closing the
-      // work-assignment / fba_shipments / receiving_carton cross-tenant write breach.
-      const owns = await client.query(
-        `SELECT 1 FROM ${parentTable[entityType]} WHERE id = $1 AND organization_id = $2`,
-        [entityId, ctx.organizationId],
-      );
-      if (owns.rowCount === 0) return false;
+  const owned = await withTenantTransaction(ctx.organizationId, async (client) => {
+    // Verify the target entity belongs to the caller's org before any write.
+    // A cross-tenant entityId returns false → 404 (hide existence), closing the
+    // work-assignment / fba_shipments / receiving_carton cross-tenant write breach.
+    const owns = await client.query(
+      `SELECT 1 FROM ${parentTable[entityType]} WHERE id = $1 AND organization_id = $2`,
+      [entityId, ctx.organizationId],
+    );
+    if (owns.rowCount === 0) return false;
 
-      if (entityType === 'ORDER') {
-        // TEST row owns the technician slot; never write packer here.
+    if (entityType === 'ORDER') {
+      // TEST row owns the technician slot; never write packer here.
+      await upsertAssignment(client, ctx.organizationId, {
+        entityType: 'ORDER',
+        entityId,
+        workType: 'TEST',
+        assignedTechId,
+        assignedPackerId: null,
+        status,
+        priority,
+        deadlineAt,
+        notes,
+      });
+
+      // PACK row owns the packer slot.
+      if (packerIdProvided) {
         await upsertAssignment(client, ctx.organizationId, {
           entityType: 'ORDER',
           entityId,
-          workType: 'TEST',
-          assignedTechId,
-          assignedPackerId: null,
-          status,
-          priority,
-          deadlineAt,
-          notes,
-        });
-
-        // PACK row owns the packer slot.
-        if (packerIdProvided) {
-          await upsertAssignment(client, ctx.organizationId, {
-            entityType: 'ORDER',
-            entityId,
-            workType: 'PACK',
-            assignedTechId: null,
-            assignedPackerId,
-            completedByPackerId: status === 'DONE' ? (assignedPackerId ?? null) : null,
-            status,
-            priority,
-            deadlineAt: null,
-            notes,
-            allowInsertWhenEmpty: assignedPackerId != null,
-          });
-        }
-
-        // is_shipped is now derived from shipping_tracking_numbers; no direct write needed
-      } else {
-        const workType: WorkType =
-          entityType === 'REPAIR'
-            ? 'REPAIR'
-            : entityType === 'FBA_SHIPMENT'
-            ? 'QA'
-            : entityType === 'SKU_STOCK'
-            ? 'STOCK_REPLENISH'
-            : 'TEST';
-
-        await upsertAssignment(client, ctx.organizationId, {
-          entityType,
-          entityId,
-          workType,
-          assignedTechId,
+          workType: 'PACK',
+          assignedTechId: null,
           assignedPackerId,
+          completedByPackerId: status === 'DONE' ? (assignedPackerId ?? null) : null,
           status,
           priority,
-          deadlineAt,
+          deadlineAt: null,
           notes,
+          allowInsertWhenEmpty: assignedPackerId != null,
         });
+      }
 
-        if (entityType === 'FBA_SHIPMENT') {
-          await client.query(
-            `UPDATE fba_shipments
+      // is_shipped is now derived from shipping_tracking_numbers; no direct write needed
+    } else {
+      const workType: WorkType =
+        entityType === 'REPAIR'
+          ? 'REPAIR'
+          : entityType === 'FBA_SHIPMENT'
+          ? 'QA'
+          : entityType === 'SKU_STOCK'
+          ? 'STOCK_REPLENISH'
+          : 'TEST';
+
+      await upsertAssignment(client, ctx.organizationId, {
+        entityType,
+        entityId,
+        workType,
+        assignedTechId,
+        assignedPackerId,
+        status,
+        priority,
+        deadlineAt,
+        notes,
+      });
+
+      if (entityType === 'FBA_SHIPMENT') {
+        await client.query(
+          `UPDATE fba_shipments
              SET assigned_tech_id = $1,
                  assigned_packer_id = $2
              WHERE id = $3 AND organization_id = $4`,
-            [assignedTechId, assignedPackerId, entityId, ctx.organizationId]
-          );
-        }
+          [assignedTechId, assignedPackerId, entityId, ctx.organizationId]
+        );
+      }
 
-        if (entityType === 'RECEIVING') {
-          await client.query(
-            `UPDATE receiving_carton
+      if (entityType === 'RECEIVING') {
+        await client.query(
+          `UPDATE receiving_carton
              SET assigned_tech_id = $1,
                  updated_at = NOW()
              WHERE id = $2 AND organization_id = $3`,
-            [assignedTechId, entityId, ctx.organizationId]
-          );
-        }
+          [assignedTechId, entityId, ctx.organizationId]
+        );
       }
-      return true;
-    });
-
-    if (!owned) {
-      return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
+    return true;
+  });
 
-    if (entityType === 'FBA_SHIPMENT') {
-      // The assignment wrote fba_shipments.assigned_tech_id/packer_id, which the
-      // (now-cached) FBA dashboard board reads — bust the FBA read set org-scoped.
-      await invalidateFbaViews(ctx.organizationId);
+  if (!owned) {
+    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  }
+
+  if (entityType === 'FBA_SHIPMENT') {
+    // The assignment wrote fba_shipments.assigned_tech_id/packer_id, which the
+    // (now-cached) FBA dashboard board reads — bust the FBA read set org-scoped.
+    await invalidateFbaViews(ctx.organizationId);
+  }
+
+  try {
+    if (entityType === 'ORDER') {
+      const snaps = await getOrderAssignmentSnapshotsByOrderIds([entityId]);
+      const snap = snaps.get(entityId) ?? { testerId: null, packerId: null, deadlineAt: null };
+      const nameMap = await getStaffNameMap([snap.testerId, snap.packerId]);
+      await publishOrderAssignmentsUpdated({
+        organizationId: ctx.organizationId,
+        orderId: entityId,
+        testerId: snap.testerId,
+        packerId: snap.packerId,
+        testerName: snap.testerId != null ? nameMap.get(snap.testerId) ?? null : null,
+        packerName: snap.packerId != null ? nameMap.get(snap.packerId) ?? null : null,
+        deadlineAt: snap.deadlineAt,
+        source: 'work-orders.patch',
+      });
+    } else {
+      await publishQueueAssignmentsUpdated({
+        organizationId: ctx.organizationId,
+        entityType,
+        entityId,
+        source: 'work-orders.patch',
+      });
     }
+  } catch (broadcastErr) {
+    console.warn('[work-orders PATCH] realtime broadcast failed (non-critical):', broadcastErr);
+  }
 
+  after(async () => {
     try {
-      if (entityType === 'ORDER') {
-        const snaps = await getOrderAssignmentSnapshotsByOrderIds([entityId]);
-        const snap = snaps.get(entityId) ?? { testerId: null, packerId: null, deadlineAt: null };
-        const nameMap = await getStaffNameMap([snap.testerId, snap.packerId]);
-        await publishOrderAssignmentsUpdated({
-          organizationId: ctx.organizationId,
-          orderId: entityId,
-          testerId: snap.testerId,
-          packerId: snap.packerId,
-          testerName: snap.testerId != null ? nameMap.get(snap.testerId) ?? null : null,
-          packerName: snap.packerId != null ? nameMap.get(snap.packerId) ?? null : null,
-          deadlineAt: snap.deadlineAt,
-          source: 'work-orders.patch',
-        });
-      } else {
-        await publishQueueAssignmentsUpdated({
-          organizationId: ctx.organizationId,
-          entityType,
-          entityId,
-          source: 'work-orders.patch',
-        });
-      }
-    } catch (broadcastErr) {
-      console.warn('[work-orders PATCH] realtime broadcast failed (non-critical):', broadcastErr);
-    }
-
-    after(async () => {
-      try {
-        const wa = await tenantQuery(ctx.organizationId,
-          `SELECT id, status::text AS status FROM work_assignments
+      const wa = await tenantQuery(ctx.organizationId,
+        `SELECT id, status::text AS status FROM work_assignments
             WHERE organization_id = $1::uuid AND entity_type = $2 AND entity_id = $3
               AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS', 'DONE')
             ORDER BY updated_at DESC LIMIT 1`,
-          [ctx.organizationId, entityType, entityId],
+        [ctx.organizationId, entityType, entityId],
+      );
+      const row = wa.rows[0];
+      if (row?.id) {
+        await syncLinkProgressFromWorkAssignment(
+          ctx.organizationId,
+          Number(row.id),
+          String(row.status),
         );
-        const row = wa.rows[0];
-        if (row?.id) {
-          await syncLinkProgressFromWorkAssignment(
-            ctx.organizationId,
-            Number(row.id),
-            String(row.status),
-          );
-        }
-      } catch (syncErr) {
-        console.warn('[work-orders PATCH] plan link sync failed (non-critical):', syncErr);
       }
-    });
+    } catch (syncErr) {
+      console.warn('[work-orders PATCH] plan link sync failed (non-critical):', syncErr);
+    }
+  });
 
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Failed to update work order:', error);
-    return NextResponse.json(
-      { error: 'Failed to update work order', details: error?.message || 'Unknown error' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true });
 }, { permission: 'work_orders.claim' });

@@ -4,28 +4,22 @@ import { resolveCatalogByItemNumber } from '@/lib/packing/resolve-catalog-by-ite
 
 /** GET /api/sku-catalog/by-item-number?itemNumber=…[&catalogId=…] */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const itemNumber = (searchParams.get('itemNumber') || '').trim();
-    const rawCatalogId = searchParams.get('catalogId') || searchParams.get('skuId');
-    const catalogId = rawCatalogId ? Number(rawCatalogId) : null;
+  const { searchParams } = new URL(req.url);
+  const itemNumber = (searchParams.get('itemNumber') || '').trim();
+  const rawCatalogId = searchParams.get('catalogId') || searchParams.get('skuId');
+  const catalogId = rawCatalogId ? Number(rawCatalogId) : null;
 
-    const result = await resolveCatalogByItemNumber(ctx.organizationId, {
-      itemNumber: itemNumber || null,
-      catalogId: Number.isFinite(catalogId) && catalogId! > 0 ? catalogId : null,
-    });
+  const result = await resolveCatalogByItemNumber(ctx.organizationId, {
+    itemNumber: itemNumber || null,
+    catalogId: Number.isFinite(catalogId) && catalogId! > 0 ? catalogId : null,
+  });
 
-    if ('error' in result && result.status === 'invalid') {
-      return NextResponse.json(
-        { success: false, error: result.error },
-        { status: 400 },
-      );
-    }
-
-    return NextResponse.json({ success: true, ...result });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to resolve item number';
-    console.error('Error in GET /api/sku-catalog/by-item-number:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  if ('error' in result && result.status === 'invalid') {
+    return NextResponse.json(
+      { success: false, error: result.error },
+      { status: 400 },
+    );
   }
+
+  return NextResponse.json({ success: true, ...result });
 }, { permission: 'sku_stock.view' });

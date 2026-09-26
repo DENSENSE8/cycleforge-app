@@ -29,10 +29,9 @@ export const GET = withAuth(async (request, ctx) => {
   }
   params.push(limit);
 
-  try {
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `SELECT tr.id,
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT tr.id,
               tr.serial_unit_id,
               tr.receiving_line_id,
               su.serial_number,
@@ -51,12 +50,7 @@ export const GET = withAuth(async (request, ctx) => {
         ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY tr.created_at DESC, tr.id DESC
         LIMIT $${params.length}`,
-      params,
-    );
-    return NextResponse.json({ ok: true, results: result.rows });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to load testing feed';
-    console.error('[GET /api/testing/recent] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+    params,
+  );
+  return NextResponse.json({ ok: true, results: result.rows });
 }, { permission: 'tech.qc_pass' });

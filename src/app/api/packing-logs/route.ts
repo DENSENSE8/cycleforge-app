@@ -114,13 +114,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
     const cacheLookup = createCacheLookupKey({ org: ctx.organizationId, packerId: String(staffId), limit, offset });
 
-    try {
-        const cached = await getCachedJson<any[]>('api:packing-logs', cacheLookup);
-        if (cached) {
-            return NextResponse.json(cached, { headers: { 'x-cache': 'HIT' } });
-        }
+    const cached = await getCachedJson<any[]>('api:packing-logs', cacheLookup);
+    if (cached) {
+        return NextResponse.json(cached, { headers: { 'x-cache': 'HIT' } });
+    }
 
-        const result = await tenantQuery(ctx.organizationId, `
+    const result = await tenantQuery(ctx.organizationId, `
             SELECT
                 pl.id,
                 pl.created_at as timestamp,
@@ -137,24 +136,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LIMIT $2 OFFSET $3
         `, [staffId, limit, offset, ctx.organizationId]);
 
-        // Map to format expected by StationHistory (include all fields for compatibility)
-        const formattedLogs = result.rows.map((log: any) => ({
-            id: `packer${staffId}-${log.id}`,
-            timestamp: log.timestamp || '',
-            tracking: log.tracking || '',
-            trackingNumber: log.tracking || '',
-            title: log.title || '',
-            product: log.title || '',
-            packedAt: log.timestamp,
-            trackingType: log.tracking_type || '',
-        }));
+    // Map to format expected by StationHistory (include all fields for compatibility)
+    const formattedLogs = result.rows.map((log: any) => ({
+        id: `packer${staffId}-${log.id}`,
+        timestamp: log.timestamp || '',
+        tracking: log.tracking || '',
+        trackingNumber: log.tracking || '',
+        title: log.title || '',
+        product: log.title || '',
+        packedAt: log.timestamp,
+        trackingType: log.tracking_type || '',
+    }));
 
-        await setCachedJson('api:packing-logs', cacheLookup, formattedLogs, 300, ['packing-logs']);
-        return NextResponse.json(formattedLogs, { headers: { 'x-cache': 'MISS' } });
-    } catch (error: any) {
-        console.error('Error fetching packing logs:', error);
-        return NextResponse.json({ error: 'Failed to fetch logs', details: error.message }, { status: 500 });
-    }
+    await setCachedJson('api:packing-logs', cacheLookup, formattedLogs, 300, ['packing-logs']);
+    return NextResponse.json(formattedLogs, { headers: { 'x-cache': 'MISS' } });
 }, { permission: 'packing.view' });
 
 const PACKING_LOGS_POST_ROUTE = 'packing-logs.post';

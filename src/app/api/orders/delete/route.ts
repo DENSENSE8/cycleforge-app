@@ -9,28 +9,27 @@ import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 /** POST /api/orders/delete - Delete one or more orders Body: */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json();
-    const { orderId, orderIds } = body;
+  const body = await req.json();
+  const { orderId, orderIds } = body;
 
-    if (!orderId && (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0)) {
-      return NextResponse.json(
-        { error: 'orderId or orderIds array is required' },
-        { status: 400 }
-      );
-    }
+  if (!orderId && (!orderIds || !Array.isArray(orderIds) || orderIds.length === 0)) {
+    return NextResponse.json(
+      { error: 'orderId or orderIds array is required' },
+      { status: 400 }
+    );
+  }
 
-    const requestedIds: number[] = orderId ? [orderId] : orderIds;
+  const requestedIds: number[] = orderId ? [orderId] : orderIds;
 
-    // An order number (order_id) can carry multiple rows in `orders`:
-    const productKeyExpr = (a: string) => `COALESCE(
+  // An order number (order_id) can carry multiple rows in `orders`:
+  const productKeyExpr = (a: string) => `COALESCE(
         NULLIF('cat:' || ${a}.sku_catalog_id::text, 'cat:'),
         NULLIF('sku:' || lower(trim(${a}.sku)), 'sku:'),
         NULLIF('title:' || lower(regexp_replace(trim(coalesce(${a}.product_title, '')), '\\s+', ' ', 'g')), 'title:')
       )`;
-    const txOutcome = await withTenantTransaction(ctx.organizationId, async (client) => {
-      const expanded = await client.query(
-        `WITH targets AS (
+  const txOutcome = await withTenantTransaction(ctx.organizationId, async (client) => {
+    const expanded = await client.query(
+      `WITH targets AS (
            SELECT t.order_id, ${productKeyExpr('t')} AS pkey
              FROM orders t
             WHERE t.id = ANY($1::int[]) AND t.order_id IS NOT NULL AND t.order_id <> ''
@@ -47,65 +46,58 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                       AND tg.pkey IS NOT DISTINCT FROM ${productKeyExpr('o')}
                  )
             )`,
-        [requestedIds, ctx.organizationId],
-      );
-      const beforeRows = expanded;
-      const idsToDelete: number[] = expanded.rows.map((r) => Number(r.id));
+      [requestedIds, ctx.organizationId],
+    );
+    const beforeRows = expanded;
+    const idsToDelete: number[] = expanded.rows.map((r) => Number(r.id));
 
-      if (idsToDelete.length === 0) {
-        return { notFound: true as const };
-      }
-
-      const result = await client.query(
-        `DELETE FROM orders WHERE id = ANY($1::int[]) AND organization_id = $2`,
-        [idsToDelete, ctx.organizationId]
-      );
-      if ((result.rowCount || 0) === 0) {
-        return { notFound: true as const };
-      }
-
-      // One audit row per deleted order, with full before snapshot.
-      for (const row of beforeRows.rows) {
-        await recordAudit(client, ctx, req, {
-          source: 'orders.delete',
-          action: 'orders.delete',
-          entityType: AUDIT_ENTITY.ORDER,
-          entityId: Number(row.id),
-          before: row,
-          after: null,
-          method: 'manual',
-        });
-      }
-
-      return { deleted: result.rowCount || 0, idsToDelete };
-    });
-
-    if ('notFound' in txOutcome) {
-      return NextResponse.json(
-        { error: 'No matching orders were deleted', deleted: 0 },
-        { status: 404 }
-      );
+    if (idsToDelete.length === 0) {
+      return { notFound: true as const };
     }
 
-    // Dashboard shipped table is backed by /api/packerlogs cache ("packing-logs"),
-    // not only /api/shipped, so delete must invalidate both domains.
-    await invalidateAllOrdersApiCaches(['shipped', 'packing-logs'], ctx.organizationId);
-    await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: txOutcome.idsToDelete, source: 'orders.delete' });
-    // A deleted order leaves its packed scans pointing at a stale match — refresh
-    // the shipped-table read model so they fall back correctly (best-effort). The
-    // order_row_id branch in the helper still finds them post-delete.
-    after(() =>
-      recomputeEnrichmentForOrders(pool, txOutcome.idsToDelete).catch((e) =>
-        console.warn('[orders/delete] enrichment recompute failed', e),
-      ),
+    const result = await client.query(
+      `DELETE FROM orders WHERE id = ANY($1::int[]) AND organization_id = $2`,
+      [idsToDelete, ctx.organizationId]
     );
+    if ((result.rowCount || 0) === 0) {
+      return { notFound: true as const };
+    }
 
-    return NextResponse.json({ success: true, deleted: txOutcome.deleted });
-  } catch (error: any) {
-    console.error('Error deleting order(s):', error);
+    // One audit row per deleted order, with full before snapshot.
+    for (const row of beforeRows.rows) {
+      await recordAudit(client, ctx, req, {
+        source: 'orders.delete',
+        action: 'orders.delete',
+        entityType: AUDIT_ENTITY.ORDER,
+        entityId: Number(row.id),
+        before: row,
+        after: null,
+        method: 'manual',
+      });
+    }
+
+    return { deleted: result.rowCount || 0, idsToDelete };
+  });
+
+  if ('notFound' in txOutcome) {
     return NextResponse.json(
-      { error: 'Failed to delete order(s)', details: error.message },
-      { status: 500 }
+      { error: 'No matching orders were deleted', deleted: 0 },
+      { status: 404 }
     );
   }
+
+  // Dashboard shipped table is backed by /api/packerlogs cache ("packing-logs"),
+  // not only /api/shipped, so delete must invalidate both domains.
+  await invalidateAllOrdersApiCaches(['shipped', 'packing-logs'], ctx.organizationId);
+  await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: txOutcome.idsToDelete, source: 'orders.delete' });
+  // A deleted order leaves its packed scans pointing at a stale match — refresh
+  // the shipped-table read model so they fall back correctly (best-effort). The
+  // order_row_id branch in the helper still finds them post-delete.
+  after(() =>
+    recomputeEnrichmentForOrders(pool, txOutcome.idsToDelete).catch((e) =>
+      console.warn('[orders/delete] enrichment recompute failed', e),
+    ),
+  );
+
+  return NextResponse.json({ success: true, deleted: txOutcome.deleted });
 }, { permission: 'orders.void' });

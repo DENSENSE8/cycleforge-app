@@ -39,19 +39,13 @@ export const POST = withAuth(
       );
     }
 
-    try {
-      const rows = await Promise.all(
-        parsed.data.jobs.map((j) =>
-          recordLabelPrintJob({ ...j, actorStaffId: ctx.staffId ?? null }, orgId),
-        ),
-      );
-      const jobs = rows.filter((r): r is NonNullable<typeof r> => r != null);
-      return NextResponse.json({ ok: true, recorded: jobs.length, jobs });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'label-print-jobs failed';
-      console.error('[POST /api/label-print-jobs] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const rows = await Promise.all(
+      parsed.data.jobs.map((j) =>
+        recordLabelPrintJob({ ...j, actorStaffId: ctx.staffId ?? null }, orgId),
+      ),
+    );
+    const jobs = rows.filter((r): r is NonNullable<typeof r> => r != null);
+    return NextResponse.json({ ok: true, recorded: jobs.length, jobs });
   },
   { permission: 'print.label' },
 );

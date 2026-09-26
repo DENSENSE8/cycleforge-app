@@ -34,103 +34,97 @@ export const GET = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid node id' }, { status: 400 });
     }
 
-    try {
-      const rows = await db
-        .select({
-          id: stationDefinitions.id,
-          label: stationDefinitions.label,
-          pageKey: stationDefinitions.pageKey,
-          modeKey: stationDefinitions.modeKey,
-          workflowNodeId: stationDefinitions.workflowNodeId,
-          config: stationDefinitions.config,
-          version: stationDefinitions.version,
-          isActive: stationDefinitions.isActive,
-        })
-        .from(stationDefinitions)
-        .where(
-          and(
-            eq(stationDefinitions.organizationId, ctx.organizationId),
-            eq(stationDefinitions.workflowNodeId, nodeId),
-            eq(stationDefinitions.isActive, true),
-          ),
-        )
-        .orderBy(desc(stationDefinitions.version))
-        .limit(1);
+    const rows = await db
+      .select({
+        id: stationDefinitions.id,
+        label: stationDefinitions.label,
+        pageKey: stationDefinitions.pageKey,
+        modeKey: stationDefinitions.modeKey,
+        workflowNodeId: stationDefinitions.workflowNodeId,
+        config: stationDefinitions.config,
+        version: stationDefinitions.version,
+        isActive: stationDefinitions.isActive,
+      })
+      .from(stationDefinitions)
+      .where(
+        and(
+          eq(stationDefinitions.organizationId, ctx.organizationId),
+          eq(stationDefinitions.workflowNodeId, nodeId),
+          eq(stationDefinitions.isActive, true),
+        ),
+      )
+      .orderBy(desc(stationDefinitions.version))
+      .limit(1);
 
-      const row = rows[0] ?? null;
-      if (!row) {
-        return NextResponse.json({ ok: true, station: null });
-      }
-
-      // Registry metadata (CODE) → resolve labels/icons/endpoints for the
-      // saved composition (DATA). Maps built once per request.
-      const blockMeta = new Map(listBlockMeta().map((b) => [b.type, b]));
-      const sourceMeta = new Map(listDataSourceMeta().map((s) => [s.id, s]));
-      const actionMeta = new Map(listActionMeta().map((a) => [a.id, a]));
-
-      const rawConfig = (row.config ?? {}) as {
-        slots?: Record<string, BlockInstanceConfig[]> | 'legacy';
-      };
-      const legacy = rawConfig.slots === 'legacy';
-      const slotsConfig =
-        legacy || !rawConfig.slots ? null : (rawConfig.slots as Record<string, BlockInstanceConfig[]>);
-
-      const slots = slotsConfig
-        ? SLOT_IDS.map((slot) => {
-            const instances = slotsConfig[slot] ?? [];
-            return {
-              slot,
-              blocks: instances.map((b) => {
-                const bm = blockMeta.get(b.block) ?? null;
-                const sm = b.source ? sourceMeta.get(b.source.id) ?? null : null;
-                return {
-                  id: b.id,
-                  block: b.block,
-                  blockLabel: bm?.label ?? b.block,
-                  blockIcon: bm?.icon ?? 'Box',
-                  source: sm
-                    ? {
-                        id: sm.id,
-                        label: sm.label,
-                        integration: sm.integration,
-                        endpoint: sm.endpoint,
-                        realtimeChannel: sm.realtime?.ablyChannel ?? null,
-                      }
-                    : null,
-                  fields: b.source?.fields ?? {},
-                  actions: (b.actions ?? []).map((id) => {
-                    const am = actionMeta.get(id) ?? null;
-                    return { id, label: am?.label ?? id, icon: am?.icon ?? 'Zap' };
-                  }),
-                  doneWhen: b.done_when ?? null,
-                };
-              }),
-            };
-          }).filter((s) => s.blocks.length > 0)
-        : [];
-
-      return NextResponse.json({
-        ok: true,
-        station: {
-          id: row.id,
-          label: row.label,
-          pageKey: row.pageKey,
-          modeKey: row.modeKey,
-          workflowNodeId: row.workflowNodeId,
-          version: row.version,
-          isActive: row.isActive,
-          legacy,
-          slots,
-          // Raw composition — the L2 editor seeds its working copy from this
-          // (the resolved `slots` above are render-only / read-only).
-          config: (row.config ?? { slots: {} }) as StationConfig,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'studio station failed';
-      console.error('[GET /api/studio/nodes/[id]/station] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const row = rows[0] ?? null;
+    if (!row) {
+      return NextResponse.json({ ok: true, station: null });
     }
+
+    // Registry metadata (CODE) → resolve labels/icons/endpoints for the
+    // saved composition (DATA). Maps built once per request.
+    const blockMeta = new Map(listBlockMeta().map((b) => [b.type, b]));
+    const sourceMeta = new Map(listDataSourceMeta().map((s) => [s.id, s]));
+    const actionMeta = new Map(listActionMeta().map((a) => [a.id, a]));
+
+    const rawConfig = (row.config ?? {}) as {
+      slots?: Record<string, BlockInstanceConfig[]> | 'legacy';
+    };
+    const legacy = rawConfig.slots === 'legacy';
+    const slotsConfig =
+      legacy || !rawConfig.slots ? null : (rawConfig.slots as Record<string, BlockInstanceConfig[]>);
+
+    const slots = slotsConfig
+      ? SLOT_IDS.map((slot) => {
+          const instances = slotsConfig[slot] ?? [];
+          return {
+            slot,
+            blocks: instances.map((b) => {
+              const bm = blockMeta.get(b.block) ?? null;
+              const sm = b.source ? sourceMeta.get(b.source.id) ?? null : null;
+              return {
+                id: b.id,
+                block: b.block,
+                blockLabel: bm?.label ?? b.block,
+                blockIcon: bm?.icon ?? 'Box',
+                source: sm
+                  ? {
+                      id: sm.id,
+                      label: sm.label,
+                      integration: sm.integration,
+                      endpoint: sm.endpoint,
+                      realtimeChannel: sm.realtime?.ablyChannel ?? null,
+                    }
+                  : null,
+                fields: b.source?.fields ?? {},
+                actions: (b.actions ?? []).map((id) => {
+                  const am = actionMeta.get(id) ?? null;
+                  return { id, label: am?.label ?? id, icon: am?.icon ?? 'Zap' };
+                }),
+                doneWhen: b.done_when ?? null,
+              };
+            }),
+          };
+        }).filter((s) => s.blocks.length > 0)
+      : [];
+
+    return NextResponse.json({
+      ok: true,
+      station: {
+        id: row.id,
+        label: row.label,
+        pageKey: row.pageKey,
+        modeKey: row.modeKey,
+        workflowNodeId: row.workflowNodeId,
+        version: row.version,
+        isActive: row.isActive,
+        legacy,
+        slots,
+        // Raw composition — the L2 editor seeds its working copy from this
+        // (the resolved `slots` above are render-only / read-only).
+        config: (row.config ?? { slots: {} }) as StationConfig,
+      },
+    });
   },
   { permission: 'studio.view', feature: 'studio' },
 );
@@ -147,33 +141,27 @@ export const PUT = withAuth(
     const parsed = parseBody(NodeStationSaveBody, raw);
     if (parsed instanceof NextResponse) return parsed;
 
-    try {
-      const result = await withTenantTransaction(ctx.organizationId, (client) =>
-        saveNodeStationDraft({
-          client,
-          orgId: ctx.organizationId,
-          nodeId,
-          label: parsed.label,
-          config: parsed.config as StationConfig,
-          staffId: ctx.staffId,
-        }),
-      );
+    const result = await withTenantTransaction(ctx.organizationId, (client) =>
+      saveNodeStationDraft({
+        client,
+        orgId: ctx.organizationId,
+        nodeId,
+        label: parsed.label,
+        config: parsed.config as StationConfig,
+        staffId: ctx.staffId,
+      }),
+    );
 
-      if (result.status === 200) {
-        await recordAudit(pool, ctx, request, {
-          source: 'studio-node-station',
-          action: AUDIT_ACTION.STATION_DRAFT_SAVE,
-          entityType: AUDIT_ENTITY.STATION_DEFINITION,
-          entityId: result.body.draft.id,
-          after: result.audit,
-        });
-      }
-      return NextResponse.json(result.body, { status: result.status });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'studio station save failed';
-      console.error('[PUT /api/studio/nodes/[id]/station] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    if (result.status === 200) {
+      await recordAudit(pool, ctx, request, {
+        source: 'studio-node-station',
+        action: AUDIT_ACTION.STATION_DRAFT_SAVE,
+        entityType: AUDIT_ENTITY.STATION_DEFINITION,
+        entityId: result.body.draft.id,
+        after: result.audit,
+      });
     }
+    return NextResponse.json(result.body, { status: result.status });
   },
   { permission: 'studio.manage', feature: 'studio' },
 );

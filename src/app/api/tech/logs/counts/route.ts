@@ -16,22 +16,21 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'techId is required' }, { status: 400 });
   }
 
-  try {
-    // Same tenant-scoped params + 1-day date buffer as the list route.
-    const params: (string | number)[] = [techId, orgId];
-    const orgIdx = 2;
-    const dateConditions: string[] = [];
-    if (weekStart) {
-      params.push(weekStart);
-      dateConditions.push(`sal.created_at >= ($${params.length}::date - INTERVAL '1 day')`);
-    }
-    if (weekEnd) {
-      params.push(weekEnd);
-      dateConditions.push(`sal.created_at < ($${params.length}::date + INTERVAL '2 days')`);
-    }
-    const dateWhere = dateConditions.length > 0 ? `AND ${dateConditions.join(' AND ')}` : '';
+  // Same tenant-scoped params + 1-day date buffer as the list route.
+  const params: (string | number)[] = [techId, orgId];
+  const orgIdx = 2;
+  const dateConditions: string[] = [];
+  if (weekStart) {
+    params.push(weekStart);
+    dateConditions.push(`sal.created_at >= ($${params.length}::date - INTERVAL '1 day')`);
+  }
+  if (weekEnd) {
+    params.push(weekEnd);
+    dateConditions.push(`sal.created_at < ($${params.length}::date + INTERVAL '2 days')`);
+  }
+  const dateWhere = dateConditions.length > 0 ? `AND ${dateConditions.join(' AND ')}` : '';
 
-    const query = `
+  const query = `
       SELECT
         to_char(sal.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD') AS day,
         COUNT(*)::int AS count
@@ -45,18 +44,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ORDER BY day DESC
     `;
 
-    const result = await tenantQuery<{ day: string | null; count: number }>(orgId, query, params);
-    const byDay: Record<string, number> = {};
-    let total = 0;
-    for (const r of result.rows) {
-      const day = r.day ?? 'Unknown';
-      byDay[day] = (byDay[day] ?? 0) + Number(r.count);
-      total += Number(r.count);
-    }
-
-    return NextResponse.json({ total, byDay, truncated: false });
-  } catch (error: any) {
-    console.error('Error fetching tech-log counts:', error);
-    return NextResponse.json({ error: 'Failed to fetch tech-log counts', details: error?.message }, { status: 500 });
+  const result = await tenantQuery<{ day: string | null; count: number }>(orgId, query, params);
+  const byDay: Record<string, number> = {};
+  let total = 0;
+  for (const r of result.rows) {
+    const day = r.day ?? 'Unknown';
+    byDay[day] = (byDay[day] ?? 0) + Number(r.count);
+    total += Number(r.count);
   }
+
+  return NextResponse.json({ total, byDay, truncated: false });
 }, { permission: 'tech.view' });

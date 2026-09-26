@@ -104,12 +104,11 @@ export const GET = withAuth(
     // Tenant gate first — every surfaced catalog row must belong to this org.
     const whereSql = `WHERE sc.organization_id = ${orgIdx} ${activeGate} ${searchClause} ${debtGate}`;
 
-    try {
-      const listParams = [...params, limit, offset];
-      const limitIdx = `$${listParams.length - 1}`;
-      const offsetIdx = `$${listParams.length}`;
+    const listParams = [...params, limit, offset];
+    const limitIdx = `$${listParams.length - 1}`;
+    const offsetIdx = `$${listParams.length}`;
 
-      const listSql = `
+    const listSql = `
         WITH ${debtCte}
         SELECT
           sc.id                AS "skuCatalogId",
@@ -142,7 +141,7 @@ export const GET = withAuth(
         LIMIT ${limitIdx} OFFSET ${offsetIdx}
       `;
 
-      const countSql = `
+    const countSql = `
         WITH ${debtCte}
         SELECT COUNT(*)::int AS total
         FROM sku_catalog sc
@@ -150,23 +149,18 @@ export const GET = withAuth(
         ${whereSql}
       `;
 
-      const [listResult, countResult] = await Promise.all([
-        tenantQuery(orgId, listSql, listParams),
-        tenantQuery(orgId, countSql, params),
-      ]);
+    const [listResult, countResult] = await Promise.all([
+      tenantQuery(orgId, listSql, listParams),
+      tenantQuery(orgId, countSql, params),
+    ]);
 
-      return NextResponse.json({
-        success: true,
-        items: listResult.rows,
-        total: countResult.rows[0]?.total ?? 0,
-        limit,
-        offset,
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'pairing-queue failed';
-      console.error('[pairing-queue] error:', err);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      items: listResult.rows,
+      total: countResult.rows[0]?.total ?? 0,
+      limit,
+      offset,
+    });
   },
   { permission: 'sku_stock.manage' },
 );

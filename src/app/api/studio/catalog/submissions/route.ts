@@ -10,48 +10,42 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(
   async () => {
-    try {
-      const rows = await db
-        .select({
-          id: workflowTemplates.id,
-          slug: workflowTemplates.slug,
-          name: workflowTemplates.name,
-          description: workflowTemplates.description,
-          category: workflowTemplates.category,
-          graph: workflowTemplates.graph,
-          submittedByOrg: workflowTemplates.submittedByOrg,
-          submittedAt: workflowTemplates.submittedAt,
-        })
-        .from(workflowTemplates)
-        .where(
-          and(
-            eq(workflowTemplates.isSystem, false),
-            eq(workflowTemplates.reviewStatus, 'submitted'),
-          ),
-        )
-        .orderBy(desc(workflowTemplates.submittedAt));
+    const rows = await db
+      .select({
+        id: workflowTemplates.id,
+        slug: workflowTemplates.slug,
+        name: workflowTemplates.name,
+        description: workflowTemplates.description,
+        category: workflowTemplates.category,
+        graph: workflowTemplates.graph,
+        submittedByOrg: workflowTemplates.submittedByOrg,
+        submittedAt: workflowTemplates.submittedAt,
+      })
+      .from(workflowTemplates)
+      .where(
+        and(
+          eq(workflowTemplates.isSystem, false),
+          eq(workflowTemplates.reviewStatus, 'submitted'),
+        ),
+      )
+      .orderBy(desc(workflowTemplates.submittedAt));
 
-      const submissions = rows.map((r) => {
-        const graph = (r.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
-        return {
-          id: r.id,
-          slug: r.slug,
-          name: r.name,
-          description: r.description,
-          category: r.category,
-          nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
-          edgeCount: Array.isArray(graph.edges) ? graph.edges.length : 0,
-          submittedByOrg: r.submittedByOrg,
-          submittedAt: r.submittedAt,
-        };
-      });
+    const submissions = rows.map((r) => {
+      const graph = (r.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
+      return {
+        id: r.id,
+        slug: r.slug,
+        name: r.name,
+        description: r.description,
+        category: r.category,
+        nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
+        edgeCount: Array.isArray(graph.edges) ? graph.edges.length : 0,
+        submittedByOrg: r.submittedByOrg,
+        submittedAt: r.submittedAt,
+      };
+    });
 
-      return NextResponse.json({ ok: true, submissions });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'studio submissions failed';
-      console.error('[GET /api/studio/catalog/submissions] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    return NextResponse.json({ ok: true, submissions });
   },
   { permission: 'studio.catalog.review', feature: 'studio' },
 );

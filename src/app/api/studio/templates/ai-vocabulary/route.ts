@@ -11,14 +11,8 @@ export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(
   async () => {
-    try {
-      const vocabulary = getAiTemplateVocabulary();
-      return NextResponse.json({ ok: true, vocabulary });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'ai vocabulary failed';
-      console.error('[GET /api/studio/templates/ai-vocabulary] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const vocabulary = getAiTemplateVocabulary();
+    return NextResponse.json({ ok: true, vocabulary });
   },
   { permission: 'studio.view', feature: 'studio' },
 );

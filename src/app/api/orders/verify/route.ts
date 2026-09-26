@@ -8,19 +8,18 @@ import { withAuth } from '@/lib/auth/withAuth';
  * Looks up by tracking number via shipping_tracking_numbers join (shipment_id FK).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const { searchParams } = new URL(req.url);
-    const tracking = searchParams.get('tracking');
+  const orgId = ctx.organizationId;
+  const { searchParams } = new URL(req.url);
+  const tracking = searchParams.get('tracking');
 
-    if (!tracking) {
-      return NextResponse.json({ error: 'Tracking number required' }, { status: 400 });
-    }
+  if (!tracking) {
+    return NextResponse.json({ error: 'Tracking number required' }, { status: 400 });
+  }
 
-    // Look up order via shipment_id → shipping_tracking_numbers join.
-    // Tracking match is a cross-tenant-colliding string key, so the read is
-    // anchored on the order's org (orders.organization_id).
-    const result = await tenantQuery(orgId, `
+  // Look up order via shipment_id → shipping_tracking_numbers join.
+  // Tracking match is a cross-tenant-colliding string key, so the read is
+  // anchored on the order's org (orders.organization_id).
+  const result = await tenantQuery(orgId, `
       SELECT
         o.order_id,
         o.product_title,
@@ -48,29 +47,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LIMIT 1
     `, [tracking, orgId]);
 
-    if (result.rows.length === 0) {
-      return NextResponse.json({
-        found: false,
-        error: 'Order not found in system'
-      });
-    }
-
-    const row = result.rows[0];
-
+  if (result.rows.length === 0) {
     return NextResponse.json({
-      found: true,
-      orderId: row.order_id || 'N/A', // ds-allow-na: order-verify API payload writer
-      productTitle: row.product_title || 'Unknown Product',
-      condition: row.condition || '',
-      tracking: row.tracking,
-      packed: row.packed_at ? true : false,
-      shipped: row.is_shipped || false
+      found: false,
+      error: 'Order not found in system'
     });
-  } catch (error: any) {
-    console.error('Error verifying order:', error);
-    return NextResponse.json({
-      error: 'Failed to verify order',
-      details: error.message
-    }, { status: 500 });
   }
+
+  const row = result.rows[0];
+
+  return NextResponse.json({
+    found: true,
+    orderId: row.order_id || 'N/A', // ds-allow-na: order-verify API payload writer
+    productTitle: row.product_title || 'Unknown Product',
+    condition: row.condition || '',
+    tracking: row.tracking,
+    packed: row.packed_at ? true : false,
+    shipped: row.is_shipped || false
+  });
 }, { permission: 'orders.view' });

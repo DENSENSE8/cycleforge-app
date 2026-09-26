@@ -14,31 +14,25 @@ export const GET = withAuth(
     const filters = parseFilters(searchParams);
     const session = searchParams.get('session')?.trim() || null;
 
-    try {
-      if (session) {
-        const detail = await getTechSessionDetail(session, filters, orgId);
-        if (!detail) {
-          return NextResponse.json(
-            { success: false, error: 'Session not found' },
-            { status: 404 },
-          );
-        }
-        return NextResponse.json({ success: true, ...detail });
+    if (session) {
+      const detail = await getTechSessionDetail(session, filters, orgId);
+      if (!detail) {
+        return NextResponse.json(
+          { success: false, error: 'Session not found' },
+          { status: 404 },
+        );
       }
-
-      const items = await listTechSessions(
-        {
-          filters,
-          search: filters.q,
-        },
-        orgId,
-      );
-      return NextResponse.json({ success: true, items });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'audit-log/tech read failed';
-      console.error('audit-log/tech GET failed:', err);
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+      return NextResponse.json({ success: true, ...detail });
     }
+
+    const items = await listTechSessions(
+      {
+        filters,
+        search: filters.q,
+      },
+      orgId,
+    );
+    return NextResponse.json({ success: true, items });
   },
   { permission: 'admin.view_logs' },
 );

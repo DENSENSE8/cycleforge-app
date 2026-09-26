@@ -37,28 +37,22 @@ export const POST = withAuth(
       return NextResponse.json({ success: false, error: 'thumbnail exceeds 2MB' }, { status: 413 });
     }
 
-    try {
-      // Org-ownership gate: GUC-wrapped by-id read so a caller can't backfill a
-      // thumbnail onto another org's manual once RLS is enforced (404 not 403).
-      const existing = await getProductManualById(id, orgId);
-      if (!existing) {
-        return NextResponse.json({ success: false, error: 'manual not found' }, { status: 404 });
-      }
-
-      const buffer = Buffer.from(await thumbnail.arrayBuffer());
-      const key = `product-manuals/thumbs/${Date.now()}_manual_${id}.jpg`;
-      const uploaded = await put(key, buffer, {
-        access: 'public',
-        contentType: thumbnail.type || 'image/jpeg',
-      });
-
-      const row = await updateProductManual({ id, thumbnailUrl: uploaded.url }, orgId);
-      return NextResponse.json({ success: true, manual: row, thumbnailUrl: uploaded.url });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'thumbnail save failed';
-      console.error('[product-manuals/thumbnail] error:', err);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
+    // Org-ownership gate: GUC-wrapped by-id read so a caller can't backfill a
+    // thumbnail onto another org's manual once RLS is enforced (404 not 403).
+    const existing = await getProductManualById(id, orgId);
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'manual not found' }, { status: 404 });
     }
+
+    const buffer = Buffer.from(await thumbnail.arrayBuffer());
+    const key = `product-manuals/thumbs/${Date.now()}_manual_${id}.jpg`;
+    const uploaded = await put(key, buffer, {
+      access: 'public',
+      contentType: thumbnail.type || 'image/jpeg',
+    });
+
+    const row = await updateProductManual({ id, thumbnailUrl: uploaded.url }, orgId);
+    return NextResponse.json({ success: true, manual: row, thumbnailUrl: uploaded.url });
   },
   { permission: 'product_manuals.manage' },
 );

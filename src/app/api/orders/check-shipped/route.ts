@@ -6,10 +6,9 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 // Shipped state is now derived from station_activity_logs (SAL).
 export const POST = withAuth(async (_req, ctx) => {
-  try {
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `
       UPDATE orders o
       SET status = 'shipped'
       WHERE o.shipment_id IS NOT NULL
@@ -22,32 +21,22 @@ export const POST = withAuth(async (_req, ctx) => {
         )
       RETURNING o.id
     `,
-      [ctx.organizationId],
-    );
+    [ctx.organizationId],
+  );
 
-    await invalidateAllOrdersApiCaches(['orders-next', 'shipped', 'packing-logs'], ctx.organizationId);
+  await invalidateAllOrdersApiCaches(['orders-next', 'shipped', 'packing-logs'], ctx.organizationId);
 
-    const updatedIds = (result.rows || []).map((r: any) => Number(r.id)).filter(Number.isFinite);
-    if (updatedIds.length > 0) {
-      await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: updatedIds, source: 'orders.check-shipped' });
-    }
-
-    return NextResponse.json({
-      success: true,
-      updatedCount: result.rowCount || 0,
-      message:
-        (result.rowCount || 0) > 0
-          ? `Marked status=shipped on ${result.rowCount} order${result.rowCount === 1 ? '' : 's'} with packer logs`
-          : 'No matching orders needed status update',
-    });
-  } catch (error: any) {
-    console.error('Check shipped orders error:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || 'Failed to check shipped orders',
-      },
-      { status: 500 }
-    );
+  const updatedIds = (result.rows || []).map((r: any) => Number(r.id)).filter(Number.isFinite);
+  if (updatedIds.length > 0) {
+    await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: updatedIds, source: 'orders.check-shipped' });
   }
+
+  return NextResponse.json({
+    success: true,
+    updatedCount: result.rowCount || 0,
+    message:
+      (result.rowCount || 0) > 0
+        ? `Marked status=shipped on ${result.rowCount} order${result.rowCount === 1 ? '' : 's'} with packer logs`
+        : 'No matching orders needed status update',
+  });
 }, { permission: 'shipping.mark_shipped' });

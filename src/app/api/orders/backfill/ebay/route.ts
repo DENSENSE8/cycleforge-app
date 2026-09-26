@@ -12,25 +12,24 @@ function isBlank(value: unknown): boolean {
 
 /** POST /api/orders/backfill/ebay */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const limit = Math.max(1, Math.min(1000, Number(body.limit || 500)));
+  const body = await req.json().catch(() => ({}));
+  const limit = Math.max(1, Math.min(1000, Number(body.limit || 500)));
 
-    // ── 1. Orders needing backfill ──────────────────────────────────────────── orders is tenant-owned (org-filtered explicitly).
-    const { rows: rawCandidates } = await tenantQuery<{
-      id: number;
-      order_id: string;
-      shipment_id: number | null;
-      account_source: string | null;
-      sku: string | null;
-      item_number: string | null;
-      product_title: string | null;
-      condition: string | null;
-      quantity: string | null;
-      order_date: Date | null;
-    }>(
-      ctx.organizationId,
-      `SELECT o.id, o.order_id, o.shipment_id, o.account_source, o.sku, o.item_number, o.product_title,
+  // ── 1. Orders needing backfill ──────────────────────────────────────────── orders is tenant-owned (org-filtered explicitly).
+  const { rows: rawCandidates } = await tenantQuery<{
+    id: number;
+    order_id: string;
+    shipment_id: number | null;
+    account_source: string | null;
+    sku: string | null;
+    item_number: string | null;
+    product_title: string | null;
+    condition: string | null;
+    quantity: string | null;
+    order_date: Date | null;
+  }>(
+    ctx.organizationId,
+    `SELECT o.id, o.order_id, o.shipment_id, o.account_source, o.sku, o.item_number, o.product_title,
               o.condition, o.quantity, o.order_date
        FROM orders o
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
@@ -49,197 +48,190 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
          )
        ORDER BY o.created_at DESC
        LIMIT $1`,
-      [limit, ctx.organizationId]
-    );
+    [limit, ctx.organizationId]
+  );
 
-    // ── 1b. Dedupe: multiple orders with same order_id + same tracking → keep one, delete rest
-    const byOrderId = new Map<string, typeof rawCandidates>();
-    for (const o of rawCandidates) {
-      const key = String(o.order_id || '').trim();
-      if (!key) continue;
-      const arr = byOrderId.get(key) ?? [];
-      arr.push(o);
-      byOrderId.set(key, arr);
+  // ── 1b. Dedupe: multiple orders with same order_id + same tracking → keep one, delete rest
+  const byOrderId = new Map<string, typeof rawCandidates>();
+  for (const o of rawCandidates) {
+    const key = String(o.order_id || '').trim();
+    if (!key) continue;
+    const arr = byOrderId.get(key) ?? [];
+    arr.push(o);
+    byOrderId.set(key, arr);
+  }
+
+  const ordersToDelete: number[] = [];
+  const candidates: typeof rawCandidates = [];
+  for (const group of Array.from(byOrderId.values())) {
+    if (group.length > 1) {
+      const score = (ord: (typeof rawCandidates)[0]) =>
+        [ord.product_title, ord.condition, ord.item_number, ord.sku, ord.quantity]
+          .filter((v) => !isBlank(v)).length;
+      const sorted = [...group].sort((a, b) => score(b) - score(a));
+      candidates.push(sorted[0]);
+      sorted.slice(1).forEach((o) => ordersToDelete.push(o.id));
+    } else {
+      candidates.push(group[0]);
     }
+  }
 
-    const ordersToDelete: number[] = [];
-    const candidates: typeof rawCandidates = [];
-    for (const group of Array.from(byOrderId.values())) {
-      if (group.length > 1) {
-        const score = (ord: (typeof rawCandidates)[0]) =>
-          [ord.product_title, ord.condition, ord.item_number, ord.sku, ord.quantity]
-            .filter((v) => !isBlank(v)).length;
-        const sorted = [...group].sort((a, b) => score(b) - score(a));
-        candidates.push(sorted[0]);
-        sorted.slice(1).forEach((o) => ordersToDelete.push(o.id));
-      } else {
-        candidates.push(group[0]);
-      }
-    }
-
-    for (const id of ordersToDelete) {
-      await tenantQuery(
-        ctx.organizationId,
-        'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
-        [id, ctx.organizationId],
-      );
-    }
-
-    if (candidates.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: 'No unshipped orders with blank fields found.',
-        totals: { scanned: 0, updated: 0, unchanged: 0, notFound: 0, errors: 0, deletedDuplicates: ordersToDelete.length },
-      });
-    }
-
-    // ── 2. Active eBay accounts ───────────────────────────────────────────────
-    // ebay_accounts is tenant-owned; only return this org's accounts.
-    const { rows: accountRows } = await tenantQuery<{ account_name: string }>(
+  for (const id of ordersToDelete) {
+    await tenantQuery(
       ctx.organizationId,
-      `SELECT account_name FROM ebay_accounts
-        WHERE is_active = true AND organization_id = $1 AND ${EBAY_PLATFORM_PREDICATE}
-        ORDER BY account_name`,
-      [ctx.organizationId]
-    );
-    const allAccountNames = accountRows.map((r) => r.account_name);
-
-    if (allAccountNames.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No active eBay accounts configured.' },
-        { status: 400 }
-      );
-    }
-
-    // Pre-build EbayClient instances (one per account). Pass the caller's org so
-    // token/credential resolution is pinned to this tenant rather than resolved
-    // by account_name alone (which can collide across orgs).
-    const clients = new Map<string, EbayClient>(
-      allAccountNames.map((name) => [name, new EbayClient(name, ctx.organizationId)])
-    );
-
-    // Pick accounts to try for a given account_source.
-    // If the source matches an account name (case-insensitive contains), try that first.
-    const accountsForSource = (accountSource: string | null): string[] => {
-      if (!accountSource) return allAccountNames;
-      const src = accountSource.toLowerCase();
-      const match = allAccountNames.find(
-        (name) => src.includes(name.toLowerCase()) || name.toLowerCase().includes(src)
-      );
-      return match ? [match, ...allAccountNames.filter((n) => n !== match)] : allAccountNames;
-    };
-
-    // ── 3. Process each candidate ─────────────────────────────────────────────
-    let scanned = 0;
-    let updated = 0;
-    let unchanged = 0;
-    let notFound = 0;
-    let errors = 0;
-    const errorMessages: string[] = [];
-
-    for (const order of candidates) {
-      scanned++;
-      try {
-        // Try accounts in priority order until we get a result
-        let ebayOrder: any = null;
-        let matchedAccount = '';
-
-        for (const accountName of accountsForSource(order.account_source)) {
-          try {
-            const client = clients.get(accountName)!;
-            ebayOrder = await client.getOrderDetails(order.order_id);
-            matchedAccount = accountName;
-            break;
-          } catch {
-            // This account doesn't have the order — try the next
-          }
-        }
-
-        if (!ebayOrder) {
-          notFound++;
-          continue;
-        }
-
-        // Extract fields from the eBay order
-        const lineItems = Array.isArray(ebayOrder?.lineItems) ? ebayOrder.lineItems : [];
-        const firstItem = lineItems[0] || {};
-        const productTitle = String(firstItem?.title || '').trim();
-        const sku = String(firstItem?.sku || '').trim();
-        // legacyItemId is the eBay listing item number (e.g. "123456789")
-        const itemNumber = String(
-          firstItem?.legacyItemId || firstItem?.lineItemId || ''
-        ).trim();
-        const condition = String(firstItem?.condition || firstItem?.conditionId || '').trim();
-        const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '';
-        const orderDate = ebayOrder?.creationDate ? new Date(ebayOrder.creationDate) : null;
-        // Realized order total from the eBay Fulfillment order's pricingSummary.total (Amount: { value, currency }).
-        const rawAmount = ebayOrder?.pricingSummary?.total?.value;
-        const parsedAmount = rawAmount != null ? Number(rawAmount) : null;
-        const saleAmount = parsedAmount != null && !Number.isNaN(parsedAmount) ? parsedAmount : null;
-        const currency = String(ebayOrder?.pricingSummary?.total?.currency || '').trim();
-
-        // Build the SET clause — only patch blank columns
-        const updates: string[] = [];
-        const values: unknown[] = [];
-        let idx = 1;
-
-        if (isBlank(order.product_title) && productTitle) {
-          updates.push(`product_title = $${idx++}`); values.push(productTitle);
-        }
-        if (isBlank(order.sku) && sku) {
-          updates.push(`sku = $${idx++}`); values.push(sku);
-        }
-        if (isBlank(order.item_number) && itemNumber) {
-          updates.push(`item_number = $${idx++}`); values.push(itemNumber);
-        }
-        if (isBlank(order.condition) && condition) {
-          updates.push(`condition = $${idx++}`); values.push(condition);
-        }
-        if (isBlank(order.quantity) && quantity) {
-          updates.push(`quantity = $${idx++}`); values.push(quantity);
-        }
-        if (!order.order_date && orderDate && !Number.isNaN(orderDate.getTime())) {
-          updates.push(`order_date = $${idx++}`); values.push(orderDate);
-        }
-        if (isBlank(order.account_source) && matchedAccount) {
-          updates.push(`account_source = $${idx++}`); values.push(matchedAccount);
-        }
-        // Fill sale_amount/currency only when still null (never overwrite an existing value).
-        if (saleAmount != null) {
-          updates.push(`sale_amount = COALESCE(sale_amount, $${idx++})`); values.push(saleAmount);
-          updates.push(`currency = COALESCE(currency, $${idx++})`); values.push(currency || 'USD');
-        }
-
-        if (updates.length === 0) {
-          unchanged++;
-          continue;
-        }
-
-        values.push(order.id);
-        values.push(ctx.organizationId);
-        await tenantQuery(
-          ctx.organizationId,
-          `UPDATE orders SET ${updates.join(', ')} WHERE id = $${idx} AND organization_id = $${idx + 1}`,
-          values
-        );
-        updated++;
-      } catch (err: any) {
-        errors++;
-        errorMessages.push(`order ${order.order_id}: ${err?.message || 'unknown error'}`);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: `eBay backfill complete: ${updated} updated, ${unchanged} already complete, ${notFound} not found on eBay, ${errors} errors, ${ordersToDelete.length} duplicates removed.`,
-      totals: { scanned, updated, unchanged, notFound, errors, deletedDuplicates: ordersToDelete.length },
-      errorMessages: errorMessages.slice(0, 20),
-    });
-  } catch (error: any) {
-    console.error('eBay backfill error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Internal Server Error' },
-      { status: 500 }
+      'DELETE FROM orders WHERE id = $1 AND organization_id = $2',
+      [id, ctx.organizationId],
     );
   }
+
+  if (candidates.length === 0) {
+    return NextResponse.json({
+      success: true,
+      message: 'No unshipped orders with blank fields found.',
+      totals: { scanned: 0, updated: 0, unchanged: 0, notFound: 0, errors: 0, deletedDuplicates: ordersToDelete.length },
+    });
+  }
+
+  // ── 2. Active eBay accounts ───────────────────────────────────────────────
+  // ebay_accounts is tenant-owned; only return this org's accounts.
+  const { rows: accountRows } = await tenantQuery<{ account_name: string }>(
+    ctx.organizationId,
+    `SELECT account_name FROM ebay_accounts
+        WHERE is_active = true AND organization_id = $1 AND ${EBAY_PLATFORM_PREDICATE}
+        ORDER BY account_name`,
+    [ctx.organizationId]
+  );
+  const allAccountNames = accountRows.map((r) => r.account_name);
+
+  if (allAccountNames.length === 0) {
+    return NextResponse.json(
+      { success: false, error: 'No active eBay accounts configured.' },
+      { status: 400 }
+    );
+  }
+
+  // Pre-build EbayClient instances (one per account). Pass the caller's org so
+  // token/credential resolution is pinned to this tenant rather than resolved
+  // by account_name alone (which can collide across orgs).
+  const clients = new Map<string, EbayClient>(
+    allAccountNames.map((name) => [name, new EbayClient(name, ctx.organizationId)])
+  );
+
+  // Pick accounts to try for a given account_source.
+  // If the source matches an account name (case-insensitive contains), try that first.
+  const accountsForSource = (accountSource: string | null): string[] => {
+    if (!accountSource) return allAccountNames;
+    const src = accountSource.toLowerCase();
+    const match = allAccountNames.find(
+      (name) => src.includes(name.toLowerCase()) || name.toLowerCase().includes(src)
+    );
+    return match ? [match, ...allAccountNames.filter((n) => n !== match)] : allAccountNames;
+  };
+
+  // ── 3. Process each candidate ─────────────────────────────────────────────
+  let scanned = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let notFound = 0;
+  let errors = 0;
+  const errorMessages: string[] = [];
+
+  for (const order of candidates) {
+    scanned++;
+    try {
+      // Try accounts in priority order until we get a result
+      let ebayOrder: any = null;
+      let matchedAccount = '';
+
+      for (const accountName of accountsForSource(order.account_source)) {
+        try {
+          const client = clients.get(accountName)!;
+          ebayOrder = await client.getOrderDetails(order.order_id);
+          matchedAccount = accountName;
+          break;
+        } catch {
+          // This account doesn't have the order — try the next
+        }
+      }
+
+      if (!ebayOrder) {
+        notFound++;
+        continue;
+      }
+
+      // Extract fields from the eBay order
+      const lineItems = Array.isArray(ebayOrder?.lineItems) ? ebayOrder.lineItems : [];
+      const firstItem = lineItems[0] || {};
+      const productTitle = String(firstItem?.title || '').trim();
+      const sku = String(firstItem?.sku || '').trim();
+      // legacyItemId is the eBay listing item number (e.g. "123456789")
+      const itemNumber = String(
+        firstItem?.legacyItemId || firstItem?.lineItemId || ''
+      ).trim();
+      const condition = String(firstItem?.condition || firstItem?.conditionId || '').trim();
+      const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '';
+      const orderDate = ebayOrder?.creationDate ? new Date(ebayOrder.creationDate) : null;
+      // Realized order total from the eBay Fulfillment order's pricingSummary.total (Amount: { value, currency }).
+      const rawAmount = ebayOrder?.pricingSummary?.total?.value;
+      const parsedAmount = rawAmount != null ? Number(rawAmount) : null;
+      const saleAmount = parsedAmount != null && !Number.isNaN(parsedAmount) ? parsedAmount : null;
+      const currency = String(ebayOrder?.pricingSummary?.total?.currency || '').trim();
+
+      // Build the SET clause — only patch blank columns
+      const updates: string[] = [];
+      const values: unknown[] = [];
+      let idx = 1;
+
+      if (isBlank(order.product_title) && productTitle) {
+        updates.push(`product_title = $${idx++}`); values.push(productTitle);
+      }
+      if (isBlank(order.sku) && sku) {
+        updates.push(`sku = $${idx++}`); values.push(sku);
+      }
+      if (isBlank(order.item_number) && itemNumber) {
+        updates.push(`item_number = $${idx++}`); values.push(itemNumber);
+      }
+      if (isBlank(order.condition) && condition) {
+        updates.push(`condition = $${idx++}`); values.push(condition);
+      }
+      if (isBlank(order.quantity) && quantity) {
+        updates.push(`quantity = $${idx++}`); values.push(quantity);
+      }
+      if (!order.order_date && orderDate && !Number.isNaN(orderDate.getTime())) {
+        updates.push(`order_date = $${idx++}`); values.push(orderDate);
+      }
+      if (isBlank(order.account_source) && matchedAccount) {
+        updates.push(`account_source = $${idx++}`); values.push(matchedAccount);
+      }
+      // Fill sale_amount/currency only when still null (never overwrite an existing value).
+      if (saleAmount != null) {
+        updates.push(`sale_amount = COALESCE(sale_amount, $${idx++})`); values.push(saleAmount);
+        updates.push(`currency = COALESCE(currency, $${idx++})`); values.push(currency || 'USD');
+      }
+
+      if (updates.length === 0) {
+        unchanged++;
+        continue;
+      }
+
+      values.push(order.id);
+      values.push(ctx.organizationId);
+      await tenantQuery(
+        ctx.organizationId,
+        `UPDATE orders SET ${updates.join(', ')} WHERE id = $${idx} AND organization_id = $${idx + 1}`,
+        values
+      );
+      updated++;
+    } catch (err: any) {
+      errors++;
+      errorMessages.push(`order ${order.order_id}: ${err?.message || 'unknown error'}`);
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: `eBay backfill complete: ${updated} updated, ${unchanged} already complete, ${notFound} not found on eBay, ${errors} errors, ${ordersToDelete.length} duplicates removed.`,
+    totals: { scanned, updated, unchanged, notFound, errors, deletedDuplicates: ordersToDelete.length },
+    errorMessages: errorMessages.slice(0, 20),
+  });
 }, { permission: 'admin.manage_features' });

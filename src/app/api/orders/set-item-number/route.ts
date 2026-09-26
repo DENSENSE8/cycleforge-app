@@ -10,58 +10,53 @@ import { withAuth } from '@/lib/auth/withAuth';
  * Used by the manual assignment form when an order was created without an item number.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const id = Number(body?.id);
-    const itemNumber = String(body?.item_number || body?.itemNumber || '').trim().toUpperCase();
+  const body = await req.json().catch(() => ({}));
+  const id = Number(body?.id);
+  const itemNumber = String(body?.item_number || body?.itemNumber || '').trim().toUpperCase();
 
-    if (!Number.isFinite(id) || id <= 0) {
-      return NextResponse.json({ success: false, error: 'Valid order id is required' }, { status: 400 });
-    }
-    if (!itemNumber) {
-      return NextResponse.json({ success: false, error: 'item_number is required' }, { status: 400 });
-    }
+  if (!Number.isFinite(id) || id <= 0) {
+    return NextResponse.json({ success: false, error: 'Valid order id is required' }, { status: 400 });
+  }
+  if (!itemNumber) {
+    return NextResponse.json({ success: false, error: 'item_number is required' }, { status: 400 });
+  }
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `UPDATE orders
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `UPDATE orders
        SET item_number = $1
        WHERE id = $2
          AND (item_number IS NULL OR item_number = '')
          AND organization_id = $3
        RETURNING id, order_id, item_number`,
-      [itemNumber, id, ctx.organizationId]
-    );
+    [itemNumber, id, ctx.organizationId]
+  );
 
-    if (result.rowCount === 0) {
-      // Row not found or item_number already set — treat as success
-      return NextResponse.json({ success: true, updated: false, message: 'item_number already set or row not found' });
-    }
-
-    try {
-      const { applyListingAssignment, loadOrderListingFacts } = await import(
-        '@/lib/automations/apply-listing-assignment'
-      );
-      const facts = await loadOrderListingFacts(ctx.organizationId, id);
-      if (facts) {
-        await applyListingAssignment({
-          organizationId: ctx.organizationId,
-          orderId: id,
-          triggerKey: 'order.item_number_set',
-          facts,
-          actorStaffId: ctx.staffId ?? null,
-        });
-      }
-    } catch (err) {
-      console.warn('[set-item-number] listing automation skipped:', err);
-    }
-
-    await invalidateAllOrdersApiCaches([], ctx.organizationId);
-    await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.set-item-number' });
-
-    return NextResponse.json({ success: true, updated: true, row: result.rows[0] });
-  } catch (error: any) {
-    console.error('[set-item-number] error:', error);
-    return NextResponse.json({ success: false, error: error?.message || 'Internal error' }, { status: 500 });
+  if (result.rowCount === 0) {
+    // Row not found or item_number already set — treat as success
+    return NextResponse.json({ success: true, updated: false, message: 'item_number already set or row not found' });
   }
+
+  try {
+    const { applyListingAssignment, loadOrderListingFacts } = await import(
+      '@/lib/automations/apply-listing-assignment'
+    );
+    const facts = await loadOrderListingFacts(ctx.organizationId, id);
+    if (facts) {
+      await applyListingAssignment({
+        organizationId: ctx.organizationId,
+        orderId: id,
+        triggerKey: 'order.item_number_set',
+        facts,
+        actorStaffId: ctx.staffId ?? null,
+      });
+    }
+  } catch (err) {
+    console.warn('[set-item-number] listing automation skipped:', err);
+  }
+
+  await invalidateAllOrdersApiCaches([], ctx.organizationId);
+  await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.set-item-number' });
+
+  return NextResponse.json({ success: true, updated: true, row: result.rows[0] });
 }, { permission: 'orders.create' });

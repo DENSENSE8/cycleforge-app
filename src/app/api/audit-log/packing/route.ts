@@ -14,31 +14,25 @@ export const GET = withAuth(
     const filters = parseFilters(searchParams);
     const tracking = searchParams.get('tracking')?.trim() || null;
 
-    try {
-      if (tracking) {
-        const detail = await getPackingTrackingDetail(tracking, filters, orgId);
-        if (!detail) {
-          return NextResponse.json(
-            { success: false, error: 'Tracking not found' },
-            { status: 404 },
-          );
-        }
-        return NextResponse.json({ success: true, ...detail });
+    if (tracking) {
+      const detail = await getPackingTrackingDetail(tracking, filters, orgId);
+      if (!detail) {
+        return NextResponse.json(
+          { success: false, error: 'Tracking not found' },
+          { status: 404 },
+        );
       }
-
-      const items = await listPackingTrackings(
-        {
-          filters,
-          search: filters.q,
-        },
-        orgId,
-      );
-      return NextResponse.json({ success: true, items });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'audit-log/packing read failed';
-      console.error('audit-log/packing GET failed:', err);
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+      return NextResponse.json({ success: true, ...detail });
     }
+
+    const items = await listPackingTrackings(
+      {
+        filters,
+        search: filters.q,
+      },
+      orgId,
+    );
+    return NextResponse.json({ success: true, items });
   },
   { permission: 'admin.view_logs' },
 );

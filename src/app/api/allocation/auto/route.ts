@@ -21,15 +21,9 @@ export const POST = withAuth(async (request, ctx) => {
     }
   }
 
-  try {
-    const result = await autoAllocateForOrders(orderIds, {
-      orgId: ctx.organizationId,
-      staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,
-    });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'allocation failed';
-    console.error('[POST /api/allocation/auto] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await autoAllocateForOrders(orderIds, {
+    orgId: ctx.organizationId,
+    staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,
+  });
+  return NextResponse.json(result);
 }, { permission: 'orders.allocate' });

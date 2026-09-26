@@ -11,16 +11,8 @@ import pool from '@/lib/db';
 /** GET /api/catalog/platform-type-rules — the org's platform → receiving-type dependency matrix. */
 export const GET = withAuth(
   async (_req, ctx) => {
-    try {
-      const rules = await getOrgPlatformTypeRules(ctx.organizationId);
-      return NextResponse.json({ success: true, rules });
-    } catch (error: any) {
-      console.error('Error in GET /api/catalog/platform-type-rules:', error);
-      return NextResponse.json(
-        { success: false, error: error.message || 'Failed to fetch platform type rules' },
-        { status: 500 },
-      );
-    }
+    const rules = await getOrgPlatformTypeRules(ctx.organizationId);
+    return NextResponse.json({ success: true, rules });
   },
   { permission: 'receiving.view' },
 );

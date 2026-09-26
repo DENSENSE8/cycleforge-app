@@ -38,27 +38,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // empty body is fine
   }
 
-  try {
-    const mdx =
-      bodyMdx ??
-      (await withMasterPlanDoc(orgId, (doc) => readMasterPlan(doc))).result;
+  const mdx =
+    bodyMdx ??
+    (await withMasterPlanDoc(orgId, (doc) => readMasterPlan(doc))).result;
 
-    const tickets = scanTicketStatuses(mdx);
-    if (tickets.length === 0) {
-      return NextResponse.json({
-        success: true,
-        skipped: true,
-        reason: 'no_tickets',
-      });
-    }
-
-    const result = await syncMasterPlanToOpsPlans(orgId, mdx);
-    return NextResponse.json({ success: true, ...result });
-  } catch (error: unknown) {
-    console.error('Error in POST /api/forge/master-plan/sync:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Sync failed' },
-      { status: 500 },
-    );
+  const tickets = scanTicketStatuses(mdx);
+  if (tickets.length === 0) {
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      reason: 'no_tickets',
+    });
   }
+
+  const result = await syncMasterPlanToOpsPlans(orgId, mdx);
+  return NextResponse.json({ success: true, ...result });
 }, { allowAnonymous: true });

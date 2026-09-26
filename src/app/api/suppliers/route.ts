@@ -24,24 +24,16 @@ const ROUTE_SUPPLIERS_POST = 'suppliers.post';
  * spend, last order) used by the sourcing-hub Suppliers mode.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const q = searchParams.get('q') || '';
-    const type = searchParams.get('type');
-    const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
-    const offset = Math.max(0, Number(searchParams.get('offset') || 0));
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get('q') || '';
+  const type = searchParams.get('type');
+  const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
+  const offset = Math.max(0, Number(searchParams.get('offset') || 0));
 
-    const { items, total } = searchParams.get('stats') === '1'
-      ? await getSupplierListWithStats({ q, type, limit, offset }, ctx.organizationId)
-      : await getSupplierList({ q, type, limit, offset }, ctx.organizationId);
-    return NextResponse.json({ success: true, items, total });
-  } catch (error: any) {
-    console.error('Error in GET /api/suppliers:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch suppliers' },
-      { status: 500 },
-    );
-  }
+  const { items, total } = searchParams.get('stats') === '1'
+    ? await getSupplierListWithStats({ q, type, limit, offset }, ctx.organizationId)
+    : await getSupplierList({ q, type, limit, offset }, ctx.organizationId);
+  return NextResponse.json({ success: true, items, total });
 }, { permission: 'supplier.view' });
 
 /** POST /api/suppliers — Create a supplier. */

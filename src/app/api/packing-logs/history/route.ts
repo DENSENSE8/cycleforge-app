@@ -9,18 +9,17 @@ import { withAuth } from '@/lib/auth/withAuth';
  * history popover. Auth comes from the `cf_sid` session cookie via withAuth.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const user = ctx.user;
+  const user = ctx.user;
 
-    const { searchParams } = new URL(req.url);
-    const rawLimit = Number(searchParams.get('limit') ?? '10');
-    const limit = Number.isFinite(rawLimit)
-      ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
-      : 10;
+  const { searchParams } = new URL(req.url);
+  const rawLimit = Number(searchParams.get('limit') ?? '10');
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
+    : 10;
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
          pl.id              AS packer_log_id,
          pl.tracking_type,
          pl.created_at,
@@ -42,17 +41,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          AND pl.completion_state = 'COMPLETED'
        ORDER BY pl.id DESC
        LIMIT $2`,
-      [user.staffId, limit, ctx.organizationId],
-    );
+    [user.staffId, limit, ctx.organizationId],
+  );
 
-    if (result.rows.length === 0) {
-      return NextResponse.json({ entries: [] });
-    }
+  if (result.rows.length === 0) {
+    return NextResponse.json({ entries: [] });
+  }
 
-    const logIds = result.rows.map((r: any) => r.packer_log_id);
-    const photosResult = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const logIds = result.rows.map((r: any) => r.packer_log_id);
+  const photosResult = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
          p.id,
          l.entity_id,
          '/api/photos/' || p.id::text || '/content' AS url,
@@ -67,43 +66,36 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          AND l.link_role = 'primary'
          AND p.organization_id = $2
        ORDER BY p.created_at ASC`,
-      [logIds, ctx.organizationId],
-    );
+    [logIds, ctx.organizationId],
+  );
 
-    const photosByLog = new Map<number, any[]>();
-    for (const p of photosResult.rows) {
-      const arr = photosByLog.get(p.entity_id) ?? [];
-      arr.push({
-        id: p.id,
-        url: p.url,
-        photoType: p.photo_type,
-        createdAt: p.created_at,
-      });
-      photosByLog.set(p.entity_id, arr);
-    }
-
-    const entries = result.rows.map((row: any) => ({
-      packerLogId: row.packer_log_id,
-      trackingType: row.tracking_type,
-      packedAt: row.created_at,
-      tracking: row.tracking,
-      carrier: row.carrier,
-      orderId: row.order_id,
-      productTitle: row.product_title,
-      condition: row.condition,
-      quantity: row.quantity ?? 1,
-      sku: row.sku,
-      itemNumber: row.item_number,
-      photos: photosByLog.get(row.packer_log_id) ?? [],
-      resumeHref: '/pack',
-    }));
-
-    return NextResponse.json({ entries });
-  } catch (error: any) {
-    console.error('[packing-logs/history] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch packing history', details: error.message },
-      { status: 500 },
-    );
+  const photosByLog = new Map<number, any[]>();
+  for (const p of photosResult.rows) {
+    const arr = photosByLog.get(p.entity_id) ?? [];
+    arr.push({
+      id: p.id,
+      url: p.url,
+      photoType: p.photo_type,
+      createdAt: p.created_at,
+    });
+    photosByLog.set(p.entity_id, arr);
   }
+
+  const entries = result.rows.map((row: any) => ({
+    packerLogId: row.packer_log_id,
+    trackingType: row.tracking_type,
+    packedAt: row.created_at,
+    tracking: row.tracking,
+    carrier: row.carrier,
+    orderId: row.order_id,
+    productTitle: row.product_title,
+    condition: row.condition,
+    quantity: row.quantity ?? 1,
+    sku: row.sku,
+    itemNumber: row.item_number,
+    photos: photosByLog.get(row.packer_log_id) ?? [],
+    resumeHref: '/pack',
+  }));
+
+  return NextResponse.json({ entries });
 }, { permission: 'packing.view' });

@@ -23,24 +23,18 @@ export const DELETE = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid id(s)' }, { status: 400 });
     }
 
-    try {
-      const { manifest, removed } = await removeManifestItem(id, serialUnitId, orgId);
-      if (!manifest) {
-        return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
-      }
-      await recordAudit(pool, ctx, request, {
-        source: 'label-manifests-api',
-        action: AUDIT_ACTION.MANIFEST_REMOVE_ITEM,
-        entityType: AUDIT_ENTITY.LABEL_MANIFEST,
-        entityId: id,
-        after: { serial_unit_id: serialUnitId, removed },
-      });
-      return NextResponse.json({ ok: true, manifest, removed });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'remove manifest item failed';
-      console.error('[DELETE /api/label-manifests/[id]/items/[serialUnitId]] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const { manifest, removed } = await removeManifestItem(id, serialUnitId, orgId);
+    if (!manifest) {
+      return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
     }
+    await recordAudit(pool, ctx, request, {
+      source: 'label-manifests-api',
+      action: AUDIT_ACTION.MANIFEST_REMOVE_ITEM,
+      entityType: AUDIT_ENTITY.LABEL_MANIFEST,
+      entityId: id,
+      after: { serial_unit_id: serialUnitId, removed },
+    });
+    return NextResponse.json({ ok: true, manifest, removed });
   },
   { permission: 'label.manifest.manage' },
 );

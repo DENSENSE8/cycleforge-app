@@ -28,23 +28,17 @@ export const POST = withAuth(
       return NextResponse.json({ ok: true, units: [] });
     }
 
-    try {
-      const rows = await findUnitUidsBySerials(serials, orgId);
-      const byNormalized = new Map(rows.map((r) => [r.normalized_serial, r]));
-      const units = serials.map((serial) => {
-        const row = byNormalized.get(normalizeSerial(serial));
-        return {
-          serial,
-          unit_uid: row?.unit_uid ?? null,
-          serial_unit_id: row?.id ?? null,
-        };
-      });
-      return NextResponse.json({ ok: true, units });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'resolve-batch failed';
-      console.error('[POST /api/serial-units/resolve-batch] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const rows = await findUnitUidsBySerials(serials, orgId);
+    const byNormalized = new Map(rows.map((r) => [r.normalized_serial, r]));
+    const units = serials.map((serial) => {
+      const row = byNormalized.get(normalizeSerial(serial));
+      return {
+        serial,
+        unit_uid: row?.unit_uid ?? null,
+        serial_unit_id: row?.id ?? null,
+      };
+    });
+    return NextResponse.json({ ok: true, units });
   },
   { permission: 'print.label' },
 );

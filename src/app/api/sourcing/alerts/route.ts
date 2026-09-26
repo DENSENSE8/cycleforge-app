@@ -23,23 +23,15 @@ const ROUTE_ALERT_CREATE = 'sourcing-alert.create';
  * Defaults to live (open + sourcing) alerts, ordered critical → warn → info.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-    const skuId = searchParams.get('skuId');
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status');
+  const skuId = searchParams.get('skuId');
 
-    const items = await getSourcingAlerts({
-      status,
-      skuId: skuId ? Number(skuId) : null,
-    }, ctx.organizationId);
-    return NextResponse.json({ success: true, items, total: items.length });
-  } catch (error: any) {
-    console.error('Error in GET /api/sourcing/alerts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch alerts' },
-      { status: 500 },
-    );
-  }
+  const items = await getSourcingAlerts({
+    status,
+    skuId: skuId ? Number(skuId) : null,
+  }, ctx.organizationId);
+  return NextResponse.json({ success: true, items, total: items.length });
 }, { permission: 'sourcing.view', feature: 'sourcing' });
 
 /** POST /api/sourcing/alerts — Manually open a demand row ("Source this"). */
@@ -108,45 +100,37 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
  * (sourcing.alert.resolve is reason-required) → 400 without one.
  */
 export const PATCH = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(SourcingAlertPatchBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(SourcingAlertPatchBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    const isClosing = parsed.status === 'resolved' || parsed.status === 'dismissed';
-    if (isClosing && !parsed.reason?.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'A reason is required to resolve or dismiss an alert' },
-        { status: 400 },
-      );
-    }
-
-    const before = await getSourcingAlertById(parsed.id, ctx.organizationId);
-    if (!before) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
-
-    const updated = await updateSourcingAlertStatus({
-      id: parsed.id,
-      status: parsed.status,
-      reason: parsed.reason ?? null,
-      resolvedBy: ctx.staffId,
-    }, ctx.organizationId);
-
-    await recordAudit(pool, ctx, req, {
-      source: 'sourcing-alerts-api',
-      action: AUDIT_ACTION.SOURCING_ALERT_RESOLVE,
-      entityType: AUDIT_ENTITY.SOURCING_ALERT,
-      entityId: parsed.id,
-      reasonCode: parsed.reason ?? null,
-      before: { ...before },
-      after: updated ? { ...updated } : null,
-    });
-
-    return NextResponse.json({ success: true, alert: updated });
-  } catch (error: any) {
-    console.error('Error in PATCH /api/sourcing/alerts:', error);
+  const isClosing = parsed.status === 'resolved' || parsed.status === 'dismissed';
+  if (isClosing && !parsed.reason?.trim()) {
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to update alert' },
-      { status: 500 },
+      { success: false, error: 'A reason is required to resolve or dismiss an alert' },
+      { status: 400 },
     );
   }
+
+  const before = await getSourcingAlertById(parsed.id, ctx.organizationId);
+  if (!before) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+
+  const updated = await updateSourcingAlertStatus({
+    id: parsed.id,
+    status: parsed.status,
+    reason: parsed.reason ?? null,
+    resolvedBy: ctx.staffId,
+  }, ctx.organizationId);
+
+  await recordAudit(pool, ctx, req, {
+    source: 'sourcing-alerts-api',
+    action: AUDIT_ACTION.SOURCING_ALERT_RESOLVE,
+    entityType: AUDIT_ENTITY.SOURCING_ALERT,
+    entityId: parsed.id,
+    reasonCode: parsed.reason ?? null,
+    before: { ...before },
+    after: updated ? { ...updated } : null,
+  });
+
+  return NextResponse.json({ success: true, alert: updated });
 }, { permission: 'sourcing.manage', feature: 'sourcing' });

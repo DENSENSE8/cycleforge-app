@@ -4,22 +4,21 @@ import { resolveReceivingSchema } from '@/utils/receiving-schema';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const { searchParams } = new URL(req.url);
-        const query = searchParams.get('q');
+    const { searchParams } = new URL(req.url);
+    const query = searchParams.get('q');
 
-        if (!query) {
-            return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
-        }
+    if (!query) {
+        return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
+    }
 
-        const last8 = query.slice(-8);
-        const { dateColumn, hasQuantity } = await resolveReceivingSchema();
-        const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
+    const last8 = query.slice(-8);
+    const { dateColumn, hasQuantity } = await resolveReceivingSchema();
+    const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
 
-        // Search across both the canonical shipment tracking (stn.tracking_number_raw) and the legacy receiving_tracking_number text column.
-        const logs = await tenantQuery(
-            ctx.organizationId,
-            `SELECT r.id,
+    // Search across both the canonical shipment tracking (stn.tracking_number_raw) and the legacy receiving_tracking_number text column.
+    const logs = await tenantQuery(
+        ctx.organizationId,
+        `SELECT r.id,
                     r.${dateColumn} AS timestamp,
                     stn.tracking_number_raw AS tracking,
                     COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier) AS status,
@@ -34,27 +33,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                AND stn.tracking_number_raw IS NOT NULL
                AND stn.tracking_number_raw <> ''
              ORDER BY r.id DESC`,
-            [last8, `%${query}%`, ctx.organizationId]
-        );
+        [last8, `%${query}%`, ctx.organizationId]
+    );
 
-        const formattedLogs = logs.rows.map((log: any) => ({
-            id: String(log.id),
-            timestamp: log.timestamp || '',
-            tracking: log.tracking || '',
-            status: log.status || '',
-            count: parseInt(String(log.count || '1'), 10) || 1,
-        }));
+    const formattedLogs = logs.rows.map((log: any) => ({
+        id: String(log.id),
+        timestamp: log.timestamp || '',
+        tracking: log.tracking || '',
+        status: log.status || '',
+        count: parseInt(String(log.count || '1'), 10) || 1,
+    }));
 
-        return NextResponse.json({
-            results: formattedLogs,
-            count: formattedLogs.length,
-            query: query
-        });
-    } catch (error: any) {
-        console.error('Error searching receiving logs:', error);
-        return NextResponse.json({
-            error: 'Failed to search',
-            details: error.message
-        }, { status: 500 });
-    }
+    return NextResponse.json({
+        results: formattedLogs,
+        count: formattedLogs.length,
+        query: query
+    });
 }, { permission: 'receiving.view' });

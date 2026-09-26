@@ -11,42 +11,34 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 /** GET /api/locations — list active locations. ?type=zones for zone-only, ?type=low-stock for alerts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const type = req.nextUrl.searchParams.get('type');
+  const type = req.nextUrl.searchParams.get('type');
 
-    const orgId = ctx.organizationId;
+  const orgId = ctx.organizationId;
 
-    if (type === 'rooms') {
-      const rooms = await getRooms(orgId);
-      return NextResponse.json({ locations: rooms });
-    }
-
-    if (type === 'low-stock') {
-      const bins = await getLowStockBins(orgId);
-      return NextResponse.json({ bins });
-    }
-
-    const locations = await getActiveLocations(orgId);
-
-    // Build room → rows → cols structure for cascading picker
-    const roomMap: Record<string, { rows: Record<string, string[]> }> = {};
-    for (const loc of locations) {
-      if (!loc.room || !loc.row_label || !loc.col_label) continue;
-      if (!roomMap[loc.room]) roomMap[loc.room] = { rows: {} };
-      if (!roomMap[loc.room].rows[loc.row_label]) roomMap[loc.room].rows[loc.row_label] = [];
-      if (!roomMap[loc.room].rows[loc.row_label].includes(loc.col_label)) {
-        roomMap[loc.room].rows[loc.row_label].push(loc.col_label);
-      }
-    }
-
-    return NextResponse.json({ locations, roomStructure: roomMap });
-  } catch (err: any) {
-    console.error('[GET /api/locations] error:', err);
-    return NextResponse.json(
-      { error: 'Failed to fetch locations', details: err?.message },
-      { status: 500 },
-    );
+  if (type === 'rooms') {
+    const rooms = await getRooms(orgId);
+    return NextResponse.json({ locations: rooms });
   }
+
+  if (type === 'low-stock') {
+    const bins = await getLowStockBins(orgId);
+    return NextResponse.json({ bins });
+  }
+
+  const locations = await getActiveLocations(orgId);
+
+  // Build room → rows → cols structure for cascading picker
+  const roomMap: Record<string, { rows: Record<string, string[]> }> = {};
+  for (const loc of locations) {
+    if (!loc.room || !loc.row_label || !loc.col_label) continue;
+    if (!roomMap[loc.room]) roomMap[loc.room] = { rows: {} };
+    if (!roomMap[loc.room].rows[loc.row_label]) roomMap[loc.room].rows[loc.row_label] = [];
+    if (!roomMap[loc.room].rows[loc.row_label].includes(loc.col_label)) {
+      roomMap[loc.room].rows[loc.row_label].push(loc.col_label);
+    }
+  }
+
+  return NextResponse.json({ locations, roomStructure: roomMap });
 }, { permission: 'sku_stock.view' });
 
 /** POST /api/locations — create a new location */

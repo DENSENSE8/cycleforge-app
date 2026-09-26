@@ -21,19 +21,13 @@ export const GET = withAuth(
       return NextResponse.json({ error: 'The full staff report requires operations access' }, { status: 403 });
     }
 
-    try {
-      const report = await loadDailyCheckReport({
-        orgId: ctx.organizationId,
-        dateKey,
-        viewerStaffId: ctx.staffId,
-        onlyViewerItems: scope !== 'all',
-      });
-      return NextResponse.json(report);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] report failed:', message);
-      return NextResponse.json({ error: 'Failed to load the daily report' }, { status: 500 });
-    }
+    const report = await loadDailyCheckReport({
+      orgId: ctx.organizationId,
+      dateKey,
+      viewerStaffId: ctx.staffId,
+      onlyViewerItems: scope !== 'all',
+    });
+    return NextResponse.json(report);
   },
   { permission: 'dashboard.view' },
 );

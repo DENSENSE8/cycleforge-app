@@ -8,23 +8,22 @@ import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    // Polled every 60s per open dashboard tab. Cache 45s org-scoped so N tabs
-    // collapse onto one DB read per window; order/tech writes bust the tags.
-    const payload = await getOrSet<unknown>(
-      CACHE_NS.opsDashboard,
-      orgId,
-      'today',
-      45,
-      [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
-      async () => {
-    // $1 carries the tenant org id into every subquery below.
-    const todayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date`;
+  const orgId = ctx.organizationId;
+  // Polled every 60s per open dashboard tab. Cache 45s org-scoped so N tabs
+  // collapse onto one DB read per window; order/tech writes bust the tags.
+  const payload = await getOrSet<unknown>(
+    CACHE_NS.opsDashboard,
+    orgId,
+    'today',
+    45,
+    [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
+    async () => {
+  // $1 carries the tenant org id into every subquery below.
+  const todayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date`;
 
-    // ── Summary KPIs (today, PST — no comparison window) ───────────────── shipping_tracking_numbers has no organization_id column…
-    /* NO `*_yesterday` columns and no `computeDelta` — both deleted 2026-09-16. */
-    const summaryQuery = `
+  // ── Summary KPIs (today, PST — no comparison window) ───────────────── shipping_tracking_numbers has no organization_id column…
+  /* NO `*_yesterday` columns and no `computeDelta` — both deleted 2026-09-16. */
+  const summaryQuery = `
       WITH pending_orders AS (
         SELECT o.id, o.is_out_of_stock
         FROM orders o
@@ -64,37 +63,37 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         (SELECT count(*)::int FROM late_orders) AS late_count,
         (SELECT count(*)::int FROM station_activity_logs WHERE activity_type = 'FNSKU_SCANNED' AND organization_id = $1 AND ${todayFilter}) AS fba_today
     `;
-    const summaryResult = await tenantQuery(orgId, summaryQuery, [orgId]);
-    const s = summaryResult.rows[0];
+  const summaryResult = await tenantQuery(orgId, summaryQuery, [orgId]);
+  const s = summaryResult.rows[0];
 
 
 
-    // ── Staff Progress ───────────────────────────────────────────────────
-    const staffStats = await getAllStaffGoalsWithStats(orgId);
-    const staffProgress = staffStats.map((st) => {
-      const progress = st.today_count;
-      const goal = st.daily_goal;
-      const percent = goal > 0 ? Math.round((progress / goal) * 100) : 0;
-      let status: 'on_track' | 'at_risk' | 'behind' = 'behind';
-      if (percent >= 85) status = 'on_track';
-      else if (percent >= 60) status = 'at_risk';
+  // ── Staff Progress ───────────────────────────────────────────────────
+  const staffStats = await getAllStaffGoalsWithStats(orgId);
+  const staffProgress = staffStats.map((st) => {
+    const progress = st.today_count;
+    const goal = st.daily_goal;
+    const percent = goal > 0 ? Math.round((progress / goal) * 100) : 0;
+    let status: 'on_track' | 'at_risk' | 'behind' = 'behind';
+    if (percent >= 85) status = 'on_track';
+    else if (percent >= 60) status = 'at_risk';
 
-      return {
-        staffId: st.staff_id,
-        name: st.staff_name,
-        goal: st.daily_goal,
-        current: st.today_count,
-        percent,
-        status,
-        daysLate: 0,
-        station: st.station,
-      };
-    });
+    return {
+      staffId: st.staff_id,
+      name: st.staff_name,
+      goal: st.daily_goal,
+      current: st.today_count,
+      percent,
+      status,
+      daysLate: 0,
+      station: st.station,
+    };
+  });
 
-    // ── Activity Feed ────────────────────────────────────────────────────
-    // staff join is on the integer surrogate PK (s.id = sal.staff_id) so it is
-    // safe bare; station_activity_logs is tenant-scoped via organization_id.
-    const feedQuery = `
+  // ── Activity Feed ────────────────────────────────────────────────────
+  // staff join is on the integer surrogate PK (s.id = sal.staff_id) so it is
+  // safe bare; station_activity_logs is tenant-scoped via organization_id.
+  const feedQuery = `
       SELECT
         sal.id::text,
         sal.created_at as timestamp,
@@ -109,31 +108,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ORDER BY sal.created_at DESC
       LIMIT 20
     `;
-    const feedResult = await tenantQuery(orgId, feedQuery, [orgId]);
+  const feedResult = await tenantQuery(orgId, feedQuery, [orgId]);
 
-    return {
-      /*
-       * VALUE ONLY — no `delta`. See the note in the query above: the old
-       * comparison divided a partial day by a whole one. The tiles now state
-       * their window ("today, PST") in words instead of claiming a trend.
-       */
-      summary: {
-        all: { value: s.all_today },
-        tested: { value: s.tested_today },
-        repair: { value: s.repair_count },
-        outOfStock: { value: s.oos_count },
-        pendingLate: { value: s.late_count },
-        fba: { value: s.fba_today },
-      },
-      staffProgress,
-      activityFeed: feedResult.rows,
-    };
-      },
-    );
+  return {
+    /*
+     * VALUE ONLY — no `delta`. See the note in the query above: the old
+     * comparison divided a partial day by a whole one. The tiles now state
+     * their window ("today, PST") in words instead of claiming a trend.
+     */
+    summary: {
+      all: { value: s.all_today },
+      tested: { value: s.tested_today },
+      repair: { value: s.repair_count },
+      outOfStock: { value: s.oos_count },
+      pendingLate: { value: s.late_count },
+      fba: { value: s.fba_today },
+    },
+    staffProgress,
+    activityFeed: feedResult.rows,
+  };
+    },
+  );
 
-    return NextResponse.json(payload);
-  } catch (error: any) {
-    console.error('Operations Dashboard API Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  return NextResponse.json(payload);
 }, { permission: 'operations.view' });

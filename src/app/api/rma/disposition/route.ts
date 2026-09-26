@@ -44,35 +44,29 @@ export const POST = withAuth(async (request, ctx) => {
   }
   const notes = typeof body?.notes === 'string' && body.notes.trim() ? body.notes.trim() : null;
 
-  try {
-    const result = await recordDisposition({
-      rmaId,
-      serialUnitId,
-      dispositionCode,
-      decidedByStaffId: actorStaffId,
-      notes,
-      organizationId: ctx.organizationId ?? null,
-    });
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
+  const result = await recordDisposition({
+    rmaId,
+    serialUnitId,
+    dispositionCode,
+    decidedByStaffId: actorStaffId,
+    notes,
+    organizationId: ctx.organizationId ?? null,
+  });
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
 
-    // entityId is always the disposition row's own id — never rmaId.
-    await recordAudit(pool, ctx, request, {
-      source: 'rma-api',
-      action: AUDIT_ACTION.RMA_DISPOSITION,
-      entityType: AUDIT_ENTITY.RMA,
-      entityId: result.dispositionId,
-      after: {
-        serial_unit_id: serialUnitId,
-        rma_id: rmaId,
-        disposition_code: dispositionCode,
-        restocked: result.restocked,
-      },
-    });
+  // entityId is always the disposition row's own id — never rmaId.
+  await recordAudit(pool, ctx, request, {
+    source: 'rma-api',
+    action: AUDIT_ACTION.RMA_DISPOSITION,
+    entityType: AUDIT_ENTITY.RMA,
+    entityId: result.dispositionId,
+    after: {
+      serial_unit_id: serialUnitId,
+      rma_id: rmaId,
+      disposition_code: dispositionCode,
+      restocked: result.restocked,
+    },
+  });
 
-    return NextResponse.json(result, { status: 201 });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'disposition failed';
-    console.error('[POST /api/rma/disposition] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json(result, { status: 201 });
 }, { permission: 'rma.manage' });

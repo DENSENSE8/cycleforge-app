@@ -11,14 +11,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   // order-number list. Read-only; no compare, no mutation.
   const suggestQuery = (request.nextUrl.searchParams.get('q') ?? '').trim();
   if (suggestQuery) {
-    try {
-      const candidates = await suggestShippedOrdersByNumber(suggestQuery, ctx.organizationId);
-      return NextResponse.json({ success: true, candidates });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Order suggest failed';
-      console.error('receiving/shipped-order-lookup suggest failed:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    const candidates = await suggestShippedOrdersByNumber(suggestQuery, ctx.organizationId);
+    return NextResponse.json({ success: true, candidates });
   }
 
   const orderNumber = (request.nextUrl.searchParams.get('order_number') ?? '').trim();
@@ -32,15 +26,9 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
-  try {
-    const result = await lookupShippedOrderForCompare(
-      { orderNumber, receivedSerial },
-      ctx.organizationId,
-    );
-    return NextResponse.json({ success: true, ...result });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to look up shipped order';
-    console.error('receiving/shipped-order-lookup GET failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  const result = await lookupShippedOrderForCompare(
+    { orderNumber, receivedSerial },
+    ctx.organizationId,
+  );
+  return NextResponse.json({ success: true, ...result });
 }, { permission: 'receiving.scan_po' });

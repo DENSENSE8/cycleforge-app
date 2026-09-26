@@ -23,41 +23,40 @@ interface StableSkuSlice {
 
 /** GET /api/get-title-by-sku?sku=<value> */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-    try {
-        const orgId = ctx.organizationId;
-        const { searchParams } = new URL(request.url);
-        const sku = searchParams.get('sku');
-        // Optional order condition — condition-gates the kit-parts BOM (a part
-        // flagged required_for=['REFURBISHED'] is hidden on a brand-new order).
-        const condition = searchParams.get('condition');
+    const orgId = ctx.organizationId;
+    const { searchParams } = new URL(request.url);
+    const sku = searchParams.get('sku');
+    // Optional order condition — condition-gates the kit-parts BOM (a part
+    // flagged required_for=['REFURBISHED'] is hidden on a brand-new order).
+    const condition = searchParams.get('condition');
 
-        if (!sku) {
-            return NextResponse.json({ error: 'Missing sku query param' }, { status: 400 });
-        }
+    if (!sku) {
+        return NextResponse.json({ error: 'Missing sku query param' }, { status: 400 });
+    }
 
-        const trimmedSku = String(sku).trim();
-        if (!trimmedSku) {
-            return NextResponse.json({ error: 'Empty sku' }, { status: 400 });
-        }
+    const trimmedSku = String(sku).trim();
+    if (!trimmedSku) {
+        return NextResponse.json({ error: 'Empty sku' }, { status: 400 });
+    }
 
-        // Cache key: case-fold + strip leading zeros (the DB match is leading-zero
-        // tolerant, so '1103' and '01103' resolve to the same product → same key).
-        const normSku = trimmedSku.toUpperCase().replace(/^0+(?=.)/, '');
-        const condKey = condition ?? '';
+    // Cache key: case-fold + strip leading zeros (the DB match is leading-zero
+    // tolerant, so '1103' and '01103' resolve to the same product → same key).
+    const normSku = trimmedSku.toUpperCase().replace(/^0+(?=.)/, '');
+    const condKey = condition ?? '';
 
-        // ── STABLE slice (cached) — everything except live stock/location.
-        const stablePromise = getOrSet<StableSkuSlice>(
-            CACHE_NS.titleBySku,
-            orgId,
-            `${normSku}:${condKey}`,
-            600, // 10 min; TTL is a backstop — writes invalidate the tags
-            [CACHE_TAGS.skuCatalog, CACHE_TAGS.skuKitParts, CACHE_TAGS.qcChecks],
-            async () => {
-                // Three stable lookups, tolerant of case/whitespace/leading zeros.
-                const [zohoItem, ecwid, catalogDirect] = await Promise.all([
-                    tenantQuery(
-                        orgId,
-                        `SELECT name, image_url, image_document_id, zoho_item_id
+    // ── STABLE slice (cached) — everything except live stock/location.
+    const stablePromise = getOrSet<StableSkuSlice>(
+        CACHE_NS.titleBySku,
+        orgId,
+        `${normSku}:${condKey}`,
+        600, // 10 min; TTL is a backstop — writes invalidate the tags
+        [CACHE_TAGS.skuCatalog, CACHE_TAGS.skuKitParts, CACHE_TAGS.qcChecks],
+        async () => {
+            // Three stable lookups, tolerant of case/whitespace/leading zeros.
+            const [zohoItem, ecwid, catalogDirect] = await Promise.all([
+                tenantQuery(
+                    orgId,
+                    `SELECT name, image_url, image_document_id, zoho_item_id
                            FROM items
                           WHERE status = 'active'
                             AND organization_id = $2
@@ -69,11 +68,11 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                           ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC,
                                    (name IS NOT NULL AND name <> '') DESC
                           LIMIT 1`,
-                        [trimmedSku, orgId],
-                    ),
-                    tenantQuery(
-                        orgId,
-                        `SELECT id, sku_catalog_id, platform_sku, display_name, image_url
+                    [trimmedSku, orgId],
+                ),
+                tenantQuery(
+                    orgId,
+                    `SELECT id, sku_catalog_id, platform_sku, display_name, image_url
                            FROM sku_platform_ids
                           WHERE platform = 'ecwid'
                             AND is_active = true
@@ -88,11 +87,11 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                                    (display_name IS NOT NULL AND display_name <> '') DESC,
                                    id DESC
                           LIMIT 1`,
-                        [trimmedSku, orgId],
-                    ),
-                    tenantQuery(
-                        orgId,
-                        `SELECT id, sku, product_title, image_url, gtin, notes
+                    [trimmedSku, orgId],
+                ),
+                tenantQuery(
+                    orgId,
+                    `SELECT id, sku, product_title, image_url, gtin, notes
                            FROM sku_catalog
                           WHERE organization_id = $2
                             AND (
@@ -102,98 +101,98 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                             )
                           ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC
                           LIMIT 1`,
-                        [trimmedSku, orgId],
-                    ),
-                ]);
+                    [trimmedSku, orgId],
+                ),
+            ]);
 
-                const zohoRow = zohoItem.rows[0] ?? null;
-                const ecwidRow = ecwid.rows[0] ?? null;
-                let catalogRow = catalogDirect.rows[0] ?? null;
+            const zohoRow = zohoItem.rows[0] ?? null;
+            const ecwidRow = ecwid.rows[0] ?? null;
+            let catalogRow = catalogDirect.rows[0] ?? null;
 
-                // If the Ecwid row links to a catalog row we missed by SKU text
-                // (because the catalog SKU isn't the Ecwid platform_sku), fetch it.
-                if (!catalogRow && ecwidRow?.sku_catalog_id) {
-                    const linked = await tenantQuery(
-                        orgId,
-                        `SELECT id, sku, product_title, image_url, gtin, notes
+            // If the Ecwid row links to a catalog row we missed by SKU text
+            // (because the catalog SKU isn't the Ecwid platform_sku), fetch it.
+            if (!catalogRow && ecwidRow?.sku_catalog_id) {
+                const linked = await tenantQuery(
+                    orgId,
+                    `SELECT id, sku, product_title, image_url, gtin, notes
                            FROM sku_catalog WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-                        [ecwidRow.sku_catalog_id, orgId],
+                    [ecwidRow.sku_catalog_id, orgId],
+                );
+                catalogRow = linked.rows[0] ?? null;
+            }
+
+            const resolvedCatalogId: number | null =
+                catalogRow?.id ?? ecwidRow?.sku_catalog_id ?? null;
+
+            // Per-SKU QA flags the packer must verify before sealing. Reuses the
+            // published QC-check templates authored in Products. Org-scoped.
+            let qcFlags: StableSkuSlice['qcFlags'] = [];
+            if (resolvedCatalogId != null) {
+                try {
+                    const checks = await getQcChecks(
+                        resolvedCatalogId,
+                        catalogRow?.category ?? null,
+                        { publishedOnly: true },
+                        orgId,
                     );
-                    catalogRow = linked.rows[0] ?? null;
+                    qcFlags = checks.map((c) => ({
+                        id: c.id,
+                        label: c.step_label,
+                        category: c.category ?? null,
+                    }));
+                } catch {
+                    qcFlags = []; // advisory; never block SKU resolution
                 }
+            }
 
-                const resolvedCatalogId: number | null =
-                    catalogRow?.id ?? ecwidRow?.sku_catalog_id ?? null;
-
-                // Per-SKU QA flags the packer must verify before sealing. Reuses the
-                // published QC-check templates authored in Products. Org-scoped.
-                let qcFlags: StableSkuSlice['qcFlags'] = [];
-                if (resolvedCatalogId != null) {
-                    try {
-                        const checks = await getQcChecks(
-                            resolvedCatalogId,
-                            catalogRow?.category ?? null,
-                            { publishedOnly: true },
-                            orgId,
-                        );
-                        qcFlags = checks.map((c) => ({
-                            id: c.id,
-                            label: c.step_label,
-                            category: c.category ?? null,
-                        }));
-                    } catch {
-                        qcFlags = []; // advisory; never block SKU resolution
-                    }
+            // Per-SKU kit parts (BOM), anchored on the SAME resolvedCatalogId —
+            // keyed on sku_catalog.id, never the colliding SKU string. Condition-gated.
+            let kitParts: StableSkuSlice['kitParts'] = [];
+            if (resolvedCatalogId != null) {
+                try {
+                    const parts = await getKitParts(resolvedCatalogId, condition, orgId);
+                    kitParts = parts.map((p) => ({
+                        id: p.id,
+                        name: p.component_name,
+                        type: p.component_type,
+                        qty: p.qty_required,
+                        critical: p.is_critical,
+                    }));
+                } catch {
+                    kitParts = []; // advisory at pack time
                 }
+            }
 
-                // Per-SKU kit parts (BOM), anchored on the SAME resolvedCatalogId —
-                // keyed on sku_catalog.id, never the colliding SKU string. Condition-gated.
-                let kitParts: StableSkuSlice['kitParts'] = [];
-                if (resolvedCatalogId != null) {
-                    try {
-                        const parts = await getKitParts(resolvedCatalogId, condition, orgId);
-                        kitParts = parts.map((p) => ({
-                            id: p.id,
-                            name: p.component_name,
-                            type: p.component_type,
-                            qty: p.qty_required,
-                            critical: p.is_critical,
-                        }));
-                    } catch {
-                        kitParts = []; // advisory at pack time
-                    }
-                }
+            return {
+                found: Boolean(zohoRow || ecwidRow || catalogRow),
+                title:
+                    (zohoRow?.name && String(zohoRow.name).trim()) ||
+                    (ecwidRow?.display_name && String(ecwidRow.display_name).trim()) ||
+                    catalogRow?.product_title ||
+                    '',
+                imageUrl:
+                    (zohoRow?.image_document_id && String(zohoRow.image_document_id).trim()
+                        ? `/api/zoho/items/${encodeURIComponent(String(zohoRow.zoho_item_id))}/image`
+                        : '') ||
+                    (zohoRow?.image_url && String(zohoRow.image_url).trim()) ||
+                    (zohoRow
+                        ? ''
+                        : (ecwidRow?.image_url && String(ecwidRow.image_url).trim()) ||
+                          catalogRow?.image_url ||
+                          ''),
+                skuCatalogId: resolvedCatalogId,
+                gtin: catalogRow?.gtin || null,
+                packNotes: catalogRow?.notes || null,
+                qcFlags,
+                kitParts,
+            };
+        },
+    );
 
-                return {
-                    found: Boolean(zohoRow || ecwidRow || catalogRow),
-                    title:
-                        (zohoRow?.name && String(zohoRow.name).trim()) ||
-                        (ecwidRow?.display_name && String(ecwidRow.display_name).trim()) ||
-                        catalogRow?.product_title ||
-                        '',
-                    imageUrl:
-                        (zohoRow?.image_document_id && String(zohoRow.image_document_id).trim()
-                            ? `/api/zoho/items/${encodeURIComponent(String(zohoRow.zoho_item_id))}/image`
-                            : '') ||
-                        (zohoRow?.image_url && String(zohoRow.image_url).trim()) ||
-                        (zohoRow
-                            ? ''
-                            : (ecwidRow?.image_url && String(ecwidRow.image_url).trim()) ||
-                              catalogRow?.image_url ||
-                              ''),
-                    skuCatalogId: resolvedCatalogId,
-                    gtin: catalogRow?.gtin || null,
-                    packNotes: catalogRow?.notes || null,
-                    qcFlags,
-                    kitParts,
-                };
-            },
-        );
-
-        // ── LIVE stock/location — never cached (decrements every pick/pack). ────
-        const stockPromise = tenantQuery(
-            orgId,
-            `SELECT sku, stock, location, product_title
+    // ── LIVE stock/location — never cached (decrements every pick/pack). ────
+    const stockPromise = tenantQuery(
+        orgId,
+        `SELECT sku, stock, location, product_title
                FROM sku_stock
               WHERE organization_id = $2
                 AND (
@@ -203,36 +202,32 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                 )
               ORDER BY (UPPER(TRIM(sku)) = UPPER(TRIM($1))) DESC
               LIMIT 1`,
-            [trimmedSku, orgId],
-        );
+        [trimmedSku, orgId],
+    );
 
-        const [stable, stock] = await Promise.all([stablePromise, stockPromise]);
-        const stockRow = stock.rows[0] ?? null;
+    const [stable, stock] = await Promise.all([stablePromise, stockPromise]);
+    const stockRow = stock.rows[0] ?? null;
 
-        if (!stable.found && !stockRow) {
-            return NextResponse.json({
-                sku: trimmedSku, title: '', stock: '0', location: '',
-                imageUrl: '', skuCatalogId: null, gtin: null, packNotes: null,
-                qcFlags: [], kitParts: [],
-            });
-        }
-
+    if (!stable.found && !stockRow) {
         return NextResponse.json({
-            sku: trimmedSku,
-            // Stable title (items/ecwid/catalog) wins; fall back to sku_stock's
-            // product_title for SKUs that live only in stock (preserved behavior).
-            title: stable.title || stockRow?.product_title || '',
-            stock: stockRow?.stock != null ? String(stockRow.stock) : '0',
-            location: stockRow?.location || '',
-            imageUrl: stable.imageUrl,
-            skuCatalogId: stable.skuCatalogId,
-            gtin: stable.gtin,
-            packNotes: stable.packNotes,
-            qcFlags: stable.qcFlags,
-            kitParts: stable.kitParts,
+            sku: trimmedSku, title: '', stock: '0', location: '',
+            imageUrl: '', skuCatalogId: null, gtin: null, packNotes: null,
+            qcFlags: [], kitParts: [],
         });
-    } catch (error: any) {
-        console.error('API error', error);
-        return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
+
+    return NextResponse.json({
+        sku: trimmedSku,
+        // Stable title (items/ecwid/catalog) wins; fall back to sku_stock's
+        // product_title for SKUs that live only in stock (preserved behavior).
+        title: stable.title || stockRow?.product_title || '',
+        stock: stockRow?.stock != null ? String(stockRow.stock) : '0',
+        location: stockRow?.location || '',
+        imageUrl: stable.imageUrl,
+        skuCatalogId: stable.skuCatalogId,
+        gtin: stable.gtin,
+        packNotes: stable.packNotes,
+        qcFlags: stable.qcFlags,
+        kitParts: stable.kitParts,
+    });
 }, { permission: 'sku_stock.view' });

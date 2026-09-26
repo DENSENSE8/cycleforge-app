@@ -4,15 +4,10 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 /** GET /api/rooms — list active rooms (parent rows with no row/col). */
 export const GET = withAuth(async (_req, ctx) => {
-  try {
-    // Tenant-scoped read: getRooms threads organization_id into the SELECT
-    // (locations is tenant-owned) and runs through tenantQuery so the GUC is set.
-    const rooms = await getRooms(ctx.organizationId);
-    return NextResponse.json({ rooms });
-  } catch (err: any) {
-    console.error('[GET /api/rooms] error:', err);
-    return NextResponse.json({ error: 'Failed', details: err?.message }, { status: 500 });
-  }
+  // Tenant-scoped read: getRooms threads organization_id into the SELECT
+  // (locations is tenant-owned) and runs through tenantQuery so the GUC is set.
+  const rooms = await getRooms(ctx.organizationId);
+  return NextResponse.json({ rooms });
 }, { permission: 'sku_stock.view' });
 
 /**

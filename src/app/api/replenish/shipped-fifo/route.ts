@@ -8,21 +8,20 @@ import { withAuth } from '@/lib/auth/withAuth';
  * cross-referenced with existing replenishment requests and Zoho stock.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const { searchParams } = new URL(req.url);
-    const days = Math.min(Number(searchParams.get('days') || '30'), 90);
-    const sku = searchParams.get('sku') || null;
-    const limit = Math.min(Number(searchParams.get('limit') || '100'), 500);
+  const orgId = ctx.organizationId;
+  const { searchParams } = new URL(req.url);
+  const days = Math.min(Number(searchParams.get('days') || '30'), 90);
+  const sku = searchParams.get('sku') || null;
+  const limit = Math.min(Number(searchParams.get('limit') || '100'), 500);
 
-    // $1=days, $2=limit, $3=orgId, $4=sku (optional)
-    const skuClause = sku
-      ? `AND o.sku ILIKE '%' || $4 || '%'`
-      : '';
-    const params: unknown[] = [days, limit, orgId];
-    if (sku) params.push(sku);
+  // $1=days, $2=limit, $3=orgId, $4=sku (optional)
+  const skuClause = sku
+    ? `AND o.sku ILIKE '%' || $4 || '%'`
+    : '';
+  const params: unknown[] = [days, limit, orgId];
+  if (sku) params.push(sku);
 
-    const sql = `
+  const sql = `
       WITH shipped_agg AS (
         SELECT
           o.sku,
@@ -75,17 +74,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LIMIT $2
     `;
 
-    const result = await tenantQuery(orgId, sql, params);
+  const result = await tenantQuery(orgId, sql, params);
 
-    return NextResponse.json({
-      skus: result.rows,
-      count: result.rows.length,
-      days,
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: 'Failed to fetch shipped FIFO data', details: error?.message || String(error) },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    skus: result.rows,
+    count: result.rows.length,
+    days,
+  });
 }, { permission: 'sku_stock.view' });

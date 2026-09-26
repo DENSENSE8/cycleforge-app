@@ -4,20 +4,15 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 // Break-glass DB migration — admin-only + step-up via admin.manage_features.
 export const POST = withAuth(async (_req, ctx) => {
-  try {
-    // Remove all platform='zoho' entries from sku_platform_ids.
-    const removed = await tenantQuery(
-      ctx.organizationId,
-      `DELETE FROM sku_platform_ids WHERE platform = 'zoho' AND organization_id = $1`,
-      [ctx.organizationId],
-    );
+  // Remove all platform='zoho' entries from sku_platform_ids.
+  const removed = await tenantQuery(
+    ctx.organizationId,
+    `DELETE FROM sku_platform_ids WHERE platform = 'zoho' AND organization_id = $1`,
+    [ctx.organizationId],
+  );
 
-    return NextResponse.json({
-      success: true,
-      removedZohoPlatformEntries: removed.rowCount || 0,
-    });
-  } catch (error: any) {
-    console.error('Migration error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    removedZohoPlatformEntries: removed.rowCount || 0,
+  });
 }, { permission: 'admin.manage_features', stepUp: true });

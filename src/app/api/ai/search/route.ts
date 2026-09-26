@@ -32,102 +32,94 @@ function getSystemPrompt() {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-    }
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
-    const rate = await checkRateLimitForOrg({
-      headers: req.headers,
-      routeKey: 'ai-search',
-      limit: Number(process.env.AI_SEARCH_RATE_LIMIT || 40),
-      windowMs: 60 * 1000,
-      organizationId: ctx.organizationId,
-    });
+  const rate = await checkRateLimitForOrg({
+    headers: req.headers,
+    routeKey: 'ai-search',
+    limit: Number(process.env.AI_SEARCH_RATE_LIMIT || 40),
+    windowMs: 60 * 1000,
+    organizationId: ctx.organizationId,
+  });
 
-    if (!rate.ok) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Try again shortly.' },
+  if (!rate.ok) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again shortly.' },
+      {
+        status: 429,
+        headers: rate.retryAfterSec ? { 'Retry-After': String(rate.retryAfterSec) } : undefined,
+      }
+    );
+  }
+
+  const body = (await req.json().catch(() => ({}))) as SearchRequestBody;
+  const query = String(body.query || '').trim();
+
+  if (!query) {
+    return NextResponse.json({ error: 'Missing search query' }, { status: 400 });
+  }
+
+  const aiConfig = await resolveOrgAiConfig(ctx.organizationId, 'chat');
+  if (!aiConfig) {
+    return NextResponse.json(
+      { error: 'No AI chat provider is connected for this workspace' },
+      { status: 503 },
+    );
+  }
+
+  const res = await fetch(`${aiConfig.baseURL}/chat/completions`, {
+    method: 'POST',
+    headers: aiRequestHeaders(aiConfig, {
+      'X-Source': 'cycle-forge-search',
+    }),
+    body: JSON.stringify({
+      model: aiConfig.model,
+      messages: [
+        { role: 'system', content: getSystemPrompt() },
         {
-          status: 429,
-          headers: rate.retryAfterSec ? { 'Retry-After': String(rate.retryAfterSec) } : undefined,
-        }
-      );
-    }
-
-    const body = (await req.json().catch(() => ({}))) as SearchRequestBody;
-    const query = String(body.query || '').trim();
-
-    if (!query) {
-      return NextResponse.json({ error: 'Missing search query' }, { status: 400 });
-    }
-
-    const aiConfig = await resolveOrgAiConfig(ctx.organizationId, 'chat');
-    if (!aiConfig) {
-      return NextResponse.json(
-        { error: 'No AI chat provider is connected for this workspace' },
-        { status: 503 },
-      );
-    }
-
-    const res = await fetch(`${aiConfig.baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: aiRequestHeaders(aiConfig, {
-        'X-Source': 'cycle-forge-search',
-      }),
-      body: JSON.stringify({
-        model: aiConfig.model,
-        messages: [
-          { role: 'system', content: getSystemPrompt() },
-          {
-            role: 'user',
-            content: `Page: ${body.page || 'unknown'}\nQuery: ${query}\nContext:\n${JSON.stringify(
+          role: 'user',
+          content: `Page: ${body.page || 'unknown'}\nQuery: ${query}\nContext:\n${JSON.stringify(
               body.context || {},
               null,
               2
             )}\n\nRequired schema:\n${JSON.stringify(SEARCH_SCHEMA_HINT, null, 2)}`,
-          },
-        ],
-        stream: false,
-        temperature: 0.1,
-        max_tokens: 2048,
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
+        },
+      ],
+      stream: false,
+      temperature: 0.1,
+      max_tokens: 2048,
+    }),
+    signal: AbortSignal.timeout(60_000),
+  });
 
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      return NextResponse.json(
-        { error: `AI search backend error (${res.status})`, details: errText.slice(0, 200) },
-        { status: 502 },
-      );
-    }
-
-    const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content || '';
-
-    let parsed: Record<string, unknown> | null = null;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      parsed = {
-        answer: content,
-        matches: [],
-        followUpQuestions: [],
-        confidence: 'low',
-      };
-    }
-
-    return NextResponse.json({
-      ok: true,
-      model: data?.model ?? 'hermes-agent',
-      result: parsed,
-    });
-  } catch (error: any) {
-    console.error('AI search failed:', error);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
     return NextResponse.json(
-      { error: 'AI search request failed', details: error?.message || 'Unknown error' },
-      { status: 500 }
+      { error: `AI search backend error (${res.status})`, details: errText.slice(0, 200) },
+      { status: 502 },
     );
   }
+
+  const data = await res.json();
+  const content = data?.choices?.[0]?.message?.content || '';
+
+  let parsed: Record<string, unknown> | null = null;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    parsed = {
+      answer: content,
+      matches: [],
+      followUpQuestions: [],
+      confidence: 'low',
+    };
+  }
+
+  return NextResponse.json({
+    ok: true,
+    model: data?.model ?? 'hermes-agent',
+    result: parsed,
+  });
 }, { permission: 'dashboard.view', feature: 'aiChat' });

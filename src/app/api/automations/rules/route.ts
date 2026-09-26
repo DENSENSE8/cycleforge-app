@@ -21,16 +21,10 @@ const ROUTE_AUTOMATION_RULES_POST = 'automations.rules.post';
  * Query: includeDisabled=true to include disabled rows.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const includeDisabled = searchParams.get('includeDisabled') === 'true';
-    const items = await listAutomationRules(ctx.organizationId, { includeDisabled });
-    return NextResponse.json({ success: true, items, total: items.length });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch';
-    console.error('Error in GET /api/automations/rules:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  const { searchParams } = new URL(req.url);
+  const includeDisabled = searchParams.get('includeDisabled') === 'true';
+  const items = await listAutomationRules(ctx.organizationId, { includeDisabled });
+  return NextResponse.json({ success: true, items, total: items.length });
 }, { permission: 'admin.manage_features' });
 
 /**

@@ -5,49 +5,48 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 /** GET /api/tracking-exceptions */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const domain = (searchParams.get('domain') || 'receiving').toLowerCase();
-    const statusFilter = (searchParams.get('status') || 'open').toLowerCase();
-    const q = (searchParams.get('q') || '').trim();
-    const limit = Math.min(
-      Math.max(parseInt(searchParams.get('limit') || '100', 10) || 100, 1),
-      500,
-    );
-    const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
+  const { searchParams } = new URL(request.url);
+  const domain = (searchParams.get('domain') || 'receiving').toLowerCase();
+  const statusFilter = (searchParams.get('status') || 'open').toLowerCase();
+  const q = (searchParams.get('q') || '').trim();
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') || '100', 10) || 100, 1),
+    500,
+  );
+  const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0);
 
-    if (!['orders', 'receiving'].includes(domain)) {
-      return NextResponse.json({ success: false, error: 'invalid domain' }, { status: 400 });
+  if (!['orders', 'receiving'].includes(domain)) {
+    return NextResponse.json({ success: false, error: 'invalid domain' }, { status: 400 });
+  }
+
+  const where: string[] = ['te.domain = $1'];
+  const params: unknown[] = [domain];
+
+  if (statusFilter !== 'all') {
+    if (!['open', 'resolved', 'discarded'].includes(statusFilter)) {
+      return NextResponse.json({ success: false, error: 'invalid status' }, { status: 400 });
     }
+    params.push(statusFilter);
+    where.push(`te.status = $${params.length}`);
+  }
 
-    const where: string[] = ['te.domain = $1'];
-    const params: unknown[] = [domain];
-
-    if (statusFilter !== 'all') {
-      if (!['open', 'resolved', 'discarded'].includes(statusFilter)) {
-        return NextResponse.json({ success: false, error: 'invalid status' }, { status: 400 });
-      }
-      params.push(statusFilter);
-      where.push(`te.status = $${params.length}`);
+  if (q) {
+    const key18 = normalizeTrackingKey18(q);
+    if (key18) {
+      params.push(key18);
+      where.push(
+        `RIGHT(regexp_replace(UPPER(COALESCE(te.tracking_number, '')), '[^A-Z0-9]', '', 'g'), 18) = $${params.length}`,
+      );
+    } else {
+      params.push(`%${q}%`);
+      where.push(`te.tracking_number ILIKE $${params.length}`);
     }
+  }
 
-    if (q) {
-      const key18 = normalizeTrackingKey18(q);
-      if (key18) {
-        params.push(key18);
-        where.push(
-          `RIGHT(regexp_replace(UPPER(COALESCE(te.tracking_number, '')), '[^A-Z0-9]', '', 'g'), 18) = $${params.length}`,
-        );
-      } else {
-        params.push(`%${q}%`);
-        where.push(`te.tracking_number ILIKE $${params.length}`);
-      }
-    }
+  params.push(limit);
+  params.push(offset);
 
-    params.push(limit);
-    params.push(offset);
-
-    const sql = `
+  const sql = `
       SELECT te.id, te.tracking_number, te.domain, te.source_station,
              te.staff_id, te.staff_name, te.exception_reason, te.notes, te.status,
              te.shipment_id, te.receiving_id,
@@ -68,20 +67,15 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
        LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
 
-    // tracking_exceptions has no organization_id column (child-scoped via staff/receiving).
-    const result = await tenantQuery(ctx.organizationId, sql, params);
+  // tracking_exceptions has no organization_id column (child-scoped via staff/receiving).
+  const result = await tenantQuery(ctx.organizationId, sql, params);
 
-    const countSql = `SELECT COUNT(*)::int AS n FROM tracking_exceptions te WHERE ${where.join(' AND ')}`;
-    const countResult = await tenantQuery(ctx.organizationId, countSql, params.slice(0, -2));
+  const countSql = `SELECT COUNT(*)::int AS n FROM tracking_exceptions te WHERE ${where.join(' AND ')}`;
+  const countResult = await tenantQuery(ctx.organizationId, countSql, params.slice(0, -2));
 
-    return NextResponse.json({
-      success: true,
-      total: countResult.rows[0]?.n ?? 0,
-      rows: result.rows,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to list tracking_exceptions';
-    console.error('GET /api/tracking-exceptions failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    total: countResult.rows[0]?.n ?? 0,
+    rows: result.rows,
+  });
 }, { permission: 'receiving.view' });

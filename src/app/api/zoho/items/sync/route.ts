@@ -27,17 +27,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: 'Origin not allowed' }, { status: 403 });
   }
 
-  try {
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const mode = getRequestedMode(request, body);
-    return NextResponse.json(await runItemSync(ctx.organizationId, mode));
-  } catch (error: any) {
-    console.error('[zoho/items/sync]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to sync Zoho items' },
-      { status: 500 }
-    );
-  }
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const mode = getRequestedMode(request, body);
+  return NextResponse.json(await runItemSync(ctx.organizationId, mode));
 }, { permission: 'integrations.zoho' });
 
 export const GET = withAuth(async (request: NextRequest) => {

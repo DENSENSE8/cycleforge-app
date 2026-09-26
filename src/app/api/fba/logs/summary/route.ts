@@ -3,49 +3,48 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const q = String(searchParams.get('q') || '').trim();
-    const modeParam = String(searchParams.get('mode') || 'ALL').trim().toUpperCase();
-    let mode = 'ALL';
-    // Canonical modes
-    if (modeParam === 'PLAN' || modeParam === 'PACKING' || modeParam === 'PRINT_READY') mode = modeParam;
-    // Backward-compatible aliases
-    if (modeParam === 'STOCK' || modeParam === 'TESTED') mode = 'PLAN';
-    if (modeParam === 'READY_TO_GO' || modeParam === 'READY_TO_PRINT') mode = 'PRINT_READY';
-    const limitRaw = Number(searchParams.get('limit') || 200);
-    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : 200;
+  const { searchParams } = new URL(request.url);
+  const q = String(searchParams.get('q') || '').trim();
+  const modeParam = String(searchParams.get('mode') || 'ALL').trim().toUpperCase();
+  let mode = 'ALL';
+  // Canonical modes
+  if (modeParam === 'PLAN' || modeParam === 'PACKING' || modeParam === 'PRINT_READY') mode = modeParam;
+  // Backward-compatible aliases
+  if (modeParam === 'STOCK' || modeParam === 'TESTED') mode = 'PLAN';
+  if (modeParam === 'READY_TO_GO' || modeParam === 'READY_TO_PRINT') mode = 'PRINT_READY';
+  const limitRaw = Number(searchParams.get('limit') || 200);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : 200;
 
-    // Tenant ownership filter — $1 is the org id, referenced inside the fba_* CTEs below.
-    const params: unknown[] = [ctx.organizationId];
-    let idx = 2;
-    const whereClauses: string[] = [];
+  // Tenant ownership filter — $1 is the org id, referenced inside the fba_* CTEs below.
+  const params: unknown[] = [ctx.organizationId];
+  let idx = 2;
+  const whereClauses: string[] = [];
 
-    if (q) {
-      whereClauses.push(
-        `(sr.fnsku ILIKE $${idx}
+  if (q) {
+    whereClauses.push(
+      `(sr.fnsku ILIKE $${idx}
           OR COALESCE(sr.product_title, '') ILIKE $${idx}
           OR COALESCE(sr.asin, '') ILIKE $${idx}
           OR COALESCE(sr.sku, '') ILIKE $${idx}
           OR COALESCE(sr.amazon_shipment_id, '') ILIKE $${idx}
           OR COALESCE(sr.shipment_ref, '') ILIKE $${idx})`
-      );
-      params.push(`%${q}%`);
-      idx += 1;
-    }
-    if (mode !== 'ALL') {
-      whereClauses.push(`sr.workflow_mode = $${idx}`);
-      params.push(mode);
-      idx += 1;
-    }
-    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    );
+    params.push(`%${q}%`);
+    idx += 1;
+  }
+  if (mode !== 'ALL') {
+    whereClauses.push(`sr.workflow_mode = $${idx}`);
+    params.push(mode);
+    idx += 1;
+  }
+  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    params.push(limit);
-    const limitIdx = idx;
+  params.push(limit);
+  const limitIdx = idx;
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `
         WITH log_totals AS (
           SELECT
             l.fnsku,
@@ -155,15 +154,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         ORDER BY sr.ready_to_print_qty DESC, sr.currently_packing_qty DESC, sr.last_event_at DESC NULLS LAST, sr.fnsku ASC
         LIMIT $${limitIdx}
       `,
-      params
-    );
+    params
+  );
 
-    return NextResponse.json({ success: true, rows: result.rows });
-  } catch (error: any) {
-    console.error('[GET /api/fba/logs/summary]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch FBA summary' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true, rows: result.rows });
 }, { permission: 'fba.view', feature: 'fba' });

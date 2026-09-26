@@ -103,61 +103,53 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   let updated = 0;
   let insertedOrderIds: number[] = [];
   if (deduped.length > 0) {
-    try {
-      const result = await ingestCanonicalOrders(
-        deduped.map(({ canonical }) => ({
-          externalOrderId: canonical.order_number,
-          // A marketplace item number (ASIN / eBay listing id) when the file has one — it resolves through `sku_platform_ids.platform_item_id`, a…
-          itemNumber: canonical.item_number || '',
-          sku: canonical.sku || '',
-          productTitle: canonical.item_title || '',
-          condition: canonical.condition || '',
-          quantity: canonical.quantity || '1',
-          // The mapped `note` column is an operator REMARK, and lands in the legacy scalar `orders.notes` the writer owns on insert.
-          notes: canonical.note || '',
-          customerName: canonical.customer_name || '',
-          // Platform acknowledgment: an Amazon 3-7-7 / eBay 2-5-5 order number
-          // names its own channel, so a file with no platform column still
-          // stores the inferred slug instead of a blank `account_source`.
-          accountSource:
-            canonical.platform
-            || inferMarketplaceFromOrderId(canonical.order_number)
-            || '',
-          trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
-          // END of the named warehouse civil day — a ship-by is a deadline, and
-          // a blank/unparseable cell is unknown (null), never today. Shared
-          // with the Google-Sheet lane, which reads the same file shapes.
-          shipByDate: resolveSpreadsheetShipByDate(canonical.ship_by_date),
-          orderDate: null,
-          saleAmount: null,
-          currency: null,
-          status: null,
-        })),
-        {
-          orgId: ctx.organizationId,
-          source: 'orders-import-csv',
-          // See the block above — never let an upload delete existing orders.
-          collapseDuplicates: false,
-          // Only claim an opinion about deadlines when the file actually carries one.
-          manageDeadlines: Boolean(mapping.ship_by_date),
-        },
-      );
-      inserted = result.insertedOrders;
-      insertedOrderIds = result.insertedOrderIds;
-      updated = result.processedOrders - result.insertedOrders;
-      // Reserve units for the rows that just landed, so an uploaded file produces a pick list rather than an unallocated backlog.
-      await autoAllocateAfterIngest(result.insertedOrderIds, {
+    const result = await ingestCanonicalOrders(
+      deduped.map(({ canonical }) => ({
+        externalOrderId: canonical.order_number,
+        // A marketplace item number (ASIN / eBay listing id) when the file has one — it resolves through `sku_platform_ids.platform_item_id`, a…
+        itemNumber: canonical.item_number || '',
+        sku: canonical.sku || '',
+        productTitle: canonical.item_title || '',
+        condition: canonical.condition || '',
+        quantity: canonical.quantity || '1',
+        // The mapped `note` column is an operator REMARK, and lands in the legacy scalar `orders.notes` the writer owns on insert.
+        notes: canonical.note || '',
+        customerName: canonical.customer_name || '',
+        // Platform acknowledgment: an Amazon 3-7-7 / eBay 2-5-5 order number
+        // names its own channel, so a file with no platform column still
+        // stores the inferred slug instead of a blank `account_source`.
+        accountSource:
+          canonical.platform
+          || inferMarketplaceFromOrderId(canonical.order_number)
+          || '',
+        trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
+        // END of the named warehouse civil day — a ship-by is a deadline, and
+        // a blank/unparseable cell is unknown (null), never today. Shared
+        // with the Google-Sheet lane, which reads the same file shapes.
+        shipByDate: resolveSpreadsheetShipByDate(canonical.ship_by_date),
+        orderDate: null,
+        saleAmount: null,
+        currency: null,
+        status: null,
+      })),
+      {
         orgId: ctx.organizationId,
-        staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,
         source: 'orders-import-csv',
-      });
-    } catch (error: any) {
-      console.error('CSV order import insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to insert orders', details: error?.message },
-        { status: 500 },
-      );
-    }
+        // See the block above — never let an upload delete existing orders.
+        collapseDuplicates: false,
+        // Only claim an opinion about deadlines when the file actually carries one.
+        manageDeadlines: Boolean(mapping.ship_by_date),
+      },
+    );
+    inserted = result.insertedOrders;
+    insertedOrderIds = result.insertedOrderIds;
+    updated = result.processedOrders - result.insertedOrders;
+    // Reserve units for the rows that just landed, so an uploaded file produces a pick list rather than an unallocated backlog.
+    await autoAllocateAfterIngest(result.insertedOrderIds, {
+      orgId: ctx.organizationId,
+      staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,
+      source: 'orders-import-csv',
+    });
   }
 
   await recordAudit(pool, ctx, request, {

@@ -211,158 +211,152 @@ async function getSquareVariationIdBySku(
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json(
-        { success: false, error: `Origin not allowed: ${req.headers.get('origin')}` },
-        { status: 403 }
-      );
-    }
-
-    const body = (await req.json().catch(() => ({}))) as {
-      repairId?: number | string;
-      sourceSku?: string | null;
-    };
-    const repairId = Number(body?.repairId);
-
-    if (!Number.isInteger(repairId) || repairId <= 0) {
-      return NextResponse.json({ success: false, error: 'repairId is required' }, { status: 400 });
-    }
-
-    // Tenant isolation:
-    const repair = await getRepairById(repairId, ctx.organizationId);
-    if (!repair) {
-      return NextResponse.json({ success: false, error: `Repair ${repairId} not found` }, { status: 404 });
-    }
-
-    const amount = parsePriceToMinorUnits(repair.price);
-
-    const squareAccessToken = requiredEnvAny('SQUARE_ACCESS_TOKEN', [
-      'SQUARE_TOKEN',
-      'SQUARE_API_TOKEN',
-      'NEXT_PUBLIC_SQUARE_ACCESS_TOKEN',
-    ]);
-    const squareLocationId = requiredEnvAny('SQUARE_LOCATION_ID', [
-      'SQUARE_DEFAULT_LOCATION_ID',
-      'NEXT_PUBLIC_SQUARE_LOCATION_ID',
-    ]);
-    const squareVersion = process.env.SQUARE_VERSION || '2024-01-18';
-    const squareCurrency = (process.env.SQUARE_CURRENCY || 'USD').trim().toUpperCase();
-    const squareBaseUrl = resolveSquareBaseUrl();
-    const checkoutRedirectUrl = process.env.SQUARE_CHECKOUT_REDIRECT_URL?.trim();
-
-    const sourceSku = resolveRepairSku(repair, body?.sourceSku);
-    const squareVariationId = sourceSku
-      ? await getSquareVariationIdBySku(
-          squareBaseUrl,
-          squareAccessToken,
-          squareVersion,
-          sourceSku
-        )
-      : null;
-    const usingSkuCatalogCheckout = Boolean(squareVariationId);
-
-    if (!usingSkuCatalogCheckout && amount === null) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Unable to create payment link. This repair needs a valid source_sku match or a valid repair price.',
-        },
-        { status: 400 }
-      );
-    }
-    const fallbackAmount = amount ?? 0;
-
-    const { name, phone, email } = resolveRepairContact(repair);
-    const lineItemName = String(repair.product_title || '').trim() || `Repair #${repair.id}`;
-    const paymentNoteParts = [
-      repair.ticket_number ? `Ticket: ${repair.ticket_number}` : null,
-      name ? `Customer: ${name}` : null,
-      repair.serial_number ? `Serial: ${repair.serial_number}` : null,
-      sourceSku ? `SKU: ${sourceSku}` : null,
-    ].filter(Boolean);
-
-    const squareRequestBody: Record<string, unknown> = {
-      idempotency_key: `repair-square-link-${repair.id}-${randomUUID()}`,
-      payment_note: paymentNoteParts.join(' | ') || `Repair ${repair.id}`,
-      checkout_options: {
-        allow_tipping: false,
-        ask_for_shipping_address: false,
-        ...(checkoutRedirectUrl ? { redirect_url: checkoutRedirectUrl } : {}),
-      },
-      ...(email || phone
-        ? {
-            pre_populated_data: {
-              ...(email ? { buyer_email: email } : {}),
-              ...(phone ? { buyer_phone_number: phone } : {}),
-            },
-          }
-        : {}),
-    };
-
-    if (usingSkuCatalogCheckout && squareVariationId) {
-      squareRequestBody.order = {
-        location_id: squareLocationId,
-        reference_id: `repair-${repair.id}`,
-        line_items: [
-          {
-            quantity: '1',
-            catalog_object_id: squareVariationId,
-          },
-        ],
-      };
-    } else {
-      squareRequestBody.quick_pay = {
-        name: lineItemName,
-        location_id: squareLocationId,
-        price_money: {
-          amount: fallbackAmount,
-          currency: squareCurrency,
-        },
-      };
-    }
-
-    const response = await fetch(`${squareBaseUrl}/online-checkout/payment-links`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${squareAccessToken}`,
-        'Square-Version': squareVersion,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(squareRequestBody),
-    });
-
-    const payload = (await response.json().catch(() => ({}))) as SquarePaymentLinkResponse;
-    if (!response.ok) {
-      const details = formatSquareErrors(payload.errors);
-      return NextResponse.json(
-        { success: false, error: `Square CreatePaymentLink failed: ${details}` },
-        { status: 502 }
-      );
-    }
-
-    const paymentUrl = payload?.payment_link?.url || payload?.payment_link?.checkout_page_url || '';
-    if (!paymentUrl) {
-      return NextResponse.json(
-        { success: false, error: 'Square response did not include a checkout URL' },
-        { status: 502 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      paymentUrl,
-      squarePaymentLinkId: payload.payment_link?.id || null,
-      squareOrderId: payload.payment_link?.order_id || null,
-      mode: usingSkuCatalogCheckout ? 'catalog_sku' : 'quick_pay_fallback',
-      matchedSku: usingSkuCatalogCheckout ? sourceSku : null,
-      repairId,
-      timestamp: formatPSTTimestamp(),
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Repair Square payment link error:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json(
+      { success: false, error: `Origin not allowed: ${req.headers.get('origin')}` },
+      { status: 403 }
+    );
   }
+
+  const body = (await req.json().catch(() => ({}))) as {
+    repairId?: number | string;
+    sourceSku?: string | null;
+  };
+  const repairId = Number(body?.repairId);
+
+  if (!Number.isInteger(repairId) || repairId <= 0) {
+    return NextResponse.json({ success: false, error: 'repairId is required' }, { status: 400 });
+  }
+
+  // Tenant isolation:
+  const repair = await getRepairById(repairId, ctx.organizationId);
+  if (!repair) {
+    return NextResponse.json({ success: false, error: `Repair ${repairId} not found` }, { status: 404 });
+  }
+
+  const amount = parsePriceToMinorUnits(repair.price);
+
+  const squareAccessToken = requiredEnvAny('SQUARE_ACCESS_TOKEN', [
+    'SQUARE_TOKEN',
+    'SQUARE_API_TOKEN',
+    'NEXT_PUBLIC_SQUARE_ACCESS_TOKEN',
+  ]);
+  const squareLocationId = requiredEnvAny('SQUARE_LOCATION_ID', [
+    'SQUARE_DEFAULT_LOCATION_ID',
+    'NEXT_PUBLIC_SQUARE_LOCATION_ID',
+  ]);
+  const squareVersion = process.env.SQUARE_VERSION || '2024-01-18';
+  const squareCurrency = (process.env.SQUARE_CURRENCY || 'USD').trim().toUpperCase();
+  const squareBaseUrl = resolveSquareBaseUrl();
+  const checkoutRedirectUrl = process.env.SQUARE_CHECKOUT_REDIRECT_URL?.trim();
+
+  const sourceSku = resolveRepairSku(repair, body?.sourceSku);
+  const squareVariationId = sourceSku
+    ? await getSquareVariationIdBySku(
+        squareBaseUrl,
+        squareAccessToken,
+        squareVersion,
+        sourceSku
+      )
+    : null;
+  const usingSkuCatalogCheckout = Boolean(squareVariationId);
+
+  if (!usingSkuCatalogCheckout && amount === null) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          'Unable to create payment link. This repair needs a valid source_sku match or a valid repair price.',
+      },
+      { status: 400 }
+    );
+  }
+  const fallbackAmount = amount ?? 0;
+
+  const { name, phone, email } = resolveRepairContact(repair);
+  const lineItemName = String(repair.product_title || '').trim() || `Repair #${repair.id}`;
+  const paymentNoteParts = [
+    repair.ticket_number ? `Ticket: ${repair.ticket_number}` : null,
+    name ? `Customer: ${name}` : null,
+    repair.serial_number ? `Serial: ${repair.serial_number}` : null,
+    sourceSku ? `SKU: ${sourceSku}` : null,
+  ].filter(Boolean);
+
+  const squareRequestBody: Record<string, unknown> = {
+    idempotency_key: `repair-square-link-${repair.id}-${randomUUID()}`,
+    payment_note: paymentNoteParts.join(' | ') || `Repair ${repair.id}`,
+    checkout_options: {
+      allow_tipping: false,
+      ask_for_shipping_address: false,
+      ...(checkoutRedirectUrl ? { redirect_url: checkoutRedirectUrl } : {}),
+    },
+    ...(email || phone
+      ? {
+          pre_populated_data: {
+            ...(email ? { buyer_email: email } : {}),
+            ...(phone ? { buyer_phone_number: phone } : {}),
+          },
+        }
+      : {}),
+  };
+
+  if (usingSkuCatalogCheckout && squareVariationId) {
+    squareRequestBody.order = {
+      location_id: squareLocationId,
+      reference_id: `repair-${repair.id}`,
+      line_items: [
+        {
+          quantity: '1',
+          catalog_object_id: squareVariationId,
+        },
+      ],
+    };
+  } else {
+    squareRequestBody.quick_pay = {
+      name: lineItemName,
+      location_id: squareLocationId,
+      price_money: {
+        amount: fallbackAmount,
+        currency: squareCurrency,
+      },
+    };
+  }
+
+  const response = await fetch(`${squareBaseUrl}/online-checkout/payment-links`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${squareAccessToken}`,
+      'Square-Version': squareVersion,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(squareRequestBody),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as SquarePaymentLinkResponse;
+  if (!response.ok) {
+    const details = formatSquareErrors(payload.errors);
+    return NextResponse.json(
+      { success: false, error: `Square CreatePaymentLink failed: ${details}` },
+      { status: 502 }
+    );
+  }
+
+  const paymentUrl = payload?.payment_link?.url || payload?.payment_link?.checkout_page_url || '';
+  if (!paymentUrl) {
+    return NextResponse.json(
+      { success: false, error: 'Square response did not include a checkout URL' },
+      { status: 502 }
+    );
+  }
+
+  return NextResponse.json({
+    success: true,
+    paymentUrl,
+    squarePaymentLinkId: payload.payment_link?.id || null,
+    squareOrderId: payload.payment_link?.order_id || null,
+    mode: usingSkuCatalogCheckout ? 'catalog_sku' : 'quick_pay_fallback',
+    matchedSku: usingSkuCatalogCheckout ? sourceSku : null,
+    repairId,
+    timestamp: formatPSTTimestamp(),
+  });
 }, { permission: 'repair.mark_repaired' });

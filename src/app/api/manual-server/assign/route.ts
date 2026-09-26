@@ -18,66 +18,59 @@ function deriveDisplayName(fileName: string) {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const relativePath = String(body?.relativePath || '').trim();
-    const itemNumber = normalizeManualServerItemNumber(String(body?.itemNumber || body?.item_number || ''));
-    const productTitle = String(body?.productTitle || body?.product_title || '').trim() || null;
-    const displayName = String(body?.displayName || body?.display_name || '').trim() || null;
-    const sourceUrl = String(body?.sourceUrl || body?.source_url || '').trim() || null;
-    const assignedBy = String(body?.assignedBy || body?.assigned_by || '').trim() || null;
-    const type = String(body?.type || '').trim() || null;
+  const body = await req.json().catch(() => ({}));
+  const relativePath = String(body?.relativePath || '').trim();
+  const itemNumber = normalizeManualServerItemNumber(String(body?.itemNumber || body?.item_number || ''));
+  const productTitle = String(body?.productTitle || body?.product_title || '').trim() || null;
+  const displayName = String(body?.displayName || body?.display_name || '').trim() || null;
+  const sourceUrl = String(body?.sourceUrl || body?.source_url || '').trim() || null;
+  const assignedBy = String(body?.assignedBy || body?.assigned_by || '').trim() || null;
+  const type = String(body?.type || '').trim() || null;
 
-    if (!relativePath) {
-      return NextResponse.json({ success: false, error: 'relativePath is required' }, { status: 400 });
-    }
-    if (!itemNumber) {
-      return NextResponse.json({ success: false, error: 'itemNumber is required' }, { status: 400 });
-    }
-
-    const existing = await getProductManualByRelativePath(relativePath, ctx.organizationId);
-    const payload = await assignManualServerManual({ relativePath, itemNumber });
-    const fileName = String(payload.relativePath.split('/').pop() || '').trim();
-
-    const manual = existing
-      ? await updateProductManual({
-        id: Number(existing.id),
-        itemNumber,
-        productTitle: productTitle ?? existing.product_title ?? null,
-        displayName: displayName ?? existing.display_name ?? deriveDisplayName(fileName),
-        sourceUrl: sourceUrl ?? existing.source_url ?? null,
-        relativePath: payload.relativePath,
-        folderPath: payload.folderPath,
-        fileName,
-        status: 'assigned',
-        assignedBy: assignedBy ?? existing.assigned_by ?? null,
-        type: type ?? existing.type ?? null,
-        isActive: true,
-      }, ctx.organizationId)
-      : await upsertProductManual({
-        itemNumber,
-        productTitle,
-        displayName: displayName ?? deriveDisplayName(fileName),
-        sourceUrl,
-        relativePath: payload.relativePath,
-        folderPath: payload.folderPath,
-        fileName,
-        status: 'assigned',
-        assignedBy,
-        type,
-      }, ctx.organizationId);
-
-    await invalidateCacheTags(['product-manuals', 'pm:manuals']);
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.productManuals]);
-
-    return NextResponse.json(
-      { ...payload, manual },
-      { headers: { 'Cache-Control': 'no-store' } },
-    );
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to assign manual' },
-      { status: 500 },
-    );
+  if (!relativePath) {
+    return NextResponse.json({ success: false, error: 'relativePath is required' }, { status: 400 });
   }
+  if (!itemNumber) {
+    return NextResponse.json({ success: false, error: 'itemNumber is required' }, { status: 400 });
+  }
+
+  const existing = await getProductManualByRelativePath(relativePath, ctx.organizationId);
+  const payload = await assignManualServerManual({ relativePath, itemNumber });
+  const fileName = String(payload.relativePath.split('/').pop() || '').trim();
+
+  const manual = existing
+    ? await updateProductManual({
+      id: Number(existing.id),
+      itemNumber,
+      productTitle: productTitle ?? existing.product_title ?? null,
+      displayName: displayName ?? existing.display_name ?? deriveDisplayName(fileName),
+      sourceUrl: sourceUrl ?? existing.source_url ?? null,
+      relativePath: payload.relativePath,
+      folderPath: payload.folderPath,
+      fileName,
+      status: 'assigned',
+      assignedBy: assignedBy ?? existing.assigned_by ?? null,
+      type: type ?? existing.type ?? null,
+      isActive: true,
+    }, ctx.organizationId)
+    : await upsertProductManual({
+      itemNumber,
+      productTitle,
+      displayName: displayName ?? deriveDisplayName(fileName),
+      sourceUrl,
+      relativePath: payload.relativePath,
+      folderPath: payload.folderPath,
+      fileName,
+      status: 'assigned',
+      assignedBy,
+      type,
+    }, ctx.organizationId);
+
+  await invalidateCacheTags(['product-manuals', 'pm:manuals']);
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.productManuals]);
+
+  return NextResponse.json(
+    { ...payload, manual },
+    { headers: { 'Cache-Control': 'no-store' } },
+  );
 }, { permission: 'sku_stock.manage' });

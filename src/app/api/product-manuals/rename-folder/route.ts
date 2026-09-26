@@ -34,25 +34,24 @@ export const POST = withAuth(
       );
     }
 
-    try {
-      // product_manuals has NO organization_id column and NO RLS policy, so a bare GUC wrap provides ZERO isolation — folder_path strings are…
-      const { exact, descendants } = await withTenantTransaction(orgId, async (client) => {
-        const exact = await client.query(
-          `UPDATE product_manuals
+    // product_manuals has NO organization_id column and NO RLS policy, so a bare GUC wrap provides ZERO isolation — folder_path strings are…
+    const { exact, descendants } = await withTenantTransaction(orgId, async (client) => {
+      const exact = await client.query(
+        `UPDATE product_manuals
               SET folder_path = $2, updated_at = NOW()
             WHERE is_active = TRUE
               AND folder_path = $1
               AND sku_catalog_id IN (
                 SELECT id FROM sku_catalog WHERE organization_id = $3
               )`,
-          [oldPath, newPath, orgId],
-        );
+        [oldPath, newPath, orgId],
+      );
 
-        // Substring trick: keep everything after the matched prefix length.
-        // PostgreSQL SUBSTRING is 1-indexed, so we start at LENGTH(oldPath)+1
-        // to skip the prefix itself (not the trailing slash).
-        const descendants = await client.query(
-          `UPDATE product_manuals
+      // Substring trick: keep everything after the matched prefix length.
+      // PostgreSQL SUBSTRING is 1-indexed, so we start at LENGTH(oldPath)+1
+      // to skip the prefix itself (not the trailing slash).
+      const descendants = await client.query(
+        `UPDATE product_manuals
               SET folder_path = $2 || SUBSTRING(folder_path FROM ${oldPath.length + 1}),
                   updated_at = NOW()
             WHERE is_active = TRUE
@@ -60,23 +59,18 @@ export const POST = withAuth(
               AND sku_catalog_id IN (
                 SELECT id FROM sku_catalog WHERE organization_id = $3
               )`,
-          [oldPath, newPath, orgId],
-        );
+        [oldPath, newPath, orgId],
+      );
 
-        return { exact, descendants };
-      });
+      return { exact, descendants };
+    });
 
-      return NextResponse.json({
-        success: true,
-        oldPath,
-        newPath,
-        updated: (exact.rowCount ?? 0) + (descendants.rowCount ?? 0),
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'rename failed';
-      console.error('[product-manuals/rename-folder] error:', err);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: true,
+      oldPath,
+      newPath,
+      updated: (exact.rowCount ?? 0) + (descendants.rowCount ?? 0),
+    });
   },
   { permission: 'product_manuals.manage' },
 );

@@ -63,87 +63,86 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   const staffId = ctx.staffId;
 
-  try {
-    const body: PickupRequestBody = await req.json().catch(() => ({}));
+  const body: PickupRequestBody = await req.json().catch(() => ({}));
 
-    // Legacy path needs the parsed scan up-front so the 400 (no identifier)
-    // can be returned before opening a transaction.
-    const usesRepairId =
-      typeof body.repairId === 'number' && Number.isFinite(body.repairId) && body.repairId > 0;
-    const parsed = usesRepairId ? null : parseScanInput(body.scan ?? body.rsId ?? body.value);
-    if (!usesRepairId && !parsed!.raw) {
-      return NextResponse.json({ error: 'scan value or repairId is required' }, { status: 400 });
-    }
+  // Legacy path needs the parsed scan up-front so the 400 (no identifier)
+  // can be returned before opening a transaction.
+  const usesRepairId =
+    typeof body.repairId === 'number' && Number.isFinite(body.repairId) && body.repairId > 0;
+  const parsed = usesRepairId ? null : parseScanInput(body.scan ?? body.rsId ?? body.value);
+  if (!usesRepairId && !parsed!.raw) {
+    return NextResponse.json({ error: 'scan value or repairId is required' }, { status: 400 });
+  }
 
-    const outcome = await withTenantTransaction(orgId, async (client) => {
-      let repair: RepairLookupRow | null = null;
-      let scanInputForHistory: string | null = null;
+  const outcome = await withTenantTransaction(orgId, async (client) => {
+    let repair: RepairLookupRow | null = null;
+    let scanInputForHistory: string | null = null;
 
-      // Preferred path: caller passes repairId directly (overlay UI).
-      if (usesRepairId) {
-        const byId = await client.query<RepairLookupRow>(
-          `SELECT id, ticket_number, status
+    // Preferred path: caller passes repairId directly (overlay UI).
+    if (usesRepairId) {
+      const byId = await client.query<RepairLookupRow>(
+        `SELECT id, ticket_number, status
            FROM repair_service
            WHERE id = $1
            FOR UPDATE`,
-          [body.repairId],
-        );
-        repair = byId.rows[0] ?? null;
-        scanInputForHistory = `RS-${body.repairId}`;
-      } else {
-        // Legacy path: parse a scan string (RS-####, digits, or ticket #).
-        scanInputForHistory = parsed!.raw;
+        [body.repairId],
+      );
+      repair = byId.rows[0] ?? null;
+      scanInputForHistory = `RS-${body.repairId}`;
+    } else {
+      // Legacy path: parse a scan string (RS-####, digits, or ticket #).
+      scanInputForHistory = parsed!.raw;
 
-        if (parsed!.repairId != null) {
-          const byId = await client.query<RepairLookupRow>(
-            `SELECT id, ticket_number, status
+      if (parsed!.repairId != null) {
+        const byId = await client.query<RepairLookupRow>(
+          `SELECT id, ticket_number, status
              FROM repair_service
              WHERE id = $1
              FOR UPDATE`,
-            [parsed!.repairId],
-          );
-          repair = byId.rows[0] ?? null;
-        }
+          [parsed!.repairId],
+        );
+        repair = byId.rows[0] ?? null;
+      }
 
-        if (!repair && parsed!.ticketCandidate) {
-          const byTicket = await client.query<RepairLookupRow>(
-            `SELECT id, ticket_number, status
+      if (!repair && parsed!.ticketCandidate) {
+        const byTicket = await client.query<RepairLookupRow>(
+          `SELECT id, ticket_number, status
              FROM repair_service
              WHERE UPPER(TRIM(COALESCE(ticket_number, ''))) = UPPER(TRIM($1))
              ORDER BY id DESC
              LIMIT 1
              FOR UPDATE`,
-            [parsed!.ticketCandidate],
-          );
-          repair = byTicket.rows[0] ?? null;
-        }
+          [parsed!.ticketCandidate],
+        );
+        repair = byTicket.rows[0] ?? null;
       }
+    }
 
-      if (!repair) {
-        return { kind: 'notFound' as const, scanInputForHistory };
-      }
+    if (!repair) {
+      return { kind: 'notFound' as const, scanInputForHistory };
+    }
 
-    const repairId = Number(repair.id);
-    const previousStatus = String(repair.status || '').trim() || null;
+  const repairId = Number(repair.id);
+  const previousStatus = String(repair.status || '').trim() || null;
 
-    const hasSignature =
-      typeof body.signatureDataUrl === 'string' &&
-      body.signatureDataUrl.startsWith('data:image/');
-    const declinedReason = (body.declinedReason || '').trim() || null;
-    const signerName = (body.signerName || '').trim() || null;
-    const sourceTag = hasSignature
-      ? 'repair-service.pickup-signed'
-      : declinedReason
-        ? 'repair-service.pickup-declined'
-        : 'repair-service.pickup-scan';
-    const actionTag = hasSignature
-      ? 'picked_up_signed'
-      : declinedReason
-        ? 'picked_up_signature_declined'
-        : 'picked_up_scan';
+  const hasSignature =
+    typeof body.signatureDataUrl === 'string' &&
+    body.signatureDataUrl.startsWith('data:image/');
+  const declinedReason = (body.declinedReason || '').trim() || null;
+  const signerName = (body.signerName || '').trim() || null;
+  const sourceTag = hasSignature
+    ? 'repair-service.pickup-signed'
+    : declinedReason
+      ? 'repair-service.pickup-declined'
+      : 'repair-service.pickup-scan';
+  const actionTag = hasSignature
+    ? 'picked_up_signed'
+    : declinedReason
+      ? 'picked_up_signature_declined'
+      : 'picked_up_scan';
 
-    await client.query(
-      `UPDATE repair_service
+  await client.query(
+    `UPDATE repair_service
           SET status = 'Done',
               pickup_signed_at = COALESCE(pickup_signed_at, NOW()),
               pickup_staff_id  = COALESCE(pickup_staff_id, $4),
@@ -170,20 +169,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               END,
               updated_at = NOW()
         WHERE id = $1`,
-      [
-        repairId,
-        formatPSTTimestamp(),
-        scanInputForHistory,
-        staffId,
-        sourceTag,
-        actionTag,
-        hasSignature,
-        declinedReason,
-      ],
-    );
+    [
+      repairId,
+      formatPSTTimestamp(),
+      scanInputForHistory,
+      staffId,
+      sourceTag,
+      actionTag,
+      hasSignature,
+      declinedReason,
+    ],
+  );
 
-    const activeAssignment = await client.query<WorkAssignmentRow>(
-      `SELECT id
+  const activeAssignment = await client.query<WorkAssignmentRow>(
+    `SELECT id
        FROM work_assignments
        WHERE entity_type = 'REPAIR'
          AND entity_id = $1
@@ -197,25 +196,25 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
        END, updated_at DESC, id DESC
        LIMIT 1
        FOR UPDATE`,
-      [repairId],
-    );
+    [repairId],
+  );
 
-    let assignmentId: number | null = null;
+  let assignmentId: number | null = null;
 
-    if (activeAssignment.rows[0]) {
-      assignmentId = Number(activeAssignment.rows[0].id);
-      await client.query(
-        `UPDATE work_assignments
+  if (activeAssignment.rows[0]) {
+    assignmentId = Number(activeAssignment.rows[0].id);
+    await client.query(
+      `UPDATE work_assignments
             SET status = 'DONE',
                 started_at = COALESCE(started_at, NOW()),
                 completed_at = COALESCE(completed_at, NOW()),
                 updated_at = NOW()
           WHERE id = $1`,
-        [assignmentId],
-      );
-    } else {
-      const doneAssignment = await client.query<WorkAssignmentRow>(
-        `SELECT id
+      [assignmentId],
+    );
+  } else {
+    const doneAssignment = await client.query<WorkAssignmentRow>(
+      `SELECT id
          FROM work_assignments
          WHERE entity_type = 'REPAIR'
            AND entity_id = $1
@@ -224,135 +223,125 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
          ORDER BY completed_at DESC NULLS LAST, updated_at DESC, id DESC
          LIMIT 1
          FOR UPDATE`,
-        [repairId],
-      );
+      [repairId],
+    );
 
-      if (doneAssignment.rows[0]) {
-        assignmentId = Number(doneAssignment.rows[0].id);
-        await client.query(
-          `UPDATE work_assignments
+    if (doneAssignment.rows[0]) {
+      assignmentId = Number(doneAssignment.rows[0].id);
+      await client.query(
+        `UPDATE work_assignments
               SET completed_at = COALESCE(completed_at, NOW()),
                   updated_at = NOW()
             WHERE id = $1`,
-          [assignmentId],
-        );
-      } else {
-        const inserted = await client.query<WorkAssignmentRow>(
-          `INSERT INTO work_assignments
+        [assignmentId],
+      );
+    } else {
+      const inserted = await client.query<WorkAssignmentRow>(
+        `INSERT INTO work_assignments
                 (organization_id, entity_type, entity_id, work_type, status, priority, assigned_at, started_at, completed_at)
            VALUES ($1, 'REPAIR', $2, 'REPAIR', 'DONE', 100, NOW(), NOW(), NOW())
            RETURNING id`,
-          [ctx.organizationId, repairId],
-        );
-        assignmentId = inserted.rows[0] ? Number(inserted.rows[0].id) : null;
-      }
+        [ctx.organizationId, repairId],
+      );
+      assignmentId = inserted.rows[0] ? Number(inserted.rows[0].id) : null;
     }
+  }
 
-    // Persist signature (or decline record) into the documents table inside
-    // the same transaction so an upload failure rolls back the status change.
-    let signatureUrl: string | null = null;
-    let signatureWarning: string | null = null;
-    let documentId: number | null = null;
-    const rsCode = `RS-${repairId}`;
+  // Persist signature (or decline record) into the documents table inside
+  // the same transaction so an upload failure rolls back the status change.
+  let signatureUrl: string | null = null;
+  let signatureWarning: string | null = null;
+  let documentId: number | null = null;
+  const rsCode = `RS-${repairId}`;
 
-    if (hasSignature) {
-      try {
-        const base64Data = body.signatureDataUrl!.split(',')[1];
-        const buffer = Buffer.from(base64Data, 'base64');
-        const blobPath = `repair_signatures/${rsCode}_pickup_${Date.now()}.png`;
-        const blob = await put(blobPath, buffer, {
-          access: 'public',
-          contentType: 'image/png',
-        });
-        signatureUrl = blob.url;
-      } catch (sigError) {
-        console.error('Failed to upload pickup signature PNG to blob:', sigError);
-        signatureWarning = 'Signature image upload failed — stroke data saved as backup';
-      }
+  if (hasSignature) {
+    try {
+      const base64Data = body.signatureDataUrl!.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const blobPath = `repair_signatures/${rsCode}_pickup_${Date.now()}.png`;
+      const blob = await put(blobPath, buffer, {
+        access: 'public',
+        contentType: 'image/png',
+      });
+      signatureUrl = blob.url;
+    } catch (sigError) {
+      console.error('Failed to upload pickup signature PNG to blob:', sigError);
+      signatureWarning = 'Signature image upload failed — stroke data saved as backup';
     }
+  }
 
-    if (hasSignature || declinedReason) {
-      try {
-        const docResult = await client.query<{ id: number }>(
-          `INSERT INTO documents (
+  if (hasSignature || declinedReason) {
+    try {
+      const docResult = await client.query<{ id: number }>(
+        `INSERT INTO documents (
               entity_type, entity_id, document_type, signature_url, signer_name, signed_at, document_data, organization_id
            ) VALUES ('REPAIR', $1, 'pickup_agreement', $2, $3, NOW(), $4, $5::uuid)
            RETURNING id`,
-          [
-            repairId,
-            signatureUrl,
+        [
+          repairId,
+          signatureUrl,
+          signerName,
+          JSON.stringify({
+            ticketNumber: rsCode,
+            previousStatus,
+            staffId,
             signerName,
-            JSON.stringify({
-              ticketNumber: rsCode,
-              previousStatus,
-              staffId,
-              signerName,
-              signatureStrokes: Array.isArray(body.signatureStrokes) ? body.signatureStrokes : null,
-              declinedReason,
-              terms:
-                'I confirm I am picking up this repaired item and acknowledge the 30-day warranty on the repair.',
-              signedAt: new Date().toISOString(),
-            }),
-            ctx.organizationId,
-          ],
-        );
-        documentId = docResult.rows[0]?.id ?? null;
-      } catch (docError) {
-        console.error('Failed to insert pickup documents row:', docError);
-        signatureWarning = signatureWarning || 'Failed to save signed document';
-      }
-    }
-
-      return {
-        kind: 'ok' as const,
-        repairId,
-        ticketNumber: repair.ticket_number ?? null,
-        previousStatus,
-        assignmentId,
-        documentId,
-        signatureUrl,
-        signatureWarning,
-        declinedReason,
-        hasSignature,
-        sourceTag,
-      };
-    });
-
-    if (outcome.kind === 'notFound') {
-      return NextResponse.json(
-        { error: `Repair not found for input "${outcome.scanInputForHistory ?? ''}"` },
-        { status: 404 },
+            signatureStrokes: Array.isArray(body.signatureStrokes) ? body.signatureStrokes : null,
+            declinedReason,
+            terms:
+              'I confirm I am picking up this repaired item and acknowledge the 30-day warranty on the repair.',
+            signedAt: new Date().toISOString(),
+          }),
+          ctx.organizationId,
+        ],
       );
+      documentId = docResult.rows[0]?.id ?? null;
+    } catch (docError) {
+      console.error('Failed to insert pickup documents row:', docError);
+      signatureWarning = signatureWarning || 'Failed to save signed document';
     }
+  }
 
-    await invalidateCacheTags(['repair-service']);
-    await publishRepairChanged({
-      organizationId: ctx.organizationId,
-      repairIds: [outcome.repairId],
-      source: outcome.sourceTag,
-    });
+    return {
+      kind: 'ok' as const,
+      repairId,
+      ticketNumber: repair.ticket_number ?? null,
+      previousStatus,
+      assignmentId,
+      documentId,
+      signatureUrl,
+      signatureWarning,
+      declinedReason,
+      hasSignature,
+      sourceTag,
+    };
+  });
 
-    return NextResponse.json({
-      success: true,
-      repairId: outcome.repairId,
-      ticketNumber: outcome.ticketNumber,
-      status: 'Done',
-      previousStatus: outcome.previousStatus,
-      assignmentId: outcome.assignmentId,
-      alreadyDone: outcome.previousStatus === 'Done',
-      documentId: outcome.documentId,
-      signatureUrl: outcome.signatureUrl,
-      signatureWarning: outcome.signatureWarning,
-      declined: !!outcome.declinedReason && !outcome.hasSignature,
-    });
-  } catch (error: any) {
-    console.error('POST /api/repair-service/pickup error:', error);
+  if (outcome.kind === 'notFound') {
     return NextResponse.json(
-      {
-        error: 'Failed to mark repair as picked up',
-        details: error?.message || 'Unknown error',
-      },
-      { status: 500 },
+      { error: `Repair not found for input "${outcome.scanInputForHistory ?? ''}"` },
+      { status: 404 },
     );
   }
+
+  await invalidateCacheTags(['repair-service']);
+  await publishRepairChanged({
+    organizationId: ctx.organizationId,
+    repairIds: [outcome.repairId],
+    source: outcome.sourceTag,
+  });
+
+  return NextResponse.json({
+    success: true,
+    repairId: outcome.repairId,
+    ticketNumber: outcome.ticketNumber,
+    status: 'Done',
+    previousStatus: outcome.previousStatus,
+    assignmentId: outcome.assignmentId,
+    alreadyDone: outcome.previousStatus === 'Done',
+    documentId: outcome.documentId,
+    signatureUrl: outcome.signatureUrl,
+    signatureWarning: outcome.signatureWarning,
+    declined: !!outcome.declinedReason && !outcome.hasSignature,
+  });
 }, { permission: 'repair.pickup_sign', feature: 'repair' });

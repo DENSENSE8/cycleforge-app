@@ -19,13 +19,7 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid rma id' }, { status: 400 });
   }
 
-  try {
-    const result = await markReceived({ rmaId }, ctx.organizationId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'mark-received failed';
-    console.error('[POST /api/rma/[id]/mark-received] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await markReceived({ rmaId }, ctx.organizationId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result);
 }, { permission: 'rma.manage' });

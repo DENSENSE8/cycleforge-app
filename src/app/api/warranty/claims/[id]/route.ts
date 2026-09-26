@@ -28,15 +28,9 @@ export const GET = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid claim id' }, { status: 400 });
   }
 
-  try {
-    const claim = await getClaim(id, ctx.organizationId);
-    if (!claim) return NextResponse.json({ ok: false, error: 'claim not found' }, { status: 404 });
-    return NextResponse.json({ ok: true, claim });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'get warranty claim failed';
-    console.error('[GET /api/warranty/claims/[id]] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const claim = await getClaim(id, ctx.organizationId);
+  if (!claim) return NextResponse.json({ ok: false, error: 'claim not found' }, { status: 404 });
+  return NextResponse.json({ ok: true, claim });
 }, { permission: 'warranty.view', feature: 'repair' });
 
 /**
@@ -93,23 +87,17 @@ export const DELETE = withAuth(async (request, ctx) => {
   const owns = await getClaimTicketRef(id, ctx.organizationId);
   if (!owns) return NextResponse.json({ ok: false, error: 'claim not found' }, { status: 404 });
 
-  try {
-    const result = await softDeleteClaims([id], ctx.staffId ?? null, ctx.organizationId);
-    if (result.deleted.length === 0) {
-      return NextResponse.json({ ok: false, error: 'claim not found' }, { status: 404 });
-    }
-    await recordAudit(pool, ctx, request, {
-      source: 'warranty-logger',
-      action: 'warranty.delete',
-      entityType: 'warranty_claim',
-      entityId: id,
-      before: { claimNumber: result.deleted[0].claimNumber },
-      after: { deleted: true },
-    });
-    return NextResponse.json({ ok: true, deleted: result.deleted[0] });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'delete warranty claim failed';
-    console.error('[DELETE /api/warranty/claims/[id]] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  const result = await softDeleteClaims([id], ctx.staffId ?? null, ctx.organizationId);
+  if (result.deleted.length === 0) {
+    return NextResponse.json({ ok: false, error: 'claim not found' }, { status: 404 });
   }
+  await recordAudit(pool, ctx, request, {
+    source: 'warranty-logger',
+    action: 'warranty.delete',
+    entityType: 'warranty_claim',
+    entityId: id,
+    before: { claimNumber: result.deleted[0].claimNumber },
+    after: { deleted: true },
+  });
+  return NextResponse.json({ ok: true, deleted: result.deleted[0] });
 }, { permission: 'warranty.manage', feature: 'repair' });

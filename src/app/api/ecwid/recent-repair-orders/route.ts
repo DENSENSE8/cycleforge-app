@@ -150,29 +150,16 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 
   let storeId: string;
   let token: string;
-  try {
-    storeId = requiredEnv('ECWID_STORE_ID', [
-      'ECWID_STOREID',
-      'ECWID_STORE',
-      'NEXT_PUBLIC_ECWID_STORE_ID',
-    ]);
-    token = requiredEnv('ECWID_API_TOKEN', [
-      'ECWID_TOKEN',
-      'ECWID_ACCESS_TOKEN',
-      'NEXT_PUBLIC_ECWID_API_TOKEN',
-    ]);
-  } catch (err) {
-    return NextResponse.json(
-      {
-        success: false,
-        error:
-          err instanceof Error
-            ? err.message
-            : 'Ecwid credentials not configured',
-      },
-      { status: 500 },
-    );
-  }
+  storeId = requiredEnv('ECWID_STORE_ID', [
+    'ECWID_STOREID',
+    'ECWID_STORE',
+    'NEXT_PUBLIC_ECWID_STORE_ID',
+  ]);
+  token = requiredEnv('ECWID_API_TOKEN', [
+    'ECWID_TOKEN',
+    'ECWID_ACCESS_TOKEN',
+    'NEXT_PUBLIC_ECWID_API_TOKEN',
+  ]);
 
   let ecwidOrders: EcwidOrder[];
   try {

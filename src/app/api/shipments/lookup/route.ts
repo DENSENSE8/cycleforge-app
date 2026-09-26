@@ -16,12 +16,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'A tracking number is required' }, { status: 400 });
   }
 
-  try {
-    const hit = await lookupShipmentByTrackingKey(ctx.organizationId, parsed.data.tracking);
-    if (!hit) return NextResponse.json({ error: 'No package carries this tracking' }, { status: 404 });
-    return NextResponse.json(hit, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    console.error('Error in GET /api/shipments/lookup:', error);
-    return NextResponse.json({ error: 'Tracking lookup failed' }, { status: 500 });
-  }
+  const hit = await lookupShipmentByTrackingKey(ctx.organizationId, parsed.data.tracking);
+  if (!hit) return NextResponse.json({ error: 'No package carries this tracking' }, { status: 404 });
+  return NextResponse.json(hit, { headers: { 'Cache-Control': 'no-store' } });
 }, { permission: 'shipping.view' });

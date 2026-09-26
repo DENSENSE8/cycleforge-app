@@ -27,63 +27,57 @@ interface EcwidRawProduct {
 }
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { storeId, token } = resolveEcwidStoreCreds();
+  const { storeId, token } = resolveEcwidStoreCreds();
 
-    const limitRaw = Number(req.nextUrl.searchParams.get('limit') || 10);
-    const offsetRaw = Number(req.nextUrl.searchParams.get('offset') || 0);
-    const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 10;
-    const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
+  const limitRaw = Number(req.nextUrl.searchParams.get('limit') || 10);
+  const offsetRaw = Number(req.nextUrl.searchParams.get('offset') || 0);
+  const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(100, Math.floor(limitRaw))) : 10;
+  const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
 
-    const mode = String(req.nextUrl.searchParams.get('mode') || '').trim().toLowerCase();
-    const categoryId = req.nextUrl.searchParams.get('categoryId');
+  const mode = String(req.nextUrl.searchParams.get('mode') || '').trim().toLowerCase();
+  const categoryId = req.nextUrl.searchParams.get('categoryId');
 
-    if (mode === 'all') {
-      const filtered = await fetchRepairRootProductsCached(storeId, token, ctx.organizationId);
+  if (mode === 'all') {
+    const filtered = await fetchRepairRootProductsCached(storeId, token, ctx.organizationId);
 
-      const page = filtered.slice(offset, offset + limit);
-      const hasMore = offset + page.length < filtered.length;
-
-      return NextResponse.json(
-        { success: true, products: page, total: filtered.length, limit, offset, hasMore },
-        { headers: { 'Cache-Control': 'private, max-age=120' } }
-      );
-    }
-
-    if (mode === 'favorites') {
-      const [root, favoriteKeys] = await Promise.all([
-        fetchRepairRootProductsCached(storeId, token, ctx.organizationId),
-        listFavoriteSkuKeys('repair', ctx.organizationId),
-      ]);
-      const favorites = selectFavoriteCatalogProducts(root, favoriteKeys);
-
-      const page = favorites.slice(offset, offset + limit);
-      const hasMore = offset + page.length < favorites.length;
-
-      // No shared caching: a star on a tile must show on the next paint, and
-      // the list is small enough that the cached root walk is the only cost.
-      return NextResponse.json(
-        { success: true, products: page, total: favorites.length, limit, offset, hasMore },
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      );
-    }
-
-    if (!categoryId) {
-      return NextResponse.json({ success: false, error: 'categoryId is required' }, { status: 400 });
-    }
-
-    const page = await fetchProductsByCategoryPage(storeId, token, categoryId, limit, offset);
-    const hasMore = offset + page.products.length < page.total;
+    const page = filtered.slice(offset, offset + limit);
+    const hasMore = offset + page.length < filtered.length;
 
     return NextResponse.json(
-      { success: true, products: page.products, total: page.total, limit, offset, hasMore },
+      { success: true, products: page, total: filtered.length, limit, offset, hasMore },
       { headers: { 'Cache-Control': 'private, max-age=120' } }
     );
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Ecwid repair products error:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  if (mode === 'favorites') {
+    const [root, favoriteKeys] = await Promise.all([
+      fetchRepairRootProductsCached(storeId, token, ctx.organizationId),
+      listFavoriteSkuKeys('repair', ctx.organizationId),
+    ]);
+    const favorites = selectFavoriteCatalogProducts(root, favoriteKeys);
+
+    const page = favorites.slice(offset, offset + limit);
+    const hasMore = offset + page.length < favorites.length;
+
+    // No shared caching: a star on a tile must show on the next paint, and
+    // the list is small enough that the cached root walk is the only cost.
+    return NextResponse.json(
+      { success: true, products: page, total: favorites.length, limit, offset, hasMore },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
+  }
+
+  if (!categoryId) {
+    return NextResponse.json({ success: false, error: 'categoryId is required' }, { status: 400 });
+  }
+
+  const page = await fetchProductsByCategoryPage(storeId, token, categoryId, limit, offset);
+  const hasMore = offset + page.products.length < page.total;
+
+  return NextResponse.json(
+    { success: true, products: page.products, total: page.total, limit, offset, hasMore },
+    { headers: { 'Cache-Control': 'private, max-age=120' } }
+  );
 }, { permission: 'repair.intake' });
 
 async function fetchProductsByCategoryPage(

@@ -12,14 +12,8 @@ export const GET = withAuth(
         { status: 400 },
       );
     }
-    try {
-      const trace = await getSerialTrace(serial, ctx.organizationId);
-      return NextResponse.json({ success: true, ...trace });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'audit-log/trace read failed';
-      console.error('audit-log/trace GET failed:', err);
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
-    }
+    const trace = await getSerialTrace(serial, ctx.organizationId);
+    return NextResponse.json({ success: true, ...trace });
   },
   { permission: 'admin.view_logs' },
 );

@@ -10,12 +10,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         return NextResponse.json({ error: 'Tracking number is required' }, { status: 400 });
     }
 
-    try {
-        const last8 = tracking.slice(-8).toLowerCase();
+    const last8 = tracking.slice(-8).toLowerCase();
 
-        // Search in orders table
-        // We match by last 8 digits as per GAS logic
-        const result = await tenantQuery(ctx.organizationId, `
+    // Search in orders table
+    // We match by last 8 digits as per GAS logic
+    const result = await tenantQuery(ctx.organizationId, `
             SELECT
                 order_id,
                 product_title as product_name,
@@ -31,23 +30,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LIMIT 1
         `, [last8, ctx.organizationId]);
 
-        if (result.rows.length > 0) {
-            const row = result.rows[0];
-            return NextResponse.json({
-                found: true,
-                productName: row.product_name,
-                orderId: row.order_id,
-                sku: row.sku || '',
-                serial: row.serial,
-                techName: row.tech_name,
-                condition: row.condition,
-                notes: row.notes
-            });
-        }
-
-        return NextResponse.json({ found: false });
-    } catch (error: any) {
-        console.error('Error searching tracking:', error);
-        return NextResponse.json({ error: 'Failed to search tracking', details: error.message }, { status: 500 });
+    if (result.rows.length > 0) {
+        const row = result.rows[0];
+        return NextResponse.json({
+            found: true,
+            productName: row.product_name,
+            orderId: row.order_id,
+            sku: row.sku || '',
+            serial: row.serial,
+            techName: row.tech_name,
+            condition: row.condition,
+            notes: row.notes
+        });
     }
+
+    return NextResponse.json({ found: false });
 }, { permission: 'tech.view' });

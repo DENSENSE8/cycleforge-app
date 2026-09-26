@@ -43,53 +43,52 @@ function deriveWorkflowStatus(rows: Array<{ workflow_status?: string | null }>):
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
-  try {
-    const body = await request.json();
+  const body = await request.json();
 
-    const receivingId = Number(body?.receiving_id);
-    if (!Number.isFinite(receivingId) || receivingId <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'receiving_id is required and must be a positive integer' },
-        { status: 400 }
-      );
+  const receivingId = Number(body?.receiving_id);
+  if (!Number.isFinite(receivingId) || receivingId <= 0) {
+    return NextResponse.json(
+      { success: false, error: 'receiving_id is required and must be a positive integer' },
+      { status: 400 }
+    );
+  }
+
+  const zohoPurchaseReceiveId = String(body?.zoho_purchase_receive_id || '').trim() || null;
+  const zohoPurchaseOrderId   = String(body?.zoho_purchaseorder_id   || '').trim() || null;
+  const sku                   = String(body?.sku                     || '').trim() || null;
+  const lineIdsRaw            = Array.isArray(body?.line_ids) ? body.line_ids : null;
+  const unboxed               = !!body?.unboxed;
+  // Server-trusted actor — body.unboxed_by is ignored.
+  const unboxedBy             = ctx.staffId;
+
+  // The whole match is one tenant-scoped transaction:
+  type MatchOutcome =
+    | { kind: 'not_found' }
+    | { kind: 'no_candidates' }
+    | { kind: 'ok'; lineIds: number[]; matchStrategy: string; assignmentsCreated: number };
+
+  const outcome = await withTenantTransaction<MatchOutcome>(orgId, async (client) => {
+    // Verify the receiving row exists AND belongs to this tenant (cross-org 404s).
+    const receivingRow = await client.query<{ id: number }>(
+      `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2`,
+      [receivingId, orgId]
+    );
+    if (receivingRow.rows.length === 0) {
+      return { kind: 'not_found' };
     }
 
-    const zohoPurchaseReceiveId = String(body?.zoho_purchase_receive_id || '').trim() || null;
-    const zohoPurchaseOrderId   = String(body?.zoho_purchaseorder_id   || '').trim() || null;
-    const sku                   = String(body?.sku                     || '').trim() || null;
-    const lineIdsRaw            = Array.isArray(body?.line_ids) ? body.line_ids : null;
-    const unboxed               = !!body?.unboxed;
-    // Server-trusted actor — body.unboxed_by is ignored.
-    const unboxedBy             = ctx.staffId;
+    // ── Find candidate lines (always org-scoped) ────────────────────────────
+    let candidateLines: Array<{ id: number; needs_test: boolean; assigned_tech_id: number | null }> = [];
+    let matchStrategy = 'none';
 
-    // The whole match is one tenant-scoped transaction:
-    type MatchOutcome =
-      | { kind: 'not_found' }
-      | { kind: 'no_candidates' }
-      | { kind: 'ok'; lineIds: number[]; matchStrategy: string; assignmentsCreated: number };
-
-    const outcome = await withTenantTransaction<MatchOutcome>(orgId, async (client) => {
-      // Verify the receiving row exists AND belongs to this tenant (cross-org 404s).
-      const receivingRow = await client.query<{ id: number }>(
-        `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2`,
-        [receivingId, orgId]
-      );
-      if (receivingRow.rows.length === 0) {
-        return { kind: 'not_found' };
-      }
-
-      // ── Find candidate lines (always org-scoped) ────────────────────────────
-      let candidateLines: Array<{ id: number; needs_test: boolean; assigned_tech_id: number | null }> = [];
-      let matchStrategy = 'none';
-
-      if (lineIdsRaw && lineIdsRaw.length > 0) {
-        // Manual operator selection
-        const ids = lineIdsRaw.map(Number).filter((n: number) => Number.isFinite(n) && n > 0);
-        if (ids.length > 0) {
-          // Line testing facts (needs_test / assigned_tech_id) live on
-          // receiving_line_testing (rlt, 1:1 — every line has a row).
-          const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-            `SELECT rl.id,
+    if (lineIdsRaw && lineIdsRaw.length > 0) {
+      // Manual operator selection
+      const ids = lineIdsRaw.map(Number).filter((n: number) => Number.isFinite(n) && n > 0);
+      if (ids.length > 0) {
+        // Line testing facts (needs_test / assigned_tech_id) live on
+        // receiving_line_testing (rlt, 1:1 — every line has a row).
+        const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
+          `SELECT rl.id,
                     COALESCE(rlt.needs_test, false) AS needs_test,
                     rlt.assigned_tech_id
              FROM receiving_line rl
@@ -99,19 +98,19 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
              WHERE rl.id = ANY($1::int[])
                AND (rl.receiving_id IS NULL OR rl.receiving_id = $2)
                AND rl.organization_id = $3`,
-            [ids, receivingId, orgId]
-          );
-          candidateLines = rows.rows;
-          matchStrategy = 'manual';
-        }
+          [ids, receivingId, orgId]
+        );
+        candidateLines = rows.rows;
+        matchStrategy = 'manual';
       }
+    }
 
-      // Line Zoho match keys live on receiving_line_zoho (rz, 1:1 — every
-      // Zoho-bearing line has a row, so LEFT JOIN + WHERE rz.col = $1 is
-      // exactly the old spine filter).
-      if (candidateLines.length === 0 && zohoPurchaseReceiveId) {
-        const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT rl.id,
+    // Line Zoho match keys live on receiving_line_zoho (rz, 1:1 — every
+    // Zoho-bearing line has a row, so LEFT JOIN + WHERE rz.col = $1 is
+    // exactly the old spine filter).
+    if (candidateLines.length === 0 && zohoPurchaseReceiveId) {
+      const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
+        `SELECT rl.id,
                   COALESCE(rlt.needs_test, false) AS needs_test,
                   rlt.assigned_tech_id
            FROM receiving_line rl
@@ -124,15 +123,15 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
            WHERE rz.zoho_purchase_receive_id = $1
              AND rl.receiving_id IS NULL
              AND rl.organization_id = $2`,
-          [zohoPurchaseReceiveId, orgId]
-        );
-        candidateLines = rows.rows;
-        matchStrategy = 'zoho_purchase_receive_id';
-      }
+        [zohoPurchaseReceiveId, orgId]
+      );
+      candidateLines = rows.rows;
+      matchStrategy = 'zoho_purchase_receive_id';
+    }
 
-      if (candidateLines.length === 0 && zohoPurchaseOrderId) {
-        const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT rl.id,
+    if (candidateLines.length === 0 && zohoPurchaseOrderId) {
+      const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
+        `SELECT rl.id,
                   COALESCE(rlt.needs_test, false) AS needs_test,
                   rlt.assigned_tech_id
            FROM receiving_line rl
@@ -145,15 +144,15 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
            WHERE rz.zoho_purchaseorder_id = $1
              AND rl.receiving_id IS NULL
              AND rl.organization_id = $2`,
-          [zohoPurchaseOrderId, orgId]
-        );
-        candidateLines = rows.rows;
-        matchStrategy = 'zoho_purchaseorder_id';
-      }
+        [zohoPurchaseOrderId, orgId]
+      );
+      candidateLines = rows.rows;
+      matchStrategy = 'zoho_purchaseorder_id';
+    }
 
-      if (candidateLines.length === 0 && sku) {
-        const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
-          `SELECT rl.id,
+    if (candidateLines.length === 0 && sku) {
+      const rows = await client.query<{ id: number; needs_test: boolean; assigned_tech_id: number | null }>(
+        `SELECT rl.id,
                   COALESCE(rlt.needs_test, false) AS needs_test,
                   rlt.assigned_tech_id
            FROM receiving_line rl
@@ -163,158 +162,152 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
            WHERE rl.sku = $1
              AND rl.receiving_id IS NULL
              AND rl.organization_id = $2`,
-          [sku, orgId]
-        );
-        candidateLines = rows.rows;
-        matchStrategy = 'sku';
-      }
+        [sku, orgId]
+      );
+      candidateLines = rows.rows;
+      matchStrategy = 'sku';
+    }
 
-      if (candidateLines.length === 0) {
-        // Returning a sentinel rolls nothing back of consequence; the helper
-        // COMMITs an empty transaction. The route maps this to a 404.
-        return { kind: 'no_candidates' };
-      }
+    if (candidateLines.length === 0) {
+      // Returning a sentinel rolls nothing back of consequence; the helper
+      // COMMITs an empty transaction. The route maps this to a 404.
+      return { kind: 'no_candidates' };
+    }
 
-      // ── Apply the match ─────────────────────────────────────────────────────
-      const nextStatus = unboxed ? 'UNBOXED' : 'MATCHED';
-      const lineIds = candidateLines.map((r) => r.id);
+    // ── Apply the match ─────────────────────────────────────────────────────
+    const nextStatus = unboxed ? 'UNBOXED' : 'MATCHED';
+    const lineIds = candidateLines.map((r) => r.id);
 
-      // Lock the candidates and read their current lifecycle state.
-      const lockedLines = await client.query<{ id: number; workflow_status: string }>(
-        `SELECT id, workflow_status::text AS workflow_status
+    // Lock the candidates and read their current lifecycle state.
+    const lockedLines = await client.query<{ id: number; workflow_status: string }>(
+      `SELECT id, workflow_status::text AS workflow_status
          FROM receiving_line
          WHERE id = ANY($1::int[])
            AND organization_id = $2
          ORDER BY id
          FOR UPDATE`,
-        [lineIds, orgId]
-      );
+      [lineIds, orgId]
+    );
 
-      // Linkage/facts half:
-      await client.query(
-        `UPDATE receiving_line
+    // Linkage/facts half:
+    await client.query(
+      `UPDATE receiving_line
          SET receiving_id = $1,
              updated_at   = NOW()
          WHERE id = ANY($2::int[])
            AND organization_id = $3`,
-        [receivingId, lineIds, orgId],
-      );
+      [receivingId, lineIds, orgId],
+    );
 
-      // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this same transaction (executor mode:
-      const advanceFrom = MATCH_ADVANCE_FROM[nextStatus];
-      const skippedLines: Array<{ id: number; workflow_status: string }> = [];
-      for (const row of lockedLines.rows) {
-        if (!advanceFrom.has(row.workflow_status)) {
-          skippedLines.push(row);
-          continue;
-        }
-        const tr = await transitionReceivingLine(
-          {
-            receivingLineId: row.id,
-            to: nextStatus,
-            actorStaffId: unboxedBy ?? null,
-            station: 'RECEIVING',
-            skipEvent: true,
-          },
-          client,
-          orgId,
-        );
-        if (!tr.ok) {
-          // The row is locked by this tx, so only a pathological state lands
-          // here — keep the linkage, surface the declined advance.
-          console.warn(
-            `receiving/match: line ${row.id} ${row.workflow_status} → ${nextStatus} declined (${tr.error}) — linked without status change`,
-          );
-        }
+    // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this same transaction (executor mode:
+    const advanceFrom = MATCH_ADVANCE_FROM[nextStatus];
+    const skippedLines: Array<{ id: number; workflow_status: string }> = [];
+    for (const row of lockedLines.rows) {
+      if (!advanceFrom.has(row.workflow_status)) {
+        skippedLines.push(row);
+        continue;
       }
-      if (skippedLines.length > 0) {
-        console.warn(
-          `receiving/match: linked without status change (already at/beyond ${nextStatus}): ` +
-            skippedLines.map((l) => `${l.id}:${l.workflow_status}`).join(', '),
-        );
-      }
-
-      await advanceShortageForReceivingLines(client, {
+      const tr = await transitionReceivingLine(
+        {
+          receivingLineId: row.id,
+          to: nextStatus,
+          actorStaffId: unboxedBy ?? null,
+          station: 'RECEIVING',
+          skipEvent: true,
+        },
+        client,
         orgId,
-        receivingLineIds: lineIds,
-        nextWorkflow: nextStatus,
-      });
+      );
+      if (!tr.ok) {
+        // The row is locked by this tx, so only a pathological state lands
+        // here — keep the linkage, surface the declined advance.
+        console.warn(
+          `receiving/match: line ${row.id} ${row.workflow_status} → ${nextStatus} declined (${tr.error}) — linked without status change`,
+        );
+      }
+    }
+    if (skippedLines.length > 0) {
+      console.warn(
+        `receiving/match: linked without status change (already at/beyond ${nextStatus}): ` +
+          skippedLines.map((l) => `${l.id}:${l.workflow_status}`).join(', '),
+      );
+    }
 
-      // ── Create work_assignments for lines that need testing ─────────────────
-      const testLines = candidateLines.filter((l) => l.needs_test && l.assigned_tech_id);
-      let assignmentsCreated = 0;
+    await advanceShortageForReceivingLines(client, {
+      orgId,
+      receivingLineIds: lineIds,
+      nextWorkflow: nextStatus,
+    });
 
-      for (const line of testLines) {
-        // Upsert: one active assignment per (RECEIVING entity_id, TEST) allowed
-        const existing = await client.query<{ id: number }>(
-          `SELECT id FROM work_assignments
+    // ── Create work_assignments for lines that need testing ─────────────────
+    const testLines = candidateLines.filter((l) => l.needs_test && l.assigned_tech_id);
+    let assignmentsCreated = 0;
+
+    for (const line of testLines) {
+      // Upsert: one active assignment per (RECEIVING entity_id, TEST) allowed
+      const existing = await client.query<{ id: number }>(
+        `SELECT id FROM work_assignments
            WHERE entity_type = 'RECEIVING'
              AND entity_id   = $1
              AND work_type   = 'TEST'
              AND status IN ('ASSIGNED', 'IN_PROGRESS')
              AND organization_id = $2
            LIMIT 1`,
-          [receivingId, orgId]
-        );
+        [receivingId, orgId]
+      );
 
-        if (existing.rows.length > 0) {
-          await client.query(
-            `UPDATE work_assignments
+      if (existing.rows.length > 0) {
+        await client.query(
+          `UPDATE work_assignments
              SET assigned_tech_id = $1, updated_at = NOW()
              WHERE id = $2
                AND organization_id = $3`,
-            [line.assigned_tech_id, existing.rows[0].id, orgId]
-          );
-        } else {
-          await client.query(
-            `INSERT INTO work_assignments
+          [line.assigned_tech_id, existing.rows[0].id, orgId]
+        );
+      } else {
+        await client.query(
+          `INSERT INTO work_assignments
                (entity_type, entity_id, work_type, assigned_tech_id, status, priority, notes, organization_id)
              VALUES ('RECEIVING', $1, 'TEST', $2, 'ASSIGNED', 100, $3, $4)`,
-            [
-              receivingId,
-              line.assigned_tech_id,
-              `Matched from line ${line.id} via ${matchStrategy}`,
-              orgId,
-            ]
-          );
-          assignmentsCreated++;
-        }
+          [
+            receivingId,
+            line.assigned_tech_id,
+            `Matched from line ${line.id} via ${matchStrategy}`,
+            orgId,
+          ]
+        );
+        assignmentsCreated++;
       }
-
-      return { kind: 'ok', lineIds, matchStrategy, assignmentsCreated };
-    });
-
-    if (outcome.kind === 'not_found') {
-      return NextResponse.json(
-        { success: false, error: `receiving row ${receivingId} not found` },
-        { status: 404 }
-      );
-    }
-    if (outcome.kind === 'no_candidates') {
-      return NextResponse.json({
-        success: false,
-        error: 'No unmatched receiving_lines found for the provided hints. Use line_ids for manual matching.',
-        receiving_id: receivingId,
-        match_strategy: 'none',
-      }, { status: 404 });
     }
 
-    await invalidateReceivingViews(ctx.organizationId);
-    await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(receivingId), source: 'receiving.match' });
+    return { kind: 'ok', lineIds, matchStrategy, assignmentsCreated };
+  });
 
-    return NextResponse.json({
-      success: true,
-      receiving_id: receivingId,
-      matched_line_ids: outcome.lineIds,
-      match_strategy: outcome.matchStrategy,
-      assignments_created: outcome.assignmentsCreated,
-    }, { status: 200 });
-
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Match failed';
-    console.error('receiving/match failed:', error);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+  if (outcome.kind === 'not_found') {
+    return NextResponse.json(
+      { success: false, error: `receiving row ${receivingId} not found` },
+      { status: 404 }
+    );
   }
+  if (outcome.kind === 'no_candidates') {
+    return NextResponse.json({
+      success: false,
+      error: 'No unmatched receiving_lines found for the provided hints. Use line_ids for manual matching.',
+      receiving_id: receivingId,
+      match_strategy: 'none',
+    }, { status: 404 });
+  }
+
+  await invalidateReceivingViews(ctx.organizationId);
+  await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(receivingId), source: 'receiving.match' });
+
+  return NextResponse.json({
+    success: true,
+    receiving_id: receivingId,
+    matched_line_ids: outcome.lineIds,
+    match_strategy: outcome.matchStrategy,
+    assignments_created: outcome.assignmentsCreated,
+  }, { status: 200 });
 }, {
   permission: 'receiving.mark_received',
   audit: {
@@ -343,22 +336,21 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
  */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
-  try {
-    const { searchParams } = new URL(request.url);
-    const receivingId = Number(searchParams.get('receiving_id'));
+  const { searchParams } = new URL(request.url);
+  const receivingId = Number(searchParams.get('receiving_id'));
 
-    if (!Number.isFinite(receivingId) || receivingId <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'receiving_id is required' },
-        { status: 400 }
-      );
-    }
+  if (!Number.isFinite(receivingId) || receivingId <= 0) {
+    return NextResponse.json(
+      { success: false, error: 'receiving_id is required' },
+      { status: 400 }
+    );
+  }
 
-    const [matchedRes, receivingRow] = await Promise.all([
-      // receiving_lines is org-filtered; staff is tenant-owned so the join is org-aligned (st.organization_id = rl.organization_id) to keep a…
-      tenantQuery(
-        orgId,
-        `SELECT rl.*,
+  const [matchedRes, receivingRow] = await Promise.all([
+    // receiving_lines is org-filtered; staff is tenant-owned so the join is org-aligned (st.organization_id = rl.organization_id) to keep a…
+    tenantQuery(
+      orgId,
+      `SELECT rl.*,
                 COALESCE(rlt.needs_test, false)              AS needs_test,
                 rlt.assigned_tech_id                         AS assigned_tech_id,
                 rlt.qa_status                                AS qa_status,
@@ -393,12 +385,12 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
          WHERE rl.receiving_id = $1
            AND rl.organization_id = $2
          ORDER BY rl.id ASC`,
-        [receivingId, orgId]
-      ),
-      // receiving is org-filtered (cross-org id yields no row).
-      tenantQuery(
-        orgId,
-        `SELECT r.id,
+      [receivingId, orgId]
+    ),
+    // receiving is org-filtered (cross-org id yields no row).
+    tenantQuery(
+      orgId,
+      `SELECT r.id,
                 stn.tracking_number_raw AS receiving_tracking_number,
                 COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier,
                 r.zoho_purchase_receive_id,
@@ -408,25 +400,20 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
          LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
          WHERE r.id = $1
            AND r.organization_id = $2`,
-        [receivingId, orgId]
-      ),
-    ]);
+      [receivingId, orgId]
+    ),
+  ]);
 
-    const receiving = receivingRow.rows[0]
-      ? {
-          ...receivingRow.rows[0],
-          workflow_status: deriveWorkflowStatus(matchedRes.rows),
-        }
-      : null;
+  const receiving = receivingRow.rows[0]
+    ? {
+        ...receivingRow.rows[0],
+        workflow_status: deriveWorkflowStatus(matchedRes.rows),
+      }
+    : null;
 
-    return NextResponse.json({
-      success: true,
-      receiving,
-      matched_lines: matchedRes.rows,
-    });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to fetch match status';
-    console.error('receiving/match GET failed:', error);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    receiving,
+    matched_lines: matchedRes.rows,
+  });
 }, { permission: 'receiving.view' });

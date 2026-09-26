@@ -40,20 +40,14 @@ export const POST = withAuth(async (request, ctx) => {
   }
   const notes = typeof body?.notes === 'string' && body.notes.trim() ? body.notes.trim() : null;
 
-  try {
-    const result = await recordDisposition({
-      rmaId,
-      serialUnitId,
-      dispositionCode,
-      decidedByStaffId: actorStaffId,
-      notes,
-      organizationId: ctx.organizationId ?? null,
-    });
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result, { status: 201 });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'disposition failed';
-    console.error('[POST /api/rma/[id]/disposition] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await recordDisposition({
+    rmaId,
+    serialUnitId,
+    dispositionCode,
+    decidedByStaffId: actorStaffId,
+    notes,
+    organizationId: ctx.organizationId ?? null,
+  });
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result, { status: 201 });
 }, { permission: 'rma.manage' });

@@ -28,23 +28,17 @@ export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
-  try {
-    // Pass ctx.organizationId so allocateOrder runs inside a tenant-scoped transaction:
-    const result = await allocateOrder({
-      orderId,
-      quantity: Number.isFinite(qtyOverride) && qtyOverride > 0 ? qtyOverride : undefined,
-      conditionGrade: conditionGradeInput ? (conditionGradeInput as 'BRAND_NEW') : null,
-      clientEventId,
-      actorStaffId,
-    }, ctx.organizationId);
+  // Pass ctx.organizationId so allocateOrder runs inside a tenant-scoped transaction:
+  const result = await allocateOrder({
+    orderId,
+    quantity: Number.isFinite(qtyOverride) && qtyOverride > 0 ? qtyOverride : undefined,
+    conditionGrade: conditionGradeInput ? (conditionGradeInput as 'BRAND_NEW') : null,
+    clientEventId,
+    actorStaffId,
+  }, ctx.organizationId);
 
-    if (!result.ok) {
-      return NextResponse.json(result, { status: result.status });
-    }
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'allocation failed';
-    console.error('[POST /api/orders/[id]/allocate] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  if (!result.ok) {
+    return NextResponse.json(result, { status: result.status });
   }
+  return NextResponse.json(result);
 }, { permission: 'orders.view' });

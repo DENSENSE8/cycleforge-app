@@ -6,52 +6,51 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/inventory/alerts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const sp = req.nextUrl.searchParams;
-        const q = (sp.get('q') ?? '').trim();
-        const field = (sp.get('field') ?? 'all').trim().toLowerCase();
-        const buckets = readBuckets(sp.getAll('bucket'));
-        const limit = Math.min(Math.max(Number(sp.get('limit') ?? 100), 1), 500);
+    const sp = req.nextUrl.searchParams;
+    const q = (sp.get('q') ?? '').trim();
+    const field = (sp.get('field') ?? 'all').trim().toLowerCase();
+    const buckets = readBuckets(sp.getAll('bucket'));
+    const limit = Math.min(Math.max(Number(sp.get('limit') ?? 100), 1), 500);
 
-        const where: string[] = [];
-        const params: unknown[] = [];
+    const where: string[] = [];
+    const params: unknown[] = [];
 
-        // Tenant ownership filter — never return another org's alerts.
-        params.push(ctx.organizationId);
-        where.push(`a.organization_id = $${params.length}`);
+    // Tenant ownership filter — never return another org's alerts.
+    params.push(ctx.organizationId);
+    where.push(`a.organization_id = $${params.length}`);
 
-        if (q) {
-            params.push(`%${q}%`);
-            const idx = params.length;
-            if (field === 'sku') where.push(`a.sku ILIKE $${idx}`);
-            else if (field === 'bin') where.push(`l.barcode ILIKE $${idx}`);
-            else if (field === 'rule') where.push(`a.alert_type ILIKE $${idx}`);
-            else {
-                where.push(`(a.sku ILIKE $${idx} OR l.barcode ILIKE $${idx} OR a.alert_type ILIKE $${idx})`);
-            }
+    if (q) {
+        params.push(`%${q}%`);
+        const idx = params.length;
+        if (field === 'sku') where.push(`a.sku ILIKE $${idx}`);
+        else if (field === 'bin') where.push(`l.barcode ILIKE $${idx}`);
+        else if (field === 'rule') where.push(`a.alert_type ILIKE $${idx}`);
+        else {
+            where.push(`(a.sku ILIKE $${idx} OR l.barcode ILIKE $${idx} OR a.alert_type ILIKE $${idx})`);
         }
+    }
 
-        // Map bucket ids → alert_type / resolved state.
-        const typeFilters = new Set<string>();
-        let onlyUnresolved = false;
-        for (const b of buckets) {
-            if (b === 'low_stock') typeFilters.add('LOW_STOCK');
-            else if (b === 'stale_count') typeFilters.add('STALE_COUNT');
-            else if (b === 'never_counted') typeFilters.add('NEVER_COUNTED');
-            else if (b === 'drift') typeFilters.add('DRIFT');
-            else if (b === 'unresolved') onlyUnresolved = true;
-        }
-        if (typeFilters.size > 0) {
-            params.push(Array.from(typeFilters));
-            where.push(`a.alert_type = ANY($${params.length}::text[])`);
-        }
-        if (onlyUnresolved) where.push(`a.resolved_at IS NULL`);
+    // Map bucket ids → alert_type / resolved state.
+    const typeFilters = new Set<string>();
+    let onlyUnresolved = false;
+    for (const b of buckets) {
+        if (b === 'low_stock') typeFilters.add('LOW_STOCK');
+        else if (b === 'stale_count') typeFilters.add('STALE_COUNT');
+        else if (b === 'never_counted') typeFilters.add('NEVER_COUNTED');
+        else if (b === 'drift') typeFilters.add('DRIFT');
+        else if (b === 'unresolved') onlyUnresolved = true;
+    }
+    if (typeFilters.size > 0) {
+        params.push(Array.from(typeFilters));
+        where.push(`a.alert_type = ANY($${params.length}::text[])`);
+    }
+    if (onlyUnresolved) where.push(`a.resolved_at IS NULL`);
 
-        const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-        params.push(limit);
-        const limitIdx = params.length;
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    params.push(limit);
+    const limitIdx = params.length;
 
-        const listSql = `
+    const listSql = `
             SELECT
                 a.id,
                 a.sku,
@@ -77,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LIMIT $${limitIdx}
         `;
 
-        const countsSql = `
+    const countsSql = `
             SELECT
                 COUNT(*)::int AS total,
                 COUNT(*) FILTER (WHERE a.alert_type = 'LOW_STOCK')::int AS low_stock,
@@ -89,30 +88,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             WHERE a.organization_id = $1
         `;
 
-        const [listResult, countsResult] = await Promise.all([
-            tenantQuery(ctx.organizationId, listSql, params),
-            tenantQuery(ctx.organizationId, countsSql, [ctx.organizationId]),
-        ]);
+    const [listResult, countsResult] = await Promise.all([
+        tenantQuery(ctx.organizationId, listSql, params),
+        tenantQuery(ctx.organizationId, countsSql, [ctx.organizationId]),
+    ]);
 
-        return NextResponse.json({
-            success: true,
-            items: listResult.rows,
-            counts: countsResult.rows[0] ?? {
-                total: 0,
-                low_stock: 0,
-                stale_count: 0,
-                never_counted: 0,
-                drift: 0,
-                unresolved: 0,
-            },
-        });
-    } catch (err: any) {
-        console.error('[GET /api/inventory/alerts] error:', err);
-        return NextResponse.json(
-            { success: false, error: err?.message || 'Failed to load alerts' },
-            { status: 500 },
-        );
-    }
+    return NextResponse.json({
+        success: true,
+        items: listResult.rows,
+        counts: countsResult.rows[0] ?? {
+            total: 0,
+            low_stock: 0,
+            stale_count: 0,
+            never_counted: 0,
+            drift: 0,
+            unresolved: 0,
+        },
+    });
 }, { permission: 'sku_stock.view' });
 
 function readBuckets(raw: string[]): string[] {

@@ -33,30 +33,29 @@ export const GET = withAuth(async (request, ctx) => {
 
   const orgId = ctx.organizationId;
 
-  try {
-    const unit = await tenantQuery<{ sku_catalog_id: number | null; category: string | null }>(
-      orgId,
-      `SELECT su.sku_catalog_id, sc.category
+  const unit = await tenantQuery<{ sku_catalog_id: number | null; category: string | null }>(
+    orgId,
+    `SELECT su.sku_catalog_id, sc.category
          FROM serial_units su
     LEFT JOIN sku_catalog sc ON sc.id = su.sku_catalog_id
                             AND sc.organization_id = su.organization_id
         WHERE su.id = $1
           AND su.organization_id = $2`,
-      [serialUnitId, orgId],
-    );
-    if (unit.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-    const { sku_catalog_id, category } = unit.rows[0];
+    [serialUnitId, orgId],
+  );
+  if (unit.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
+  }
+  const { sku_catalog_id, category } = unit.rows[0];
 
-    // No catalog row → no checklist to resolve. Return an empty (but valid) set.
-    if (sku_catalog_id == null) {
-      return NextResponse.json({ ok: true, steps: [], progress: { completed: 0, total: 0 } });
-    }
+  // No catalog row → no checklist to resolve. Return an empty (but valid) set.
+  if (sku_catalog_id == null) {
+    return NextResponse.json({ ok: true, steps: [], progress: { completed: 0, total: 0 } });
+  }
 
-    const steps = await tenantQuery(
-      orgId,
-      `SELECT qc.id            AS step_id,
+  const steps = await tenantQuery(
+    orgId,
+    `SELECT qc.id            AS step_id,
               qc.step_label,
               qc.step_type,
               qc.sort_order,
@@ -85,20 +84,15 @@ export const GET = withAuth(async (request, ctx) => {
           AND qc.status = 'published'
           AND qc.organization_id = $6
      ORDER BY qc.sort_order, qc.id`,
-      [serialUnitId, STEP_TYPE, SOURCE_KIND, sku_catalog_id, category, orgId],
-    );
+    [serialUnitId, STEP_TYPE, SOURCE_KIND, sku_catalog_id, category, orgId],
+  );
 
-    const completed = steps.rows.filter((r) => r.passed != null).length;
-    return NextResponse.json({
-      ok: true,
-      steps: steps.rows,
-      progress: { completed, total: steps.rows.length },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to load checklist';
-    console.error('[GET /api/serial-units/[id]/checklist] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const completed = steps.rows.filter((r) => r.passed != null).length;
+  return NextResponse.json({
+    ok: true,
+    steps: steps.rows,
+    progress: { completed, total: steps.rows.length },
+  });
 }, { permission: 'tech.qc_pass' });
 
 /** POST — record (or re-mark) one step result for this unit. */
@@ -119,118 +113,112 @@ export const POST = withAuth(async (request, ctx) => {
 
   const orgId = ctx.organizationId;
 
-  try {
-    // tech_verifications.sku_catalog_id is NOT NULL — resolve it from the unit.
-    const unit = await tenantQuery<{ sku_catalog_id: number | null }>(
-      orgId,
-      `SELECT sku_catalog_id FROM serial_units WHERE id = $1 AND organization_id = $2`,
-      [serialUnitId, orgId],
-    );
-    if (unit.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-    const skuCatalogId = unit.rows[0].sku_catalog_id;
-    if (skuCatalogId == null) {
-      return NextResponse.json(
-        { ok: false, error: 'unit has no SKU catalog row — cannot record checklist' },
-        { status: 409 },
-      );
-    }
-
-    // Load the step's pass band + linked failure mode so the server (not the
-    // client) decides pass/fail for value-kind steps and knows what to auto-tag.
-    const stepRow = await tenantQuery<{
-      pass_min: string | null;
-      pass_max: string | null;
-      failure_mode_id: number | null;
-    }>(
-      orgId,
-      `SELECT pass_min, pass_max, failure_mode_id FROM qc_check_templates WHERE id = $1 AND organization_id = $2`,
-      [parsed.stepId, orgId],
-    );
-    if (stepRow.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'step not found' }, { status: 404 });
-    }
-    const failureModeId = stepRow.rows[0].failure_mode_id;
-
-    const passed = deriveStepPassed(stepRow.rows[0], {
-      passed: parsed.passed ?? (parsed.valueNum == null && parsed.valueText == null ? true : undefined),
-      valueNum: parsed.valueNum ?? null,
-    });
-
-    // Thread orgId so tech_verifications (tenant-owned, NOT NULL organization_id
-    // with a GUC-reading default) is stamped + GUC-scoped — otherwise the
-    // drizzle/raw default would resolve org=NULL.
-    const verification = await upsertVerification({
-      sourceKind: SOURCE_KIND,
-      sourceRowId: serialUnitId,
-      skuCatalogId,
-      stepType: STEP_TYPE,
-      stepId: parsed.stepId,
-      passed,
-      verifiedBy,
-      notes: parsed.notes ?? null,
-      valueNum: parsed.valueNum ?? null,
-      valueText: parsed.valueText ?? null,
-      failedModeId: passed === false ? failureModeId : null,
-    }, orgId);
-
-    // Auto-tag-on-fail: a failed step that names a failure mode opens a tag on
-    // the unit (idempotent per open mode). Best-effort — never fails the record.
-    let autoTag: Awaited<ReturnType<typeof tagUnitFailure>> | null = null;
-    // Auto-resolve-on-pass (reversibility 5.9):
-    let autoResolvedTag: Awaited<ReturnType<typeof resolveOpenUnitFailureTagByMode>> = null;
-    if (passed === false && failureModeId != null) {
-      try {
-        autoTag = await tagUnitFailure({
-          serialUnitId,
-          failureModeId,
-          detectedByStaffId: verifiedBy,
-          source: 'qc',
-          notes: `auto-tagged from failed QC step #${parsed.stepId}`,
-        }, orgId);
-      } catch (tagErr) {
-        console.warn('[checklist] auto-tag-on-fail failed (non-fatal)', tagErr);
-      }
-      if (autoTag) await recomputeUnitQualitySafe(serialUnitId, orgId);
-    } else if (passed === true && failureModeId != null) {
-      try {
-        autoResolvedTag = await resolveOpenUnitFailureTagByMode({
-          serialUnitId,
-          failureModeId,
-          notes: `auto-resolved by passed QC step #${parsed.stepId}`,
-        }, orgId);
-      } catch (resolveErr) {
-        console.warn('[checklist] auto-resolve-on-pass failed (non-fatal)', resolveErr);
-      }
-      if (autoResolvedTag) await recomputeUnitQualitySafe(serialUnitId, orgId);
-    }
-
-    await recordAudit(pool, ctx, request, {
-      source: 'serial-unit-checklist',
-      action: AUDIT_ACTION.QC_RESULT_RECORD,
-      entityType: AUDIT_ENTITY.SERIAL_UNIT,
-      entityId: serialUnitId,
-      method: 'manual',
-      extra: {
-        step_id: parsed.stepId,
-        passed,
-        value_num: parsed.valueNum ?? null,
-        value_text: parsed.valueText ?? null,
-        auto_failure_tag_id: autoTag?.id ?? null,
-        auto_resolved_failure_tag_id: autoResolvedTag?.id ?? null,
-      },
-    });
-
-    return NextResponse.json({
-      ok: true,
-      verification,
-      failure_tag: autoTag,
-      resolved_failure_tag: autoResolvedTag,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to record step';
-    console.error('[POST /api/serial-units/[id]/checklist] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  // tech_verifications.sku_catalog_id is NOT NULL — resolve it from the unit.
+  const unit = await tenantQuery<{ sku_catalog_id: number | null }>(
+    orgId,
+    `SELECT sku_catalog_id FROM serial_units WHERE id = $1 AND organization_id = $2`,
+    [serialUnitId, orgId],
+  );
+  if (unit.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
   }
+  const skuCatalogId = unit.rows[0].sku_catalog_id;
+  if (skuCatalogId == null) {
+    return NextResponse.json(
+      { ok: false, error: 'unit has no SKU catalog row — cannot record checklist' },
+      { status: 409 },
+    );
+  }
+
+  // Load the step's pass band + linked failure mode so the server (not the
+  // client) decides pass/fail for value-kind steps and knows what to auto-tag.
+  const stepRow = await tenantQuery<{
+    pass_min: string | null;
+    pass_max: string | null;
+    failure_mode_id: number | null;
+  }>(
+    orgId,
+    `SELECT pass_min, pass_max, failure_mode_id FROM qc_check_templates WHERE id = $1 AND organization_id = $2`,
+    [parsed.stepId, orgId],
+  );
+  if (stepRow.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'step not found' }, { status: 404 });
+  }
+  const failureModeId = stepRow.rows[0].failure_mode_id;
+
+  const passed = deriveStepPassed(stepRow.rows[0], {
+    passed: parsed.passed ?? (parsed.valueNum == null && parsed.valueText == null ? true : undefined),
+    valueNum: parsed.valueNum ?? null,
+  });
+
+  // Thread orgId so tech_verifications (tenant-owned, NOT NULL organization_id
+  // with a GUC-reading default) is stamped + GUC-scoped — otherwise the
+  // drizzle/raw default would resolve org=NULL.
+  const verification = await upsertVerification({
+    sourceKind: SOURCE_KIND,
+    sourceRowId: serialUnitId,
+    skuCatalogId,
+    stepType: STEP_TYPE,
+    stepId: parsed.stepId,
+    passed,
+    verifiedBy,
+    notes: parsed.notes ?? null,
+    valueNum: parsed.valueNum ?? null,
+    valueText: parsed.valueText ?? null,
+    failedModeId: passed === false ? failureModeId : null,
+  }, orgId);
+
+  // Auto-tag-on-fail: a failed step that names a failure mode opens a tag on
+  // the unit (idempotent per open mode). Best-effort — never fails the record.
+  let autoTag: Awaited<ReturnType<typeof tagUnitFailure>> | null = null;
+  // Auto-resolve-on-pass (reversibility 5.9):
+  let autoResolvedTag: Awaited<ReturnType<typeof resolveOpenUnitFailureTagByMode>> = null;
+  if (passed === false && failureModeId != null) {
+    try {
+      autoTag = await tagUnitFailure({
+        serialUnitId,
+        failureModeId,
+        detectedByStaffId: verifiedBy,
+        source: 'qc',
+        notes: `auto-tagged from failed QC step #${parsed.stepId}`,
+      }, orgId);
+    } catch (tagErr) {
+      console.warn('[checklist] auto-tag-on-fail failed (non-fatal)', tagErr);
+    }
+    if (autoTag) await recomputeUnitQualitySafe(serialUnitId, orgId);
+  } else if (passed === true && failureModeId != null) {
+    try {
+      autoResolvedTag = await resolveOpenUnitFailureTagByMode({
+        serialUnitId,
+        failureModeId,
+        notes: `auto-resolved by passed QC step #${parsed.stepId}`,
+      }, orgId);
+    } catch (resolveErr) {
+      console.warn('[checklist] auto-resolve-on-pass failed (non-fatal)', resolveErr);
+    }
+    if (autoResolvedTag) await recomputeUnitQualitySafe(serialUnitId, orgId);
+  }
+
+  await recordAudit(pool, ctx, request, {
+    source: 'serial-unit-checklist',
+    action: AUDIT_ACTION.QC_RESULT_RECORD,
+    entityType: AUDIT_ENTITY.SERIAL_UNIT,
+    entityId: serialUnitId,
+    method: 'manual',
+    extra: {
+      step_id: parsed.stepId,
+      passed,
+      value_num: parsed.valueNum ?? null,
+      value_text: parsed.valueText ?? null,
+      auto_failure_tag_id: autoTag?.id ?? null,
+      auto_resolved_failure_tag_id: autoResolvedTag?.id ?? null,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    verification,
+    failure_tag: autoTag,
+    resolved_failure_tag: autoResolvedTag,
+  });
 }, { permission: 'tech.qc_pass' });

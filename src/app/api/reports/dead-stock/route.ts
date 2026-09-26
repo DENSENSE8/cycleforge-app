@@ -3,18 +3,17 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const limit = Math.min(
-      Math.max(parseInt(searchParams.get('limit') || '500', 10) || 500, 1),
-      2000,
-    );
-    const minDays = Math.max(parseInt(searchParams.get('minDays') || '90', 10) || 90, 0);
-    const includeNever = searchParams.get('includeNeverMoved') === 'true';
-    // TENANT ISOLATION:
-    const r = await tenantQuery(
-      ctx.organizationId,
-      `WITH last_move AS (
+  const { searchParams } = new URL(req.url);
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') || '500', 10) || 500, 1),
+    2000,
+  );
+  const minDays = Math.max(parseInt(searchParams.get('minDays') || '90', 10) || 90, 0);
+  const includeNever = searchParams.get('includeNeverMoved') === 'true';
+  // TENANT ISOLATION:
+  const r = await tenantQuery(
+    ctx.organizationId,
+    `WITH last_move AS (
          SELECT sku, MAX(created_at) AS last_move_at
          FROM sku_stock_ledger
          WHERE reason <> 'INITIAL_BALANCE'
@@ -59,14 +58,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           OR ($3::boolean AND days_dormant IS NULL)
        ORDER BY days_dormant DESC NULLS LAST, stock DESC
        LIMIT $2`,
-      [minDays, limit, includeNever, ctx.organizationId],
-    );
-    return NextResponse.json({ success: true, rows: r.rows });
-  } catch (err: any) {
-    console.error('[GET /api/reports/dead-stock] error:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Failed' },
-      { status: 500 },
-    );
-  }
+    [minDays, limit, includeNever, ctx.organizationId],
+  );
+  return NextResponse.json({ success: true, rows: r.rows });
 }, { permission: 'reports.view' });

@@ -22,75 +22,69 @@ function isDeadRefreshToken(message: string): boolean {
  * Tokens live in the organization_integrations vault (scoped seller:/buyer:).
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
+  const { accountName } = await req.json();
+  if (!accountName) {
+    return NextResponse.json({ success: false, error: 'Account name is required' }, { status: 400 });
+  }
+
+  let tokens;
   try {
-    const { accountName } = await req.json();
-    if (!accountName) {
-      return NextResponse.json({ success: false, error: 'Account name is required' }, { status: 400 });
-    }
+    tokens = await resolveEbayUserTokens(ctx.organizationId, accountName);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Account not found';
+    const status = /not found/i.test(message) ? 404 : 409;
+    return NextResponse.json({ success: false, error: message }, { status });
+  }
 
-    let tokens;
-    try {
-      tokens = await resolveEbayUserTokens(ctx.organizationId, accountName);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Account not found';
-      const status = /not found/i.test(message) ? 404 : 409;
-      return NextResponse.json({ success: false, error: message }, { status });
-    }
+  if (tokens.refreshTokenExpiresAt && tokens.refreshTokenExpiresAt.getTime() <= Date.now()) {
+    await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, 'refresh token expired');
+    return NextResponse.json(
+      { success: false, error: 'Re-authorization required — the refresh token expired. Reconnect the account.' },
+      { status: 409 },
+    );
+  }
 
-    if (tokens.refreshTokenExpiresAt && tokens.refreshTokenExpiresAt.getTime() <= Date.now()) {
-      await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, 'refresh token expired');
+  const creds = await getEbayAppCreds(ctx.organizationId);
+  if (!creds) {
+    return NextResponse.json({ success: false, error: 'eBay app credentials are not configured.' }, { status: 500 });
+  }
+
+  let accessToken: string;
+  let expiresIn: number;
+  try {
+    ({ accessToken, expiresIn } = await refreshEbayAccessToken(
+      creds.appId,
+      creds.certId,
+      tokens.refreshToken,
+      creds.environment,
+      ebayScopeStringForRole(tokens.accountRole),
+    ));
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'refresh failed';
+    if (isDeadRefreshToken(message)) {
+      await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, message);
       return NextResponse.json(
-        { success: false, error: 'Re-authorization required — the refresh token expired. Reconnect the account.' },
+        { success: false, error: 'Re-authorization required — please reconnect the account.' },
         { status: 409 },
       );
     }
-
-    const creds = await getEbayAppCreds(ctx.organizationId);
-    if (!creds) {
-      return NextResponse.json({ success: false, error: 'eBay app credentials are not configured.' }, { status: 500 });
-    }
-
-    let accessToken: string;
-    let expiresIn: number;
-    try {
-      ({ accessToken, expiresIn } = await refreshEbayAccessToken(
-        creds.appId,
-        creds.certId,
-        tokens.refreshToken,
-        creds.environment,
-        ebayScopeStringForRole(tokens.accountRole),
-      ));
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'refresh failed';
-      if (isDeadRefreshToken(message)) {
-        await markEbayAccountNeedsReconsent(ctx.organizationId, accountName, message);
-        return NextResponse.json(
-          { success: false, error: 'Re-authorization required — please reconnect the account.' },
-          { status: 409 },
-        );
-      }
-      return NextResponse.json({ success: false, error: message }, { status: 502 });
-    }
-
-    const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
-    await patchEbayUserAccessToken({
-      orgId: ctx.organizationId,
-      role: tokens.accountRole,
-      accountName,
-      accessToken,
-      expiresAt: newExpiresAt,
-    });
-    await touchEbayAccountTokenExpiry(ctx.organizationId, accountName, newExpiresAt);
-
-    return NextResponse.json({
-      success: true,
-      message: `Token refreshed successfully for ${accountName}`,
-      expiresAt: formatPSTTimestamp(newExpiresAt),
-      expiresIn,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal error';
-    console.error('[ebay/refresh-token] error:', message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message }, { status: 502 });
   }
+
+  const newExpiresAt = new Date(Date.now() + expiresIn * 1000);
+  await patchEbayUserAccessToken({
+    orgId: ctx.organizationId,
+    role: tokens.accountRole,
+    accountName,
+    accessToken,
+    expiresAt: newExpiresAt,
+  });
+  await touchEbayAccountTokenExpiry(ctx.organizationId, accountName, newExpiresAt);
+
+  return NextResponse.json({
+    success: true,
+    message: `Token refreshed successfully for ${accountName}`,
+    expiresAt: formatPSTTimestamp(newExpiresAt),
+    expiresIn,
+  });
 }, { permission: 'integrations.ebay' });

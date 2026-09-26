@@ -24,23 +24,17 @@ export const POST = withAuth(async (request, ctx) => {
   }
   const { taskId } = parsed.data;
 
-  try {
-    const result = await releaseTask({ taskId }, ctx.organizationId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
+  const result = await releaseTask({ taskId }, ctx.organizationId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
 
-    await recordAudit(pool, ctx, request, {
-      source: 'replenishment-tasks',
-      action: AUDIT_ACTION.REPLENISH_TASK_RELEASE,
-      entityType: AUDIT_ENTITY.REPLENISHMENT_TASK,
-      entityId: taskId,
-      after: { status: 'REQUESTED', assigned_staff_id: null },
-      method: 'manual',
-    });
+  await recordAudit(pool, ctx, request, {
+    source: 'replenishment-tasks',
+    action: AUDIT_ACTION.REPLENISH_TASK_RELEASE,
+    entityType: AUDIT_ENTITY.REPLENISHMENT_TASK,
+    entityId: taskId,
+    after: { status: 'REQUESTED', assigned_staff_id: null },
+    method: 'manual',
+  });
 
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'release failed';
-    console.error('[POST /api/replenishment/tasks/[id]/release] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json(result);
 }, { permission: 'bin.adjust' });

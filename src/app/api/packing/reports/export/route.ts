@@ -28,24 +28,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const packerId = parsed.packerId ?? null;
   const format = parsed.format ?? 'csv';
 
-  try {
-    const rows = await buildPackingReportRows({ day, packerId }, ctx.organizationId);
-    if (format === 'json') return NextResponse.json({ ok: true, rows });
+  const rows = await buildPackingReportRows({ day, packerId }, ctx.organizationId);
+  if (format === 'json') return NextResponse.json({ ok: true, rows });
 
-    const csv = packingRowsToCsv(rows);
-    const fileName = packerId ? `packing-report-${day}-packer-${packerId}.csv` : `packing-report-${day}-all-packers.csv`;
-    return new NextResponse(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
-        'Cache-Control': 'no-store',
-      },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'packing report failed';
-    console.error('[GET /api/packing/reports/export] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const csv = packingRowsToCsv(rows);
+  const fileName = packerId ? `packing-report-${day}-packer-${packerId}.csv` : `packing-report-${day}-all-packers.csv`;
+  return new NextResponse(csv, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }, { permission: 'operations.view' });
 

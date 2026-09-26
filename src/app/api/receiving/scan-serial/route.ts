@@ -63,257 +63,251 @@ function pickAutoLine(
 }
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json();
+  const body = await request.json();
 
-    const serialNumber = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
-    const receivingIdRaw = Number(body?.receiving_id);
-    const receivingLineIdRaw = Number(body?.receiving_line_id);
-    const conditionGrade =
-      String(body?.condition_grade ?? body?.conditionGrade ?? '').trim() || null;
-    const clientEventId = String(body?.client_event_id ?? '').trim() || null;
-    const scanToken = String(body?.scan_token ?? '').trim() || null;
-    const stationRaw = String(body?.station ?? '').trim().toUpperCase();
-    const station =
-      stationRaw === 'MOBILE' || stationRaw === 'TECH' ? stationRaw : 'RECEIVING';
+  const serialNumber = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
+  const receivingIdRaw = Number(body?.receiving_id);
+  const receivingLineIdRaw = Number(body?.receiving_line_id);
+  const conditionGrade =
+    String(body?.condition_grade ?? body?.conditionGrade ?? '').trim() || null;
+  const clientEventId = String(body?.client_event_id ?? '').trim() || null;
+  const scanToken = String(body?.scan_token ?? '').trim() || null;
+  const stationRaw = String(body?.station ?? '').trim().toUpperCase();
+  const station =
+    stationRaw === 'MOBILE' || stationRaw === 'TECH' ? stationRaw : 'RECEIVING';
 
-    // Server-trusted actor from the verified session cookie.
-    const staffId = ctx.staffId;
-    const receivingId =
-      Number.isFinite(receivingIdRaw) && receivingIdRaw > 0
-        ? Math.floor(receivingIdRaw)
-        : null;
-    let receivingLineId =
-      Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
-        ? Math.floor(receivingLineIdRaw)
-        : null;
+  // Server-trusted actor from the verified session cookie.
+  const staffId = ctx.staffId;
+  const receivingId =
+    Number.isFinite(receivingIdRaw) && receivingIdRaw > 0
+      ? Math.floor(receivingIdRaw)
+      : null;
+  let receivingLineId =
+    Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
+      ? Math.floor(receivingLineIdRaw)
+      : null;
 
-    // Idempotency: replay a prior cached response when the same Idempotency-Key
-    // (or body client_event_id) is seen again. Retries land on the same answer
-    // (already_received / already_complete / success) without re-running the scan.
-    const idempotencyKey = readIdempotencyKey(request, clientEventId);
-    if (idempotencyKey) {
-      // GUC-scoped: run the idempotency-cache read on the tenant client so RLS
-      // backstops the explicit organization_id predicate the helper already uses.
-      const cached = await withTenantConnection(ctx.organizationId, (client) =>
-        getApiIdempotencyResponse(
-          client,
-          ctx.organizationId,
+  // Idempotency: replay a prior cached response when the same Idempotency-Key
+  // (or body client_event_id) is seen again. Retries land on the same answer
+  // (already_received / already_complete / success) without re-running the scan.
+  const idempotencyKey = readIdempotencyKey(request, clientEventId);
+  if (idempotencyKey) {
+    // GUC-scoped: run the idempotency-cache read on the tenant client so RLS
+    // backstops the explicit organization_id predicate the helper already uses.
+    const cached = await withTenantConnection(ctx.organizationId, (client) =>
+      getApiIdempotencyResponse(
+        client,
+        ctx.organizationId,
+        idempotencyKey,
+        IDEMPOTENCY_ROUTE,
+      ),
+    );
+    if (cached) {
+      return NextResponse.json(cached.response_body, {
+        status: cached.status_code,
+      });
+    }
+  }
+
+  // Wrap NextResponse.json so every meaningful return point also persists
+  // the response under the idempotency key (skips 5xx — those are transient
+  // and a retry should be allowed to succeed).
+  const respond = async (
+    body: Record<string, unknown>,
+    init?: { status?: number },
+  ) => {
+    const status = init?.status ?? 200;
+    if (idempotencyKey && status < 500) {
+      // GUC-scoped: stamp/serve the idempotency-cache row on the tenant client.
+      await withTenantConnection(ctx.organizationId, (client) =>
+        saveApiIdempotencyResponse(client, {
+          orgId: ctx.organizationId,
           idempotencyKey,
-          IDEMPOTENCY_ROUTE,
-        ),
+          route: IDEMPOTENCY_ROUTE,
+          staffId,
+          statusCode: status,
+          responseBody: body,
+        }),
       );
-      if (cached) {
-        return NextResponse.json(cached.response_body, {
-          status: cached.status_code,
-        });
-      }
     }
+    return NextResponse.json(body, init);
+  };
 
-    // Wrap NextResponse.json so every meaningful return point also persists
-    // the response under the idempotency key (skips 5xx — those are transient
-    // and a retry should be allowed to succeed).
-    const respond = async (
-      body: Record<string, unknown>,
-      init?: { status?: number },
-    ) => {
-      const status = init?.status ?? 200;
-      if (idempotencyKey && status < 500) {
-        // GUC-scoped: stamp/serve the idempotency-cache row on the tenant client.
-        await withTenantConnection(ctx.organizationId, (client) =>
-          saveApiIdempotencyResponse(client, {
-            orgId: ctx.organizationId,
-            idempotencyKey,
-            route: IDEMPOTENCY_ROUTE,
-            staffId,
-            statusCode: status,
-            responseBody: body,
-          }),
-        );
-      }
-      return NextResponse.json(body, init);
-    };
+  if (!serialNumber) {
+    return NextResponse.json(
+      { success: false, error: 'serial_number is required' },
+      { status: 400 },
+    );
+  }
+  if (!receivingId && !receivingLineId) {
+    return NextResponse.json(
+      { success: false, error: 'receiving_id or receiving_line_id is required' },
+      { status: 400 },
+    );
+  }
 
-    if (!serialNumber) {
+  // ─── Resolve target line ────────────────────────────────────────────────
+  let targetReceivingId = receivingId;
+
+  if (!receivingLineId && receivingId) {
+    const candidates = await loadCandidateLines(receivingId, ctx.organizationId);
+    if (candidates.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'serial_number is required' },
-        { status: 400 },
+        { success: false, error: `no lines found for receiving ${receivingId}` },
+        { status: 404 },
       );
     }
-    if (!receivingId && !receivingLineId) {
-      return NextResponse.json(
-        { success: false, error: 'receiving_id or receiving_line_id is required' },
-        { status: 400 },
-      );
-    }
-
-    // ─── Resolve target line ────────────────────────────────────────────────
-    let targetReceivingId = receivingId;
-
-    if (!receivingLineId && receivingId) {
-      const candidates = await loadCandidateLines(receivingId, ctx.organizationId);
-      if (candidates.length === 0) {
-        return NextResponse.json(
-          { success: false, error: `no lines found for receiving ${receivingId}` },
-          { status: 404 },
-        );
-      }
-      const picked = pickAutoLine(candidates);
-      if (picked === 'ambiguous') {
-        // Multiple lines on the carton and no explicit target — ask the
-        // operator which product this serial belongs to.
-        return NextResponse.json({
-          success: false,
-          needs_line_selection: true,
-          candidate_lines: candidates.map((l) => ({
-            id: l.id,
-            sku: l.sku,
-            quantity_expected: l.quantity_expected,
-            quantity_received: l.quantity_received,
-          })),
-        });
-      } else if (picked) {
-        receivingLineId = picked.id;
-        targetReceivingId = picked.receiving_id;
-      }
-    }
-
-    if (!receivingLineId) {
-      return NextResponse.json(
-        { success: false, error: 'could not resolve target line' },
-        { status: 400 },
-      );
-    }
-
-    // ─── Attach serial (sidecar metadata — no qty/ledger change) ────────────
-    const result = await attachSerialToLine({
-      receiving_line_id: receivingLineId,
-      serial_number: serialNumber,
-      condition_grade: conditionGrade,
-      staff_id: staffId,
-      station,
-      client_event_id: clientEventId,
-      scan_token: scanToken,
-    }, ctx.organizationId);
-
-    if (!result) {
-      return NextResponse.json(
-        { success: false, error: 'invalid serial number' },
-        { status: 400 },
-      );
-    }
-
-    // Idempotent re-scan: the same serial is already on this line. Return
-    // success so the UI shows a friendly toast instead of an error. No
-    // background enrichment needed — the prior scan handled it.
-    if (result.already_attached) {
-      return respond({
-        success: true,
-        already_attached: true,
-        serial_unit: result.serial_unit,
-        line_state: result.line_state,
+    const picked = pickAutoLine(candidates);
+    if (picked === 'ambiguous') {
+      // Multiple lines on the carton and no explicit target — ask the
+      // operator which product this serial belongs to.
+      return NextResponse.json({
+        success: false,
+        needs_line_selection: true,
+        candidate_lines: candidates.map((l) => ({
+          id: l.id,
+          sku: l.sku,
+          quantity_expected: l.quantity_expected,
+          quantity_received: l.quantity_received,
+        })),
       });
+    } else if (picked) {
+      receivingLineId = picked.id;
+      targetReceivingId = picked.receiving_id;
     }
+  }
 
-    const serialResult = result;
+  if (!receivingLineId) {
+    return NextResponse.json(
+      { success: false, error: 'could not resolve target line' },
+      { status: 400 },
+    );
+  }
 
-    // ─── Return loop (shipped↔returned) ───────────────────────────────────── When the scanned serial is a previously-shipped unit, resolve…
-    let matchedOrder: ReturnedSerialMatchedOrder | null = null;
-    let linePatch: ReturnLinkageLinePatch | null = null;
-    if (isReceivingReturnAutolink()) {
-      try {
-        const link = await linkReturnedSerial(
-          {
-            serialUnitId: serialResult.serial_unit.id,
-            normalizedSerial: serialResult.serial_unit.normalized_serial,
-            receivingLineId,
-            receivingId: targetReceivingId,
-            staffId,
-            clientEventId,
-            priorStatus: serialResult.prior_status,
-            sku: serialResult.serial_unit.sku,
-          },
-          ctx.organizationId,
-        );
-        matchedOrder = link.matchedOrder;
-        linePatch = link.linePatch;
-      } catch (err) {
-        console.warn('scan-serial: linkReturnedSerial failed (non-fatal)', err);
-      }
-    }
+  // ─── Attach serial (sidecar metadata — no qty/ledger change) ────────────
+  const result = await attachSerialToLine({
+    receiving_line_id: receivingLineId,
+    serial_number: serialNumber,
+    condition_grade: conditionGrade,
+    staff_id: staffId,
+    station,
+    client_event_id: clientEventId,
+    scan_token: scanToken,
+  }, ctx.organizationId);
 
-    // ─── Background: catalog enrichment + cache/realtime ────────────────────
-    const serialUnitId = serialResult.serial_unit.id;
-    const skuForEnrichment = result.line_state.sku;
-    const receivingIdForEvent = targetReceivingId;
-    // Snapshot for the after() closure — receivingLineId is a mutable `let`.
-    const tapReceivingLineId = receivingLineId;
+  if (!result) {
+    return NextResponse.json(
+      { success: false, error: 'invalid serial number' },
+      { status: 400 },
+    );
+  }
 
-    after(async () => {
-      if (skuForEnrichment && !serialResult.serial_unit.sku_catalog_id) {
-        await enrichSerialUnitCatalog({
-          serial_unit_id: serialUnitId,
-          sku: skuForEnrichment,
-          zoho_item_id: serialResult.serial_unit.zoho_item_id,
-          zoho_purchaseorder_id: null,
-        }, ctx.organizationId).catch((err) => {
-          console.warn('scan-serial: enrichSerialUnitCatalog failed', err);
-        });
-      }
-
-      // Mirror the scan into the operations graph: enrolls the unit at the
-      // receiving node and advances it (fire-and-forget — tapWorkflow never
-      // throws, an engine error can't fail a scan).
-      await tapWorkflow({
-        serialUnitId,
-        event: 'unit_received',
-        input: { receivingLineId: tapReceivingLineId },
-        staffId,
-        source: 'scan',
-        orgId: ctx.organizationId,
-      });
-
-      // Refresh the denormalized serial projection for the line this serial landed on (Tier B2) so the next open paints it on the first frame —…
-      await refreshLineSerialProjectionSafe(ctx.organizationId, tapReceivingLineId);
-
-      try {
-        await invalidateReceivingViews(ctx.organizationId);
-        if (receivingIdForEvent != null) {
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'update',
-            rowId: String(receivingIdForEvent),
-            source: 'receiving.scan-serial',
-          });
-        }
-      } catch (err) {
-        console.warn('scan-serial: cache/realtime update failed', err);
-      }
-    });
-
+  // Idempotent re-scan: the same serial is already on this line. Return
+  // success so the UI shows a friendly toast instead of an error. No
+  // background enrichment needed — the prior scan handled it.
+  if (result.already_attached) {
     return respond({
       success: true,
-      serial_unit: serialResult.serial_unit,
-      is_new: serialResult.is_new,
-      prior_status: serialResult.prior_status,
-      is_return: serialResult.is_return,
-      // The shipped order this returned serial was paired back to (with its
-      // listing link), so the workspace can populate the order # + listing and
-      // light up the return match band without a second round-trip.
-      matched_order: matchedOrder,
-      // Optimistic receiving-line row patch (type→RETURN / listing / source /
-      // order# / status) the client merges via dispatchLineUpdated, so a return
-      // scan flips the workspace WITHOUT the heavy /api/receiving-lines refetch.
-      line_patch: linePatch,
-      warnings: serialResult.warnings,
+      already_attached: true,
+      serial_unit: result.serial_unit,
       line_state: result.line_state,
-      inventory_event_id: result.inventory_event_id,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to scan serial';
-    console.error('receiving/scan-serial POST failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  const serialResult = result;
+
+  // ─── Return loop (shipped↔returned) ───────────────────────────────────── When the scanned serial is a previously-shipped unit, resolve…
+  let matchedOrder: ReturnedSerialMatchedOrder | null = null;
+  let linePatch: ReturnLinkageLinePatch | null = null;
+  if (isReceivingReturnAutolink()) {
+    try {
+      const link = await linkReturnedSerial(
+        {
+          serialUnitId: serialResult.serial_unit.id,
+          normalizedSerial: serialResult.serial_unit.normalized_serial,
+          receivingLineId,
+          receivingId: targetReceivingId,
+          staffId,
+          clientEventId,
+          priorStatus: serialResult.prior_status,
+          sku: serialResult.serial_unit.sku,
+        },
+        ctx.organizationId,
+      );
+      matchedOrder = link.matchedOrder;
+      linePatch = link.linePatch;
+    } catch (err) {
+      console.warn('scan-serial: linkReturnedSerial failed (non-fatal)', err);
+    }
+  }
+
+  // ─── Background: catalog enrichment + cache/realtime ────────────────────
+  const serialUnitId = serialResult.serial_unit.id;
+  const skuForEnrichment = result.line_state.sku;
+  const receivingIdForEvent = targetReceivingId;
+  // Snapshot for the after() closure — receivingLineId is a mutable `let`.
+  const tapReceivingLineId = receivingLineId;
+
+  after(async () => {
+    if (skuForEnrichment && !serialResult.serial_unit.sku_catalog_id) {
+      await enrichSerialUnitCatalog({
+        serial_unit_id: serialUnitId,
+        sku: skuForEnrichment,
+        zoho_item_id: serialResult.serial_unit.zoho_item_id,
+        zoho_purchaseorder_id: null,
+      }, ctx.organizationId).catch((err) => {
+        console.warn('scan-serial: enrichSerialUnitCatalog failed', err);
+      });
+    }
+
+    // Mirror the scan into the operations graph: enrolls the unit at the
+    // receiving node and advances it (fire-and-forget — tapWorkflow never
+    // throws, an engine error can't fail a scan).
+    await tapWorkflow({
+      serialUnitId,
+      event: 'unit_received',
+      input: { receivingLineId: tapReceivingLineId },
+      staffId,
+      source: 'scan',
+      orgId: ctx.organizationId,
+    });
+
+    // Refresh the denormalized serial projection for the line this serial landed on (Tier B2) so the next open paints it on the first frame —…
+    await refreshLineSerialProjectionSafe(ctx.organizationId, tapReceivingLineId);
+
+    try {
+      await invalidateReceivingViews(ctx.organizationId);
+      if (receivingIdForEvent != null) {
+        await publishReceivingLogChanged({
+          organizationId: ctx.organizationId,
+          action: 'update',
+          rowId: String(receivingIdForEvent),
+          source: 'receiving.scan-serial',
+        });
+      }
+    } catch (err) {
+      console.warn('scan-serial: cache/realtime update failed', err);
+    }
+  });
+
+  return respond({
+    success: true,
+    serial_unit: serialResult.serial_unit,
+    is_new: serialResult.is_new,
+    prior_status: serialResult.prior_status,
+    is_return: serialResult.is_return,
+    // The shipped order this returned serial was paired back to (with its
+    // listing link), so the workspace can populate the order # + listing and
+    // light up the return match band without a second round-trip.
+    matched_order: matchedOrder,
+    // Optimistic receiving-line row patch (type→RETURN / listing / source /
+    // order# / status) the client merges via dispatchLineUpdated, so a return
+    // scan flips the workspace WITHOUT the heavy /api/receiving-lines refetch.
+    line_patch: linePatch,
+    warnings: serialResult.warnings,
+    line_state: result.line_state,
+    inventory_event_id: result.inventory_event_id,
+  });
 }, {
   permission: 'receiving.mark_received',
   audit: {
@@ -344,80 +338,74 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
 /** DELETE /api/receiving/scan-serial Body: */
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const serialUnitIdRaw = Number(body?.serial_unit_id ?? body?.serialUnitId);
-    const serialNumberRaw = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
-    const receivingLineIdRaw = Number(body?.receiving_line_id ?? body?.receivingLineId);
+  const body = await request.json().catch(() => ({}));
+  const serialUnitIdRaw = Number(body?.serial_unit_id ?? body?.serialUnitId);
+  const serialNumberRaw = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
+  const receivingLineIdRaw = Number(body?.receiving_line_id ?? body?.receivingLineId);
 
-    const serialUnitId =
-      Number.isFinite(serialUnitIdRaw) && serialUnitIdRaw > 0
-        ? Math.floor(serialUnitIdRaw)
-        : null;
-    const receivingLineId =
-      Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
-        ? Math.floor(receivingLineIdRaw)
-        : null;
+  const serialUnitId =
+    Number.isFinite(serialUnitIdRaw) && serialUnitIdRaw > 0
+      ? Math.floor(serialUnitIdRaw)
+      : null;
+  const receivingLineId =
+    Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
+      ? Math.floor(receivingLineIdRaw)
+      : null;
 
-    if (!receivingLineId) {
-      return NextResponse.json(
-        { success: false, error: 'receiving_line_id is required' },
-        { status: 400 },
-      );
-    }
-    if (!serialUnitId && !serialNumberRaw) {
-      return NextResponse.json(
-        { success: false, error: 'serial_unit_id or serial_number is required' },
-        { status: 400 },
-      );
-    }
-
-    const result = await detachSerialFromLine({
-      receiving_line_id: receivingLineId,
-      serial_unit_id: serialUnitId,
-      serial_number: serialNumberRaw || null,
-      staff_id: ctx.staffId ?? null,
-      station: 'RECEIVING',
-    }, ctx.organizationId);
-
-    if (!result.removed) {
-      return NextResponse.json(
-        { success: false, error: 'serial not found on this line' },
-        { status: 404 },
-      );
-    }
-
-    // Background: same cache + realtime fanout the POST path uses so the
-    // sidebar/accordion refetch and the UI reflects the change.
-    after(async () => {
-      // Recompute the line's serial projection now that a serial was removed, so
-      // the next open reflects the removal on the first frame (Tier B2).
-      await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
-
-      try {
-        await invalidateReceivingViews(ctx.organizationId);
-        await publishReceivingLogChanged({
-          organizationId: ctx.organizationId,
-          action: 'update',
-          rowId: String(receivingLineId),
-          source: 'receiving.scan-serial.delete',
-        });
-      } catch (err) {
-        console.warn('scan-serial DELETE: cache/realtime update failed', err);
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      removed_serial_unit_id: result.removed_serial_unit_id,
-      removed_serial_number: result.removed_serial_number,
-      line_state: result.line_state,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to remove serial';
-    console.error('receiving/scan-serial DELETE failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  if (!receivingLineId) {
+    return NextResponse.json(
+      { success: false, error: 'receiving_line_id is required' },
+      { status: 400 },
+    );
   }
+  if (!serialUnitId && !serialNumberRaw) {
+    return NextResponse.json(
+      { success: false, error: 'serial_unit_id or serial_number is required' },
+      { status: 400 },
+    );
+  }
+
+  const result = await detachSerialFromLine({
+    receiving_line_id: receivingLineId,
+    serial_unit_id: serialUnitId,
+    serial_number: serialNumberRaw || null,
+    staff_id: ctx.staffId ?? null,
+    station: 'RECEIVING',
+  }, ctx.organizationId);
+
+  if (!result.removed) {
+    return NextResponse.json(
+      { success: false, error: 'serial not found on this line' },
+      { status: 404 },
+    );
+  }
+
+  // Background: same cache + realtime fanout the POST path uses so the
+  // sidebar/accordion refetch and the UI reflects the change.
+  after(async () => {
+    // Recompute the line's serial projection now that a serial was removed, so
+    // the next open reflects the removal on the first frame (Tier B2).
+    await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
+
+    try {
+      await invalidateReceivingViews(ctx.organizationId);
+      await publishReceivingLogChanged({
+        organizationId: ctx.organizationId,
+        action: 'update',
+        rowId: String(receivingLineId),
+        source: 'receiving.scan-serial.delete',
+      });
+    } catch (err) {
+      console.warn('scan-serial DELETE: cache/realtime update failed', err);
+    }
+  });
+
+  return NextResponse.json({
+    success: true,
+    removed_serial_unit_id: result.removed_serial_unit_id,
+    removed_serial_number: result.removed_serial_number,
+    line_state: result.line_state,
+  });
 }, {
   permission: 'receiving.mark_received',
   audit: {

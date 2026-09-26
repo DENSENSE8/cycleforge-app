@@ -9,80 +9,74 @@ import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projecti
 /** POST /api/receiving/serial-move ──────────────────────────────────────────────────────────────────── Re-home a scanned serial from its… */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
-    try {
-      const body = await request.json().catch(() => ({}));
-      const serialUnitId = Number(body?.serial_unit_id ?? body?.serialUnitId);
-      const targetLineId = Number(body?.target_receiving_line_id ?? body?.targetReceivingLineId);
-      const clientEventId = String(body?.client_event_id ?? '').trim() || null;
+    const body = await request.json().catch(() => ({}));
+    const serialUnitId = Number(body?.serial_unit_id ?? body?.serialUnitId);
+    const targetLineId = Number(body?.target_receiving_line_id ?? body?.targetReceivingLineId);
+    const clientEventId = String(body?.client_event_id ?? '').trim() || null;
 
-      if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
-        return NextResponse.json(
-          { success: false, error: 'serial_unit_id is required' },
-          { status: 400 },
-        );
-      }
-      if (!Number.isFinite(targetLineId) || targetLineId <= 0) {
-        return NextResponse.json(
-          { success: false, error: 'target_receiving_line_id is required' },
-          { status: 400 },
-        );
-      }
-
-      let result;
-      try {
-        result = await moveSerialToLine(
-          {
-            serial_unit_id: Math.floor(serialUnitId),
-            target_receiving_line_id: Math.floor(targetLineId),
-            staff_id: ctx.staffId ?? null,
-            client_event_id: clientEventId,
-          },
-          ctx.organizationId,
-        );
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'move failed';
-        // The domain helper throws "… not found" for a missing serial/line.
-        if (/not found/i.test(message)) {
-          return NextResponse.json({ success: false, error: message }, { status: 404 });
-        }
-        throw err;
-      }
-
-      if (!result) {
-        return NextResponse.json(
-          { success: false, error: 'invalid serial_unit_id / target_receiving_line_id' },
-          { status: 400 },
-        );
-      }
-
-      const moved = result;
-      // Both lines' denorm chips — from loses the serial, to gains it.
-      await refreshLineSerialProjectionSafe(
-        ctx.organizationId,
-        [moved.from_receiving_line_id, moved.to_receiving_line_id].filter(
-          (n): n is number => typeof n === 'number' && n > 0,
-        ),
+    if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'serial_unit_id is required' },
+        { status: 400 },
       );
-      after(async () => {
-        try {
-          await invalidateReceivingViews(ctx.organizationId);
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'update',
-            rowId: String(moved.to_receiving_line_id),
-            source: 'receiving.serial-move',
-          });
-        } catch (err) {
-          console.warn('serial-move: cache/realtime update failed', err);
-        }
-      });
-
-      return NextResponse.json({ success: true, ...result });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to move serial';
-      console.error('receiving/serial-move POST failed:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
+    if (!Number.isFinite(targetLineId) || targetLineId <= 0) {
+      return NextResponse.json(
+        { success: false, error: 'target_receiving_line_id is required' },
+        { status: 400 },
+      );
+    }
+
+    let result;
+    try {
+      result = await moveSerialToLine(
+        {
+          serial_unit_id: Math.floor(serialUnitId),
+          target_receiving_line_id: Math.floor(targetLineId),
+          staff_id: ctx.staffId ?? null,
+          client_event_id: clientEventId,
+        },
+        ctx.organizationId,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'move failed';
+      // The domain helper throws "… not found" for a missing serial/line.
+      if (/not found/i.test(message)) {
+        return NextResponse.json({ success: false, error: message }, { status: 404 });
+      }
+      throw err;
+    }
+
+    if (!result) {
+      return NextResponse.json(
+        { success: false, error: 'invalid serial_unit_id / target_receiving_line_id' },
+        { status: 400 },
+      );
+    }
+
+    const moved = result;
+    // Both lines' denorm chips — from loses the serial, to gains it.
+    await refreshLineSerialProjectionSafe(
+      ctx.organizationId,
+      [moved.from_receiving_line_id, moved.to_receiving_line_id].filter(
+        (n): n is number => typeof n === 'number' && n > 0,
+      ),
+    );
+    after(async () => {
+      try {
+        await invalidateReceivingViews(ctx.organizationId);
+        await publishReceivingLogChanged({
+          organizationId: ctx.organizationId,
+          action: 'update',
+          rowId: String(moved.to_receiving_line_id),
+          source: 'receiving.serial-move',
+        });
+      } catch (err) {
+        console.warn('serial-move: cache/realtime update failed', err);
+      }
+    });
+
+    return NextResponse.json({ success: true, ...result });
   },
   {
     permission: 'receiving.mark_received',

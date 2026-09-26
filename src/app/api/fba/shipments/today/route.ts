@@ -6,17 +6,16 @@ import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
 /** GET /api/fba/shipments/today */
 export const GET = withAuth(async (_request, ctx) => {
-  try {
-    // Per-scan "today's shipment" snapshot → short-TTL cache (20s bounds tracking-
-    // status staleness); FBA writes bust fba-today/fba-stage-counts org-scoped.
-    const cached = await getOrSet<{ shipment: unknown }>(
-      CACHE_NS.fbaToday,
-      ctx.organizationId,
-      'today',
-      20,
-      [CACHE_TAGS.fbaToday, CACHE_TAGS.fbaStageCounts],
-      async () => {
-    const shipRes = await tenantQuery(ctx.organizationId, `
+  // Per-scan "today's shipment" snapshot → short-TTL cache (20s bounds tracking-
+  // status staleness); FBA writes bust fba-today/fba-stage-counts org-scoped.
+  const cached = await getOrSet<{ shipment: unknown }>(
+    CACHE_NS.fbaToday,
+    ctx.organizationId,
+    'today',
+    20,
+    [CACHE_TAGS.fbaToday, CACHE_TAGS.fbaStageCounts],
+    async () => {
+  const shipRes = await tenantQuery(ctx.organizationId, `
       SELECT id, shipment_ref, due_date, status, amazon_shipment_id
       FROM fba_shipments
       WHERE due_date = CURRENT_DATE AND status = 'PLANNED'
@@ -25,13 +24,13 @@ export const GET = withAuth(async (_request, ctx) => {
       LIMIT 1
     `, [ctx.organizationId]);
 
-    if (shipRes.rows.length === 0) {
-      return { shipment: null };
-    }
+  if (shipRes.rows.length === 0) {
+    return { shipment: null };
+  }
 
-    const shipment = shipRes.rows[0];
+  const shipment = shipRes.rows[0];
 
-    const itemsRes = await tenantQuery(ctx.organizationId, `
+  const itemsRes = await tenantQuery(ctx.organizationId, `
       SELECT fsi.id, fsi.fnsku, fsi.expected_qty, fsi.status,
              COALESCE(ff.product_title, fsi.fnsku) AS display_title,
              fsi.asin, fsi.sku,
@@ -47,8 +46,8 @@ export const GET = withAuth(async (_request, ctx) => {
       ORDER BY fsi.created_at ASC
     `, [shipment.id, ctx.organizationId]);
 
-    const trackingRes = await tenantQuery(ctx.organizationId,
-      `SELECT
+  const trackingRes = await tenantQuery(ctx.organizationId,
+    `SELECT
          fst.id          AS link_id,
          fst.label,
          fst.created_at  AS linked_at,
@@ -71,29 +70,22 @@ export const GET = withAuth(async (_request, ctx) => {
        JOIN shipping_tracking_numbers stn ON stn.id = fst.tracking_id
        WHERE fst.shipment_id = $1 AND fst.organization_id = $2
        ORDER BY fst.created_at DESC`,
-      [shipment.id, ctx.organizationId]
-    );
+    [shipment.id, ctx.organizationId]
+  );
 
-    return {
-      shipment: {
-        id: shipment.id,
-        shipment_ref: shipment.shipment_ref,
-        due_date: shipment.due_date,
-        status: shipment.status,
-        amazon_shipment_id: shipment.amazon_shipment_id ?? null,
-        tracking_numbers: trackingRes.rows,
-        items: itemsRes.rows,
-      },
-    };
-      },
-    );
+  return {
+    shipment: {
+      id: shipment.id,
+      shipment_ref: shipment.shipment_ref,
+      due_date: shipment.due_date,
+      status: shipment.status,
+      amazon_shipment_id: shipment.amazon_shipment_id ?? null,
+      tracking_numbers: trackingRes.rows,
+      items: itemsRes.rows,
+    },
+  };
+    },
+  );
 
-    return NextResponse.json({ success: true, shipment: cached.shipment });
-  } catch (error: any) {
-    console.error('[GET /api/fba/shipments/today]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true, shipment: cached.shipment });
 }, { permission: 'fba.view', feature: 'fba' });

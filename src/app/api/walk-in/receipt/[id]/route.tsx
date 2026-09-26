@@ -40,43 +40,42 @@ async function findPickupSignature(squareOrderId: string): Promise<string | null
 
 /** GET /api/walk-in/receipt/[id] — Printable sales receipt (Repair Service HTML style). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const segments = req.nextUrl.pathname.split('/').filter(Boolean);
-    const id = segments[segments.length - 1] ?? '';
-    const [sale, org] = await Promise.all([
-      getSquareTransactionById(id, ctx.organizationId),
-      getOrganization(ctx.organizationId),
-    ]);
-    if (!sale) {
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-    }
-    const letterhead = getOrgLetterhead({
-      name: org?.name ?? '',
-      settings: org?.settings ?? parseOrgSettings(undefined),
-    });
+  const segments = req.nextUrl.pathname.split('/').filter(Boolean);
+  const id = segments[segments.length - 1] ?? '';
+  const [sale, org] = await Promise.all([
+    getSquareTransactionById(id, ctx.organizationId),
+    getOrganization(ctx.organizationId),
+  ]);
+  if (!sale) {
+    return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+  }
+  const letterhead = getOrgLetterhead({
+    name: org?.name ?? '',
+    settings: org?.settings ?? parseOrgSettings(undefined),
+  });
 
-    const lineItems = Array.isArray(sale.line_items) ? sale.line_items : [];
-    const hasDiscount = (sale.discount ?? 0) > 0;
-    const hasAnySku = lineItems.some((li) => li.sku);
-    const signatureDataUrl = await findPickupSignature(sale.square_order_id);
+  const lineItems = Array.isArray(sale.line_items) ? sale.line_items : [];
+  const hasDiscount = (sale.discount ?? 0) > 0;
+  const hasAnySku = lineItems.some((li) => li.sku);
+  const signatureDataUrl = await findPickupSignature(sale.square_order_id);
 
-    const dateStr = sale.created_at
-      ? new Date(sale.created_at).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric',
-        })
-      : '____/____/____';
+  const dateStr = sale.created_at
+    ? new Date(sale.created_at).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+      })
+    : '____/____/____';
 
-    // Column count for empty rows
-    const colCount = 3 + (hasAnySku ? 1 : 0) + (hasDiscount ? 1 : 0);
+  // Column count for empty rows
+  const colCount = 3 + (hasAnySku ? 1 : 0) + (hasDiscount ? 1 : 0);
 
-    const itemRows = lineItems
-      .map((item) => {
-        const qty = item.quantity || '1';
-        const price = item.price || 0;
-        const lineTotal = (Number(qty) || 1) * price;
-        return `
+  const itemRows = lineItems
+    .map((item) => {
+      const qty = item.quantity || '1';
+      const price = item.price || 0;
+      const lineTotal = (Number(qty) || 1) * price;
+      return `
         <tr>
           <td class="cell">${qty}</td>
           <td class="cell">${esc(item.name || 'Item')}</td>
@@ -85,14 +84,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           ${hasDiscount ? '<td class="cell r">\u2014</td>' : ''}
           <td class="cell r b">${fmt(lineTotal)}</td>
         </tr>`;
-      })
-      .join('');
+    })
+    .join('');
 
-    const emptyRows = Array.from({ length: Math.max(0, 3 - lineItems.length) })
-      .map(() => `<tr>${'<td class="cell">&nbsp;</td>'.repeat(colCount)}</tr>`)
-      .join('');
+  const emptyRows = Array.from({ length: Math.max(0, 3 - lineItems.length) })
+    .map(() => `<tr>${'<td class="cell">&nbsp;</td>'.repeat(colCount)}</tr>`)
+    .join('');
 
-    const html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -286,15 +285,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 </body>
 </html>`;
 
-    return new NextResponse(html, {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    });
-  } catch (error: unknown) {
-    console.error('GET /api/walk-in/receipt error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
-    );
-  }
+  return new NextResponse(html, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  });
 }, { permission: 'walk_in.view' });

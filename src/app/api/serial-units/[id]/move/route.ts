@@ -78,21 +78,15 @@ export const POST = withAuth(
 
     // 3. Update current_location. Storing the canonical name keeps
     //    serial_units self-describing without forcing a join for read paths.
-    try {
-      await tenantQuery(
-        orgId,
-        `UPDATE serial_units
+    await tenantQuery(
+      orgId,
+      `UPDATE serial_units
            SET current_location = $1,
                updated_at = NOW()
          WHERE id = $2
            AND organization_id = $3`,
-        [target.name, unit.id, orgId],
-      );
-    } catch (err) {
-      console.error('[move] update serial_units.current_location failed', err);
-      const msg = err instanceof Error ? err.message : 'Move failed';
-      return NextResponse.json({ error: msg }, { status: 500 });
-    }
+      [target.name, unit.id, orgId],
+    );
 
     // 4. Lifecycle event.
     try {

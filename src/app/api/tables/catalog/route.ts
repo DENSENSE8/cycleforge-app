@@ -28,64 +28,48 @@ const putSchema = z.object({
 
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {
-    try {
-      const stored = await listOrgTables(ctx.organizationId);
-      return NextResponse.json({
-        success: true,
-        tables: resolveOrgCatalog(offeredTables(), stored),
-      });
-    } catch (error) {
-      console.error('[GET /api/tables/catalog] error:', error);
-      return NextResponse.json(
-        { success: false, error: 'Failed to load the table catalog' },
-        { status: 500 },
-      );
-    }
+    const stored = await listOrgTables(ctx.organizationId);
+    return NextResponse.json({
+      success: true,
+      tables: resolveOrgCatalog(offeredTables(), stored),
+    });
   },
   { permission: 'dashboard.view' },
 );
 
 export const PUT = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const parsed = putSchema.safeParse(await req.json().catch(() => ({})));
-      if (!parsed.success) {
-        return NextResponse.json(
-          { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid catalog' },
-          { status: 400 },
-        );
-      }
-      const offered = offeredTables();
-      const known = new Set(offered.map((e) => e.tableId));
-      // Drop rows naming a table the product does not offer. Storing one would
-      // put an unopenable tab in someone's strip the moment `resolveOrgCatalog`
-      // stopped filtering — better to never write it.
-      const rows = parsed.data.tables.filter((t) => known.has(t.tableId));
-
-      const written = await replaceOrgTables(ctx.organizationId, rows, ctx.staffId);
-
-      await recordAudit(pool, ctx, req, {
-        source: 'table-catalog-api',
-        action: AUDIT_ACTION.ORG_TABLE_CATALOG_SET,
-        entityType: AUDIT_ENTITY.ORG_TABLE_CATALOG,
-        entityId: String(ctx.organizationId),
-        after: {
-          enabled: written.filter((t) => t.enabled).map((t) => t.tableId),
-          disabled: written.filter((t) => !t.enabled).map((t) => t.tableId),
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        tables: resolveOrgCatalog(offered, written),
-      });
-    } catch (error) {
-      console.error('[PUT /api/tables/catalog] error:', error);
+    const parsed = putSchema.safeParse(await req.json().catch(() => ({})));
+    if (!parsed.success) {
       return NextResponse.json(
-        { success: false, error: 'Failed to save the table catalog' },
-        { status: 500 },
+        { success: false, error: parsed.error.issues[0]?.message ?? 'Invalid catalog' },
+        { status: 400 },
       );
     }
+    const offered = offeredTables();
+    const known = new Set(offered.map((e) => e.tableId));
+    // Drop rows naming a table the product does not offer. Storing one would
+    // put an unopenable tab in someone's strip the moment `resolveOrgCatalog`
+    // stopped filtering — better to never write it.
+    const rows = parsed.data.tables.filter((t) => known.has(t.tableId));
+
+    const written = await replaceOrgTables(ctx.organizationId, rows, ctx.staffId);
+
+    await recordAudit(pool, ctx, req, {
+      source: 'table-catalog-api',
+      action: AUDIT_ACTION.ORG_TABLE_CATALOG_SET,
+      entityType: AUDIT_ENTITY.ORG_TABLE_CATALOG,
+      entityId: String(ctx.organizationId),
+      after: {
+        enabled: written.filter((t) => t.enabled).map((t) => t.tableId),
+        disabled: written.filter((t) => !t.enabled).map((t) => t.tableId),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      tables: resolveOrgCatalog(offered, written),
+    });
   },
   { permission: 'admin.manage_features' },
 );

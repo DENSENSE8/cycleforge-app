@@ -5,17 +5,16 @@ import { mapScanToDesktopRoute } from '@/lib/scan-history-route';
 
 /** GET /api/scan/history?limit=20 */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const rawLimit = Number(searchParams.get('limit') ?? '20');
-    const limit = Number.isFinite(rawLimit)
-      ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
-      : 20;
+  const { searchParams } = new URL(req.url);
+  const rawLimit = Number(searchParams.get('limit') ?? '20');
+  const limit = Number.isFinite(rawLimit)
+    ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
+    : 20;
 
-    // `mobile_scan_events` has no organization_id column (child-scoped to staff), so isolation is enforced two ways:
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `SELECT mse.id, mse.raw_value, mse.kind, mse.routed_to, mse.created_at
+  // `mobile_scan_events` has no organization_id column (child-scoped to staff), so isolation is enforced two ways:
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT mse.id, mse.raw_value, mse.kind, mse.routed_to, mse.created_at
          FROM mobile_scan_events mse
         WHERE mse.staff_id = $1
           AND EXISTS (
@@ -28,35 +27,28 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             OR mse.routed_to LIKE '/m/u/%')
         ORDER BY mse.id DESC
         LIMIT $2`,
-      [ctx.staffId, limit, ctx.organizationId],
-    );
+    [ctx.staffId, limit, ctx.organizationId],
+  );
 
-    const entries = result.rows
-      .map((row: any) => {
-        const mapped = mapScanToDesktopRoute(row.routed_to);
-        if (!mapped) return null;
-        return {
-          id: row.id as number,
-          rawValue: row.raw_value as string,
-          kind: row.kind as string,
-          scannedAt: row.created_at as string,
-          type: mapped.type,
-          typeLabel: mapped.typeLabel,
-          desktopHref: mapped.desktopHref,
-          // `routed_to` is already the mobile route the scan resolved to
-          // (/m/r/…, /m/l/…, /m/u/…) — surface it so the mobile dashboard's
-          // Recent Activity can deep-link back into the phone flow.
-          mobileHref: (row.routed_to as string) || mapped.desktopHref,
-        };
-      })
-      .filter(Boolean);
+  const entries = result.rows
+    .map((row: any) => {
+      const mapped = mapScanToDesktopRoute(row.routed_to);
+      if (!mapped) return null;
+      return {
+        id: row.id as number,
+        rawValue: row.raw_value as string,
+        kind: row.kind as string,
+        scannedAt: row.created_at as string,
+        type: mapped.type,
+        typeLabel: mapped.typeLabel,
+        desktopHref: mapped.desktopHref,
+        // `routed_to` is already the mobile route the scan resolved to
+        // (/m/r/…, /m/l/…, /m/u/…) — surface it so the mobile dashboard's
+        // Recent Activity can deep-link back into the phone flow.
+        mobileHref: (row.routed_to as string) || mapped.desktopHref,
+      };
+    })
+    .filter(Boolean);
 
-    return NextResponse.json({ entries });
-  } catch (error: any) {
-    console.error('[scan/history] error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch scan history', details: error?.message },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({ entries });
 }, { permission: 'sku_stock.view' });

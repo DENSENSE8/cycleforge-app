@@ -20,37 +20,31 @@ export const GET = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid serial_unit id' }, { status: 400 });
   }
 
-  try {
-    // Org-ownership precheck: gate both the read and the downstream quality
-    // recompute on a unit that belongs to this tenant — a foreign unit id
-    // 404s (never 403) exactly like a missing one.
-    const exists = await tenantQuery<{ condition_grade: string | null; current_status: string | null }>(
-      orgId,
-      `SELECT condition_grade::text AS condition_grade, current_status::text AS current_status
+  // Org-ownership precheck: gate both the read and the downstream quality
+  // recompute on a unit that belongs to this tenant — a foreign unit id
+  // 404s (never 403) exactly like a missing one.
+  const exists = await tenantQuery<{ condition_grade: string | null; current_status: string | null }>(
+    orgId,
+    `SELECT condition_grade::text AS condition_grade, current_status::text AS current_status
          FROM serial_units WHERE id = $1 AND organization_id = $2`,
-      [serialUnitId, orgId],
-    );
-    if (exists.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-
-    const [quality, failures, repairs] = await Promise.all([
-      recomputeUnitQuality(serialUnitId, orgId),
-      listUnitFailureTags(serialUnitId, orgId),
-      listUnitRepairs(serialUnitId, orgId),
-    ]);
-
-    return NextResponse.json({
-      ok: true,
-      grade: exists.rows[0].condition_grade,
-      current_status: exists.rows[0].current_status,
-      quality,
-      failure_tags: failures,
-      repairs,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to load quality';
-    console.error('[GET /api/serial-units/[id]/quality] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    [serialUnitId, orgId],
+  );
+  if (exists.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
   }
+
+  const [quality, failures, repairs] = await Promise.all([
+    recomputeUnitQuality(serialUnitId, orgId),
+    listUnitFailureTags(serialUnitId, orgId),
+    listUnitRepairs(serialUnitId, orgId),
+  ]);
+
+  return NextResponse.json({
+    ok: true,
+    grade: exists.rows[0].condition_grade,
+    current_status: exists.rows[0].current_status,
+    quality,
+    failure_tags: failures,
+    repairs,
+  });
 }, { permission: 'sku_stock.view' });

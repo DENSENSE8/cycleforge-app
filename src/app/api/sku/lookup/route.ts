@@ -14,72 +14,67 @@ type SkuLookupRow = {
 };
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const idRaw = searchParams.get('id');
-    const staticRaw = searchParams.get('staticSku') || searchParams.get('code') || '';
+  const { searchParams } = new URL(req.url);
+  const idRaw = searchParams.get('id');
+  const staticRaw = searchParams.get('staticSku') || searchParams.get('code') || '';
 
-    if (idRaw != null && String(idRaw).trim() !== '') {
-      const id = Number(idRaw);
-      if (!Number.isFinite(id) || id <= 0) {
-        return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
-      }
-      // v_sku is a read-only VIEW without an organization_id column, so tenant
-      // scope rides on the GUC (RLS on the underlying serial_units rows).
-      const r = await tenantQuery<SkuLookupRow>(
-        ctx.organizationId,
-        `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
+  if (idRaw != null && String(idRaw).trim() !== '') {
+    const id = Number(idRaw);
+    if (!Number.isFinite(id) || id <= 0) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+    }
+    // v_sku is a read-only VIEW without an organization_id column, so tenant
+    // scope rides on the GUC (RLS on the underlying serial_units rows).
+    const r = await tenantQuery<SkuLookupRow>(
+      ctx.organizationId,
+      `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
          FROM v_sku WHERE id = $1 LIMIT 1`,
-        [id],
-      );
-      const row = r.rows[0];
-      if (!row) return NextResponse.json({ error: 'SKU row not found' }, { status: 404 });
-      const skuBase = String(row.static_sku || '').trim().split(':')[0].trim();
-      const product_url = skuBase ? `https://usavshop.com/products/search?keyword=${encodeURIComponent(skuBase)}` : null;
-      return NextResponse.json({ ...row, product_url });
-    }
-
-    let base = String(staticRaw).trim();
-    if (!base) {
-      return NextResponse.json({ error: 'Provide id or staticSku' }, { status: 400 });
-    }
-    if (base.includes(':')) {
-      base = base.split(':')[0].trim();
-    }
-    const xMatch = base.match(/^(.+?)x(\d+)$/i);
-    if (xMatch) base = xMatch[1].trim();
-
-    const normalized = normalizeSku(base);
-
-    let row: SkuLookupRow | undefined = (
-      await tenantQuery<SkuLookupRow>(
-        ctx.organizationId,
-        `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
-         FROM v_sku WHERE BTRIM(static_sku) = BTRIM($1) LIMIT 1`,
-        [base],
-      )
-    ).rows[0];
-
-    if (!row) {
-      const fuzzy = await tenantQuery<SkuLookupRow>(
-        ctx.organizationId,
-        `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
-         FROM v_sku WHERE static_sku IS NOT NULL AND BTRIM(static_sku) <> ''`,
-      );
-      row = fuzzy.rows.find((r) =>
-        normalizeSku(String(r.static_sku || '')) === normalized,
-      );
-    }
-
-    if (!row) {
-      return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
-    }
-
+      [id],
+    );
+    const row = r.rows[0];
+    if (!row) return NextResponse.json({ error: 'SKU row not found' }, { status: 404 });
     const skuBase = String(row.static_sku || '').trim().split(':')[0].trim();
     const product_url = skuBase ? `https://usavshop.com/products/search?keyword=${encodeURIComponent(skuBase)}` : null;
     return NextResponse.json({ ...row, product_url });
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Lookup failed';
-    return NextResponse.json({ error: message }, { status: 500 });
   }
+
+  let base = String(staticRaw).trim();
+  if (!base) {
+    return NextResponse.json({ error: 'Provide id or staticSku' }, { status: 400 });
+  }
+  if (base.includes(':')) {
+    base = base.split(':')[0].trim();
+  }
+  const xMatch = base.match(/^(.+?)x(\d+)$/i);
+  if (xMatch) base = xMatch[1].trim();
+
+  const normalized = normalizeSku(base);
+
+  let row: SkuLookupRow | undefined = (
+    await tenantQuery<SkuLookupRow>(
+      ctx.organizationId,
+      `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
+         FROM v_sku WHERE BTRIM(static_sku) = BTRIM($1) LIMIT 1`,
+      [base],
+    )
+  ).rows[0];
+
+  if (!row) {
+    const fuzzy = await tenantQuery<SkuLookupRow>(
+      ctx.organizationId,
+      `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location
+         FROM v_sku WHERE static_sku IS NOT NULL AND BTRIM(static_sku) <> ''`,
+    );
+    row = fuzzy.rows.find((r) =>
+      normalizeSku(String(r.static_sku || '')) === normalized,
+    );
+  }
+
+  if (!row) {
+    return NextResponse.json({ error: 'SKU not found' }, { status: 404 });
+  }
+
+  const skuBase = String(row.static_sku || '').trim().split(':')[0].trim();
+  const product_url = skuBase ? `https://usavshop.com/products/search?keyword=${encodeURIComponent(skuBase)}` : null;
+  return NextResponse.json({ ...row, product_url });
 }, { permission: 'sku_stock.view' });

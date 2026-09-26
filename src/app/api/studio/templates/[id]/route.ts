@@ -19,62 +19,56 @@ export const GET = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid template id' }, { status: 400 });
     }
 
-    try {
-      const rows = await db
-        .select({
-          id: workflowTemplates.id,
-          slug: workflowTemplates.slug,
-          name: workflowTemplates.name,
-          description: workflowTemplates.description,
-          category: workflowTemplates.category,
-          graph: workflowTemplates.graph,
-        })
-        .from(workflowTemplates)
-        .where(eq(workflowTemplates.id, templateId))
-        .limit(1);
+    const rows = await db
+      .select({
+        id: workflowTemplates.id,
+        slug: workflowTemplates.slug,
+        name: workflowTemplates.name,
+        description: workflowTemplates.description,
+        category: workflowTemplates.category,
+        graph: workflowTemplates.graph,
+      })
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.id, templateId))
+      .limit(1);
 
-      const row = rows[0];
-      if (!row) {
-        return NextResponse.json({ ok: false, error: 'template not found' }, { status: 404 });
-      }
-
-      const graph = (row.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
-      const nodes = (Array.isArray(graph.nodes) ? graph.nodes : []).map((n) => {
-        const meta = hasNode(n.type)
-          ? (({ label, icon, category, outputs }) => ({ label, icon, category, outputs }))(getNode(n.type))
-          : null;
-        return {
-          id: n.id,
-          type: n.type,
-          x: Number(n.x),
-          y: Number(n.y),
-          config: (n.config ?? {}) as Record<string, unknown>,
-          meta,
-        };
-      });
-      const edges = (Array.isArray(graph.edges) ? graph.edges : []).map((e) => ({
-        id: e.id,
-        source: e.source,
-        sourcePort: e.sourcePort,
-        target: e.target,
-      }));
-
-      const template: StudioTemplateDetail = {
-        id: row.id,
-        slug: row.slug,
-        name: row.name,
-        description: row.description,
-        category: row.category,
-        nodes,
-        edges,
-      };
-
-      return NextResponse.json({ ok: true, template });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'studio template detail failed';
-      console.error('[GET /api/studio/templates/[id]] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const row = rows[0];
+    if (!row) {
+      return NextResponse.json({ ok: false, error: 'template not found' }, { status: 404 });
     }
+
+    const graph = (row.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
+    const nodes = (Array.isArray(graph.nodes) ? graph.nodes : []).map((n) => {
+      const meta = hasNode(n.type)
+        ? (({ label, icon, category, outputs }) => ({ label, icon, category, outputs }))(getNode(n.type))
+        : null;
+      return {
+        id: n.id,
+        type: n.type,
+        x: Number(n.x),
+        y: Number(n.y),
+        config: (n.config ?? {}) as Record<string, unknown>,
+        meta,
+      };
+    });
+    const edges = (Array.isArray(graph.edges) ? graph.edges : []).map((e) => ({
+      id: e.id,
+      source: e.source,
+      sourcePort: e.sourcePort,
+      target: e.target,
+    }));
+
+    const template: StudioTemplateDetail = {
+      id: row.id,
+      slug: row.slug,
+      name: row.name,
+      description: row.description,
+      category: row.category,
+      nodes,
+      edges,
+    };
+
+    return NextResponse.json({ ok: true, template });
   },
   { permission: 'studio.view', feature: 'studio' },
 );

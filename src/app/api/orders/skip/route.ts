@@ -6,23 +6,15 @@ import { withAuth } from '@/lib/auth/withAuth';
  * NOTE: skipped_by column was removed from DB, so this is currently a no-op
  */
 export const POST = withAuth(async (req: NextRequest, _ctx) => {
-  try {
-    const { orderId } = await req.json();
+  const { orderId } = await req.json();
 
-    if (!orderId) {
-      return NextResponse.json(
-        { error: 'orderId is required' },
-        { status: 400 }
-      );
-    }
-
-    // skipped_by column was removed from DB, so we just return success
-    return NextResponse.json({ success: true, message: 'Skip acknowledged (feature disabled)' });
-  } catch (error: any) {
-    console.error('Error skipping order:', error);
+  if (!orderId) {
     return NextResponse.json(
-      { error: 'Failed to skip order', details: error.message },
-      { status: 500 }
+      { error: 'orderId is required' },
+      { status: 400 }
     );
   }
+
+  // skipped_by column was removed from DB, so we just return success
+  return NextResponse.json({ success: true, message: 'Skip acknowledged (feature disabled)' });
 }, { permission: 'tech.scan_serial' });

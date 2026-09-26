@@ -5,47 +5,41 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 // Tracking-only PO lookup.
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const trackingNumber = String(body?.trackingNumber || body?.tracking_number || '').trim();
+  const body = await request.json().catch(() => ({}));
+  const trackingNumber = String(body?.trackingNumber || body?.tracking_number || '').trim();
 
-    if (!trackingNumber) {
-      return NextResponse.json(
-        { success: false, error: 'trackingNumber is required' },
-        { status: 400 },
-      );
-    }
-
-    // Bind the authenticated tenant so the Zoho client reads THIS org (not the
-    // DOGFOOD_ORG_ID default that currentZohoOrgId() returns when unbound). Without
-    // this wrap, any tenant searching by tracking would hit USAV's Zoho POs.
-    const purchaseOrders = await withZohoOrg(ctx.organizationId, () =>
-      searchPurchaseOrdersByTracking(trackingNumber),
+  if (!trackingNumber) {
+    return NextResponse.json(
+      { success: false, error: 'trackingNumber is required' },
+      { status: 400 },
     );
-    const first = purchaseOrders[0] ?? null;
-
-    return NextResponse.json({
-      success: true,
-      matched: purchaseOrders.length > 0,
-      purchase_order: first
-        ? {
-            zoho_purchaseorder_id: first.purchaseorder_id,
-            zoho_purchaseorder_number: first.purchaseorder_number ?? null,
-            reference_number: first.reference_number ?? null,
-            vendor_name: first.vendor_name ?? null,
-            line_count: Array.isArray(first.line_items) ? first.line_items.length : 0,
-          }
-        : null,
-      candidates: purchaseOrders.map((po) => ({
-        zoho_purchaseorder_id: po.purchaseorder_id,
-        zoho_purchaseorder_number: po.purchaseorder_number ?? null,
-        reference_number: po.reference_number ?? null,
-        vendor_name: po.vendor_name ?? null,
-      })),
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'find-po failed';
-    console.error('zoho/find-po POST failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  // Bind the authenticated tenant so the Zoho client reads THIS org (not the
+  // DOGFOOD_ORG_ID default that currentZohoOrgId() returns when unbound). Without
+  // this wrap, any tenant searching by tracking would hit USAV's Zoho POs.
+  const purchaseOrders = await withZohoOrg(ctx.organizationId, () =>
+    searchPurchaseOrdersByTracking(trackingNumber),
+  );
+  const first = purchaseOrders[0] ?? null;
+
+  return NextResponse.json({
+    success: true,
+    matched: purchaseOrders.length > 0,
+    purchase_order: first
+      ? {
+          zoho_purchaseorder_id: first.purchaseorder_id,
+          zoho_purchaseorder_number: first.purchaseorder_number ?? null,
+          reference_number: first.reference_number ?? null,
+          vendor_name: first.vendor_name ?? null,
+          line_count: Array.isArray(first.line_items) ? first.line_items.length : 0,
+        }
+      : null,
+    candidates: purchaseOrders.map((po) => ({
+      zoho_purchaseorder_id: po.purchaseorder_id,
+      zoho_purchaseorder_number: po.purchaseorder_number ?? null,
+      reference_number: po.reference_number ?? null,
+      vendor_name: po.vendor_name ?? null,
+    })),
+  });
 }, { permission: 'receiving.scan_po' });

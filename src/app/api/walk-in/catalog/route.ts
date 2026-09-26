@@ -35,65 +35,57 @@ interface CatalogSearchResponse {
  * Includes category IDs on each item. Optionally filter by category.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-    }
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get('q')?.trim().toLowerCase() || '';
-    const categoryFilter = searchParams.get('category')?.trim() || '';
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get('q')?.trim().toLowerCase() || '';
+  const categoryFilter = searchParams.get('category')?.trim() || '';
 
-    const body: Record<string, unknown> = {
-      object_types: ['ITEM'],
-      limit: 100,
-      ...(query ? { query: { text_query: { keywords: [query] } } } : {}),
-    };
+  const body: Record<string, unknown> = {
+    object_types: ['ITEM'],
+    limit: 100,
+    ...(query ? { query: { text_query: { keywords: [query] } } } : {}),
+  };
 
-    // Read the caller-org's Square catalog (Nango-connected token when present;
-    // env fallback) so one tenant never sees another's item names/SKUs/prices.
-    const result = await squareFetchForOrg<CatalogSearchResponse>(
-      ctx.organizationId,
-      '/catalog/search',
-      {
-        method: 'POST',
-        body,
-      },
-    );
+  // Read the caller-org's Square catalog (Nango-connected token when present;
+  // env fallback) so one tenant never sees another's item names/SKUs/prices.
+  const result = await squareFetchForOrg<CatalogSearchResponse>(
+    ctx.organizationId,
+    '/catalog/search',
+    {
+      method: 'POST',
+      body,
+    },
+  );
 
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: formatSquareErrors(result.errors) },
-        { status: 502 },
-      );
-    }
-
-    let items = result.data.objects || [];
-
-    // Filter out items where ALL variations have -RS suffix SKUs (repair-only)
-    items = items.filter((item) => {
-      const variations = item.item_data?.variations || [];
-      if (variations.length === 0) return true;
-      return variations.some((v) => !isRepairSku(v.item_variation_data?.sku));
-    });
-
-    // Filter by category if specified
-    if (categoryFilter) {
-      items = items.filter((item) => {
-        const cats = item.item_data?.categories || [];
-        return cats.some((c) => c.id === categoryFilter);
-      });
-    }
-
-    // Limit to 50
-    items = items.slice(0, 50);
-
-    return NextResponse.json({ items });
-  } catch (error: unknown) {
-    console.error('GET /api/walk-in/catalog error:', error);
+  if (!result.ok) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
+      { error: formatSquareErrors(result.errors) },
+      { status: 502 },
     );
   }
+
+  let items = result.data.objects || [];
+
+  // Filter out items where ALL variations have -RS suffix SKUs (repair-only)
+  items = items.filter((item) => {
+    const variations = item.item_data?.variations || [];
+    if (variations.length === 0) return true;
+    return variations.some((v) => !isRepairSku(v.item_variation_data?.sku));
+  });
+
+  // Filter by category if specified
+  if (categoryFilter) {
+    items = items.filter((item) => {
+      const cats = item.item_data?.categories || [];
+      return cats.some((c) => c.id === categoryFilter);
+    });
+  }
+
+  // Limit to 50
+  items = items.slice(0, 50);
+
+  return NextResponse.json({ items });
 }, { permission: 'walk_in.view', feature: 'walkIn' });

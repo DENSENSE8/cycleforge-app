@@ -43,29 +43,21 @@ async function getKitPartById(partId: number, orgId: OrgId): Promise<Record<stri
 
 /** GET /api/sku-catalog/[id]/kit-parts — Read the kit-parts BOM for a SKU. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
-    if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
-      return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
-    }
-
-    // Org-scoped lookup — a SKU owned by another org resolves to null → 404.
-    const catalog = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
-    if (!catalog) {
-      return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
-    }
-
-    // condition = null ⇒ every part (the editor shows the full BOM regardless of
-    // which condition grades a row is gated to). Org-scoped.
-    const parts = await getKitParts(skuCatalogId, null, ctx.organizationId);
-    return NextResponse.json({ success: true, catalog, parts });
-  } catch (error: any) {
-    console.error('Error in GET /api/sku-catalog/[id]/kit-parts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to load kit parts' },
-      { status: 500 },
-    );
+  const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
+  if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
+    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
   }
+
+  // Org-scoped lookup — a SKU owned by another org resolves to null → 404.
+  const catalog = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
+  if (!catalog) {
+    return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
+  }
+
+  // condition = null ⇒ every part (the editor shows the full BOM regardless of
+  // which condition grades a row is gated to). Org-scoped.
+  const parts = await getKitParts(skuCatalogId, null, ctx.organizationId);
+  return NextResponse.json({ success: true, catalog, parts });
 }, { permission: 'sku_stock.view' });
 
 /**
@@ -73,166 +65,142 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  * Idempotent via Idempotency-Key (header or body).
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
-    if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
-      return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
-    }
-
-    // Org-ownership precheck on the parent SKU — a part can only be created under
-    // a catalog row this org owns (cross-org → 404, never 403).
-    const parent = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
-    if (!parent) {
-      return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
-    }
-
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(KitPartCreateBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
-
-    const idemKey = readIdempotencyKey(req, parsed.idempotencyKey ?? null);
-    if (idemKey) {
-      const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE_KIT_PARTS_POST);
-      if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
-    }
-
-    // Thread orgId so the INSERT runs inside withTenantTransaction and stamps
-    // organization_id = caller's org (without it the table default resolves to
-    // the GUC, which is unset on the raw pool → wrong-tenant write).
-    const part = await createKitPart({
-      skuCatalogId,
-      componentName: parsed.componentName,
-      componentType: parsed.componentType,
-      qtyRequired: parsed.qtyRequired,
-      requiredFor: parsed.requiredFor ?? null,
-      isCritical: parsed.isCritical,
-      sortOrder: parsed.sortOrder,
-      documentUrl: parsed.documentUrl,
-      documentTitle: parsed.documentTitle,
-      documentMime: parsed.documentMime,
-    }, ctx.organizationId);
-
-    await recordAudit(pool, ctx, req, {
-      source: 'sku-catalog-api',
-      action: AUDIT_ACTION.KIT_PART_CREATE,
-      entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
-      entityId: part.id,
-      before: null,
-      after: { ...part },
-      extra: { sku_catalog_id: skuCatalogId },
-    });
-
-    // Bust the cached get-title-by-sku bundle (tagged sku-kit-parts) for this org.
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
-
-    const responseBody = { success: true, part };
-    if (idemKey) {
-      await saveApiIdempotencyResponse(pool, {
-        orgId: ctx.organizationId,
-        idempotencyKey: idemKey,
-        route: ROUTE_KIT_PARTS_POST,
-        staffId: ctx.staffId,
-        statusCode: 201,
-        responseBody,
-      });
-    }
-    return NextResponse.json(responseBody, { status: 201 });
-  } catch (error: any) {
-    console.error('Error in POST /api/sku-catalog/[id]/kit-parts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create kit part' },
-      { status: 500 },
-    );
+  const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
+  if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
+    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
   }
+
+  // Org-ownership precheck on the parent SKU — a part can only be created under
+  // a catalog row this org owns (cross-org → 404, never 403).
+  const parent = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
+  if (!parent) {
+    return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
+  }
+
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(KitPartCreateBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
+
+  const idemKey = readIdempotencyKey(req, parsed.idempotencyKey ?? null);
+  if (idemKey) {
+    const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE_KIT_PARTS_POST);
+    if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
+  }
+
+  // Thread orgId so the INSERT runs inside withTenantTransaction and stamps
+  // organization_id = caller's org (without it the table default resolves to
+  // the GUC, which is unset on the raw pool → wrong-tenant write).
+  const part = await createKitPart({
+    skuCatalogId,
+    componentName: parsed.componentName,
+    componentType: parsed.componentType,
+    qtyRequired: parsed.qtyRequired,
+    requiredFor: parsed.requiredFor ?? null,
+    isCritical: parsed.isCritical,
+    sortOrder: parsed.sortOrder,
+    documentUrl: parsed.documentUrl,
+    documentTitle: parsed.documentTitle,
+    documentMime: parsed.documentMime,
+  }, ctx.organizationId);
+
+  await recordAudit(pool, ctx, req, {
+    source: 'sku-catalog-api',
+    action: AUDIT_ACTION.KIT_PART_CREATE,
+    entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
+    entityId: part.id,
+    before: null,
+    after: { ...part },
+    extra: { sku_catalog_id: skuCatalogId },
+  });
+
+  // Bust the cached get-title-by-sku bundle (tagged sku-kit-parts) for this org.
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
+
+  const responseBody = { success: true, part };
+  if (idemKey) {
+    await saveApiIdempotencyResponse(pool, {
+      orgId: ctx.organizationId,
+      idempotencyKey: idemKey,
+      route: ROUTE_KIT_PARTS_POST,
+      staffId: ctx.staffId,
+      statusCode: 201,
+      responseBody,
+    });
+  }
+  return NextResponse.json(responseBody, { status: 201 });
 }, { permission: 'sku_stock.manage' });
 
 /**
  * PUT /api/sku-catalog/[id]/kit-parts — Update a kit part by partId in body.
  */
 export const PUT = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(KitPartUpdateBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(KitPartUpdateBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    // Org-scoped before-state — a cross-org partId is invisible (→ 404), so the
-    // write below can never touch another tenant's part.
-    const before = await getKitPartById(parsed.partId, ctx.organizationId);
-    if (!before) {
-      return NextResponse.json({ success: false, error: 'Kit part not found' }, { status: 404 });
-    }
-
-    const updated = await updateKitPart(parsed.partId, {
-      componentName: parsed.componentName,
-      componentType: parsed.componentType,
-      qtyRequired: parsed.qtyRequired,
-      requiredFor: parsed.requiredFor,
-      isCritical: parsed.isCritical,
-      sortOrder: parsed.sortOrder,
-      documentUrl: parsed.documentUrl,
-      documentTitle: parsed.documentTitle,
-      documentMime: parsed.documentMime,
-    }, ctx.organizationId);
-    if (!updated) {
-      return NextResponse.json({ success: false, error: 'No changes' }, { status: 400 });
-    }
-
-    await recordAudit(pool, ctx, req, {
-      source: 'sku-catalog-api',
-      action: AUDIT_ACTION.KIT_PART_UPDATE,
-      entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
-      entityId: parsed.partId,
-      before,
-      after: { ...updated },
-    });
-
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
-
-    return NextResponse.json({ success: true, part: updated });
-  } catch (error: any) {
-    console.error('Error in PUT /api/sku-catalog/[id]/kit-parts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to update kit part' },
-      { status: 500 },
-    );
+  // Org-scoped before-state — a cross-org partId is invisible (→ 404), so the
+  // write below can never touch another tenant's part.
+  const before = await getKitPartById(parsed.partId, ctx.organizationId);
+  if (!before) {
+    return NextResponse.json({ success: false, error: 'Kit part not found' }, { status: 404 });
   }
+
+  const updated = await updateKitPart(parsed.partId, {
+    componentName: parsed.componentName,
+    componentType: parsed.componentType,
+    qtyRequired: parsed.qtyRequired,
+    requiredFor: parsed.requiredFor,
+    isCritical: parsed.isCritical,
+    sortOrder: parsed.sortOrder,
+    documentUrl: parsed.documentUrl,
+    documentTitle: parsed.documentTitle,
+    documentMime: parsed.documentMime,
+  }, ctx.organizationId);
+  if (!updated) {
+    return NextResponse.json({ success: false, error: 'No changes' }, { status: 400 });
+  }
+
+  await recordAudit(pool, ctx, req, {
+    source: 'sku-catalog-api',
+    action: AUDIT_ACTION.KIT_PART_UPDATE,
+    entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
+    entityId: parsed.partId,
+    before,
+    after: { ...updated },
+  });
+
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
+
+  return NextResponse.json({ success: true, part: updated });
 }, { permission: 'sku_stock.manage' });
 
 /**
  * DELETE /api/sku-catalog/[id]/kit-parts — Delete a kit part by partId in body.
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(KitPartDeleteBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(KitPartDeleteBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    // Org-ownership gate: only delete a part this org owns. A cross-org (or
-    // missing) partId resolves to null here, so deleteKitPart is never reached
-    // for another tenant's row (→ 404).
-    const before = await getKitPartById(parsed.partId, ctx.organizationId);
-    if (!before) {
-      return NextResponse.json({ success: false, error: 'Kit part not found' }, { status: 404 });
-    }
-    const deleted = await deleteKitPart(parsed.partId, ctx.organizationId);
-
-    if (deleted && before) {
-      await recordAudit(pool, ctx, req, {
-        source: 'sku-catalog-api',
-        action: AUDIT_ACTION.KIT_PART_DELETE,
-        entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
-        entityId: parsed.partId,
-        before,
-        after: null,
-      });
-    }
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
-    return NextResponse.json({ success: true, deleted });
-  } catch (error: any) {
-    console.error('Error in DELETE /api/sku-catalog/[id]/kit-parts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to delete kit part' },
-      { status: 500 },
-    );
+  // Org-ownership gate: only delete a part this org owns. A cross-org (or
+  // missing) partId resolves to null here, so deleteKitPart is never reached
+  // for another tenant's row (→ 404).
+  const before = await getKitPartById(parsed.partId, ctx.organizationId);
+  if (!before) {
+    return NextResponse.json({ success: false, error: 'Kit part not found' }, { status: 404 });
   }
+  const deleted = await deleteKitPart(parsed.partId, ctx.organizationId);
+
+  if (deleted && before) {
+    await recordAudit(pool, ctx, req, {
+      source: 'sku-catalog-api',
+      action: AUDIT_ACTION.KIT_PART_DELETE,
+      entityType: AUDIT_ENTITY.KIT_PART_TEMPLATE,
+      entityId: parsed.partId,
+      before,
+      after: null,
+    });
+  }
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.skuKitParts]);
+  return NextResponse.json({ success: true, deleted });
 }, { permission: 'sku_stock.manage' });

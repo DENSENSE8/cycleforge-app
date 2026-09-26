@@ -88,98 +88,90 @@ async function dispatchPrintNode(
 }
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const body = await request.json().catch(() => ({}));
-    const klass = String(body?.class || '').trim() as LabelClass;
-    if (klass !== 'carton' && klass !== 'product' && klass !== 'bin' && klass !== 'unit') {
-      return NextResponse.json(
-        { error: 'class must be carton | product | bin | unit' },
-        { status: 400 },
-      );
-    }
-    const profileIdHint =
-      Number.isFinite(Number(body?.profileId)) && Number(body?.profileId) > 0
-        ? Math.floor(Number(body?.profileId))
-        : null;
-
-    let zpl: string;
-    let title: string;
-    try {
-      switch (klass) {
-        case 'carton':
-          zpl = buildCartonZpl(body.payload);
-          title = `Package ${body.payload?.poTail ?? ''}`;
-          break;
-        case 'product':
-          zpl = buildProductZpl(body.payload);
-          title = `Product ${body.payload?.sku ?? ''}`;
-          break;
-        case 'bin':
-          zpl = buildBinZpl(body.payload);
-          title = `Bin ${body.payload?.barcode ?? ''}`;
-          break;
-        case 'unit':
-          zpl = buildUnitZpl(body.payload);
-          title = `Unit ${body.payload?.unitSerial ?? ''}`;
-          break;
-      }
-    } catch (err) {
-      return NextResponse.json(
-        { error: 'Invalid payload', details: err instanceof Error ? err.message : String(err) },
-        { status: 400 },
-      );
-    }
-
-    const profile = await resolveProfile(orgId, klass, profileIdHint);
-    if (!profile) {
-      // No printer configured — return the ZPL so the caller can fall back
-      // to a browser-side printer (HTML popup, manual download, etc.).
-      return NextResponse.json({
-        success: true,
-        dispatched: false,
-        reason: 'NO_PRINTER_PROFILE',
-        zpl,
-      });
-    }
-
-    if (profile.vendor === 'printnode') {
-      const result = await dispatchPrintNode(profile.external_id, zpl, title);
-      if (!result.ok) {
-        return NextResponse.json(
-          {
-            success: false,
-            dispatched: false,
-            profile: { id: profile.id, name: profile.name },
-            error: result.error || 'Dispatch failed',
-            zpl,
-          },
-          { status: 502 },
-        );
-      }
-      return NextResponse.json({
-        success: true,
-        dispatched: true,
-        profile: { id: profile.id, name: profile.name, vendor: profile.vendor },
-        job_id: result.jobId ?? null,
-      });
-    }
-
-    // Loftware support stubbed — wire in vendor SDK when adopted.
+  const orgId = ctx.organizationId;
+  const body = await request.json().catch(() => ({}));
+  const klass = String(body?.class || '').trim() as LabelClass;
+  if (klass !== 'carton' && klass !== 'product' && klass !== 'bin' && klass !== 'unit') {
     return NextResponse.json(
-      {
-        success: false,
-        dispatched: false,
-        error: `Vendor "${profile.vendor}" not yet implemented`,
-        zpl,
-      },
-      { status: 501 },
-    );
-  } catch (err: any) {
-    console.error('[POST /api/print/dispatch] error:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Print dispatch failed' },
-      { status: 500 },
+      { error: 'class must be carton | product | bin | unit' },
+      { status: 400 },
     );
   }
+  const profileIdHint =
+    Number.isFinite(Number(body?.profileId)) && Number(body?.profileId) > 0
+      ? Math.floor(Number(body?.profileId))
+      : null;
+
+  let zpl: string;
+  let title: string;
+  try {
+    switch (klass) {
+      case 'carton':
+        zpl = buildCartonZpl(body.payload);
+        title = `Package ${body.payload?.poTail ?? ''}`;
+        break;
+      case 'product':
+        zpl = buildProductZpl(body.payload);
+        title = `Product ${body.payload?.sku ?? ''}`;
+        break;
+      case 'bin':
+        zpl = buildBinZpl(body.payload);
+        title = `Bin ${body.payload?.barcode ?? ''}`;
+        break;
+      case 'unit':
+        zpl = buildUnitZpl(body.payload);
+        title = `Unit ${body.payload?.unitSerial ?? ''}`;
+        break;
+    }
+  } catch (err) {
+    return NextResponse.json(
+      { error: 'Invalid payload', details: err instanceof Error ? err.message : String(err) },
+      { status: 400 },
+    );
+  }
+
+  const profile = await resolveProfile(orgId, klass, profileIdHint);
+  if (!profile) {
+    // No printer configured — return the ZPL so the caller can fall back
+    // to a browser-side printer (HTML popup, manual download, etc.).
+    return NextResponse.json({
+      success: true,
+      dispatched: false,
+      reason: 'NO_PRINTER_PROFILE',
+      zpl,
+    });
+  }
+
+  if (profile.vendor === 'printnode') {
+    const result = await dispatchPrintNode(profile.external_id, zpl, title);
+    if (!result.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          dispatched: false,
+          profile: { id: profile.id, name: profile.name },
+          error: result.error || 'Dispatch failed',
+          zpl,
+        },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({
+      success: true,
+      dispatched: true,
+      profile: { id: profile.id, name: profile.name, vendor: profile.vendor },
+      job_id: result.jobId ?? null,
+    });
+  }
+
+  // Loftware support stubbed — wire in vendor SDK when adopted.
+  return NextResponse.json(
+    {
+      success: false,
+      dispatched: false,
+      error: `Vendor "${profile.vendor}" not yet implemented`,
+      zpl,
+    },
+    { status: 501 },
+  );
 }, { permission: 'print.label' });

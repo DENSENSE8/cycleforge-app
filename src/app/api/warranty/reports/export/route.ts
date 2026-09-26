@@ -23,35 +23,29 @@ export const GET = withAuth(async (request, ctx) => {
     );
   }
 
-  try {
-    // Tenant isolation:
-    const rows = await buildWarrantyReportRows(
-      {
-        status: parsed.data.status ?? null,
-        sku: parsed.data.sku ?? null,
-        from: parsed.data.from ?? null,
-        to: parsed.data.to ?? null,
-        outcome: parsed.data.outcome ?? null,
-      },
-      ctx.organizationId,
-    );
+  // Tenant isolation:
+  const rows = await buildWarrantyReportRows(
+    {
+      status: parsed.data.status ?? null,
+      sku: parsed.data.sku ?? null,
+      from: parsed.data.from ?? null,
+      to: parsed.data.to ?? null,
+      outcome: parsed.data.outcome ?? null,
+    },
+    ctx.organizationId,
+  );
 
-    if (parsed.data.format === 'json') {
-      return NextResponse.json({ ok: true, rows });
-    }
-
-    const csv = toCsv(rows, WARRANTY_REPORT_COLUMNS);
-    return new NextResponse(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': `attachment; filename="warranty-claims-report.csv"`,
-        'Cache-Control': 'no-store',
-      },
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'warranty report failed';
-    console.error('[GET /api/warranty/reports/export] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  if (parsed.data.format === 'json') {
+    return NextResponse.json({ ok: true, rows });
   }
+
+  const csv = toCsv(rows, WARRANTY_REPORT_COLUMNS);
+  return new NextResponse(csv, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="warranty-claims-report.csv"`,
+      'Cache-Control': 'no-store',
+    },
+  });
 }, { permission: 'warranty.view', feature: 'repair' });

@@ -10,44 +10,39 @@ import type { NextRequest } from 'next/server';
 export const runtime = 'nodejs';
 
 export const POST = withAuth(async (request: NextRequest) => {
-  try {
-    const body = await request.json() as { sampleId?: number; rating?: number };
+  const body = await request.json() as { sampleId?: number; rating?: number };
 
-    if (!body.sampleId || typeof body.sampleId !== 'number') {
-      return NextResponse.json(
-        { ok: false, error: 'sampleId (number) is required' },
-        { status: 400 },
-      );
-    }
-    if (!body.rating || body.rating < 1 || body.rating > 5) {
-      return NextResponse.json(
-        { ok: false, error: 'rating must be 1-5' },
-        { status: 400 },
-      );
-    }
-
-    const [updated] = await db.update(trainingSamples)
-      .set({
-        rating: body.rating,
-        status: body.rating >= 2 ? 'rated' : 'rejected',
-        ratedAt: new Date(),
-      })
-      .where(eq(trainingSamples.id, body.sampleId))
-      .returning({ id: trainingSamples.id, rating: trainingSamples.rating });
-
-    if (!updated) {
-      return NextResponse.json(
-        { ok: false, error: `Sample ${body.sampleId} not found` },
-        { status: 404 },
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      sample: updated,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  if (!body.sampleId || typeof body.sampleId !== 'number') {
+    return NextResponse.json(
+      { ok: false, error: 'sampleId (number) is required' },
+      { status: 400 },
+    );
   }
+  if (!body.rating || body.rating < 1 || body.rating > 5) {
+    return NextResponse.json(
+      { ok: false, error: 'rating must be 1-5' },
+      { status: 400 },
+    );
+  }
+
+  const [updated] = await db.update(trainingSamples)
+    .set({
+      rating: body.rating,
+      status: body.rating >= 2 ? 'rated' : 'rejected',
+      ratedAt: new Date(),
+    })
+    .where(eq(trainingSamples.id, body.sampleId))
+    .returning({ id: trainingSamples.id, rating: trainingSamples.rating });
+
+  if (!updated) {
+    return NextResponse.json(
+      { ok: false, error: `Sample ${body.sampleId} not found` },
+      { status: 404 },
+    );
+  }
+
+  return NextResponse.json({
+    ok: true,
+    sample: updated,
+  });
 }, { permission: 'admin.manage_features' });

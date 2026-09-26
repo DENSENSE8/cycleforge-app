@@ -146,35 +146,34 @@ export const GET = withAuth(
       return NextResponse.json({ success: false, error: msg }, { status: 400 });
     }
 
-    try {
-      const source = buildSourceCTE(section);
-      // Seed $1 = tenant org id — every section's source CTE filters its driving
-      // event table on `organization_id = $1`. (source.params is currently empty
-      // but spread first to keep the original weaving contract.)
-      const params: unknown[] = [orgId, ...source.params];
-      const filterClauses: string[] = [];
+    const source = buildSourceCTE(section);
+    // Seed $1 = tenant org id — every section's source CTE filters its driving
+    // event table on `organization_id = $1`. (source.params is currently empty
+    // but spread first to keep the original weaving contract.)
+    const params: unknown[] = [orgId, ...source.params];
+    const filterClauses: string[] = [];
 
-      if (filters.range.start) {
-        params.push(filters.range.start);
-        filterClauses.push(`src.occurred_at >= $${params.length}::timestamptz`);
-      }
-      if (filters.range.end) {
-        params.push(filters.range.end);
-        filterClauses.push(`src.occurred_at <= $${params.length}::timestamptz`);
-      }
-      if (filters.staffId != null) {
-        params.push(filters.staffId);
-        filterClauses.push(`src.staff_id = $${params.length}`);
-      }
-      // sku filter is implied for the "sku" section; explicit filter narrows further.
-      if (filters.sku && (section === 'sku' || section === 'packing' || section === 'tech')) {
-        params.push(filters.sku);
-        filterClauses.push(`src.item_key = $${params.length}`);
-      }
+    if (filters.range.start) {
+      params.push(filters.range.start);
+      filterClauses.push(`src.occurred_at >= $${params.length}::timestamptz`);
+    }
+    if (filters.range.end) {
+      params.push(filters.range.end);
+      filterClauses.push(`src.occurred_at <= $${params.length}::timestamptz`);
+    }
+    if (filters.staffId != null) {
+      params.push(filters.staffId);
+      filterClauses.push(`src.staff_id = $${params.length}`);
+    }
+    // sku filter is implied for the "sku" section; explicit filter narrows further.
+    if (filters.sku && (section === 'sku' || section === 'packing' || section === 'tech')) {
+      params.push(filters.sku);
+      filterClauses.push(`src.item_key = $${params.length}`);
+    }
 
-      const where = filterClauses.length ? `WHERE ${filterClauses.join(' AND ')}` : '';
+    const where = filterClauses.length ? `WHERE ${filterClauses.join(' AND ')}` : '';
 
-      const sql = `
+    const sql = `
         WITH src AS (
           ${source.sql}
         ),
@@ -227,43 +226,38 @@ export const GET = withAuth(
           (SELECT COALESCE(json_agg(by_item.*),  '[]'::json) FROM by_item)    AS by_item
       `;
 
-      const { rows } = await tenantQuery(orgId, sql, params);
-      const row = rows[0] ?? {};
+    const { rows } = await tenantQuery(orgId, sql, params);
+    const row = rows[0] ?? {};
 
-      const totalsRow = (row.totals as ReportBuckets['totals'] | null) ?? {
-        events: 0,
-        distinct_items: 0,
-        distinct_staff: 0,
-      };
+    const totalsRow = (row.totals as ReportBuckets['totals'] | null) ?? {
+      events: 0,
+      distinct_items: 0,
+      distinct_staff: 0,
+    };
 
-      // Fill missing hours with 0s so the sparkline always has 24 buckets.
-      const hourMap = new Map<number, number>();
-      for (const h of (row.by_hour as Array<{ hour: number; count: number }> | null) ?? []) {
-        hourMap.set(h.hour, h.count);
-      }
-      const by_hour = Array.from({ length: 24 }, (_, h) => ({
-        hour: h,
-        count: hourMap.get(h) ?? 0,
-      }));
-
-      const result: ReportBuckets = {
-        totals: totalsRow,
-        by_hour,
-        by_action: (row.by_action as Array<{ action: string; count: number }>) ?? [],
-        by_staff: (row.by_staff as Array<{ staff_id: number; name: string | null; count: number }>) ?? [],
-        by_item: (row.by_item as Array<{ key: string; label: string; count: number }>)?.map((it: any) => ({
-          key: it.item_key as string,
-          label: (it.item_label as string) ?? (it.item_key as string),
-          count: it.count as number,
-        })) ?? [],
-      };
-
-      return NextResponse.json({ success: true, section, ...result });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'audit-log/report failed';
-      console.error('audit-log/report GET failed:', err);
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    // Fill missing hours with 0s so the sparkline always has 24 buckets.
+    const hourMap = new Map<number, number>();
+    for (const h of (row.by_hour as Array<{ hour: number; count: number }> | null) ?? []) {
+      hourMap.set(h.hour, h.count);
     }
+    const by_hour = Array.from({ length: 24 }, (_, h) => ({
+      hour: h,
+      count: hourMap.get(h) ?? 0,
+    }));
+
+    const result: ReportBuckets = {
+      totals: totalsRow,
+      by_hour,
+      by_action: (row.by_action as Array<{ action: string; count: number }>) ?? [],
+      by_staff: (row.by_staff as Array<{ staff_id: number; name: string | null; count: number }>) ?? [],
+      by_item: (row.by_item as Array<{ key: string; label: string; count: number }>)?.map((it: any) => ({
+        key: it.item_key as string,
+        label: (it.item_label as string) ?? (it.item_key as string),
+        count: it.count as number,
+      })) ?? [],
+    };
+
+    return NextResponse.json({ success: true, section, ...result });
   },
   { permission: 'admin.view_logs' },
 );

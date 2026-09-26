@@ -105,57 +105,51 @@ function normalizePurchaseOrder(raw: unknown) {
 /** GET /api/zoho/purchase-orders */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
-  try {
-    const { searchParams } = request.nextUrl;
-    const purchaseOrderId = (searchParams.get('purchaseorder_id') ?? '').trim();
+  const { searchParams } = request.nextUrl;
+  const purchaseOrderId = (searchParams.get('purchaseorder_id') ?? '').trim();
 
-    if (purchaseOrderId) {
-      const data = await withZohoOrg(orgId, () => getPurchaseOrderById(purchaseOrderId));
-      const normalizedPurchaseOrder = normalizePurchaseOrder(
-        (data as Record<string, unknown>).purchaseorder
-      );
-      return NextResponse.json({
-        success: true,
-        mode: 'detail',
-        ...data,
-        purchaseorder: normalizedPurchaseOrder,
-      });
-    }
-
-    const page = Math.max(1, Number(searchParams.get('page') || 1));
-    const perPage = Math.min(200, Math.max(1, Number(searchParams.get('per_page') || 50)));
-    const status = (searchParams.get('status') ?? '').trim() || undefined;
-    const searchText =
-      (searchParams.get('search_text') ?? searchParams.get('search') ?? '').trim() || undefined;
-    const vendorId = (searchParams.get('vendor_id') ?? '').trim() || undefined;
-    const lastModifiedTime = (searchParams.get('last_modified_time') ?? '').trim() || undefined;
-
-    const data = await withZohoOrg(orgId, () =>
-      listPurchaseOrders({
-        page,
-        per_page: perPage,
-        status,
-        search_text: searchText,
-        vendor_id: vendorId,
-        last_modified_time: lastModifiedTime,
-      })
+  if (purchaseOrderId) {
+    const data = await withZohoOrg(orgId, () => getPurchaseOrderById(purchaseOrderId));
+    const normalizedPurchaseOrder = normalizePurchaseOrder(
+      (data as Record<string, unknown>).purchaseorder
     );
-
-    const rawPurchaseOrders =
-      ((data as Record<string, unknown>).purchaseorders as unknown[]) ||
-      ((data as Record<string, unknown>).purchase_orders as unknown[]) ||
-      ((data as Record<string, unknown>).purchaseOrders as unknown[]) ||
-      [];
-    const purchaseorders = Array.isArray(rawPurchaseOrders)
-      ? rawPurchaseOrders
-          .map(normalizePurchaseOrder)
-          .filter((row): row is NonNullable<ReturnType<typeof normalizePurchaseOrder>> => Boolean(row))
-      : [];
-
-    return NextResponse.json({ success: true, mode: 'list', ...data, purchaseorders });
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to fetch purchase orders';
-    console.error('Zoho purchase orders API failed:', error);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      mode: 'detail',
+      ...data,
+      purchaseorder: normalizedPurchaseOrder,
+    });
   }
+
+  const page = Math.max(1, Number(searchParams.get('page') || 1));
+  const perPage = Math.min(200, Math.max(1, Number(searchParams.get('per_page') || 50)));
+  const status = (searchParams.get('status') ?? '').trim() || undefined;
+  const searchText =
+    (searchParams.get('search_text') ?? searchParams.get('search') ?? '').trim() || undefined;
+  const vendorId = (searchParams.get('vendor_id') ?? '').trim() || undefined;
+  const lastModifiedTime = (searchParams.get('last_modified_time') ?? '').trim() || undefined;
+
+  const data = await withZohoOrg(orgId, () =>
+    listPurchaseOrders({
+      page,
+      per_page: perPage,
+      status,
+      search_text: searchText,
+      vendor_id: vendorId,
+      last_modified_time: lastModifiedTime,
+    })
+  );
+
+  const rawPurchaseOrders =
+    ((data as Record<string, unknown>).purchaseorders as unknown[]) ||
+    ((data as Record<string, unknown>).purchase_orders as unknown[]) ||
+    ((data as Record<string, unknown>).purchaseOrders as unknown[]) ||
+    [];
+  const purchaseorders = Array.isArray(rawPurchaseOrders)
+    ? rawPurchaseOrders
+        .map(normalizePurchaseOrder)
+        .filter((row): row is NonNullable<ReturnType<typeof normalizePurchaseOrder>> => Boolean(row))
+    : [];
+
+  return NextResponse.json({ success: true, mode: 'list', ...data, purchaseorders });
 }, { permission: 'receiving.scan_po' });

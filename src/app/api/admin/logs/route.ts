@@ -37,98 +37,97 @@ function pushParam(params: any[], value: any): string {
 }
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const { searchParams } = new URL(req.url);
-    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 100), 200);
-    const offset = Math.max(0, parsePositiveInt(searchParams.get('offset'), 0));
-    const q = String(searchParams.get('q') || '').trim();
-    const kind = String(searchParams.get('kind') || 'all').trim().toLowerCase();
-    const actorStaffIdRaw = Number(searchParams.get('actorStaffId'));
-    const actorStaffId = Number.isFinite(actorStaffIdRaw) && actorStaffIdRaw > 0 ? actorStaffIdRaw : null;
-    const action = String(searchParams.get('action') || '').trim();
-    const entityType = String(searchParams.get('entityType') || '').trim();
-    const station = String(searchParams.get('station') || '').trim();
-    const startDate = String(searchParams.get('start') || '').trim();
-    const endDate = String(searchParams.get('end') || '').trim();
-    const fetchCap = Math.min(offset + limit + 200, 1000);
+  const orgId = ctx.organizationId;
+  const { searchParams } = new URL(req.url);
+  const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 100), 200);
+  const offset = Math.max(0, parsePositiveInt(searchParams.get('offset'), 0));
+  const q = String(searchParams.get('q') || '').trim();
+  const kind = String(searchParams.get('kind') || 'all').trim().toLowerCase();
+  const actorStaffIdRaw = Number(searchParams.get('actorStaffId'));
+  const actorStaffId = Number.isFinite(actorStaffIdRaw) && actorStaffIdRaw > 0 ? actorStaffIdRaw : null;
+  const action = String(searchParams.get('action') || '').trim();
+  const entityType = String(searchParams.get('entityType') || '').trim();
+  const station = String(searchParams.get('station') || '').trim();
+  const startDate = String(searchParams.get('start') || '').trim();
+  const endDate = String(searchParams.get('end') || '').trim();
+  const fetchCap = Math.min(offset + limit + 200, 1000);
 
-    const auditParams: any[] = [];
-    const auditWhere: string[] = ['1=1'];
+  const auditParams: any[] = [];
+  const auditWhere: string[] = ['1=1'];
 
-    // Tenant ownership filter — never surface another org's audit rows. The
-    // staff / station_activity_logs joins are on integer surrogate PKs (safe
-    // bare); only the anchor table needs an explicit org filter.
-    auditWhere.push(`al.organization_id = ${pushParam(auditParams, orgId)}`);
+  // Tenant ownership filter — never surface another org's audit rows. The
+  // staff / station_activity_logs joins are on integer surrogate PKs (safe
+  // bare); only the anchor table needs an explicit org filter.
+  auditWhere.push(`al.organization_id = ${pushParam(auditParams, orgId)}`);
 
-    if (actorStaffId != null) {
-      auditWhere.push(`al.actor_staff_id = ${pushParam(auditParams, actorStaffId)}`);
-    }
-    if (action) {
-      auditWhere.push(`al.action = ${pushParam(auditParams, action)}`);
-    }
-    if (entityType) {
-      auditWhere.push(`al.entity_type = ${pushParam(auditParams, entityType)}`);
-    }
-    if (startDate) {
-      auditWhere.push(`al.created_at >= ${pushParam(auditParams, startDate)}::timestamptz`);
-    }
-    if (endDate) {
-      auditWhere.push(`al.created_at <= ${pushParam(auditParams, endDate)}::timestamptz`);
-    }
-    if (q) {
-      const like = `%${q}%`;
-      const p = pushParam(auditParams, like);
-      auditWhere.push(
-        `(al.source ILIKE ${p}
+  if (actorStaffId != null) {
+    auditWhere.push(`al.actor_staff_id = ${pushParam(auditParams, actorStaffId)}`);
+  }
+  if (action) {
+    auditWhere.push(`al.action = ${pushParam(auditParams, action)}`);
+  }
+  if (entityType) {
+    auditWhere.push(`al.entity_type = ${pushParam(auditParams, entityType)}`);
+  }
+  if (startDate) {
+    auditWhere.push(`al.created_at >= ${pushParam(auditParams, startDate)}::timestamptz`);
+  }
+  if (endDate) {
+    auditWhere.push(`al.created_at <= ${pushParam(auditParams, endDate)}::timestamptz`);
+  }
+  if (q) {
+    const like = `%${q}%`;
+    const p = pushParam(auditParams, like);
+    auditWhere.push(
+      `(al.source ILIKE ${p}
           OR al.action ILIKE ${p}
           OR al.entity_type ILIKE ${p}
           OR al.entity_id ILIKE ${p}
           OR COALESCE(s.name, '') ILIKE ${p})`,
-      );
-    }
+    );
+  }
 
-    const salParams: any[] = [];
-    const salWhere: string[] = ['1=1'];
+  const salParams: any[] = [];
+  const salWhere: string[] = ['1=1'];
 
-    // Tenant ownership filter — anchor table station_activity_logs carries
-    // organization_id; staff / packer_logs / tech_serial_numbers /
-    // shipping_tracking_numbers joins are on integer surrogate PKs (safe bare).
-    salWhere.push(`sal.organization_id = ${pushParam(salParams, orgId)}`);
+  // Tenant ownership filter — anchor table station_activity_logs carries
+  // organization_id; staff / packer_logs / tech_serial_numbers /
+  // shipping_tracking_numbers joins are on integer surrogate PKs (safe bare).
+  salWhere.push(`sal.organization_id = ${pushParam(salParams, orgId)}`);
 
-    if (actorStaffId != null) {
-      salWhere.push(`sal.staff_id = ${pushParam(salParams, actorStaffId)}`);
-    }
-    if (action) {
-      salWhere.push(`sal.activity_type = ${pushParam(salParams, action)}`);
-    }
-    if (station) {
-      salWhere.push(`sal.station = ${pushParam(salParams, station)}`);
-    }
-    if (startDate) {
-      salWhere.push(`sal.created_at >= ${pushParam(salParams, startDate)}::timestamptz`);
-    }
-    if (endDate) {
-      salWhere.push(`sal.created_at <= ${pushParam(salParams, endDate)}::timestamptz`);
-    }
-    if (q) {
-      const like = `%${q}%`;
-      const p = pushParam(salParams, like);
-      salWhere.push(
-        `(sal.activity_type ILIKE ${p}
+  if (actorStaffId != null) {
+    salWhere.push(`sal.staff_id = ${pushParam(salParams, actorStaffId)}`);
+  }
+  if (action) {
+    salWhere.push(`sal.activity_type = ${pushParam(salParams, action)}`);
+  }
+  if (station) {
+    salWhere.push(`sal.station = ${pushParam(salParams, station)}`);
+  }
+  if (startDate) {
+    salWhere.push(`sal.created_at >= ${pushParam(salParams, startDate)}::timestamptz`);
+  }
+  if (endDate) {
+    salWhere.push(`sal.created_at <= ${pushParam(salParams, endDate)}::timestamptz`);
+  }
+  if (q) {
+    const like = `%${q}%`;
+    const p = pushParam(salParams, like);
+    salWhere.push(
+      `(sal.activity_type ILIKE ${p}
           OR COALESCE(s.name, '') ILIKE ${p}
           OR COALESCE(sal.scan_ref, '') ILIKE ${p}
           OR COALESCE(sal.fnsku, '') ILIKE ${p}
           OR COALESCE(sal.notes, '') ILIKE ${p})`,
-      );
-    }
+    );
+  }
 
-    const [auditRowsRes, salRowsRes] = await Promise.all([
-      kind === 'sal'
-        ? Promise.resolve({ rows: [] as any[] })
-        : tenantQuery(
-            orgId,
-            `SELECT
+  const [auditRowsRes, salRowsRes] = await Promise.all([
+    kind === 'sal'
+      ? Promise.resolve({ rows: [] as any[] })
+      : tenantQuery(
+          orgId,
+          `SELECT
               ('audit:' || al.id::text) AS event_id,
               'AUDIT'::text AS kind,
               al.created_at,
@@ -166,13 +165,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             WHERE ${auditWhere.join(' AND ')}
             ORDER BY al.created_at DESC
             LIMIT ${fetchCap}`,
-            auditParams,
-          ),
-      kind === 'audit'
-        ? Promise.resolve({ rows: [] as any[] })
-        : tenantQuery(
-            orgId,
-            `SELECT
+          auditParams,
+        ),
+    kind === 'audit'
+      ? Promise.resolve({ rows: [] as any[] })
+      : tenantQuery(
+          orgId,
+          `SELECT
               ('sal:' || sal.id::text) AS event_id,
               'SAL'::text AS kind,
               sal.created_at,
@@ -237,34 +236,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             WHERE ${salWhere.join(' AND ')}
             ORDER BY sal.created_at DESC
             LIMIT ${fetchCap}`,
-            salParams,
-          ),
-    ]);
+          salParams,
+        ),
+  ]);
 
-    const combined = [...auditRowsRes.rows, ...salRowsRes.rows]
-      .sort((a, b) => {
-        const aTime = new Date(a.created_at).getTime();
-        const bTime = new Date(b.created_at).getTime();
-        return bTime - aTime;
-      });
-
-    const sliced = combined.slice(offset, offset + limit) as UnifiedLogRow[];
-    const hasMore = combined.length > offset + limit;
-
-    return NextResponse.json({
-      success: true,
-      rows: sliced,
-      pagination: {
-        limit,
-        offset,
-        hasMore,
-      },
+  const combined = [...auditRowsRes.rows, ...salRowsRes.rows]
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return bTime - aTime;
     });
-  } catch (error: any) {
-    console.error('[admin/logs] Error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch logs' },
-      { status: 500 },
-    );
-  }
+
+  const sliced = combined.slice(offset, offset + limit) as UnifiedLogRow[];
+  const hasMore = combined.length > offset + limit;
+
+  return NextResponse.json({
+    success: true,
+    rows: sliced,
+    pagination: {
+      limit,
+      offset,
+      hasMore,
+    },
+  });
 }, { permission: 'admin.view_logs' });

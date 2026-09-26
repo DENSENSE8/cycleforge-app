@@ -137,138 +137,132 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   let receivingId: number | null = null;
   let insertedLines = 0;
-  try {
-    await withTenantTransaction(orgId, async (client) => {
+  await withTenantTransaction(orgId, async (client) => {
 
-    const columnsRes = await client.query<{ column_name: string }>(
-      `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_carton'`,
-    );
-    const receivingCols = new Set<string>(columnsRes.rows.map((r) => r.column_name));
+  const columnsRes = await client.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns WHERE table_name = 'receiving_carton'`,
+  );
+  const receivingCols = new Set<string>(columnsRes.rows.map((r) => r.column_name));
 
-    const valuesByColumn: Record<string, unknown> = {
-      // PO identity lives in zoho_purchaseorder_id / source='zoho_po' (below); the legacy receiving_tracking_number text column has been dropped.
-      carrier: 'ZOHO_PO',
-      qa_status: 'PENDING',
-      is_return: false,
-      needs_test: needsTest,
-      assigned_tech_id: assignedTechId,
-      target_channel: targetChannel,
-      // Explicit PO link so the carton is matched/visible while Zoho is
-      // still pending — without these the OR-fallback in /api/receiving-lines
-      // has no way to associate the row with the PO until after() commits.
-      source: 'zoho_po',
-      zoho_purchaseorder_id: purchaseOrderId,
-      zoho_purchase_receive_id: null,
-      zoho_warehouse_id: warehouseId,
-      notes,
-      organization_id: ctx.organizationId,
-      updated_at: formatPSTTimestamp(),
-    };
+  const valuesByColumn: Record<string, unknown> = {
+    // PO identity lives in zoho_purchaseorder_id / source='zoho_po' (below); the legacy receiving_tracking_number text column has been dropped.
+    carrier: 'ZOHO_PO',
+    qa_status: 'PENDING',
+    is_return: false,
+    needs_test: needsTest,
+    assigned_tech_id: assignedTechId,
+    target_channel: targetChannel,
+    // Explicit PO link so the carton is matched/visible while Zoho is
+    // still pending — without these the OR-fallback in /api/receiving-lines
+    // has no way to associate the row with the PO until after() commits.
+    source: 'zoho_po',
+    zoho_purchaseorder_id: purchaseOrderId,
+    zoho_purchase_receive_id: null,
+    zoho_warehouse_id: warehouseId,
+    notes,
+    organization_id: ctx.organizationId,
+    updated_at: formatPSTTimestamp(),
+  };
 
-    if (receivingCols.has('date_time')) {
-      valuesByColumn['date_time'] = normalizedDate;
-    }
+  if (receivingCols.has('date_time')) {
+    valuesByColumn['date_time'] = normalizedDate;
+  }
 
-    const insertCols: string[] = [];
-    const insertVals: unknown[] = [];
-    for (const [col, val] of Object.entries(valuesByColumn)) {
-      if (!receivingCols.has(col)) continue;
-      insertCols.push(col);
-      insertVals.push(val);
-    }
+  const insertCols: string[] = [];
+  const insertVals: unknown[] = [];
+  for (const [col, val] of Object.entries(valuesByColumn)) {
+    if (!receivingCols.has(col)) continue;
+    insertCols.push(col);
+    insertVals.push(val);
+  }
 
-    const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
-    const insertedRow = await client.query<{ id: number }>(
-      `INSERT INTO receiving_carton (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
-      insertVals,
-    );
-    receivingId = Number(insertedRow.rows[0].id);
+  const placeholders = insertCols.map((_, i) => `$${i + 1}`).join(', ');
+  const insertedRow = await client.query<{ id: number }>(
+    `INSERT INTO receiving_carton (${insertCols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
+    insertVals,
+  );
+  receivingId = Number(insertedRow.rows[0].id);
 
-    // Door stamp → triage street (COALESCE-once inside the helper; the carton is
-    // brand-new so this is the first stamp). Same tx as the carton INSERT.
-    await upsertReceivingTriage(client, orgId, receivingId, {
-      doorReceivedAt: normalizedDate,
-      doorReceivedBy: receivedBy,
-    });
+  // Door stamp → triage street (COALESCE-once inside the helper; the carton is
+  // brand-new so this is the first stamp). Same tx as the carton INSERT.
+  await upsertReceivingTriage(client, orgId, receivingId, {
+    doorReceivedAt: normalizedDate,
+    doorReceivedBy: receivedBy,
+  });
 
-    // Facts writes ride the same transaction client so the thin spine line and
-    // its 1:1 testing/zoho rows commit atomically.
-    const txDeps: FactsDeps = {
-      query: ((_org: string, sql: string, p?: unknown[]) =>
-        client.query(sql, p)) as FactsDeps['query'],
-    };
-    const lineSyncedAt = formatPSTTimestamp();
+  // Facts writes ride the same transaction client so the thin spine line and
+  // its 1:1 testing/zoho rows commit atomically.
+  const txDeps: FactsDeps = {
+    query: ((_org: string, sql: string, p?: unknown[]) =>
+      client.query(sql, p)) as FactsDeps['query'],
+  };
+  const lineSyncedAt = formatPSTTimestamp();
 
-    for (const line of lineItems) {
-      const insertedLine = await client.query<{ id: number }>(
-        `INSERT INTO receiving_line (
+  for (const line of lineItems) {
+    const insertedLine = await client.query<{ id: number }>(
+      `INSERT INTO receiving_line (
           receiving_id, item_name, sku, quantity_received, quantity_expected,
           workflow_status, organization_id
         )
         VALUES ($1,$2,$3,$4,$5,'MATCHED'::inbound_workflow_status_enum,$6::uuid)
         RETURNING id`,
-        [
-          receivingId,
-          line.item_name || null,
-          line.sku || null,
-          line.quantity_received,
-          line.quantity_expected ?? null,
-          ctx.organizationId,
-        ],
-      );
-      const lineId = Number(insertedLine.rows[0].id);
-      // Birth invariant: explicit testing-facts row carrying exactly what the
-      // wide INSERT used to set (this site sets needs_test/assigned_tech_id/
-      // per-line condition_grade from the request body).
-      await upsertReceivingLineTesting(orgId, lineId, {
-        needsTest,
-        assignedTechId,
-        qaStatus: 'PENDING',
-        dispositionCode: 'HOLD',
-        conditionGrade: line.condition_grade,
-        dispositionAudit: [],
-      }, txDeps);
-      // zoho_purchase_receive_id stays NULL until the after() Zoho roundtrip
-      // links it (this birth never set the PO number, so no number/norm here).
-      await upsertReceivingLineZoho(orgId, lineId, {
-        zohoItemId: line.item_id || null,
-        zohoLineItemId: line.line_item_id,
-        zohoPurchaseReceiveId: null,
-        zohoPurchaseOrderId: purchaseOrderId,
-        zohoSyncSource: 'purchase_receive',
-        zohoSyncedAt: lineSyncedAt,
-      }, txDeps);
-      insertedLines++;
-    }
+      [
+        receivingId,
+        line.item_name || null,
+        line.sku || null,
+        line.quantity_received,
+        line.quantity_expected ?? null,
+        ctx.organizationId,
+      ],
+    );
+    const lineId = Number(insertedLine.rows[0].id);
+    // Birth invariant: explicit testing-facts row carrying exactly what the
+    // wide INSERT used to set (this site sets needs_test/assigned_tech_id/
+    // per-line condition_grade from the request body).
+    await upsertReceivingLineTesting(orgId, lineId, {
+      needsTest,
+      assignedTechId,
+      qaStatus: 'PENDING',
+      dispositionCode: 'HOLD',
+      conditionGrade: line.condition_grade,
+      dispositionAudit: [],
+    }, txDeps);
+    // zoho_purchase_receive_id stays NULL until the after() Zoho roundtrip
+    // links it (this birth never set the PO number, so no number/norm here).
+    await upsertReceivingLineZoho(orgId, lineId, {
+      zohoItemId: line.item_id || null,
+      zohoLineItemId: line.line_item_id,
+      zohoPurchaseReceiveId: null,
+      zohoPurchaseOrderId: purchaseOrderId,
+      zohoSyncSource: 'purchase_receive',
+      zohoSyncedAt: lineSyncedAt,
+    }, txDeps);
+    insertedLines++;
+  }
 
-    if (needsTest && assignedTechId) {
-      const hasAssignRes = await client.query<{ exists: boolean }>(
-        `SELECT EXISTS (
+  if (needsTest && assignedTechId) {
+    const hasAssignRes = await client.query<{ exists: boolean }>(
+      `SELECT EXISTS (
            SELECT 1 FROM information_schema.tables WHERE table_name = 'work_assignments'
          ) AS exists`,
-      );
-      if (hasAssignRes.rows[0]?.exists) {
-        await client.query(
-          `INSERT INTO work_assignments
+    );
+    if (hasAssignRes.rows[0]?.exists) {
+      await client.query(
+        `INSERT INTO work_assignments
              (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, notes)
            VALUES ($1, 'RECEIVING', $2, 'TEST', $3, 'ASSIGNED', 100, $4)
            ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
-          [
-            ctx.organizationId,
-            receivingId,
-            assignedTechId,
-            `Auto-created from Zoho PO ${purchaseOrderId} (Zoho receive pending)`,
-          ],
-        );
-      }
+        [
+          ctx.organizationId,
+          receivingId,
+          assignedTechId,
+          `Auto-created from Zoho PO ${purchaseOrderId} (Zoho receive pending)`,
+        ],
+      );
     }
-
-    });
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : 'Failed to receive PO';
-    console.error('zoho/purchase-orders/receive local insert failed:', error);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
+
+  });
 
   // ── 2. Build optimistic response + persist idempotency ─────────────────
   const responseBody: Record<string, unknown> = {

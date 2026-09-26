@@ -13,16 +13,8 @@ function parseRange(raw: string | null): SourcingAnalyticsRange {
 
 /** GET /api/sourcing/analytics?range=30d|90d|1y — org-scoped sourcing rollup for the hub's Analytics mode (Monitor archetype: */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const range = parseRange(searchParams.get('range'));
-    const analytics = await getSourcingAnalytics(range, ctx.organizationId);
-    return NextResponse.json({ success: true, analytics });
-  } catch (error: any) {
-    console.error('Error in GET /api/sourcing/analytics:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to load sourcing analytics' },
-      { status: 500 },
-    );
-  }
+  const { searchParams } = new URL(req.url);
+  const range = parseRange(searchParams.get('range'));
+  const analytics = await getSourcingAnalytics(range, ctx.organizationId);
+  return NextResponse.json({ success: true, analytics });
 }, { permission: 'sourcing.view', feature: 'sourcing' });

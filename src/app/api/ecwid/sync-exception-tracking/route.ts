@@ -255,123 +255,112 @@ function extractEcwidContactInfo(order: any): string {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const body = await req.json().catch(() => ({}));
-    const maxPages = Math.max(1, Math.min(50, Number(body.maxPages || 10)));
+  const orgId = ctx.organizationId;
+  const body = await req.json().catch(() => ({}));
+  const maxPages = Math.max(1, Math.min(50, Number(body.maxPages || 10)));
 
-    const ecwidStoreId = requiredEnvAny('ECWID_STORE_ID', [
-      'ECWID_STOREID',
-      'ECWID_STORE',
-      'NEXT_PUBLIC_ECWID_STORE_ID',
-    ]);
-    const ecwidApiToken = requiredEnvAny('ECWID_API_TOKEN', [
-      'ECWID_TOKEN',
-      'ECWID_ACCESS_TOKEN',
-      'NEXT_PUBLIC_ECWID_API_TOKEN',
-    ]);
+  const ecwidStoreId = requiredEnvAny('ECWID_STORE_ID', [
+    'ECWID_STOREID',
+    'ECWID_STORE',
+    'NEXT_PUBLIC_ECWID_STORE_ID',
+  ]);
+  const ecwidApiToken = requiredEnvAny('ECWID_API_TOKEN', [
+    'ECWID_TOKEN',
+    'ECWID_ACCESS_TOKEN',
+    'NEXT_PUBLIC_ECWID_API_TOKEN',
+  ]);
 
-    const exceptionMap = await loadExceptionTrackingMap(orgId);
-    if (exceptionMap.size === 0) {
-      return NextResponse.json({
-        success: true,
-        scanned: 0,
-        matched: 0,
-        created: 0,
-        updated: 0,
-        deleted: 0,
-        timestamp: formatPSTTimestamp(),
-      });
-    }
-
-    const ecwidOrders = await fetchEcwidOrders(ecwidStoreId, ecwidApiToken, maxPages);
-
-    let scanned = 0;
-    let matched = 0;
-    let created = 0;
-    let updated = 0;
-    let deleted = 0;
-    const touchedRepairIds = new Set<number>();
-
-    for (const order of ecwidOrders) {
-      const trackingNumbers = extractEcwidTrackingNumbers(order);
-      if (trackingNumbers.length === 0) continue;
-
-      for (const trackingNumber of trackingNumbers) {
-        scanned += 1;
-        const trackingKey18 = normalizeTrackingKey18(trackingNumber);
-        if (!trackingKey18) continue;
-
-        const entry = exceptionMap.get(trackingKey18);
-        if (!entry || entry.ids.length === 0) continue;
-
-        const repairItem = findRepairItem(order);
-        if (repairItem) {
-          const repair = await upsertEcwidIncomingRepair(
-            {
-              orderId: String(order?.orderNumber ?? order?.id ?? '').trim() || null,
-              trackingNumber,
-              sku: String(repairItem?.sku || '').trim() || null,
-              productTitle: String(repairItem?.name || '').trim() || null,
-              contactInfo: extractEcwidContactInfo(order) || null,
-              // The SAME three fields, unjoined. `contactInfo` is the string the
-              // paper falls back to; `contact` is what links the ticket to the
-              // `customers` row the receipt actually reads its name from.
-              contact: extractEcwidContact(order),
-              orderDate: parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date)?.toISOString() ?? null,
-              notes: String(order?.customerComments || order?.orderComments || '').trim() || null,
-            },
-            // REQUIRED, not optional-in-practice:
-            orgId,
-          );
-          touchedRepairIds.add(repair.id);
-          updated += 1;
-        } else {
-          const result = await upsertEcwidOrder({ order, trackingNumber, organizationId: orgId });
-          if (result === 'created') created += 1;
-          else updated += 1;
-        }
-
-        const placeholders = entry.ids.map((_, i) => `$${i + 1}`).join(', ');
-        const deleteResult = await tenantQuery(
-          orgId,
-          `DELETE FROM orders_exceptions WHERE id IN (${placeholders})`,
-          entry.ids
-        );
-
-        matched += entry.ids.length;
-        deleted += deleteResult.rowCount || 0;
-        exceptionMap.delete(trackingKey18);
-      }
-    }
-
-    if (touchedRepairIds.size > 0) {
-      await invalidateCacheTags(['repair-service']);
-      await publishRepairChanged({
-        organizationId: ctx.organizationId,
-        repairIds: Array.from(touchedRepairIds),
-        source: 'ecwid.sync-exception-tracking',
-      });
-    }
-
+  const exceptionMap = await loadExceptionTrackingMap(orgId);
+  if (exceptionMap.size === 0) {
     return NextResponse.json({
       success: true,
-      scanned,
-      matched,
-      created,
-      updated,
-      deleted,
-      repairs: touchedRepairIds.size,
+      scanned: 0,
+      matched: 0,
+      created: 0,
+      updated: 0,
+      deleted: 0,
       timestamp: formatPSTTimestamp(),
     });
-  } catch (error: any) {
-    console.error('Error syncing Ecwid exception tracking:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error?.message || 'Failed to sync Ecwid exception tracking',
-      },
-      { status: 500 }
-    );
   }
+
+  const ecwidOrders = await fetchEcwidOrders(ecwidStoreId, ecwidApiToken, maxPages);
+
+  let scanned = 0;
+  let matched = 0;
+  let created = 0;
+  let updated = 0;
+  let deleted = 0;
+  const touchedRepairIds = new Set<number>();
+
+  for (const order of ecwidOrders) {
+    const trackingNumbers = extractEcwidTrackingNumbers(order);
+    if (trackingNumbers.length === 0) continue;
+
+    for (const trackingNumber of trackingNumbers) {
+      scanned += 1;
+      const trackingKey18 = normalizeTrackingKey18(trackingNumber);
+      if (!trackingKey18) continue;
+
+      const entry = exceptionMap.get(trackingKey18);
+      if (!entry || entry.ids.length === 0) continue;
+
+      const repairItem = findRepairItem(order);
+      if (repairItem) {
+        const repair = await upsertEcwidIncomingRepair(
+          {
+            orderId: String(order?.orderNumber ?? order?.id ?? '').trim() || null,
+            trackingNumber,
+            sku: String(repairItem?.sku || '').trim() || null,
+            productTitle: String(repairItem?.name || '').trim() || null,
+            contactInfo: extractEcwidContactInfo(order) || null,
+            // The SAME three fields, unjoined. `contactInfo` is the string the
+            // paper falls back to; `contact` is what links the ticket to the
+            // `customers` row the receipt actually reads its name from.
+            contact: extractEcwidContact(order),
+            orderDate: parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date)?.toISOString() ?? null,
+            notes: String(order?.customerComments || order?.orderComments || '').trim() || null,
+          },
+          // REQUIRED, not optional-in-practice:
+          orgId,
+        );
+        touchedRepairIds.add(repair.id);
+        updated += 1;
+      } else {
+        const result = await upsertEcwidOrder({ order, trackingNumber, organizationId: orgId });
+        if (result === 'created') created += 1;
+        else updated += 1;
+      }
+
+      const placeholders = entry.ids.map((_, i) => `$${i + 1}`).join(', ');
+      const deleteResult = await tenantQuery(
+        orgId,
+        `DELETE FROM orders_exceptions WHERE id IN (${placeholders})`,
+        entry.ids
+      );
+
+      matched += entry.ids.length;
+      deleted += deleteResult.rowCount || 0;
+      exceptionMap.delete(trackingKey18);
+    }
+  }
+
+  if (touchedRepairIds.size > 0) {
+    await invalidateCacheTags(['repair-service']);
+    await publishRepairChanged({
+      organizationId: ctx.organizationId,
+      repairIds: Array.from(touchedRepairIds),
+      source: 'ecwid.sync-exception-tracking',
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    scanned,
+    matched,
+    created,
+    updated,
+    deleted,
+    repairs: touchedRepairIds.size,
+    timestamp: formatPSTTimestamp(),
+  });
 }, { permission: 'integrations.ecwid' });

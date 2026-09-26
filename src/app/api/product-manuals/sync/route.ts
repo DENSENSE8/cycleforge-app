@@ -22,85 +22,78 @@ function deriveDisplayName(fileName: string) {
 }
 
 async function handlePost(_req: NextRequest, ctx: AuthContext) {
-  try {
-    // Thread orgId so every upsert/update/list GUC-wraps and scopes to this org.
-    const orgId = ctx.organizationId ?? undefined;
-    if (!isManualServerConfigured()) {
-      return NextResponse.json(
-        { success: false, error: 'Manual server is not configured' },
-        { status: 503 },
-      );
-    }
+  // Thread orgId so every upsert/update/list GUC-wraps and scopes to this org.
+  const orgId = ctx.organizationId ?? undefined;
+  if (!isManualServerConfigured()) {
+    return NextResponse.json(
+      { success: false, error: 'Manual server is not configured' },
+      { status: 503 },
+    );
+  }
 
-    const [unassigned, assigned] = await Promise.all([
-      fetchManualServerUnassigned(),
-      fetchManualServerAssignedItems(),
-    ]);
+  const [unassigned, assigned] = await Promise.all([
+    fetchManualServerUnassigned(),
+    fetchManualServerAssignedItems(),
+  ]);
 
-    let createdOrUpdated = 0;
-    let archived = 0;
-    const seenPaths = new Set<string>();
+  let createdOrUpdated = 0;
+  let archived = 0;
+  const seenPaths = new Set<string>();
 
-    for (const manual of unassigned.manuals) {
+  for (const manual of unassigned.manuals) {
+    seenPaths.add(manual.relativePath);
+    await upsertProductManual({
+      itemNumber: null,
+      displayName: deriveDisplayName(manual.name),
+      relativePath: manual.relativePath,
+      folderPath: unassigned.folderPath,
+      fileName: manual.name,
+      status: 'unassigned',
+    }, orgId);
+    createdOrUpdated += 1;
+  }
+
+  for (const item of assigned.items) {
+    for (const manual of item.manuals) {
       seenPaths.add(manual.relativePath);
       await upsertProductManual({
-        itemNumber: null,
+        itemNumber: item.itemNumber,
         displayName: deriveDisplayName(manual.name),
         relativePath: manual.relativePath,
-        folderPath: unassigned.folderPath,
+        folderPath: item.folderPath,
         fileName: manual.name,
-        status: 'unassigned',
+        status: 'assigned',
       }, orgId);
       createdOrUpdated += 1;
     }
-
-    for (const item of assigned.items) {
-      for (const manual of item.manuals) {
-        seenPaths.add(manual.relativePath);
-        await upsertProductManual({
-          itemNumber: item.itemNumber,
-          displayName: deriveDisplayName(manual.name),
-          relativePath: manual.relativePath,
-          folderPath: item.folderPath,
-          fileName: manual.name,
-          status: 'assigned',
-        }, orgId);
-        createdOrUpdated += 1;
-      }
-    }
-
-    const existing = await getAllProductManuals({ limit: 10000, offset: 0 }, orgId);
-    for (const record of existing) {
-      const relativePath = String(record.relative_path || '').trim();
-      if (!relativePath) continue;
-      if (seenPaths.has(relativePath)) continue;
-      if (record.status === 'archived') continue;
-
-      await updateProductManual({
-        id: Number(record.id),
-        status: 'archived',
-      }, orgId);
-      archived += 1;
-    }
-
-    await invalidateCacheTags(['product-manuals', 'pm:manuals']);
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.productManuals]);
-
-    return NextResponse.json({
-      success: true,
-      counts: {
-        unassigned: unassigned.manuals.length,
-        assignedItems: assigned.items.length,
-        syncedRecords: createdOrUpdated,
-        archivedRecords: archived,
-      },
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to sync product manuals' },
-      { status: 500 },
-    );
   }
+
+  const existing = await getAllProductManuals({ limit: 10000, offset: 0 }, orgId);
+  for (const record of existing) {
+    const relativePath = String(record.relative_path || '').trim();
+    if (!relativePath) continue;
+    if (seenPaths.has(relativePath)) continue;
+    if (record.status === 'archived') continue;
+
+    await updateProductManual({
+      id: Number(record.id),
+      status: 'archived',
+    }, orgId);
+    archived += 1;
+  }
+
+  await invalidateCacheTags(['product-manuals', 'pm:manuals']);
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.productManuals]);
+
+  return NextResponse.json({
+    success: true,
+    counts: {
+      unassigned: unassigned.manuals.length,
+      assignedItems: assigned.items.length,
+      syncedRecords: createdOrUpdated,
+      archivedRecords: archived,
+    },
+  });
 }
 
 export const POST = withAuth(handlePost, { permission: 'product_manuals.manage' });

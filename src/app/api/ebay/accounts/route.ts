@@ -8,10 +8,9 @@ import { deleteEbayAccount, EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentia
  * Get all eBay accounts with their status for the current tenant organization
  */
 export const GET = withAuth(async (req, ctx) => {
-  try {
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
         id,
         account_name,
         ebay_user_id,
@@ -25,21 +24,14 @@ export const GET = withAuth(async (req, ctx) => {
       FROM ebay_accounts
       WHERE organization_id = $1 AND ${EBAY_PLATFORM_PREDICATE}
       ORDER BY account_name`,
-      [ctx.organizationId]
-    );
+    [ctx.organizationId]
+  );
 
-    return NextResponse.json({ 
-      success: true,
-      accounts: result.rows,
-      count: result.rows.length,
-    });
-  } catch (error: any) {
-    console.error('Error fetching eBay accounts:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ 
+    success: true,
+    accounts: result.rows,
+    count: result.rows.length,
+  });
 }, { permission: 'integrations.ebay' });
 
 /**
@@ -47,41 +39,33 @@ export const GET = withAuth(async (req, ctx) => {
  * Update an eBay account (e.g., toggle active status) for the current tenant organization
  */
 export const PUT = withAuth(async (req, ctx) => {
-  try {
-    const body = await req.json();
-    const { id, is_active } = body;
+  const body = await req.json();
+  const { id, is_active } = body;
 
-    if (!id) {
-      return NextResponse.json(
-        { success: false, error: 'Account ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const result = await tenantQuery(
-      ctx.organizationId,
-      'UPDATE ebay_accounts SET is_active = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
-      [is_active, id, ctx.organizationId]
-    );
-
-    if (result.rowCount === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Account not found or access denied' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ 
-      success: true,
-      message: 'Account updated successfully'
-    });
-  } catch (error: any) {
-    console.error('Error updating eBay account:', error);
+  if (!id) {
     return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
+      { success: false, error: 'Account ID is required' },
+      { status: 400 }
     );
   }
+
+  const result = await tenantQuery(
+    ctx.organizationId,
+    'UPDATE ebay_accounts SET is_active = $1, updated_at = NOW() WHERE id = $2 AND organization_id = $3',
+    [is_active, id, ctx.organizationId]
+  );
+
+  if (result.rowCount === 0) {
+    return NextResponse.json(
+      { success: false, error: 'Account not found or access denied' },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ 
+    success: true,
+    message: 'Account updated successfully'
+  });
 }, { permission: 'integrations.ebay' });
 
 /** DELETE /api/ebay/accounts?id=123 Disconnect an eBay account. */

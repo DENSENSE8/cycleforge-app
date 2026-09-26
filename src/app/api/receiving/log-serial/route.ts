@@ -15,83 +15,77 @@ const SERIAL_MATCH_VALUES: readonly SerialCompareOutcome[] = [
 
 /** POST /api/receiving/log-serial Body: */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const serialNumber = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
-    const orderNumber = String(body?.order_number ?? body?.orderNumber ?? '').trim() || null;
-    const shippedSerial = String(body?.shipped_serial ?? body?.shippedSerial ?? '').trim() || null;
-    const conditionGrade =
-      String(body?.condition_grade ?? body?.conditionGrade ?? '').trim() || null;
-    const clientEventId = String(body?.client_event_id ?? '').trim() || null;
+  const body = await request.json().catch(() => ({}));
+  const serialNumber = String(body?.serial_number ?? body?.serialNumber ?? '').trim();
+  const orderNumber = String(body?.order_number ?? body?.orderNumber ?? '').trim() || null;
+  const shippedSerial = String(body?.shipped_serial ?? body?.shippedSerial ?? '').trim() || null;
+  const conditionGrade =
+    String(body?.condition_grade ?? body?.conditionGrade ?? '').trim() || null;
+  const clientEventId = String(body?.client_event_id ?? '').trim() || null;
 
-    const receivingIdRaw = Number(body?.receiving_id ?? body?.receivingId);
-    const receivingId =
-      Number.isFinite(receivingIdRaw) && receivingIdRaw > 0 ? Math.floor(receivingIdRaw) : null;
+  const receivingIdRaw = Number(body?.receiving_id ?? body?.receivingId);
+  const receivingId =
+    Number.isFinite(receivingIdRaw) && receivingIdRaw > 0 ? Math.floor(receivingIdRaw) : null;
 
-    const receivingLineIdRaw = Number(body?.receiving_line_id ?? body?.receivingLineId);
-    const receivingLineId =
-      Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
-        ? Math.floor(receivingLineIdRaw)
-        : null;
-
-    const rawMatch = String(body?.serial_match ?? body?.serialMatch ?? '').trim();
-    const serialMatch = (SERIAL_MATCH_VALUES as readonly string[]).includes(rawMatch)
-      ? (rawMatch as SerialCompareOutcome)
+  const receivingLineIdRaw = Number(body?.receiving_line_id ?? body?.receivingLineId);
+  const receivingLineId =
+    Number.isFinite(receivingLineIdRaw) && receivingLineIdRaw > 0
+      ? Math.floor(receivingLineIdRaw)
       : null;
 
-    if (!serialNumber) {
-      return NextResponse.json(
-        { success: false, error: 'serial_number is required' },
-        { status: 400 },
-      );
-    }
+  const rawMatch = String(body?.serial_match ?? body?.serialMatch ?? '').trim();
+  const serialMatch = (SERIAL_MATCH_VALUES as readonly string[]).includes(rawMatch)
+    ? (rawMatch as SerialCompareOutcome)
+    : null;
 
-    const result = await logUnmatchedReturnSerial(
-      {
-        serialNumber,
-        receivingLineId,
-        receivingId,
-        orderNumber,
-        shippedSerial,
-        serialMatch,
-        conditionGrade,
-        staffId: ctx.staffId ?? null,
-        clientEventId,
-      },
-      ctx.organizationId,
+  if (!serialNumber) {
+    return NextResponse.json(
+      { success: false, error: 'serial_number is required' },
+      { status: 400 },
     );
-
-    if (!result.serialUnitId) {
-      return NextResponse.json(
-        { success: false, error: 'invalid serial number' },
-        { status: 400 },
-      );
-    }
-
-    after(async () => {
-      // Warm list chips when this log attached to a line (Tier B2 projection).
-      if (receivingLineId != null) {
-        await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
-      }
-      try {
-        await invalidateReceivingViews(ctx.organizationId);
-      } catch (err) {
-        console.warn('log-serial: cache invalidate failed', err);
-      }
-    });
-
-    return NextResponse.json({
-      success: true,
-      serial_unit_id: result.serialUnitId,
-      is_new: result.isNew,
-      paired_to_line: result.pairedToLine,
-      already_attached: result.alreadyAttached,
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to log serial';
-    console.error('receiving/log-serial POST failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  const result = await logUnmatchedReturnSerial(
+    {
+      serialNumber,
+      receivingLineId,
+      receivingId,
+      orderNumber,
+      shippedSerial,
+      serialMatch,
+      conditionGrade,
+      staffId: ctx.staffId ?? null,
+      clientEventId,
+    },
+    ctx.organizationId,
+  );
+
+  if (!result.serialUnitId) {
+    return NextResponse.json(
+      { success: false, error: 'invalid serial number' },
+      { status: 400 },
+    );
+  }
+
+  after(async () => {
+    // Warm list chips when this log attached to a line (Tier B2 projection).
+    if (receivingLineId != null) {
+      await refreshLineSerialProjectionSafe(ctx.organizationId, receivingLineId);
+    }
+    try {
+      await invalidateReceivingViews(ctx.organizationId);
+    } catch (err) {
+      console.warn('log-serial: cache invalidate failed', err);
+    }
+  });
+
+  return NextResponse.json({
+    success: true,
+    serial_unit_id: result.serialUnitId,
+    is_new: result.isNew,
+    paired_to_line: result.pairedToLine,
+    already_attached: result.alreadyAttached,
+  });
 }, {
   permission: 'receiving.mark_received',
   audit: {

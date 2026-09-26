@@ -18,24 +18,16 @@ const ROUTE_PART_COMPAT_POST = 'part-compatibility.post';
  * Lists compatibility edges, filtered by model and/or part.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const boseModelId = searchParams.get('boseModelId');
-    const skuId = searchParams.get('skuId');
+  const { searchParams } = new URL(req.url);
+  const boseModelId = searchParams.get('boseModelId');
+  const skuId = searchParams.get('skuId');
 
-    // Tenant-scope the read:
-    const rows = await listCompatibility({
-      boseModelId: boseModelId ? Number(boseModelId) : null,
-      skuId: skuId ? Number(skuId) : null,
-    }, ctx.organizationId);
-    return NextResponse.json({ success: true, items: rows, total: rows.length });
-  } catch (error: any) {
-    console.error('Error in GET /api/part-compatibility:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch compatibility' },
-      { status: 500 },
-    );
-  }
+  // Tenant-scope the read:
+  const rows = await listCompatibility({
+    boseModelId: boseModelId ? Number(boseModelId) : null,
+    skuId: skuId ? Number(skuId) : null,
+  }, ctx.organizationId);
+  return NextResponse.json({ success: true, items: rows, total: rows.length });
 }, { permission: 'sourcing.view' });
 
 /**

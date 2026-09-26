@@ -18,81 +18,72 @@ function parseRepairId(repairScan: string): number | null {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json();
-    const idemKey = readIdempotencyKey(req, body?.idempotencyKey);
-    if (idemKey) {
-      const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE);
-      if (hit && hit.status_code === 200) {
-        return NextResponse.json(hit.response_body, { status: 200 });
-      }
+  const body = await req.json();
+  const idemKey = readIdempotencyKey(req, body?.idempotencyKey);
+  if (idemKey) {
+    const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE);
+    if (hit && hit.status_code === 200) {
+      return NextResponse.json(hit.response_body, { status: 200 });
     }
-
-    const repairScan = String(body?.repairScan || '').trim();
-    const userName = body?.userName != null ? String(body.userName) : null;
-    const repairIdBody = body?.repairId != null ? Number(body.repairId) : null;
-
-    const repairId = repairIdBody && repairIdBody > 0 ? repairIdBody : parseRepairId(repairScan);
-    if (!repairId) {
-      return NextResponse.json({ success: false, error: 'Valid RS- id or repairId is required' }, { status: 400 });
-    }
-
-    // Server-trusted actor. The legacy techId/employee alias resolver is
-    // bypassed — ctx.staffId is already the verified staff row id.
-    const staffId = ctx.staffId;
-
-    const repair = await getRepairById(repairId, ctx.organizationId);
-    if (!repair) {
-      return NextResponse.json({ success: false, error: 'Repair not found' }, { status: 404 });
-    }
-
-    await appendRepairStatusHistory(repairId, {
-      status: 'station_testing_scan',
-      source: 'station-testing.scan',
-      user_id: staffId,
-      user_name: userName,
-      metadata: {
-        scanned_input: repairScan.toUpperCase(),
-        screen: 'StationTesting',
-        station: 'TECH',
-      },
-    }, ctx.organizationId);
-
-    await invalidateCacheTags(REPAIR_TAGS);
-    await publishRepairChanged({ organizationId: ctx.organizationId, repairIds: [repairId], source: 'tech.scan-repair-station' });
-
-    const scanSessionId = await createStationScanSession(pool, {
-      staffId,
-      sessionKind: 'REPAIR',
-      repairServiceId: repairId,
-      trackingRaw: `RS-${repairId}`,
-      trackingKey18: null,
-    });
-
-    const out: Record<string, unknown> = {
-      success: true,
-      repair,
-      scanSessionId,
-    };
-
-    if (idemKey) {
-      await saveApiIdempotencyResponse(pool, {
-        orgId: ctx.organizationId,
-        idempotencyKey: idemKey,
-        route: ROUTE,
-        staffId,
-        statusCode: 200,
-        responseBody: out,
-      });
-    }
-
-    return NextResponse.json(out);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('POST /api/tech/scan-repair-station:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to record repair scan', details: message },
-      { status: 500 },
-    );
   }
+
+  const repairScan = String(body?.repairScan || '').trim();
+  const userName = body?.userName != null ? String(body.userName) : null;
+  const repairIdBody = body?.repairId != null ? Number(body.repairId) : null;
+
+  const repairId = repairIdBody && repairIdBody > 0 ? repairIdBody : parseRepairId(repairScan);
+  if (!repairId) {
+    return NextResponse.json({ success: false, error: 'Valid RS- id or repairId is required' }, { status: 400 });
+  }
+
+  // Server-trusted actor. The legacy techId/employee alias resolver is
+  // bypassed — ctx.staffId is already the verified staff row id.
+  const staffId = ctx.staffId;
+
+  const repair = await getRepairById(repairId, ctx.organizationId);
+  if (!repair) {
+    return NextResponse.json({ success: false, error: 'Repair not found' }, { status: 404 });
+  }
+
+  await appendRepairStatusHistory(repairId, {
+    status: 'station_testing_scan',
+    source: 'station-testing.scan',
+    user_id: staffId,
+    user_name: userName,
+    metadata: {
+      scanned_input: repairScan.toUpperCase(),
+      screen: 'StationTesting',
+      station: 'TECH',
+    },
+  }, ctx.organizationId);
+
+  await invalidateCacheTags(REPAIR_TAGS);
+  await publishRepairChanged({ organizationId: ctx.organizationId, repairIds: [repairId], source: 'tech.scan-repair-station' });
+
+  const scanSessionId = await createStationScanSession(pool, {
+    staffId,
+    sessionKind: 'REPAIR',
+    repairServiceId: repairId,
+    trackingRaw: `RS-${repairId}`,
+    trackingKey18: null,
+  });
+
+  const out: Record<string, unknown> = {
+    success: true,
+    repair,
+    scanSessionId,
+  };
+
+  if (idemKey) {
+    await saveApiIdempotencyResponse(pool, {
+      orgId: ctx.organizationId,
+      idempotencyKey: idemKey,
+      route: ROUTE,
+      staffId,
+      statusCode: 200,
+      responseBody: out,
+    });
+  }
+
+  return NextResponse.json(out);
 }, { permission: 'tech.scan_serial' });

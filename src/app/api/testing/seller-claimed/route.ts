@@ -23,19 +23,11 @@ export const GET = withAuth(async (request, ctx) => {
     );
   }
 
-  try {
-    const facts = await loadSellerClaimedFacts(ctx.organizationId as OrgId, {
-      serialUnitId,
-      serialNumber: serial,
-      skuCatalogId,
-      orderIdHint: orderId,
-    });
-    return NextResponse.json({ ok: true, ...facts });
-  } catch (err) {
-    console.error('testing/seller-claimed failed', err);
-    return NextResponse.json(
-      { ok: false, error: 'Failed to load seller-claimed facts' },
-      { status: 500 },
-    );
-  }
+  const facts = await loadSellerClaimedFacts(ctx.organizationId as OrgId, {
+    serialUnitId,
+    serialNumber: serial,
+    skuCatalogId,
+    orderIdHint: orderId,
+  });
+  return NextResponse.json({ ok: true, ...facts });
 }, { permission: 'tech.qc_pass' });

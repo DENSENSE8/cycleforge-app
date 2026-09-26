@@ -3,29 +3,28 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const rawDays = Number(searchParams.get('days') || 14);
-    const days = Number.isFinite(rawDays) ? Math.max(1, Math.min(90, Math.floor(rawDays))) : 14;
-    const rawStation = String(searchParams.get('station') || 'ALL').trim().toUpperCase();
-    const station = rawStation === 'ALL' ? null : rawStation;
+  const { searchParams } = new URL(req.url);
+  const rawDays = Number(searchParams.get('days') || 14);
+  const days = Number.isFinite(rawDays) ? Math.max(1, Math.min(90, Math.floor(rawDays))) : 14;
+  const rawStation = String(searchParams.get('station') || 'ALL').trim().toUpperCase();
+  const station = rawStation === 'ALL' ? null : rawStation;
 
-    const params: Array<string | number> = [days];
-    let stationFilter = '';
+  const params: Array<string | number> = [days];
+  let stationFilter = '';
 
-    if (station) {
-      params.push(station);
-      stationFilter = `AND h.station = $2`;
-    }
+  if (station) {
+    params.push(station);
+    stationFilter = `AND h.station = $2`;
+  }
 
-    // staff_goal_history has no own organization_id — scope via the parent
-    // staff row (joined on the global staff.id PK).
-    params.push(ctx.organizationId);
-    const orgIdx = params.length;
+  // staff_goal_history has no own organization_id — scope via the parent
+  // staff row (joined on the global staff.id PK).
+  params.push(ctx.organizationId);
+  const orgIdx = params.length;
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `
         SELECT
           h.staff_id,
           s.name,
@@ -43,15 +42,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ${stationFilter}
         ORDER BY h.logged_date DESC, s.name ASC, h.station ASC
       `,
-      params,
-    );
+    params,
+  );
 
-    return NextResponse.json(result.rows);
-  } catch (error: any) {
-    console.error('Error fetching staff goal history:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch staff goal history', details: error?.message || String(error) },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json(result.rows);
 }, { permission: 'reports.view' });

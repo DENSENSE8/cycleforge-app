@@ -7,14 +7,6 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/forge/master-plan/seed — canonical starter MDX for empty-doc CRDT bootstrap (ALP-1.4). */
 export const GET = withAuth(async (_req: NextRequest, _ctx) => {
-  try {
-    const seed = await readMasterPlanSeed();
-    return NextResponse.json({ success: true, mdx: seed.mdx, source: seed.source });
-  } catch (error: unknown) {
-    console.error('Error in GET /api/forge/master-plan/seed:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to read seed' },
-      { status: 500 },
-    );
-  }
+  const seed = await readMasterPlanSeed();
+  return NextResponse.json({ success: true, mdx: seed.mdx, source: seed.source });
 }, { permission: 'operations.plans.view' });

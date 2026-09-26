@@ -15,17 +15,9 @@ const ROUTE_FAILURE_MODES_POST = 'failure-modes.post';
 
 /** GET /api/failure-modes — taxonomy list. `?activeOnly=1` hides deactivated. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const activeOnly = req.nextUrl.searchParams.get('activeOnly') === '1';
-    const modes = await listFailureModes({ activeOnly }, ctx.organizationId);
-    return NextResponse.json({ success: true, modes });
-  } catch (error: any) {
-    console.error('Error in GET /api/failure-modes:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to load failure modes' },
-      { status: 500 },
-    );
-  }
+  const activeOnly = req.nextUrl.searchParams.get('activeOnly') === '1';
+  const modes = await listFailureModes({ activeOnly }, ctx.organizationId);
+  return NextResponse.json({ success: true, modes });
 }, { permission: 'sku_stock.view' });
 
 /** POST /api/failure-modes — create a taxonomy entry (idempotent). */

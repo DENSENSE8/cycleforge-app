@@ -43,80 +43,72 @@ async function getCachedEcwidProducts(categoryId: string) {
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const category = String(searchParams.get('category') || '').trim();
+  const { searchParams } = new URL(request.url);
+  const category = String(searchParams.get('category') || '').trim();
 
-    if (!category) {
-      return NextResponse.json({ success: false, error: 'category is required' }, { status: 400 });
-    }
+  if (!category) {
+    return NextResponse.json({ success: false, error: 'category is required' }, { status: 400 });
+  }
 
-    // Check combined cache (products + manuals merged)
-    const combinedNs = 'pm:by-category';
-    const combinedKey = `cat:${category}`;
-    const cached = await getCachedJson<{ success: boolean; products: ProductWithManual[] }>(combinedNs, combinedKey);
-    if (cached) {
-      return NextResponse.json(cached, {
-        headers: { 'Cache-Control': 'private, max-age=300', 'x-cache': 'HIT' },
-      });
-    }
+  // Check combined cache (products + manuals merged)
+  const combinedNs = 'pm:by-category';
+  const combinedKey = `cat:${category}`;
+  const cached = await getCachedJson<{ success: boolean; products: ProductWithManual[] }>(combinedNs, combinedKey);
+  if (cached) {
+    return NextResponse.json(cached, {
+      headers: { 'Cache-Control': 'private, max-age=300', 'x-cache': 'HIT' },
+    });
+  }
 
-    // Fetch Ecwid products for this category (cached separately at 30 min)
-    const ecwidRows = await getCachedEcwidProducts(category);
+  // Fetch Ecwid products for this category (cached separately at 30 min)
+  const ecwidRows = await getCachedEcwidProducts(category);
 
-    if (ecwidRows.length === 0) {
-      const payload = { success: true, products: [] };
-      await setCachedJson(combinedNs, combinedKey, payload, COMBINED_TTL, [`pm:cat:${category}`, 'pm:manuals']);
-      return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, max-age=300' } });
-    }
+  if (ecwidRows.length === 0) {
+    const payload = { success: true, products: [] };
+    await setCachedJson(combinedNs, combinedKey, payload, COMBINED_TTL, [`pm:cat:${category}`, 'pm:manuals']);
+    return NextResponse.json(payload, { headers: { 'Cache-Control': 'private, max-age=300' } });
+  }
 
-    // Targeted DB query — only fetch manuals for the item_numbers in this category.
-    const itemNumbers = ecwidRows.map((r) => r.item_number);
-    const placeholders = itemNumbers.map((_, i) => `$${i + 1}`).join(', ');
-    const orgParam = `$${itemNumbers.length + 1}`;
-    const dbResult = await tenantQuery(
-      ctx.organizationId,
-      `SELECT item_number, display_name, google_file_id AS google_file_id
+  // Targeted DB query — only fetch manuals for the item_numbers in this category.
+  const itemNumbers = ecwidRows.map((r) => r.item_number);
+  const placeholders = itemNumbers.map((_, i) => `$${i + 1}`).join(', ');
+  const orgParam = `$${itemNumbers.length + 1}`;
+  const dbResult = await tenantQuery(
+    ctx.organizationId,
+    `SELECT item_number, display_name, google_file_id AS google_file_id
        FROM product_manuals
        WHERE is_active = TRUE
          AND item_number IN (${placeholders})
          AND sku_catalog_id IN (
            SELECT id FROM sku_catalog WHERE organization_id = ${orgParam}
          )`,
-      [...itemNumbers, ctx.organizationId]
-    );
+    [...itemNumbers, ctx.organizationId]
+  );
 
-    // Build O(1) lookup
-    const manualMap = new Map<string, { displayName: string; googleFileId: string }>();
-    for (const row of dbResult.rows) {
-      if (row.item_number) {
-        manualMap.set(String(row.item_number), {
-          displayName: String(row.display_name || ''),
-          googleFileId: String(row.google_file_id || ''),
-        });
-      }
+  // Build O(1) lookup
+  const manualMap = new Map<string, { displayName: string; googleFileId: string }>();
+  for (const row of dbResult.rows) {
+    if (row.item_number) {
+      manualMap.set(String(row.item_number), {
+        displayName: String(row.display_name || ''),
+        googleFileId: String(row.google_file_id || ''),
+      });
     }
-
-    // Merge
-    const products: ProductWithManual[] = ecwidRows.map((r) => ({
-      ...r,
-      display_name: manualMap.get(r.item_number)?.displayName || '',
-      google_file_id: manualMap.get(r.item_number)?.googleFileId || '',
-    }));
-
-    const payload = { success: true, products };
-
-    // Cache combined result — tagged so saves can invalidate it
-    await setCachedJson(combinedNs, combinedKey, payload, COMBINED_TTL, [`pm:cat:${category}`, 'pm:manuals']);
-
-    return NextResponse.json(payload, {
-      headers: { 'Cache-Control': 'private, max-age=300', 'x-cache': 'MISS' },
-    });
-  } catch (error: any) {
-    console.error('Error fetching category products:', error);
-    return NextResponse.json(
-      { success: false, products: [], error: error?.message || 'Failed to fetch category products' },
-      { status: 500 }
-    );
   }
+
+  // Merge
+  const products: ProductWithManual[] = ecwidRows.map((r) => ({
+    ...r,
+    display_name: manualMap.get(r.item_number)?.displayName || '',
+    google_file_id: manualMap.get(r.item_number)?.googleFileId || '',
+  }));
+
+  const payload = { success: true, products };
+
+  // Cache combined result — tagged so saves can invalidate it
+  await setCachedJson(combinedNs, combinedKey, payload, COMBINED_TTL, [`pm:cat:${category}`, 'pm:manuals']);
+
+  return NextResponse.json(payload, {
+    headers: { 'Cache-Control': 'private, max-age=300', 'x-cache': 'MISS' },
+  });
 }, { permission: 'sku_stock.view' });

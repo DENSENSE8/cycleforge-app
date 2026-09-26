@@ -37,39 +37,33 @@ function normalizeRow(row: SerialRow) {
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const receivingLineId = Number(searchParams.get('receiving_line_id'));
+  const { searchParams } = new URL(request.url);
+  const receivingLineId = Number(searchParams.get('receiving_line_id'));
 
-    if (!Number.isFinite(receivingLineId) || receivingLineId <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'receiving_line_id is required' },
-        { status: 400 },
-      );
-    }
+  if (!Number.isFinite(receivingLineId) || receivingLineId <= 0) {
+    return NextResponse.json(
+      { success: false, error: 'receiving_line_id is required' },
+      { status: 400 },
+    );
+  }
 
-    const result = await tenantQuery<SerialRow>(
-      ctx.organizationId,
-      `SELECT id, serial_number, serial_type, tested_by, station_source, receiving_line_id,
+  const result = await tenantQuery<SerialRow>(
+    ctx.organizationId,
+    `SELECT id, serial_number, serial_type, tested_by, station_source, receiving_line_id,
               created_at::text, updated_at::text
        FROM tech_serial_numbers
        WHERE station_source = 'RECEIVING'
          AND receiving_line_id = $1
          AND organization_id = $2
        ORDER BY created_at ASC, id ASC`,
-      [receivingLineId, ctx.organizationId],
-    );
+    [receivingLineId, ctx.organizationId],
+  );
 
-    return NextResponse.json({
-      success: true,
-      serials: result.rows.map(normalizeRow),
-      count: result.rowCount ?? 0,
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to fetch receiving serials';
-    console.error('receiving/serials GET failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    serials: result.rows.map(normalizeRow),
+    count: result.rowCount ?? 0,
+  });
 }, { permission: 'receiving.view' });
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
@@ -202,59 +196,53 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 });
 
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = Number(searchParams.get('id'));
+  const { searchParams } = new URL(request.url);
+  const id = Number(searchParams.get('id'));
 
-    if (!Number.isFinite(id) || id <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Valid id is required' },
-        { status: 400 },
-      );
-    }
+  if (!Number.isFinite(id) || id <= 0) {
+    return NextResponse.json(
+      { success: false, error: 'Valid id is required' },
+      { status: 400 },
+    );
+  }
 
-    const deleted = await withTenantTransaction(
-      ctx.organizationId,
-      (client) =>
-        client.query<{ id: number; receiving_line_id: number | null; receiving_id: number | null }>(
-          `DELETE FROM tech_serial_numbers tsn
+  const deleted = await withTenantTransaction(
+    ctx.organizationId,
+    (client) =>
+      client.query<{ id: number; receiving_line_id: number | null; receiving_id: number | null }>(
+        `DELETE FROM tech_serial_numbers tsn
            USING receiving_line rl
            WHERE tsn.id = $1
              AND tsn.station_source = 'RECEIVING'
              AND rl.id = tsn.receiving_line_id
              AND tsn.organization_id = $2
            RETURNING tsn.id, tsn.receiving_line_id, rl.receiving_id`,
-          [id, ctx.organizationId],
-        ),
+        [id, ctx.organizationId],
+      ),
+  );
+
+  if (deleted.rows.length === 0) {
+    return NextResponse.json(
+      { success: false, error: 'Receiving serial not found' },
+      { status: 404 },
     );
-
-    if (deleted.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Receiving serial not found' },
-        { status: 404 },
-      );
-    }
-
-    const deletedLineId = deleted.rows[0]?.receiving_line_id;
-    if (deletedLineId != null) {
-      await refreshLineSerialProjectionSafe(ctx.organizationId, deletedLineId);
-    }
-
-    await invalidateReceivingViews(ctx.organizationId);
-    if (deleted.rows[0]?.receiving_id != null) {
-      await publishReceivingLogChanged({
-        organizationId: ctx.organizationId,
-        action: 'update',
-        rowId: String(deleted.rows[0].receiving_id),
-        source: 'receiving.serials.delete',
-      });
-    }
-    return NextResponse.json({ success: true, id: Number(deleted.rows[0].id) });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to delete receiving serial';
-    console.error('receiving/serials DELETE failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  const deletedLineId = deleted.rows[0]?.receiving_line_id;
+  if (deletedLineId != null) {
+    await refreshLineSerialProjectionSafe(ctx.organizationId, deletedLineId);
+  }
+
+  await invalidateReceivingViews(ctx.organizationId);
+  if (deleted.rows[0]?.receiving_id != null) {
+    await publishReceivingLogChanged({
+      organizationId: ctx.organizationId,
+      action: 'update',
+      rowId: String(deleted.rows[0].receiving_id),
+      source: 'receiving.serials.delete',
+    });
+  }
+  return NextResponse.json({ success: true, id: Number(deleted.rows[0].id) });
 }, {
   permission: 'receiving.mark_received',
   audit: {

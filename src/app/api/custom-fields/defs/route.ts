@@ -22,33 +22,27 @@ const ROUTE_CUSTOM_FIELD_DEFS_POST = 'custom-fields.defs.post';
  * Gated by {@link isCustomFieldEntityLive} (History-first allowlist).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const entityTypeRaw = new URL(req.url).searchParams.get('entityType') ?? '';
-    const parsed = CustomFieldEntityTypeSchema.safeParse(entityTypeRaw);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'entityType must be a known custom-field entity' },
-        { status: 400 },
-      );
-    }
-    if (!isCustomFieldEntityLive(parsed.data)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Custom fields are not live for this entity — dogfood Unbox History first ' +
-            '(CUSTOM_FIELD_LIVE_ENTITY_TYPES)',
-        },
-        { status: 403 },
-      );
-    }
-    const items = await listCustomFieldDefs(ctx.organizationId, parsed.data);
-    return NextResponse.json({ success: true, items });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to list custom fields';
-    console.error('GET /api/custom-fields/defs:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  const entityTypeRaw = new URL(req.url).searchParams.get('entityType') ?? '';
+  const parsed = CustomFieldEntityTypeSchema.safeParse(entityTypeRaw);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { success: false, error: 'entityType must be a known custom-field entity' },
+      { status: 400 },
+    );
   }
+  if (!isCustomFieldEntityLive(parsed.data)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          'Custom fields are not live for this entity — dogfood Unbox History first ' +
+          '(CUSTOM_FIELD_LIVE_ENTITY_TYPES)',
+      },
+      { status: 403 },
+    );
+  }
+  const items = await listCustomFieldDefs(ctx.organizationId, parsed.data);
+  return NextResponse.json({ success: true, items });
 }, { permission: 'receiving.view' });
 
 /**

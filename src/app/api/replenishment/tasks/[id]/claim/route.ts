@@ -22,13 +22,7 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid task id' }, { status: 400 });
   }
 
-  try {
-    const result = await claimTask({ taskId, staffId: actorStaffId }, ctx.organizationId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'claim failed';
-    console.error('[POST /api/replenishment/tasks/[id]/claim] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await claimTask({ taskId, staffId: actorStaffId }, ctx.organizationId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result);
 }, { permission: 'bin.adjust' });

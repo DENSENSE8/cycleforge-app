@@ -6,36 +6,29 @@ import { withAuth } from '@/lib/auth/withAuth';
 // action — wired to replenish.approve_po which is in STEP_UP_PERMISSIONS so
 // the wrapper also requires a fresh step-up grant.
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json();
-    const ids = body.replenishment_request_ids;
+  const body = await req.json();
+  const ids = body.replenishment_request_ids;
 
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json(
-        { error: 'replenishment_request_ids must be a non-empty array' },
-        { status: 400 }
-      );
-    }
-
-    if (ids.length > 50) {
-      return NextResponse.json(
-        { error: 'Maximum 50 requests per batch' },
-        { status: 400 }
-      );
-    }
-
-    // Thread the caller's active tenant so the shared module filters out any cross-tenant replenishment_request_ids (org-scoped SELECT/UPDATE)…
-    const created = await createDraftPurchaseOrders(ids, ctx.organizationId);
-
-    return NextResponse.json({
-      success: true,
-      purchase_orders: created,
-      count: created.length,
-    });
-  } catch (error: any) {
+  if (!Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json(
-      { error: 'Failed to create purchase orders', details: error?.message || String(error) },
-      { status: 500 }
+      { error: 'replenishment_request_ids must be a non-empty array' },
+      { status: 400 }
     );
   }
+
+  if (ids.length > 50) {
+    return NextResponse.json(
+      { error: 'Maximum 50 requests per batch' },
+      { status: 400 }
+    );
+  }
+
+  // Thread the caller's active tenant so the shared module filters out any cross-tenant replenishment_request_ids (org-scoped SELECT/UPDATE)…
+  const created = await createDraftPurchaseOrders(ids, ctx.organizationId);
+
+  return NextResponse.json({
+    success: true,
+    purchase_orders: created,
+    count: created.length,
+  });
 }, { permission: 'replenish.approve_po' });

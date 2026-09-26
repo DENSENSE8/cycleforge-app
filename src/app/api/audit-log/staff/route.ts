@@ -17,20 +17,14 @@ export const GET = withAuth(
       );
     }
 
-    try {
-      const detail = await getStaffDetail(filters.staffId, filters, orgId);
-      if (!detail) {
-        return NextResponse.json(
-          { success: false, error: 'Staff not found' },
-          { status: 404 },
-        );
-      }
-      return NextResponse.json({ success: true, ...detail });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'audit-log/staff read failed';
-      console.error('audit-log/staff GET failed:', err);
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    const detail = await getStaffDetail(filters.staffId, filters, orgId);
+    if (!detail) {
+      return NextResponse.json(
+        { success: false, error: 'Staff not found' },
+        { status: 404 },
+      );
     }
+    return NextResponse.json({ success: true, ...detail });
   },
   { permission: 'admin.view_logs' },
 );

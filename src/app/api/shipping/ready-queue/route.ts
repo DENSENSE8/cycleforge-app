@@ -23,16 +23,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const parsed = parseBody(QuerySchema, raw);
   if (parsed instanceof NextResponse) return parsed;
 
-  try {
-    const hits = await getReadyQueue(ctx.organizationId, {
-      limit: parsed.limit,
-      disposition: parsed.disposition ?? null,
-      q: parsed.q ?? null,
-    });
-    return NextResponse.json({ ok: true, hits, count: hits.length });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Failed to load ready queue';
-    console.error('Error in GET /api/shipping/ready-queue:', error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const hits = await getReadyQueue(ctx.organizationId, {
+    limit: parsed.limit,
+    disposition: parsed.disposition ?? null,
+    q: parsed.q ?? null,
+  });
+  return NextResponse.json({ ok: true, hits, count: hits.length });
 }, { permission: 'shipping.view' });

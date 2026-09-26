@@ -11,11 +11,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         return NextResponse.json({ error: 'tracking parameter required' }, { status: 400 });
     }
 
-    try {
-        // Check in orders table via shipping_tracking_numbers join (shipment_id FK).
-        const ordersResult = await tenantQuery(
-            orgId,
-            `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number,
+    // Check in orders table via shipping_tracking_numbers join (shipment_id FK).
+    const ordersResult = await tenantQuery(
+        orgId,
+        `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number,
                     COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
                       OR stn.is_out_for_delivery OR stn.is_delivered, false) AS is_shipped,
                     o.product_title,
@@ -55,13 +54,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
              ) pl ON TRUE
              WHERE stn.tracking_number_raw ILIKE $1
                AND o.organization_id = $2`,
-            [`%${tracking}%`, orgId]
-        );
+        [`%${tracking}%`, orgId]
+    );
 
-        // Check in packer_logs table
-        const packerLogsResult = await tenantQuery(
-            orgId,
-            `SELECT COALESCE(stn.tracking_number_raw, pl.scan_ref) AS shipping_tracking_number,
+    // Check in packer_logs table
+    const packerLogsResult = await tenantQuery(
+        orgId,
+        `SELECT COALESCE(stn.tracking_number_raw, pl.scan_ref) AS shipping_tracking_number,
                     pl.tracking_type, pl.completion_state, pl.created_at AS packed_at
              FROM packer_logs pl
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = pl.shipment_id
@@ -70,28 +69,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                AND pl.organization_id = $2
              ORDER BY pl.created_at DESC NULLS LAST
              LIMIT 50`,
-            [`%${tracking}%`, orgId]
-        );
+        [`%${tracking}%`, orgId]
+    );
 
-        return NextResponse.json({
-            tracking,
-            found_in_orders: ordersResult.rows,
-            found_in_packer_logs: packerLogsResult.rows,
-            summary: {
-                in_orders: ordersResult.rows.length > 0,
-                in_packer_logs: packerLogsResult.rows.length > 0,
-                is_shipped: ordersResult.rows[0]?.is_shipped,
-                has_packer_id: ordersResult.rows[0]?.packer_id != null,
-                packer_id: ordersResult.rows[0]?.packer_id,
-                tester_id: ordersResult.rows[0]?.tester_id
-            }
-        });
-
-    } catch (error: any) {
-        console.error('Check tracking error:', error);
-        return NextResponse.json({
-            success: false,
-            error: error.message
-        }, { status: 500 });
-    }
+    return NextResponse.json({
+        tracking,
+        found_in_orders: ordersResult.rows,
+        found_in_packer_logs: packerLogsResult.rows,
+        summary: {
+            in_orders: ordersResult.rows.length > 0,
+            in_packer_logs: packerLogsResult.rows.length > 0,
+            is_shipped: ordersResult.rows[0]?.is_shipped,
+            has_packer_id: ordersResult.rows[0]?.packer_id != null,
+            packer_id: ordersResult.rows[0]?.packer_id,
+            tester_id: ordersResult.rows[0]?.tester_id
+        }
+    });
 }, { permission: 'orders.view' });

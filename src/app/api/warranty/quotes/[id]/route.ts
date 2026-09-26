@@ -21,21 +21,15 @@ export const PATCH = withAuth(async (request, ctx) => {
     );
   }
 
-  try {
-    // Tenant isolation:
-    const result = await setQuoteStatus(quoteId, parsed.data.status, ctx.staffId ?? null, ctx.organizationId);
-    if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
-    await recordAudit(pool, ctx, request, {
-      source: 'warranty-logger',
-      action: 'warranty.quote_status',
-      entityType: 'warranty_quote',
-      entityId: quoteId,
-      after: { status: parsed.data.status, repairServiceId: result.repairServiceId ?? null },
-    });
-    return NextResponse.json({ ok: true, quote: result.quote, repairServiceId: result.repairServiceId ?? null });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'update quote failed';
-    console.error('[PATCH /api/warranty/quotes/[id]] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  // Tenant isolation:
+  const result = await setQuoteStatus(quoteId, parsed.data.status, ctx.staffId ?? null, ctx.organizationId);
+  if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
+  await recordAudit(pool, ctx, request, {
+    source: 'warranty-logger',
+    action: 'warranty.quote_status',
+    entityType: 'warranty_quote',
+    entityId: quoteId,
+    after: { status: parsed.data.status, repairServiceId: result.repairServiceId ?? null },
+  });
+  return NextResponse.json({ ok: true, quote: result.quote, repairServiceId: result.repairServiceId ?? null });
 }, { permission: 'warranty.manage', feature: 'repair' });

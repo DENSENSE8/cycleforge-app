@@ -85,21 +85,15 @@ export const POST = withAuth(
     if (!(await dailyCheckItemExists({ orgId: ctx.organizationId, itemId }))) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
-    try {
-      const link = await createDailyCheckItemLink({
-        orgId: ctx.organizationId,
-        itemId,
-        entityType: parsed.data.entityType,
-        entityId: parsed.data.entityId ?? null,
-        label: parsed.data.label ?? null,
-        createdByStaffId: ctx.staffId,
-      });
-      return NextResponse.json(link, { status: 201 });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] link create failed:', message);
-      return NextResponse.json({ error: 'Failed to attach the connection' }, { status: 500 });
-    }
+    const link = await createDailyCheckItemLink({
+      orgId: ctx.organizationId,
+      itemId,
+      entityType: parsed.data.entityType,
+      entityId: parsed.data.entityId ?? null,
+      label: parsed.data.label ?? null,
+      createdByStaffId: ctx.staffId,
+    });
+    return NextResponse.json(link, { status: 201 });
   },
   { permission: 'dashboard.view' },
 );

@@ -15,21 +15,20 @@ export const GET = withAuth(async (request, ctx) => {
     });
   }
 
-  try {
-    const like = `%${q}%`;
+  const like = `%${q}%`;
 
-    // String-key joins (sp↔orders on item_number/sku) collide across tenants —
-    // align both subqueries on organization_id. sku_catalog and sku_platform_ids
-    // both carry organization_id; filter each on the caller's org + GUC wrap.
-    const [catalog, unmapped] = await Promise.all([
-      tenantQuery(
-        ctx.organizationId,
-        `SELECT id, is_active FROM sku_catalog WHERE upper(sku) = upper($1) AND organization_id = $2 LIMIT 1`,
-        [q, ctx.organizationId],
-      ),
-      tenantQuery(
-        ctx.organizationId,
-        `SELECT
+  // String-key joins (sp↔orders on item_number/sku) collide across tenants —
+  // align both subqueries on organization_id. sku_catalog and sku_platform_ids
+  // both carry organization_id; filter each on the caller's org + GUC wrap.
+  const [catalog, unmapped] = await Promise.all([
+    tenantQuery(
+      ctx.organizationId,
+      `SELECT id, is_active FROM sku_catalog WHERE upper(sku) = upper($1) AND organization_id = $2 LIMIT 1`,
+      [q, ctx.organizationId],
+    ),
+    tenantQuery(
+      ctx.organizationId,
+      `SELECT
            sp.id              AS "platformIdRowId",
            sp.platform,
            sp.platform_sku    AS "platformSku",
@@ -60,22 +59,17 @@ export const GET = withAuth(async (request, ctx) => {
                 OR (sp.platform <> 'ecwid' AND sp.platform_item_id ILIKE $1))
          ORDER BY "orderCount" DESC, sp.id
          LIMIT 25`,
-        [like, ctx.organizationId],
-      ),
-    ]);
+      [like, ctx.organizationId],
+    ),
+  ]);
 
-    const catalogRow = catalog.rows[0];
-    return NextResponse.json({
-      success: true,
-      query: q,
-      catalogSku: catalogRow
-        ? { exists: true, id: catalogRow.id, isActive: catalogRow.is_active }
-        : { exists: false },
-      unmappedPlatformIds: unmapped.rows,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'search-unmatched failed';
-    console.error('[search-unmatched] error:', err);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  const catalogRow = catalog.rows[0];
+  return NextResponse.json({
+    success: true,
+    query: q,
+    catalogSku: catalogRow
+      ? { exists: true, id: catalogRow.id, isActive: catalogRow.is_active }
+      : { exists: false },
+    unmappedPlatformIds: unmapped.rows,
+  });
 }, { permission: 'sku_stock.view' });

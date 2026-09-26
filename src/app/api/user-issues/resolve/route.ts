@@ -33,54 +33,46 @@ export const POST = withAuth(async (req: NextRequest) => {
     return NextResponse.json({ ok: false, error: 'BAD_JSON' }, { status: 400 });
   }
 
-  try {
-    const org = FORGE_ORG_ID;
-    const result = await resolveReportedIssue(
-      org,
-      {
-        issueId: body.issueId,
-        githubIssueNumber: body.githubIssueNumber,
-        resolutionCommit: body.resolutionCommit ?? null,
-      },
-      dbDeps,
-    );
+  const org = FORGE_ORG_ID;
+  const result = await resolveReportedIssue(
+    org,
+    {
+      issueId: body.issueId,
+      githubIssueNumber: body.githubIssueNumber,
+      resolutionCommit: body.resolutionCommit ?? null,
+    },
+    dbDeps,
+  );
 
-    if (!result.ok) {
-      const status = result.error === 'not_found' ? 404 : 400;
-      return NextResponse.json({ ok: false, error: result.error }, { status });
-    }
-
-    if (!result.idempotent) {
-      await recordAudit(pool, null, req, {
-        source: 'user-issues-resolve',
-        action: AUDIT_ACTION.USER_ISSUE_RESOLVE,
-        entityType: AUDIT_ENTITY.USER_ISSUE,
-        entityId: result.issueId,
-        after: { status: 'deployed', resolutionCommit: body.resolutionCommit ?? null },
-        organizationIdOverride: org,
-        method: 'system',
-      });
-      // The reporter's toast — fire-and-forget, never blocks the webhook 200.
-      if (result.reporterStaffId != null) {
-        const staffId = result.reporterStaffId;
-        after(() =>
-          publishIssueResolved({
-            organizationId: org,
-            staffId,
-            issueId: result.issueId,
-            title: result.title,
-            resolutionCommit: body.resolutionCommit ?? null,
-          }),
-        );
-      }
-    }
-
-    return NextResponse.json({ ok: true, issueId: result.issueId, idempotent: result.idempotent });
-  } catch (error: unknown) {
-    console.error('Error in POST /api/user-issues/resolve:', error);
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Failed to resolve issue' },
-      { status: 500 },
-    );
+  if (!result.ok) {
+    const status = result.error === 'not_found' ? 404 : 400;
+    return NextResponse.json({ ok: false, error: result.error }, { status });
   }
+
+  if (!result.idempotent) {
+    await recordAudit(pool, null, req, {
+      source: 'user-issues-resolve',
+      action: AUDIT_ACTION.USER_ISSUE_RESOLVE,
+      entityType: AUDIT_ENTITY.USER_ISSUE,
+      entityId: result.issueId,
+      after: { status: 'deployed', resolutionCommit: body.resolutionCommit ?? null },
+      organizationIdOverride: org,
+      method: 'system',
+    });
+    // The reporter's toast — fire-and-forget, never blocks the webhook 200.
+    if (result.reporterStaffId != null) {
+      const staffId = result.reporterStaffId;
+      after(() =>
+        publishIssueResolved({
+          organizationId: org,
+          staffId,
+          issueId: result.issueId,
+          title: result.title,
+          resolutionCommit: body.resolutionCommit ?? null,
+        }),
+      );
+    }
+  }
+
+  return NextResponse.json({ ok: true, issueId: result.issueId, idempotent: result.idempotent });
 }, { allowAnonymous: true });

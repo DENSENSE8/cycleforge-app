@@ -55,87 +55,81 @@ function entityParamForDim(dim: JourneyDimension, searchParams: URLSearchParams)
 
 export const GET = withAuth(
   async (request: NextRequest, ctx) => {
-    try {
-      const { searchParams } = new URL(request.url);
-      const orgId = ctx.organizationId;
+    const { searchParams } = new URL(request.url);
+    const orgId = ctx.organizationId;
 
-      const dim = parseDimension(searchParams.get('dim'));
-      const entityValue = entityParamForDim(dim, searchParams);
+    const dim = parseDimension(searchParams.get('dim'));
+    const entityValue = entityParamForDim(dim, searchParams);
 
-      const filters: JourneyFilters = {
-        from: searchParams.get('from'),
-        to: searchParams.get('until') || searchParams.get('to'),
-        stations: csv(searchParams.get('stations')),
-        types: csv(searchParams.get('types')),
-        staffId: parseStaffId(searchParams.get('staffId')),
-        status: searchParams.get('status') || null,
-        sources: parseSources(searchParams.get('sources')),
-        q: searchParams.get('q') || null,
-        limit: clampLimit(Number(searchParams.get('limit'))),
-      };
+    const filters: JourneyFilters = {
+      from: searchParams.get('from'),
+      to: searchParams.get('until') || searchParams.get('to'),
+      stations: csv(searchParams.get('stations')),
+      types: csv(searchParams.get('types')),
+      staffId: parseStaffId(searchParams.get('staffId')),
+      status: searchParams.get('status') || null,
+      sources: parseSources(searchParams.get('sources')),
+      q: searchParams.get('q') || null,
+      limit: clampLimit(Number(searchParams.get('limit'))),
+    };
 
-      // Field-level audit diffs (before/after values) are admin-only (plan
-      // Decision §3.2 Option B). Computed once; drives both the browse-spine
-      // gate and the entity/browse diff redaction below.
-      const canViewAudit = ctx.permissions.has('admin.view_logs');
+    // Field-level audit diffs (before/after values) are admin-only (plan
+    // Decision §3.2 Option B). Computed once; drives both the browse-spine
+    // gate and the entity/browse diff redaction below.
+    const canViewAudit = ctx.permissions.has('admin.view_logs');
 
-      // BROWSE mode — no record number → serve the org-wide, filterable,
-      // keyset-paginated event feed instead of the legacy 400 (plan §3.1).
-      if (!entityValue || !entityValue.trim()) {
-        // Audit-spine gate (plan Decision §3.2 Option B): admin-only in browse.
-        const gate = resolveBrowseSources(filters.sources, canViewAudit);
-        if (gate.forbidden) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'The audit spine requires the admin.view_logs permission',
-              code: 'AUDIT_SOURCE_FORBIDDEN',
-            },
-            { status: 403 },
-          );
-        }
-
-        const cursor = decodeCursor(searchParams.get('cursor'));
-        const { events, nextCursor } = await withTenantTransaction(orgId, (client) =>
-          readJourneyBrowse(client, orgId, { ...filters, sources: gate.sources }, cursor),
+    // BROWSE mode — no record number → serve the org-wide, filterable,
+    // keyset-paginated event feed instead of the legacy 400 (plan §3.1).
+    if (!entityValue || !entityValue.trim()) {
+      // Audit-spine gate (plan Decision §3.2 Option B): admin-only in browse.
+      const gate = resolveBrowseSources(filters.sources, canViewAudit);
+      if (gate.forbidden) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'The audit spine requires the admin.view_logs permission',
+            code: 'AUDIT_SOURCE_FORBIDDEN',
+          },
+          { status: 403 },
         );
-
-        return NextResponse.json({
-          success: true,
-          mode: 'browse',
-          events: redactAuditDiffs(events, canViewAudit),
-          nextCursor: nextCursor ? encodeCursor(nextCursor) : null,
-          limit: filters.limit,
-        });
       }
 
-      const result = await withTenantTransaction(orgId, async (client) => {
-        const anchors = await resolveEntity(client, orgId, dim, entityValue);
-        if (!anchors) return { notFound: true as const };
-        const [events, serialProvenance] = await Promise.all([
-          readJourneyEntity(client, orgId, anchors, filters),
-          readSerialProvenance(client, orgId, anchors.serialUnitIds),
-        ]);
-        return { notFound: false as const, anchors: { ...anchors, serialProvenance }, events };
-      });
-
-      if (result.notFound) {
-        return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
-      }
+      const cursor = decodeCursor(searchParams.get('cursor'));
+      const { events, nextCursor } = await withTenantTransaction(orgId, (client) =>
+        readJourneyBrowse(client, orgId, { ...filters, sources: gate.sources }, cursor),
+      );
 
       return NextResponse.json({
         success: true,
-        mode: 'entity',
-        entity: result.anchors,
-        events: redactAuditDiffs(result.events, canViewAudit),
-        nextCursor: null,
+        mode: 'browse',
+        events: redactAuditDiffs(events, canViewAudit),
+        nextCursor: nextCursor ? encodeCursor(nextCursor) : null,
         limit: filters.limit,
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to read journey';
-      console.error('[GET /api/operations/journey] error:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
+
+    const result = await withTenantTransaction(orgId, async (client) => {
+      const anchors = await resolveEntity(client, orgId, dim, entityValue);
+      if (!anchors) return { notFound: true as const };
+      const [events, serialProvenance] = await Promise.all([
+        readJourneyEntity(client, orgId, anchors, filters),
+        readSerialProvenance(client, orgId, anchors.serialUnitIds),
+      ]);
+      return { notFound: false as const, anchors: { ...anchors, serialProvenance }, events };
+    });
+
+    if (result.notFound) {
+      return NextResponse.json({ success: false, error: 'Record not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      mode: 'entity',
+      entity: result.anchors,
+      events: redactAuditDiffs(result.events, canViewAudit),
+      nextCursor: null,
+      limit: filters.limit,
+    });
   },
   { permission: 'operations.view' },
 );

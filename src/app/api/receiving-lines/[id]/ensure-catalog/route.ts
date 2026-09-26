@@ -15,24 +15,18 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid line id' }, { status: 400 });
   }
 
-  try {
-    // [id]/verb write:
-    const resolved = await resolveOrCreateLineCatalog(lineId, ctx.organizationId);
-    if (!resolved) {
-      return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
-    }
-    if (resolved.skuCatalogId == null) {
-      return NextResponse.json(
-        { ok: false, error: 'no SKU on this line to catalog' },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ ok: true, skuCatalogId: resolved.skuCatalogId });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to ensure catalog';
-    console.error('[POST /api/receiving-lines/[id]/ensure-catalog] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  // [id]/verb write:
+  const resolved = await resolveOrCreateLineCatalog(lineId, ctx.organizationId);
+  if (!resolved) {
+    return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });
   }
+  if (resolved.skuCatalogId == null) {
+    return NextResponse.json(
+      { ok: false, error: 'no SKU on this line to catalog' },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json({ ok: true, skuCatalogId: resolved.skuCatalogId });
 }, {
   permission: 'tech.qc_pass',
   audit: {

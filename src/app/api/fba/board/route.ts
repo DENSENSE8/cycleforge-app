@@ -6,19 +6,18 @@ import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
 /** GET /api/fba/board */
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
-  try {
-    // Heavy per-scan board aggregation → short-TTL cache; every FBA write busts
-    // fba-board/fba-stage-counts (org-scoped) so the board stays fresh.
-    const pending = await getOrSet<unknown[]>(
-      CACHE_NS.fbaBoard,
-      ctx.organizationId,
-      'board',
-      20,
-      [CACHE_TAGS.fbaBoard, CACHE_TAGS.fbaStageCounts],
-      async () => {
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `WITH pending_rows AS (
+  // Heavy per-scan board aggregation → short-TTL cache; every FBA write busts
+  // fba-board/fba-stage-counts (org-scoped) so the board stays fresh.
+  const pending = await getOrSet<unknown[]>(
+    CACHE_NS.fbaBoard,
+    ctx.organizationId,
+    'board',
+    20,
+    [CACHE_TAGS.fbaBoard, CACHE_TAGS.fbaStageCounts],
+    async () => {
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `WITH pending_rows AS (
          SELECT
            fsi.id AS item_id,
            fsi.fnsku,
@@ -126,26 +125,19 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
          END ASC,
          g.last_activity_at DESC NULLS LAST,
          c.fnsku ASC`,
-      [ctx.organizationId]
-    );
-    return result.rows;
-      },
-    );
+    [ctx.organizationId]
+  );
+  return result.rows;
+    },
+  );
 
-    return NextResponse.json({
-      success: true,
-      pending,
-      shipped: [],
-      // legacy response shape support
-      awaiting: [],
-      packed: [],
-      paired: [],
-    });
-  } catch (error: any) {
-    console.error('[GET /api/fba/board]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch FBA board' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    pending,
+    shipped: [],
+    // legacy response shape support
+    awaiting: [],
+    packed: [],
+    paired: [],
+  });
 }, { permission: 'fba.view', feature: 'fba' });

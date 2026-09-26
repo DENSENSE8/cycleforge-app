@@ -12,22 +12,21 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: 'Origin not allowed' }, { status: 403 });
   }
 
-  try {
-    const orgId = ctx.organizationId;
-    const body = (await request.json()) as Partial<ChannelOrder> & { enqueue?: boolean };
-    const shouldEnqueue = body.enqueue === true || request.nextUrl.searchParams.get('enqueue') === 'true';
+  const orgId = ctx.organizationId;
+  const body = (await request.json()) as Partial<ChannelOrder> & { enqueue?: boolean };
+  const shouldEnqueue = body.enqueue === true || request.nextUrl.searchParams.get('enqueue') === 'true';
 
-    if (shouldEnqueue) {
-      // DB-backed queue (outbox) — replaces the QStash event queue.
-      if (!body.channelOrderId) {
-        return NextResponse.json(
-          { success: false, error: 'channelOrderId is required to enqueue' },
-          { status: 400 },
-        );
-      }
-      const { rows } = await tenantQuery<{ id: number }>(
-        orgId,
-        `INSERT INTO order_ingest_queue (channel_order_id, organization_id, payload, status)
+  if (shouldEnqueue) {
+    // DB-backed queue (outbox) — replaces the QStash event queue.
+    if (!body.channelOrderId) {
+      return NextResponse.json(
+        { success: false, error: 'channelOrderId is required to enqueue' },
+        { status: 400 },
+      );
+    }
+    const { rows } = await tenantQuery<{ id: number }>(
+      orgId,
+      `INSERT INTO order_ingest_queue (channel_order_id, organization_id, payload, status)
          VALUES ($1, $2, $3, 'pending')
          ON CONFLICT (channel_order_id) DO UPDATE
            SET payload = EXCLUDED.payload,
@@ -38,18 +37,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                processed_at = NULL
          WHERE order_ingest_queue.status IN ('done', 'failed')
          RETURNING id`,
-        [body.channelOrderId, ctx.organizationId, JSON.stringify({ ...body, enqueue: false })],
-      );
-      return NextResponse.json({ success: true, queued: true, queueId: rows[0]?.id ?? null });
-    }
-
-    const order = await orderSyncService.ingestExternalOrder(ctx.organizationId, body as ChannelOrder);
-    return NextResponse.json({ success: true, order });
-  } catch (error: any) {
-    console.error('[zoho/orders/ingest]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to ingest external order into Zoho' },
-      { status: 500 }
+      [body.channelOrderId, ctx.organizationId, JSON.stringify({ ...body, enqueue: false })],
     );
+    return NextResponse.json({ success: true, queued: true, queueId: rows[0]?.id ?? null });
   }
+
+  const order = await orderSyncService.ingestExternalOrder(ctx.organizationId, body as ChannelOrder);
+  return NextResponse.json({ success: true, order });
 }, { permission: 'integrations.zoho' });

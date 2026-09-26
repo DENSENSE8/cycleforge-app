@@ -6,11 +6,10 @@ import { tenantQuery } from '@/lib/tenancy/db';
 export const GET = withAuth(async (_req, ctx) => {
     const orgId = ctx.organizationId;
 
-    try {
-        // Count orders where carrier status = in-transit/delivered (derived shipped).
-        // shipping_tracking_numbers has no organization_id column; scope via the
-        // orders parent (o.organization_id) plus the GUC-wrapped connection.
-        const shippedCount = await tenantQuery(orgId, `
+    // Count orders where carrier status = in-transit/delivered (derived shipped).
+    // shipping_tracking_numbers has no organization_id column; scope via the
+    // orders parent (o.organization_id) plus the GUC-wrapped connection.
+    const shippedCount = await tenantQuery(orgId, `
             SELECT COUNT(DISTINCT o.id) AS count
             FROM orders o
             JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
@@ -19,8 +18,8 @@ export const GET = withAuth(async (_req, ctx) => {
                OR stn.is_out_for_delivery OR stn.is_delivered)
         `, [orgId]);
 
-        // Orders with packer logs (FK-based)
-        const packedByCount = await tenantQuery(orgId, `
+    // Orders with packer logs (FK-based)
+    const packedByCount = await tenantQuery(orgId, `
             SELECT COUNT(DISTINCT o.id) AS count
             FROM orders o
             INNER JOIN packer_logs pl ON pl.shipment_id = o.shipment_id
@@ -30,8 +29,8 @@ export const GET = withAuth(async (_req, ctx) => {
               AND pl.completion_state = 'COMPLETED'
         `, [orgId]);
 
-        // Sample shipped orders (derived from stn)
-        const sampleShipped = await tenantQuery(orgId, `
+    // Sample shipped orders (derived from stn)
+    const sampleShipped = await tenantQuery(orgId, `
             SELECT
                 o.id,
                 o.order_id,
@@ -60,8 +59,8 @@ export const GET = withAuth(async (_req, ctx) => {
             LIMIT 10
         `, [orgId]);
 
-        // Orders with packer log but carrier not yet accepted (packed but not yet shipped)
-        const packedButNotShipped = await tenantQuery(orgId, `
+    // Orders with packer log but carrier not yet accepted (packed but not yet shipped)
+    const packedButNotShipped = await tenantQuery(orgId, `
             SELECT COUNT(DISTINCT o.id) AS count
             FROM orders o
             INNER JOIN packer_logs pl ON pl.shipment_id = o.shipment_id
@@ -73,21 +72,13 @@ export const GET = withAuth(async (_req, ctx) => {
                     OR stn.is_out_for_delivery OR stn.is_delivered, false)
         `, [orgId]);
 
-        return NextResponse.json({
-            success: true,
-            stats: {
-                orders_carrier_shipped: shippedCount.rows[0].count,
-                orders_with_packer_log: packedByCount.rows[0].count,
-                packed_but_carrier_not_accepted: packedButNotShipped.rows[0].count
-            },
-            sample_shipped_orders: sampleShipped.rows
-        });
-
-    } catch (error: any) {
-        console.error('Debug error:', error);
-        return NextResponse.json({
-            success: false,
-            error: error.message
-        }, { status: 500 });
-    }
+    return NextResponse.json({
+        success: true,
+        stats: {
+            orders_carrier_shipped: shippedCount.rows[0].count,
+            orders_with_packer_log: packedByCount.rows[0].count,
+            packed_but_carrier_not_accepted: packedButNotShipped.rows[0].count
+        },
+        sample_shipped_orders: sampleShipped.rows
+    });
 }, { permission: 'admin.view_logs' });

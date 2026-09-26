@@ -64,160 +64,152 @@ async function fetchEcwidOrders(storeId: string, token: string, maxPages: number
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json().catch(() => ({}));
-    const maxPages = Math.max(1, Math.min(50, Number(body.maxPages || 10)));
+  const body = await req.json().catch(() => ({}));
+  const maxPages = Math.max(1, Math.min(50, Number(body.maxPages || 10)));
 
-    const ecwidStoreId = requiredEnvAny('ECWID_STORE_ID', [
-      'ECWID_STOREID',
-      'ECWID_STORE',
-      'NEXT_PUBLIC_ECWID_STORE_ID',
-    ]);
-    const ecwidApiToken = requiredEnvAny('ECWID_API_TOKEN', [
-      'ECWID_TOKEN',
-      'ECWID_ACCESS_TOKEN',
-      'NEXT_PUBLIC_ECWID_API_TOKEN',
-    ]);
+  const ecwidStoreId = requiredEnvAny('ECWID_STORE_ID', [
+    'ECWID_STOREID',
+    'ECWID_STORE',
+    'NEXT_PUBLIC_ECWID_STORE_ID',
+  ]);
+  const ecwidApiToken = requiredEnvAny('ECWID_API_TOKEN', [
+    'ECWID_TOKEN',
+    'ECWID_ACCESS_TOKEN',
+    'NEXT_PUBLIC_ECWID_API_TOKEN',
+  ]);
 
-    const ecwidOrders = await fetchEcwidOrders(ecwidStoreId, ecwidApiToken, maxPages);
+  const ecwidOrders = await fetchEcwidOrders(ecwidStoreId, ecwidApiToken, maxPages);
 
-    let scanned = 0;
-    let matched = 0;
-    let updated = 0;
-    let unchanged = 0;
-    let unmatched = 0;
-    let errors = 0;
-    let skippedRepairs = 0;
+  let scanned = 0;
+  let matched = 0;
+  let updated = 0;
+  let unchanged = 0;
+  let unmatched = 0;
+  let errors = 0;
+  let skippedRepairs = 0;
 
-    for (const order of ecwidOrders) {
-      scanned++;
-      try {
-        const orderId = String(order?.orderNumber ?? order?.id ?? '').trim();
-        const firstItem = Array.isArray(order?.items) ? order.items[0] || {} : {};
-        const trackingNumber = String(
-          order?.trackingNumber ??
-          order?.shippingTrackingNumber ??
-          order?.shippingInfo?.trackingNumber ??
-          ''
-        ).trim();
-        const orderDate = parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date);
-        const sku = String(firstItem?.sku || '').trim();
-        const productTitle = String(firstItem?.name || '').trim();
-        const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '';
+  for (const order of ecwidOrders) {
+    scanned++;
+    try {
+      const orderId = String(order?.orderNumber ?? order?.id ?? '').trim();
+      const firstItem = Array.isArray(order?.items) ? order.items[0] || {} : {};
+      const trackingNumber = String(
+        order?.trackingNumber ??
+        order?.shippingTrackingNumber ??
+        order?.shippingInfo?.trackingNumber ??
+        ''
+      ).trim();
+      const orderDate = parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date);
+      const sku = String(firstItem?.sku || '').trim();
+      const productTitle = String(firstItem?.name || '').trim();
+      const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '';
 
-        if (isRepairServiceSku(sku)) {
-          skippedRepairs++;
-          continue;
-        }
+      if (isRepairServiceSku(sku)) {
+        skippedRepairs++;
+        continue;
+      }
 
-        let existingRows: any[] = [];
+      let existingRows: any[] = [];
 
-        if (orderId) {
-          // orders is tenant-owned; order_id is a marketplace string key that can
-          // collide across tenants, so it MUST be org-scoped.
-          const byOrderId = await tenantQuery(
-            ctx.organizationId,
-            `SELECT id, order_id, account_source, order_date, sku, item_number, product_title, quantity
+      if (orderId) {
+        // orders is tenant-owned; order_id is a marketplace string key that can
+        // collide across tenants, so it MUST be org-scoped.
+        const byOrderId = await tenantQuery(
+          ctx.organizationId,
+          `SELECT id, order_id, account_source, order_date, sku, item_number, product_title, quantity
              FROM orders
              WHERE order_id = $1
                AND organization_id = $2
              ORDER BY created_at DESC NULLS LAST, id DESC
              LIMIT 1`,
-            [orderId, ctx.organizationId]
-          );
-          existingRows = byOrderId.rows;
-        }
+          [orderId, ctx.organizationId]
+        );
+        existingRows = byOrderId.rows;
+      }
 
-        if (existingRows.length === 0 && trackingNumber) {
-          const last8 = getLastEightDigits(trackingNumber);
-          if (last8) {
-            // The stn join is on the integer surrogate PK (stn.id = o.shipment_id)
-            // so it's safe bare; shipping_tracking_numbers has no organization_id
-            // column (NEEDS-COL) — the org gate lives on the orders row (o).
-            const byTracking = await tenantQuery(
-              ctx.organizationId,
-              `SELECT o.id, o.order_id, o.account_source, o.order_date, o.sku, o.item_number, o.product_title, o.quantity
+      if (existingRows.length === 0 && trackingNumber) {
+        const last8 = getLastEightDigits(trackingNumber);
+        if (last8) {
+          // The stn join is on the integer surrogate PK (stn.id = o.shipment_id)
+          // so it's safe bare; shipping_tracking_numbers has no organization_id
+          // column (NEEDS-COL) — the org gate lives on the orders row (o).
+          const byTracking = await tenantQuery(
+            ctx.organizationId,
+            `SELECT o.id, o.order_id, o.account_source, o.order_date, o.sku, o.item_number, o.product_title, o.quantity
                FROM orders o
                JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
                WHERE RIGHT(regexp_replace(stn.tracking_number_normalized, '\\D', '', 'g'), 8) = $1
                  AND o.organization_id = $2
                ORDER BY o.created_at DESC NULLS LAST, o.id DESC
                LIMIT 1`,
-              [last8, ctx.organizationId]
-            );
-            existingRows = byTracking.rows;
-          }
+            [last8, ctx.organizationId]
+          );
+          existingRows = byTracking.rows;
         }
-
-        if (existingRows.length === 0) {
-          unmatched++;
-          continue;
-        }
-
-        matched++;
-        const current = existingRows[0];
-        const updates: string[] = [];
-        const values: any[] = [];
-        let idx = 1;
-
-        if (isBlank(current.order_id) && orderId) {
-          updates.push(`order_id = $${idx++}`);
-          values.push(orderId);
-        }
-        if (isBlank(current.account_source)) {
-          updates.push(`account_source = $${idx++}`);
-          values.push('ecwid');
-        }
-        if (!current.order_date && orderDate) {
-          updates.push(`order_date = $${idx++}`);
-          values.push(orderDate);
-        }
-        if (isBlank(current.sku) && sku) {
-          updates.push(`sku = $${idx++}`);
-          values.push(sku);
-        }
-        if (isBlank(current.item_number) && sku) {
-          updates.push(`item_number = $${idx++}`);
-          values.push(sku);
-        }
-        if (isBlank(current.product_title) && productTitle) {
-          updates.push(`product_title = $${idx++}`);
-          values.push(productTitle);
-        }
-        if (isBlank(current.quantity) && quantity) {
-          updates.push(`quantity = $${idx++}`);
-          values.push(quantity);
-        }
-
-        if (updates.length === 0) {
-          unchanged++;
-          continue;
-        }
-
-        values.push(current.id);
-        values.push(ctx.organizationId);
-        await tenantQuery(
-          ctx.organizationId,
-          `UPDATE orders SET ${updates.join(', ')} WHERE id = $${idx} AND organization_id = $${idx + 1}`,
-          values
-        );
-        updated++;
-      } catch {
-        errors++;
       }
-    }
 
-    return NextResponse.json({
-      success: true,
-      message: `Ecwid backfill completed: updated ${updated} order(s).`,
-      totals: { scanned, matched, updated, unchanged, unmatched, errors, skippedRepairs },
-      pagination: { maxPages, pageSize: DEFAULT_LIMIT },
-    });
-  } catch (error: any) {
-    console.error('Ecwid backfill error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Internal Server Error' },
-      { status: 500 }
-    );
+      if (existingRows.length === 0) {
+        unmatched++;
+        continue;
+      }
+
+      matched++;
+      const current = existingRows[0];
+      const updates: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+
+      if (isBlank(current.order_id) && orderId) {
+        updates.push(`order_id = $${idx++}`);
+        values.push(orderId);
+      }
+      if (isBlank(current.account_source)) {
+        updates.push(`account_source = $${idx++}`);
+        values.push('ecwid');
+      }
+      if (!current.order_date && orderDate) {
+        updates.push(`order_date = $${idx++}`);
+        values.push(orderDate);
+      }
+      if (isBlank(current.sku) && sku) {
+        updates.push(`sku = $${idx++}`);
+        values.push(sku);
+      }
+      if (isBlank(current.item_number) && sku) {
+        updates.push(`item_number = $${idx++}`);
+        values.push(sku);
+      }
+      if (isBlank(current.product_title) && productTitle) {
+        updates.push(`product_title = $${idx++}`);
+        values.push(productTitle);
+      }
+      if (isBlank(current.quantity) && quantity) {
+        updates.push(`quantity = $${idx++}`);
+        values.push(quantity);
+      }
+
+      if (updates.length === 0) {
+        unchanged++;
+        continue;
+      }
+
+      values.push(current.id);
+      values.push(ctx.organizationId);
+      await tenantQuery(
+        ctx.organizationId,
+        `UPDATE orders SET ${updates.join(', ')} WHERE id = $${idx} AND organization_id = $${idx + 1}`,
+        values
+      );
+      updated++;
+    } catch {
+      errors++;
+    }
   }
+
+  return NextResponse.json({
+    success: true,
+    message: `Ecwid backfill completed: updated ${updated} order(s).`,
+    totals: { scanned, matched, updated, unchanged, unmatched, errors, skippedRepairs },
+    pagination: { maxPages, pageSize: DEFAULT_LIMIT },
+  });
 }, { permission: 'admin.manage_features' });

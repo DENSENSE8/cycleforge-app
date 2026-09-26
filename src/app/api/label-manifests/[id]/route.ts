@@ -13,17 +13,11 @@ export const GET = withAuth(
     if (!ref) {
       return NextResponse.json({ ok: false, error: 'invalid manifest ref' }, { status: 400 });
     }
-    try {
-      const manifest = await getManifestDetailByRef(ref, ctx.organizationId as OrgId);
-      if (!manifest) {
-        return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
-      }
-      return NextResponse.json({ ok: true, manifest });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'manifest detail failed';
-      console.error('[GET /api/label-manifests/[id]] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const manifest = await getManifestDetailByRef(ref, ctx.organizationId as OrgId);
+    if (!manifest) {
+      return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
     }
+    return NextResponse.json({ ok: true, manifest });
   },
   { permission: 'print.label' },
 );

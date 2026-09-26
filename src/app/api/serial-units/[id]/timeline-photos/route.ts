@@ -38,21 +38,15 @@ async function resolveUnitId(raw: string, orgId: string): Promise<number | null>
 
 export const GET = withAuth(
   async (request: NextRequest, ctx) => {
-    try {
-      const serialUnitId = await resolveUnitId(
-        extractIdSegment(request.nextUrl.pathname),
-        ctx.organizationId,
-      );
-      if (!serialUnitId) {
-        return NextResponse.json({ success: false, error: 'Serial unit not found' }, { status: 404 });
-      }
-      const photos = await listUnitTimelinePhotos(ctx.organizationId, serialUnitId);
-      return NextResponse.json({ success: true, photos });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to load unit timeline photos';
-      console.error('GET /api/serial-units/[id]/timeline-photos:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const serialUnitId = await resolveUnitId(
+      extractIdSegment(request.nextUrl.pathname),
+      ctx.organizationId,
+    );
+    if (!serialUnitId) {
+      return NextResponse.json({ success: false, error: 'Serial unit not found' }, { status: 404 });
     }
+    const photos = await listUnitTimelinePhotos(ctx.organizationId, serialUnitId);
+    return NextResponse.json({ success: true, photos });
   },
   { permission: 'sku_stock.view' },
 );

@@ -3,27 +3,15 @@ import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async () => {
-    try {
-        // Test existing pg pool connection
-        const result = await pool.query('SELECT NOW()');
-        
-        return NextResponse.json({
-            success: true,
-            message: 'Database connection successful',
-            timestamp: result.rows[0].now,
-            database_url_set: !!process.env.DATABASE_URL,
-            connection_type: 'pg Pool'
-        });
-    } catch (error) {
-        return NextResponse.json({
-            success: false,
-            error: 'Database connection failed',
-            details: error instanceof Error ? error.message : 'Unknown error',
-            database_url_set: !!process.env.DATABASE_URL,
-            env_check: {
-                DATABASE_URL: process.env.DATABASE_URL ? 'SET (hidden)' : 'NOT SET'
-            }
-        }, { status: 500 });
-    }
+    // Test existing pg pool connection
+    const result = await pool.query('SELECT NOW()');
+    
+    return NextResponse.json({
+        success: true,
+        message: 'Database connection successful',
+        timestamp: result.rows[0].now,
+        database_url_set: !!process.env.DATABASE_URL,
+        connection_type: 'pg Pool'
+    });
 }, { permission: 'admin.view' });
 

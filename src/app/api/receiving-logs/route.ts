@@ -40,53 +40,52 @@ async function checkReceivingScansTableExists(): Promise<boolean> {
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-    try {
-        const orgId = ctx.organizationId;
-        const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get('limit') || '50');
-        const offset = parseInt(searchParams.get('offset') || '0');
-        const weekStart = searchParams.get('weekStart') || '';
-        const weekEnd = searchParams.get('weekEnd') || '';
-        const needsTestParam = searchParams.get('needs_test');
-        // orgId MUST be part of the cache key — the SQL is org-scoped via
-        // tenantQuery(orgId, …), but without org in the key org B could be
-        // served org A's cached logs.
-        const cacheLookup = createCacheLookupKey({ org: orgId, limit, offset, weekStart, weekEnd, needsTestParam, scanMeta: true });
+    const orgId = ctx.organizationId;
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const offset = parseInt(searchParams.get('offset') || '0');
+    const weekStart = searchParams.get('weekStart') || '';
+    const weekEnd = searchParams.get('weekEnd') || '';
+    const needsTestParam = searchParams.get('needs_test');
+    // orgId MUST be part of the cache key — the SQL is org-scoped via
+    // tenantQuery(orgId, …), but without org in the key org B could be
+    // served org A's cached logs.
+    const cacheLookup = createCacheLookupKey({ org: orgId, limit, offset, weekStart, weekEnd, needsTestParam, scanMeta: true });
 
-        const today = getCurrentPSTDateKey();
-        const cacheTTL = weekEnd && weekEnd < today ? 86400 : 60;
-        const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=15` };
+    const today = getCurrentPSTDateKey();
+    const cacheTTL = weekEnd && weekEnd < today ? 86400 : 60;
+    const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=15` };
 
-        const cached = await getCachedJson<any[]>('api:receiving-logs', cacheLookup);
-        if (cached) {
-            return NextResponse.json(cached, { headers: { 'x-cache': 'HIT', ...CACHE_HEADERS } });
-        }
+    const cached = await getCachedJson<any[]>('api:receiving-logs', cacheLookup);
+    if (cached) {
+        return NextResponse.json(cached, { headers: { 'x-cache': 'HIT', ...CACHE_HEADERS } });
+    }
 
-        if (!(await checkReceivingTableExists())) {
-            return NextResponse.json([], { headers: { 'x-cache': 'MISS', ...CACHE_HEADERS } });
-        }
+    if (!(await checkReceivingTableExists())) {
+        return NextResponse.json([], { headers: { 'x-cache': 'MISS', ...CACHE_HEADERS } });
+    }
 
-        const { columns: availableColumns, dateColumn, hasQuantity } = await getReceivingSchema();
-        const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
-        const hasColumn = (name: string) => availableColumns.has(name);
+    const { columns: availableColumns, dateColumn, hasQuantity } = await getReceivingSchema();
+    const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
+    const hasColumn = (name: string) => availableColumns.has(name);
 
-        // Shipment join is additive during the deprecation window — only applied
-        // when receiving.shipment_id exists on the schema. See
-        // 2026-04-15_receiving_attach_shipment_id.sql.
-        const hasShipmentId = hasColumn('shipment_id');
-        // Tracking is sourced solely from the canonical STN row (legacy
-        // receiving.receiving_tracking_number was dropped). Degrades to NULL if
-        // the shipment_id column is somehow absent — never references the column.
-        const trackingExpr = hasShipmentId
-            ? 'stn.tracking_number_raw AS tracking'
-            : 'NULL::text AS tracking';
-        const statusExpr = hasShipmentId
-            ? "COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier) AS status"
-            : 'r.carrier AS status';
+    // Shipment join is additive during the deprecation window — only applied
+    // when receiving.shipment_id exists on the schema. See
+    // 2026-04-15_receiving_attach_shipment_id.sql.
+    const hasShipmentId = hasColumn('shipment_id');
+    // Tracking is sourced solely from the canonical STN row (legacy
+    // receiving.receiving_tracking_number was dropped). Degrades to NULL if
+    // the shipment_id column is somehow absent — never references the column.
+    const trackingExpr = hasShipmentId
+        ? 'stn.tracking_number_raw AS tracking'
+        : 'NULL::text AS tracking';
+    const statusExpr = hasShipmentId
+        ? "COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier) AS status"
+        : 'r.carrier AS status';
 
-        const hasReceivingScans = await checkReceivingScansTableExists();
-        const scanJoin = hasReceivingScans
-            ? `LEFT JOIN LATERAL (
+    const hasReceivingScans = await checkReceivingScansTableExists();
+    const scanJoin = hasReceivingScans
+        ? `LEFT JOIN LATERAL (
                   SELECT to_char(rs.scanned_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS tracking_scanned_at,
                          rs.scanned_by AS tracking_scanned_by
                   FROM receiving_scans rs
@@ -94,77 +93,77 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
                   ORDER BY rs.scanned_at ASC NULLS LAST, rs.id ASC
                   LIMIT 1
               ) rs_first ON TRUE`
-            : '';
+        : '';
 
-        const selectFields: string[] = [
-            'r.id',
-            `to_char(r.${dateColumn}::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp`,
-            trackingExpr,
-            statusExpr,
-            `${countExpr} AS count`,
-            hasColumn('qa_status') ? 'r.qa_status' : "NULL::text AS qa_status",
-            hasColumn('disposition_code') ? 'r.disposition_code' : "NULL::text AS disposition_code",
-            hasColumn('condition_grade') ? 'r.condition_grade' : "NULL::text AS condition_grade",
-            hasColumn('is_return') ? 'r.is_return' : 'FALSE AS is_return',
-            hasColumn('return_platform') ? 'r.return_platform' : "NULL::text AS return_platform",
-            hasColumn('return_reason') ? 'r.return_reason' : "NULL::text AS return_reason",
-            hasColumn('needs_test') ? 'r.needs_test' : 'FALSE AS needs_test',
-            hasColumn('assigned_tech_id') ? 'r.assigned_tech_id' : 'NULL::int AS assigned_tech_id',
-            hasColumn('target_channel') ? 'r.target_channel' : "NULL::text AS target_channel",
-            // Carton door/unbox stamps live on the street tables now (receiving_triage rt / receiving_unbox ru, 1:1 with the carton).
-            hasColumn('received_at') ? "to_char(rt.door_received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at" : 'NULL::text AS received_at',
-            hasColumn('received_by') ? 'rt.door_received_by AS received_by' : 'NULL::int AS received_by',
-            hasColumn('unboxed_at') ? "to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at" : 'NULL::text AS unboxed_at',
-            hasColumn('unboxed_by') ? 'ru.unboxed_by AS unboxed_by' : 'NULL::int AS unboxed_by',
-            hasColumn('zoho_purchase_receive_id') ? 'r.zoho_purchase_receive_id' : "NULL::text AS zoho_purchase_receive_id",
-            hasColumn('zoho_warehouse_id') ? 'r.zoho_warehouse_id' : "NULL::text AS zoho_warehouse_id",
-            ...(hasReceivingScans
-                ? [
-                    'rs_first.tracking_scanned_at AS tracking_scanned_at',
-                    'rs_first.tracking_scanned_by AS tracking_scanned_by',
-                ]
-                : ['NULL::text AS tracking_scanned_at', 'NULL::int AS tracking_scanned_by']),
-        ];
+    const selectFields: string[] = [
+        'r.id',
+        `to_char(r.${dateColumn}::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS timestamp`,
+        trackingExpr,
+        statusExpr,
+        `${countExpr} AS count`,
+        hasColumn('qa_status') ? 'r.qa_status' : "NULL::text AS qa_status",
+        hasColumn('disposition_code') ? 'r.disposition_code' : "NULL::text AS disposition_code",
+        hasColumn('condition_grade') ? 'r.condition_grade' : "NULL::text AS condition_grade",
+        hasColumn('is_return') ? 'r.is_return' : 'FALSE AS is_return',
+        hasColumn('return_platform') ? 'r.return_platform' : "NULL::text AS return_platform",
+        hasColumn('return_reason') ? 'r.return_reason' : "NULL::text AS return_reason",
+        hasColumn('needs_test') ? 'r.needs_test' : 'FALSE AS needs_test',
+        hasColumn('assigned_tech_id') ? 'r.assigned_tech_id' : 'NULL::int AS assigned_tech_id',
+        hasColumn('target_channel') ? 'r.target_channel' : "NULL::text AS target_channel",
+        // Carton door/unbox stamps live on the street tables now (receiving_triage rt / receiving_unbox ru, 1:1 with the carton).
+        hasColumn('received_at') ? "to_char(rt.door_received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at" : 'NULL::text AS received_at',
+        hasColumn('received_by') ? 'rt.door_received_by AS received_by' : 'NULL::int AS received_by',
+        hasColumn('unboxed_at') ? "to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at" : 'NULL::text AS unboxed_at',
+        hasColumn('unboxed_by') ? 'ru.unboxed_by AS unboxed_by' : 'NULL::int AS unboxed_by',
+        hasColumn('zoho_purchase_receive_id') ? 'r.zoho_purchase_receive_id' : "NULL::text AS zoho_purchase_receive_id",
+        hasColumn('zoho_warehouse_id') ? 'r.zoho_warehouse_id' : "NULL::text AS zoho_warehouse_id",
+        ...(hasReceivingScans
+            ? [
+                'rs_first.tracking_scanned_at AS tracking_scanned_at',
+                'rs_first.tracking_scanned_by AS tracking_scanned_by',
+            ]
+            : ['NULL::text AS tracking_scanned_at', 'NULL::int AS tracking_scanned_by']),
+    ];
 
-        // Build optional week pre-filter with a one-day boundary buffer for edge-case records.
-        const queryParams: any[] = [];
-        let weekClause = '';
-        if (weekStart && weekEnd) {
-            queryParams.push(weekStart, weekEnd);
-            // Cast dateColumn to timestamptz so the date-arithmetic operators resolve
-            // regardless of whether the column is stored as text or timestamp.
-            weekClause = `AND r.${dateColumn}::timestamptz >= ($1::date - interval '1 day')
+    // Build optional week pre-filter with a one-day boundary buffer for edge-case records.
+    const queryParams: any[] = [];
+    let weekClause = '';
+    if (weekStart && weekEnd) {
+        queryParams.push(weekStart, weekEnd);
+        // Cast dateColumn to timestamptz so the date-arithmetic operators resolve
+        // regardless of whether the column is stored as text or timestamp.
+        weekClause = `AND r.${dateColumn}::timestamptz >= ($1::date - interval '1 day')
               AND r.${dateColumn}::timestamptz <  ($2::date + interval '2 days')`;
-        }
-        queryParams.push(limit, offset);
-        const limitIdx = queryParams.length - 1;
-        const offsetIdx = queryParams.length;
+    }
+    queryParams.push(limit, offset);
+    const limitIdx = queryParams.length - 1;
+    const offsetIdx = queryParams.length;
 
-        // Optional needs_test filter
-        let needsTestClause = '';
-        if (needsTestParam === 'true' && hasColumn('needs_test')) {
-            needsTestClause = 'AND r.needs_test = TRUE';
-        } else if (needsTestParam === 'false' && hasColumn('needs_test')) {
-            needsTestClause = 'AND r.needs_test = FALSE';
-        }
+    // Optional needs_test filter
+    let needsTestClause = '';
+    if (needsTestParam === 'true' && hasColumn('needs_test')) {
+        needsTestClause = 'AND r.needs_test = TRUE';
+    } else if (needsTestParam === 'false' && hasColumn('needs_test')) {
+        needsTestClause = 'AND r.needs_test = FALSE';
+    }
 
-        // Surface rows with canonical shipment identity even when the legacy
-        // text column is NULL. Falls back to text-only filter during Phase 1
-        // (before the shipment_id column exists).
-        const shipmentJoin = hasShipmentId
-            ? 'LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id'
-            : '';
-        const hasTrackingClause = hasShipmentId
-            ? 'r.shipment_id IS NOT NULL'
-            : 'FALSE';
+    // Surface rows with canonical shipment identity even when the legacy
+    // text column is NULL. Falls back to text-only filter during Phase 1
+    // (before the shipment_id column exists).
+    const shipmentJoin = hasShipmentId
+        ? 'LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id'
+        : '';
+    const hasTrackingClause = hasShipmentId
+        ? 'r.shipment_id IS NOT NULL'
+        : 'FALSE';
 
-        // Street-table joins for the moved carton reads (1:1 PK joins — never
-        // multiply rows): triage door stamps on rt, unbox milestone on ru.
-        const streetJoins = `
+    // Street-table joins for the moved carton reads (1:1 PK joins — never
+    // multiply rows): triage door stamps on rt, unbox milestone on ru.
+    const streetJoins = `
             LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
             LEFT JOIN receiving_unbox ru ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id`;
 
-        const logs = await tenantQuery(orgId, `
+    const logs = await tenantQuery(orgId, `
             SELECT ${selectFields.join(', ')}
             FROM receiving_carton r
             ${shipmentJoin}
@@ -177,395 +176,372 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
             LIMIT $${limitIdx} OFFSET $${offsetIdx}
         `, queryParams);
 
-        const formattedLogs = logs.rows.map((log: any) => ({
-            id: String(log.id),
-            timestamp: log.timestamp || '',
-            tracking: log.tracking || '',
-            status: log.status || '',
-            count: parseInt(String(log.count || '1'), 10) || 1,
-            qa_status: log.qa_status || null,
-            disposition_code: log.disposition_code || null,
-            condition_grade: log.condition_grade || null,
-            is_return: !!log.is_return,
-            return_platform: log.return_platform || null,
-            return_reason: log.return_reason || null,
-            needs_test: !!log.needs_test,
-            assigned_tech_id: log.assigned_tech_id ? Number(log.assigned_tech_id) : null,
-            target_channel: log.target_channel || null,
-            received_at: log.received_at || null,
-            received_by: log.received_by ? Number(log.received_by) : null,
-            unboxed_at: log.unboxed_at || null,
-            unboxed_by: log.unboxed_by ? Number(log.unboxed_by) : null,
-            tracking_scanned_at: log.tracking_scanned_at || null,
-            tracking_scanned_by: log.tracking_scanned_by != null ? Number(log.tracking_scanned_by) : null,
-            zoho_purchase_receive_id: log.zoho_purchase_receive_id || null,
-            zoho_warehouse_id: log.zoho_warehouse_id || null,
-        }));
+    const formattedLogs = logs.rows.map((log: any) => ({
+        id: String(log.id),
+        timestamp: log.timestamp || '',
+        tracking: log.tracking || '',
+        status: log.status || '',
+        count: parseInt(String(log.count || '1'), 10) || 1,
+        qa_status: log.qa_status || null,
+        disposition_code: log.disposition_code || null,
+        condition_grade: log.condition_grade || null,
+        is_return: !!log.is_return,
+        return_platform: log.return_platform || null,
+        return_reason: log.return_reason || null,
+        needs_test: !!log.needs_test,
+        assigned_tech_id: log.assigned_tech_id ? Number(log.assigned_tech_id) : null,
+        target_channel: log.target_channel || null,
+        received_at: log.received_at || null,
+        received_by: log.received_by ? Number(log.received_by) : null,
+        unboxed_at: log.unboxed_at || null,
+        unboxed_by: log.unboxed_by ? Number(log.unboxed_by) : null,
+        tracking_scanned_at: log.tracking_scanned_at || null,
+        tracking_scanned_by: log.tracking_scanned_by != null ? Number(log.tracking_scanned_by) : null,
+        zoho_purchase_receive_id: log.zoho_purchase_receive_id || null,
+        zoho_warehouse_id: log.zoho_warehouse_id || null,
+    }));
 
-        after(() => setCachedJson('api:receiving-logs', cacheLookup, formattedLogs, cacheTTL, ['receiving-logs']));
-        return NextResponse.json(formattedLogs, { headers: { 'x-cache': 'MISS', ...CACHE_HEADERS } });
-    } catch (error: any) {
-        console.error('Error fetching receiving logs:', error);
-        return NextResponse.json(
-            { error: 'Failed to fetch receiving logs', details: error.message },
-            { status: 500 }
-        );
-    }
+    after(() => setCachedJson('api:receiving-logs', cacheLookup, formattedLogs, cacheTTL, ['receiving-logs']));
+    return NextResponse.json(formattedLogs, { headers: { 'x-cache': 'MISS', ...CACHE_HEADERS } });
 }, { permission: 'receiving.view' });
 
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
-    try {
-        const orgId = ctx.organizationId;
-        const { searchParams } = new URL(request.url);
+    const orgId = ctx.organizationId;
+    const { searchParams } = new URL(request.url);
 
-        // Bulk: `?ids=1,2,3` deletes the batch in ONE statement.
-        const idsParam = (searchParams.get('ids') || '').trim();
-        if (idsParam) {
-            const ids = Array.from(new Set(
-                idsParam.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0),
-            ));
-            if (ids.length === 0) {
-                return NextResponse.json(
-                    { error: 'ids must be a comma-separated list of positive integers' },
-                    { status: 400 }
-                );
-            }
-            const result = await tenantQuery(
-                orgId,
-                `DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id`,
-                [ids]
-            );
-            const deleted = result.rows.map((r) => Number(r.id));
-            await invalidateReceivingViews(ctx.organizationId);
-            // Count, not the id list — listeners only refetch on this event,
-            // and an unbounded id string risks the broker's message size cap.
-            await publishReceivingLogChanged({
-                organizationId: ctx.organizationId,
-                action: 'delete',
-                rowId: `bulk:${deleted.length}`,
-                source: 'receiving-logs.delete-bulk',
-            });
-            return NextResponse.json({ success: true, deleted });
-        }
-
-        const idRaw = searchParams.get('id');
-        const id = Number(idRaw);
-
-        if (!idRaw || !Number.isFinite(id) || id <= 0) {
+    // Bulk: `?ids=1,2,3` deletes the batch in ONE statement.
+    const idsParam = (searchParams.get('ids') || '').trim();
+    if (idsParam) {
+        const ids = Array.from(new Set(
+            idsParam.split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0),
+        ));
+        if (ids.length === 0) {
             return NextResponse.json(
-                { error: 'Valid id is required' },
+                { error: 'ids must be a comma-separated list of positive integers' },
                 { status: 400 }
             );
         }
-
         const result = await tenantQuery(
             orgId,
-            `DELETE FROM receiving_carton WHERE id = $1 RETURNING id`,
-            [id]
+            `DELETE FROM receiving_carton WHERE id = ANY($1::int[]) RETURNING id`,
+            [ids]
         );
-
-        if (result.rowCount === 0) {
-            return NextResponse.json(
-                { error: 'Receiving log not found' },
-                { status: 404 }
-            );
-        }
-
+        const deleted = result.rows.map((r) => Number(r.id));
         await invalidateReceivingViews(ctx.organizationId);
-        await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: String(id), source: 'receiving-logs.delete' });
-        return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        console.error('Error deleting receiving log:', error);
+        // Count, not the id list — listeners only refetch on this event,
+        // and an unbounded id string risks the broker's message size cap.
+        await publishReceivingLogChanged({
+            organizationId: ctx.organizationId,
+            action: 'delete',
+            rowId: `bulk:${deleted.length}`,
+            source: 'receiving-logs.delete-bulk',
+        });
+        return NextResponse.json({ success: true, deleted });
+    }
+
+    const idRaw = searchParams.get('id');
+    const id = Number(idRaw);
+
+    if (!idRaw || !Number.isFinite(id) || id <= 0) {
         return NextResponse.json(
-            { error: 'Failed to delete receiving log', details: error.message },
-            { status: 500 }
+            { error: 'Valid id is required' },
+            { status: 400 }
         );
     }
+
+    const result = await tenantQuery(
+        orgId,
+        `DELETE FROM receiving_carton WHERE id = $1 RETURNING id`,
+        [id]
+    );
+
+    if (result.rowCount === 0) {
+        return NextResponse.json(
+            { error: 'Receiving log not found' },
+            { status: 404 }
+        );
+    }
+
+    await invalidateReceivingViews(ctx.organizationId);
+    await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'delete', rowId: String(id), source: 'receiving-logs.delete' });
+    return NextResponse.json({ success: true, id });
 }, { permission: 'receiving.mark_received' });
 
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
-    try {
-        const orgId = ctx.organizationId;
-        const body = await request.json();
-        const id = Number(body?.id);
-        const tracking = String(body?.tracking ?? '').trim();
-        const status = String(body?.status ?? '').trim();
-        const countRaw = body?.count;
-        const qaStatusRaw = String(body?.qa_status ?? body?.qaStatus ?? '').trim().toUpperCase();
-        const dispositionCodeRaw = String(body?.disposition_code ?? body?.dispositionCode ?? '').trim().toUpperCase();
-        const conditionGradeRaw = String(body?.condition_grade ?? body?.conditionGrade ?? '').trim().toUpperCase();
-        const isReturnRaw = body?.is_return ?? body?.isReturn;
-        const returnPlatformRaw = String(body?.return_platform ?? body?.returnPlatform ?? '').trim().toUpperCase();
-        const returnReasonRaw = body?.return_reason ?? body?.returnReason;
-        const needsTestRaw = body?.needs_test ?? body?.needsTest;
-        const isPriorityRaw = body?.is_priority ?? body?.isPriority;
-        // priority_tier may be sent as explicit null (clear → Auto), so detect
-        // presence rather than collapsing null via `??`.
-        const hasPriorityTier =
-            Object.prototype.hasOwnProperty.call(body ?? {}, 'priority_tier') ||
-            Object.prototype.hasOwnProperty.call(body ?? {}, 'priorityTier');
-        const priorityTierRaw = Object.prototype.hasOwnProperty.call(body ?? {}, 'priority_tier')
-            ? body.priority_tier
-            : body?.priorityTier;
-        const assignedTechIdRaw = body?.assigned_tech_id ?? body?.assignedTechId;
-        const targetChannelRaw = String(body?.target_channel ?? body?.targetChannel ?? '').trim().toUpperCase();
-        const unboxedByRaw = body?.unboxed_by ?? body?.unboxedBy;
-        const unboxedAtRaw = body?.unboxed_at ?? body?.unboxedAt;
+    const orgId = ctx.organizationId;
+    const body = await request.json();
+    const id = Number(body?.id);
+    const tracking = String(body?.tracking ?? '').trim();
+    const status = String(body?.status ?? '').trim();
+    const countRaw = body?.count;
+    const qaStatusRaw = String(body?.qa_status ?? body?.qaStatus ?? '').trim().toUpperCase();
+    const dispositionCodeRaw = String(body?.disposition_code ?? body?.dispositionCode ?? '').trim().toUpperCase();
+    const conditionGradeRaw = String(body?.condition_grade ?? body?.conditionGrade ?? '').trim().toUpperCase();
+    const isReturnRaw = body?.is_return ?? body?.isReturn;
+    const returnPlatformRaw = String(body?.return_platform ?? body?.returnPlatform ?? '').trim().toUpperCase();
+    const returnReasonRaw = body?.return_reason ?? body?.returnReason;
+    const needsTestRaw = body?.needs_test ?? body?.needsTest;
+    const isPriorityRaw = body?.is_priority ?? body?.isPriority;
+    // priority_tier may be sent as explicit null (clear → Auto), so detect
+    // presence rather than collapsing null via `??`.
+    const hasPriorityTier =
+        Object.prototype.hasOwnProperty.call(body ?? {}, 'priority_tier') ||
+        Object.prototype.hasOwnProperty.call(body ?? {}, 'priorityTier');
+    const priorityTierRaw = Object.prototype.hasOwnProperty.call(body ?? {}, 'priority_tier')
+        ? body.priority_tier
+        : body?.priorityTier;
+    const assignedTechIdRaw = body?.assigned_tech_id ?? body?.assignedTechId;
+    const targetChannelRaw = String(body?.target_channel ?? body?.targetChannel ?? '').trim().toUpperCase();
+    const unboxedByRaw = body?.unboxed_by ?? body?.unboxedBy;
+    const unboxedAtRaw = body?.unboxed_at ?? body?.unboxedAt;
 
-        const qaStatusAllowed = new Set(['PENDING', 'PASSED', 'FAILED_DAMAGED', 'FAILED_INCOMPLETE', 'FAILED_FUNCTIONAL', 'HOLD']);
-        const dispositionAllowed = new Set(['ACCEPT', 'HOLD', 'RTV', 'SCRAP', 'REWORK']);
-        const conditionAllowed = new Set(['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS']);
-        const returnPlatformAllowed = new Set(['AMZ', 'EBAY_DRAGONH', 'EBAY_USAV', 'EBAY_MK', 'FBA', 'WALMART', 'ECWID']);
-        const targetChannelAllowed = new Set(['ORDERS', 'FBA']);
+    const qaStatusAllowed = new Set(['PENDING', 'PASSED', 'FAILED_DAMAGED', 'FAILED_INCOMPLETE', 'FAILED_FUNCTIONAL', 'HOLD']);
+    const dispositionAllowed = new Set(['ACCEPT', 'HOLD', 'RTV', 'SCRAP', 'REWORK']);
+    const conditionAllowed = new Set(['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS']);
+    const returnPlatformAllowed = new Set(['AMZ', 'EBAY_DRAGONH', 'EBAY_USAV', 'EBAY_MK', 'FBA', 'WALMART', 'ECWID']);
+    const targetChannelAllowed = new Set(['ORDERS', 'FBA']);
 
-        const hasReturnPlatformField = Object.prototype.hasOwnProperty.call(body ?? {}, 'return_platform') || Object.prototype.hasOwnProperty.call(body ?? {}, 'returnPlatform');
-        const hasTargetChannelField = Object.prototype.hasOwnProperty.call(body ?? {}, 'target_channel') || Object.prototype.hasOwnProperty.call(body ?? {}, 'targetChannel');
+    const hasReturnPlatformField = Object.prototype.hasOwnProperty.call(body ?? {}, 'return_platform') || Object.prototype.hasOwnProperty.call(body ?? {}, 'returnPlatform');
+    const hasTargetChannelField = Object.prototype.hasOwnProperty.call(body ?? {}, 'target_channel') || Object.prototype.hasOwnProperty.call(body ?? {}, 'targetChannel');
 
-        if (!Number.isFinite(id) || id <= 0) {
-            return NextResponse.json({ error: 'Valid id is required' }, { status: 400 });
+    if (!Number.isFinite(id) || id <= 0) {
+        return NextResponse.json({ error: 'Valid id is required' }, { status: 400 });
+    }
+
+    const { columns: availableColumns, hasQuantity } = await getReceivingSchema();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (tracking) {
+        // Legacy receiving_tracking_number was dropped — register the manual
+        // tracking into the canonical STN row and link it via shipment_id.
+        const stn = await registerShipmentPermissive(
+            { trackingNumber: tracking, sourceSystem: 'receiving_logs_manual' },
+            orgId,
+        ).catch(() => null);
+        if (stn) {
+            updates.push(`shipment_id = $${idx++}`);
+            values.push(stn.id);
         }
+    }
+    if (status) {
+        updates.push(`carrier = $${idx++}`);
+        values.push(status || 'Unknown');
+    }
 
-        const { columns: availableColumns, hasQuantity } = await getReceivingSchema();
+    if (hasQuantity && countRaw !== undefined && countRaw !== null && String(countRaw).trim() !== '') {
+        updates.push(`quantity = $${idx++}`);
+        values.push(String(countRaw).trim());
+    }
 
-        const updates: string[] = [];
-        const values: any[] = [];
-        let idx = 1;
-
-        if (tracking) {
-            // Legacy receiving_tracking_number was dropped — register the manual
-            // tracking into the canonical STN row and link it via shipment_id.
-            const stn = await registerShipmentPermissive(
-                { trackingNumber: tracking, sourceSystem: 'receiving_logs_manual' },
-                orgId,
-            ).catch(() => null);
-            if (stn) {
-                updates.push(`shipment_id = $${idx++}`);
-                values.push(stn.id);
+    if (availableColumns.has('qa_status') && qaStatusAllowed.has(qaStatusRaw)) {
+        updates.push(`qa_status = $${idx++}`);
+        values.push(qaStatusRaw);
+    }
+    // disposition_code and condition_grade are now nullable — allow explicit null clear
+    if (availableColumns.has('disposition_code') && Object.prototype.hasOwnProperty.call(body ?? {}, 'disposition_code') || Object.prototype.hasOwnProperty.call(body ?? {}, 'dispositionCode')) {
+        if (!dispositionCodeRaw) {
+            updates.push(`disposition_code = NULL`);
+        } else if (dispositionAllowed.has(dispositionCodeRaw)) {
+            updates.push(`disposition_code = $${idx++}`);
+            values.push(dispositionCodeRaw);
+        }
+    }
+    if (availableColumns.has('condition_grade') && Object.prototype.hasOwnProperty.call(body ?? {}, 'condition_grade') || Object.prototype.hasOwnProperty.call(body ?? {}, 'conditionGrade')) {
+        if (!conditionGradeRaw) {
+            updates.push(`condition_grade = NULL`);
+        } else if (conditionAllowed.has(conditionGradeRaw)) {
+            updates.push(`condition_grade = $${idx++}`);
+            values.push(conditionGradeRaw);
+        }
+    }
+    if (availableColumns.has('is_return') && isReturnRaw !== undefined) {
+        updates.push(`is_return = $${idx++}`);
+        values.push(!!isReturnRaw);
+        if (!isReturnRaw && availableColumns.has('return_platform')) {
+            updates.push(`return_platform = NULL`);
+        }
+        if (!isReturnRaw && availableColumns.has('return_reason')) {
+            updates.push(`return_reason = NULL`);
+        }
+    }
+    if (availableColumns.has('return_platform') && hasReturnPlatformField) {
+        if (!returnPlatformRaw) {
+            updates.push(`return_platform = NULL`);
+        } else {
+            if (!returnPlatformAllowed.has(returnPlatformRaw)) {
+                return NextResponse.json({ error: 'Invalid return_platform' }, { status: 400 });
             }
+            updates.push(`return_platform = $${idx++}`);
+            values.push(returnPlatformRaw);
         }
-        if (status) {
-            updates.push(`carrier = $${idx++}`);
-            values.push(status || 'Unknown');
-        }
-
-        if (hasQuantity && countRaw !== undefined && countRaw !== null && String(countRaw).trim() !== '') {
-            updates.push(`quantity = $${idx++}`);
-            values.push(String(countRaw).trim());
-        }
-
-        if (availableColumns.has('qa_status') && qaStatusAllowed.has(qaStatusRaw)) {
-            updates.push(`qa_status = $${idx++}`);
-            values.push(qaStatusRaw);
-        }
-        // disposition_code and condition_grade are now nullable — allow explicit null clear
-        if (availableColumns.has('disposition_code') && Object.prototype.hasOwnProperty.call(body ?? {}, 'disposition_code') || Object.prototype.hasOwnProperty.call(body ?? {}, 'dispositionCode')) {
-            if (!dispositionCodeRaw) {
-                updates.push(`disposition_code = NULL`);
-            } else if (dispositionAllowed.has(dispositionCodeRaw)) {
-                updates.push(`disposition_code = $${idx++}`);
-                values.push(dispositionCodeRaw);
-            }
-        }
-        if (availableColumns.has('condition_grade') && Object.prototype.hasOwnProperty.call(body ?? {}, 'condition_grade') || Object.prototype.hasOwnProperty.call(body ?? {}, 'conditionGrade')) {
-            if (!conditionGradeRaw) {
-                updates.push(`condition_grade = NULL`);
-            } else if (conditionAllowed.has(conditionGradeRaw)) {
-                updates.push(`condition_grade = $${idx++}`);
-                values.push(conditionGradeRaw);
-            }
-        }
-        if (availableColumns.has('is_return') && isReturnRaw !== undefined) {
-            updates.push(`is_return = $${idx++}`);
-            values.push(!!isReturnRaw);
-            if (!isReturnRaw && availableColumns.has('return_platform')) {
-                updates.push(`return_platform = NULL`);
-            }
-            if (!isReturnRaw && availableColumns.has('return_reason')) {
-                updates.push(`return_reason = NULL`);
-            }
-        }
-        if (availableColumns.has('return_platform') && hasReturnPlatformField) {
-            if (!returnPlatformRaw) {
-                updates.push(`return_platform = NULL`);
-            } else {
-                if (!returnPlatformAllowed.has(returnPlatformRaw)) {
-                    return NextResponse.json({ error: 'Invalid return_platform' }, { status: 400 });
-                }
-                updates.push(`return_platform = $${idx++}`);
-                values.push(returnPlatformRaw);
-            }
-        }
-        if (availableColumns.has('return_reason') && returnReasonRaw !== undefined) {
-            updates.push(`return_reason = $${idx++}`);
-            values.push(String(returnReasonRaw || '').trim() || null);
-        }
-        if (availableColumns.has('needs_test') && needsTestRaw !== undefined) {
-            const nextNeedsTest = !!needsTestRaw;
-            if (!nextNeedsTest && availableColumns.has('assigned_tech_id')) {
-                const currentRow = await tenantQuery<{ needs_test: boolean | null; assigned_tech_id: number | null }>(
-                    orgId,
-                    `SELECT needs_test, assigned_tech_id FROM receiving_carton WHERE id = $1`,
-                    [id]
-                );
-                if (currentRow.rows.length === 0) {
-                    return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
-                }
-                // Only enforce the tech-assignment guard when needs_test is actually being cleared (true -> false).
-                const wasNeedsTest = currentRow.rows[0]?.needs_test !== false;
-                if (wasNeedsTest) {
-                    const nextAssignedTechId = Number(assignedTechIdRaw);
-                    const effectiveTechId =
-                        (Number.isFinite(nextAssignedTechId) && nextAssignedTechId > 0 ? nextAssignedTechId : null) ??
-                        currentRow.rows[0]?.assigned_tech_id ??
-                        null;
-                    if (!effectiveTechId) {
-                        return NextResponse.json(
-                            { error: 'needs_test can only be cleared after a technician is assigned' },
-                            { status: 400 }
-                        );
-                    }
-                }
-            }
-            updates.push(`needs_test = $${idx++}`);
-            values.push(nextNeedsTest);
-        }
-        // Shared unbox/test urgency flag. Manual override of the same column the
-        // pending-order match sets (lookup-po). Plain boolean — no guard; clearing
-        // it just drops the carton back to its platform/unfound tier.
-        if (availableColumns.has('is_priority') && isPriorityRaw !== undefined) {
-            updates.push(`is_priority = $${idx++}`);
-            values.push(!!isPriorityRaw);
-        }
-        // Manual priority-tier override (receiving.priority_tier):
-        if (availableColumns.has('priority_tier') && hasPriorityTier) {
-            const tier = priorityTierRaw == null ? null : Number(priorityTierRaw);
-            if (!isValidPriorityTier(tier)) {
-                return NextResponse.json({ error: 'Invalid priority_tier' }, { status: 400 });
-            }
-            updates.push(`priority_tier = $${idx++}`);
-            values.push(tier);
-            if (availableColumns.has('is_priority') && isPriorityRaw === undefined) {
-                updates.push(`is_priority = $${idx++}`);
-                values.push(tier === 0);
-            }
-        }
-        if (availableColumns.has('assigned_tech_id') && assignedTechIdRaw !== undefined) {
-            const parsed = Number(assignedTechIdRaw);
-            updates.push(`assigned_tech_id = $${idx++}`);
-            values.push(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
-        }
-        if (availableColumns.has('target_channel') && hasTargetChannelField) {
-            if (!targetChannelRaw) {
-                updates.push(`target_channel = NULL`);
-            } else {
-                if (!targetChannelAllowed.has(targetChannelRaw)) {
-                    return NextResponse.json({ error: 'Invalid target_channel' }, { status: 400 });
-                }
-                updates.push(`target_channel = $${idx++}`);
-                values.push(targetChannelRaw);
-            }
-        }
-        // Unbox milestone actor moved to the unbox street table (receiving_unbox.unboxed_by) — Wave-3 writer inversion.
-        let unboxPatch: { unboxedBy: number | null } | null = null;
-        if (unboxedByRaw !== undefined) {
-            const parsed = Number(unboxedByRaw);
-            unboxPatch = { unboxedBy: Number.isFinite(parsed) && parsed > 0 ? parsed : null };
-        } else if (unboxedAtRaw !== undefined && unboxedAtRaw) {
-            // Legacy shape: an unboxed_at-only payload used to stamp the current
-            // operator as the (first) unboxer. Keep that actor stamp.
-            unboxPatch = { unboxedBy: ctx.staffId ?? null };
-        }
-        if (availableColumns.has('updated_at')) {
-            updates.push(`updated_at = NOW()`);
-        }
-
-        if (updates.length === 0 && !unboxPatch) {
-            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
-        }
-
-        values.push(id);
-        // Spine UPDATE + street write for one logical edit stay in ONE tenant
-        // transaction (the spine UPDATE alone is equivalent to the old single
-        // statement when there's no unbox patch).
-        const result = await withTenantTransaction(orgId, async (client) => {
-            const upd = updates.length > 0
-                ? await client.query(
-                    `UPDATE receiving_carton
-                     SET ${updates.join(', ')}
-                     WHERE id = $${idx}
-                     RETURNING id`,
-                    values,
-                  )
-                : await client.query(
-                    // Unbox-actor-only payload: still verify the carton exists (and
-                    // bump updated_at, as the old unboxed_by SET did via this UPDATE).
-                    `UPDATE receiving_carton SET updated_at = NOW() WHERE id = $1 RETURNING id`,
-                    [id],
-                  );
-            if ((upd.rowCount ?? 0) > 0 && unboxPatch) {
-                await upsertReceivingUnbox(client, orgId, id, unboxPatch);
-            }
-            return upd;
-        });
-
-        if (result.rowCount === 0) {
-            return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
-        }
-
-        // Phase 4: deterministic assignment upsert — keep work_assignments in sync
-        // whenever needs_test or assigned_tech_id change on the parent package row.
-        const assignmentFieldChanged =
-            needsTestRaw !== undefined || assignedTechIdRaw !== undefined;
-
-        if (assignmentFieldChanged) {
-            // Fetch the current state of the row after update
-            const currentRow = await tenantQuery<{
-                needs_test: boolean;
-                assigned_tech_id: number | null;
-            }>(
+    }
+    if (availableColumns.has('return_reason') && returnReasonRaw !== undefined) {
+        updates.push(`return_reason = $${idx++}`);
+        values.push(String(returnReasonRaw || '').trim() || null);
+    }
+    if (availableColumns.has('needs_test') && needsTestRaw !== undefined) {
+        const nextNeedsTest = !!needsTestRaw;
+        if (!nextNeedsTest && availableColumns.has('assigned_tech_id')) {
+            const currentRow = await tenantQuery<{ needs_test: boolean | null; assigned_tech_id: number | null }>(
                 orgId,
                 `SELECT needs_test, assigned_tech_id FROM receiving_carton WHERE id = $1`,
                 [id]
             );
-            if (currentRow.rows.length > 0) {
-                const { needs_test, assigned_tech_id } = currentRow.rows[0];
-                await upsertReceivingAssignment({
-                    db: pool,
-                    organizationId: ctx.organizationId,
-                    receivingId: id,
-                    needsTest: !!needs_test,
-                    assignedTechId: assigned_tech_id ?? null,
-                    notes: `Updated from receiving-logs PATCH`,
-                });
+            if (currentRow.rows.length === 0) {
+                return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
+            }
+            // Only enforce the tech-assignment guard when needs_test is actually being cleared (true -> false).
+            const wasNeedsTest = currentRow.rows[0]?.needs_test !== false;
+            if (wasNeedsTest) {
+                const nextAssignedTechId = Number(assignedTechIdRaw);
+                const effectiveTechId =
+                    (Number.isFinite(nextAssignedTechId) && nextAssignedTechId > 0 ? nextAssignedTechId : null) ??
+                    currentRow.rows[0]?.assigned_tech_id ??
+                    null;
+                if (!effectiveTechId) {
+                    return NextResponse.json(
+                        { error: 'needs_test can only be cleared after a technician is assigned' },
+                        { status: 400 }
+                    );
+                }
             }
         }
-
-        await invalidateReceivingViews(ctx.organizationId);
-        await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'update',
-            rowId: String(id),
-            // Priority facts ride the broadcast (cross-viewer urgency pill sync — useReceivingCartonRealtimeBridge).
-            ...(hasPriorityTier || isPriorityRaw !== undefined
-                ? {
-                    row: {
-                        priority_tier: hasPriorityTier
-                            ? (priorityTierRaw == null ? null : Number(priorityTierRaw))
-                            : undefined,
-                        is_priority: hasPriorityTier && isPriorityRaw === undefined
-                            ? (priorityTierRaw == null ? false : Number(priorityTierRaw) === 0)
-                            : (isPriorityRaw == null ? undefined : !!isPriorityRaw),
-                    },
-                }
-                : {}),
-            source: 'receiving-logs.patch',
-        });
-        return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        console.error('Error updating receiving log:', error);
-        return NextResponse.json(
-            { error: 'Failed to update receiving log', details: error.message },
-            { status: 500 }
-        );
+        updates.push(`needs_test = $${idx++}`);
+        values.push(nextNeedsTest);
     }
+    // Shared unbox/test urgency flag. Manual override of the same column the
+    // pending-order match sets (lookup-po). Plain boolean — no guard; clearing
+    // it just drops the carton back to its platform/unfound tier.
+    if (availableColumns.has('is_priority') && isPriorityRaw !== undefined) {
+        updates.push(`is_priority = $${idx++}`);
+        values.push(!!isPriorityRaw);
+    }
+    // Manual priority-tier override (receiving.priority_tier):
+    if (availableColumns.has('priority_tier') && hasPriorityTier) {
+        const tier = priorityTierRaw == null ? null : Number(priorityTierRaw);
+        if (!isValidPriorityTier(tier)) {
+            return NextResponse.json({ error: 'Invalid priority_tier' }, { status: 400 });
+        }
+        updates.push(`priority_tier = $${idx++}`);
+        values.push(tier);
+        if (availableColumns.has('is_priority') && isPriorityRaw === undefined) {
+            updates.push(`is_priority = $${idx++}`);
+            values.push(tier === 0);
+        }
+    }
+    if (availableColumns.has('assigned_tech_id') && assignedTechIdRaw !== undefined) {
+        const parsed = Number(assignedTechIdRaw);
+        updates.push(`assigned_tech_id = $${idx++}`);
+        values.push(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+    }
+    if (availableColumns.has('target_channel') && hasTargetChannelField) {
+        if (!targetChannelRaw) {
+            updates.push(`target_channel = NULL`);
+        } else {
+            if (!targetChannelAllowed.has(targetChannelRaw)) {
+                return NextResponse.json({ error: 'Invalid target_channel' }, { status: 400 });
+            }
+            updates.push(`target_channel = $${idx++}`);
+            values.push(targetChannelRaw);
+        }
+    }
+    // Unbox milestone actor moved to the unbox street table (receiving_unbox.unboxed_by) — Wave-3 writer inversion.
+    let unboxPatch: { unboxedBy: number | null } | null = null;
+    if (unboxedByRaw !== undefined) {
+        const parsed = Number(unboxedByRaw);
+        unboxPatch = { unboxedBy: Number.isFinite(parsed) && parsed > 0 ? parsed : null };
+    } else if (unboxedAtRaw !== undefined && unboxedAtRaw) {
+        // Legacy shape: an unboxed_at-only payload used to stamp the current
+        // operator as the (first) unboxer. Keep that actor stamp.
+        unboxPatch = { unboxedBy: ctx.staffId ?? null };
+    }
+    if (availableColumns.has('updated_at')) {
+        updates.push(`updated_at = NOW()`);
+    }
+
+    if (updates.length === 0 && !unboxPatch) {
+        return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
+    values.push(id);
+    // Spine UPDATE + street write for one logical edit stay in ONE tenant
+    // transaction (the spine UPDATE alone is equivalent to the old single
+    // statement when there's no unbox patch).
+    const result = await withTenantTransaction(orgId, async (client) => {
+        const upd = updates.length > 0
+            ? await client.query(
+                `UPDATE receiving_carton
+                     SET ${updates.join(', ')}
+                     WHERE id = $${idx}
+                     RETURNING id`,
+                values,
+              )
+            : await client.query(
+                // Unbox-actor-only payload: still verify the carton exists (and
+                // bump updated_at, as the old unboxed_by SET did via this UPDATE).
+                `UPDATE receiving_carton SET updated_at = NOW() WHERE id = $1 RETURNING id`,
+                [id],
+              );
+        if ((upd.rowCount ?? 0) > 0 && unboxPatch) {
+            await upsertReceivingUnbox(client, orgId, id, unboxPatch);
+        }
+        return upd;
+    });
+
+    if (result.rowCount === 0) {
+        return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
+    }
+
+    // Phase 4: deterministic assignment upsert — keep work_assignments in sync
+    // whenever needs_test or assigned_tech_id change on the parent package row.
+    const assignmentFieldChanged =
+        needsTestRaw !== undefined || assignedTechIdRaw !== undefined;
+
+    if (assignmentFieldChanged) {
+        // Fetch the current state of the row after update
+        const currentRow = await tenantQuery<{
+            needs_test: boolean;
+            assigned_tech_id: number | null;
+        }>(
+            orgId,
+            `SELECT needs_test, assigned_tech_id FROM receiving_carton WHERE id = $1`,
+            [id]
+        );
+        if (currentRow.rows.length > 0) {
+            const { needs_test, assigned_tech_id } = currentRow.rows[0];
+            await upsertReceivingAssignment({
+                db: pool,
+                organizationId: ctx.organizationId,
+                receivingId: id,
+                needsTest: !!needs_test,
+                assignedTechId: assigned_tech_id ?? null,
+                notes: `Updated from receiving-logs PATCH`,
+            });
+        }
+    }
+
+    await invalidateReceivingViews(ctx.organizationId);
+    await publishReceivingLogChanged({
+        organizationId: ctx.organizationId,
+        action: 'update',
+        rowId: String(id),
+        // Priority facts ride the broadcast (cross-viewer urgency pill sync — useReceivingCartonRealtimeBridge).
+        ...(hasPriorityTier || isPriorityRaw !== undefined
+            ? {
+                row: {
+                    priority_tier: hasPriorityTier
+                        ? (priorityTierRaw == null ? null : Number(priorityTierRaw))
+                        : undefined,
+                    is_priority: hasPriorityTier && isPriorityRaw === undefined
+                        ? (priorityTierRaw == null ? false : Number(priorityTierRaw) === 0)
+                        : (isPriorityRaw == null ? undefined : !!isPriorityRaw),
+                },
+            }
+            : {}),
+        source: 'receiving-logs.patch',
+    });
+    return NextResponse.json({ success: true, id });
 }, { permission: 'receiving.mark_received' });

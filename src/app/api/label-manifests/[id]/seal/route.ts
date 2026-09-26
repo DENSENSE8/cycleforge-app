@@ -18,47 +18,41 @@ export const POST = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid manifest id' }, { status: 400 });
     }
 
-    try {
-      const sealed = await sealManifest(id, orgId);
-      if (!sealed) {
-        return NextResponse.json(
-          { ok: false, error: 'manifest not found or already dissolved' },
-          { status: 409 },
-        );
-      }
-
-      // Record the master label in the ledger. Idempotent per manifest so an
-      // idempotent re-seal never double-logs.
-      try {
-        await recordLabelPrintJob(
-          {
-            jobType: 'MANIFEST',
-            manifestId: sealed.id,
-            unitUid: sealed.manifest_uid,
-            qrPayload: sealed.manifest_uid,
-            templateId: 'prebox_master',
-            actorStaffId: ctx.staffId ?? null,
-            clientEventId: `manifest-seal-${sealed.id}`,
-          },
-          orgId,
-        );
-      } catch (err) {
-        console.warn('[POST label-manifests/seal] ledger insert failed (non-fatal)', err);
-      }
-
-      await recordAudit(pool, ctx, request, {
-        source: 'label-manifests-api',
-        action: AUDIT_ACTION.MANIFEST_SEAL,
-        entityType: AUDIT_ENTITY.LABEL_MANIFEST,
-        entityId: sealed.id,
-        after: { manifest_uid: sealed.manifest_uid, sealed_at: sealed.sealed_at },
-      });
-      return NextResponse.json({ ok: true, manifest: sealed, manifest_uid: sealed.manifest_uid });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'seal manifest failed';
-      console.error('[POST /api/label-manifests/[id]/seal] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const sealed = await sealManifest(id, orgId);
+    if (!sealed) {
+      return NextResponse.json(
+        { ok: false, error: 'manifest not found or already dissolved' },
+        { status: 409 },
+      );
     }
+
+    // Record the master label in the ledger. Idempotent per manifest so an
+    // idempotent re-seal never double-logs.
+    try {
+      await recordLabelPrintJob(
+        {
+          jobType: 'MANIFEST',
+          manifestId: sealed.id,
+          unitUid: sealed.manifest_uid,
+          qrPayload: sealed.manifest_uid,
+          templateId: 'prebox_master',
+          actorStaffId: ctx.staffId ?? null,
+          clientEventId: `manifest-seal-${sealed.id}`,
+        },
+        orgId,
+      );
+    } catch (err) {
+      console.warn('[POST label-manifests/seal] ledger insert failed (non-fatal)', err);
+    }
+
+    await recordAudit(pool, ctx, request, {
+      source: 'label-manifests-api',
+      action: AUDIT_ACTION.MANIFEST_SEAL,
+      entityType: AUDIT_ENTITY.LABEL_MANIFEST,
+      entityId: sealed.id,
+      after: { manifest_uid: sealed.manifest_uid, sealed_at: sealed.sealed_at },
+    });
+    return NextResponse.json({ ok: true, manifest: sealed, manifest_uid: sealed.manifest_uid });
   },
   { permission: 'label.manifest.manage' },
 );

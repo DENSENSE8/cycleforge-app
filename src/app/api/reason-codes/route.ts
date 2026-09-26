@@ -15,27 +15,19 @@ const ROUTE_REASON_CODES_POST = 'reason-codes.post';
 
 /** GET /api/reason-codes?direction=out&category=shrinkage&flowContext=substitution Returns active reason codes, optionally filtered by… */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const direction = searchParams.get('direction'); // in | out | either
-    const category = searchParams.get('category');
-    const flowContext = searchParams.get('flowContext'); // Class-D vocabulary (e.g. 'substitution')
-    const workflowNodeId = searchParams.get('workflowNodeId'); // D3: per-node palette scoping
+  const { searchParams } = new URL(request.url);
+  const direction = searchParams.get('direction'); // in | out | either
+  const category = searchParams.get('category');
+  const flowContext = searchParams.get('flowContext'); // Class-D vocabulary (e.g. 'substitution')
+  const workflowNodeId = searchParams.get('workflowNodeId'); // D3: per-node palette scoping
 
-    const reason_codes = await getActiveReasonCodes(ctx.organizationId, {
-      direction: direction === 'in' || direction === 'out' || direction === 'either' ? direction : undefined,
-      category: category ?? undefined,
-      flowContext: flowContext ?? undefined,
-      workflowNodeId: workflowNodeId ?? undefined,
-    });
-    return NextResponse.json({ success: true, reason_codes });
-  } catch (err: any) {
-    console.error('[GET /api/reason-codes] error:', err);
-    return NextResponse.json(
-      { success: false, error: 'Failed to load reason codes', details: err?.message },
-      { status: 500 },
-    );
-  }
+  const reason_codes = await getActiveReasonCodes(ctx.organizationId, {
+    direction: direction === 'in' || direction === 'out' || direction === 'either' ? direction : undefined,
+    category: category ?? undefined,
+    flowContext: flowContext ?? undefined,
+    workflowNodeId: workflowNodeId ?? undefined,
+  });
+  return NextResponse.json({ success: true, reason_codes });
 }, { permission: 'sku_stock.view' });
 
 /** POST /api/reason-codes — Create a reason code. */

@@ -13,10 +13,9 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 
   if (!q) return NextResponse.json({ success: true, items: [] });
 
-  try {
-    const res = await tenantQuery(
-      ctx.organizationId,
-      `SELECT fnsku, product_title, asin, sku
+  const res = await tenantQuery(
+    ctx.organizationId,
+    `SELECT fnsku, product_title, asin, sku
        FROM fba_fnskus
        WHERE organization_id = $4
          AND (fnsku ILIKE $1
@@ -27,11 +26,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
          CASE WHEN fnsku ILIKE $2 THEN 0 ELSE 1 END,
          product_title NULLS LAST
        LIMIT $3`,
-      [`%${q}%`, `${q}%`, limit, ctx.organizationId]
-    );
-    return NextResponse.json({ success: true, items: res.rows });
-  } catch (error: any) {
-    console.error('[GET /api/fba/fnskus/search]', error);
-    return NextResponse.json({ success: false, error: error?.message }, { status: 500 });
-  }
+    [`%${q}%`, `${q}%`, limit, ctx.organizationId]
+  );
+  return NextResponse.json({ success: true, items: res.rows });
 }, { permission: 'fba.view', feature: 'fba' });

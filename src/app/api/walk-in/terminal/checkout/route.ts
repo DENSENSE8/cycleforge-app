@@ -16,69 +16,61 @@ interface CreateCheckoutBody {
  * Send a checkout request to a Square Terminal device.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-    }
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
-    const body = (await req.json().catch(() => ({}))) as CreateCheckoutBody;
+  const body = (await req.json().catch(() => ({}))) as CreateCheckoutBody;
 
-    if (!body.order_id && !body.amount_money) {
-      return NextResponse.json(
-        { error: 'order_id or amount_money is required' },
-        { status: 400 },
-      );
-    }
-
-    const deviceId =
-      body.device_id ||
-      process.env.SQUARE_TERMINAL_DEVICE_ID?.trim() ||
-      process.env.SQUARE_DEVICE_ID?.trim() ||
-      '';
-
-    if (!deviceId) {
-      return NextResponse.json(
-        { error: 'No terminal device_id provided. Set SQUARE_TERMINAL_DEVICE_ID or SQUARE_DEVICE_ID in env.' },
-        { status: 400 },
-      );
-    }
-
-    const checkoutBody: Record<string, unknown> = {
-      idempotency_key: randomUUID(),
-      checkout: {
-        device_options: {
-          device_id: deviceId,
-          skip_receipt_screen: false,
-          collect_signature: true,
-        },
-        ...(body.order_id ? { order_id: body.order_id } : {}),
-        ...(body.amount_money
-          ? { amount_money: body.amount_money }
-          : {}),
-        payment_type: 'CARD_PRESENT',
-      },
-    };
-
-    // Resolve the tenant's own Square connection (Nango token when connected, env fallback otherwise) rather than the env-global…
-    const result = await squareFetchForOrg<{ checkout?: Record<string, unknown> }>(
-      ctx.organizationId,
-      '/terminals/checkouts',
-      { method: 'POST', body: checkoutBody },
-    );
-
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: formatSquareErrors(result.errors) },
-        { status: 502 },
-      );
-    }
-
-    return NextResponse.json({ checkout: result.data.checkout });
-  } catch (error: unknown) {
-    console.error('POST /api/walk-in/terminal/checkout error:', error);
+  if (!body.order_id && !body.amount_money) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
+      { error: 'order_id or amount_money is required' },
+      { status: 400 },
     );
   }
+
+  const deviceId =
+    body.device_id ||
+    process.env.SQUARE_TERMINAL_DEVICE_ID?.trim() ||
+    process.env.SQUARE_DEVICE_ID?.trim() ||
+    '';
+
+  if (!deviceId) {
+    return NextResponse.json(
+      { error: 'No terminal device_id provided. Set SQUARE_TERMINAL_DEVICE_ID or SQUARE_DEVICE_ID in env.' },
+      { status: 400 },
+    );
+  }
+
+  const checkoutBody: Record<string, unknown> = {
+    idempotency_key: randomUUID(),
+    checkout: {
+      device_options: {
+        device_id: deviceId,
+        skip_receipt_screen: false,
+        collect_signature: true,
+      },
+      ...(body.order_id ? { order_id: body.order_id } : {}),
+      ...(body.amount_money
+        ? { amount_money: body.amount_money }
+        : {}),
+      payment_type: 'CARD_PRESENT',
+    },
+  };
+
+  // Resolve the tenant's own Square connection (Nango token when connected, env fallback otherwise) rather than the env-global…
+  const result = await squareFetchForOrg<{ checkout?: Record<string, unknown> }>(
+    ctx.organizationId,
+    '/terminals/checkouts',
+    { method: 'POST', body: checkoutBody },
+  );
+
+  if (!result.ok) {
+    return NextResponse.json(
+      { error: formatSquareErrors(result.errors) },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json({ checkout: result.data.checkout });
 }, { permission: 'walk_in.intake', feature: 'walkIn' });

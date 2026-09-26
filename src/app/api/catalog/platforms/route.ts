@@ -17,17 +17,9 @@ const ROUTE_PLATFORMS_POST = 'catalog.platforms.post';
 /** GET /api/catalog/platforms — the org's platform catalog (active by default). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const includeInactive = new URL(req.url).searchParams.get('includeInactive') === 'true';
-      const platforms = await listPlatforms(ctx.organizationId, { includeInactive });
-      return NextResponse.json({ success: true, platforms });
-    } catch (error: any) {
-      console.error('Error in GET /api/catalog/platforms:', error);
-      return NextResponse.json(
-        { success: false, error: error.message || 'Failed to fetch platforms' },
-        { status: 500 },
-      );
-    }
+    const includeInactive = new URL(req.url).searchParams.get('includeInactive') === 'true';
+    const platforms = await listPlatforms(ctx.organizationId, { includeInactive });
+    return NextResponse.json({ success: true, platforms });
   },
   { permission: 'receiving.view' },
 );

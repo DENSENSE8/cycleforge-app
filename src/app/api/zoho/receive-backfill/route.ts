@@ -19,16 +19,10 @@ export const GET = withAuth(
 
 export const POST = withAuth(
   async (_req, ctx) => {
-    try {
-      const report = await runZohoReceiveBackfill(ctx.organizationId, {
-        maxGroups: MANUAL_MAX_GROUPS,
-      });
-      return NextResponse.json({ success: true, ...report });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'backfill failed';
-      console.error('[zoho/receive-backfill] manual run failed', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    const report = await runZohoReceiveBackfill(ctx.organizationId, {
+      maxGroups: MANUAL_MAX_GROUPS,
+    });
+    return NextResponse.json({ success: true, ...report });
   },
   { permission: 'integrations.zoho' },
 );

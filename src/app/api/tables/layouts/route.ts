@@ -22,99 +22,83 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const tableId = new URL(req.url).searchParams.get('tableId') ?? '';
-      if (!slotCatalogFor(tableId)) {
-        return NextResponse.json(
-          { success: false, error: 'UNKNOWN_TABLE', tableId },
-          { status: 404 },
-        );
-      }
-      const org = await getOrganization(ctx.organizationId as OrgId);
-      const settings = (org?.settings ?? {}) as Record<string, unknown>;
-      return NextResponse.json({
-        success: true,
-        tableId,
-        layout: readOrgTableLayout(settings, tableId),
-        canManage: ctx.permissions.has('admin.manage_features'),
-      });
-    } catch (error) {
-      console.error('[GET /api/tables/layouts] error:', error);
+    const tableId = new URL(req.url).searchParams.get('tableId') ?? '';
+    if (!slotCatalogFor(tableId)) {
       return NextResponse.json(
-        { success: false, error: 'Failed to load the table layout' },
-        { status: 500 },
+        { success: false, error: 'UNKNOWN_TABLE', tableId },
+        { status: 404 },
       );
     }
+    const org = await getOrganization(ctx.organizationId as OrgId);
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    return NextResponse.json({
+      success: true,
+      tableId,
+      layout: readOrgTableLayout(settings, tableId),
+      canManage: ctx.permissions.has('admin.manage_features'),
+    });
   },
   { permission: 'dashboard.view' },
 );
 
 export const PUT = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const raw = await req.json().catch(() => ({}));
-      const parsed = parseBody(OrgTableLayoutPutBody, raw);
-      if (parsed instanceof NextResponse) return parsed;
-      const { tableId, layout } = parsed;
+    const raw = await req.json().catch(() => ({}));
+    const parsed = parseBody(OrgTableLayoutPutBody, raw);
+    if (parsed instanceof NextResponse) return parsed;
+    const { tableId, layout } = parsed;
 
-      const catalog = slotCatalogFor(tableId);
-      if (!catalog) {
-        return NextResponse.json(
-          { success: false, error: 'UNKNOWN_TABLE', tableId },
-          { status: 404 },
-        );
-      }
-      if (layout !== null) {
-        try {
-          parseSlotLayout(layout, catalog);
-        } catch (error) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: error instanceof Error ? error.message : 'Invalid layout',
-            },
-            { status: 400 },
-          );
-        }
-        // Refuse a morph this table's mount cannot paint — storing one puts a
-        // header over blank cells in front of every staffer in the org.
-        if (!slotMorphsFor(tableId).includes(layout.morph)) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: `morph '${layout.morph}' is not supported on '${tableId}' yet`,
-            },
-            { status: 400 },
-          );
-        }
-      }
-
-      // Fresh read for the read-modify-write:
-      invalidateOrgCache(ctx.organizationId as OrgId);
-      const org = await getOrganization(ctx.organizationId as OrgId);
-      const settings = (org?.settings ?? {}) as Record<string, unknown>;
-      const before = readOrgTableLayout(settings, tableId);
-      await mergeOrgSettingsRaw(ctx.organizationId as OrgId, {
-        tableLayouts: nextTableLayoutsMap(settings, tableId, layout),
-      });
-
-      await recordAudit(pool, ctx, req, {
-        source: 'table-layouts-api',
-        action: AUDIT_ACTION.SETTINGS_UPDATE,
-        entityType: AUDIT_ENTITY.SETTINGS,
-        entityId: `tableLayouts.${tableId}`,
-        before: { layout: before },
-        after: { layout },
-      });
-
-      return NextResponse.json({ success: true, tableId, layout });
-    } catch (error) {
-      console.error('[PUT /api/tables/layouts] error:', error);
+    const catalog = slotCatalogFor(tableId);
+    if (!catalog) {
       return NextResponse.json(
-        { success: false, error: 'Failed to save the table layout' },
-        { status: 500 },
+        { success: false, error: 'UNKNOWN_TABLE', tableId },
+        { status: 404 },
       );
     }
+    if (layout !== null) {
+      try {
+        parseSlotLayout(layout, catalog);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: error instanceof Error ? error.message : 'Invalid layout',
+          },
+          { status: 400 },
+        );
+      }
+      // Refuse a morph this table's mount cannot paint — storing one puts a
+      // header over blank cells in front of every staffer in the org.
+      if (!slotMorphsFor(tableId).includes(layout.morph)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `morph '${layout.morph}' is not supported on '${tableId}' yet`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    // Fresh read for the read-modify-write:
+    invalidateOrgCache(ctx.organizationId as OrgId);
+    const org = await getOrganization(ctx.organizationId as OrgId);
+    const settings = (org?.settings ?? {}) as Record<string, unknown>;
+    const before = readOrgTableLayout(settings, tableId);
+    await mergeOrgSettingsRaw(ctx.organizationId as OrgId, {
+      tableLayouts: nextTableLayoutsMap(settings, tableId, layout),
+    });
+
+    await recordAudit(pool, ctx, req, {
+      source: 'table-layouts-api',
+      action: AUDIT_ACTION.SETTINGS_UPDATE,
+      entityType: AUDIT_ENTITY.SETTINGS,
+      entityId: `tableLayouts.${tableId}`,
+      before: { layout: before },
+      after: { layout },
+    });
+
+    return NextResponse.json({ success: true, tableId, layout });
   },
   { permission: 'admin.manage_features' },
 );

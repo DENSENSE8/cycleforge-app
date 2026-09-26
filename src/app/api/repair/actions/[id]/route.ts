@@ -101,26 +101,18 @@ export const PATCH = withAuth(
     const setSql = entries.map(([col], i) => `${col} = $${i + 3}`).join(', ');
     const values = entries.map(([, v]) => v);
 
-    try {
-      await tenantQuery(
-        orgId,
-        `UPDATE repair_actions SET ${setSql} WHERE id = $1 AND organization_id = $2`,
-        [id, orgId, ...values],
-      );
-      await invalidateCacheTags(['repair-service']);
-      await publishRepairChanged({
-        organizationId: ctx.organizationId,
-        repairIds: [existing.repair_id],
-        source: 'repair.action-edited',
-      });
-      return NextResponse.json({ success: true });
-    } catch (error: unknown) {
-      console.error('PATCH /api/repair/actions/[id] error:', error);
-      return NextResponse.json(
-        { error: 'Failed to update action', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 },
-      );
-    }
+    await tenantQuery(
+      orgId,
+      `UPDATE repair_actions SET ${setSql} WHERE id = $1 AND organization_id = $2`,
+      [id, orgId, ...values],
+    );
+    await invalidateCacheTags(['repair-service']);
+    await publishRepairChanged({
+      organizationId: ctx.organizationId,
+      repairIds: [existing.repair_id],
+      source: 'repair.action-edited',
+    });
+    return NextResponse.json({ success: true });
   },
   { permission: 'repair.mark_repaired' },
 );
@@ -146,34 +138,26 @@ export const DELETE = withAuth(
       return NextResponse.json({ error: 'Not allowed to delete this action' }, { status: 403 });
     }
 
-    try {
-      const result = await softDeleteRepairAction(orgId, ctx.staffId, id);
-      await invalidateCacheTags(['repair-service']);
-      await publishRepairChanged({
+    const result = await softDeleteRepairAction(orgId, ctx.staffId, id);
+    await invalidateCacheTags(['repair-service']);
+    await publishRepairChanged({
+      organizationId: ctx.organizationId,
+      repairIds: [existing.repair_id],
+      source: 'repair.action-deleted',
+    });
+    if (result.returnedLedger) {
+      await publishStockLedgerEvent({
         organizationId: ctx.organizationId,
-        repairIds: [existing.repair_id],
+        ledgerId: result.returnedLedger.id,
+        sku: result.returnedLedger.sku,
+        delta: result.returnedLedger.delta,
+        reason: REPAIR_LEDGER_REASON.reversed,
+        dimension: 'WAREHOUSE',
+        staffId: ctx.staffId,
         source: 'repair.action-deleted',
       });
-      if (result.returnedLedger) {
-        await publishStockLedgerEvent({
-          organizationId: ctx.organizationId,
-          ledgerId: result.returnedLedger.id,
-          sku: result.returnedLedger.sku,
-          delta: result.returnedLedger.delta,
-          reason: REPAIR_LEDGER_REASON.reversed,
-          dimension: 'WAREHOUSE',
-          staffId: ctx.staffId,
-          source: 'repair.action-deleted',
-        });
-      }
-      return NextResponse.json({ success: true, stockReturned: result.returnedLedger != null });
-    } catch (error: unknown) {
-      console.error('DELETE /api/repair/actions/[id] error:', error);
-      return NextResponse.json(
-        { error: 'Failed to delete action', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 },
-      );
     }
+    return NextResponse.json({ success: true, stockReturned: result.returnedLedger != null });
   },
   { permission: 'repair.mark_repaired' },
 );

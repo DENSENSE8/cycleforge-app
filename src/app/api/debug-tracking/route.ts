@@ -7,16 +7,15 @@ import { withAuth } from '@/lib/auth/withAuth';
  * GET /api/debug-tracking?tracking=XXXXX
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const tracking = searchParams.get('tracking');
+  const { searchParams } = new URL(req.url);
+  const tracking = searchParams.get('tracking');
 
-    if (!tracking) {
-      return NextResponse.json({ error: 'Tracking number required' }, { status: 400 });
-    }
+  if (!tracking) {
+    return NextResponse.json({ error: 'Tracking number required' }, { status: 400 });
+  }
 
-    // Check if any orders match via shipment_id → shipping_tracking_numbers join.
-    const matchResult = await tenantQuery(ctx.organizationId, `
+  // Check if any orders match via shipment_id → shipping_tracking_numbers join.
+  const matchResult = await tenantQuery(ctx.organizationId, `
       SELECT
         o.id,
         o.order_id,
@@ -44,10 +43,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ORDER BY o.created_at DESC
     `, [tracking, ctx.organizationId]);
 
-    // Also check packer_logs. packer_logs carries org → filter directly;
-    // shipping_tracking_numbers (no org col) is scoped via its surrogate-PK
-    // join to packer_logs (stn.id = pl.shipment_id).
-    const packerLogsResult = await tenantQuery(ctx.organizationId, `
+  // Also check packer_logs. packer_logs carries org → filter directly;
+  // shipping_tracking_numbers (no org col) is scoped via its surrogate-PK
+  // join to packer_logs (stn.id = pl.shipment_id).
+  const packerLogsResult = await tenantQuery(ctx.organizationId, `
       SELECT
         pl.id,
         COALESCE(stn.tracking_number_raw, pl.scan_ref) AS tracking_number,
@@ -65,30 +64,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LIMIT 5
     `, [tracking, ctx.organizationId]);
 
-    return NextResponse.json({
-      inputTracking: tracking,
-      inputLength: tracking.length,
-      inputLast8: tracking.slice(-8),
-      ordersMatched: matchResult.rows.length,
-      orders: matchResult.rows.map(row => ({
-        id: row.id,
-        order_id: row.order_id,
-        tracking: row.tracking_number,
-        trackingLength: row.tracking_length,
-        dbLast8: row.db_last8,
-        isShipped: row.is_shipped,
-        status: row.status,
-        packerId: row.packer_id,
-        matches: row.db_last8 === tracking.slice(-8)
-      })),
-      packerLogsMatched: packerLogsResult.rows.length,
-      packerLogs: packerLogsResult.rows
-    });
-  } catch (error: any) {
-    console.error('Error in debug-tracking:', error);
-    return NextResponse.json({
-      error: 'Failed to debug tracking',
-      details: error.message
-    }, { status: 500 });
-  }
+  return NextResponse.json({
+    inputTracking: tracking,
+    inputLength: tracking.length,
+    inputLast8: tracking.slice(-8),
+    ordersMatched: matchResult.rows.length,
+    orders: matchResult.rows.map(row => ({
+      id: row.id,
+      order_id: row.order_id,
+      tracking: row.tracking_number,
+      trackingLength: row.tracking_length,
+      dbLast8: row.db_last8,
+      isShipped: row.is_shipped,
+      status: row.status,
+      packerId: row.packer_id,
+      matches: row.db_last8 === tracking.slice(-8)
+    })),
+    packerLogsMatched: packerLogsResult.rows.length,
+    packerLogs: packerLogsResult.rows
+  });
 }, { permission: 'admin.view' });

@@ -5,39 +5,38 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { VELOCITY_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const staffIdParam = searchParams.get('staffId');
-    const stationParamRaw = searchParams.get('station');
-    const stationParam = stationParamRaw ? String(stationParamRaw).trim().toUpperCase() : null;
-    const staffId = staffIdParam ? parseInt(staffIdParam, 10) : null;
+  const { searchParams } = new URL(req.url);
+  const staffIdParam = searchParams.get('staffId');
+  const stationParamRaw = searchParams.get('station');
+  const stationParam = stationParamRaw ? String(stationParamRaw).trim().toUpperCase() : null;
+  const staffId = staffIdParam ? parseInt(staffIdParam, 10) : null;
 
-    // Single staff lookup
-    if (staffId && Number.isFinite(staffId)) {
-      // staff is org-owned; staff_goals scoped via the staff_id join (global PK).
-      const orgIdx = stationParam ? 3 : 2;
-      const single = await tenantQuery(
-        ctx.organizationId,
-        `SELECT s.id AS staff_id, s.name, s.employee_id,
+  // Single staff lookup
+  if (staffId && Number.isFinite(staffId)) {
+    // staff is org-owned; staff_goals scoped via the staff_id join (global PK).
+    const orgIdx = stationParam ? 3 : 2;
+    const single = await tenantQuery(
+      ctx.organizationId,
+      `SELECT s.id AS staff_id, s.name, s.employee_id,
                 COALESCE(sg.daily_goal, 50) AS daily_goal,
                 COALESCE(sg.station, ${stationParam ? '$2' : `'TECH'`}) AS station
          FROM staff s
          LEFT JOIN staff_goals sg ON sg.staff_id = s.id
            ${stationParam ? 'AND sg.station = $2' : ''}
          WHERE s.id = $1 AND s.organization_id = $${orgIdx} LIMIT 1`,
-        stationParam ? [staffId, stationParam, ctx.organizationId] : [staffId, ctx.organizationId],
-      );
-      if (single.rows.length === 0) {
-        return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
-      }
-      return NextResponse.json(single.rows[0]);
+      stationParam ? [staffId, stationParam, ctx.organizationId] : [staffId, ctx.organizationId],
+    );
+    if (single.rows.length === 0) {
+      return NextResponse.json({ error: 'Staff not found' }, { status: 404 });
     }
+    return NextResponse.json(single.rows[0]);
+  }
 
-    // All staff with live SAL-based counts
-    // Derive default station from employee_id prefix when no goal row exists
-    const safeStation = stationParam ? stationParam.replace(/'/g, '') : null;
+  // All staff with live SAL-based counts
+  // Derive default station from employee_id prefix when no goal row exists
+  const safeStation = stationParam ? stationParam.replace(/'/g, '') : null;
 
-    const result = await tenantQuery(ctx.organizationId, `
+  const result = await tenantQuery(ctx.organizationId, `
       WITH derived_station AS (
         SELECT id,
           CASE
@@ -95,34 +94,25 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ORDER BY s.name ASC
     `, [ctx.organizationId]);
 
-    return NextResponse.json(result.rows);
-  } catch (error: any) {
-    console.error('Error fetching staff goals:', error);
-    return NextResponse.json({ error: 'Failed to fetch staff goals', details: error.message }, { status: 500 });
-  }
+  return NextResponse.json(result.rows);
 }, { permission: 'operations.view' });
 
 export const PUT = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = await req.json();
-    const staffId = parseInt(String(body?.staffId || ''), 10);
-    const dailyGoal = parseInt(String(body?.dailyGoal || ''), 10);
-    const station = String(body?.station || 'TECH').toUpperCase();
+  const body = await req.json();
+  const staffId = parseInt(String(body?.staffId || ''), 10);
+  const dailyGoal = parseInt(String(body?.dailyGoal || ''), 10);
+  const station = String(body?.station || 'TECH').toUpperCase();
 
-    if (!Number.isFinite(staffId) || staffId <= 0) {
-      return NextResponse.json({ error: 'Valid staffId is required' }, { status: 400 });
-    }
-    if (!Number.isFinite(dailyGoal) || dailyGoal <= 0) {
-      return NextResponse.json({ error: 'dailyGoal must be greater than 0' }, { status: 400 });
-    }
-    if (!['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'].includes(station)) {
-      return NextResponse.json({ error: 'station must be TECH, PACK, UNBOX, SALES, or FBA' }, { status: 400 });
-    }
-
-    await upsertStaffGoalWithHistory(staffId, dailyGoal, station, ctx.organizationId);
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error updating staff goal:', error);
-    return NextResponse.json({ error: 'Failed to update staff goal', details: error.message }, { status: 500 });
+  if (!Number.isFinite(staffId) || staffId <= 0) {
+    return NextResponse.json({ error: 'Valid staffId is required' }, { status: 400 });
   }
+  if (!Number.isFinite(dailyGoal) || dailyGoal <= 0) {
+    return NextResponse.json({ error: 'dailyGoal must be greater than 0' }, { status: 400 });
+  }
+  if (!['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA'].includes(station)) {
+    return NextResponse.json({ error: 'station must be TECH, PACK, UNBOX, SALES, or FBA' }, { status: 400 });
+  }
+
+  await upsertStaffGoalWithHistory(staffId, dailyGoal, station, ctx.organizationId);
+  return NextResponse.json({ success: true });
 }, { permission: 'admin.manage_staff' });

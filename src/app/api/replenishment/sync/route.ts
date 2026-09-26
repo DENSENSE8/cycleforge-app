@@ -8,14 +8,9 @@ export const maxDuration = 120;
 
 /** POST /api/replenishment/sync */
 export const POST = withAuth(async (_req, ctx) => {
-  try {
-    await withCronRun('replenishment.sync', async () => {
-      await runReplenishmentSync(ctx.organizationId);
-      return { ok: true };
-    }, { trigger: 'manual' });
-    return NextResponse.json({ ok: true });
-  } catch (error: any) {
-    console.error('[replenishment/sync]', error);
-    return NextResponse.json({ ok: false, error: error?.message || String(error) }, { status: 500 });
-  }
+  await withCronRun('replenishment.sync', async () => {
+    await runReplenishmentSync(ctx.organizationId);
+    return { ok: true };
+  }, { trigger: 'manual' });
+  return NextResponse.json({ ok: true });
 }, { permission: 'replenish.create_po' });

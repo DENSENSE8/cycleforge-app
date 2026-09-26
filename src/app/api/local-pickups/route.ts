@@ -287,99 +287,67 @@ async function upsertPickupDetail(orgId: OrgId, body: Record<string, unknown>) {
 }
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const search = String(searchParams.get('q') || '').trim();
-    const dates = await fetchPickupDates(ctx.organizationId, search);
-    const selectedPickupDate =
-      normalizePickupDate(searchParams.get('pickupDate')) ??
-      dates[0]?.pickup_date ??
-      new Date().toISOString().slice(0, 10);
-    const rows = await fetchPickupRows(ctx.organizationId, selectedPickupDate, search);
+  const { searchParams } = new URL(request.url);
+  const search = String(searchParams.get('q') || '').trim();
+  const dates = await fetchPickupDates(ctx.organizationId, search);
+  const selectedPickupDate =
+    normalizePickupDate(searchParams.get('pickupDate')) ??
+    dates[0]?.pickup_date ??
+    new Date().toISOString().slice(0, 10);
+  const rows = await fetchPickupRows(ctx.organizationId, selectedPickupDate, search);
 
-    return NextResponse.json({
-      success: true,
-      pickup_date: selectedPickupDate,
-      dates,
-      rows,
-      summary: {
-        item_count: rows.length,
-        total_value: rows.reduce((sum, row) => sum + Number(row.total || 0), 0).toFixed(2),
-        missing_parts_count: rows.filter((row) => row.parts_status === 'MISSING_PARTS').length,
-      },
-    });
-  } catch (error: any) {
-    console.error('[local-pickups][GET]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch local pickups' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    pickup_date: selectedPickupDate,
+    dates,
+    rows,
+    summary: {
+      item_count: rows.length,
+      total_value: rows.reduce((sum, row) => sum + Number(row.total || 0), 0).toFixed(2),
+      missing_parts_count: rows.filter((row) => row.parts_status === 'MISSING_PARTS').length,
+    },
+  });
 }, { permission: 'walk_in.view' });
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = (await request.json()) as Record<string, unknown>;
-    const row = await upsertPickupDetail(ctx.organizationId, body);
-    return NextResponse.json({ success: true, row });
-  } catch (error: any) {
-    console.error('[local-pickups][POST]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to save local pickup detail' },
-      { status: 500 }
-    );
-  }
+  const body = (await request.json()) as Record<string, unknown>;
+  const row = await upsertPickupDetail(ctx.organizationId, body);
+  return NextResponse.json({ success: true, row });
 }, { permission: 'walk_in.intake' });
 
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = (await request.json()) as Record<string, unknown>;
-    const row = await upsertPickupDetail(ctx.organizationId, body);
-    return NextResponse.json({ success: true, row });
-  } catch (error: any) {
-    console.error('[local-pickups][PATCH]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to update local pickup detail' },
-      { status: 500 }
-    );
-  }
+  const body = (await request.json()) as Record<string, unknown>;
+  const row = await upsertPickupDetail(ctx.organizationId, body);
+  return NextResponse.json({ success: true, row });
 }, { permission: 'walk_in.intake' });
 
 /** DELETE /api/local-pickups?receiving_id=N — un-flag a wrongly-marked local pickup, clearing its local_pickup_items detail WITHOUT… */
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const receivingId = Number(request.nextUrl.searchParams.get('receiving_id'));
-    if (!Number.isFinite(receivingId) || receivingId <= 0) {
-      return NextResponse.json({ success: false, error: 'receiving_id is required' }, { status: 400 });
-    }
+  const orgId = ctx.organizationId;
+  const receivingId = Number(request.nextUrl.searchParams.get('receiving_id'));
+  if (!Number.isFinite(receivingId) || receivingId <= 0) {
+    return NextResponse.json({ success: false, error: 'receiving_id is required' }, { status: 400 });
+  }
 
-    const recv = await tenantQuery<{ carrier: string | null }>(
-      orgId,
-      `SELECT carrier FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-      [receivingId, orgId],
-    );
-    if (recv.rows.length === 0) {
-      return NextResponse.json({ success: false, error: 'receiving not found' }, { status: 404 });
-    }
-    if (String(recv.rows[0].carrier ?? '').toUpperCase() !== 'LOCAL') {
-      return NextResponse.json(
-        { success: false, error: 'receiving is not a local pickup source' },
-        { status: 409 },
-      );
-    }
-
-    await tenantQuery(
-      orgId,
-      `DELETE FROM local_pickup_items WHERE receiving_id = $1 AND organization_id = $2`,
-      [receivingId, orgId],
-    );
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('[local-pickups][DELETE]', error);
+  const recv = await tenantQuery<{ carrier: string | null }>(
+    orgId,
+    `SELECT carrier FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+    [receivingId, orgId],
+  );
+  if (recv.rows.length === 0) {
+    return NextResponse.json({ success: false, error: 'receiving not found' }, { status: 404 });
+  }
+  if (String(recv.rows[0].carrier ?? '').toUpperCase() !== 'LOCAL') {
     return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to clear local pickup detail' },
-      { status: 500 }
+      { success: false, error: 'receiving is not a local pickup source' },
+      { status: 409 },
     );
   }
+
+  await tenantQuery(
+    orgId,
+    `DELETE FROM local_pickup_items WHERE receiving_id = $1 AND organization_id = $2`,
+    [receivingId, orgId],
+  );
+  return NextResponse.json({ success: true });
 }, { permission: 'walk_in.intake' });

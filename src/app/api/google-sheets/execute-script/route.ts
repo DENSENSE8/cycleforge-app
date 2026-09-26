@@ -35,28 +35,23 @@ async function getGoogleSheetsClient(orgId: OrgId) {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const { scriptName } = await req.json();
-        const orgId = ctx.organizationId;
+    const { scriptName } = await req.json();
+    const orgId = ctx.organizationId;
 
-        switch (scriptName) {
-            case 'checkShippedOrders':
-                return await executeCheckShippedOrders(orgId);
-            case 'updateNonshippedOrders':
-                return NextResponse.json({
-                    success: false,
-                    error: 'Google Sheets mutation support has been removed. Update non-shipped state directly in the database.',
-                }, { status: 410 });
-            case 'syncTechSerialNumbers':
-                return await executeSyncTechSerialNumbers(orgId);
-            case 'syncPackerLogs':
-                return await executeSyncPackerLogs(orgId);
-            default:
-                return NextResponse.json({ success: false, error: 'Unknown script name' }, { status: 400 });
-        }
-    } catch (error: any) {
-        console.error('Script execution error:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+    switch (scriptName) {
+        case 'checkShippedOrders':
+            return await executeCheckShippedOrders(orgId);
+        case 'updateNonshippedOrders':
+            return NextResponse.json({
+                success: false,
+                error: 'Google Sheets mutation support has been removed. Update non-shipped state directly in the database.',
+            }, { status: 410 });
+        case 'syncTechSerialNumbers':
+            return await executeSyncTechSerialNumbers(orgId);
+        case 'syncPackerLogs':
+            return await executeSyncPackerLogs(orgId);
+        default:
+            return NextResponse.json({ success: false, error: 'Unknown script name' }, { status: 400 });
     }
 }, { permission: 'admin.manage_features' });
 

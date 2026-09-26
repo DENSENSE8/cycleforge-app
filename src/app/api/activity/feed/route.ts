@@ -5,27 +5,26 @@ import { withAuth } from '@/lib/auth/withAuth';
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const orgId = ctx.organizationId;
-    const { searchParams } = new URL(req.url);
-    const limitRaw = Number(searchParams.get('limit') || 50);
-    const limit = Math.min(Math.max(limitRaw, 1), 100);
-    const since = searchParams.get('since') || null;
+  const orgId = ctx.organizationId;
+  const { searchParams } = new URL(req.url);
+  const limitRaw = Number(searchParams.get('limit') || 50);
+  const limit = Math.min(Math.max(limitRaw, 1), 100);
+  const since = searchParams.get('since') || null;
 
-    // $1 = limit, $2 = org (tenant scope, reused by both CTEs), $3 = since.
-    const params: any[] = [limit, orgId];
-    let sinceClauseSAL = '';
-    let sinceClauseLedger = '';
-    if (since) {
-      sinceClauseSAL = 'AND sal.created_at > $3';
-      sinceClauseLedger = 'AND l.created_at > $3';
-      params.push(since);
-    }
+  // $1 = limit, $2 = org (tenant scope, reused by both CTEs), $3 = since.
+  const params: any[] = [limit, orgId];
+  let sinceClauseSAL = '';
+  let sinceClauseLedger = '';
+  if (since) {
+    sinceClauseSAL = 'AND sal.created_at > $3';
+    sinceClauseLedger = 'AND l.created_at > $3';
+    params.push(since);
+  }
 
-    // Unified feed:
-    const result = await tenantQuery<any>(
-      orgId,
-      `WITH sal_events AS (
+  // Unified feed:
+  const result = await tenantQuery<any>(
+    orgId,
+    `WITH sal_events AS (
          SELECT
            sal.id                            AS id,
            sal.station                       AS station,
@@ -77,32 +76,25 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        ) u
        ORDER BY created_at DESC
        LIMIT $1`,
-      params
-    );
+    params
+  );
 
-    return NextResponse.json({
-      success: true,
-      activities: result.rows.map((row: any) => ({
-        id: Number(row.id),
-        station: row.station,
-        activity_type: row.activity_type,
-        staff_id: row.staff_id ? Number(row.staff_id) : null,
-        staff_name: row.staff_name || null,
-        scan_ref: row.scan_ref || null,
-        fnsku: row.fnsku || null,
-        shipment_id: row.shipment_id ? Number(row.shipment_id) : null,
-        notes: row.notes || null,
-        created_at: row.created_at,
-        delta: row.delta != null ? Number(row.delta) : null,
-        dimension: row.dimension || null,
-        reason: row.reason || null,
-      })),
-    });
-  } catch (error: any) {
-    console.error('[activity/feed] Error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch activity feed' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    activities: result.rows.map((row: any) => ({
+      id: Number(row.id),
+      station: row.station,
+      activity_type: row.activity_type,
+      staff_id: row.staff_id ? Number(row.staff_id) : null,
+      staff_name: row.staff_name || null,
+      scan_ref: row.scan_ref || null,
+      fnsku: row.fnsku || null,
+      shipment_id: row.shipment_id ? Number(row.shipment_id) : null,
+      notes: row.notes || null,
+      created_at: row.created_at,
+      delta: row.delta != null ? Number(row.delta) : null,
+      dimension: row.dimension || null,
+      reason: row.reason || null,
+    })),
+  });
 }, { permission: 'operations.view' });

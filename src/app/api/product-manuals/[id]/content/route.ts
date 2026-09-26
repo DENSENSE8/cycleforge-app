@@ -28,58 +28,53 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   const download = req.nextUrl.searchParams.get('download') === '1';
 
-  try {
-    const manual = await getProductManualById(manualId, orgId);
-    if (!manual || !manual.is_active) {
-      return NextResponse.json({ error: 'Manual not found' }, { status: 404 });
-    }
-
-    const url = String(manual.source_url || '').trim();
-    if (!url.startsWith('http')) {
-      return NextResponse.json({ error: 'Manual has no stored content' }, { status: 404 });
-    }
-
-    const filename = manual.file_name || `${manual.display_name || `manual-${manualId}`}.pdf`;
-    const fallbackType = filename.toLowerCase().endsWith('.pdf')
-      ? 'application/pdf'
-      : 'application/octet-stream';
-
-    if (isVercelBlobUrl(url)) {
-      return streamVercelBlobResponse(url, {
-        filename,
-        download,
-        fallbackContentType: fallbackType,
-      });
-    }
-
-    // External PDFs need the same-origin path too: the mobile preview fetches
-    // this URL, and a redirect to a third-party PDF fails CORS before it paints.
-    // Non-PDF previews retain their original external navigation behavior.
-    if (!download && !filename.toLowerCase().endsWith('.pdf')) {
-      return NextResponse.redirect(url, { status: 302 });
-    }
-
-    const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
-    if (!res.ok) {
-      return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
-    }
-    const bytes = Buffer.from(await res.arrayBuffer());
-    const headerType = res.headers.get('content-type') || '';
-    const mime =
-      headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
-        ? 'application/pdf'
-        : headerType || 'application/octet-stream';
-    return new NextResponse(bytes, {
-      headers: {
-        'content-type': mime,
-        'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${filename.replace(/[\r\n"]/g, '')}"`,
-        'content-length': String(bytes.length),
-        'cache-control': 'private, max-age=300',
-        'x-content-type-options': 'nosniff',
-      },
-    });
-  } catch (err) {
-    console.error('[GET /api/product-manuals/[id]/content]', err);
-    return NextResponse.json({ error: 'Failed to load manual' }, { status: 500 });
+  const manual = await getProductManualById(manualId, orgId);
+  if (!manual || !manual.is_active) {
+    return NextResponse.json({ error: 'Manual not found' }, { status: 404 });
   }
+
+  const url = String(manual.source_url || '').trim();
+  if (!url.startsWith('http')) {
+    return NextResponse.json({ error: 'Manual has no stored content' }, { status: 404 });
+  }
+
+  const filename = manual.file_name || `${manual.display_name || `manual-${manualId}`}.pdf`;
+  const fallbackType = filename.toLowerCase().endsWith('.pdf')
+    ? 'application/pdf'
+    : 'application/octet-stream';
+
+  if (isVercelBlobUrl(url)) {
+    return streamVercelBlobResponse(url, {
+      filename,
+      download,
+      fallbackContentType: fallbackType,
+    });
+  }
+
+  // External PDFs need the same-origin path too: the mobile preview fetches
+  // this URL, and a redirect to a third-party PDF fails CORS before it paints.
+  // Non-PDF previews retain their original external navigation behavior.
+  if (!download && !filename.toLowerCase().endsWith('.pdf')) {
+    return NextResponse.redirect(url, { status: 302 });
+  }
+
+  const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
+  if (!res.ok) {
+    return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
+  }
+  const bytes = Buffer.from(await res.arrayBuffer());
+  const headerType = res.headers.get('content-type') || '';
+  const mime =
+    headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
+      ? 'application/pdf'
+      : headerType || 'application/octet-stream';
+  return new NextResponse(bytes, {
+    headers: {
+      'content-type': mime,
+      'content-disposition': `${download ? 'attachment' : 'inline'}; filename="${filename.replace(/[\r\n"]/g, '')}"`,
+      'content-length': String(bytes.length),
+      'cache-control': 'private, max-age=300',
+      'x-content-type-options': 'nosniff',
+    },
+  });
 });

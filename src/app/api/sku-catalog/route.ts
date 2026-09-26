@@ -33,41 +33,33 @@ function parseLinkFilter(raw: string | null): SkuCatalogLinkFilter | undefined {
 
 /** GET /api/sku-catalog — Paginated SKU catalog list with platform/manual/QC counts. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const q = searchParams.get('q') || '';
-    const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
-    const offset = Math.max(0, Number(searchParams.get('offset') || 0));
-    const sort = searchParams.get('sort') || 'az';
-    const dir = searchParams.get('dir') || 'asc';
-    const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
-    const platform = searchParams.get('platform');
-    const linkFilter = parseLinkFilter(searchParams.get('linkFilter'));
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get('q') || '';
+  const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
+  const offset = Math.max(0, Number(searchParams.get('offset') || 0));
+  const sort = searchParams.get('sort') || 'az';
+  const dir = searchParams.get('dir') || 'asc';
+  const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
+  const platform = searchParams.get('platform');
+  const linkFilter = parseLinkFilter(searchParams.get('linkFilter'));
 
-    const [{ items, total }, providerKey, providerLabel] = await Promise.all([
-      getSkuCatalogList(
-        { q, limit, offset, sort, dir, ecwidOnly, platform, linkFilter },
-        ctx.organizationId,
-      ),
-      connectedProviderKey(ctx.organizationId, 'inventory'),
-      connectedProviderLabel(ctx.organizationId, 'inventory'),
-    ]);
+  const [{ items, total }, providerKey, providerLabel] = await Promise.all([
+    getSkuCatalogList(
+      { q, limit, offset, sort, dir, ecwidOnly, platform, linkFilter },
+      ctx.organizationId,
+    ),
+    connectedProviderKey(ctx.organizationId, 'inventory'),
+    connectedProviderLabel(ctx.organizationId, 'inventory'),
+  ]);
 
-    return NextResponse.json({
-      success: true,
-      items,
-      total,
-      inventoryProvider: providerKey
-        ? { key: providerKey, label: providerLabel }
-        : null,
-    });
-  } catch (error: any) {
-    console.error('Error in GET /api/sku-catalog:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch SKU catalog' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    items,
+    total,
+    inventoryProvider: providerKey
+      ? { key: providerKey, label: providerLabel }
+      : null,
+  });
 }, { permission: 'sku_stock.view' });
 
 /** POST /api/sku-catalog — Create a new SKU catalog entry. */

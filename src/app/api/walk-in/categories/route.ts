@@ -18,36 +18,28 @@ interface SquareCategory {
  * Fetch Square catalog categories, excluding Repair Service.
  */
 export const GET = withAuth(async (req: NextRequest) => {
-  try {
-    if (!isAllowedAdminOrigin(req)) {
-      return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
-    }
+  if (!isAllowedAdminOrigin(req)) {
+    return NextResponse.json({ error: 'Origin not allowed' }, { status: 403 });
+  }
 
-    const result = await squareFetch<{ objects?: SquareCategory[] }>(
-      '/catalog/search',
-      { method: 'POST', body: { object_types: ['CATEGORY'], limit: 100 } },
-    );
+  const result = await squareFetch<{ objects?: SquareCategory[] }>(
+    '/catalog/search',
+    { method: 'POST', body: { object_types: ['CATEGORY'], limit: 100 } },
+  );
 
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: formatSquareErrors(result.errors) },
-        { status: 502 },
-      );
-    }
-
-    const allCategories = (result.data.objects || [])
-      .map((c) => ({
-        id: c.id,
-        name: c.category_data?.name || 'Unknown',
-      }))
-      .filter((c) => c.name.toLowerCase() !== REPAIR_SERVICE_CATEGORY_NAME.toLowerCase());
-
-    return NextResponse.json({ categories: allCategories });
-  } catch (error: unknown) {
-    console.error('GET /api/walk-in/categories error:', error);
+  if (!result.ok) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 },
+      { error: formatSquareErrors(result.errors) },
+      { status: 502 },
     );
   }
+
+  const allCategories = (result.data.objects || [])
+    .map((c) => ({
+      id: c.id,
+      name: c.category_data?.name || 'Unknown',
+    }))
+    .filter((c) => c.name.toLowerCase() !== REPAIR_SERVICE_CATEGORY_NAME.toLowerCase());
+
+  return NextResponse.json({ categories: allCategories });
 }, { permission: 'walk_in.view', feature: 'walkIn' });

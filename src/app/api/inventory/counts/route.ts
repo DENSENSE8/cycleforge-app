@@ -6,38 +6,37 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/inventory/counts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const orgId = ctx.organizationId;
-        const sp = req.nextUrl.searchParams;
-        const q = (sp.get('q') ?? '').trim();
-        const buckets = readBuckets(sp.getAll('bucket'));
-        const limit = Math.min(Math.max(Number(sp.get('limit') ?? 50), 1), 200);
+    const orgId = ctx.organizationId;
+    const sp = req.nextUrl.searchParams;
+    const q = (sp.get('q') ?? '').trim();
+    const buckets = readBuckets(sp.getAll('bucket'));
+    const limit = Math.min(Math.max(Number(sp.get('limit') ?? 50), 1), 200);
 
-        const where: string[] = [];
-        // $1 is always the org id — referenced inside the base CTE below.
-        const params: unknown[] = [orgId];
+    const where: string[] = [];
+    // $1 is always the org id — referenced inside the base CTE below.
+    const params: unknown[] = [orgId];
 
-        if (q) {
-            params.push(`%${q}%`);
-            where.push(`c.name ILIKE $${params.length}`);
+    if (q) {
+        params.push(`%${q}%`);
+        where.push(`c.name ILIKE $${params.length}`);
+    }
+    if (buckets.length > 0) {
+        // 'reconciling' is a derived status — campaigns with any pending_review lines.
+        const explicit = buckets.filter((b) => b !== 'reconciling');
+        if (explicit.length > 0) {
+            params.push(explicit);
+            where.push(`derived_status = ANY($${params.length}::text[])`);
         }
-        if (buckets.length > 0) {
-            // 'reconciling' is a derived status — campaigns with any pending_review lines.
-            const explicit = buckets.filter((b) => b !== 'reconciling');
-            if (explicit.length > 0) {
-                params.push(explicit);
-                where.push(`derived_status = ANY($${params.length}::text[])`);
-            }
-            if (buckets.includes('reconciling')) {
-                where.push(`derived_status = 'reconciling'`);
-            }
+        if (buckets.includes('reconciling')) {
+            where.push(`derived_status = 'reconciling'`);
         }
-        const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    }
+    const whereClause = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-        params.push(limit);
-        const limitIdx = params.length;
+    params.push(limit);
+    const limitIdx = params.length;
 
-        const listSql = `
+    const listSql = `
             WITH base AS (
                 SELECT
                     c.id,
@@ -75,22 +74,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             LIMIT $${limitIdx}
         `;
 
-        const result = await tenantQuery(orgId, listSql, params);
-        const rows = result.rows.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            status: r.derived_status,
-            zone: r.zone,
-            line_count: r.line_count,
-            progress_pct: r.progress_pct == null ? null : Number(r.progress_pct),
-            opened_at: r.opened_at,
-            closed_at: r.closed_at,
-        }));
+    const result = await tenantQuery(orgId, listSql, params);
+    const rows = result.rows.map((r: any) => ({
+        id: r.id,
+        name: r.name,
+        status: r.derived_status,
+        zone: r.zone,
+        line_count: r.line_count,
+        progress_pct: r.progress_pct == null ? null : Number(r.progress_pct),
+        opened_at: r.opened_at,
+        closed_at: r.closed_at,
+    }));
 
-        // Counts pass — separate query against derived statuses for badge tallies.
-        const countsResult = await tenantQuery(
-            orgId,
-            `
+    // Counts pass — separate query against derived statuses for badge tallies.
+    const countsResult = await tenantQuery(
+        orgId,
+        `
             WITH base AS (
                 SELECT
                     c.id, c.status,
@@ -109,27 +108,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                 COUNT(*) FILTER (WHERE status <> 'closed' AND review_count = 0 AND progress_count = 0)::int AS open
             FROM base
             `,
-            [orgId],
-        );
+        [orgId],
+    );
 
-        return NextResponse.json({
-            success: true,
-            items: rows,
-            counts: countsResult.rows[0] ?? {
-                total: 0,
-                open: 0,
-                in_progress: 0,
-                reconciling: 0,
-                closed: 0,
-            },
-        });
-    } catch (err: any) {
-        console.error('[GET /api/inventory/counts] error:', err);
-        return NextResponse.json(
-            { success: false, error: err?.message || 'Failed to load cycle counts' },
-            { status: 500 },
-        );
-    }
+    return NextResponse.json({
+        success: true,
+        items: rows,
+        counts: countsResult.rows[0] ?? {
+            total: 0,
+            open: 0,
+            in_progress: 0,
+            reconciling: 0,
+            closed: 0,
+        },
+    });
 }, { permission: 'cycle_count.view' });
 
 function readBuckets(raw: string[]): string[] {

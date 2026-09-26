@@ -22,44 +22,38 @@ export const POST = withAuth(
     const parsed = parseBody(OnboardingRecommendBody, raw ?? {});
     if (parsed instanceof NextResponse) return parsed;
 
-    try {
-      const rows = await db
-        .select({
-          slug: workflowTemplates.slug,
-          name: workflowTemplates.name,
-          description: workflowTemplates.description,
-          category: workflowTemplates.category,
-          graph: workflowTemplates.graph,
-        })
-        .from(workflowTemplates)
-        .where(eq(workflowTemplates.isSystem, true))
-        .orderBy(asc(workflowTemplates.name));
+    const rows = await db
+      .select({
+        slug: workflowTemplates.slug,
+        name: workflowTemplates.name,
+        description: workflowTemplates.description,
+        category: workflowTemplates.category,
+        graph: workflowTemplates.graph,
+      })
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.isSystem, true))
+      .orderBy(asc(workflowTemplates.name));
 
-      const candidates: TemplateCandidate[] = rows.map((r) => {
-        const graph = (r.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
-        const nodeTypes = Array.isArray(graph.nodes)
-          ? [...new Set(graph.nodes.map((n) => n.type))]
-          : [];
-        return {
-          slug: r.slug,
-          name: r.name,
-          description: r.description,
-          category: r.category,
-          nodeTypes,
-        };
-      });
+    const candidates: TemplateCandidate[] = rows.map((r) => {
+      const graph = (r.graph ?? { nodes: [], edges: [] }) as TemplateGraph;
+      const nodeTypes = Array.isArray(graph.nodes)
+        ? [...new Set(graph.nodes.map((n) => n.type))]
+        : [];
+      return {
+        slug: r.slug,
+        name: r.name,
+        description: r.description,
+        category: r.category,
+        nodeTypes,
+      };
+    });
 
-      const result = await recommendTemplates(
-        { text: parsed.text, category: parsed.category ?? null },
-        candidates,
-      );
+    const result = await recommendTemplates(
+      { text: parsed.text, category: parsed.category ?? null },
+      candidates,
+    );
 
-      return NextResponse.json({ ok: true, recommendations: result.recommendations });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'recommendation failed';
-      console.error('[POST /api/onboarding/recommend] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    return NextResponse.json({ ok: true, recommendations: result.recommendations });
   },
   { permission: 'studio.view', feature: 'studio' },
 );

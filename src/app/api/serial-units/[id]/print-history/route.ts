@@ -18,14 +18,8 @@ export const GET = withAuth(
     const limitRaw = Number(request.nextUrl.searchParams.get('limit'));
     const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 20;
 
-    try {
-      const jobs = await getPrintHistoryForUnit(serialUnitId, ctx.organizationId as OrgId, limit);
-      return NextResponse.json({ ok: true, jobs });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'print-history failed';
-      console.error('[GET /api/serial-units/[id]/print-history] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const jobs = await getPrintHistoryForUnit(serialUnitId, ctx.organizationId as OrgId, limit);
+    return NextResponse.json({ ok: true, jobs });
   },
   { permission: 'print.label' },
 );

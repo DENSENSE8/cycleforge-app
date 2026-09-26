@@ -22,17 +22,12 @@ interface PayrollSettingsRow {
 }
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
-  try {
-    // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so it can't carry an explicit…
-    const r = await tenantQuery<PayrollSettingsRow>(
-      ctx.organizationId,
-      `SELECT * FROM payroll_settings WHERE id = 1`,
-    );
-    return NextResponse.json({ settings: r.rows[0] ?? null }, { headers: { 'cache-control': 'no-store' } });
-  } catch (err) {
-    console.error('[/api/payroll/settings GET] error:', err);
-    return NextResponse.json({ error: 'INTERNAL' }, { status: 500 });
-  }
+  // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so it can't carry an explicit…
+  const r = await tenantQuery<PayrollSettingsRow>(
+    ctx.organizationId,
+    `SELECT * FROM payroll_settings WHERE id = 1`,
+  );
+  return NextResponse.json({ settings: r.rows[0] ?? null }, { headers: { 'cache-control': 'no-store' } });
 }, { permission: 'admin.manage_staff' });
 
 const NUMERIC_FIELDS: Record<string, { col: string; min: number; max: number }> = {
@@ -81,17 +76,12 @@ export const PATCH = withAuth(async (req: NextRequest, me) => {
   setClauses.push(`updated_by = $${params.length}`);
   setClauses.push(`updated_at = NOW()`);
 
-  try {
-    // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so the WHERE can't carry an…
-    const r = await withTenantTransaction(me.organizationId, (client) =>
-      client.query<PayrollSettingsRow>(
-        `UPDATE payroll_settings SET ${setClauses.join(', ')} WHERE id = 1 RETURNING *`,
-        params,
-      ),
-    );
-    return NextResponse.json({ settings: r.rows[0] });
-  } catch (err) {
-    console.error('[/api/payroll/settings PATCH] error:', err);
-    return NextResponse.json({ error: 'INTERNAL' }, { status: 500 });
-  }
+  // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so the WHERE can't carry an…
+  const r = await withTenantTransaction(me.organizationId, (client) =>
+    client.query<PayrollSettingsRow>(
+      `UPDATE payroll_settings SET ${setClauses.join(', ')} WHERE id = 1 RETURNING *`,
+      params,
+    ),
+  );
+  return NextResponse.json({ settings: r.rows[0] });
 }, { permission: 'admin.manage_staff' });

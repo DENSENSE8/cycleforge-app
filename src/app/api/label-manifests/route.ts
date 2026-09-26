@@ -29,29 +29,23 @@ export const POST = withAuth(
       );
     }
 
-    try {
-      const { manifest, conflicts } = await createManifest(
-        { ...parsed.data, createdBy: ctx.staffId ?? null },
-        orgId,
-      );
-      await recordAudit(pool, ctx, request, {
-        source: 'label-manifests-api',
-        action: AUDIT_ACTION.MANIFEST_CREATE,
-        entityType: AUDIT_ENTITY.LABEL_MANIFEST,
-        entityId: manifest.id,
-        after: {
-          manifest_uid: manifest.manifest_uid,
-          type: manifest.manifest_type,
-          items: manifest.items.length,
-          conflicts,
-        },
-      });
-      return NextResponse.json({ ok: true, manifest, conflicts }, { status: 201 });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'create manifest failed';
-      console.error('[POST /api/label-manifests] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const { manifest, conflicts } = await createManifest(
+      { ...parsed.data, createdBy: ctx.staffId ?? null },
+      orgId,
+    );
+    await recordAudit(pool, ctx, request, {
+      source: 'label-manifests-api',
+      action: AUDIT_ACTION.MANIFEST_CREATE,
+      entityType: AUDIT_ENTITY.LABEL_MANIFEST,
+      entityId: manifest.id,
+      after: {
+        manifest_uid: manifest.manifest_uid,
+        type: manifest.manifest_type,
+        items: manifest.items.length,
+        conflicts,
+      },
+    });
+    return NextResponse.json({ ok: true, manifest, conflicts }, { status: 201 });
   },
   { permission: 'label.manifest.manage' },
 );

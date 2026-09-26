@@ -26,139 +26,133 @@ export const GET = withAuth(
       return NextResponse.json({ ok: false, error: 'invalid v' }, { status: 400 });
     }
 
-    try {
-      const definitions = await db
-        .select({
-          id: workflowDefinitions.id,
-          name: workflowDefinitions.name,
-          version: workflowDefinitions.version,
-          isActive: workflowDefinitions.isActive,
-        })
-        .from(workflowDefinitions)
-        .where(eq(workflowDefinitions.organizationId, ctx.organizationId))
-        .orderBy(asc(workflowDefinitions.name), desc(workflowDefinitions.version));
+    const definitions = await db
+      .select({
+        id: workflowDefinitions.id,
+        name: workflowDefinitions.name,
+        version: workflowDefinitions.version,
+        isActive: workflowDefinitions.isActive,
+      })
+      .from(workflowDefinitions)
+      .where(eq(workflowDefinitions.organizationId, ctx.organizationId))
+      .orderBy(asc(workflowDefinitions.name), desc(workflowDefinitions.version));
 
-      const definition = v
-        ? definitions.find((d) => d.id === v) ?? null
-        : definitions.find((d) => d.isActive) ?? definitions[0] ?? null;
+    const definition = v
+      ? definitions.find((d) => d.id === v) ?? null
+      : definitions.find((d) => d.isActive) ?? definitions[0] ?? null;
 
-      if (!definition) {
-        return NextResponse.json({
-          ok: true,
-          definitions,
-          definition: null,
-          nodes: [],
-          edges: [],
-          annotations: [],
-        });
-      }
-
-      // Canvas sticky-note annotations (Phase E3) ride on the definition row —
-      // a separate slim SELECT keeps the list query (above) lean. The column is
-      // a JSONB array of { id, text, x, y, color? }; default '[]'.
-      const annRows = await db
-        .select({ annotations: workflowDefinitions.annotations })
-        .from(workflowDefinitions)
-        .where(eq(workflowDefinitions.id, definition.id))
-        .limit(1);
-      const annotations = (annRows[0]?.annotations ?? []) as StudioGraphResponse['annotations'];
-
-      const [nodeRows, edgeRows] = await Promise.all([
-        db
-          .select()
-          .from(workflowNodes)
-          .where(eq(workflowNodes.workflowDefinitionId, definition.id)),
-        db
-          .select()
-          .from(workflowEdges)
-          .where(eq(workflowEdges.workflowDefinitionId, definition.id)),
-      ]);
-
-      const nodes = nodeRows.map((n) => {
-        const meta = hasNode(n.type)
-          ? (({ label, icon, category, outputs }) => ({ label, icon, category, outputs }))(
-              getNode(n.type),
-            )
-          : null;
-        return {
-          id: n.id,
-          type: n.type,
-          x: Number(n.positionX),
-          y: Number(n.positionY),
-          config: (n.config ?? {}) as Record<string, unknown>,
-          meta,
-        };
+    if (!definition) {
+      return NextResponse.json({
+        ok: true,
+        definitions,
+        definition: null,
+        nodes: [],
+        edges: [],
+        annotations: [],
       });
-
-      const edges = edgeRows.map((e) => ({
-        id: e.id,
-        source: e.sourceNode,
-        sourcePort: e.sourcePort,
-        target: e.targetNode,
-      }));
-
-      // Full registered node-type palette (Library pane) — registry-driven,
-      // so new node types appear without touching the Studio UI.
-      const palette = listNodeMeta();
-
-      // Station composition bound to these nodes — feeds the composition rules
-      // (unmapped required role / dangling action) in the diagnostics linter.
-      const nodeIds = nodeRows.map((n) => n.id);
-      const stationRows = nodeIds.length
-        ? await db
-            .select({
-              workflowNodeId: stationDefinitions.workflowNodeId,
-              label: stationDefinitions.label,
-              config: stationDefinitions.config,
-            })
-            .from(stationDefinitions)
-            .where(
-              and(
-                eq(stationDefinitions.organizationId, ctx.organizationId),
-                eq(stationDefinitions.isActive, true),
-                inArray(stationDefinitions.workflowNodeId, nodeIds),
-              ),
-            )
-        : [];
-
-      // Org integration connections feed the v2 integration rules (integration-disconnected / integration-sync-stale).
-      let connections: DiagnosticsConnection[] | undefined;
-      try {
-        connections = (await listConnections(ctx.organizationId)).map((c) => ({
-          provider: c.provider,
-          connected: c.connected,
-          lastSyncedAt: c.lastSyncedAt ?? undefined,
-        }));
-      } catch (err) {
-        console.warn(
-          '[GET /api/studio/graph] listConnections failed — integration diagnostics skipped:',
-          err instanceof Error ? err.message : err,
-        );
-        connections = undefined;
-      }
-
-      // Lint the loaded graph (ST3): the Issues rail + Gaps lens render
-      // these; ST4's publish gate will block on the error-severity ones.
-      const diagnostics = runDiagnostics({
-        nodes: nodeRows.map((n) => ({
-          id: n.id,
-          type: n.type,
-          config: (n.config ?? {}) as Record<string, unknown>,
-        })),
-        edges,
-        portsOf: (type) => (hasNode(type) ? getNode(type).outputs.map((o) => o.id) : null),
-        stationKeys: new Set(STATIONS.map((s) => s.key)),
-        labelOf: (n) => (hasNode(n.type) ? getNode(n.type).label : n.type),
-        stationsByNode: summarizeStations(stationRows),
-        connections,
-      });
-
-      return NextResponse.json({ ok: true, definitions, definition, nodes, edges, annotations, palette, diagnostics });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'studio graph failed';
-      console.error('[GET /api/studio/graph] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
     }
+
+    // Canvas sticky-note annotations (Phase E3) ride on the definition row —
+    // a separate slim SELECT keeps the list query (above) lean. The column is
+    // a JSONB array of { id, text, x, y, color? }; default '[]'.
+    const annRows = await db
+      .select({ annotations: workflowDefinitions.annotations })
+      .from(workflowDefinitions)
+      .where(eq(workflowDefinitions.id, definition.id))
+      .limit(1);
+    const annotations = (annRows[0]?.annotations ?? []) as StudioGraphResponse['annotations'];
+
+    const [nodeRows, edgeRows] = await Promise.all([
+      db
+        .select()
+        .from(workflowNodes)
+        .where(eq(workflowNodes.workflowDefinitionId, definition.id)),
+      db
+        .select()
+        .from(workflowEdges)
+        .where(eq(workflowEdges.workflowDefinitionId, definition.id)),
+    ]);
+
+    const nodes = nodeRows.map((n) => {
+      const meta = hasNode(n.type)
+        ? (({ label, icon, category, outputs }) => ({ label, icon, category, outputs }))(
+            getNode(n.type),
+          )
+        : null;
+      return {
+        id: n.id,
+        type: n.type,
+        x: Number(n.positionX),
+        y: Number(n.positionY),
+        config: (n.config ?? {}) as Record<string, unknown>,
+        meta,
+      };
+    });
+
+    const edges = edgeRows.map((e) => ({
+      id: e.id,
+      source: e.sourceNode,
+      sourcePort: e.sourcePort,
+      target: e.targetNode,
+    }));
+
+    // Full registered node-type palette (Library pane) — registry-driven,
+    // so new node types appear without touching the Studio UI.
+    const palette = listNodeMeta();
+
+    // Station composition bound to these nodes — feeds the composition rules
+    // (unmapped required role / dangling action) in the diagnostics linter.
+    const nodeIds = nodeRows.map((n) => n.id);
+    const stationRows = nodeIds.length
+      ? await db
+          .select({
+            workflowNodeId: stationDefinitions.workflowNodeId,
+            label: stationDefinitions.label,
+            config: stationDefinitions.config,
+          })
+          .from(stationDefinitions)
+          .where(
+            and(
+              eq(stationDefinitions.organizationId, ctx.organizationId),
+              eq(stationDefinitions.isActive, true),
+              inArray(stationDefinitions.workflowNodeId, nodeIds),
+            ),
+          )
+      : [];
+
+    // Org integration connections feed the v2 integration rules (integration-disconnected / integration-sync-stale).
+    let connections: DiagnosticsConnection[] | undefined;
+    try {
+      connections = (await listConnections(ctx.organizationId)).map((c) => ({
+        provider: c.provider,
+        connected: c.connected,
+        lastSyncedAt: c.lastSyncedAt ?? undefined,
+      }));
+    } catch (err) {
+      console.warn(
+        '[GET /api/studio/graph] listConnections failed — integration diagnostics skipped:',
+        err instanceof Error ? err.message : err,
+      );
+      connections = undefined;
+    }
+
+    // Lint the loaded graph (ST3): the Issues rail + Gaps lens render
+    // these; ST4's publish gate will block on the error-severity ones.
+    const diagnostics = runDiagnostics({
+      nodes: nodeRows.map((n) => ({
+        id: n.id,
+        type: n.type,
+        config: (n.config ?? {}) as Record<string, unknown>,
+      })),
+      edges,
+      portsOf: (type) => (hasNode(type) ? getNode(type).outputs.map((o) => o.id) : null),
+      stationKeys: new Set(STATIONS.map((s) => s.key)),
+      labelOf: (n) => (hasNode(n.type) ? getNode(n.type).label : n.type),
+      stationsByNode: summarizeStations(stationRows),
+      connections,
+    });
+
+    return NextResponse.json({ ok: true, definitions, definition, nodes, edges, annotations, palette, diagnostics });
   },
   { permission: 'studio.view', feature: 'studio' },
 );

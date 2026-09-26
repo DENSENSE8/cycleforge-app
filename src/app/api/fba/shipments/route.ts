@@ -42,34 +42,33 @@ function autoPlanRefForDueDate(isoYmd: string): string {
 // Returns shipments with aggregated item counts and staff names.
 // Query params: status (comma-separated), limit, q (search shipment_ref / notes)
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const q = String(searchParams.get('q') || '').trim();
-    const statusParam = String(searchParams.get('status') || '').trim();
-    const limitRaw = Number(searchParams.get('limit') || 100);
-    const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : 100;
+  const { searchParams } = new URL(request.url);
+  const q = String(searchParams.get('q') || '').trim();
+  const statusParam = String(searchParams.get('status') || '').trim();
+  const limitRaw = Number(searchParams.get('limit') || 100);
+  const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : 100;
 
-    const statusValues = statusParam
-      ? statusParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
-      : [];
+  const statusValues = statusParam
+    ? statusParam.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+    : [];
 
-    // Build dynamic WHERE clauses
-    const conditions: string[] = [];
-    const params: unknown[] = [];
-    let idx = 1;
+  // Build dynamic WHERE clauses
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
 
-    // Tenant ownership filter — never return another org's shipments.
-    conditions.push(`fs.organization_id = $${idx}`);
-    params.push(ctx.organizationId);
+  // Tenant ownership filter — never return another org's shipments.
+  conditions.push(`fs.organization_id = $${idx}`);
+  params.push(ctx.organizationId);
+  idx++;
+
+  if (statusValues.length > 0) {
+    conditions.push(`fs.status = ANY($${idx}::fba_shipment_status_enum[])`);
+    params.push(statusValues);
     idx++;
-
-    if (statusValues.length > 0) {
-      conditions.push(`fs.status = ANY($${idx}::fba_shipment_status_enum[])`);
-      params.push(statusValues);
-      idx++;
-    }
-    if (q) {
-      conditions.push(`(
+  }
+  if (q) {
+    conditions.push(`(
         fs.shipment_ref ILIKE $${idx}
         OR fs.notes ILIKE $${idx}
         OR COALESCE(fs.amazon_shipment_id, '') ILIKE $${idx}
@@ -94,16 +93,16 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
             AND COALESCE(stn_q.tracking_number_raw, '') ILIKE $${idx}
         )
       )`);
-      params.push(`%${q}%`);
-      idx++;
-    }
+    params.push(`%${q}%`);
+    idx++;
+  }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    params.push(limit);
-    const limitIdx = idx;
+  params.push(limit);
+  const limitIdx = idx;
 
-    const query = `
+  const query = `
       SELECT
         fs.id,
         fs.shipment_ref,
@@ -161,15 +160,8 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       LIMIT $${limitIdx}
     `;
 
-    const result = await tenantQuery(ctx.organizationId, query, params);
-    return NextResponse.json({ success: true, shipments: result.rows });
-  } catch (error: any) {
-    console.error('[GET /api/fba/shipments]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch FBA shipments' },
-      { status: 500 }
-    );
-  }
+  const result = await tenantQuery(ctx.organizationId, query, params);
+  return NextResponse.json({ success: true, shipments: result.rows });
 }, { permission: 'fba.view', feature: 'fba' });
 
 // ── POST /api/fba/shipments ─────────────────────────────────────────────────── Creates a shipment header + optional initial items in a…

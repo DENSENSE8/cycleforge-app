@@ -10,26 +10,18 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/inventory/bins-overview?room=…&q=… */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const room = req.nextUrl.searchParams.get('room');
-    const q = req.nextUrl.searchParams.get('q');
-    const org = await getOrganization(ctx.organizationId as OrgId);
-    const returnsBarcode = org
-      ? getReceivingReturnsTestBin(org.settings, process.env.RETURNS_TEST_BIN_BARCODE)
-      : undefined;
-    const specialBarcodes = specialBinBarcodesForOverview(returnsBarcode);
-    const data = await getBinsOverview({
-      room,
-      q,
-      orgId: ctx.organizationId,
-      specialBarcodes,
-    });
-    return NextResponse.json({ success: true, ...data });
-  } catch (err: any) {
-    console.error('[GET /api/inventory/bins-overview] error:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Failed to load bins overview' },
-      { status: 500 },
-    );
-  }
+  const room = req.nextUrl.searchParams.get('room');
+  const q = req.nextUrl.searchParams.get('q');
+  const org = await getOrganization(ctx.organizationId as OrgId);
+  const returnsBarcode = org
+    ? getReceivingReturnsTestBin(org.settings, process.env.RETURNS_TEST_BIN_BARCODE)
+    : undefined;
+  const specialBarcodes = specialBinBarcodesForOverview(returnsBarcode);
+  const data = await getBinsOverview({
+    room,
+    q,
+    orgId: ctx.organizationId,
+    specialBarcodes,
+  });
+  return NextResponse.json({ success: true, ...data });
 }, { permission: 'sku_stock.view' });

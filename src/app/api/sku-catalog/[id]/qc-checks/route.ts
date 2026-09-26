@@ -47,34 +47,26 @@ async function getQcCheckById(checkId: number, orgId: OrgId): Promise<Record<str
  * templates. `?publishedOnly=1` returns only published steps (execution view).
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
-    if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
-      return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
-    }
-
-    // Org-scoped lookup — a SKU owned by another org resolves to null → 404.
-    const catalog = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
-    if (!catalog) {
-      return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
-    }
-
-    const publishedOnly = req.nextUrl.searchParams.get('publishedOnly') === '1';
-    // Thread orgId so the category-default branch (category = $2 AND sku_catalog_id IS NULL) is org-scoped — without it, the shared query runs…
-    const checks = await getQcChecks(
-      skuCatalogId,
-      catalog.category,
-      { publishedOnly },
-      ctx.organizationId,
-    );
-    return NextResponse.json({ success: true, catalog, checks });
-  } catch (error: any) {
-    console.error('Error in GET /api/sku-catalog/[id]/qc-checks:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to load QC checks' },
-      { status: 500 },
-    );
+  const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
+  if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
+    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
   }
+
+  // Org-scoped lookup — a SKU owned by another org resolves to null → 404.
+  const catalog = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
+  if (!catalog) {
+    return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
+  }
+
+  const publishedOnly = req.nextUrl.searchParams.get('publishedOnly') === '1';
+  // Thread orgId so the category-default branch (category = $2 AND sku_catalog_id IS NULL) is org-scoped — without it, the shared query runs…
+  const checks = await getQcChecks(
+    skuCatalogId,
+    catalog.category,
+    { publishedOnly },
+    ctx.organizationId,
+  );
+  return NextResponse.json({ success: true, catalog, checks });
 }, { permission: 'sku_stock.view' });
 
 /**
@@ -83,74 +75,66 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  * config (value_kind/unit/enum, pass band) when provided.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
-    if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
-      return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
-    }
-
-    // Org-ownership precheck on the parent SKU — a step can only be created
-    // under a catalog row this org owns (cross-org → 404, never 403).
-    const parent = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
-    if (!parent) {
-      return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
-    }
-
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(QcCheckCreateBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
-
-    const idemKey = readIdempotencyKey(req, parsed.idempotencyKey ?? null);
-    if (idemKey) {
-      const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE_QC_CHECKS_POST);
-      if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
-    }
-
-    // Thread orgId so the INSERT runs inside withTenantTransaction and stamps organization_id = caller's org.
-    const check = await createQcCheck({
-      skuCatalogId,
-      stepLabel: parsed.stepLabel,
-      stepType: parsed.stepType,
-      sortOrder: parsed.sortOrder,
-      status: parsed.status,
-      valueKind: parsed.valueKind ?? null,
-      valueUnit: parsed.valueUnit ?? null,
-      valueEnum: parsed.valueEnum ?? null,
-      passMin: parsed.passMin ?? null,
-      passMax: parsed.passMax ?? null,
-      failureModeId: parsed.failureModeId ?? null,
-    }, ctx.organizationId);
-
-    await recordAudit(pool, ctx, req, {
-      source: 'sku-catalog-api',
-      action: AUDIT_ACTION.QC_CHECK_CREATE,
-      entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
-      entityId: check.id,
-      before: null,
-      after: { ...check },
-      extra: { sku_catalog_id: skuCatalogId },
-    });
-
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
-    const responseBody = { success: true, check };
-    if (idemKey) {
-      await saveApiIdempotencyResponse(pool, {
-        orgId: ctx.organizationId,
-        idempotencyKey: idemKey,
-        route: ROUTE_QC_CHECKS_POST,
-        staffId: ctx.staffId,
-        statusCode: 201,
-        responseBody,
-      });
-    }
-    return NextResponse.json(responseBody, { status: 201 });
-  } catch (error: any) {
-    console.error('Error in POST /api/sku-catalog/[id]/qc-checks:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to create QC check' },
-      { status: 500 },
-    );
+  const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);
+  if (!Number.isFinite(skuCatalogId) || skuCatalogId <= 0) {
+    return NextResponse.json({ success: false, error: 'Invalid ID' }, { status: 400 });
   }
+
+  // Org-ownership precheck on the parent SKU — a step can only be created
+  // under a catalog row this org owns (cross-org → 404, never 403).
+  const parent = await getSkuCatalogById(skuCatalogId, ctx.organizationId);
+  if (!parent) {
+    return NextResponse.json({ success: false, error: 'SKU not found' }, { status: 404 });
+  }
+
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(QcCheckCreateBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
+
+  const idemKey = readIdempotencyKey(req, parsed.idempotencyKey ?? null);
+  if (idemKey) {
+    const hit = await getApiIdempotencyResponse(pool, ctx.organizationId, idemKey, ROUTE_QC_CHECKS_POST);
+    if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
+  }
+
+  // Thread orgId so the INSERT runs inside withTenantTransaction and stamps organization_id = caller's org.
+  const check = await createQcCheck({
+    skuCatalogId,
+    stepLabel: parsed.stepLabel,
+    stepType: parsed.stepType,
+    sortOrder: parsed.sortOrder,
+    status: parsed.status,
+    valueKind: parsed.valueKind ?? null,
+    valueUnit: parsed.valueUnit ?? null,
+    valueEnum: parsed.valueEnum ?? null,
+    passMin: parsed.passMin ?? null,
+    passMax: parsed.passMax ?? null,
+    failureModeId: parsed.failureModeId ?? null,
+  }, ctx.organizationId);
+
+  await recordAudit(pool, ctx, req, {
+    source: 'sku-catalog-api',
+    action: AUDIT_ACTION.QC_CHECK_CREATE,
+    entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
+    entityId: check.id,
+    before: null,
+    after: { ...check },
+    extra: { sku_catalog_id: skuCatalogId },
+  });
+
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
+  const responseBody = { success: true, check };
+  if (idemKey) {
+    await saveApiIdempotencyResponse(pool, {
+      orgId: ctx.organizationId,
+      idempotencyKey: idemKey,
+      route: ROUTE_QC_CHECKS_POST,
+      staffId: ctx.staffId,
+      statusCode: 201,
+      responseBody,
+    });
+  }
+  return NextResponse.json(responseBody, { status: 201 });
 }, { permission: 'sku_stock.manage' });
 
 /**
@@ -158,107 +142,91 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
  * A status-only change is audited as a publish/unpublish; otherwise as an update.
  */
 export const PUT = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(QcCheckUpdateBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(QcCheckUpdateBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    // Org-scoped before-state — a cross-org checkId is invisible (→ 404),
-    // so the write below can never touch another tenant's step.
-    const before = await getQcCheckById(parsed.checkId, ctx.organizationId);
-    if (!before) {
-      return NextResponse.json({ success: false, error: 'QC check not found' }, { status: 404 });
-    }
-
-    // Thread orgId so the UPDATE carries an explicit organization_id predicate
-    // and runs inside withTenantTransaction (a foreign-org checkId updates 0
-    // rows even if the pre-gate were bypassed).
-    const updated = await updateQcCheck(parsed.checkId, {
-      stepLabel: parsed.stepLabel,
-      stepType: parsed.stepType,
-      sortOrder: parsed.sortOrder,
-      status: parsed.status,
-      valueKind: parsed.valueKind,
-      valueUnit: parsed.valueUnit,
-      valueEnum: parsed.valueEnum,
-      passMin: parsed.passMin,
-      passMax: parsed.passMax,
-      failureModeId: parsed.failureModeId,
-    }, ctx.organizationId);
-    if (!updated) {
-      return NextResponse.json({ success: false, error: 'No changes' }, { status: 400 });
-    }
-
-    // Status-only edit → publish/unpublish; anything else → generic update.
-    const onlyStatus =
-      parsed.status !== undefined &&
-      parsed.stepLabel === undefined &&
-      parsed.stepType === undefined &&
-      parsed.sortOrder === undefined &&
-      parsed.valueKind === undefined &&
-      parsed.valueUnit === undefined &&
-      parsed.valueEnum === undefined &&
-      parsed.passMin === undefined &&
-      parsed.passMax === undefined &&
-      parsed.failureModeId === undefined;
-
-    await recordAudit(pool, ctx, req, {
-      source: 'sku-catalog-api',
-      action: onlyStatus ? AUDIT_ACTION.QC_CHECK_PUBLISH : AUDIT_ACTION.QC_CHECK_UPDATE,
-      entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
-      entityId: parsed.checkId,
-      before,
-      after: { ...updated },
-    });
-
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
-    return NextResponse.json({ success: true, check: updated });
-  } catch (error: any) {
-    console.error('Error in PUT /api/sku-catalog/[id]/qc-checks:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to update QC check' },
-      { status: 500 },
-    );
+  // Org-scoped before-state — a cross-org checkId is invisible (→ 404),
+  // so the write below can never touch another tenant's step.
+  const before = await getQcCheckById(parsed.checkId, ctx.organizationId);
+  if (!before) {
+    return NextResponse.json({ success: false, error: 'QC check not found' }, { status: 404 });
   }
+
+  // Thread orgId so the UPDATE carries an explicit organization_id predicate
+  // and runs inside withTenantTransaction (a foreign-org checkId updates 0
+  // rows even if the pre-gate were bypassed).
+  const updated = await updateQcCheck(parsed.checkId, {
+    stepLabel: parsed.stepLabel,
+    stepType: parsed.stepType,
+    sortOrder: parsed.sortOrder,
+    status: parsed.status,
+    valueKind: parsed.valueKind,
+    valueUnit: parsed.valueUnit,
+    valueEnum: parsed.valueEnum,
+    passMin: parsed.passMin,
+    passMax: parsed.passMax,
+    failureModeId: parsed.failureModeId,
+  }, ctx.organizationId);
+  if (!updated) {
+    return NextResponse.json({ success: false, error: 'No changes' }, { status: 400 });
+  }
+
+  // Status-only edit → publish/unpublish; anything else → generic update.
+  const onlyStatus =
+    parsed.status !== undefined &&
+    parsed.stepLabel === undefined &&
+    parsed.stepType === undefined &&
+    parsed.sortOrder === undefined &&
+    parsed.valueKind === undefined &&
+    parsed.valueUnit === undefined &&
+    parsed.valueEnum === undefined &&
+    parsed.passMin === undefined &&
+    parsed.passMax === undefined &&
+    parsed.failureModeId === undefined;
+
+  await recordAudit(pool, ctx, req, {
+    source: 'sku-catalog-api',
+    action: onlyStatus ? AUDIT_ACTION.QC_CHECK_PUBLISH : AUDIT_ACTION.QC_CHECK_UPDATE,
+    entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
+    entityId: parsed.checkId,
+    before,
+    after: { ...updated },
+  });
+
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
+  return NextResponse.json({ success: true, check: updated });
 }, { permission: 'sku_stock.manage' });
 
 /**
  * DELETE /api/sku-catalog/[id]/qc-checks — Delete a QC check by checkId in body.
  */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const raw = await req.json().catch(() => ({}));
-    const parsed = parseBody(QcCheckDeleteBody, raw);
-    if (parsed instanceof NextResponse) return parsed;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = parseBody(QcCheckDeleteBody, raw);
+  if (parsed instanceof NextResponse) return parsed;
 
-    // Org-ownership gate: only delete a step this org owns. A cross-org (or
-    // missing) checkId resolves to null here, so deleteQcCheck — which is not
-    // itself org-scoped — is never reached for another tenant's row (→ 404).
-    const before = await getQcCheckById(parsed.checkId, ctx.organizationId);
-    if (!before) {
-      return NextResponse.json({ success: false, error: 'QC check not found' }, { status: 404 });
-    }
-    // Thread orgId so the DELETE carries an explicit organization_id predicate
-    // and runs inside withTenantTransaction (defense-in-depth vs the pre-gate).
-    const deleted = await deleteQcCheck(parsed.checkId, ctx.organizationId);
-
-    if (deleted && before) {
-      await recordAudit(pool, ctx, req, {
-        source: 'sku-catalog-api',
-        action: AUDIT_ACTION.QC_CHECK_DELETE,
-        entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
-        entityId: parsed.checkId,
-        before,
-        after: null,
-      });
-    }
-    await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
-    return NextResponse.json({ success: true, deleted });
-  } catch (error: any) {
-    console.error('Error in DELETE /api/sku-catalog/[id]/qc-checks:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to delete QC check' },
-      { status: 500 },
-    );
+  // Org-ownership gate: only delete a step this org owns. A cross-org (or
+  // missing) checkId resolves to null here, so deleteQcCheck — which is not
+  // itself org-scoped — is never reached for another tenant's row (→ 404).
+  const before = await getQcCheckById(parsed.checkId, ctx.organizationId);
+  if (!before) {
+    return NextResponse.json({ success: false, error: 'QC check not found' }, { status: 404 });
   }
+  // Thread orgId so the DELETE carries an explicit organization_id predicate
+  // and runs inside withTenantTransaction (defense-in-depth vs the pre-gate).
+  const deleted = await deleteQcCheck(parsed.checkId, ctx.organizationId);
+
+  if (deleted && before) {
+    await recordAudit(pool, ctx, req, {
+      source: 'sku-catalog-api',
+      action: AUDIT_ACTION.QC_CHECK_DELETE,
+      entityType: AUDIT_ENTITY.QC_CHECK_TEMPLATE,
+      entityId: parsed.checkId,
+      before,
+      after: null,
+    });
+  }
+  await invalidateCacheTags(ctx.organizationId, [CACHE_TAGS.qcChecks]);
+  return NextResponse.json({ success: true, deleted });
 }, { permission: 'sku_stock.manage' });

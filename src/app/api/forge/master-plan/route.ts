@@ -14,33 +14,25 @@ export const maxDuration = 30;
 
 /** GET /api/forge/master-plan — canonical CRDT snapshot for client bootstrap. */
 export const GET = withAuth(async (_req: NextRequest, _ctx) => {
-  try {
-    const { result, seeded } = await withMasterPlanDoc(_ctx.organizationId, (doc) => ({
-      update: u8ToBase64(Y.encodeStateAsUpdate(doc)),
-      mdx: readMasterPlan(doc),
-    }));
-    const tickets = scanTicketStatuses(result.mdx);
-    // Self-healing projection: every plan read refreshes the ops-plans tables
-    // (idempotent upserts; edits made in Cursor reach staff tables this way).
-    if (tickets.length > 0) {
-      after(() =>
-        syncMasterPlanToOpsPlans(_ctx.organizationId, result.mdx).catch((err) =>
-          console.error('[forge/master-plan] ops-plans bridge sync failed:', err),
-        ),
-      );
-    }
-    return NextResponse.json({
-      success: true,
-      update: result.update,
-      mdx: result.mdx,
-      rollup: rollupTicketStatuses(tickets),
-      seeded,
-    });
-  } catch (error: unknown) {
-    console.error('Error in GET /api/forge/master-plan:', error);
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to load master plan' },
-      { status: 500 },
+  const { result, seeded } = await withMasterPlanDoc(_ctx.organizationId, (doc) => ({
+    update: u8ToBase64(Y.encodeStateAsUpdate(doc)),
+    mdx: readMasterPlan(doc),
+  }));
+  const tickets = scanTicketStatuses(result.mdx);
+  // Self-healing projection: every plan read refreshes the ops-plans tables
+  // (idempotent upserts; edits made in Cursor reach staff tables this way).
+  if (tickets.length > 0) {
+    after(() =>
+      syncMasterPlanToOpsPlans(_ctx.organizationId, result.mdx).catch((err) =>
+        console.error('[forge/master-plan] ops-plans bridge sync failed:', err),
+      ),
     );
   }
+  return NextResponse.json({
+    success: true,
+    update: result.update,
+    mdx: result.mdx,
+    rollup: rollupTicketStatuses(tickets),
+    seeded,
+  });
 }, { permission: 'operations.plans.view' });

@@ -67,61 +67,60 @@ function getIndex(headers: string[], keys: string[]): number {
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const form = await req.formData();
-    const file = form.get('file');
+  const form = await req.formData();
+  const file = form.get('file');
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: 'CSV file is required' }, { status: 400 });
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: 'CSV file is required' }, { status: 400 });
+  }
+
+  const raw = await file.text();
+  const parsed = parseCsv(raw);
+  if (parsed.length === 0) {
+    return NextResponse.json({ error: 'CSV is empty' }, { status: 400 });
+  }
+
+  const normalizedHeaders = parsed[0].map(normalizeHeader);
+  const productTitleIdx = getIndex(normalizedHeaders, ['product_title', 'title', 'name']);
+  const asinIdx = getIndex(normalizedHeaders, ['asin']);
+  const skuIdx = getIndex(normalizedHeaders, ['sku']);
+  const fnskuIdx = getIndex(normalizedHeaders, ['fnsku', 'f_n_s_k_u']);
+
+  if (fnskuIdx < 0) {
+    return NextResponse.json({ error: 'CSV must include an fnsku column' }, { status: 400 });
+  }
+
+  const seen = new Set<string>();
+  const rowsToInsert: Array<[string | null, string | null, string | null, string, string]> = [];
+  let skipped = 0;
+
+  for (const row of parsed.slice(1)) {
+    const productTitle = productTitleIdx >= 0 ? String(row[productTitleIdx] || '').trim() : '';
+    const asin = asinIdx >= 0 ? String(row[asinIdx] || '').trim() : '';
+    const sku = skuIdx >= 0 ? String(row[skuIdx] || '').trim() : '';
+    const fnsku = String(row[fnskuIdx] || '').trim().toUpperCase();
+
+    if (!fnsku) {
+      skipped++;
+      continue;
     }
-
-    const raw = await file.text();
-    const parsed = parseCsv(raw);
-    if (parsed.length === 0) {
-      return NextResponse.json({ error: 'CSV is empty' }, { status: 400 });
+    if (seen.has(fnsku)) {
+      skipped++;
+      continue;
     }
+    seen.add(fnsku);
 
-    const normalizedHeaders = parsed[0].map(normalizeHeader);
-    const productTitleIdx = getIndex(normalizedHeaders, ['product_title', 'title', 'name']);
-    const asinIdx = getIndex(normalizedHeaders, ['asin']);
-    const skuIdx = getIndex(normalizedHeaders, ['sku']);
-    const fnskuIdx = getIndex(normalizedHeaders, ['fnsku', 'f_n_s_k_u']);
+    rowsToInsert.push([productTitle || null, asin || null, sku || null, fnsku, ctx.organizationId]);
+  }
 
-    if (fnskuIdx < 0) {
-      return NextResponse.json({ error: 'CSV must include an fnsku column' }, { status: 400 });
-    }
+  if (rowsToInsert.length === 0) {
+    return NextResponse.json({ success: true, inserted: 0, skipped });
+  }
 
-    const seen = new Set<string>();
-    const rowsToInsert: Array<[string | null, string | null, string | null, string, string]> = [];
-    let skipped = 0;
-
-    for (const row of parsed.slice(1)) {
-      const productTitle = productTitleIdx >= 0 ? String(row[productTitleIdx] || '').trim() : '';
-      const asin = asinIdx >= 0 ? String(row[asinIdx] || '').trim() : '';
-      const sku = skuIdx >= 0 ? String(row[skuIdx] || '').trim() : '';
-      const fnsku = String(row[fnskuIdx] || '').trim().toUpperCase();
-
-      if (!fnsku) {
-        skipped++;
-        continue;
-      }
-      if (seen.has(fnsku)) {
-        skipped++;
-        continue;
-      }
-      seen.add(fnsku);
-
-      rowsToInsert.push([productTitle || null, asin || null, sku || null, fnsku, ctx.organizationId]);
-    }
-
-    if (rowsToInsert.length === 0) {
-      return NextResponse.json({ success: true, inserted: 0, skipped });
-    }
-
-    await withTenantTransaction(ctx.organizationId, async (client) => {
-      for (const row of rowsToInsert) {
-        await client.query(
-          `INSERT INTO fba_fnskus (fnsku, product_title, asin, sku, organization_id, is_active, last_seen_at, updated_at)
+  await withTenantTransaction(ctx.organizationId, async (client) => {
+    for (const row of rowsToInsert) {
+      await client.query(
+        `INSERT INTO fba_fnskus (fnsku, product_title, asin, sku, organization_id, is_active, last_seen_at, updated_at)
            VALUES ($4, $1, $2, $3, $5, TRUE, NOW(), NOW())
            ON CONFLICT (organization_id, fnsku) DO UPDATE
              SET product_title = EXCLUDED.product_title,
@@ -131,14 +130,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                  last_seen_at = NOW(),
                  updated_at = NOW()
            WHERE fba_fnskus.organization_id = EXCLUDED.organization_id`,
-          row
-        );
-      }
-    });
+        row
+      );
+    }
+  });
 
-    return NextResponse.json({ success: true, inserted: rowsToInsert.length, skipped });
-  } catch (error: any) {
-    console.error('Failed to upload fba_fnskus CSV:', error);
-    return NextResponse.json({ error: 'Failed to upload CSV' }, { status: 500 });
-  }
+  return NextResponse.json({ success: true, inserted: rowsToInsert.length, skipped });
 }, { permission: 'fba.manage_fnskus' });

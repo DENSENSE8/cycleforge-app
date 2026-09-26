@@ -25,23 +25,15 @@ const ROUTE_ACCOUNTS_POST = 'catalog.platform-accounts.post';
  */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const url = new URL(req.url);
-      const includeInactive = url.searchParams.get('includeInactive') === 'true';
-      const platformIdRaw = url.searchParams.get('platformId');
-      const platformId = platformIdRaw ? Number(platformIdRaw) : undefined;
-      if (platformIdRaw && (!Number.isFinite(platformId) || (platformId as number) <= 0)) {
-        return NextResponse.json({ success: false, error: 'Invalid platformId' }, { status: 400 });
-      }
-      const accounts = await listPlatformAccounts(ctx.organizationId, { includeInactive, platformId });
-      return NextResponse.json({ success: true, accounts });
-    } catch (error: any) {
-      console.error('Error in GET /api/catalog/platform-accounts:', error);
-      return NextResponse.json(
-        { success: false, error: error.message || 'Failed to fetch platform accounts' },
-        { status: 500 },
-      );
+    const url = new URL(req.url);
+    const includeInactive = url.searchParams.get('includeInactive') === 'true';
+    const platformIdRaw = url.searchParams.get('platformId');
+    const platformId = platformIdRaw ? Number(platformIdRaw) : undefined;
+    if (platformIdRaw && (!Number.isFinite(platformId) || (platformId as number) <= 0)) {
+      return NextResponse.json({ success: false, error: 'Invalid platformId' }, { status: 400 });
     }
+    const accounts = await listPlatformAccounts(ctx.organizationId, { includeInactive, platformId });
+    return NextResponse.json({ success: true, accounts });
   },
   { permission: 'receiving.view' },
 );

@@ -259,43 +259,42 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 }, { permission: 'admin.view' });
 
 export const PUT = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json();
-    const staffId = Number(body?.staffId);
-    const dayOfWeek = Number(body?.dayOfWeek);
-    const scheduleDate = body?.scheduleDate == null ? null : String(body.scheduleDate);
-    const isScheduledRaw = body?.isScheduled;
+  const body = await request.json();
+  const staffId = Number(body?.staffId);
+  const dayOfWeek = Number(body?.dayOfWeek);
+  const scheduleDate = body?.scheduleDate == null ? null : String(body.scheduleDate);
+  const isScheduledRaw = body?.isScheduled;
 
-    if (!Number.isFinite(staffId) || staffId <= 0) {
-      return NextResponse.json({ error: 'Valid staffId is required' }, { status: 400 });
-    }
-    if (!isValidIsoDate(scheduleDate) && (!Number.isFinite(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)) {
-      return NextResponse.json({ error: 'dayOfWeek must be an integer between 0 and 6 when scheduleDate is not provided' }, { status: 400 });
-    }
-    if (typeof isScheduledRaw !== 'boolean') {
-      return NextResponse.json({ error: 'isScheduled must be boolean' }, { status: 400 });
-    }
-    const isScheduled = isScheduledRaw;
-    const resolvedScheduleDate = isValidIsoDate(scheduleDate)
-      ? scheduleDate
-      : null;
+  if (!Number.isFinite(staffId) || staffId <= 0) {
+    return NextResponse.json({ error: 'Valid staffId is required' }, { status: 400 });
+  }
+  if (!isValidIsoDate(scheduleDate) && (!Number.isFinite(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)) {
+    return NextResponse.json({ error: 'dayOfWeek must be an integer between 0 and 6 when scheduleDate is not provided' }, { status: 400 });
+  }
+  if (typeof isScheduledRaw !== 'boolean') {
+    return NextResponse.json({ error: 'isScheduled must be boolean' }, { status: 400 });
+  }
+  const isScheduled = isScheduledRaw;
+  const resolvedScheduleDate = isValidIsoDate(scheduleDate)
+    ? scheduleDate
+    : null;
 
-    if (isScheduled && resolvedScheduleDate) {
-      try {
-        const decision = await getStaffAvailabilityDecision(pool, staffId, resolvedScheduleDate, Number.isFinite(dayOfWeek) ? dayOfWeek : null);
-        if (!decision.isAllowed) {
-          return NextResponse.json({
-            error: 'Not allowed by availability rule',
-            details: `staffId=${staffId} is not allowed to work on ${resolvedScheduleDate}`,
-            decision,
-          }, { status: 400 });
-        }
-      } catch (validationError) {
-        if (!isMissingAvailabilityRulesTable(validationError)) throw validationError;
+  if (isScheduled && resolvedScheduleDate) {
+    try {
+      const decision = await getStaffAvailabilityDecision(pool, staffId, resolvedScheduleDate, Number.isFinite(dayOfWeek) ? dayOfWeek : null);
+      if (!decision.isAllowed) {
+        return NextResponse.json({
+          error: 'Not allowed by availability rule',
+          details: `staffId=${staffId} is not allowed to work on ${resolvedScheduleDate}`,
+          decision,
+        }, { status: 400 });
       }
+    } catch (validationError) {
+      if (!isMissingAvailabilityRulesTable(validationError)) throw validationError;
     }
+  }
 
-    const sql = `
+  const sql = `
       INSERT INTO staff_weekly_schedule (staff_id, day_of_week, is_scheduled, updated_at)
       VALUES ($1, $2, $3, now())
       ON CONFLICT (staff_id, day_of_week)
@@ -304,7 +303,7 @@ export const PUT = withAuth(async (request: NextRequest, ctx) => {
         updated_at = now()
       RETURNING staff_id, day_of_week, is_scheduled
     `;
-    const sqlDateOverride = `
+  const sqlDateOverride = `
       INSERT INTO staff_schedule_overrides (staff_id, schedule_date, is_scheduled, updated_at)
       VALUES ($1, $2::date, $3, now())
       ON CONFLICT (staff_id, schedule_date)
@@ -314,54 +313,47 @@ export const PUT = withAuth(async (request: NextRequest, ctx) => {
       RETURNING staff_id, EXTRACT(DOW FROM schedule_date)::int AS day_of_week, schedule_date::text AS schedule_date, is_scheduled
     `;
 
-    let result;
-    try {
-      result = await queryWithRetry(
-        () => isValidIsoDate(scheduleDate)
-          ? pool.query(sqlDateOverride, [staffId, scheduleDate, isScheduled])
-          : pool.query(sql, [staffId, dayOfWeek, isScheduled]),
-        { retries: 3, delayMs: 1000 }
-      );
-    } catch (queryError) {
-      if (isMissingScheduleTable(queryError)) {
-        return NextResponse.json({
-          error: 'staff schedule table not found',
-          details: 'Run migrations: 2026-03-20_create_staff_weekly_schedule.sql, 2026-03-31_create_staff_schedule_overrides.sql, and 2026-04-01_create_staff_availability_rules.sql',
-        }, { status: 503 });
-      }
-      if (isForeignKeyViolation(queryError)) {
-        return NextResponse.json({
-          error: 'Staff not found',
-          details: `No staff row exists for staffId=${staffId}`,
-        }, { status: 404 });
-      }
-      throw queryError;
+  let result;
+  try {
+    result = await queryWithRetry(
+      () => isValidIsoDate(scheduleDate)
+        ? pool.query(sqlDateOverride, [staffId, scheduleDate, isScheduled])
+        : pool.query(sql, [staffId, dayOfWeek, isScheduled]),
+      { retries: 3, delayMs: 1000 }
+    );
+  } catch (queryError) {
+    if (isMissingScheduleTable(queryError)) {
+      return NextResponse.json({
+        error: 'staff schedule table not found',
+        details: 'Run migrations: 2026-03-20_create_staff_weekly_schedule.sql, 2026-03-31_create_staff_schedule_overrides.sql, and 2026-04-01_create_staff_availability_rules.sql',
+      }, { status: 503 });
     }
-
-    await invalidateCacheTags(['staff']);
-    const payload = result.rows[0] ?? {
-      staff_id: staffId,
-      day_of_week: Number.isFinite(dayOfWeek) ? dayOfWeek : null,
-      schedule_date: isValidIsoDate(scheduleDate) ? scheduleDate : null,
-      is_scheduled: isScheduled,
-    };
-    publishStaffScheduleChanged({
-      organizationId: ctx.organizationId,
-      action: 'single',
-      source: 'staff.schedule.put',
-      changed: [{
-        staff_id: Number(payload.staff_id),
-        day_of_week: Number(payload.day_of_week),
-        schedule_date: payload.schedule_date ?? null,
-        is_scheduled: Boolean(payload.is_scheduled),
-      }],
-    }).catch(() => {});
-    return NextResponse.json(payload);
-  } catch (error) {
-    console.error('Error updating staff schedule:', error);
-    return NextResponse.json({
-      error: 'Failed to update staff schedule',
-      details: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    if (isForeignKeyViolation(queryError)) {
+      return NextResponse.json({
+        error: 'Staff not found',
+        details: `No staff row exists for staffId=${staffId}`,
+      }, { status: 404 });
+    }
+    throw queryError;
   }
+
+  await invalidateCacheTags(['staff']);
+  const payload = result.rows[0] ?? {
+    staff_id: staffId,
+    day_of_week: Number.isFinite(dayOfWeek) ? dayOfWeek : null,
+    schedule_date: isValidIsoDate(scheduleDate) ? scheduleDate : null,
+    is_scheduled: isScheduled,
+  };
+  publishStaffScheduleChanged({
+    organizationId: ctx.organizationId,
+    action: 'single',
+    source: 'staff.schedule.put',
+    changed: [{
+      staff_id: Number(payload.staff_id),
+      day_of_week: Number(payload.day_of_week),
+      schedule_date: payload.schedule_date ?? null,
+      is_scheduled: Boolean(payload.is_scheduled),
+    }],
+  }).catch(() => {});
+  return NextResponse.json(payload);
 }, { permission: 'admin.manage_staff' });

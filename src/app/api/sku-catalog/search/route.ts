@@ -8,60 +8,52 @@ import { getOrSet, createCacheLookupKey } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const q = (searchParams.get('q') || '').trim();
-    const category = (searchParams.get('category') || '').trim();
-    const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
-    const hasQc = searchParams.get('hasQc') === 'true';
-    const excludeSkuSuffix = (searchParams.get('excludeSkuSuffix') || '').trim();
-    const searchField = (searchParams.get('searchField') || 'ecwid_sku') as
-      | 'ecwid_sku'
-      | 'zoho_sku'
-      | 'title'
-      | 'zoho_catalog';
-    const limit = Math.min(Math.max(Number(searchParams.get('limit') || 20), 1), 100);
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get('q') || '').trim();
+  const category = (searchParams.get('category') || '').trim();
+  const ecwidOnly = searchParams.get('ecwidOnly') === 'true';
+  const hasQc = searchParams.get('hasQc') === 'true';
+  const excludeSkuSuffix = (searchParams.get('excludeSkuSuffix') || '').trim();
+  const searchField = (searchParams.get('searchField') || 'ecwid_sku') as
+    | 'ecwid_sku'
+    | 'zoho_sku'
+    | 'title'
+    | 'zoho_catalog';
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') || 20), 1), 100);
 
-    // Reference catalog search → org-scoped cache.
-    const orgId = ctx.organizationId;
-    const cacheKey = createCacheLookupKey({ q, category, ecwidOnly, hasQc, excludeSkuSuffix, searchField, limit });
-    const tags = hasQc ? [CACHE_TAGS.skuCatalog, CACHE_TAGS.qcChecks] : [CACHE_TAGS.skuCatalog];
+  // Reference catalog search → org-scoped cache.
+  const orgId = ctx.organizationId;
+  const cacheKey = createCacheLookupKey({ q, category, ecwidOnly, hasQc, excludeSkuSuffix, searchField, limit });
+  const tags = hasQc ? [CACHE_TAGS.skuCatalog, CACHE_TAGS.qcChecks] : [CACHE_TAGS.skuCatalog];
 
-    const payload = await getOrSet(
-      CACHE_NS.skuCatalogSearch,
-      orgId,
-      cacheKey,
-      CACHE_TTL.rollup,
-      tags,
-      async () => {
-        // QC view: restrict to SKUs that have QC checklist items directly linked
-        // (qc_check_templates.sku_catalog_id). Searches sku + title regardless of
-        // searchField so the QC picker only ever shows products with a checklist.
-        if (hasQc) {
-          return searchSkusWithQcChecks(q, limit, orgId);
-        }
+  const payload = await getOrSet(
+    CACHE_NS.skuCatalogSearch,
+    orgId,
+    cacheKey,
+    CACHE_TTL.rollup,
+    tags,
+    async () => {
+      // QC view: restrict to SKUs that have QC checklist items directly linked
+      // (qc_check_templates.sku_catalog_id). Searches sku + title regardless of
+      // searchField so the QC picker only ever shows products with a checklist.
+      if (hasQc) {
+        return searchSkusWithQcChecks(q, limit, orgId);
+      }
 
-        if (searchField === 'ecwid_sku' || searchField === 'title') {
-          return searchFromPlatform(q, searchField, excludeSkuSuffix, limit, orgId);
-        }
+      if (searchField === 'ecwid_sku' || searchField === 'title') {
+        return searchFromPlatform(q, searchField, excludeSkuSuffix, limit, orgId);
+      }
 
-        // `zoho_catalog`:
-        if (searchField === 'zoho_catalog') {
-          return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
-        }
+      // `zoho_catalog`:
+      if (searchField === 'zoho_catalog') {
+        return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
+      }
 
-        return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId);
-      },
-    );
+      return searchFromCatalog(q, category, ecwidOnly, excludeSkuSuffix, limit, orgId);
+    },
+  );
 
-    return NextResponse.json(payload);
-  } catch (error: any) {
-    console.error('[sku-catalog/search] Error:', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to search SKU catalog' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json(payload);
 }, { permission: 'sku_stock.view' });
 
 async function searchFromPlatform(

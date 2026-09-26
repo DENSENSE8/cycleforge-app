@@ -11,70 +11,62 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuth(
   async (_req, ctx) => {
     const orgId = ctx.organizationId;
-    try {
-      return await withTenantDrizzle(orgId, async (tx) => {
-        const definitions = await tx
-          .select({
-            id: workflowDefinitions.id,
-            name: workflowDefinitions.name,
-            version: workflowDefinitions.version,
-            isActive: workflowDefinitions.isActive,
-          })
-          .from(workflowDefinitions)
-          .where(eq(workflowDefinitions.organizationId, orgId))
-          .orderBy(desc(workflowDefinitions.isActive), asc(workflowDefinitions.name), desc(workflowDefinitions.version));
+    return await withTenantDrizzle(orgId, async (tx) => {
+      const definitions = await tx
+        .select({
+          id: workflowDefinitions.id,
+          name: workflowDefinitions.name,
+          version: workflowDefinitions.version,
+          isActive: workflowDefinitions.isActive,
+        })
+        .from(workflowDefinitions)
+        .where(eq(workflowDefinitions.organizationId, orgId))
+        .orderBy(desc(workflowDefinitions.isActive), asc(workflowDefinitions.name), desc(workflowDefinitions.version));
 
-        if (definitions.length === 0) {
-          return NextResponse.json({ success: true, nodes: [] });
-        }
+      if (definitions.length === 0) {
+        return NextResponse.json({ success: true, nodes: [] });
+      }
 
-        const byDef = new Map(definitions.map((d) => [d.id, d]));
-        // Re-gate the node read to the owning org: only nodes whose definition
-        // belongs to this org are visible (defense in depth alongside the GUC,
-        // since workflow_nodes is org-scoped transitively via its definition).
-        const nodeRows = await tx
-          .select({
-            id: workflowNodes.id,
-            type: workflowNodes.type,
-            workflowDefinitionId: workflowNodes.workflowDefinitionId,
-          })
-          .from(workflowNodes)
-          .where(
-            and(
-              eq(workflowNodes.workflowDefinitionId, definitions[0]!.id),
-              inArray(
-                workflowNodes.workflowDefinitionId,
-                tx
-                  .select({ id: workflowDefinitions.id })
-                  .from(workflowDefinitions)
-                  .where(eq(workflowDefinitions.organizationId, orgId)),
-              ),
+      const byDef = new Map(definitions.map((d) => [d.id, d]));
+      // Re-gate the node read to the owning org: only nodes whose definition
+      // belongs to this org are visible (defense in depth alongside the GUC,
+      // since workflow_nodes is org-scoped transitively via its definition).
+      const nodeRows = await tx
+        .select({
+          id: workflowNodes.id,
+          type: workflowNodes.type,
+          workflowDefinitionId: workflowNodes.workflowDefinitionId,
+        })
+        .from(workflowNodes)
+        .where(
+          and(
+            eq(workflowNodes.workflowDefinitionId, definitions[0]!.id),
+            inArray(
+              workflowNodes.workflowDefinitionId,
+              tx
+                .select({ id: workflowDefinitions.id })
+                .from(workflowDefinitions)
+                .where(eq(workflowDefinitions.organizationId, orgId)),
             ),
-          );
+          ),
+        );
 
-        // Only the active (or first) definition's nodes are bindable — binding to
-        // a stale version's canvas id would dangle when that version is replaced.
-        const nodes = nodeRows.map((n) => {
-          const def = byDef.get(n.workflowDefinitionId);
-          const label = hasNode(n.type) ? getNode(n.type).label : n.type;
-          return {
-            id: n.id,
-            type: n.type,
-            label,
-            definitionId: n.workflowDefinitionId,
-            definitionName: def?.name ?? null,
-          };
-        });
-
-        return NextResponse.json({ success: true, nodes });
+      // Only the active (or first) definition's nodes are bindable — binding to
+      // a stale version's canvas id would dangle when that version is replaced.
+      const nodes = nodeRows.map((n) => {
+        const def = byDef.get(n.workflowDefinitionId);
+        const label = hasNode(n.type) ? getNode(n.type).label : n.type;
+        return {
+          id: n.id,
+          type: n.type,
+          label,
+          definitionId: n.workflowDefinitionId,
+          definitionName: def?.name ?? null,
+        };
       });
-    } catch (error: any) {
-      console.error('Error in GET /api/catalog/workflow-nodes:', error);
-      return NextResponse.json(
-        { success: false, error: error.message || 'Failed to list workflow nodes' },
-        { status: 500 },
-      );
-    }
+
+      return NextResponse.json({ success: true, nodes });
+    });
   },
   { permission: 'receiving.view' },
 );

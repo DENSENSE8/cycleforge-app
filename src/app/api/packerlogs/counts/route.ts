@@ -16,32 +16,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const testedByNum = testedByParam ? parseInt(testedByParam) : null;
   const staffNum = staffParam ? parseInt(staffParam) : null;
 
-  try {
-    const { rows } = await fetchPackerLogRows({
-      organizationId: ctx.organizationId,
-      packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
-      testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
-      staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
-      limit: 500,
-      offset: 0,
-      weekStart,
-      weekEnd,
-    });
+  const { rows } = await fetchPackerLogRows({
+    organizationId: ctx.organizationId,
+    packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
+    testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
+    staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
+    limit: 500,
+    offset: 0,
+    weekStart,
+    weekEnd,
+  });
 
-    const byDay: Record<string, number> = {};
-    for (const r of rows) {
-      let day = 'Unknown';
-      try {
-        day = toPSTDateKey(r.created_at) || 'Unknown';
-      } catch {
-        day = 'Unknown';
-      }
-      byDay[day] = (byDay[day] ?? 0) + 1;
+  const byDay: Record<string, number> = {};
+  for (const r of rows) {
+    let day = 'Unknown';
+    try {
+      day = toPSTDateKey(r.created_at) || 'Unknown';
+    } catch {
+      day = 'Unknown';
     }
-
-    return NextResponse.json({ total: rows.length, byDay, truncated: rows.length >= 500 });
-  } catch (error: any) {
-    console.error('Error fetching packer-log counts:', error);
-    return NextResponse.json({ error: 'Failed to fetch packer-log counts', details: error?.message }, { status: 500 });
+    byDay[day] = (byDay[day] ?? 0) + 1;
   }
+
+  return NextResponse.json({ total: rows.length, byDay, truncated: rows.length >= 500 });
 }, { permission: 'packing.view' });

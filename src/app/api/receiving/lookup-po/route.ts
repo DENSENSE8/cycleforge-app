@@ -737,512 +737,202 @@ async function applyIntakeClassification(
 }
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const body = await request.json();
-    const rawTracking = String(body?.trackingNumber || '').trim();
-    const providedCarrier = String(body?.carrier || '').trim();
-    // Scan route. 'order' = explicit PO/reference (operator armed PO# mode); 'tracking' = explicit carrier tracking (operator armed Tracking…
-    const mode: 'tracking' | 'order' | 'ticket' | 'auto' =
-      body?.mode === 'order'
-        ? 'order'
-        : body?.mode === 'ticket'
-          ? 'ticket'
-          : body?.mode === 'auto'
-            ? 'auto'
-            : 'tracking';
-    // Scan hot path is LOCAL-DB ONLY for every identity (tracking / ticket / order / auto).
-    void body?.localOnly;
-    // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96" FedEx barcode (e.g.
-    const scannedCartonId = scannedReceivingId(rawTracking);
-    /** The ticket number when the raw value is a printed TICKET label. */
-    const scannedTicketValue = (() => {
-      const redirect = routeScan(rawTracking)?.redirect ?? '';
-      const m = /^\/support\?ticket=(\d+)$/.exec(redirect);
-      return m ? m[1] : null;
-    })();
-    // A house handle that is NOT a carton (a unit, a line, a shelf address, a
-    // kit manifest) is likewise not a carrier number. Tickets are excluded —
-    // they have a legitimate branch below that resolves them to a carton.
-    const isNonCartonHandle =
-      scannedCartonId == null &&
-      scannedTicketValue == null &&
-      detectStationScanType(rawTracking) === 'HANDLE' &&
-      !looksLikeTicketScan(rawTracking);
-    const poLookupValue = rawTracking;
-    const trackingNumber =
-      mode === 'order' || mode === 'ticket'
-        ? rawTracking
-        : extractCanonicalTracking(rawTracking) || rawTracking;
-    // Optional door-intake classification (e.g. 'FBA_RETURN'). Maps to the
-    // carton's source_platform/is_return/return_platform so the unboxer sees it.
-    const classification: IntakeClassification | null = isIntakeClassification(body?.classification)
-      ? body.classification
-      : null;
-    // Server-trusted actor from the verified session cookie.
-    const staffId = ctx.staffId;
-    const intakeSurface = body?.intakeSurface === 'unbox' ? 'unbox' : 'triage';
-    /** The lookup verdict has to reach the RESPONSE, not just the writes: */
-    let lookupScanState: UnboxScanState | null = null;
+  const body = await request.json();
+  const rawTracking = String(body?.trackingNumber || '').trim();
+  const providedCarrier = String(body?.carrier || '').trim();
+  // Scan route. 'order' = explicit PO/reference (operator armed PO# mode); 'tracking' = explicit carrier tracking (operator armed Tracking…
+  const mode: 'tracking' | 'order' | 'ticket' | 'auto' =
+    body?.mode === 'order'
+      ? 'order'
+      : body?.mode === 'ticket'
+        ? 'ticket'
+        : body?.mode === 'auto'
+          ? 'auto'
+          : 'tracking';
+  // Scan hot path is LOCAL-DB ONLY for every identity (tracking / ticket / order / auto).
+  void body?.localOnly;
+  // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96" FedEx barcode (e.g.
+  const scannedCartonId = scannedReceivingId(rawTracking);
+  /** The ticket number when the raw value is a printed TICKET label. */
+  const scannedTicketValue = (() => {
+    const redirect = routeScan(rawTracking)?.redirect ?? '';
+    const m = /^\/support\?ticket=(\d+)$/.exec(redirect);
+    return m ? m[1] : null;
+  })();
+  // A house handle that is NOT a carton (a unit, a line, a shelf address, a
+  // kit manifest) is likewise not a carrier number. Tickets are excluded —
+  // they have a legitimate branch below that resolves them to a carton.
+  const isNonCartonHandle =
+    scannedCartonId == null &&
+    scannedTicketValue == null &&
+    detectStationScanType(rawTracking) === 'HANDLE' &&
+    !looksLikeTicketScan(rawTracking);
+  const poLookupValue = rawTracking;
+  const trackingNumber =
+    mode === 'order' || mode === 'ticket'
+      ? rawTracking
+      : extractCanonicalTracking(rawTracking) || rawTracking;
+  // Optional door-intake classification (e.g. 'FBA_RETURN'). Maps to the
+  // carton's source_platform/is_return/return_platform so the unboxer sees it.
+  const classification: IntakeClassification | null = isIntakeClassification(body?.classification)
+    ? body.classification
+    : null;
+  // Server-trusted actor from the verified session cookie.
+  const staffId = ctx.staffId;
+  const intakeSurface = body?.intakeSurface === 'unbox' ? 'unbox' : 'triage';
+  /** The lookup verdict has to reach the RESPONSE, not just the writes: */
+  let lookupScanState: UnboxScanState | null = null;
 
-    /**
-     * Is this scan WORK on the carton, or a LOOKUP of already-finished work?
-     * Only meaningful for a PRE-EXISTING carton — a carton created by this very
-     * request is definitionally unworked, so those paths never pay for the read.
-     */
-    const scanStateFor = async (receivingId: number): Promise<UnboxScanState> => {
-      const state = await resolveUnboxScanState(ctx.organizationId, receivingId, intakeSurface);
-      if (state.kind === 'lookup') lookupScanState = state;
-      return state;
-    };
+  /**
+   * Is this scan WORK on the carton, or a LOOKUP of already-finished work?
+   * Only meaningful for a PRE-EXISTING carton — a carton created by this very
+   * request is definitionally unworked, so those paths never pay for the read.
+   */
+  const scanStateFor = async (receivingId: number): Promise<UnboxScanState> => {
+    const state = await resolveUnboxScanState(ctx.organizationId, receivingId, intakeSurface);
+    if (state.kind === 'lookup') lookupScanState = state;
+    return state;
+  };
 
-    const scanKindFor = async (receivingId: number): Promise<UnboxScanKind> =>
-      (await scanStateFor(receivingId)).kind;
+  const scanKindFor = async (receivingId: number): Promise<UnboxScanKind> =>
+    (await scanStateFor(receivingId)).kind;
 
-    /**
-     * Lookup facts for a carton-opening response. Spread LAST so it wins, and
-     * absent entirely on a work scan — the client tests `scan_kind === 'lookup'`,
-     * so an always-present field would have to lie on the work path.
-     */
-    const lookupResponseFields = () =>
-      lookupScanState
-        ? {
-            scan_kind: 'lookup' as const,
-            unboxed_at: lookupScanState.unboxedAt,
-            unboxed_by_name: lookupScanState.unboxedByName,
-            po_number: lookupScanState.poNumber,
-          }
-        : {};
-
-    /** Most branches reach `stampUnboxOpened` with a carton they may or may not have just created — `upsertMatchedReceiving` /… */
-    const scanKindForMaybeExisting = (
-      receivingId: number,
-      preexisting: boolean,
-    ): Promise<UnboxScanKind> =>
-      preexisting ? scanKindFor(receivingId) : Promise.resolve('work');
-
-    /** `scanKind` is REQUIRED, deliberately. */
-    const stampUnboxOpened = async (
-      receivingId: number,
-      scanId: number | null,
-      tracking: string,
-      scanKind: UnboxScanKind,
-    ) => {
-      if (intakeSurface !== 'unbox') return;
-      // A lookup neither opens nor re-opens: `opened_at` is COALESCE-once so it
-      // would not move anyway, but UNBOX_SCAN_OPENED is a work event and must
-      // not fire for an inspection.
-      if (scanKind === 'lookup') {
-        await recordUnboxLookupScan({
-          organizationId: ctx.organizationId,
-          receivingId,
-          actorStaffId: staffId,
-          trackingNumber: tracking,
-        });
-        return;
-      }
-      await recordUnboxScanOpened(ctx.organizationId, receivingId, staffId, scanId, tracking);
-    };
-
-    if (!trackingNumber) {
-      return NextResponse.json(
-        { success: false, error: 'trackingNumber is required' },
-        { status: 400 },
-      );
-    }
-
-    const carrier =
-      providedCarrier && providedCarrier !== 'Unknown'
-        ? providedCarrier
-        : getCarrier(trackingNumber);
-
-    // −1. TICKET# — resolve an internal support ticket id to its receiving carton
-    //     (support_tickets + ticket_links). Runs before PO/tracking.
-    const tryTicket =
-      mode === 'ticket'
-      || scannedTicketValue != null
-      || (mode === 'auto' && looksLikeTicketScan(rawTracking));
-    if (tryTicket) {
-      // Decoded label first, then the bare-number parser for a typed value.
-      const ticketScanValue = scannedTicketValue ?? rawTracking;
-      const ticketId: number | null =
-        scannedTicketValue != null ? Number(scannedTicketValue) : parseTicketScanValue(rawTracking);
-      if (mode === 'ticket' && ticketId == null) {
-        return NextResponse.json({
-          success: true,
-          matched: false,
-          po_matched: false,
-          not_found: true,
-          po_ids: [],
-          error: `No ticket found for "${rawTracking}"`,
-        });
-      }
-      if (ticketId != null) {
-        const hit = await resolveSupportTicketToReceiving(ctx.organizationId, ticketScanValue).catch(
-          () => null,
-        );
-        if (hit) {
-          await applyIntakeClassification(hit.receivingId, classification, ctx.organizationId);
-          const [lines, receiving_package] = await Promise.all([
-            fetchLines(hit.receivingId, ctx.organizationId),
-            fetchReceivingPackage(hit.receivingId, ctx.organizationId),
-          ]);
-          const recvSourceRes = await tenantQuery<{ source: string | null }>(
-            ctx.organizationId,
-            `SELECT source FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-            [hit.receivingId, ctx.organizationId],
-          );
-          const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
-          const hitScanKind = await scanKindFor(hit.receivingId);
-          const scanId = await recordReceivingScan(
-            hit.receivingId,
-            rawTracking,
-            carrier,
-            staffId,
-            recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-            { intakeSurface, scanKind: hitScanKind },
-          );
-          await stampUnboxOpened(hit.receivingId, scanId, rawTracking, hitScanKind);
-          const poIdsSet = new Set<string>();
-          for (const l of lines) {
-            if (l.zoho_purchaseorder_id) poIdsSet.add(l.zoho_purchaseorder_id);
-          }
-          const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
-          if (pendingOrderSkus.length > 0) {
-            await markReceivingPriority(hit.receivingId, ctx.organizationId);
-            after(async () => {
-              try {
-                await publishPriorityUnbox({
-                  organizationId: ctx.organizationId,
-                  staffId,
-                  trackingNumber: rawTracking,
-                  receivingId: hit.receivingId,
-                  skus: pendingOrderSkus,
-                  source: 'receiving.lookup-po.ticket',
-                });
-              } catch (err) {
-                console.warn('lookup-po.ticket: priority-unbox publish failed', errMessage(err));
-              }
-            });
-          }
-          return NextResponse.json({
-            success: true,
-            ...lookupResponseFields(),
-            receiving_id: hit.receivingId,
-            scan_id: scanId,
-            preexisting: true,
-            deduped: false,
-            matched: lines.length > 0,
-            po_matched: lines.length > 0,
-            resolved_via: 'local',
-            unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
-            po_ids: Array.from(poIdsSet),
-            pending_order_skus: pendingOrderSkus,
-            receiving_package,
-            lines: lines.map(serializeLookupLine),
-          });
+  /**
+   * Lookup facts for a carton-opening response. Spread LAST so it wins, and
+   * absent entirely on a work scan — the client tests `scan_kind === 'lookup'`,
+   * so an always-present field would have to lie on the work path.
+   */
+  const lookupResponseFields = () =>
+    lookupScanState
+      ? {
+          scan_kind: 'lookup' as const,
+          unboxed_at: lookupScanState.unboxedAt,
+          unboxed_by_name: lookupScanState.unboxedByName,
+          po_number: lookupScanState.poNumber,
         }
-        if (mode === 'ticket') {
-          return NextResponse.json({
-            success: true,
-            matched: false,
-            po_matched: false,
-            not_found: true,
-            po_ids: [],
-            error: `No receiving carton linked to ticket ${formatSupportTicketLabel(ticketId)}`,
-          });
-        }
-      }
-    }
+      : {};
 
-    // 0. ORDER# mode — resolve a PO / reference number from LOCAL mirror only (zoho_po_mirror / receiving_line_zoho / EXPECTED lines).
-    if (mode === 'order' || mode === 'auto') {
-      const localResolution = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
-      let poId = localResolution?.poId ?? null;
-      // Whether the scanned value is a real carrier tracking number (matched the PO's Reference#) vs.
-      let poMatchIsTracking = localResolution?.viaTrackingReference ?? false;
-      const resolvedVia = 'local' as const;
-      // Guard the local hit:
-      if (poId) {
-        const verdict = await verifyPoNumberMatches(poId, poLookupValue, ctx.organizationId).catch((err) => {
-          console.warn('[lookup-po.order] local verify failed', errMessage(err));
-          return 'unknown' as const;
-        });
-        if (verdict === 'mismatch') {
-          console.warn(
-            `[lookup-po.order] local resolve for "${poLookupValue}" pointed at PO ${poId} with a different number — treating as miss`,
-          );
-          poId = null;
-          poMatchIsTracking = false;
-        }
-      }
-      // `auto` also tries the value as a tracking# against LOCAL data (the zoho_po_mirror Reference# → PO id), so an un-armed tracking scan that…
-      if (!poId && mode === 'auto') {
-        const localByTracking = await resolvePoIdLocallyByTracking(
-          trackingNumber,
-          null,
-          ctx.organizationId,
-        ).catch(() => null);
-        if (localByTracking) {
-          poId = localByTracking;
-          poMatchIsTracking = true;
-        }
-      }
+  /** Most branches reach `stampUnboxOpened` with a carton they may or may not have just created — `upsertMatchedReceiving` /… */
+  const scanKindForMaybeExisting = (
+    receivingId: number,
+    preexisting: boolean,
+  ): Promise<UnboxScanKind> =>
+    preexisting ? scanKindFor(receivingId) : Promise.resolve('work');
 
-      // Marketplace / manual desk intake — match source_order_id (eBay /
-      // Amazon / Goodwill) when Zoho PO# missed. Mint a carton if the line is
-      // still EXPECTED with receiving_id NULL so Unbox can open the work.
-      if (!poId && (mode === 'order' || mode === 'auto')) {
-        const inboundOrder = await resolveInboundCartonByOrderId(
-          ctx.organizationId as OrgId,
-          poLookupValue,
-        ).catch((err) => {
-          console.warn('[lookup-po.order] inbound order resolve failed', errMessage(err));
-          return null;
-        });
-        if (inboundOrder) {
-          const receivingId = inboundOrder.receivingId;
-          const orderScanKind = await scanKindForMaybeExisting(
-            receivingId,
-            !inboundOrder.createdCarton,
-          );
-          const orderScanId = await recordScan(
-            receivingId,
-            trackingNumber,
-            carrier,
-            staffId,
-            'unmatched',
-            intakeSurface,
-            orderScanKind,
-            false,
-          );
-          await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
-          await applyIntakeClassification(receivingId, classification, ctx.organizationId);
-
-          const [lines, receiving_package] = await Promise.all([
-            fetchLines(receivingId, ctx.organizationId),
-            fetchReceivingPackage(receivingId, ctx.organizationId),
-          ]);
-          const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
-
-          after(async () => {
-            try {
-              await invalidateReceivingViews(ctx.organizationId);
-            } catch (err) {
-              console.warn('[lookup-po.order] inbound cache invalidation failed', errMessage(err));
-            }
-            try {
-              await publishReceivingLogChanged({
-                organizationId: ctx.organizationId,
-                action: 'insert',
-                rowId: String(receivingId),
-                source: 'receiving.lookup-po.inbound-order',
-              });
-            } catch (err) {
-              console.warn('[lookup-po.order] inbound realtime publish failed', errMessage(err));
-            }
-            if (pendingOrderSkus.length > 0) {
-              await markReceivingPriority(receivingId, ctx.organizationId);
-              try {
-                await publishPriorityUnbox({
-                  organizationId: ctx.organizationId,
-                  staffId,
-                  trackingNumber,
-                  receivingId,
-                  skus: pendingOrderSkus,
-                  source: 'receiving.lookup-po.inbound-order',
-                });
-              } catch (err) {
-                console.warn(
-                  '[lookup-po.order] inbound priority-unbox publish failed',
-                  errMessage(err),
-                );
-              }
-            }
-          });
-
-          return NextResponse.json({
-            success: true,
-            receiving_id: receivingId,
-            ...lookupResponseFields(),
-            preexisting: !inboundOrder.createdCarton,
-            deduped: false,
-            matched: lines.length > 0,
-            po_matched: true,
-            resolved_via: 'local',
-            unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
-            po_ids: [],
-            inbound_source_type: inboundOrder.sourceType,
-            inbound_source_order_id: inboundOrder.sourceOrderId,
-            pending_order_skus: pendingOrderSkus,
-            receiving_package,
-            lines: lines.map(serializeLookupLine),
-            scan_id: orderScanId,
-          });
-        }
-      }
-
-      if (!poId && mode === 'order') {
-        // Explicit order mode, PO# + marketplace order# missed locally —
-        // report not-found WITHOUT spawning a phantom carton and WITHOUT
-        // calling live Zoho.
-        return NextResponse.json({
-          success: true,
-          matched: false,
-          po_matched: false,
-          not_found: true,
-          po_ids: [],
-          error: `No PO found for order number "${poLookupValue}"`,
-        });
-      }
-
-      // PO# resolved → open the matched carton.
-      if (poId) {
-
-      const { receivingId, preexisting: orderPreexisting } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
-      const linked = await linkLocalPoLinesToReceiving(poId, receivingId, ctx.organizationId);
-      // `upsertMatchedReceiving` returns an EXISTING carton when this PO was scanned before, so this site can land on finished work.
-      const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
-      // Adopt/claim local lines (unattached + unmatched donors); import only when still empty — see linkLocalPoLinesToReceiving / adopt-po-lines.
-      const orderScanId = await recordScan(
+  /** `scanKind` is REQUIRED, deliberately. */
+  const stampUnboxOpened = async (
+    receivingId: number,
+    scanId: number | null,
+    tracking: string,
+    scanKind: UnboxScanKind,
+  ) => {
+    if (intakeSurface !== 'unbox') return;
+    // A lookup neither opens nor re-opens: `opened_at` is COALESCE-once so it
+    // would not move anyway, but UNBOX_SCAN_OPENED is a work event and must
+    // not fire for an inspection.
+    if (scanKind === 'lookup') {
+      await recordUnboxLookupScan({
+        organizationId: ctx.organizationId,
         receivingId,
-        trackingNumber,
-        carrier,
-        staffId,
-        'zoho_po',
-        intakeSurface,
-        orderScanKind,
-        poMatchIsTracking,
-      );
-      await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
-      await applyIntakeClassification(receivingId, classification, ctx.organizationId);
-
-      const [lines, receiving_package] = await Promise.all([
-        fetchLines(receivingId, ctx.organizationId),
-        fetchReceivingPackage(receivingId, ctx.organizationId),
-      ]);
-      const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
-
-      after(async () => {
-        try {
-          await invalidateReceivingViews(ctx.organizationId);
-        } catch (err) {
-          console.warn('[lookup-po.order] cache invalidation failed', errMessage(err));
-        }
-        try {
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'insert',
-            rowId: String(receivingId),
-            source: 'receiving.lookup-po.order',
-          });
-        } catch (err) {
-          console.warn('[lookup-po.order] realtime publish failed', errMessage(err));
-        }
-        if (pendingOrderSkus.length > 0) {
-          await markReceivingPriority(receivingId, ctx.organizationId);
-          try {
-            await publishPriorityUnbox({
-              organizationId: ctx.organizationId,
-              staffId,
-              trackingNumber,
-              receivingId,
-              skus: pendingOrderSkus,
-              source: 'receiving.lookup-po.order',
-            });
-          } catch (err) {
-            console.warn('[lookup-po.order] priority-unbox publish failed', errMessage(err));
-          }
-        }
+        actorStaffId: staffId,
+        trackingNumber: tracking,
       });
+      return;
+    }
+    await recordUnboxScanOpened(ctx.organizationId, receivingId, staffId, scanId, tracking);
+  };
 
+  if (!trackingNumber) {
+    return NextResponse.json(
+      { success: false, error: 'trackingNumber is required' },
+      { status: 400 },
+    );
+  }
+
+  const carrier =
+    providedCarrier && providedCarrier !== 'Unknown'
+      ? providedCarrier
+      : getCarrier(trackingNumber);
+
+  // −1. TICKET# — resolve an internal support ticket id to its receiving carton
+  //     (support_tickets + ticket_links). Runs before PO/tracking.
+  const tryTicket =
+    mode === 'ticket'
+    || scannedTicketValue != null
+    || (mode === 'auto' && looksLikeTicketScan(rawTracking));
+  if (tryTicket) {
+    // Decoded label first, then the bare-number parser for a typed value.
+    const ticketScanValue = scannedTicketValue ?? rawTracking;
+    const ticketId: number | null =
+      scannedTicketValue != null ? Number(scannedTicketValue) : parseTicketScanValue(rawTracking);
+    if (mode === 'ticket' && ticketId == null) {
       return NextResponse.json({
         success: true,
-        receiving_id: receivingId,
-        ...lookupResponseFields(),
-        preexisting: linked > 0,
-        deduped: false,
-        matched: lines.length > 0,
-        po_matched: true,
-        resolved_via: resolvedVia,
-        unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
-        po_ids: [poId],
-        pending_order_skus: pendingOrderSkus,
-        receiving_package,
-        lines: lines.map(serializeLookupLine),
+        matched: false,
+        po_matched: false,
+        not_found: true,
+        po_ids: [],
+        error: `No ticket found for "${rawTracking}"`,
       });
-      } // end if (poId) — auto PO#-miss falls through to the tracking path below
     }
-
-    // 1. Dedup short-circuit — scan already logged against a receiving row.
-    const existingScan = await findScanByTracking(
-      trackingNumber,
-      staffId,
-      carrier,
-      ctx.organizationId,
-      intakeSurface,
-      scannedCartonId,
-    );
-    let preassignedReceivingId: number | null = null;
-    let preassignedScanId: number | null = null;
-    if (existingScan) {
-      await applyIntakeClassification(existingScan.receiving_id, classification, ctx.organizationId);
-      const [lines, receiving_package] = await Promise.all([
-        fetchLines(existingScan.receiving_id, ctx.organizationId),
-        fetchReceivingPackage(existingScan.receiving_id, ctx.organizationId),
-      ]);
-      if (lines.length > 0) {
-        // Re-attribute this dock event to the current operator (dedup path
-        // used to leave scanned_by stale or NULL via memoizeLookupHit).
+    if (ticketId != null) {
+      const hit = await resolveSupportTicketToReceiving(ctx.organizationId, ticketScanValue).catch(
+        () => null,
+      );
+      if (hit) {
+        await applyIntakeClassification(hit.receivingId, classification, ctx.organizationId);
+        const [lines, receiving_package] = await Promise.all([
+          fetchLines(hit.receivingId, ctx.organizationId),
+          fetchReceivingPackage(hit.receivingId, ctx.organizationId),
+        ]);
         const recvSourceRes = await tenantQuery<{ source: string | null }>(
           ctx.organizationId,
           `SELECT source FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-          [existingScan.receiving_id, ctx.organizationId],
+          [hit.receivingId, ctx.organizationId],
         );
         const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
-        // "Re-attribute this dock event to the current operator" is right for a
-        // work scan and wrong for an inspection — this is the dedup path, so
-        // the carton already exists and may long since be unboxed.
-        const dedupScanKind = await scanKindFor(existingScan.receiving_id);
-        const dedupScanId = await recordReceivingScan(
-          existingScan.receiving_id,
-          trackingNumber,
+        const hitScanKind = await scanKindFor(hit.receivingId);
+        const scanId = await recordReceivingScan(
+          hit.receivingId,
+          rawTracking,
           carrier,
           staffId,
           recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-          { intakeSurface, scanKind: dedupScanKind },
+          { intakeSurface, scanKind: hitScanKind },
         );
-        await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber, dedupScanKind);
+        await stampUnboxOpened(hit.receivingId, scanId, rawTracking, hitScanKind);
         const poIdsSet = new Set<string>();
         for (const l of lines) {
           if (l.zoho_purchaseorder_id) poIdsSet.add(l.zoho_purchaseorder_id);
         }
         const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
         if (pendingOrderSkus.length > 0) {
-          await markReceivingPriority(existingScan.receiving_id, ctx.organizationId);
+          await markReceivingPriority(hit.receivingId, ctx.organizationId);
           after(async () => {
             try {
               await publishPriorityUnbox({
                 organizationId: ctx.organizationId,
                 staffId,
-                trackingNumber,
-                receivingId: existingScan.receiving_id,
+                trackingNumber: rawTracking,
+                receivingId: hit.receivingId,
                 skus: pendingOrderSkus,
-                source: 'receiving.lookup-po',
+                source: 'receiving.lookup-po.ticket',
               });
             } catch (err) {
-              console.warn('lookup-po: priority-unbox publish failed', errMessage(err));
+              console.warn('lookup-po.ticket: priority-unbox publish failed', errMessage(err));
             }
           });
         }
         return NextResponse.json({
           success: true,
           ...lookupResponseFields(),
-          receiving_id: existingScan.receiving_id,
-          scan_id: existingScan.scan_id,
+          receiving_id: hit.receivingId,
+          scan_id: scanId,
           preexisting: true,
-          deduped: true,
-          matched: true,
-          po_matched: true,
+          deduped: false,
+          matched: lines.length > 0,
+          po_matched: lines.length > 0,
+          resolved_via: 'local',
           unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
           po_ids: Array.from(poIdsSet),
           pending_order_skus: pendingOrderSkus,
@@ -1250,304 +940,291 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           lines: lines.map(serializeLookupLine),
         });
       }
-      // Empty lines — carry the existing ids forward so the Zoho branch
-      // promotes this same row instead of creating a duplicate.
-      preassignedReceivingId = existingScan.receiving_id;
-      preassignedScanId = existingScan.scan_id;
-    }
-
-    // 1b. TEST / demo shortcut — instant matched carton, no Zoho. Lets the
-    //     door-scan → unbox flow be tested with a typed tracking like TEST123.
-    if (isTestTracking(trackingNumber)) {
-      if (!isTestTrackingShortcutAllowed(ctx.organizationId)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'TEST_TRACKING_NOT_ALLOWED',
-            message: 'Synthetic TEST* tracking is disabled outside the QA sandbox org.',
-          },
-          { status: 403 },
-        );
-      }
-      const { receivingId, scanId, preexisting, poId } = await createOrGetTestReceiving(
-        trackingNumber,
-        carrier,
-        staffId,
-        ctx.organizationId,
-      );
-      await applyIntakeClassification(receivingId, classification, ctx.organizationId);
-      // `createOrGetTestReceiving` is get-or-create: a repeat TEST scan resolves
-      // the carton from the previous run, which may already be unboxed.
-      await stampUnboxOpened(
-        receivingId,
-        scanId,
-        trackingNumber,
-        await scanKindForMaybeExisting(receivingId, preexisting),
-      );
-      const [lines, receiving_package] = await Promise.all([
-        fetchLines(receivingId, ctx.organizationId),
-        fetchReceivingPackage(receivingId, ctx.organizationId),
-      ]);
-      const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
-      after(async () => {
-        try {
-          await invalidateReceivingViews(ctx.organizationId);
-        } catch (err) {
-          console.warn('[lookup-po.test] cache invalidation failed', errMessage(err));
-        }
-        try {
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'insert',
-            rowId: String(receivingId),
-            source: 'receiving.lookup-po.test',
-          });
-        } catch (err) {
-          console.warn('[lookup-po.test] realtime publish failed', errMessage(err));
-        }
-        if (pendingOrderSkus.length > 0) {
-          await markReceivingPriority(receivingId, ctx.organizationId);
-          try {
-            await publishPriorityUnbox({
-              organizationId: ctx.organizationId,
-              staffId,
-              trackingNumber,
-              receivingId,
-              skus: pendingOrderSkus,
-              source: 'receiving.lookup-po.test',
-            });
-          } catch (err) {
-            console.warn('[lookup-po.test] priority-unbox publish failed', errMessage(err));
-          }
-        }
-      });
-      return NextResponse.json({
-        success: true,
-        ...lookupResponseFields(),
-        receiving_id: receivingId,
-        scan_id: scanId,
-        preexisting,
-        deduped: false,
-        matched: true,
-        po_matched: true,
-        unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
-        is_test: true,
-        po_ids: [poId],
-        pending_order_skus: pendingOrderSkus,
-        receiving_package,
-        lines: lines.map(serializeLookupLine),
-      });
-    }
-
-    // 2. LOCAL tracking → PO ids only (STN / carton / zoho_po_mirror Reference#).
-    //    Live Zoho last-8 search is never on the scan hot path.
-    const zohoPoIds = new Set<string>();
-
-    // 1c. LOCAL-FIRST tracking → PO.
-    const localPoId = await resolvePoIdLocallyByTracking(
-      trackingNumber,
-      preassignedReceivingId,
-      ctx.organizationId,
-    );
-    if (localPoId) zohoPoIds.add(localPoId);
-
-    const digits = trackingNumber.replace(/\D/g, '');
-    const last8 = digits.length >= 8 ? digits.slice(-8) : '';
-
-    // 3a. MATCHED path — one receiving row per PO.
-    if (zohoPoIds.size > 0) {
-      const poIds = Array.from(zohoPoIds).slice(0, 3);
-      const primaryPoId = poIds[0];
-
-      let primaryReceivingId: number;
-      let preexisting: boolean;
-
-      if (preassignedReceivingId) {
-        // Promote the existing (unmatched) receiving row to 'zoho_po' in place so we keep its shipment_id/tracking# link.
-        try {
-          const promoted = await tenantQuery<{ id: number }>(
-            ctx.organizationId,
-            `UPDATE receiving_carton
-                SET source = 'zoho_po',
-                    zoho_purchaseorder_id = $1,
-                    carrier = COALESCE(NULLIF(carrier, ''), $2),
-                    updated_at = NOW()
-              WHERE id = $3
-                AND (source = 'unmatched' OR zoho_purchaseorder_id IS NULL)
-                AND organization_id = $4
-              RETURNING id`,
-            [primaryPoId, carrier || null, preassignedReceivingId, ctx.organizationId],
-          );
-          if (promoted.rows[0]) {
-            primaryReceivingId = Number(promoted.rows[0].id);
-            preexisting = true;
-          } else {
-            ({ receivingId: primaryReceivingId, preexisting } =
-              await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
-          }
-        } catch (err) {
-          console.warn('lookup-po: promote preassigned receiving failed — using upsert', err);
-          ({ receivingId: primaryReceivingId, preexisting } =
-            await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
-        }
-      } else {
-        ({ receivingId: primaryReceivingId, preexisting } =
-          await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
-      }
-
-      // Promoted-in-place or upserted: every branch above can resolve a carton
-      // that existed before this scan, so classify before claiming work.
-      const matchedScanKind = await scanKindForMaybeExisting(primaryReceivingId, preexisting);
-      const scanId = preassignedScanId ?? await recordScan(
-        primaryReceivingId,
-        trackingNumber,
-        carrier,
-        staffId,
-        'zoho_po',
-        intakeSurface,
-        matchedScanKind,
-      );
-      await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber, matchedScanKind);
-      // If the scan was attached to a different receiving row (rare race between promote and upsert fallback), re-parent it now.
-      if (preassignedScanId && preassignedReceivingId !== primaryReceivingId) {
-        await tenantQuery(
-          ctx.organizationId,
-          `UPDATE receiving_scans SET receiving_id = $1, source = 'zoho_po'
-            WHERE id = $2 AND organization_id = $3`,
-          [primaryReceivingId, preassignedScanId, ctx.organizationId],
-        ).catch((err) => {
-          console.error('[lookup-po] scan re-parent failed — orphaned scan', {
-            scan_id: preassignedScanId,
-            from_receiving_id: preassignedReceivingId,
-            to_receiving_id: primaryReceivingId,
-            primary_po_id: primaryPoId,
-            message: err instanceof Error ? err.message : String(err),
-          });
+      if (mode === 'ticket') {
+        return NextResponse.json({
+          success: true,
+          matched: false,
+          po_matched: false,
+          not_found: true,
+          po_ids: [],
+          error: `No receiving carton linked to ticket ${formatSupportTicketLabel(ticketId)}`,
         });
       }
+    }
+  }
 
-      // Adopt the PO's pre-materialized local lines — the incoming sync already wrote every line into receiving_line (receiving_id NULL), so a…
-      const linkedPrimary = await linkLocalPoLinesToReceiving(primaryPoId, primaryReceivingId, ctx.organizationId);
-      void linkedPrimary;
-
-      // Rare multi-PO tracking:
-      const secondaryPoIds: string[] = [];
-      const secondaryReceivingIds: number[] = [];
-      for (const poId of poIds.slice(1)) {
-        try {
-          const { receivingId: extraReceivingId, preexisting: extraPreexisting } =
-            await upsertMatchedReceiving(
-              poId,
-              carrier,
-              staffId,
-              ctx.organizationId,
-              intakeSurface,
-            );
-          // Same upsert, same hazard: a secondary PO's carton may already be
-          // unboxed, and it gets no `stampUnboxOpened` to compensate.
-          await recordScan(
-            extraReceivingId,
-            trackingNumber,
-            carrier,
-            staffId,
-            'zoho_po',
-            intakeSurface,
-            await scanKindForMaybeExisting(extraReceivingId, extraPreexisting),
-          );
-          await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
-          secondaryPoIds.push(poId);
-          secondaryReceivingIds.push(extraReceivingId);
-        } catch (err) {
-          console.warn(`lookup-po: secondary PO adopt failed for ${poId}`, err);
-        }
-      }
-
-      await applyIntakeClassification(primaryReceivingId, classification, ctx.organizationId);
-      const [lines, receiving_package_matched] = await Promise.all([
-        fetchLines(primaryReceivingId, ctx.organizationId),
-        fetchReceivingPackage(primaryReceivingId, ctx.organizationId),
-      ]);
-
-      const uniqueByKey = new Map<string, { sku: string; zohoItemId: string | null }>();
-      for (const line of lines) {
-        const sku = (line.sku || '').trim();
-        if (!sku) continue;
-        const key = `${sku}::${line.zoho_item_id || ''}`;
-        if (!uniqueByKey.has(key)) {
-          uniqueByKey.set(key, { sku, zohoItemId: line.zoho_item_id });
-        }
-      }
-
-      after(async () => {
-        try {
-          await parallelLimit(
-            Array.from(uniqueByKey.values()),
-            4,
-            async ({ sku, zohoItemId }) => {
-              await ensureSkuCatalogEntry(sku, {
-                zoho_item_id: zohoItemId ?? undefined,
-                zoho_purchaseorder_id: primaryPoId ?? undefined,
-              }, ctx.organizationId);
-            },
-          );
-        } catch (err) {
-          // Warmup is best-effort: a future page load will re-fetch from
-          // sku_catalog. WARN is appropriate.
-          console.warn('[lookup-po.after] sku_catalog warmup failed', {
-            receiving_id: primaryReceivingId,
-            message: errMessage(err),
-          });
-        }
-        try {
-          await invalidateReceivingViews(ctx.organizationId, ['sku-catalog', 'tracking-exceptions']);
-        } catch (err) {
-          // Cache invalidation failure → stale UI until TTL expires (60s).
-          // Visible but recoverable; WARN.
-          console.warn('[lookup-po.after] cache invalidation failed', {
-            receiving_id: primaryReceivingId,
-            tags: ['receiving-logs', 'receiving-lines', 'pending-unboxing', 'sku-catalog', 'tracking-exceptions'],
-            message: errMessage(err),
-          });
-        }
-        try {
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: preexisting ? 'update' : 'insert',
-            rowId: String(primaryReceivingId),
-            source: 'receiving.lookup-po',
-          });
-        } catch (err) {
-          // Realtime failure → connected clients won't refresh until they
-          // poll or reload. Higher severity than cache because polling can
-          // be slow; ERROR so it surfaces in alerting.
-          console.error('[lookup-po.after] realtime publish failed', {
-            receiving_id: primaryReceivingId,
-            action: preexisting ? 'update' : 'insert',
-            message: errMessage(err),
-          });
-        }
-        try {
-          // If this tracking had previously landed as 'unmatched' and logged
-          // a receiving exception, the Zoho hit now retroactively resolves it.
-          await resolveReceivingExceptionsByReceivingId(primaryReceivingId);
-        } catch (err) {
-          console.warn('[lookup-po.after] resolveReceivingExceptionsByReceivingId failed', {
-            receiving_id: primaryReceivingId,
-            message: errMessage(err),
-          });
-        }
+  // 0. ORDER# mode — resolve a PO / reference number from LOCAL mirror only (zoho_po_mirror / receiving_line_zoho / EXPECTED lines).
+  if (mode === 'order' || mode === 'auto') {
+    const localResolution = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
+    let poId = localResolution?.poId ?? null;
+    // Whether the scanned value is a real carrier tracking number (matched the PO's Reference#) vs.
+    let poMatchIsTracking = localResolution?.viaTrackingReference ?? false;
+    const resolvedVia = 'local' as const;
+    // Guard the local hit:
+    if (poId) {
+      const verdict = await verifyPoNumberMatches(poId, poLookupValue, ctx.organizationId).catch((err) => {
+        console.warn('[lookup-po.order] local verify failed', errMessage(err));
+        return 'unknown' as const;
       });
+      if (verdict === 'mismatch') {
+        console.warn(
+          `[lookup-po.order] local resolve for "${poLookupValue}" pointed at PO ${poId} with a different number — treating as miss`,
+        );
+        poId = null;
+        poMatchIsTracking = false;
+      }
+    }
+    // `auto` also tries the value as a tracking# against LOCAL data (the zoho_po_mirror Reference# → PO id), so an un-armed tracking scan that…
+    if (!poId && mode === 'auto') {
+      const localByTracking = await resolvePoIdLocallyByTracking(
+        trackingNumber,
+        null,
+        ctx.organizationId,
+      ).catch(() => null);
+      if (localByTracking) {
+        poId = localByTracking;
+        poMatchIsTracking = true;
+      }
+    }
 
+    // Marketplace / manual desk intake — match source_order_id (eBay /
+    // Amazon / Goodwill) when Zoho PO# missed. Mint a carton if the line is
+    // still EXPECTED with receiving_id NULL so Unbox can open the work.
+    if (!poId && (mode === 'order' || mode === 'auto')) {
+      const inboundOrder = await resolveInboundCartonByOrderId(
+        ctx.organizationId as OrgId,
+        poLookupValue,
+      ).catch((err) => {
+        console.warn('[lookup-po.order] inbound order resolve failed', errMessage(err));
+        return null;
+      });
+      if (inboundOrder) {
+        const receivingId = inboundOrder.receivingId;
+        const orderScanKind = await scanKindForMaybeExisting(
+          receivingId,
+          !inboundOrder.createdCarton,
+        );
+        const orderScanId = await recordScan(
+          receivingId,
+          trackingNumber,
+          carrier,
+          staffId,
+          'unmatched',
+          intakeSurface,
+          orderScanKind,
+          false,
+        );
+        await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
+        await applyIntakeClassification(receivingId, classification, ctx.organizationId);
+
+        const [lines, receiving_package] = await Promise.all([
+          fetchLines(receivingId, ctx.organizationId),
+          fetchReceivingPackage(receivingId, ctx.organizationId),
+        ]);
+        const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
+
+        after(async () => {
+          try {
+            await invalidateReceivingViews(ctx.organizationId);
+          } catch (err) {
+            console.warn('[lookup-po.order] inbound cache invalidation failed', errMessage(err));
+          }
+          try {
+            await publishReceivingLogChanged({
+              organizationId: ctx.organizationId,
+              action: 'insert',
+              rowId: String(receivingId),
+              source: 'receiving.lookup-po.inbound-order',
+            });
+          } catch (err) {
+            console.warn('[lookup-po.order] inbound realtime publish failed', errMessage(err));
+          }
+          if (pendingOrderSkus.length > 0) {
+            await markReceivingPriority(receivingId, ctx.organizationId);
+            try {
+              await publishPriorityUnbox({
+                organizationId: ctx.organizationId,
+                staffId,
+                trackingNumber,
+                receivingId,
+                skus: pendingOrderSkus,
+                source: 'receiving.lookup-po.inbound-order',
+              });
+            } catch (err) {
+              console.warn(
+                '[lookup-po.order] inbound priority-unbox publish failed',
+                errMessage(err),
+              );
+            }
+          }
+        });
+
+        return NextResponse.json({
+          success: true,
+          receiving_id: receivingId,
+          ...lookupResponseFields(),
+          preexisting: !inboundOrder.createdCarton,
+          deduped: false,
+          matched: lines.length > 0,
+          po_matched: true,
+          resolved_via: 'local',
+          unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
+          po_ids: [],
+          inbound_source_type: inboundOrder.sourceType,
+          inbound_source_order_id: inboundOrder.sourceOrderId,
+          pending_order_skus: pendingOrderSkus,
+          receiving_package,
+          lines: lines.map(serializeLookupLine),
+          scan_id: orderScanId,
+        });
+      }
+    }
+
+    if (!poId && mode === 'order') {
+      // Explicit order mode, PO# + marketplace order# missed locally —
+      // report not-found WITHOUT spawning a phantom carton and WITHOUT
+      // calling live Zoho.
+      return NextResponse.json({
+        success: true,
+        matched: false,
+        po_matched: false,
+        not_found: true,
+        po_ids: [],
+        error: `No PO found for order number "${poLookupValue}"`,
+      });
+    }
+
+    // PO# resolved → open the matched carton.
+    if (poId) {
+
+    const { receivingId, preexisting: orderPreexisting } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
+    const linked = await linkLocalPoLinesToReceiving(poId, receivingId, ctx.organizationId);
+    // `upsertMatchedReceiving` returns an EXISTING carton when this PO was scanned before, so this site can land on finished work.
+    const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
+    // Adopt/claim local lines (unattached + unmatched donors); import only when still empty — see linkLocalPoLinesToReceiving / adopt-po-lines.
+    const orderScanId = await recordScan(
+      receivingId,
+      trackingNumber,
+      carrier,
+      staffId,
+      'zoho_po',
+      intakeSurface,
+      orderScanKind,
+      poMatchIsTracking,
+    );
+    await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
+    await applyIntakeClassification(receivingId, classification, ctx.organizationId);
+
+    const [lines, receiving_package] = await Promise.all([
+      fetchLines(receivingId, ctx.organizationId),
+      fetchReceivingPackage(receivingId, ctx.organizationId),
+    ]);
+    const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
+
+    after(async () => {
+      try {
+        await invalidateReceivingViews(ctx.organizationId);
+      } catch (err) {
+        console.warn('[lookup-po.order] cache invalidation failed', errMessage(err));
+      }
+      try {
+        await publishReceivingLogChanged({
+          organizationId: ctx.organizationId,
+          action: 'insert',
+          rowId: String(receivingId),
+          source: 'receiving.lookup-po.order',
+        });
+      } catch (err) {
+        console.warn('[lookup-po.order] realtime publish failed', errMessage(err));
+      }
+      if (pendingOrderSkus.length > 0) {
+        await markReceivingPriority(receivingId, ctx.organizationId);
+        try {
+          await publishPriorityUnbox({
+            organizationId: ctx.organizationId,
+            staffId,
+            trackingNumber,
+            receivingId,
+            skus: pendingOrderSkus,
+            source: 'receiving.lookup-po.order',
+          });
+        } catch (err) {
+          console.warn('[lookup-po.order] priority-unbox publish failed', errMessage(err));
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      receiving_id: receivingId,
+      ...lookupResponseFields(),
+      preexisting: linked > 0,
+      deduped: false,
+      matched: lines.length > 0,
+      po_matched: true,
+      resolved_via: resolvedVia,
+      unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
+      po_ids: [poId],
+      pending_order_skus: pendingOrderSkus,
+      receiving_package,
+      lines: lines.map(serializeLookupLine),
+    });
+    } // end if (poId) — auto PO#-miss falls through to the tracking path below
+  }
+
+  // 1. Dedup short-circuit — scan already logged against a receiving row.
+  const existingScan = await findScanByTracking(
+    trackingNumber,
+    staffId,
+    carrier,
+    ctx.organizationId,
+    intakeSurface,
+    scannedCartonId,
+  );
+  let preassignedReceivingId: number | null = null;
+  let preassignedScanId: number | null = null;
+  if (existingScan) {
+    await applyIntakeClassification(existingScan.receiving_id, classification, ctx.organizationId);
+    const [lines, receiving_package] = await Promise.all([
+      fetchLines(existingScan.receiving_id, ctx.organizationId),
+      fetchReceivingPackage(existingScan.receiving_id, ctx.organizationId),
+    ]);
+    if (lines.length > 0) {
+      // Re-attribute this dock event to the current operator (dedup path
+      // used to leave scanned_by stale or NULL via memoizeLookupHit).
+      const recvSourceRes = await tenantQuery<{ source: string | null }>(
+        ctx.organizationId,
+        `SELECT source FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+        [existingScan.receiving_id, ctx.organizationId],
+      );
+      const recvSource = String(recvSourceRes.rows[0]?.source || 'unmatched');
+      // "Re-attribute this dock event to the current operator" is right for a
+      // work scan and wrong for an inspection — this is the dedup path, so
+      // the carton already exists and may long since be unboxed.
+      const dedupScanKind = await scanKindFor(existingScan.receiving_id);
+      const dedupScanId = await recordReceivingScan(
+        existingScan.receiving_id,
+        trackingNumber,
+        carrier,
+        staffId,
+        recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
+        { intakeSurface, scanKind: dedupScanKind },
+      );
+      await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber, dedupScanKind);
+      const poIdsSet = new Set<string>();
+      for (const l of lines) {
+        if (l.zoho_purchaseorder_id) poIdsSet.add(l.zoho_purchaseorder_id);
+      }
       const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
       if (pendingOrderSkus.length > 0) {
-        await markReceivingPriority(primaryReceivingId, ctx.organizationId);
+        await markReceivingPriority(existingScan.receiving_id, ctx.organizationId);
         after(async () => {
           try {
             await publishPriorityUnbox({
               organizationId: ctx.organizationId,
               staffId,
               trackingNumber,
-              receivingId: primaryReceivingId,
+              receivingId: existingScan.receiving_id,
               skus: pendingOrderSkus,
               source: 'receiving.lookup-po',
             });
@@ -1556,149 +1233,466 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           }
         });
       }
-
       return NextResponse.json({
         success: true,
         ...lookupResponseFields(),
-        receiving_id: primaryReceivingId,
-        scan_id: scanId,
-        preexisting,
-        deduped: false,
+        receiving_id: existingScan.receiving_id,
+        scan_id: existingScan.scan_id,
+        preexisting: true,
+        deduped: true,
         matched: true,
         po_matched: true,
         unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
-        po_ids: poIds,
+        po_ids: Array.from(poIdsSet),
         pending_order_skus: pendingOrderSkus,
-        // Secondary POs each get their own receiving row but lines from them
-        // aren't part of the primary carton view. Surface them so the client
-        // can prompt the operator to triage rather than silently miss them.
-        secondary_po_ids: secondaryPoIds,
-        secondary_receiving_ids: secondaryReceivingIds,
-        multi_po_warning: secondaryPoIds.length > 0,
-        zoho_reachable: true,
-        receiving_package: receiving_package_matched,
+        receiving_package,
         lines: lines.map(serializeLookupLine),
       });
     }
+    // Empty lines — carry the existing ids forward so the Zoho branch
+    // promotes this same row instead of creating a duplicate.
+    preassignedReceivingId = existingScan.receiving_id;
+    preassignedScanId = existingScan.scan_id;
+  }
 
-    // 3a-bis. REFUSE TO MINT FROM ONE OF OUR OWN HANDLES.
-    if (isNonCartonHandle || scannedCartonId != null) {
-      return NextResponse.json({
-        success: true,
-        matched: false,
-        po_matched: false,
-        not_found: true,
-        po_ids: [],
-        error: `"${rawTracking}" is a Cycle Forge label, not a carrier tracking number.`,
-      });
-    }
-
-    // 3b. UNMATCHED path — no local STN/PO-mirror hit.
-    let unmatchedReceivingId: number;
-    let unmatchedShipmentId: number | null;
-    if (preassignedReceivingId != null) {
-      unmatchedReceivingId = preassignedReceivingId;
-      const shipRow = await tenantQuery<{ shipment_id: number | null }>(
-        ctx.organizationId,
-        `SELECT shipment_id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
-        [preassignedReceivingId, ctx.organizationId],
+  // 1b. TEST / demo shortcut — instant matched carton, no Zoho. Lets the
+  //     door-scan → unbox flow be tested with a typed tracking like TEST123.
+  if (isTestTracking(trackingNumber)) {
+    if (!isTestTrackingShortcutAllowed(ctx.organizationId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'TEST_TRACKING_NOT_ALLOWED',
+          message: 'Synthetic TEST* tracking is disabled outside the QA sandbox org.',
+        },
+        { status: 403 },
       );
-      unmatchedShipmentId = shipRow.rows[0]?.shipment_id ?? null;
-    } else {
-      ({ receivingId: unmatchedReceivingId, shipmentId: unmatchedShipmentId } =
-        await createUnmatchedReceiving(trackingNumber, carrier, staffId, ctx.organizationId, intakeSurface));
     }
-    // A PREASSIGNED id is a pre-existing carton (the zero-line re-scan branch
-    // above carried it forward), so it may long since have been unboxed. A
-    // freshly created unfound carton is unworked by construction.
-    const unmatchedScanKind = await scanKindForMaybeExisting(
-      unmatchedReceivingId,
-      preassignedReceivingId != null,
-    );
-    const unmatchedScanId = preassignedScanId ?? await recordScan(
-      unmatchedReceivingId,
+    const { receivingId, scanId, preexisting, poId } = await createOrGetTestReceiving(
       trackingNumber,
       carrier,
       staffId,
-      'unmatched',
-      intakeSurface,
-      unmatchedScanKind,
+      ctx.organizationId,
     );
-    await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber, unmatchedScanKind);
-
-    const exceptionReason = 'not_found' as const;
-    const exception = await upsertOpenTrackingException({
+    await applyIntakeClassification(receivingId, classification, ctx.organizationId);
+    // `createOrGetTestReceiving` is get-or-create: a repeat TEST scan resolves
+    // the carton from the previous run, which may already be unboxed.
+    await stampUnboxOpened(
+      receivingId,
+      scanId,
       trackingNumber,
-      domain: 'receiving',
-      sourceStation: 'receiving',
-      staffId,
-      reason: exceptionReason,
-      notes: 'Receiving scan: tracking not found in local STN / PO mirror',
-      shipmentId: unmatchedShipmentId,
-      receivingId: unmatchedReceivingId,
-      lastError: null,
-      domainMetadata: {
-        carrier: carrier || null,
-        candidates_tried: last8 ? [last8] : [],
-        zoho_reachable: true,
-        scan_id: unmatchedScanId,
-      },
-    }, undefined, ctx.organizationId).catch((err) => {
-      console.warn('lookup-po: upsertOpenTrackingException (receiving) failed', err);
-      return null;
+      await scanKindForMaybeExisting(receivingId, preexisting),
+    );
+    const [lines, receiving_package] = await Promise.all([
+      fetchLines(receivingId, ctx.organizationId),
+      fetchReceivingPackage(receivingId, ctx.organizationId),
+    ]);
+    const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
+    after(async () => {
+      try {
+        await invalidateReceivingViews(ctx.organizationId);
+      } catch (err) {
+        console.warn('[lookup-po.test] cache invalidation failed', errMessage(err));
+      }
+      try {
+        await publishReceivingLogChanged({
+          organizationId: ctx.organizationId,
+          action: 'insert',
+          rowId: String(receivingId),
+          source: 'receiving.lookup-po.test',
+        });
+      } catch (err) {
+        console.warn('[lookup-po.test] realtime publish failed', errMessage(err));
+      }
+      if (pendingOrderSkus.length > 0) {
+        await markReceivingPriority(receivingId, ctx.organizationId);
+        try {
+          await publishPriorityUnbox({
+            organizationId: ctx.organizationId,
+            staffId,
+            trackingNumber,
+            receivingId,
+            skus: pendingOrderSkus,
+            source: 'receiving.lookup-po.test',
+          });
+        } catch (err) {
+          console.warn('[lookup-po.test] priority-unbox publish failed', errMessage(err));
+        }
+      }
     });
+    return NextResponse.json({
+      success: true,
+      ...lookupResponseFields(),
+      receiving_id: receivingId,
+      scan_id: scanId,
+      preexisting,
+      deduped: false,
+      matched: true,
+      po_matched: true,
+      unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
+      is_test: true,
+      po_ids: [poId],
+      pending_order_skus: pendingOrderSkus,
+      receiving_package,
+      lines: lines.map(serializeLookupLine),
+    });
+  }
+
+  // 2. LOCAL tracking → PO ids only (STN / carton / zoho_po_mirror Reference#).
+  //    Live Zoho last-8 search is never on the scan hot path.
+  const zohoPoIds = new Set<string>();
+
+  // 1c. LOCAL-FIRST tracking → PO.
+  const localPoId = await resolvePoIdLocallyByTracking(
+    trackingNumber,
+    preassignedReceivingId,
+    ctx.organizationId,
+  );
+  if (localPoId) zohoPoIds.add(localPoId);
+
+  const digits = trackingNumber.replace(/\D/g, '');
+  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+
+  // 3a. MATCHED path — one receiving row per PO.
+  if (zohoPoIds.size > 0) {
+    const poIds = Array.from(zohoPoIds).slice(0, 3);
+    const primaryPoId = poIds[0];
+
+    let primaryReceivingId: number;
+    let preexisting: boolean;
+
+    if (preassignedReceivingId) {
+      // Promote the existing (unmatched) receiving row to 'zoho_po' in place so we keep its shipment_id/tracking# link.
+      try {
+        const promoted = await tenantQuery<{ id: number }>(
+          ctx.organizationId,
+          `UPDATE receiving_carton
+                SET source = 'zoho_po',
+                    zoho_purchaseorder_id = $1,
+                    carrier = COALESCE(NULLIF(carrier, ''), $2),
+                    updated_at = NOW()
+              WHERE id = $3
+                AND (source = 'unmatched' OR zoho_purchaseorder_id IS NULL)
+                AND organization_id = $4
+              RETURNING id`,
+          [primaryPoId, carrier || null, preassignedReceivingId, ctx.organizationId],
+        );
+        if (promoted.rows[0]) {
+          primaryReceivingId = Number(promoted.rows[0].id);
+          preexisting = true;
+        } else {
+          ({ receivingId: primaryReceivingId, preexisting } =
+            await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
+        }
+      } catch (err) {
+        console.warn('lookup-po: promote preassigned receiving failed — using upsert', err);
+        ({ receivingId: primaryReceivingId, preexisting } =
+          await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
+      }
+    } else {
+      ({ receivingId: primaryReceivingId, preexisting } =
+        await upsertMatchedReceiving(primaryPoId, carrier, staffId, ctx.organizationId, intakeSurface));
+    }
+
+    // Promoted-in-place or upserted: every branch above can resolve a carton
+    // that existed before this scan, so classify before claiming work.
+    const matchedScanKind = await scanKindForMaybeExisting(primaryReceivingId, preexisting);
+    const scanId = preassignedScanId ?? await recordScan(
+      primaryReceivingId,
+      trackingNumber,
+      carrier,
+      staffId,
+      'zoho_po',
+      intakeSurface,
+      matchedScanKind,
+    );
+    await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber, matchedScanKind);
+    // If the scan was attached to a different receiving row (rare race between promote and upsert fallback), re-parent it now.
+    if (preassignedScanId && preassignedReceivingId !== primaryReceivingId) {
+      await tenantQuery(
+        ctx.organizationId,
+        `UPDATE receiving_scans SET receiving_id = $1, source = 'zoho_po'
+            WHERE id = $2 AND organization_id = $3`,
+        [primaryReceivingId, preassignedScanId, ctx.organizationId],
+      ).catch((err) => {
+        console.error('[lookup-po] scan re-parent failed — orphaned scan', {
+          scan_id: preassignedScanId,
+          from_receiving_id: preassignedReceivingId,
+          to_receiving_id: primaryReceivingId,
+          primary_po_id: primaryPoId,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+
+    // Adopt the PO's pre-materialized local lines — the incoming sync already wrote every line into receiving_line (receiving_id NULL), so a…
+    const linkedPrimary = await linkLocalPoLinesToReceiving(primaryPoId, primaryReceivingId, ctx.organizationId);
+    void linkedPrimary;
+
+    // Rare multi-PO tracking:
+    const secondaryPoIds: string[] = [];
+    const secondaryReceivingIds: number[] = [];
+    for (const poId of poIds.slice(1)) {
+      try {
+        const { receivingId: extraReceivingId, preexisting: extraPreexisting } =
+          await upsertMatchedReceiving(
+            poId,
+            carrier,
+            staffId,
+            ctx.organizationId,
+            intakeSurface,
+          );
+        // Same upsert, same hazard: a secondary PO's carton may already be
+        // unboxed, and it gets no `stampUnboxOpened` to compensate.
+        await recordScan(
+          extraReceivingId,
+          trackingNumber,
+          carrier,
+          staffId,
+          'zoho_po',
+          intakeSurface,
+          await scanKindForMaybeExisting(extraReceivingId, extraPreexisting),
+        );
+        await linkLocalPoLinesToReceiving(poId, extraReceivingId, ctx.organizationId);
+        secondaryPoIds.push(poId);
+        secondaryReceivingIds.push(extraReceivingId);
+      } catch (err) {
+        console.warn(`lookup-po: secondary PO adopt failed for ${poId}`, err);
+      }
+    }
+
+    await applyIntakeClassification(primaryReceivingId, classification, ctx.organizationId);
+    const [lines, receiving_package_matched] = await Promise.all([
+      fetchLines(primaryReceivingId, ctx.organizationId),
+      fetchReceivingPackage(primaryReceivingId, ctx.organizationId),
+    ]);
+
+    const uniqueByKey = new Map<string, { sku: string; zohoItemId: string | null }>();
+    for (const line of lines) {
+      const sku = (line.sku || '').trim();
+      if (!sku) continue;
+      const key = `${sku}::${line.zoho_item_id || ''}`;
+      if (!uniqueByKey.has(key)) {
+        uniqueByKey.set(key, { sku, zohoItemId: line.zoho_item_id });
+      }
+    }
 
     after(async () => {
       try {
-        await invalidateReceivingViews(ctx.organizationId, ['tracking-exceptions']);
+        await parallelLimit(
+          Array.from(uniqueByKey.values()),
+          4,
+          async ({ sku, zohoItemId }) => {
+            await ensureSkuCatalogEntry(sku, {
+              zoho_item_id: zohoItemId ?? undefined,
+              zoho_purchaseorder_id: primaryPoId ?? undefined,
+            }, ctx.organizationId);
+          },
+        );
       } catch (err) {
-        console.warn('[lookup-po.after.unmatched] cache invalidation failed', {
-          receiving_id: unmatchedReceivingId,
+        // Warmup is best-effort: a future page load will re-fetch from
+        // sku_catalog. WARN is appropriate.
+        console.warn('[lookup-po.after] sku_catalog warmup failed', {
+          receiving_id: primaryReceivingId,
+          message: errMessage(err),
+        });
+      }
+      try {
+        await invalidateReceivingViews(ctx.organizationId, ['sku-catalog', 'tracking-exceptions']);
+      } catch (err) {
+        // Cache invalidation failure → stale UI until TTL expires (60s).
+        // Visible but recoverable; WARN.
+        console.warn('[lookup-po.after] cache invalidation failed', {
+          receiving_id: primaryReceivingId,
+          tags: ['receiving-logs', 'receiving-lines', 'pending-unboxing', 'sku-catalog', 'tracking-exceptions'],
           message: errMessage(err),
         });
       }
       try {
         await publishReceivingLogChanged({
           organizationId: ctx.organizationId,
-          action: 'insert',
-          rowId: String(unmatchedReceivingId),
+          action: preexisting ? 'update' : 'insert',
+          rowId: String(primaryReceivingId),
           source: 'receiving.lookup-po',
         });
       } catch (err) {
-        console.error('[lookup-po.after.unmatched] realtime publish failed', {
-          receiving_id: unmatchedReceivingId,
+        // Realtime failure → connected clients won't refresh until they
+        // poll or reload. Higher severity than cache because polling can
+        // be slow; ERROR so it surfaces in alerting.
+        console.error('[lookup-po.after] realtime publish failed', {
+          receiving_id: primaryReceivingId,
+          action: preexisting ? 'update' : 'insert',
+          message: errMessage(err),
+        });
+      }
+      try {
+        // If this tracking had previously landed as 'unmatched' and logged
+        // a receiving exception, the Zoho hit now retroactively resolves it.
+        await resolveReceivingExceptionsByReceivingId(primaryReceivingId);
+      } catch (err) {
+        console.warn('[lookup-po.after] resolveReceivingExceptionsByReceivingId failed', {
+          receiving_id: primaryReceivingId,
           message: errMessage(err),
         });
       }
     });
 
-    await applyIntakeClassification(unmatchedReceivingId, classification, ctx.organizationId);
-    const receiving_package_unmatched = await fetchReceivingPackage(unmatchedReceivingId, ctx.organizationId);
+    const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
+    if (pendingOrderSkus.length > 0) {
+      await markReceivingPriority(primaryReceivingId, ctx.organizationId);
+      after(async () => {
+        try {
+          await publishPriorityUnbox({
+            organizationId: ctx.organizationId,
+            staffId,
+            trackingNumber,
+            receivingId: primaryReceivingId,
+            skus: pendingOrderSkus,
+            source: 'receiving.lookup-po',
+          });
+        } catch (err) {
+          console.warn('lookup-po: priority-unbox publish failed', errMessage(err));
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
       ...lookupResponseFields(),
-      receiving_id: unmatchedReceivingId,
-      scan_id: unmatchedScanId,
-      exception_id: exception?.id ?? null,
-      exception_reason: exception ? exceptionReason : null,
-      preexisting: false,
+      receiving_id: primaryReceivingId,
+      scan_id: scanId,
+      preexisting,
       deduped: false,
+      matched: true,
+      po_matched: true,
+      unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
+      po_ids: poIds,
+      pending_order_skus: pendingOrderSkus,
+      // Secondary POs each get their own receiving row but lines from them
+      // aren't part of the primary carton view. Surface them so the client
+      // can prompt the operator to triage rather than silently miss them.
+      secondary_po_ids: secondaryPoIds,
+      secondary_receiving_ids: secondaryReceivingIds,
+      multi_po_warning: secondaryPoIds.length > 0,
+      zoho_reachable: true,
+      receiving_package: receiving_package_matched,
+      lines: lines.map(serializeLookupLine),
+    });
+  }
+
+  // 3a-bis. REFUSE TO MINT FROM ONE OF OUR OWN HANDLES.
+  if (isNonCartonHandle || scannedCartonId != null) {
+    return NextResponse.json({
+      success: true,
       matched: false,
       po_matched: false,
-      unbox_verdict: 'unfound',
+      not_found: true,
       po_ids: [],
-      zoho_reachable: true,
-      // Scan never schedules a Zoho follow-up — promote is cron / operator only.
-      zoho_pending: false,
-      receiving_package: receiving_package_unmatched,
-      lines: [],
+      error: `"${rawTracking}" is a Cycle Forge label, not a carrier tracking number.`,
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to look up PO';
-    console.error('receiving/lookup-po POST failed:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+
+  // 3b. UNMATCHED path — no local STN/PO-mirror hit.
+  let unmatchedReceivingId: number;
+  let unmatchedShipmentId: number | null;
+  if (preassignedReceivingId != null) {
+    unmatchedReceivingId = preassignedReceivingId;
+    const shipRow = await tenantQuery<{ shipment_id: number | null }>(
+      ctx.organizationId,
+      `SELECT shipment_id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [preassignedReceivingId, ctx.organizationId],
+    );
+    unmatchedShipmentId = shipRow.rows[0]?.shipment_id ?? null;
+  } else {
+    ({ receivingId: unmatchedReceivingId, shipmentId: unmatchedShipmentId } =
+      await createUnmatchedReceiving(trackingNumber, carrier, staffId, ctx.organizationId, intakeSurface));
+  }
+  // A PREASSIGNED id is a pre-existing carton (the zero-line re-scan branch
+  // above carried it forward), so it may long since have been unboxed. A
+  // freshly created unfound carton is unworked by construction.
+  const unmatchedScanKind = await scanKindForMaybeExisting(
+    unmatchedReceivingId,
+    preassignedReceivingId != null,
+  );
+  const unmatchedScanId = preassignedScanId ?? await recordScan(
+    unmatchedReceivingId,
+    trackingNumber,
+    carrier,
+    staffId,
+    'unmatched',
+    intakeSurface,
+    unmatchedScanKind,
+  );
+  await stampUnboxOpened(unmatchedReceivingId, unmatchedScanId, trackingNumber, unmatchedScanKind);
+
+  const exceptionReason = 'not_found' as const;
+  const exception = await upsertOpenTrackingException({
+    trackingNumber,
+    domain: 'receiving',
+    sourceStation: 'receiving',
+    staffId,
+    reason: exceptionReason,
+    notes: 'Receiving scan: tracking not found in local STN / PO mirror',
+    shipmentId: unmatchedShipmentId,
+    receivingId: unmatchedReceivingId,
+    lastError: null,
+    domainMetadata: {
+      carrier: carrier || null,
+      candidates_tried: last8 ? [last8] : [],
+      zoho_reachable: true,
+      scan_id: unmatchedScanId,
+    },
+  }, undefined, ctx.organizationId).catch((err) => {
+    console.warn('lookup-po: upsertOpenTrackingException (receiving) failed', err);
+    return null;
+  });
+
+  after(async () => {
+    try {
+      await invalidateReceivingViews(ctx.organizationId, ['tracking-exceptions']);
+    } catch (err) {
+      console.warn('[lookup-po.after.unmatched] cache invalidation failed', {
+        receiving_id: unmatchedReceivingId,
+        message: errMessage(err),
+      });
+    }
+    try {
+      await publishReceivingLogChanged({
+        organizationId: ctx.organizationId,
+        action: 'insert',
+        rowId: String(unmatchedReceivingId),
+        source: 'receiving.lookup-po',
+      });
+    } catch (err) {
+      console.error('[lookup-po.after.unmatched] realtime publish failed', {
+        receiving_id: unmatchedReceivingId,
+        message: errMessage(err),
+      });
+    }
+  });
+
+  await applyIntakeClassification(unmatchedReceivingId, classification, ctx.organizationId);
+  const receiving_package_unmatched = await fetchReceivingPackage(unmatchedReceivingId, ctx.organizationId);
+
+  return NextResponse.json({
+    success: true,
+    ...lookupResponseFields(),
+    receiving_id: unmatchedReceivingId,
+    scan_id: unmatchedScanId,
+    exception_id: exception?.id ?? null,
+    exception_reason: exception ? exceptionReason : null,
+    preexisting: false,
+    deduped: false,
+    matched: false,
+    po_matched: false,
+    unbox_verdict: 'unfound',
+    po_ids: [],
+    zoho_reachable: true,
+    // Scan never schedules a Zoho follow-up — promote is cron / operator only.
+    zoho_pending: false,
+    receiving_package: receiving_package_unmatched,
+    lines: [],
+  });
 }, {
   permission: 'receiving.scan_po',
   audit: {

@@ -22,22 +22,14 @@ const ROUTE_BOSE_MODELS_POST = 'bose-models.post';
  * Query: q, family, limit (1–500), offset.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const q = searchParams.get('q') || '';
-    const family = searchParams.get('family');
-    const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
-    const offset = Math.max(0, Number(searchParams.get('offset') || 0));
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get('q') || '';
+  const family = searchParams.get('family');
+  const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
+  const offset = Math.max(0, Number(searchParams.get('offset') || 0));
 
-    const { items, total } = await getBoseModelList({ q, family, limit, offset }, ctx.organizationId);
-    return NextResponse.json({ success: true, items, total });
-  } catch (error: any) {
-    console.error('Error in GET /api/bose-models:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch Bose models' },
-      { status: 500 },
-    );
-  }
+  const { items, total } = await getBoseModelList({ q, family, limit, offset }, ctx.organizationId);
+  return NextResponse.json({ success: true, items, total });
 }, { permission: 'sourcing.view' });
 
 /** POST /api/bose-models — Create a Bose model catalog entry. */

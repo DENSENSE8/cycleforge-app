@@ -79,42 +79,36 @@ export const POST = withAuth(
       }
     }
 
-    try {
-      const item = await createDailyCheckItem({
-        orgId: ctx.organizationId,
-        title,
-        description: description?.trim() || null,
-        effectiveFrom: getCurrentPSTDateKey(),
-        kind,
-        assignedStaffId: assignedStaffId ?? null,
-        glyph: glyph ?? null,
-        dueTime,
-        remindOffsetMinutes,
-      });
+    const item = await createDailyCheckItem({
+      orgId: ctx.organizationId,
+      title,
+      description: description?.trim() || null,
+      effectiveFrom: getCurrentPSTDateKey(),
+      kind,
+      assignedStaffId: assignedStaffId ?? null,
+      glyph: glyph ?? null,
+      dueTime,
+      remindOffsetMinutes,
+    });
 
-      await recordAudit(pool, ctx, request, {
-        source: 'home-daily',
-        action: AUDIT_ACTION.DAILY_CHECK_ITEM_CREATE,
-        entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
-        entityId: String(item.id),
-        after: {
-          title: item.title,
-          description: item.description,
-          sortOrder: item.sortOrder,
-          kind: item.kind,
-          assignedStaffId: item.assignedStaffId,
-          glyph: item.glyph,
-          dueTime: item.dueTime,
-          remindOffsetMinutes: item.remindOffsetMinutes,
-        },
-      });
+    await recordAudit(pool, ctx, request, {
+      source: 'home-daily',
+      action: AUDIT_ACTION.DAILY_CHECK_ITEM_CREATE,
+      entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
+      entityId: String(item.id),
+      after: {
+        title: item.title,
+        description: item.description,
+        sortOrder: item.sortOrder,
+        kind: item.kind,
+        assignedStaffId: item.assignedStaffId,
+        glyph: item.glyph,
+        dueTime: item.dueTime,
+        remindOffsetMinutes: item.remindOffsetMinutes,
+      },
+    });
 
-      return NextResponse.json(item, { status: 201 });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] item create failed:', message);
-      return NextResponse.json({ error: 'Failed to add the item' }, { status: 500 });
-    }
+    return NextResponse.json(item, { status: 201 });
   },
   { permission: 'admin.manage_staff' },
 );
@@ -161,55 +155,49 @@ export const PATCH = withAuth(
     }
 
     const patch = parsed.data;
-    try {
-      const updated = await updateDailyCheckItem({
-        orgId: ctx.organizationId,
-        itemId,
-        patch,
-        // The warehouse civil day, never `now()::date`: the server clock is UTC
-        // and rolls over mid-afternoon, which would drop a one-off out of its
-        // own window and 404 an edit the operator is looking straight at.
-        dayKey: getCurrentPSTDateKey(),
-      });
-      if (!updated.ok) {
-        // not_found = nothing by that id on today's list in this tenant (gone,
-        // or never here): the operator is editing something the list does not
-        // have.
-        return updated.reason === 'not_found'
-          ? NextResponse.json({ error: 'No such item' }, { status: 404 })
-          : NextResponse.json({ error: OFFSET_NEEDS_DUE_TIME }, { status: 400 });
-      }
-
-      // Exactly the fields this edit touched. Clearing the due time also
-      // clears the reminder, so that change is recorded too.
-      const touched = (Object.keys(patch) as Array<keyof typeof patch>).filter(
-        (key) => patch[key] !== undefined,
-      );
-      if (patch.dueTime === null && !touched.includes('remindOffsetMinutes')) {
-        touched.push('remindOffsetMinutes');
-      }
-      const before: Record<string, unknown> = {};
-      const after: Record<string, unknown> = {};
-      for (const key of touched) {
-        before[key] = updated.previous[key];
-        after[key] = updated.item[key];
-      }
-
-      await recordAudit(pool, ctx, request, {
-        source: 'home-daily',
-        action: AUDIT_ACTION.DAILY_CHECK_ITEM_UPDATE,
-        entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
-        entityId: String(itemId),
-        before,
-        after,
-      });
-
-      return NextResponse.json(updated.item);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] item update failed:', message);
-      return NextResponse.json({ error: 'Failed to save the item' }, { status: 500 });
+    const updated = await updateDailyCheckItem({
+      orgId: ctx.organizationId,
+      itemId,
+      patch,
+      // The warehouse civil day, never `now()::date`: the server clock is UTC
+      // and rolls over mid-afternoon, which would drop a one-off out of its
+      // own window and 404 an edit the operator is looking straight at.
+      dayKey: getCurrentPSTDateKey(),
+    });
+    if (!updated.ok) {
+      // not_found = nothing by that id on today's list in this tenant (gone,
+      // or never here): the operator is editing something the list does not
+      // have.
+      return updated.reason === 'not_found'
+        ? NextResponse.json({ error: 'No such item' }, { status: 404 })
+        : NextResponse.json({ error: OFFSET_NEEDS_DUE_TIME }, { status: 400 });
     }
+
+    // Exactly the fields this edit touched. Clearing the due time also
+    // clears the reminder, so that change is recorded too.
+    const touched = (Object.keys(patch) as Array<keyof typeof patch>).filter(
+      (key) => patch[key] !== undefined,
+    );
+    if (patch.dueTime === null && !touched.includes('remindOffsetMinutes')) {
+      touched.push('remindOffsetMinutes');
+    }
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    for (const key of touched) {
+      before[key] = updated.previous[key];
+      after[key] = updated.item[key];
+    }
+
+    await recordAudit(pool, ctx, request, {
+      source: 'home-daily',
+      action: AUDIT_ACTION.DAILY_CHECK_ITEM_UPDATE,
+      entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
+      entityId: String(itemId),
+      before,
+      after,
+    });
+
+    return NextResponse.json(updated.item);
   },
   { permission: 'admin.manage_staff' },
 );
@@ -223,29 +211,23 @@ export const DELETE = withAuth(
       return NextResponse.json({ error: 'id must be a positive integer' }, { status: 400 });
     }
 
-    try {
-      const retiredAt = getCurrentPSTDateKey();
-      const retired = await retireDailyCheckItem({ orgId: ctx.organizationId, itemId, retiredAt });
-      if (!retired) {
-        // Already retired, or not this tenant's row. Both are "nothing to do"
-        // rather than an error the operator can act on.
-        return NextResponse.json({ ok: true, changed: false });
-      }
-
-      await recordAudit(pool, ctx, request, {
-        source: 'home-daily',
-        action: AUDIT_ACTION.DAILY_CHECK_ITEM_RETIRE,
-        entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
-        entityId: String(itemId),
-        after: { retiredAt },
-      });
-
-      return NextResponse.json({ ok: true, changed: true });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] item retire failed:', message);
-      return NextResponse.json({ error: 'Failed to retire the item' }, { status: 500 });
+    const retiredAt = getCurrentPSTDateKey();
+    const retired = await retireDailyCheckItem({ orgId: ctx.organizationId, itemId, retiredAt });
+    if (!retired) {
+      // Already retired, or not this tenant's row. Both are "nothing to do"
+      // rather than an error the operator can act on.
+      return NextResponse.json({ ok: true, changed: false });
     }
+
+    await recordAudit(pool, ctx, request, {
+      source: 'home-daily',
+      action: AUDIT_ACTION.DAILY_CHECK_ITEM_RETIRE,
+      entityType: AUDIT_ENTITY.DAILY_CHECK_ITEM,
+      entityId: String(itemId),
+      after: { retiredAt },
+    });
+
+    return NextResponse.json({ ok: true, changed: true });
   },
   { permission: 'admin.manage_staff' },
 );

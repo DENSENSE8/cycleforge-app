@@ -9,35 +9,34 @@ import { tenantQuery } from '@/lib/tenancy/db';
  * /sku-stock?view=alerts surface and any digest emails.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'open';
-    const type = searchParams.get('type');
-    const limit = Math.min(
-      Math.max(parseInt(searchParams.get('limit') || '200', 10) || 200, 1),
-      1000,
-    );
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') || 'open';
+  const type = searchParams.get('type');
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') || '200', 10) || 200, 1),
+    1000,
+  );
 
-    const clauses: string[] = [];
-    const params: unknown[] = [];
-    // Tenant ownership filter — never return another org's alerts.
-    params.push(ctx.organizationId);
-    clauses.push(`sa.organization_id = $${params.length}`);
-    if (status === 'open') {
-      clauses.push('sa.resolved_at IS NULL');
-    } else if (status === 'resolved') {
-      clauses.push('sa.resolved_at IS NOT NULL');
-    }
-    if (type === 'LOW_STOCK' || type === 'NEVER_COUNTED' || type === 'STALE_COUNT') {
-      params.push(type);
-      clauses.push(`sa.alert_type = $${params.length}`);
-    }
-    params.push(limit);
-    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  // Tenant ownership filter — never return another org's alerts.
+  params.push(ctx.organizationId);
+  clauses.push(`sa.organization_id = $${params.length}`);
+  if (status === 'open') {
+    clauses.push('sa.resolved_at IS NULL');
+  } else if (status === 'resolved') {
+    clauses.push('sa.resolved_at IS NOT NULL');
+  }
+  if (type === 'LOW_STOCK' || type === 'NEVER_COUNTED' || type === 'STALE_COUNT') {
+    params.push(type);
+    clauses.push(`sa.alert_type = $${params.length}`);
+  }
+  params.push(limit);
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
 
-    const r = await tenantQuery(
-      ctx.organizationId,
-      `SELECT sa.id, sa.sku, sa.bin_id, sa.alert_type, sa.threshold,
+  const r = await tenantQuery(
+    ctx.organizationId,
+    `SELECT sa.id, sa.sku, sa.bin_id, sa.alert_type, sa.threshold,
               sa.qty_at_trigger, sa.triggered_at, sa.resolved_at,
               l.name AS bin_name, l.barcode AS bin_barcode, l.room,
               l.row_label, l.col_label,
@@ -53,14 +52,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        ${where}
        ORDER BY sa.triggered_at DESC
        LIMIT $${params.length}`,
-      params,
-    );
-    return NextResponse.json({ success: true, alerts: r.rows });
-  } catch (err: any) {
-    console.error('[GET /api/stock-alerts] error:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Failed to list alerts' },
-      { status: 500 },
-    );
-  }
+    params,
+  );
+  return NextResponse.json({ success: true, alerts: r.rows });
 }, { permission: 'sku_stock.view' });

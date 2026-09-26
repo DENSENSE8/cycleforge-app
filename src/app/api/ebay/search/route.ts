@@ -4,14 +4,13 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 /** GET /api/ebay/search Search orders across all eBay accounts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const query = searchParams.get('q') || '';
-    const accountFilter = searchParams.get('account');
-    const statusFilter = searchParams.get('status');
-    const limit = parseInt(searchParams.get('limit') || '50');
+  const { searchParams } = new URL(req.url);
+  const query = searchParams.get('q') || '';
+  const accountFilter = searchParams.get('account');
+  const statusFilter = searchParams.get('status');
+  const limit = parseInt(searchParams.get('limit') || '50');
 
-    let sql = `
+  let sql = `
       SELECT 
         o.id, 
         o.order_id, 
@@ -57,54 +56,47 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
                stn.is_carrier_accepted, stn.is_in_transit, stn.is_out_for_delivery, stn.is_delivered
     `;
 
-    const params: any[] = [ctx.organizationId];
-    let paramCount = 2;
+  const params: any[] = [ctx.organizationId];
+  let paramCount = 2;
 
-    // Search across multiple fields
-    if (query && query.trim() !== '') {
-      sql += ` AND (
+  // Search across multiple fields
+  if (query && query.trim() !== '') {
+    sql += ` AND (
         o.order_id ILIKE $${paramCount} OR
         o.sku ILIKE $${paramCount} OR
         o.product_title ILIKE $${paramCount} OR
         COALESCE(stn.tracking_number_raw, '') ILIKE $${paramCount} OR
         tsn.serial_number ILIKE $${paramCount}
       )`;
-      params.push(`%${query.trim()}%`);
-      paramCount++;
-    }
-
-    // Filter by account
-    if (accountFilter && accountFilter.trim() !== '') {
-      sql += ` AND o.account_source = $${paramCount++}`;
-      params.push(accountFilter.trim());
-    }
-
-    // Filter by status
-    if (statusFilter && statusFilter.trim() !== '') {
-      sql += ` AND o.status = $${paramCount++}`;
-      params.push(statusFilter.trim());
-    }
-
-    sql += ` ORDER BY o.order_date DESC NULLS LAST LIMIT $${paramCount}`;
-    params.push(limit);
-
-    const result = await tenantQuery(ctx.organizationId, sql, params);
-
-    return NextResponse.json({
-      success: true,
-      orders: result.rows,
-      count: result.rows.length,
-      query: query || null,
-      filters: {
-        account: accountFilter || null,
-        status: statusFilter || null,
-      }
-    });
-  } catch (error: any) {
-    console.error('Error searching eBay orders:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    params.push(`%${query.trim()}%`);
+    paramCount++;
   }
+
+  // Filter by account
+  if (accountFilter && accountFilter.trim() !== '') {
+    sql += ` AND o.account_source = $${paramCount++}`;
+    params.push(accountFilter.trim());
+  }
+
+  // Filter by status
+  if (statusFilter && statusFilter.trim() !== '') {
+    sql += ` AND o.status = $${paramCount++}`;
+    params.push(statusFilter.trim());
+  }
+
+  sql += ` ORDER BY o.order_date DESC NULLS LAST LIMIT $${paramCount}`;
+  params.push(limit);
+
+  const result = await tenantQuery(ctx.organizationId, sql, params);
+
+  return NextResponse.json({
+    success: true,
+    orders: result.rows,
+    count: result.rows.length,
+    query: query || null,
+    filters: {
+      account: accountFilter || null,
+      status: statusFilter || null,
+    }
+  });
 }, { permission: 'orders.view' });

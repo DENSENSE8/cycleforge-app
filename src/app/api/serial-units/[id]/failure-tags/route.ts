@@ -39,16 +39,10 @@ export const GET = withAuth(async (request, ctx) => {
   if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
     return NextResponse.json({ ok: false, error: 'invalid serial_unit id' }, { status: 400 });
   }
-  try {
-    // Org-scoped read: listUnitFailureTags joins serial_units and filters by
-    // organization_id, so a cross-tenant unit yields an empty list.
-    const tags = await listUnitFailureTags(serialUnitId, ctx.organizationId);
-    return NextResponse.json({ ok: true, tags });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to load failure tags';
-    console.error('[GET /api/serial-units/[id]/failure-tags] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  // Org-scoped read: listUnitFailureTags joins serial_units and filters by
+  // organization_id, so a cross-tenant unit yields an empty list.
+  const tags = await listUnitFailureTags(serialUnitId, ctx.organizationId);
+  return NextResponse.json({ ok: true, tags });
 }, { permission: 'sku_stock.view' });
 
 /** POST — manually tag a failure mode on a unit (idempotent per open mode). */
@@ -63,38 +57,32 @@ export const POST = withAuth(async (request, ctx) => {
 
   const orgId = ctx.organizationId;
 
-  try {
-    // Org-ownership 404 gate before any write: unit_failure_tags has no org
-    // column, so isolation depends entirely on the serial_units org check.
-    if (!(await unitExistsInOrg(serialUnitId, orgId))) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-    // tagUnitFailure also gates the INSERT on serial_units.organization_id when
-    // orgId is threaded (defense in depth).
-    const tag = await tagUnitFailure({
-      serialUnitId,
-      failureModeId: parsed.failureModeId,
-      detectedByStaffId: ctx.staffId,
-      source: parsed.source ?? 'manual',
-      notes: parsed.notes ?? null,
-    }, orgId);
-
-    await recordAudit(pool, ctx, request, {
-      source: 'serial-unit-failure-tags',
-      action: AUDIT_ACTION.FAILURE_TAG_ADD,
-      entityType: AUDIT_ENTITY.SERIAL_UNIT,
-      entityId: serialUnitId,
-      method: 'manual',
-      extra: { failure_mode_id: parsed.failureModeId, tag_id: tag?.id ?? null, source: parsed.source ?? 'manual' },
-    });
-
-    await recomputeUnitQualitySafe(serialUnitId, orgId);
-    return NextResponse.json({ ok: true, tag }, { status: 201 });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to tag failure';
-    console.error('[POST /api/serial-units/[id]/failure-tags] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  // Org-ownership 404 gate before any write: unit_failure_tags has no org
+  // column, so isolation depends entirely on the serial_units org check.
+  if (!(await unitExistsInOrg(serialUnitId, orgId))) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
   }
+  // tagUnitFailure also gates the INSERT on serial_units.organization_id when
+  // orgId is threaded (defense in depth).
+  const tag = await tagUnitFailure({
+    serialUnitId,
+    failureModeId: parsed.failureModeId,
+    detectedByStaffId: ctx.staffId,
+    source: parsed.source ?? 'manual',
+    notes: parsed.notes ?? null,
+  }, orgId);
+
+  await recordAudit(pool, ctx, request, {
+    source: 'serial-unit-failure-tags',
+    action: AUDIT_ACTION.FAILURE_TAG_ADD,
+    entityType: AUDIT_ENTITY.SERIAL_UNIT,
+    entityId: serialUnitId,
+    method: 'manual',
+    extra: { failure_mode_id: parsed.failureModeId, tag_id: tag?.id ?? null, source: parsed.source ?? 'manual' },
+  });
+
+  await recomputeUnitQualitySafe(serialUnitId, orgId);
+  return NextResponse.json({ ok: true, tag }, { status: 201 });
 }, { permission: 'tech.qc_pass' });
 
 /** PATCH — resolve / scrap / reopen a tag. Body: { tagId, resolutionStatus, notes? } */
@@ -109,49 +97,43 @@ export const PATCH = withAuth(async (request, ctx) => {
 
   const orgId = ctx.organizationId;
 
-  try {
-    // Org-ownership 404 gate on the path unit first (serial_units is the only
-    // org-bearing anchor — unit_failure_tags has no organization_id column).
-    if (!(await unitExistsInOrg(serialUnitId, orgId))) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-    // Validate the tag actually belongs to THIS unit AND this org before mutating — closes the cross-tenant-by-id leak where any tech could…
-    const owns = await tenantQuery<{ id: number }>(
-      orgId,
-      `SELECT t.id
+  // Org-ownership 404 gate on the path unit first (serial_units is the only
+  // org-bearing anchor — unit_failure_tags has no organization_id column).
+  if (!(await unitExistsInOrg(serialUnitId, orgId))) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
+  }
+  // Validate the tag actually belongs to THIS unit AND this org before mutating — closes the cross-tenant-by-id leak where any tech could…
+  const owns = await tenantQuery<{ id: number }>(
+    orgId,
+    `SELECT t.id
          FROM unit_failure_tags t
          JOIN serial_units su ON su.id = t.serial_unit_id
         WHERE t.id = $1
           AND t.serial_unit_id = $2
           AND su.organization_id = $3
         LIMIT 1`,
-      [parsed.tagId, serialUnitId, orgId],
-    );
-    if (owns.rows.length === 0) {
-      return NextResponse.json({ ok: false, error: 'tag not found' }, { status: 404 });
-    }
-
-    // resolveUnitFailureTag re-applies the org predicate (EXISTS on
-    // serial_units.organization_id) so the UPDATE itself is org-scoped.
-    const tag = await resolveUnitFailureTag(parsed.tagId, parsed.resolutionStatus, parsed.notes ?? null, orgId);
-    if (!tag) {
-      return NextResponse.json({ ok: false, error: 'tag not found' }, { status: 404 });
-    }
-
-    await recordAudit(pool, ctx, request, {
-      source: 'serial-unit-failure-tags',
-      action: AUDIT_ACTION.FAILURE_TAG_RESOLVE,
-      entityType: AUDIT_ENTITY.SERIAL_UNIT,
-      entityId: serialUnitId,
-      method: 'manual',
-      extra: { tag_id: parsed.tagId, resolution_status: parsed.resolutionStatus },
-    });
-
-    await recomputeUnitQualitySafe(serialUnitId, orgId);
-    return NextResponse.json({ ok: true, tag });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to update failure tag';
-    console.error('[PATCH /api/serial-units/[id]/failure-tags] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    [parsed.tagId, serialUnitId, orgId],
+  );
+  if (owns.rows.length === 0) {
+    return NextResponse.json({ ok: false, error: 'tag not found' }, { status: 404 });
   }
+
+  // resolveUnitFailureTag re-applies the org predicate (EXISTS on
+  // serial_units.organization_id) so the UPDATE itself is org-scoped.
+  const tag = await resolveUnitFailureTag(parsed.tagId, parsed.resolutionStatus, parsed.notes ?? null, orgId);
+  if (!tag) {
+    return NextResponse.json({ ok: false, error: 'tag not found' }, { status: 404 });
+  }
+
+  await recordAudit(pool, ctx, request, {
+    source: 'serial-unit-failure-tags',
+    action: AUDIT_ACTION.FAILURE_TAG_RESOLVE,
+    entityType: AUDIT_ENTITY.SERIAL_UNIT,
+    entityId: serialUnitId,
+    method: 'manual',
+    extra: { tag_id: parsed.tagId, resolution_status: parsed.resolutionStatus },
+  });
+
+  await recomputeUnitQualitySafe(serialUnitId, orgId);
+  return NextResponse.json({ ok: true, tag });
 }, { permission: 'tech.qc_pass' });

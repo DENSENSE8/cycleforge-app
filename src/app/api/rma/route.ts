@@ -17,14 +17,8 @@ const VALID_DIRECTIONS: ReadonlySet<RmaDirection> = new Set([
  * Lists open RMAs (AUTHORIZED / RECEIVED / DISPOSITIONED), newest first.
  */
 export const GET = withAuth(async (_request, ctx) => {
-  try {
-    const rmas = await listOpen(ctx.organizationId);
-    return NextResponse.json({ ok: true, rmas });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'list rma failed';
-    console.error('[GET /api/rma] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const rmas = await listOpen(ctx.organizationId);
+  return NextResponse.json({ ok: true, rmas });
 }, { permission: 'rma.view' });
 
 /** POST /api/rma */
@@ -55,21 +49,15 @@ export const POST = withAuth(async (request, ctx) => {
   const expiresAt =
     typeof body?.expires_at === 'string' && body.expires_at.trim() ? body.expires_at.trim() : null;
 
-  try {
-    const result = await createAuthorization({
-      direction,
-      orderId,
-      customerId,
-      expectedCarrier,
-      notes,
-      expiresAt,
-      createdByStaffId: actorStaffId,
-    }, orgId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result, { status: 201 });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'create rma failed';
-    console.error('[POST /api/rma] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await createAuthorization({
+    direction,
+    orderId,
+    customerId,
+    expectedCarrier,
+    notes,
+    expiresAt,
+    createdByStaffId: actorStaffId,
+  }, orgId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result, { status: 201 });
 }, { permission: 'rma.manage' });

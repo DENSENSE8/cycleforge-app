@@ -98,13 +98,8 @@ async function listView(url: URL) {
 export const GET = withAuth(
   async (req: NextRequest) => {
     const url = new URL(req.url);
-    try {
-      const view = url.searchParams.get('view') || 'summary';
-      return NextResponse.json(view === 'list' ? await listView(url) : await summaryView());
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'cron-runs query failed';
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
-    }
+    const view = url.searchParams.get('view') || 'summary';
+    return NextResponse.json(view === 'list' ? await listView(url) : await summaryView());
   },
   { permission: 'admin.view' },
 );

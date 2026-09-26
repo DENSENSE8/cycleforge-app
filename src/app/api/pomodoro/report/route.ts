@@ -18,12 +18,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (!parsed.success) return NextResponse.json(
     { ok: false, error: 'Invalid report range (maximum 31 days)' }, { status: 400 },
   );
-  try {
-    return NextResponse.json(await loadPomodoroReport({
-      orgId: ctx.organizationId, ...parsed.data,
-    }, pomodoroReportDbDeps));
-  } catch (error) {
-    console.error('[pomodoro/report] report failed:', error);
-    return NextResponse.json({ ok: false, error: 'Failed to load activity report' }, { status: 500 });
-  }
+  return NextResponse.json(await loadPomodoroReport({
+    orgId: ctx.organizationId, ...parsed.data,
+  }, pomodoroReportDbDeps));
 }, { permission: 'operations.view' });

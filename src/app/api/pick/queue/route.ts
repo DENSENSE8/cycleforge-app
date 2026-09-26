@@ -58,54 +58,48 @@ const QUEUE_SQL = `
 `;
 
 export const GET = withAuth(async (request, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const scoped = resolvePickQueueStaffId({
-      sessionStaffId: ctx.staffId,
-      staffIdParam: searchParams.get('staffId'),
-      canInspectOther: ctx.permissions.has('admin.view_logs'),
-    });
-    if (!scoped.ok) {
-      return NextResponse.json({ ok: false, error: scoped.error }, { status: 400 });
-    }
-    const staffId = scoped.staffId;
-
-    const q = await tenantQuery<{
-      order_id: number;
-      order_label: string | null;
-      first_name: string | null;
-      last_name: string | null;
-      account_source: string | null;
-      deadline_at: string | null;
-      pending_count: number;
-      in_progress_count: number;
-      total_count: number;
-      active_picker_id: number | null;
-    }>(ctx.organizationId, QUEUE_SQL, [ctx.organizationId, staffId]);
-
-    const rows: PickQueueRow[] = q.rows.map((r) => {
-      const first = (r.first_name || '').trim();
-      const last = (r.last_name || '').trim();
-      const initials = `${first[0] || '?'}${last[0] || ''}`.toUpperCase();
-      const fullName = [first, last].filter(Boolean).join(' ') || null;
-      return {
-        orderId: r.order_id,
-        orderLabel: r.order_label ? `#${r.order_label}` : `#${r.order_id}`,
-        customerInitials: initials,
-        customerName: fullName,
-        accountSource: r.account_source,
-        shipByDate: r.deadline_at,
-        pendingCount: r.pending_count,
-        inProgressCount: r.in_progress_count,
-        totalCount: r.total_count,
-        activePickerId: r.active_picker_id,
-      };
-    });
-
-    return NextResponse.json({ ok: true, count: rows.length, queue: rows, staffId });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'queue load failed';
-    console.error('[GET /api/pick/queue] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  const { searchParams } = new URL(request.url);
+  const scoped = resolvePickQueueStaffId({
+    sessionStaffId: ctx.staffId,
+    staffIdParam: searchParams.get('staffId'),
+    canInspectOther: ctx.permissions.has('admin.view_logs'),
+  });
+  if (!scoped.ok) {
+    return NextResponse.json({ ok: false, error: scoped.error }, { status: 400 });
   }
+  const staffId = scoped.staffId;
+
+  const q = await tenantQuery<{
+    order_id: number;
+    order_label: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    account_source: string | null;
+    deadline_at: string | null;
+    pending_count: number;
+    in_progress_count: number;
+    total_count: number;
+    active_picker_id: number | null;
+  }>(ctx.organizationId, QUEUE_SQL, [ctx.organizationId, staffId]);
+
+  const rows: PickQueueRow[] = q.rows.map((r) => {
+    const first = (r.first_name || '').trim();
+    const last = (r.last_name || '').trim();
+    const initials = `${first[0] || '?'}${last[0] || ''}`.toUpperCase();
+    const fullName = [first, last].filter(Boolean).join(' ') || null;
+    return {
+      orderId: r.order_id,
+      orderLabel: r.order_label ? `#${r.order_label}` : `#${r.order_id}`,
+      customerInitials: initials,
+      customerName: fullName,
+      accountSource: r.account_source,
+      shipByDate: r.deadline_at,
+      pendingCount: r.pending_count,
+      inProgressCount: r.in_progress_count,
+      totalCount: r.total_count,
+      activePickerId: r.active_picker_id,
+    };
+  });
+
+  return NextResponse.json({ ok: true, count: rows.length, queue: rows, staffId });
 }, { permission: 'orders.view' });

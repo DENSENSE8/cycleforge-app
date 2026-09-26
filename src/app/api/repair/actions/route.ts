@@ -26,16 +26,8 @@ export const GET = withAuth(
       return NextResponse.json({ error: 'repairId is required' }, { status: 400 });
     }
 
-    try {
-      const actions = await listRepairActions(ctx.organizationId, repairId);
-      return NextResponse.json({ actions });
-    } catch (error: unknown) {
-      console.error('GET /api/repair/actions error:', error);
-      return NextResponse.json(
-        { error: 'Failed to load repair actions', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 },
-      );
-    }
+    const actions = await listRepairActions(ctx.organizationId, repairId);
+    return NextResponse.json({ actions });
   },
   { permission: 'repair.view' },
 );
@@ -47,50 +39,42 @@ export const POST = withAuth(
     const parsed = parseBody(RepairActionCreateBody, raw);
     if (parsed instanceof NextResponse) return parsed;
 
-    try {
-      const link = await readRepairTicketLink(ctx.organizationId, parsed.repairId);
-      const ticketId = link?.state === 'linked' ? link.zendeskTicketId : null;
-      const result = await createRepairAction(ctx.organizationId, ctx.staffId, parsed, ticketId);
-      if (!result.ok) {
-        return NextResponse.json({ error: result.error }, { status: result.status });
-      }
+    const link = await readRepairTicketLink(ctx.organizationId, parsed.repairId);
+    const ticketId = link?.state === 'linked' ? link.zendeskTicketId : null;
+    const result = await createRepairAction(ctx.organizationId, ctx.staffId, parsed, ticketId);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
-      if (result.action.ticket_post_status === 'pending') {
-        const actionId = result.action.id;
-        const orgId = ctx.organizationId;
-        scheduleAfterResponse(async () => {
-          await postRepairActionToTicket(orgId, actionId);
-        });
-      }
+    if (result.action.ticket_post_status === 'pending') {
+      const actionId = result.action.id;
+      const orgId = ctx.organizationId;
+      scheduleAfterResponse(async () => {
+        await postRepairActionToTicket(orgId, actionId);
+      });
+    }
 
-      await invalidateCacheTags(['repair-service']);
-      await publishRepairChanged({
+    await invalidateCacheTags(['repair-service']);
+    await publishRepairChanged({
+      organizationId: ctx.organizationId,
+      repairIds: [parsed.repairId],
+      source: 'repair.action-logged',
+    });
+    const { stock_ledger_id: ledgerId, new_sku: sku, stock_qty: takenQty } = result.action;
+    if (ledgerId != null && sku) {
+      await publishStockLedgerEvent({
         organizationId: ctx.organizationId,
-        repairIds: [parsed.repairId],
+        ledgerId,
+        sku,
+        delta: -(takenQty ?? 1),
+        reason: REPAIR_LEDGER_REASON.installed,
+        dimension: 'WAREHOUSE',
+        staffId: ctx.staffId,
         source: 'repair.action-logged',
       });
-      const { stock_ledger_id: ledgerId, new_sku: sku, stock_qty: takenQty } = result.action;
-      if (ledgerId != null && sku) {
-        await publishStockLedgerEvent({
-          organizationId: ctx.organizationId,
-          ledgerId,
-          sku,
-          delta: -(takenQty ?? 1),
-          reason: REPAIR_LEDGER_REASON.installed,
-          dimension: 'WAREHOUSE',
-          staffId: ctx.staffId,
-          source: 'repair.action-logged',
-        });
-      }
-
-      return NextResponse.json({ success: true, action: result.action });
-    } catch (error: unknown) {
-      console.error('POST /api/repair/actions error:', error);
-      return NextResponse.json(
-        { error: 'Failed to log repair action', details: error instanceof Error ? error.message : String(error) },
-        { status: 500 },
-      );
     }
+
+    return NextResponse.json({ success: true, action: result.action });
   },
   { permission: 'repair.mark_repaired' },
 );

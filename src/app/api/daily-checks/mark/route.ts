@@ -34,35 +34,29 @@ export const POST = withAuth(
     }
     const dateKey = date ?? getCurrentPSTDateKey();
 
-    try {
-      if (!(await dailyCheckItemBelongsToStaff({
-        orgId: ctx.organizationId,
-        itemId,
-        staffId: ctx.staffId,
-      }))) {
-        return NextResponse.json({ error: 'That task belongs to another staff member' }, { status: 403 });
-      }
-      const changed = checked
-        ? await markDailyCheck({
-            orgId: ctx.organizationId,
-            itemId,
-            staffId: ctx.staffId,
-            dateKey,
-            note: note ?? null,
-          })
-        : await unmarkDailyCheck({
-            orgId: ctx.organizationId,
-            itemId,
-            staffId: ctx.staffId,
-            dateKey,
-          });
-
-      return NextResponse.json({ ok: true, checked, changed, dateKey });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] mark failed:', message);
-      return NextResponse.json({ error: 'Failed to save the check' }, { status: 500 });
+    if (!(await dailyCheckItemBelongsToStaff({
+      orgId: ctx.organizationId,
+      itemId,
+      staffId: ctx.staffId,
+    }))) {
+      return NextResponse.json({ error: 'That task belongs to another staff member' }, { status: 403 });
     }
+    const changed = checked
+      ? await markDailyCheck({
+          orgId: ctx.organizationId,
+          itemId,
+          staffId: ctx.staffId,
+          dateKey,
+          note: note ?? null,
+        })
+      : await unmarkDailyCheck({
+          orgId: ctx.organizationId,
+          itemId,
+          staffId: ctx.staffId,
+          dateKey,
+        });
+
+    return NextResponse.json({ ok: true, checked, changed, dateKey });
   },
   { permission: 'dashboard.view' },
 );
@@ -76,18 +70,12 @@ export const DELETE = withAuth(
     }
     const dateKey = date ?? getCurrentPSTDateKey();
 
-    try {
-      const cleared = await clearDailyCheckMarks({
-        orgId: ctx.organizationId,
-        staffId: ctx.staffId,
-        dateKey,
-      });
-      return NextResponse.json({ ok: true, cleared, dateKey });
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('[daily-checks] reset failed:', message);
-      return NextResponse.json({ error: 'Failed to reset the checks' }, { status: 500 });
-    }
+    const cleared = await clearDailyCheckMarks({
+      orgId: ctx.organizationId,
+      staffId: ctx.staffId,
+      dateKey,
+    });
+    return NextResponse.json({ ok: true, cleared, dateKey });
   },
   { permission: 'dashboard.view' },
 );

@@ -33,28 +33,22 @@ export const POST = withAuth(
       );
     }
 
-    try {
-      const { manifest, added, conflicts } = await addManifestItems(
-        id,
-        parsed.data.serialUnitIds,
-        orgId,
-      );
-      if (!manifest) {
-        return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
-      }
-      await recordAudit(pool, ctx, request, {
-        source: 'label-manifests-api',
-        action: AUDIT_ACTION.MANIFEST_ADD_ITEM,
-        entityType: AUDIT_ENTITY.LABEL_MANIFEST,
-        entityId: id,
-        after: { added, conflicts },
-      });
-      return NextResponse.json({ ok: true, manifest, added, conflicts });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'add manifest items failed';
-      console.error('[POST /api/label-manifests/[id]/items] error:', err);
-      return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const { manifest, added, conflicts } = await addManifestItems(
+      id,
+      parsed.data.serialUnitIds,
+      orgId,
+    );
+    if (!manifest) {
+      return NextResponse.json({ ok: false, error: 'manifest not found' }, { status: 404 });
     }
+    await recordAudit(pool, ctx, request, {
+      source: 'label-manifests-api',
+      action: AUDIT_ACTION.MANIFEST_ADD_ITEM,
+      entityType: AUDIT_ENTITY.LABEL_MANIFEST,
+      entityId: id,
+      after: { added, conflicts },
+    });
+    return NextResponse.json({ ok: true, manifest, added, conflicts });
   },
   { permission: 'label.manifest.manage' },
 );

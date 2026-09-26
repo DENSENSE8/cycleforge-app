@@ -47,49 +47,43 @@ export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
-  try {
-    const result = await recordDataWipe({
-      serialUnitId,
-      wipeSuccess,
-      wipeMethod,
-      wipeCertRef,
-      notes,
-      clientEventId,
-      actorStaffId,
-      organizationId: ctx.organizationId,
-    });
-    if (!result) {
-      return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
-    }
-
-    await recordAudit(pool, ctx, request, {
-      source: 'tech.data-wipe',
-      action: AUDIT_ACTION.TECH_DATA_WIPE,
-      entityType: AUDIT_ENTITY.SERIAL_UNIT,
-      entityId: result.unit.id,
-      method: 'manual',
-      before: { status: result.unit.current_status },
-      after: { status: result.unit.current_status, wiped: wipeSuccess },
-      note: notes,
-      extra: {
-        wipe_success: wipeSuccess,
-        wipe_method: wipeMethod,
-        wipe_cert_ref: wipeCertRef,
-        serial_number: result.unit.serial_number,
-        sku: result.unit.sku,
-        inventory_event_id: result.eventId,
-      },
-    });
-
-    return NextResponse.json({
-      ok: true,
-      unit: result.unit,
-      event_id: result.eventId,
-      idempotent: result.idempotent,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'data wipe failed';
-    console.error('[POST /api/serial-units/[id]/data-wipe] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  const result = await recordDataWipe({
+    serialUnitId,
+    wipeSuccess,
+    wipeMethod,
+    wipeCertRef,
+    notes,
+    clientEventId,
+    actorStaffId,
+    organizationId: ctx.organizationId,
+  });
+  if (!result) {
+    return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
   }
+
+  await recordAudit(pool, ctx, request, {
+    source: 'tech.data-wipe',
+    action: AUDIT_ACTION.TECH_DATA_WIPE,
+    entityType: AUDIT_ENTITY.SERIAL_UNIT,
+    entityId: result.unit.id,
+    method: 'manual',
+    before: { status: result.unit.current_status },
+    after: { status: result.unit.current_status, wiped: wipeSuccess },
+    note: notes,
+    extra: {
+      wipe_success: wipeSuccess,
+      wipe_method: wipeMethod,
+      wipe_cert_ref: wipeCertRef,
+      serial_number: result.unit.serial_number,
+      sku: result.unit.sku,
+      inventory_event_id: result.eventId,
+    },
+  });
+
+  return NextResponse.json({
+    ok: true,
+    unit: result.unit,
+    event_id: result.eventId,
+    idempotent: result.idempotent,
+  });
 }, { permission: 'tech.data_wipe' });

@@ -108,27 +108,9 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
   `;
 
   let result;
-  try {
-    result = await withTenantTransaction(ctx.organizationId, (client) =>
-      client.query(sql, insertVals),
-    );
-  } catch (err) {
-    // Surface Postgres errors with their code so the client can show something better than a generic "update failed".
-    const pgErr = err as { code?: string; message?: string; detail?: string };
-    console.error(
-      `[unfound-queue.PATCH] upsert failed kind=${kind} source_id=${sourceId} keys=[${setKeys.join(',')}]`,
-      { code: pgErr.code, message: pgErr.message, detail: pgErr.detail },
-    );
-    return NextResponse.json(
-      {
-        success: false,
-        error: `db error: ${pgErr.message ?? 'unknown'}`,
-        code: pgErr.code,
-        detail: pgErr.detail,
-      },
-      { status: 500 },
-    );
-  }
+  result = await withTenantTransaction(ctx.organizationId, (client) =>
+    client.query(sql, insertVals),
+  );
 
   after(async () => {
     try {
@@ -175,56 +157,44 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   type TxOutcome = { ok: true } | { status: 400 | 404; error: string };
 
   let outcome: TxOutcome;
-  try {
-    outcome = await withTenantTransaction<TxOutcome>(ctx.organizationId, async (client) => {
-      let deleted = 0;
-      if (kind === 'email_po') {
-        const res = await client.query(
-          `DELETE FROM email_missing_purchase_orders
+  outcome = await withTenantTransaction<TxOutcome>(ctx.organizationId, async (client) => {
+    let deleted = 0;
+    if (kind === 'email_po') {
+      const res = await client.query(
+        `DELETE FROM email_missing_purchase_orders
             WHERE id = $1 AND organization_id = $2`,
-          [sourceId, ctx.organizationId],
-        );
-        deleted = res.rowCount ?? 0;
-      } else if (kind === 'station_exception') {
-        // orders_exceptions.id is INTEGER; the URL carries it as string.
-        const numericId = Number(sourceId);
-        if (!Number.isFinite(numericId) || numericId <= 0) {
-          return { status: 400, error: 'station_exception id must be numeric' };
-        }
-        const res = await client.query(
-          `DELETE FROM orders_exceptions
+        [sourceId, ctx.organizationId],
+      );
+      deleted = res.rowCount ?? 0;
+    } else if (kind === 'station_exception') {
+      // orders_exceptions.id is INTEGER; the URL carries it as string.
+      const numericId = Number(sourceId);
+      if (!Number.isFinite(numericId) || numericId <= 0) {
+        return { status: 400, error: 'station_exception id must be numeric' };
+      }
+      const res = await client.query(
+        `DELETE FROM orders_exceptions
             WHERE id = $1 AND organization_id = $2`,
-          [numericId, ctx.organizationId],
-        );
-        deleted = res.rowCount ?? 0;
-      }
+        [numericId, ctx.organizationId],
+      );
+      deleted = res.rowCount ?? 0;
+    }
 
-      if (deleted === 0) {
-        return { status: 404, error: 'source row not found' };
-      }
+    if (deleted === 0) {
+      return { status: 404, error: 'source row not found' };
+    }
 
-      // Best-effort overlay cleanup. If no overlay row exists, this is a no-op.
-      await client.query(
-        `DELETE FROM unfound_overlay
+    // Best-effort overlay cleanup. If no overlay row exists, this is a no-op.
+    await client.query(
+      `DELETE FROM unfound_overlay
           WHERE organization_id = $1
             AND source_kind = $2
             AND source_id = $3`,
-        [ctx.organizationId, kind, sourceId],
-      );
+      [ctx.organizationId, kind, sourceId],
+    );
 
-      return { ok: true };
-    });
-  } catch (err) {
-    const pgErr = err as { code?: string; message?: string };
-    console.error(
-      `[unfound-queue.DELETE] failed kind=${kind} source_id=${sourceId}`,
-      { code: pgErr.code, message: pgErr.message },
-    );
-    return NextResponse.json(
-      { success: false, error: `delete failed: ${pgErr.message ?? 'unknown'}` },
-      { status: 500 },
-    );
-  }
+    return { ok: true };
+  });
 
   if (!('ok' in outcome)) {
     return NextResponse.json(

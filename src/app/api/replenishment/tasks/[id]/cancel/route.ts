@@ -23,13 +23,7 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'reason required' }, { status: 400 });
   }
 
-  try {
-    const result = await cancelTask({ taskId, reason, actorStaffId }, ctx.organizationId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'cancel failed';
-    console.error('[POST /api/replenishment/tasks/[id]/cancel] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await cancelTask({ taskId, reason, actorStaffId }, ctx.organizationId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result);
 }, { permission: 'bin.adjust' });

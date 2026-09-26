@@ -15,19 +15,18 @@ interface SuggestionRow {
 }
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const title = (searchParams.get('title') || '').trim();
-    const limit = Math.min(Math.max(Number(searchParams.get('limit') || 5), 1), 20);
+  const { searchParams } = new URL(req.url);
+  const title = (searchParams.get('title') || '').trim();
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') || 5), 1), 20);
 
-    // No title to match against → nothing to suggest (not an error).
-    if (!title) {
-      return NextResponse.json({ success: true, suggestions: [] });
-    }
+  // No title to match against → nothing to suggest (not an error).
+  if (!title) {
+    return NextResponse.json({ success: true, suggestions: [] });
+  }
 
-    const { rows } = await tenantQuery<SuggestionRow>(
-      ctx.organizationId,
-      `SELECT id, sku, product_title, category, image_url, confidence, sim
+  const { rows } = await tenantQuery<SuggestionRow>(
+    ctx.organizationId,
+    `SELECT id, sku, product_title, category, image_url, confidence, sim
          FROM (
            SELECT id, sku, product_title, category, image_url,
                   LEAST(95, GREATEST(0, ROUND(similarity(product_title, $1) * 85)::int)) AS confidence,
@@ -40,24 +39,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         WHERE s.confidence >= 40
         ORDER BY s.confidence DESC, s.product_title
         LIMIT $2`,
-      [title, limit, ctx.organizationId],
-    );
+    [title, limit, ctx.organizationId],
+  );
 
-    return NextResponse.json({
-      success: true,
-      suggestions: rows.map((r) => ({
-        id: r.id,
-        sku: r.sku,
-        product_title: r.product_title,
-        category: r.category,
-        image_url: r.image_url,
-        confidence: r.confidence,
-        reason: `trigram_${r.sim}`,
-      })),
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to suggest matches';
-    console.error('[sku-catalog/suggest-for-item] Error:', error);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    suggestions: rows.map((r) => ({
+      id: r.id,
+      sku: r.sku,
+      product_title: r.product_title,
+      category: r.category,
+      image_url: r.image_url,
+      confidence: r.confidence,
+      reason: `trigram_${r.sim}`,
+    })),
+  });
 }, { permission: 'sku_stock.view' });

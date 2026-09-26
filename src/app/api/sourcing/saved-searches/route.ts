@@ -21,22 +21,14 @@ const ROUTE_SAVED_SEARCH_CREATE = 'sourcing-saved-search.create';
  * Defaults to active only; pass active=false to include paused/archived rows.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const active = searchParams.get('active');
-    const skuId = searchParams.get('skuId');
-    const items = await listSourcingSearches({
-      activeOnly: active !== 'false',
-      skuId: skuId ? Number(skuId) : null,
-    }, ctx.organizationId);
-    return NextResponse.json({ success: true, items, total: items.length });
-  } catch (error: any) {
-    console.error('Error in GET /api/sourcing/saved-searches:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch saved searches' },
-      { status: 500 },
-    );
-  }
+  const { searchParams } = new URL(req.url);
+  const active = searchParams.get('active');
+  const skuId = searchParams.get('skuId');
+  const items = await listSourcingSearches({
+    activeOnly: active !== 'false',
+    skuId: skuId ? Number(skuId) : null,
+  }, ctx.organizationId);
+  return NextResponse.json({ success: true, items, total: items.length });
 }, { permission: 'sourcing.view', feature: 'sourcing' });
 
 /**

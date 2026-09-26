@@ -3,49 +3,48 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || '';
-    const pickupDate = searchParams.get('pickupDate') || '';
-    const search = (searchParams.get('q') || '').trim();
-    const limit = Math.min(Math.max(Number(searchParams.get('limit') || 50), 1), 200);
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') || '';
+  const pickupDate = searchParams.get('pickupDate') || '';
+  const search = (searchParams.get('q') || '').trim();
+  const limit = Math.min(Math.max(Number(searchParams.get('limit') || 50), 1), 200);
 
-    const filterClauses: string[] = [];
-    const params: unknown[] = [];
+  const filterClauses: string[] = [];
+  const params: unknown[] = [];
 
-    // Tenant ownership filter — never return another org's pickup orders.
-    params.push(ctx.organizationId);
-    filterClauses.push(`o.organization_id = $${params.length}`);
+  // Tenant ownership filter — never return another org's pickup orders.
+  params.push(ctx.organizationId);
+  filterClauses.push(`o.organization_id = $${params.length}`);
 
-    if (status) {
-      params.push(status.toUpperCase());
-      filterClauses.push(`o.status = $${params.length}`);
-    }
+  if (status) {
+    params.push(status.toUpperCase());
+    filterClauses.push(`o.status = $${params.length}`);
+  }
 
-    if (pickupDate) {
-      params.push(pickupDate);
-      filterClauses.push(`o.pickup_date = $${params.length}::date`);
-    }
+  if (pickupDate) {
+    params.push(pickupDate);
+    filterClauses.push(`o.pickup_date = $${params.length}::date`);
+  }
 
-    if (search) {
-      params.push(`%${search}%`);
-      filterClauses.push(
-        `(o.customer_name ILIKE $${params.length} OR EXISTS (
+  if (search) {
+    params.push(`%${search}%`);
+    filterClauses.push(
+      `(o.customer_name ILIKE $${params.length} OR EXISTS (
           SELECT 1 FROM local_pickup_order_items oi
           WHERE oi.order_id = o.id
             AND (oi.product_title ILIKE $${params.length} OR oi.sku ILIKE $${params.length})
         ))`,
-      );
-    }
+    );
+  }
 
-    params.push(limit);
-    const limitIdx = params.length;
+  params.push(limit);
+  const limitIdx = params.length;
 
-    const where = filterClauses.length > 0 ? `WHERE ${filterClauses.join(' AND ')}` : '';
+  const where = filterClauses.length > 0 ? `WHERE ${filterClauses.join(' AND ')}` : '';
 
-    const ordersResult = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const ordersResult = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
          o.id,
          o.pickup_date::text,
          o.customer_name,
@@ -72,12 +71,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        ${where}
        ORDER BY o.pickup_date DESC, o.created_at DESC
        LIMIT $${limitIdx}`,
-      params,
-    );
+    params,
+  );
 
-    const dates = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const dates = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
          pickup_date::text,
          COUNT(*)::int AS order_count,
          COALESCE(SUM(agg.total_value), 0)::numeric(12,2)::text AS total_value
@@ -90,75 +89,60 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        GROUP BY pickup_date
        ORDER BY pickup_date DESC
        LIMIT 60`,
-      [ctx.organizationId],
-    );
+    [ctx.organizationId],
+  );
 
-    return NextResponse.json({
-      success: true,
-      orders: ordersResult.rows,
-      dates: dates.rows,
-    });
-  } catch (error: any) {
-    console.error('[local-pickup-orders][GET]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch orders' },
-      { status: 500 },
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    orders: ordersResult.rows,
+    dates: dates.rows,
+  });
 }, { permission: 'walk_in.view' });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const body = (await req.json()) as Record<string, unknown>;
-    const pickupDate = String(body.pickupDate || body.pickup_date || '').trim() || new Date().toISOString().slice(0, 10);
-    const customerName = String(body.customerName || body.customer_name || '').trim() || null;
-    const notes = String(body.notes || '').trim() || null;
-    const createdBy = ctx.staffId;
-    const items = Array.isArray(body.items) ? body.items : [];
+  const body = (await req.json()) as Record<string, unknown>;
+  const pickupDate = String(body.pickupDate || body.pickup_date || '').trim() || new Date().toISOString().slice(0, 10);
+  const customerName = String(body.customerName || body.customer_name || '').trim() || null;
+  const notes = String(body.notes || '').trim() || null;
+  const createdBy = ctx.staffId;
+  const items = Array.isArray(body.items) ? body.items : [];
 
-    return await withTenantTransaction(ctx.organizationId, async (client) => {
-      const orderResult = await client.query(
-        `INSERT INTO local_pickup_orders (pickup_date, customer_name, notes, created_by, status, organization_id)
+  return await withTenantTransaction(ctx.organizationId, async (client) => {
+    const orderResult = await client.query(
+      `INSERT INTO local_pickup_orders (pickup_date, customer_name, notes, created_by, status, organization_id)
          VALUES ($1::date, $2, $3, $4, 'DRAFT', $5)
          RETURNING *`,
-        [pickupDate, customerName, notes, createdBy, ctx.organizationId],
-      );
-      const order = orderResult.rows[0];
+      [pickupDate, customerName, notes, createdBy, ctx.organizationId],
+    );
+    const order = orderResult.rows[0];
 
-      const insertedItems = [];
-      for (const item of items) {
-        const i = item as Record<string, unknown>;
-        const result = await client.query(
-          `INSERT INTO local_pickup_order_items
+    const insertedItems = [];
+    for (const item of items) {
+      const i = item as Record<string, unknown>;
+      const result = await client.query(
+        `INSERT INTO local_pickup_order_items
              (order_id, sku, product_title, image_url, quantity, condition_grade, parts_status, missing_parts_note, condition_note, total_price, organization_id)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::numeric, (SELECT organization_id FROM local_pickup_orders WHERE id = $1))
            RETURNING *`,
-          [
-            order.id,
-            String(i.sku || ''),
-            String(i.product_title || i.productTitle || '') || null,
-            String(i.image_url || i.imageUrl || '') || null,
-            Math.max(1, Math.floor(Number(i.quantity) || 1)),
-            String(i.condition_grade || i.conditionGrade || 'USED_A'),
-            String(i.parts_status || i.partsStatus || 'COMPLETE'),
-            String(i.missing_parts_note || i.missingPartsNote || '') || null,
-            String(i.condition_note || i.conditionNote || '') || null,
-            Number(i.total_price || i.totalPrice || i.total) || 0,
-          ],
-        );
-        insertedItems.push(result.rows[0]);
-      }
+        [
+          order.id,
+          String(i.sku || ''),
+          String(i.product_title || i.productTitle || '') || null,
+          String(i.image_url || i.imageUrl || '') || null,
+          Math.max(1, Math.floor(Number(i.quantity) || 1)),
+          String(i.condition_grade || i.conditionGrade || 'USED_A'),
+          String(i.parts_status || i.partsStatus || 'COMPLETE'),
+          String(i.missing_parts_note || i.missingPartsNote || '') || null,
+          String(i.condition_note || i.conditionNote || '') || null,
+          Number(i.total_price || i.totalPrice || i.total) || 0,
+        ],
+      );
+      insertedItems.push(result.rows[0]);
+    }
 
-      return NextResponse.json({
-        success: true,
-        order: { ...order, items: insertedItems },
-      });
+    return NextResponse.json({
+      success: true,
+      order: { ...order, items: insertedItems },
     });
-  } catch (error: any) {
-    console.error('[local-pickup-orders][POST]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to create order' },
-      { status: 500 },
-    );
-  }
+  });
 }, { permission: 'walk_in.intake' });

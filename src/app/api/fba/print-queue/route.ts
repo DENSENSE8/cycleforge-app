@@ -9,28 +9,27 @@ const DEFAULT_PRINT_STATUSES: AllowedStatus[] = ['TESTED', 'OUT_OF_STOCK', 'PACK
 
 /** GET /api/fba/print-queue */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const rawStatus = searchParams.get('status');
-    const dateFilter = searchParams.get('date');
+  const { searchParams } = new URL(request.url);
+  const rawStatus = searchParams.get('status');
+  const dateFilter = searchParams.get('date');
 
-    let statuses: AllowedStatus[];
-    if (rawStatus && rawStatus.trim()) {
-      const parts = rawStatus.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
-      statuses = parts.filter((s): s is AllowedStatus =>
-        (ALLOWED_STATUSES as readonly string[]).includes(s)
-      ) as AllowedStatus[];
-      if (statuses.length === 0) statuses = [...DEFAULT_PRINT_STATUSES];
-    } else {
-      statuses = [...DEFAULT_PRINT_STATUSES];
-    }
+  let statuses: AllowedStatus[];
+  if (rawStatus && rawStatus.trim()) {
+    const parts = rawStatus.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+    statuses = parts.filter((s): s is AllowedStatus =>
+      (ALLOWED_STATUSES as readonly string[]).includes(s)
+    ) as AllowedStatus[];
+    if (statuses.length === 0) statuses = [...DEFAULT_PRINT_STATUSES];
+  } else {
+    statuses = [...DEFAULT_PRINT_STATUSES];
+  }
 
-    const dateIso =
-      dateFilter && /^\d{4}-\d{2}-\d{2}$/.test(dateFilter.trim()) ? dateFilter.trim() : null;
+  const dateIso =
+    dateFilter && /^\d{4}-\d{2}-\d{2}$/.test(dateFilter.trim()) ? dateFilter.trim() : null;
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `SELECT
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `SELECT
          fsi.id               AS item_id,
          fsi.fnsku,
          fsi.expected_qty,
@@ -86,30 +85,23 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
          AND ($2::date IS NULL OR fs.due_date IS NOT NULL AND (fs.due_date AT TIME ZONE 'UTC')::date = $2::date)
          AND fsi.organization_id = $3
        ORDER BY fs.due_date ASC NULLS LAST, fs.id ASC, fsi.fnsku ASC`,
-      [statuses, dateIso, ctx.organizationId]
-    );
+    [statuses, dateIso, ctx.organizationId]
+  );
 
-    const items = result.rows.map((row: Record<string, unknown>) => {
-      const itemStatus = String(row.item_status || '');
-      let pending_reason: string | null = null;
-      if (itemStatus === 'OUT_OF_STOCK') pending_reason = 'out_of_stock';
-      const pending_reason_note =
-        row.item_notes != null && String(row.item_notes).trim()
-          ? String(row.item_notes).trim()
-          : null;
-      return {
-        ...row,
-        pending_reason,
-        pending_reason_note,
-      };
-    });
+  const items = result.rows.map((row: Record<string, unknown>) => {
+    const itemStatus = String(row.item_status || '');
+    let pending_reason: string | null = null;
+    if (itemStatus === 'OUT_OF_STOCK') pending_reason = 'out_of_stock';
+    const pending_reason_note =
+      row.item_notes != null && String(row.item_notes).trim()
+        ? String(row.item_notes).trim()
+        : null;
+    return {
+      ...row,
+      pending_reason,
+      pending_reason_note,
+    };
+  });
 
-    return NextResponse.json({ success: true, items });
-  } catch (error: any) {
-    console.error('[GET /api/fba/print-queue]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch print queue' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ success: true, items });
 }, { permission: 'fba.view', feature: 'fba' });

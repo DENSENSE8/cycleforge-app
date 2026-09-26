@@ -23,12 +23,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   if (parsed instanceof NextResponse) return parsed;
 
   const day = parsed.day ?? getCurrentPSTDateKey();
-  try {
-    const summary = await getPackingKpisForDay(ctx.organizationId, day);
-    return NextResponse.json({ ok: true, ...summary });
-  } catch (error: any) {
-    console.error('Error in GET /api/packing/kpi:', error);
-    return NextResponse.json({ ok: false, error: error?.message || 'Failed to load packing KPIs' }, { status: 500 });
-  }
+  const summary = await getPackingKpisForDay(ctx.organizationId, day);
+  return NextResponse.json({ ok: true, ...summary });
 }, { permission: 'operations.view' });
 

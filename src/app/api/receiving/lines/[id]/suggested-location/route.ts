@@ -15,24 +15,10 @@ export const GET = withAuth(
       );
     }
 
-    try {
-      const suggestion = await fetchSuggestedPutawayLocation(ctx.organizationId, {
-        lineId,
-      });
-      return NextResponse.json({ success: true, suggestion });
-    } catch (error: unknown) {
-      console.error('GET /api/receiving/lines/[id]/suggested-location failed:', error);
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to resolve a putaway suggestion',
-        },
-        { status: 500 },
-      );
-    }
+    const suggestion = await fetchSuggestedPutawayLocation(ctx.organizationId, {
+      lineId,
+    });
+    return NextResponse.json({ success: true, suggestion });
   },
   { permission: 'receiving.view' },
 );

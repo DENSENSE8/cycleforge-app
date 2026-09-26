@@ -18,31 +18,23 @@ const ROUTE_CANDIDATES_POST = 'sourcing-candidates.post';
  * The saved watchlist of secondary-market hits.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const num = (k: string) => {
-      const v = searchParams.get(k);
-      return v ? Number(v) : null;
-    };
-    const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
-    const offset = Math.max(0, Number(searchParams.get('offset') || 0));
+  const { searchParams } = new URL(req.url);
+  const num = (k: string) => {
+    const v = searchParams.get(k);
+    return v ? Number(v) : null;
+  };
+  const limit = Math.max(1, Math.min(500, Number(searchParams.get('limit') || 100)));
+  const offset = Math.max(0, Number(searchParams.get('offset') || 0));
 
-    const { items, total } = await getSourcingCandidates({
-      skuId: num('skuId'),
-      boseModelId: num('boseModelId'),
-      sourcingAlertId: num('sourcingAlertId'),
-      status: searchParams.get('status'),
-      limit,
-      offset,
-    }, ctx.organizationId);
-    return NextResponse.json({ success: true, items, total });
-  } catch (error: any) {
-    console.error('Error in GET /api/sourcing/candidates:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Failed to fetch candidates' },
-      { status: 500 },
-    );
-  }
+  const { items, total } = await getSourcingCandidates({
+    skuId: num('skuId'),
+    boseModelId: num('boseModelId'),
+    sourcingAlertId: num('sourcingAlertId'),
+    status: searchParams.get('status'),
+    limit,
+    offset,
+  }, ctx.organizationId);
+  return NextResponse.json({ success: true, items, total });
 }, { permission: 'sourcing.view', feature: 'sourcing' });
 
 /** POST /api/sourcing/candidates — Save a candidate to the watchlist. */

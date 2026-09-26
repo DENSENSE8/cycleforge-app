@@ -8,14 +8,8 @@ import pool from '@/lib/db';
 
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {
-    try {
-      const views = await listMediaSavedViews(ctx.organizationId, ctx.staffId);
-      return NextResponse.json({ success: true, views });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to list saved views';
-      console.error('[GET /api/photos/saved-views] error:', error);
-      return NextResponse.json({ success: false, error: message }, { status: 500 });
-    }
+    const views = await listMediaSavedViews(ctx.organizationId, ctx.staffId);
+    return NextResponse.json({ success: true, views });
   },
   { permission: 'photos.view' },
 );

@@ -19,16 +19,10 @@ export const GET = withAuth(async (request, ctx) => {
   if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
     return NextResponse.json({ ok: false, error: 'invalid serial_unit id' }, { status: 400 });
   }
-  try {
-    // Org-scoped read: listUnitRepairs filters unit_repairs by organization_id,
-    // so a cross-tenant serial_unit id yields an empty list (no disclosure).
-    const repairs = await listUnitRepairs(serialUnitId, ctx.organizationId);
-    return NextResponse.json({ ok: true, repairs });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'failed to load repairs';
-    console.error('[GET /api/serial-units/[id]/repairs] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  // Org-scoped read: listUnitRepairs filters unit_repairs by organization_id,
+  // so a cross-tenant serial_unit id yields an empty list (no disclosure).
+  const repairs = await listUnitRepairs(serialUnitId, ctx.organizationId);
+  return NextResponse.json({ ok: true, repairs });
 }, { permission: 'repair.view' });
 
 /** POST — open a repair (moves the unit to IN_REPAIR, emits REPAIR_STARTED). */

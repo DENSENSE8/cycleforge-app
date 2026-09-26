@@ -12,34 +12,28 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   const rawDef = Number(searchParams.get('definitionId'));
   const definitionId = Number.isFinite(rawDef) && rawDef > 0 ? rawDef : null;
 
-  try {
-    const rows = definitionId
-      ? // Draft edits (workflow_draft.*, node_surface.*) all carry definitionId in the payload — filter on that (the affects target_ref carries…
-        await tenantQuery(
-          ctx.organizationId,
-          `SELECT id, mutation_kind, status, applied_at::text AS applied_at,
+  const rows = definitionId
+    ? // Draft edits (workflow_draft.*, node_surface.*) all carry definitionId in the payload — filter on that (the affects target_ref carries…
+      await tenantQuery(
+        ctx.organizationId,
+        `SELECT id, mutation_kind, status, applied_at::text AS applied_at,
                   created_at::text AS created_at, proposed_by_staff_id
              FROM agent_mutations
             WHERE organization_id = $1
               AND (payload->>'definitionId')::int = $2
             ORDER BY created_at DESC, id DESC
             LIMIT $3`,
-          [ctx.organizationId, definitionId, limit],
-        )
-      : await tenantQuery(
-          ctx.organizationId,
-          `SELECT id, mutation_kind, status, applied_at::text AS applied_at,
+        [ctx.organizationId, definitionId, limit],
+      )
+    : await tenantQuery(
+        ctx.organizationId,
+        `SELECT id, mutation_kind, status, applied_at::text AS applied_at,
                   created_at::text AS created_at, proposed_by_staff_id
              FROM agent_mutations
             WHERE organization_id = $1
             ORDER BY created_at DESC, id DESC
             LIMIT $2`,
-          [ctx.organizationId, limit],
-        );
-    return NextResponse.json({ success: true, mutations: rows.rows });
-  } catch (error) {
-    console.error('Error in GET /api/assistant/mutations:', error);
-    const message = error instanceof Error ? error.message : 'Failed to load mutations';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+        [ctx.organizationId, limit],
+      );
+  return NextResponse.json({ success: true, mutations: rows.rows });
 }, { permission: 'assistant.chat' });

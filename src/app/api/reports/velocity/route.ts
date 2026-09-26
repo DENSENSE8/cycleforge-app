@@ -3,31 +3,30 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(req.url);
-    const tier = searchParams.get('tier');
-    const limit = Math.min(
-      Math.max(parseInt(searchParams.get('limit') || '200', 10) || 200, 1),
-      2000,
-    );
-    const params: unknown[] = [];
-    // Pin the org param to a fixed leading index so the org-scoped base-table
-    // CTEs can reference it while the optional tier / limit predicates keep
-    // their original dynamic $N numbering after it.
-    params.push(ctx.organizationId);
-    const orgIdx = params.length; // $1
-    const clauses: string[] = [];
-    if (tier === 'A' || tier === 'B' || tier === 'C' || tier === 'D') {
-      params.push(tier);
-      clauses.push(`velocity_tier = $${params.length}`);
-    }
-    params.push(limit);
-    const limitIdx = params.length;
-    const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-    // TENANT ISOLATION:
-    const r = await tenantQuery(
-      ctx.organizationId,
-      `WITH movement AS (
+  const { searchParams } = new URL(req.url);
+  const tier = searchParams.get('tier');
+  const limit = Math.min(
+    Math.max(parseInt(searchParams.get('limit') || '200', 10) || 200, 1),
+    2000,
+  );
+  const params: unknown[] = [];
+  // Pin the org param to a fixed leading index so the org-scoped base-table
+  // CTEs can reference it while the optional tier / limit predicates keep
+  // their original dynamic $N numbering after it.
+  params.push(ctx.organizationId);
+  const orgIdx = params.length; // $1
+  const clauses: string[] = [];
+  if (tier === 'A' || tier === 'B' || tier === 'C' || tier === 'D') {
+    params.push(tier);
+    clauses.push(`velocity_tier = $${params.length}`);
+  }
+  params.push(limit);
+  const limitIdx = params.length;
+  const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+  // TENANT ISOLATION:
+  const r = await tenantQuery(
+    ctx.organizationId,
+    `WITH movement AS (
          SELECT
            sku,
            SUM(CASE WHEN delta < 0 THEN -delta ELSE 0 END)::int AS out_qty,
@@ -80,14 +79,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
        ${where}
        ORDER BY out_qty DESC, in_qty DESC
        LIMIT $${limitIdx}`,
-      params,
-    );
-    return NextResponse.json({ success: true, rows: r.rows });
-  } catch (err: any) {
-    console.error('[GET /api/reports/velocity] error:', err);
-    return NextResponse.json(
-      { success: false, error: err?.message || 'Failed' },
-      { status: 500 },
-    );
-  }
+    params,
+  );
+  return NextResponse.json({ success: true, rows: r.rows });
 }, { permission: 'reports.view' });

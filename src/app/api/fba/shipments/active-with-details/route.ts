@@ -4,13 +4,12 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 /** GET /api/fba/shipments/active-with-details */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const shippedLimit = Math.min(Math.max(Number(searchParams.get('shippedLimit')) || 10, 1), 50);
+  const { searchParams } = new URL(request.url);
+  const shippedLimit = Math.min(Math.max(Number(searchParams.get('shippedLimit')) || 10, 1), 50);
 
-    const result = await tenantQuery(
-      ctx.organizationId,
-      `
+  const result = await tenantQuery(
+    ctx.organizationId,
+    `
       WITH target_shipments AS (
         -- All active (non-shipped) shipments
         SELECT id, 0 AS sort_bucket FROM fba_shipments
@@ -156,23 +155,16 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 
       ORDER BY ts.sort_bucket, fs.updated_at DESC
       `,
-      [shippedLimit, ctx.organizationId]
-    );
+    [shippedLimit, ctx.organizationId]
+  );
 
-    // Split into active vs shipped for the frontend
-    const active = result.rows.filter((r: any) => r.status !== 'SHIPPED');
-    const shipped = result.rows.filter((r: any) => r.status === 'SHIPPED');
+  // Split into active vs shipped for the frontend
+  const active = result.rows.filter((r: any) => r.status !== 'SHIPPED');
+  const shipped = result.rows.filter((r: any) => r.status === 'SHIPPED');
 
-    return NextResponse.json({
-      success: true,
-      active,
-      shipped,
-    });
-  } catch (error: any) {
-    console.error('[GET /api/fba/shipments/active-with-details]', error);
-    return NextResponse.json(
-      { success: false, error: error?.message || 'Failed to fetch active shipments' },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    active,
+    shipped,
+  });
 }, { permission: 'fba.view', feature: 'fba' });

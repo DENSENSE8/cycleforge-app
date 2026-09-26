@@ -23,13 +23,7 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid qty_moved' }, { status: 400 });
   }
 
-  try {
-    const result = await completeTask({ taskId, qtyMoved, actorStaffId }, ctx.organizationId);
-    if (!result.ok) return NextResponse.json(result, { status: result.status });
-    return NextResponse.json(result);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'complete failed';
-    console.error('[POST /api/replenishment/tasks/[id]/complete] error:', err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  const result = await completeTask({ taskId, qtyMoved, actorStaffId }, ctx.organizationId);
+  if (!result.ok) return NextResponse.json(result, { status: result.status });
+  return NextResponse.json(result);
 }, { permission: 'bin.adjust' });

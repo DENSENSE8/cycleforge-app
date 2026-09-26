@@ -17,17 +17,9 @@ const ROUTE_TYPES_POST = 'catalog.types.post';
 /** GET /api/catalog/types — the org's receiving flow types (active by default). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
-    try {
-      const includeInactive = new URL(req.url).searchParams.get('includeInactive') === 'true';
-      const types = await listTypes(ctx.organizationId, { includeInactive });
-      return NextResponse.json({ success: true, types });
-    } catch (error: any) {
-      console.error('Error in GET /api/catalog/types:', error);
-      return NextResponse.json(
-        { success: false, error: error.message || 'Failed to fetch types' },
-        { status: 500 },
-      );
-    }
+    const includeInactive = new URL(req.url).searchParams.get('includeInactive') === 'true';
+    const types = await listTypes(ctx.organizationId, { includeInactive });
+    return NextResponse.json({ success: true, types });
   },
   { permission: 'receiving.view' },
 );

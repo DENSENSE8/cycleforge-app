@@ -22,12 +22,7 @@ export const GET = withAuth(
     if (!Number.isInteger(repairId) || repairId <= 0) {
       return NextResponse.json({ error: 'repairId is required' }, { status: 400 });
     }
-    try {
-      return NextResponse.json(await listBenchSessions(ctx.organizationId, ctx.staffId, repairId));
-    } catch (error: unknown) {
-      console.error('GET /api/repair/bench-sessions error:', error);
-      return NextResponse.json({ error: 'Failed to load bench timer' }, { status: 500 });
-    }
+    return NextResponse.json(await listBenchSessions(ctx.organizationId, ctx.staffId, repairId));
   },
   { permission: 'repair.view' },
 );
@@ -39,29 +34,24 @@ export const POST = withAuth(
     const parsed = parseBody(RepairBenchSessionBody, raw);
     if (parsed instanceof NextResponse) return parsed;
 
-    try {
-      const write = parsed.action === 'start' ? startBenchSession : stopBenchSession;
-      const result = await write(ctx.organizationId, ctx.staffId, parsed.repairId);
-      if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+    const write = parsed.action === 'start' ? startBenchSession : stopBenchSession;
+    const result = await write(ctx.organizationId, ctx.staffId, parsed.repairId);
+    if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-      if (result.changed) {
-        await invalidateCacheTags(['repair-service']);
-        await publishRepairChanged({
-          organizationId: ctx.organizationId,
-          repairIds: [parsed.repairId],
-          source: parsed.action === 'start' ? 'repair.bench-started' : 'repair.bench-stopped',
-        });
-      }
-      return NextResponse.json({
-        success: true,
-        session: result.session,
-        changed: result.changed,
-        serverNow: result.serverNow,
+    if (result.changed) {
+      await invalidateCacheTags(['repair-service']);
+      await publishRepairChanged({
+        organizationId: ctx.organizationId,
+        repairIds: [parsed.repairId],
+        source: parsed.action === 'start' ? 'repair.bench-started' : 'repair.bench-stopped',
       });
-    } catch (error: unknown) {
-      console.error('POST /api/repair/bench-sessions error:', error);
-      return NextResponse.json({ error: 'Failed to update bench timer' }, { status: 500 });
     }
+    return NextResponse.json({
+      success: true,
+      session: result.session,
+      changed: result.changed,
+      serverNow: result.serverNow,
+    });
   },
   { permission: 'repair.mark_repaired' },
 );

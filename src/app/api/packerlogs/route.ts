@@ -43,28 +43,23 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // deferred fields are filled via POST /api/packerlogs/hydrate.
     const spineOnly = searchParams.get('phase') === 'spine';
 
-    try {
-        const { rows, cacheTTL, cacheHit } = await fetchPackerLogRows({
-            organizationId: ctx.organizationId,
-            packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
-            testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
-            staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
-            limit,
-            offset,
-            weekStart,
-            weekEnd,
-            trackingTypeFilter,
-            spineOnly,
-            searchTerm,
-        });
-        const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=30` };
-        return NextResponse.json(rows, {
-            headers: { 'x-cache': cacheHit ? 'HIT' : 'MISS', ...CACHE_HEADERS },
-        });
-    } catch (error: any) {
-        console.error('Error fetching packer logs:', error);
-        return NextResponse.json({ error: 'Failed to fetch logs', details: error.message }, { status: 500 });
-    }
+    const { rows, cacheTTL, cacheHit } = await fetchPackerLogRows({
+        organizationId: ctx.organizationId,
+        packerId: packerIdNum != null && !Number.isNaN(packerIdNum) ? packerIdNum : null,
+        testedBy: testedByNum != null && !Number.isNaN(testedByNum) ? testedByNum : null,
+        staffId: staffNum != null && !Number.isNaN(staffNum) ? staffNum : null,
+        limit,
+        offset,
+        weekStart,
+        weekEnd,
+        trackingTypeFilter,
+        spineOnly,
+        searchTerm,
+    });
+    const CACHE_HEADERS = { 'Cache-Control': `private, max-age=${cacheTTL}, stale-while-revalidate=30` };
+    return NextResponse.json(rows, {
+        headers: { 'x-cache': cacheHit ? 'HIT' : 'MISS', ...CACHE_HEADERS },
+    });
 }, { permission: 'packing.view' });
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -186,48 +181,43 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 }, { permission: 'packing.complete_order' });
 
 export const PUT = withAuth(async (req: NextRequest, ctx) => {
-    try {
-        const body = await req.json();
-        const id = Number(body.id);
+    const body = await req.json();
+    const id = Number(body.id);
 
-        if (!Number.isSafeInteger(id) || id <= 0) {
-            return NextResponse.json({ error: 'ID must be a positive integer' }, { status: 400 });
-        }
-
-        // Keep this legacy metadata editor deliberately narrow. Completion,
-        // actor, tenant, and timestamps belong to the canonical packing writer
-        // and must never be mass-assigned from a request body.
-        const updateData: Partial<typeof packerLogs.$inferInsert> = {};
-        if (body.scanRef === null || typeof body.scanRef === 'string') {
-            updateData.scanRef = body.scanRef;
-        }
-        if (typeof body.trackingType === 'string' && body.trackingType.trim()) {
-            updateData.trackingType = body.trackingType.trim();
-        }
-        if (Object.keys(updateData).length === 0) {
-            return NextResponse.json({ error: 'No editable fields were provided' }, { status: 400 });
-        }
-        updateData.updatedAt = new Date();
-
-        const updatedLog = await db
-            .update(packerLogs)
-            .set(updateData)
-            .where(and(
-                eq(packerLogs.id, id),
-                eq(packerLogs.organizationId, ctx.organizationId),
-            ))
-            .returning();
-
-        if (updatedLog.length === 0) {
-            return NextResponse.json({ error: 'Log not found' }, { status: 404 });
-        }
-
-        await invalidateCacheTags(ctx.organizationId, ['packing-logs']);
-        return NextResponse.json(updatedLog[0]);
-    } catch (error: any) {
-        console.error('Error updating packer log:', error);
-        return NextResponse.json({ error: 'Failed to update log', details: error.message }, { status: 500 });
+    if (!Number.isSafeInteger(id) || id <= 0) {
+        return NextResponse.json({ error: 'ID must be a positive integer' }, { status: 400 });
     }
+
+    // Keep this legacy metadata editor deliberately narrow. Completion,
+    // actor, tenant, and timestamps belong to the canonical packing writer
+    // and must never be mass-assigned from a request body.
+    const updateData: Partial<typeof packerLogs.$inferInsert> = {};
+    if (body.scanRef === null || typeof body.scanRef === 'string') {
+        updateData.scanRef = body.scanRef;
+    }
+    if (typeof body.trackingType === 'string' && body.trackingType.trim()) {
+        updateData.trackingType = body.trackingType.trim();
+    }
+    if (Object.keys(updateData).length === 0) {
+        return NextResponse.json({ error: 'No editable fields were provided' }, { status: 400 });
+    }
+    updateData.updatedAt = new Date();
+
+    const updatedLog = await db
+        .update(packerLogs)
+        .set(updateData)
+        .where(and(
+            eq(packerLogs.id, id),
+            eq(packerLogs.organizationId, ctx.organizationId),
+        ))
+        .returning();
+
+    if (updatedLog.length === 0) {
+        return NextResponse.json({ error: 'Log not found' }, { status: 404 });
+    }
+
+    await invalidateCacheTags(ctx.organizationId, ['packing-logs']);
+    return NextResponse.json(updatedLog[0]);
 }, { permission: 'packing.complete_order' });
 
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
@@ -236,53 +226,48 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     const activityLogId = searchParams.get('activityLogId');
     const orgId = ctx.organizationId;
 
-    try {
-        // Tenant-scoped transaction: SET LOCAL app.current_org so RLS isolates
-        // the station_activity_logs / packer_logs deletes; explicit
-        // organization_id predicates are kept as defense-in-depth alongside the GUC.
-        return await withTenantTransaction(orgId, async (client) => {
-            if (activityLogId) {
-                const salId = parseInt(activityLogId, 10);
-                if (Number.isNaN(salId)) {
-                    return NextResponse.json({ error: 'Invalid activityLogId' }, { status: 400 });
-                }
-                const sel = await client.query(
-                    'SELECT packer_log_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2',
-                    [salId, orgId]
-                );
-                if (!sel.rows[0]) {
-                    return NextResponse.json({ error: 'Log not found' }, { status: 404 });
-                }
-                const plId: number | null = sel.rows[0].packer_log_id ?? null;
-                await client.query('DELETE FROM station_activity_logs WHERE id = $1 AND organization_id = $2', [salId, orgId]);
-                if (plId != null) {
-                    await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-                }
-                await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
-                return NextResponse.json({ success: true });
+    // Tenant-scoped transaction: SET LOCAL app.current_org so RLS isolates
+    // the station_activity_logs / packer_logs deletes; explicit
+    // organization_id predicates are kept as defense-in-depth alongside the GUC.
+    return await withTenantTransaction(orgId, async (client) => {
+        if (activityLogId) {
+            const salId = parseInt(activityLogId, 10);
+            if (Number.isNaN(salId)) {
+                return NextResponse.json({ error: 'Invalid activityLogId' }, { status: 400 });
             }
-
-            if (!id) {
-                return NextResponse.json({ error: 'ID is required' }, { status: 400 });
-            }
-
-            const plId = parseInt(id, 10);
-            if (Number.isNaN(plId)) {
-                return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
-            }
-
-            const plCheck = await client.query('SELECT id FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
-            if (!plCheck.rows[0]) {
+            const sel = await client.query(
+                'SELECT packer_log_id FROM station_activity_logs WHERE id = $1 AND organization_id = $2',
+                [salId, orgId]
+            );
+            if (!sel.rows[0]) {
                 return NextResponse.json({ error: 'Log not found' }, { status: 404 });
             }
-
-            await client.query('DELETE FROM station_activity_logs WHERE packer_log_id = $1 AND organization_id = $2', [plId, orgId]);
-            await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+            const plId: number | null = sel.rows[0].packer_log_id ?? null;
+            await client.query('DELETE FROM station_activity_logs WHERE id = $1 AND organization_id = $2', [salId, orgId]);
+            if (plId != null) {
+                await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+            }
             await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
-            return NextResponse.json({ success: true, deletedLog: { id: plId } });
-        });
-    } catch (error: any) {
-        console.error('Error deleting packer log:', error);
-        return NextResponse.json({ error: 'Failed to delete log', details: error.message }, { status: 500 });
-    }
+            return NextResponse.json({ success: true });
+        }
+
+        if (!id) {
+            return NextResponse.json({ error: 'ID is required' }, { status: 400 });
+        }
+
+        const plId = parseInt(id, 10);
+        if (Number.isNaN(plId)) {
+            return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
+        }
+
+        const plCheck = await client.query('SELECT id FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+        if (!plCheck.rows[0]) {
+            return NextResponse.json({ error: 'Log not found' }, { status: 404 });
+        }
+
+        await client.query('DELETE FROM station_activity_logs WHERE packer_log_id = $1 AND organization_id = $2', [plId, orgId]);
+        await client.query('DELETE FROM packer_logs WHERE id = $1 AND organization_id = $2', [plId, orgId]);
+        await invalidateCacheTags(orgId, ['packing-logs', 'orders', 'shipped']);
+        return NextResponse.json({ success: true, deletedLog: { id: plId } });
+    });
 }, { permission: 'packing.complete_order' });

@@ -8,23 +8,18 @@ import { withAuth } from '@/lib/auth/withAuth';
 export const runtime = 'nodejs';
 
 export const POST = withAuth(async () => {
-  try {
-    const tasks = await discoverTasks(REPO_PATH);
+  const tasks = await discoverTasks(REPO_PATH);
 
-    return NextResponse.json({
-      ok: true,
-      tasksDiscovered: tasks.length,
-      tasks: tasks.map((t) => ({
-        hash: t.hash,
-        title: t.title,
-        source: t.source,
-        priority: t.priority,
-        filePaths: t.filePaths,
-      })),
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({
+    ok: true,
+    tasksDiscovered: tasks.length,
+    tasks: tasks.map((t) => ({
+      hash: t.hash,
+      title: t.title,
+      source: t.source,
+      priority: t.priority,
+      filePaths: t.filePaths,
+    })),
+    timestamp: new Date().toISOString(),
+  });
 }, { permission: 'admin.manage_features' });
