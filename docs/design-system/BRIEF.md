@@ -268,8 +268,8 @@ dials in §4. The context is the region's `ModeRegion mode` (`data-mode`); no se
 
 Still law: §8 reduced motion turns every animation off in both contexts; touch hit floor 48 is
 accessibility, not density. **Approved (owner):** the industrial scan-status spot (≤150 ms, §4)
-stays — it is the one discoverable feedback for a scan. **Open:** `/m/scan` is mounted `triage`
-today while "active scanning" is listed as industrial.
+stays — it is the one discoverable feedback for a scan. **Changed (owner):** `/m/scan` is
+`industrial` — scanning an item in or out needs no padding or display methods.
 
 **Changed — AI inference goes through Cloudflare AI Gateway only.** Vercel AI Gateway is
 removed completely (`GATEWAY_BASE` in `src/lib/ai/org-provider.ts`, the `ai_gateway` BYOK

@@ -16,7 +16,7 @@ export default async function MobileScanPage() {
   const seed = await seedMobileReceivingFeed('triage');
   return (
     <ShellQuerySeed state={seed}>
-      <ModeRegion mode="triage" className="contents">
+      <ModeRegion mode="industrial" className="contents">
         <MobileScanIdentify />
       </ModeRegion>
     </ShellQuerySeed>
