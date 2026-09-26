@@ -161,6 +161,11 @@ const nextConfig: NextConfig = {
         ...Object.values(networkInterfaces())
             .flat()
             .flatMap((iface) => (iface && iface.family === 'IPv4' ? [iface.address] : [])),
+        // This workstation's tailscale0 address, pinned: the enumeration above
+        // runs once at boot, and when the lane unit starts before tailscaled has
+        // assigned tailscale0, every /_next chunk from this origin is blocked —
+        // the page renders but never hydrates (no clicks, no client data).
+        '100.72.226.55',
         '**.ts.net',
         '**.michaelgarisek.com',
         '**.trycloudflare.com',
