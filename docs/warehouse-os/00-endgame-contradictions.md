@@ -165,9 +165,9 @@ is explicit, struck-through with the replacement and a date).
 - **[note]** `HANDOFF-ai-first.md:14` — “**Language is the on-ramp. The keybind is the destination.**”
   - *Contradicted by D3.* Worth recording that the composer is a genuine model loop with up to 3s per utterance accepted, not a command palette to be escaped — keybinds accelerate it but do not replace the loop.
 - **[note]** `HANDOFF-ai-first.md:206` — “"Send to seller" — never a generic "Send"”
-  - *Contradicted by D10, D11.* The morph ruling stands, but the `send` mode (line 204) and 'Send to seller' need re-scoping: customer messaging is draft-only with no send pipe, seller claims are queued drafts the unboxer approves, and v1 marketplace access is order reads only.
+  - *Resolved by the 2026-09-26 AI-first ruling.* The morph ruling stands; `send` mode ships — customer and seller messages are approval-first sends through the platform send pipe, auto-approve eligible.
 - **[note]** `HANDOFF-ai-first.md:256` — “that rate is the input to widening a kind's trust class, so the model **earns** autonomy from evidence”
-  - *Contradicted by D10.* Widening operates only inside the leash: NEVER classes (move a location record, edit listing content, issue refund) have no earn-up path regardless of acceptance rate, and per-verb ceilings (queued, draft-only) are fixed by the operator.
+  - *Confirmed by the 2026-09-26 AI-first ruling.* Every kind — including location moves, listing edits and refunds — is approval-first with a per-automation auto-approve setting; acceptance rate is the evidence shown when the operator enables auto-approve.
 
 ## docs/warehouse-os/HANDOFF-kimi-ux.md — 10
 

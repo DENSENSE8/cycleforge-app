@@ -10,6 +10,17 @@ of record. This brief is downstream of it and cites its decisions by number
 struck that line — check [`00-endgame-contradictions.md`](00-endgame-contradictions.md)
 before re-litigating anything.
 
+**Operator ruling 2026-09-26 — read this first.** CycleForge is AI-first. The
+2026-08-23 AI-centre inversion ("the AI, pinned in the middle, always"; "the
+conversation is the workspace" — [`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md))
+is **reinstated as the front-door ruling**: the assistant composer stays fixed
+in the centre. Where this brief says data takes the centre or the composer
+docks to a corner, the reinstated inversion wins; tiles are what the
+conversation summons beside it. AI writes follow **approval-first +
+per-automation auto-approve**: every AI write lands as a proposal a named human
+approves, unless the org has flipped that mutation kind to auto-approve, in
+which case it applies immediately, logged `actor_kind = 'agent'` and revertable.
+
 ---
 
 You are overhauling the UX/UI of the **entire Cycle Forge Warehouse OS shell,
@@ -22,8 +33,10 @@ retired as a build surface and survives only as an archaeology reference.
 ## What you are building — the D2 screen
 
 The 2026-08-23 inversion ("the feed is the ground, always the AI, never yields
-the centre") was **overturned by the operator on 2026-08-24 (D2)**. The new
-ruling, in their words:
+the centre") was overturned by the operator on 2026-08-24 (D2) — and that
+overturn was itself **reversed by operator ruling 2026-09-26: the inversion is
+reinstated** and the composer stays fixed in the centre. The D2 ruling below is
+kept as history of what this brief was written against, in their words:
 
 > *"B, the data takes the center. But you must be able to edit it very easily —
 > just like Hyprland, you press the super key, hold and click, and move the
@@ -37,9 +50,11 @@ So the screen becomes:
    URLs as the model. `Canvas.tsx` was deleted on 2026-08-23; the canvas returns,
    but as a **new build against this ruling**, not a resurrection of the old file.
 2. **The composer is permanent and unremovable** — the one field (One Field
-   survives), a genuine model loop (D3, ≤3s/utterance). It holds the centre by
-   default and can **shrink to a corner dock** (bottom-left or bottom-right,
-   operator-movable) when the operator wants data blown up.
+   survives), a genuine model loop (D3, ≤3s/utterance). *(Operator ruling
+   2026-09-26: it stays fixed in the centre — the corner dock below is
+   superseded.)* It holds the centre by default and could **shrink to a corner
+   dock** (bottom-left or bottom-right, operator-movable) when the operator
+   wants data blown up.
 3. **Show mode**: the presentation state — composer docked, one tile maximised,
    for showing staff. Slipped from v1 polish (D12) but the dock geometry you
    build must not preclude it.
@@ -134,10 +149,11 @@ Unstruck and non-negotiable:
   type. Never a regex over source text.
 
 Struck and must NOT be re-implemented (see the appendix for the full list):
-the feed as permanent centre · tables-only-in-the-right-panel (Fight 1's
-ruling died with the inversion — tables may now BE tiles) · "orchestration is
-the launcher, not a second input" (the composer is the orchestration surface;
-⌘K stays as the exact-match index) · offline-first anything.
+tables-only-in-the-right-panel (Fight 1's ruling — tables may now BE tiles) ·
+"orchestration is the launcher, not a second input" (the composer is the
+orchestration surface; ⌘K stays as the exact-match index) · offline-first
+anything. *(The feed as permanent centre was on this list until operator ruling
+2026-09-26 reinstated it — it is the front door again.)*
 
 ## Order of work — each phase shippable, verified live, alone
 
@@ -201,8 +217,11 @@ the launcher, not a second input" (the composer is the orchestration surface;
   `claude/warehouse-os-refactor-8f2dc3`. Never `git add -A`, never stash,
   never commit unless asked.
 - Never delete `/01/**`, `/414/**`, `/l/**`, `/p/**`, `/s/**`, `/q/**`.
-- The AI has no write path into locations (D10). No UX affordance may imply
-  otherwise — no "AI, move this to bin 9" suggestion anywhere.
+- The AI may propose location moves like any other verb (operator ruling
+  2026-09-26). The proposal lands for a named human to approve — approval-first
+  — unless the org has flipped location moves to auto-approve; either way the
+  write is logged `actor_kind = 'agent'` and revertable, and the scan-created
+  placement stays the provenance of record.
 - A parallel lane may be writing `/putaway` and `src/lib/scan/` — re-read
   before editing anything in those paths, and stay out of them if the lane is
   mid-flight.
@@ -217,10 +236,14 @@ Two premises worth testing rather than swallowing:
    or collide (a 680px composer column steals the exact space a table tile
    needs). Build both in the running app, measure the table tile's usable
    width at 1918px, and make the operator choose with the numbers on screen.
+   **Ruled, operator 2026-09-26:** the composer stays fixed in the centre (the
+   AI-centre inversion is reinstated); measure table tiles against that
+   column, not the other way round.
 2. **"Tiles scrolling left and right."** Horizontal strip vs true tiling grid
    is unruled. The Hyprland grammar implies a grid; "swiping like a book"
    implies a strip. Prototype the cheaper one first IN THE APP, time scenario
    A on both if the first feels wrong, and get a numbered ruling.
 
-What is already ruled — D2 itself, One Field, M1, the leash, the spine's
+What is already ruled — the reinstated AI centre (operator ruling 2026-09-26),
+One Field, M1, approval-first + per-automation auto-approve, the spine's
 priority — is not reopened without new evidence (X3).

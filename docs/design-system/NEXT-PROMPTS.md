@@ -82,7 +82,7 @@ PLAN F — Assistant. Assistant mode is mounted on the right-rail assistant occu
 (F2) Pending-jobs button: top-right of GlobalHeader with a count badge. It opens a list, one row per long AI job: name · started by · segmented progress with counts ("1,240 / 5,000") · LIFECYCLE code · time left. Mine / Everyone filter. Needs a server job model — design it with the owner first if none exists (propose it and stop).
 (F3) Live AI notifications: a new Activity Inbox kind (ActivityInboxButton / ActivityInboxPopover / /m/inbox) with one line + one suggested action ("Packing is 20% behind pace → Text Maria"). No new feed, no report pages.
 (F4) Mobile Assistant tab at /m/assistant (/m/consult stays kiosk counter intake).
-Motion: 200 ms fade-rise for messages, 1.2 s thinking pulse, no typing effect, no AI accent colour.
+Motion: 200 ms fade-rise for messages, 1.2 s thinking pulse, Motion+ `Typewriter` for streamed replies, AI accent colour allowed.
 ```
 
 ## PLAN G — iOS into prod + ToShipRowView (needs owner decision first)

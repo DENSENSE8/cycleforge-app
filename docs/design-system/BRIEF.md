@@ -104,8 +104,8 @@ tile shadows, divider lines, hard-coded `blue-*`/`amber-*`.
 
 ### assistant — **Approved as starting point** (Q4d)
 Rail 16 / page 720 px column · 12 + pill · flat transcript, user message on `#f1f5f9` · one
-composer (delete the private textareas) · body 15/16, lh 1.6 · no AI accent colour · motion:
-200 ms fade-rise, 1.2 s thinking pulse, no typing effect · triage palette. **Open (deferred):**
+composer (delete the private textareas) · body 15/16, lh 1.6 · AI accent colour allowed · motion:
+200 ms fade-rise, 1.2 s thinking pulse, Motion+ `Typewriter` for streamed replies · triage palette. **Open (deferred):**
 pending-jobs button, AI notifications in Activity Inbox, composer unification — "a later
 triageable task".
 
@@ -253,6 +253,37 @@ The square industrial mark keeps its ring-free, mono bold uppercase initials.
 palette restrictions and added Change color controls. Existing colour editors and arbitrary
 hex choices remain as before. No staff records were recoloured. Only initials contrast changes;
 black or white provides at least 4.5:1 contrast on every valid RGB background.
+
+## 12. Owner rulings 2026-09-26
+
+**Changed — motion and density follow the task context, never the device.** One phone switches
+systems as the operator moves between routes (`/m/scan` → `/m/tasks`). Supersedes every motion
+line above that is keyed to a device, and the triage (≤120 ms crossfade) and assistant motion
+dials in §4. The context is the region's `ModeRegion mode` (`data-mode`); no second prop.
+
+| Context | Modes | Motion | Visuals |
+|---|---|---|---|
+| Industrial execution — scanning, picking, packing, clearing a physical queue | `industrial` | minimal to zero: no motion.dev layout transitions; a scan or a Pass tap lands the next record in 0 ms | 0 padding, flush grids, rigid high-contrast blocks |
+| Detective work and triage — task lists, exception investigation, order-history audit, AI chat | `triage`, `assistant` | expressive: motion.dev `layoutId` for opening sidebars / expanding details, staggered list enter/exit, deliberate AI thinking states, skeleton loaders | generous padding, structured hierarchy, clear type |
+
+Still law: §8 reduced motion turns every animation off in both contexts; touch hit floor 48 is
+accessibility, not density. **Approved (owner):** the industrial scan-status spot (≤150 ms, §4)
+stays — it is the one discoverable feedback for a scan. **Open:** `/m/scan` is mounted `triage`
+today while "active scanning" is listed as industrial.
+
+**Changed — AI inference goes through Cloudflare AI Gateway only.** Vercel AI Gateway is
+removed completely (`GATEWAY_BASE` in `src/lib/ai/org-provider.ts`, the `ai_gateway` BYOK
+credential, the `AI_CHAT_BASE_URL` default). iOS, Android and the desktop app never call a
+vendor or the gateway directly; they call CycleForge server routes, which call the gateway.
+
+**Porting from `main`:** the owner cherry-picks one commit at a time into prod and proves each;
+no branch merges. **Commits:** the owner directed "commit everything and push" on 2026-09-26.
+
+**Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
+`docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
+(`docs/**/screenshots/` is gitignored).
+
+**Order of work:** remove dead code first, so design-system investigation reads only live code.
 
 ## Resolved 2026-09-24 (all six approved as written)
 

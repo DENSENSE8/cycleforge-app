@@ -202,15 +202,18 @@ already run; Phase 3 needs a vision model; Phase 4 needs write-tooling + guardra
 
 ---
 
-## 6. What NOT to hand to the AI
+## 6. Approval-first verbs (operator ruling 2026-09-26)
 
-- **Final money/shipping commits** without human confirm (carrier purchase, PO submit to
-  Zoho, force-close shipment) — suggest, never auto-execute.
-- **Customer-facing sends** (Zendesk replies, pickup terms) — draft only.
-- **Permission/role assignment**, integration connect/disconnect, feature flags — these are
-  deliberate admin acts, not automation targets.
-- **Physical barcode scans** where a scan is already faster and more reliable than vision
-  (keep OCR as a *fallback* for damaged/unscannable labels, not the default path).
+Nothing is withheld from the AI. These verbs default to approval-first — the AI
+executes end-to-end once a named human approves — and each carries an org
+auto-approve setting that lets the AI apply them immediately:
+
+- **Money/shipping commits** (carrier purchase, PO submit to Zoho, force-close shipment,
+  refunds).
+- **Customer-facing sends** (Zendesk replies, pickup terms, marketplace messages).
+- **Permission/role assignment**, integration connect/disconnect, feature flags.
+- **Scan-path authoring** (grammars, routing). Vision/OCR is available on every path;
+  the AI picks scan vs. vision per item.
 
 ---
 

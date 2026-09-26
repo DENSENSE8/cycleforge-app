@@ -113,8 +113,11 @@ was the only thing this brief changed.
 
 ## Hard context you must not re-derive (verified today)
 
-- 00-endgame D1–D16 rule everything; the leash table (§5) is law — reads
-  free, writes per its rows; **the AI has no path into location writes.**
+- 00-endgame D1–D16 rule everything; its §5 write table is law as rewritten by
+  operator ruling 2026-09-26 — reads free, and the AI may perform every write
+  verb (location moves included) **approval-first**: each lands as a proposal
+  a named human approves unless the org has set that automation to
+  auto-approve (applied now, logged `actor_kind = 'agent'`, revertable).
 - The spine backend shipped: `2026-08-24_unit_location_spine.sql` APPLIED to
   the shared dev DB (FORCE RLS verified), `src/lib/inventory/placements.ts`
   (11/11 tests), routes `POST /api/inventory/placements|part-pulls`,
@@ -123,7 +126,10 @@ was the only thing this brief changed.
 - **The dev DB is the dogfood DB — the operator's real business.** Marketplace
   order READS are safe and wanted. Never seed fake orders/units into `usav`;
   synthetic data goes in the QA org. Never call a marketplace WRITE endpoint
-  (prices queued, listings never, messages draft-only — the leash).
+  from dev or tests against the dogfood org — the AI's price changes, listing
+  edits and customer sends go through the approval-first proposal queue
+  (operator ruling 2026-09-26), and a live send happens only on approval or
+  the org's auto-approve setting.
 - A parallel lane owns `/putaway` + `src/lib/scan/` — re-read before touching,
   stay out while mid-flight.
 - Known-red inherited: `src/lib/canvas/*.test.ts` (Canvas→Well deletion);

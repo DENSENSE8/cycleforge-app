@@ -1,6 +1,16 @@
 # HANDOFF — the AI centre: one sunken feed, blocks of time
 
 **Paste everything below the rule into a fresh session pointed at this worktree.**
+
+**Current ruling — reinstated by operator ruling 2026-09-26.** The 2026-08-24
+D2 overturn is itself reversed: CycleForge is AI-first, and this brief's
+inversion ("the AI, pinned in the middle, always"; "the conversation is the
+workspace") is the front-door ruling again — the assistant composer stays fixed
+in the centre. AI writes follow approval-first + per-automation auto-approve:
+each lands as a proposal a named human approves unless the org has flipped
+that mutation kind to auto-approve (applied immediately, logged
+`actor_kind = 'agent'`, revertable).
+
 Written 2026-08-23, after the desktop pivot (T30) and the Phase 1 input truth
 layer landed. Read [`LAWS.md`](LAWS.md) before proposing anything, and
 [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) for how the operator wants to
@@ -122,12 +132,14 @@ second input, the design is wrong at that step.
   today) and the suggestion row offers a chord: *"⌥T for ticket drafts from
   now on? Enter to keep it."* Acceptance writes
   `prefs.workspace.keybindings` through the EXISTING overrides schema
-  (null = disabled, absent = default) as a **gated agent mutation** (T28) —
-  visible under Ctrl+I, revertable, `actor_kind: 'agent'` (T13).
+  (null = disabled, absent = default) as an **approval-first agent mutation**
+  (T28) — visible under Ctrl+I, revertable, `actor_kind: 'agent'` (T13).
 - Every proposed chord passes `wedgeReachability()` — a bare or
   scanner-typeable key is refused at proposal time, by name (T20/T21). The AI
   earns keybind autonomy exactly the way it earns every write: measured
-  acceptance (`trust-stats.ts`).
+  acceptance (`trust-stats.ts`) is the evidence the operator uses to flip
+  keybind proposals to the org's **auto-approve** setting (operator ruling
+  2026-09-26), after which they apply immediately and stay logged + revertable.
 
 ## State of the tree (2026-08-23 — what a fresh session inherits)
 

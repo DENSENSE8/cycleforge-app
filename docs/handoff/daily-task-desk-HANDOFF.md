@@ -277,9 +277,11 @@ need **no change**.
    moved it is the same lossiness `assigned_by_staff_id` exists to fix.
 5. **Revocation is a membership event, not a cron.** Removing a staffer from an org, or
    deleting the account identity, must invalidate that org's tokens immediately.
-6. **Rate-limit and step-up.** An agent must never satisfy a step-up gate
-   (`sensitive-stepup.ts`); any permission behind PIN step-up is out of an agent's reach by
-   construction, not by an allowlist someone forgets to update.
+6. **Rate-limit and step-up.** An agent does not hold the staffer's PIN, so it cannot
+   satisfy a step-up gate (`sensitive-stepup.ts`) itself — by construction, not by an
+   allowlist someone forgets to update. It may still *request* the step-up-gated verb:
+   under the approval-first model (operator ruling 2026-09-26) the request lands as a
+   proposal the named human approves, passing step-up themselves.
 
 **What the agent can and cannot do on day one**
 

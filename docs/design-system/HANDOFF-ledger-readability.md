@@ -23,7 +23,8 @@ For each item:
 3. Apply it everywhere the same face renders (desk ledger row + group row + OrdersQueueFirstPaint
    stand-in + OutboundOrderEvidence; phone /m/* record + sheet where the item names them).
 4. Proof: screenshot at 1440×900 (deviceScaleFactor 2) into
-   docs/design-system/screenshots/ledger-readability/NN-<item>.png, plus the measured numbers.
+   docs/design-system/screenshots/ledger-readability/NN-<item>.png (gitignored — local proof only,
+   send it to the owner; owner 2026-09-26), plus the measured numbers.
 5. Record the ruling in docs/design-system/BRIEF.md (§4 industrial table or §11) in the owner's words.
 6. pnpm tokens:build && pnpm tokens:check && pnpm verify:fast must pass.
 7. Report in plain language: what changed, where to look on the page, what it cost, what's next.

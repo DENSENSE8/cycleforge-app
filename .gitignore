@@ -85,6 +85,9 @@ docker-compose.db.yml
 
 # Local-only scratch script artifacts (studio verify runs, screenshots, one-off helpers)
 scripts/_screenshots/
+# Before/after proof shots stay local (owner 2026-09-26: screenshots out of the repo).
+docs/**/screenshots/
+docs/design-system/trials/
 scripts/_verify-*
 scripts/_mint-*
 scripts/_fix-*

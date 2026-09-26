@@ -249,15 +249,18 @@ correct `source`, proven by a test. Until N1 lands, three of the four.
 
 ## 4 · Hard constraints
 
-- **T28 · Reads are free, WRITES ARE GATED.** *Ruled 2026-08-22.* Tool-calling
-  may query anything; a write goes through `agent_mutations` with its
-  `mutation_kind` trust class, which decides apply-now vs. queue-for-review. The
-  AI does not silently adjust inventory. This is not a brake bolted on — it is
-  self-correcting: `getMutationTrustStats` reads acceptance rate, and that rate
-  is the input to widening a kind's trust class, so the model **earns** autonomy
-  from evidence. Approving a queued proposal keeps `actor_kind: 'agent'`
-  (**T13**) or the signal is destroyed. Already built: `assistant/mutations/`,
-  `trust-stats.ts`.
+- **T28 · Reads are free; every WRITE is approval-first.** *Ruled 2026-08-22;
+  restated by operator ruling 2026-09-26.* Tool-calling may query anything and
+  the AI may perform any verb. A write goes through `agent_mutations`: by
+  default it lands as a proposal a named human approves; the org's per-automation
+  **Auto-approve** setting (or the `mutation_kind` trust class) flips a kind to
+  apply-now. Auto-applied writes stay logged with `actor_kind: 'agent'` and are
+  revertable, so the AI never adjusts inventory *silently*. This is not a brake
+  bolted on — it is self-correcting: `getMutationTrustStats` reads acceptance
+  rate, and that rate is the evidence an operator uses to flip a kind to
+  auto-approve, so the model **earns** autonomy from evidence. Approving a
+  queued proposal keeps `actor_kind: 'agent'` (**T13**) or the signal is
+  destroyed. Already built: `assistant/mutations/`, `trust-stats.ts`.
 - **T30 · NATIVE IS THE PRODUCT.** *Ruled 2026-08-22 — an explicit pivot,
   taken after the browser-first case was put and rejected. `T29` is struck.*
   The application is installed and owns the filesystem, the input stack and the
@@ -330,9 +333,12 @@ being asked:
 1. **"Completely language, no learnable UI"** — resolved as *language is the
    on-ramp, the keybind is the destination*. Do not let it collapse into "type a
    sentence to receive a carton".
-2. **"The entire database would be tool calling"** — **ruled (T28).** Reads yes,
-   writes gated. The trust class is what makes an AI-first warehouse app
-   shippable, and it widens on measured acceptance rather than on assertion.
+2. **"The entire database would be tool calling"** — **ruled (T28; restated by
+   operator ruling 2026-09-26).** Reads yes, writes yes — every verb, landing
+   approval-first as a proposal a named human approves, with a per-automation
+   org Auto-approve that flips a kind to apply-now. That is what makes an
+   AI-first warehouse app shippable, and auto-approve is flipped on measured
+   acceptance rather than on assertion.
 3. **Native vs. browser** — **ruled (T30), reversing T29.** The product is an
    installed application that owns files, input and the model. The browser-first
    case was put and rejected; this is a pivot, not a misunderstanding. Do not

@@ -304,20 +304,21 @@ The follow-up loop you describe is **T11/T15 already**: the assistant is the
 launcher's natural-language face and the first screen. Asking "do you want the
 orders table beside it?" is conversation, not architecture.
 
-**Three boundaries are load-bearing, and they are the fight inside the
-concession** — all three are pinned in code, not prose:
+**Three AI-first commitments (rewritten 2026-09-26, approval-first model):**
 
-1. **The AI is never in the scan path.** `runWorkspaceTool` is *synchronous by
-   signature* — a 1–3s model round-trip structurally cannot block a 50ms wedge
-   burst, and an API outage cannot stop the warehouse.
-2. **The AI arranges; it does not arm.** `open_tile` never publishes a session;
-   only `start_session` and an explicit `focus_tile` resume arm the wedge, and
-   both narrate the trade. There is deliberately no `armed` parameter for a
-   model to hold two with.
-3. **"Completely" stops at U1's meaning tier.** The AI may arrange anything and
-   adjust comfort; it recolours no semantic state (U4) and skips no required
-   procedure step (P4). Same tiers as a human staffer — the assistant is a
-   *user* of the config surface, not a superuser of it.
+1. **The AI authors the scan path; the compiled runtime executes it.** The AI
+   writes grammars, routing and identification methods (approval-first,
+   auto-approve eligible). `runWorkspaceTool` stays *synchronous by signature*
+   so the compiled result answers a 50ms wedge burst — that is latency
+   physics, not a limit on what the AI decides.
+2. **The AI arranges and arms.** `open_tile`, `start_session` and `focus_tile`
+   are all AI verbs. Arming a session is approval-first by default; the
+   operator's auto-approve setting lets the AI arm directly, and every arm
+   narrates the trade.
+3. **"Completely" means completely.** The AI may arrange anything, adjust
+   comfort, recolour semantic state and skip or reorder procedure steps —
+   each as an approval-first proposal, each auto-approve eligible per
+   automation. The assistant is a first-class operator of the config surface.
 
 ### What is actually missing for the brief's full loop
 

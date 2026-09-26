@@ -22,7 +22,7 @@ staff member.
 | [`07-configurability.md`](07-configurability.md) | **The configurability brief, fought** (2026-08-23) — modes vs tree states, "Spacesuit" snap grids settled by arithmetic, spacing, the beam configure button, rail mirroring, the shipped 15-verb AI contract, and the two prefs keys that finish it |
 | [`LAWS.md`](LAWS.md) | **The design and architecture laws**, numbered and referenceable. Each carries its enforcement status — `DB` / `TYPE` / `TOOLING` / `PROTO` / `PROSE` |
 | [`HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | The visual layer, and the argument behind every law |
-| [`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md) | **The current rewrite prompt** (2026-08-23). The AI pinned centre as a SUNKEN feed — no tile, no backdrop — blocks of time instead of pages, the support-call scenario as the acceptance spec, draft blocks with a morphing commit, AI-proposed keybinds. Supersedes the FRAMING of HANDOFF-ai-first; its Phase 1 is done and stands |
+| [`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md) | **The current rewrite prompt** (2026-08-23; overturned by D2 on 2026-08-24, **reinstated as the front-door ruling by operator ruling 2026-09-26**). The AI pinned centre as a SUNKEN feed — no tile, no backdrop — the assistant composer fixed in the centre, blocks of time instead of pages, the support-call scenario as the acceptance spec, draft blocks with a morphing commit, AI-proposed keybinds. Supersedes the FRAMING of HANDOFF-ai-first; its Phase 1 is done and stands |
 | [`HANDOFF-ai-first.md`](HANDOFF-ai-first.md) | The prior upgrade prompt — framing superseded by HANDOFF-ai-centre; still authoritative for its §1 audit, the paste correction, and the laws it cites |
 | [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) | **The UX/UI expert brief.** Paste into a fresh session — what the interface is, how the operator wants to be argued with, six worked fights, and the measurement snippets |
 | [`prototype/warehouse-os.html`](prototype/warehouse-os.html) | The clickable shell. Where rulings get discovered before they get written down |
@@ -40,7 +40,10 @@ staff member.
 4. **HUD identity** — one always-visible header carrying live context; two
    hover/toggle rails; a tiling canvas framed by a single inset-radius token.
 5. **AI-first orchestration** — "I need to do X" opens the layout, pins the tools,
-   and starts the session.
+   and starts the session. The AI may perform any verb; each write lands as a
+   proposal a named human approves, unless the org has flipped that automation
+   to auto-approve (applied immediately, logged as `agent`, revertable) —
+   operator ruling 2026-09-26.
 
 ## Status
 

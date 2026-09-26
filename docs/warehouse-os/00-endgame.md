@@ -64,13 +64,12 @@ accountant reading data, remote interns doing inventory groundwork. **(D6, D7)**
 | Inventory triage specialist | The location czar: rooms/racks mapping, new-SKU intake, routing rules, the end-of-session **“place this item on shelf X”** CTA | **Mobile hardware with a camera**, scan-first |
 | Front-desk kiosk | Sales, repair drop-off, pickup, trade-ins, receipts → queued work order. Session belongs to the *session*, not a staff member; drivable from a desktop over WebSockets **(D16)** | iPad browser → Electron host |
 
-**The sovereignty rule (D7), confirmed verbatim:** a work order is the thing
-you are handed; a session is you doing it. Work orders may be queued and
-default-assigned — by the CEO, the desk, or the AI. **Sessions are never
-assigned, never interrupted, never switched by anyone but the staffer**, who
-picks the next work order “based off of their own intelligence of what is
-urgent and important.” This is schema law S11, re-derived by the operator from
-the floor.
+**The sovereignty rule (D7), amended 2026-09-26 (AI-first, approval-first):**
+a work order is the thing you are handed; a session is you doing it. Work
+orders may be queued and default-assigned — by the CEO, the desk, or the AI.
+The AI may **propose** assigning, interrupting or switching a session; the
+staffer approves it by default, and an org **auto-approve** setting per
+automation lets the operator hand that verb to the AI outright.
 
 ## 4 · The product shape
 
@@ -88,12 +87,15 @@ the floor.
 - **Desktop ships first, designed mobile-first; the native mobile app comes
   after v1.** But the put-away moment is mobile *hardware* inside v1 — the
   phone browser is what records “this item, this bin, now.” **(D5)**
-- **The screen is a tiling canvas of data; the centre belongs to data, not the
-  feed.** The 2026-08-23 AI-centre inversion is **overturned by the operator,
-  2026-08-24**: tiles return as the screen, Hyprland-grammar super+drag moves
-  them, and the **composer is permanent and unremovable** — it may shrink to a
-  corner dock (“show mode”), “but that input is never removed.” One Field
-  survives; “the feed is the ground” dies. **(D2)**
+- **The AI is pinned in the middle, always — the conversation is the
+  workspace. (D2, reinstated by operator ruling 2026-09-26.)** The 2026-08-23
+  AI-centre inversion ([`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md)) is the
+  front-door ruling again: “the feed is the ground”, sunken, centred,
+  **always mounted, always the AI**; it never unmounts, never yields the
+  centre, never navigates away. The composer stays **fixed in the centre** —
+  it does not travel to a corner dock when the operator engages it. Data
+  desks (tiles, ledgers, the 3-pane triage desk) render as moments inside it
+  or details beside it, and the composer is reachable from every one of them.
 - **The composer is a genuine model loop, not a command palette.** “AI is
   getting so fast that the one to three seconds of waiting per utterance is
   not an issue anymore” — ≤3s/utterance is the recorded tolerance. **Always-on
@@ -105,27 +107,31 @@ the floor.
 - **The database is the workplace.** Files upload into the system; the NAS is
   backup and import-source only; no VPN/Tailscale requirement. **(D15)**
 
-## 5 · The assistant's job and its leash
+## 5 · The assistant's job: approval-first, auto-approve per automation
 
-The assistant reads freely, drafts constantly, and **writes only through this
-table** — the operator answered each verb separately (T28 vocabulary:
-*freely* = acts and logs; *queued* = drafts, a named human approves each
-instance; *never* = humans only). **(D10)**
+The assistant reads freely, drafts constantly, and **may perform every verb**.
+Operator ruling 2026-09-26 (supersedes the D10 leash): every AI write is
+**approval-first** — it lands as a proposal a named human approves — and each
+automation carries an org **auto-approve** setting that flips that verb to
+apply-now. Auto-applied writes keep `actor_kind: 'agent'`, land in the
+`agent_mutations` ledger, and stay revertable. Vocabulary: *freely* = acts and
+logs (auto-approve on by default); *approval-first* = drafts, a named human
+approves each instance until the operator enables auto-approve.
 
 | Verb | Ruling |
 |---|---|
 | Print product / location labels | **freely** |
-| Print shipping labels | queued |
-| Set a grade/condition | queued — “a suggestion to start out with”; staff selects |
-| Move a location record | **never** — *a location is a fact created by a scan, and only a scan*; the AI may only queue a reconciliation check |
-| File a seller claim (eBay/Goodwill/AliExpress) | queued — AI drafts, the unboxer approves the filing |
-| Message a customer | **draft-only** — a human copy-pastes into Outlook or the platform; the system holds **no send pipe** |
-| Change a live price | queued |
-| Edit listing content | never |
-| Issue a refund | never — the AI raises a work order, pre-assigned to its owner |
+| Print shipping labels | approval-first · auto-approve eligible |
+| Set a grade/condition | approval-first · auto-approve eligible |
+| Move a location record | approval-first · auto-approve eligible — the AI proposes the move (from scan evidence, reconciliation or its own reasoning) |
+| File a seller claim (eBay/Goodwill/AliExpress) | approval-first · auto-approve eligible — AI drafts and files |
+| Message a customer | approval-first · auto-approve eligible — AI drafts **and sends** through the platform send pipe |
+| Change a live price | approval-first · auto-approve eligible |
+| Edit listing content | approval-first · auto-approve eligible |
+| Issue a refund | approval-first · auto-approve eligible — the AI issues the refund itself once approved (or instantly under auto-approve) |
 | Create work orders | **freely** — they land as suggestions visible to the CEO and operation specialist |
-| Ping a staffer | queued |
-| Propose keybinds | queued (already ruled — T28) |
+| Ping a staffer | approval-first · auto-approve eligible |
+| Propose keybinds | approval-first · auto-approve eligible (T28) |
 
 **D14, the unification:** AI proposals are not a separate inbox. They land as
 **queued work orders in the one queue**, routed by subscription to whoever

@@ -195,10 +195,12 @@ sits at 5.9–12.3s. What is the actual gate for putting this in front of a
 human being, and when? If there is no date, ask what the forcing function is
 — and if there isn't one, that is itself the finding.
 
-**J · The AI's leash.** Concretely: may it print a label, set a grade, message
-a buyer, issue a refund, change a price? Walk the list one verb at a time and
-get a yes or no on each. "Gated" is not an answer; who opens the gate, and how
-long do they have before the customer notices?
+**J · The AI's write authority.** Concretely: it may print a label, set a
+grade, message a buyer, issue a refund, change a price — every verb (operator
+ruling 2026-09-26: approval-first by default, per-automation auto-approve).
+Walk the list one verb at a time and get, for each, who the named approver is
+and whether the org wants it on auto-approve. "Gated" is not an answer; who
+approves, and how long do they have before the customer notices?
 
 ## The artifact
 
@@ -212,7 +214,9 @@ consultant prose.
 3. **The users** — roles, counts, shifts, devices, tolerance for change.
 4. **The product shape** — native/web/mobile/kiosk, single-tenant or SaaS,
    each with the reason.
-5. **The assistant's job and its leash** — the verb-by-verb write list.
+5. **The assistant's job and its approvals** — the verb-by-verb write list:
+   named approver per verb, and which verbs the org sets to auto-approve
+   (operator ruling 2026-09-26: approval-first, AI may perform any verb).
 6. **What the shell must reach** — the routes and domain modules in v1 scope.
 7. **Non-goals, dated and named** — what is abandoned, and what dies with it.
 8. **The v1 ship gate** — observable, with a date and a forcing function.
