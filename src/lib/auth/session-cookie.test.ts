@@ -5,6 +5,7 @@ import { strictEqual } from 'node:assert';
 import {
   readSessionCookie,
   readSessionSid,
+  readV1BearerSid,
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
@@ -42,4 +43,23 @@ test('neither cookie → null sid, legacy=false', () => {
   strictEqual(r.sid, null);
   strictEqual(r.legacy, false);
   strictEqual(readSessionSid(store({})), null);
+});
+
+function headers(authorization?: string) {
+  return { get: (name: string) => (name.toLowerCase() === 'authorization' ? authorization ?? null : null) };
+}
+
+test('v1 bearer: read on /api/v1/* only — every other route stays cookie-only', () => {
+  strictEqual(readV1BearerSid('/api/v1/reminders', headers('Bearer TOKEN')), 'TOKEN');
+  strictEqual(readV1BearerSid('/api/staff', headers('Bearer TOKEN')), null);
+  strictEqual(readV1BearerSid('/api/v1', headers('Bearer TOKEN')), null);
+  strictEqual(readV1BearerSid('/api/v10/x', headers('Bearer TOKEN')), null);
+});
+
+test('v1 bearer: only a single well-formed Bearer credential counts', () => {
+  strictEqual(readV1BearerSid('/api/v1/session', headers('bearer TOKEN')), 'TOKEN');
+  strictEqual(readV1BearerSid('/api/v1/session', headers('Basic TOKEN')), null);
+  strictEqual(readV1BearerSid('/api/v1/session', headers('Bearer ')), null);
+  strictEqual(readV1BearerSid('/api/v1/session', headers('Bearer A B')), null);
+  strictEqual(readV1BearerSid('/api/v1/session', headers()), null);
 });

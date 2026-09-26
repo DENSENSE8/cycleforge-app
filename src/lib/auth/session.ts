@@ -33,6 +33,22 @@ export function readSessionSid(store: CookieReader): string | null {
   return readSessionCookie(store).sid;
 }
 
+/** Native clients (iOS / Android / desktop) send the sid as a bearer; honored on this prefix only. */
+export const V1_API_PREFIX = '/api/v1/';
+
+/**
+ * The sid from `Authorization: Bearer <sid>` on a `/api/v1/*` request, else null.
+ * Browser surfaces keep the httpOnly cookie; a header is never sent ambiently, so no CSRF surface.
+ */
+export function readV1BearerSid(
+  pathname: string,
+  headers: { get(name: string): string | null },
+): string | null {
+  if (!pathname.startsWith(V1_API_PREFIX)) return null;
+  const match = /^Bearer\s+(\S+)\s*$/i.exec(headers.get('authorization') ?? '');
+  return match?.[1] ?? null;
+}
+
 export type DeviceKind = 'station' | 'personal' | 'phone';
 export type SessionPolicy = 'default' | 'extended' | 'persistent';
 export const SESSION_POLICIES: readonly SessionPolicy[] = ['default', 'extended', 'persistent'] as const;

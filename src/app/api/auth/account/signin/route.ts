@@ -9,12 +9,7 @@ import {
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
-import { audit } from '@/lib/auth/audit';
-import { getAccountByEmail } from '@/lib/identity/accounts';
-import { verifyPassword } from '@/lib/identity/password';
-import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
-import { resolveAccountSigninTarget } from '@/lib/identity/signin-target';
-import { checkRateLimitAsync } from '@/lib/api-guard';
+import { authenticateAccountPassword, recordAccountSignin } from '@/lib/identity/account-signin';
 import { loadSharedStaffChoices } from '@/lib/identity/shared-staff-choice';
 
 export const runtime = 'nodejs';
@@ -36,20 +31,6 @@ export async function POST(req: NextRequest) {
   const ip = clientIp(req);
   const ua = req.headers.get('user-agent');
 
-  // Per-IP throttle against credential stuffing.
-  const rl = await checkRateLimitAsync({
-    headers: req.headers,
-    routeKey: 'auth-account-signin',
-    limit: 20,
-    windowMs: 10 * 60 * 1000,
-  });
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec },
-      { status: 429 },
-    );
-  }
-
   let parsed: z.infer<typeof Body>;
   try {
     parsed = Body.parse(await req.json());
@@ -57,57 +38,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
   }
 
-  // Per-email throttle so one targeted account can't be brute-forced across IPs.
-  const emailRl = await checkRateLimitAsync({
+  const result = await authenticateAccountPassword({
     headers: req.headers,
-    routeKey: 'auth-account-signin-email',
-    scope: parsed.email.toLowerCase(),
-    limit: 10,
-    windowMs: 10 * 60 * 1000,
+    email: parsed.email,
+    password: parsed.password,
+    organizationId: parsed.organizationId,
+    ip,
+    userAgent: ua,
   });
-  if (!emailRl.ok) {
-    return NextResponse.json(
-      { error: 'RATE_LIMITED', retryAfterSec: emailRl.retryAfterSec },
-      { status: 429 },
-    );
+  switch (result.kind) {
+    case 'rate_limited':
+      return NextResponse.json({ error: 'RATE_LIMITED', retryAfterSec: result.retryAfterSec }, { status: 429 });
+    case 'invalid_credentials':
+      return NextResponse.json({ error: 'INVALID_CREDENTIALS' }, { status: 401 });
+    case 'account_not_active':
+      return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
+    case 'no_workspace':
+      return NextResponse.json({ error: 'NO_WORKSPACE' }, { status: 403 });
+    case 'not_member':
+      return NextResponse.json({ error: 'NOT_A_MEMBER' }, { status: 403 });
+    case 'needs_org_choice':
+      // Let the client present a workspace picker, then POST again with org id.
+      return NextResponse.json({ needsOrgChoice: true, memberships: result.memberships });
+    case 'ok':
+      break;
   }
-
-  const account = await getAccountByEmail(parsed.email);
-  // Generic 401 — never reveal whether the email exists.
-  const ok = account ? await verifyPassword(parsed.password, account.passwordHash) : false;
-  if (!account || !ok) {
-    await logAuthEvent({ accountId: account?.id ?? null, orgId: null, event: 'failed_login', ip, userAgent: ua });
-    return NextResponse.json({ error: 'INVALID_CREDENTIALS' }, { status: 401 });
-  }
-  if (account.status !== 'active') {
-    return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
-  }
-
-  const memberships = await listMembershipsForAccount(account.id);
-  if (memberships.length === 0) {
-    return NextResponse.json({ error: 'NO_WORKSPACE' }, { status: 403 });
-  }
-
-  // Resolve which workspace to enter (policy in signin-target.ts — the
-  // organizationId is honored only against the memberships just fetched).
-  const decision = resolveAccountSigninTarget(memberships, parsed.organizationId);
-  if (decision.kind === 'no_workspace') {
-    return NextResponse.json({ error: 'NO_WORKSPACE' }, { status: 403 });
-  }
-  if (decision.kind === 'not_member') {
-    return NextResponse.json({ error: 'NOT_A_MEMBER' }, { status: 403 });
-  }
-  if (decision.kind === 'needs_choice') {
-    // Let the client present a workspace picker, then POST again with org id.
-    return NextResponse.json({
-      needsOrgChoice: true,
-      memberships: decision.memberships.map((m) => ({
-        organizationId: m.organization_id,
-        organizationName: m.organization_name,
-      })),
-    });
-  }
-  const target = decision.target;
+  const target = result.target;
 
   const session = await createSession({
     staffId: target.staff_id,
@@ -116,18 +72,14 @@ export async function POST(req: NextRequest) {
     userAgent: ua,
     persistent: parsed.persistent === true,
   });
-
-  // Best-effort last-login stamp.
-  void pool
-    .query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [account.id])
-    .catch(() => {});
-
-  await audit({
-    staffId: target.staff_id, sid: session.sid,
-    event: 'signin.account', result: 'ok', ip, userAgent: ua,
-    detail: { accountId: account.id, orgId: target.organization_id, persistent: parsed.persistent === true },
+  await recordAccountSignin({
+    accountId: result.accountId,
+    target,
+    session,
+    event: 'signin.account',
+    ip,
+    userAgent: ua,
   });
-  await logAuthEvent({ accountId: account.id, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
   // SHARED-account (umbrella) avenue:
   const staffChoice = await loadSharedStaffChoices(target.organization_id, target.staff_id);

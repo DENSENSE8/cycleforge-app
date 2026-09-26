@@ -91,6 +91,15 @@ and migrate; the `actionStrip` typed contract lands here.
    `src/lib/ai/gemini.ts` onto `embedText`, delete the Vercel `ai_gateway` credential.
    Needs from owner: account id, gateway id, token.
 2. `/api/v1` is the only door for iOS / Android / desktop (OpenAPI + verifier exist).
+   **Step 1 landed 2026-09-26 — native credential.** `POST /api/v1/session` (email + password,
+   optional `workspace` slug) returns an opaque bearer = the `staff_sessions` sid, so expiry,
+   revocation and concurrency caps are the web's. `GET` = principal + permissions, `DELETE` =
+   sign out. `withAuth` + `proxy.ts` honor `Authorization: Bearer` on `/api/v1/*` only
+   (`readV1BearerSid`); every other route stays cookie-only. OpenAPI carries `bearerAuth` and
+   still names no org UUID as input. Shared credential check: `src/lib/identity/account-signin.ts`
+   (web `/api/auth/account/signin` uses it too). Not covered yet: umbrella shared-account staff
+   choice, passkey/QR sign-in. Next: map `/m/*` verbs → non-v1 endpoints, promote one per step.
+   (`api/identification/methods/author` in 2.1's list was deleted in `270795058`.)
 
 **Phase 3 — port features from `main` (owner drives).** Inventory main-only features
 (seen so far: `transcribe.ts` + `/api/ai/transcribe`, `pi-provider` (needs

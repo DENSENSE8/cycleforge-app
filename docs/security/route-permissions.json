@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T20:59:44Z",
+  "generatedAt": "2026-09-26T18:28:03Z",
   "totalRoutes": 1095,
   "summary": {
-    "permissionGated": 892,
-    "authenticatedNoPermission": 120,
+    "permissionGated": 890,
+    "authenticatedNoPermission": 122,
     "anonymousIntentional": 36,
     "serviceToService": 47,
     "ungatedRead": 0,
@@ -2471,15 +2471,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/fba/items/verify/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "fba.stage_shipments",
-      "exemptReason": null
-    },
-    {
       "path": "/api/fba/labels/bind/route.ts",
       "methods": [
         "POST"
@@ -2841,34 +2832,6 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/identification/methods/[jobId]/publish/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "admin.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/identification/methods/author/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "admin.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/identification/methods/route.ts",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "admin.view",
       "exemptReason": null
     },
     {
@@ -4584,6 +4547,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/orders/desk-counts/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/orders/exceptions/route.ts",
       "methods": [
         "GET"
@@ -5667,8 +5639,8 @@
         "GET",
         "POST"
       ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
+      "gate": "withKioskAuth",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -7575,6 +7547,33 @@
       "exemptReason": null
     },
     {
+      "path": "/api/shipments/[id]/record/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipments/[id]/resolve-exception/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipments/lookup/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/shipped/[id]/route.ts",
       "methods": [
         "GET"
@@ -7702,16 +7701,6 @@
       ],
       "gate": "withAuth",
       "permission": "shipping.void_label",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/shipping/mark-staged/route.ts",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "shipping.view",
       "exemptReason": null
     },
     {
@@ -9423,6 +9412,17 @@
       "path": "/api/v1/reminders/route.ts",
       "methods": [
         "GET"
+      ],
+      "gate": "withAuth (no permission)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/v1/session/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "POST"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,

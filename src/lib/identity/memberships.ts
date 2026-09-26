@@ -17,7 +17,7 @@ export async function resolveAccountIdForStaff(staffId: number): Promise<string 
   }
 }
 
-interface MembershipRow {
+export interface MembershipRow {
   organization_id: string;
   organization_name: string;
   organization_slug: string | null;

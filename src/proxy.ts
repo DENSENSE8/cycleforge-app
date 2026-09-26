@@ -55,6 +55,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability) Anonymous share-pack read + zip download by token — a token IS the capability.
   /^\/api\/photos\/share-packs\/[^/]+/,
   /^\/api\/auth\//,
+  /^\/api\/v1\/session$/,               // native sign-in mints the bearer; GET/DELETE still gated by withAuth
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
   /^\/api\/health(?:$|\/)/,
   /^\/api\/ready(?:$|\/)/,
@@ -486,6 +487,9 @@ export function proxy(req: NextRequest): NextResponse {
   const hasCookie = Boolean(
     req.cookies.get(SESSION_COOKIE_NAME)?.value || req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
   );
+  // Mirrors `readV1BearerSid` (lib/auth/session.ts — not importable here: it pulls the DB pool).
+  const hasV1Bearer =
+    pathname.startsWith('/api/v1/') && /^Bearer\s+\S+/i.test(req.headers.get('authorization') ?? '');
 
   // ── Kiosk host surface (`{slug}.kiosk.app.cycleforge.ai`) ─────────────────
   // Hard isolation: only the intake UI + device-authed kiosk APIs. Staff
@@ -613,7 +617,7 @@ export function proxy(req: NextRequest): NextResponse {
   }
 
   // Break-glass off: never block. Default: redirect HTML routes / 401 JSON.
-  if (!hasCookie && isAuthV2Enabled()) {
+  if (!hasCookie && !hasV1Bearer && isAuthV2Enabled()) {
     const isApi = pathname.startsWith('/api/');
     if (isApi) {
       return applySecurityHeaders(req, NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }));
