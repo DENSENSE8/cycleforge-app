@@ -13,7 +13,7 @@ import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { ShortPickSheet } from '@/components/mobile/picker/ShortPickSheet';
 import { MobileToShipPickerSheet } from '@/components/mobile/redesign/MobileToShipPickerSheet';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
-import { locationFace, type DirectedPickLocation, type DirectedPickStep } from '@/lib/picking/directed-pick';
+import { locationFace, type DirectedPickLocation } from '@/lib/picking/directed-pick';
 import { cn } from '@/utils/_cn';
 import { DirectedPickNotesSheet } from './DirectedPickNotesSheet';
 import { DirectedPickOrderCard } from './DirectedPickOrderCard';
@@ -27,13 +27,6 @@ type DockVerb = 'short' | 'notes';
  * house window's 6s cooldown would swallow three of them.
  */
 const PICK_DEDUP_MS = 1500;
-
-const SCAN_LABEL: Record<DirectedPickStep, string> = {
-  tote: 'Scan tote',
-  location: 'Scan bin',
-  item: 'Scan item',
-  done: 'Scan',
-};
 
 const MESSAGE_VARIANT = {
   error: 'destructive',
@@ -65,6 +58,8 @@ function LocationFacts({ location, confirmed }: { location: DirectedPickLocation
 export function DirectedPickScreen() {
   const router = useRouter();
   const [docsOpen, setDocsOpen] = useState(false);
+  /** The lens is up — the dock then stands alone under the panel instead of framing the Scan bar. */
+  const [cameraUp, setCameraUp] = useState(false);
   const c = useDirectedPick(docsOpen);
   const { order, line, step } = c;
 
@@ -185,13 +180,16 @@ export function DirectedPickScreen() {
                 <div className="min-w-0 flex-1">
                   <p className="break-words text-2xl font-semibold leading-tight text-text-default">{line.title}</p>
                 </div>
+                {/* The count sits at the title's size — a fact beside the name, not a headline. */}
                 <div className="shrink-0 text-right">
-                  <p className="font-mono text-6xl font-semibold leading-none tabular-nums text-text-default">
+                  <p className="font-mono text-2xl font-semibold leading-tight tabular-nums text-text-default">
                     ×{line.units.length - c.pickedCount}
                   </p>
-                  <p className="mt-1 text-role-data text-text-soft">
-                    {c.pickedCount > 0 ? `${c.pickedCount} of ${line.units.length} picked` : 'each'}
-                  </p>
+                  {c.pickedCount > 0 ? (
+                    <p className="text-role-caption text-text-muted">
+                      {c.pickedCount} of {line.units.length} picked
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -213,14 +211,14 @@ export function DirectedPickScreen() {
         )}
       </div>
 
-      {/* Feedback, then the step's instruction, right above the thumb. */}
-      <div className="shrink-0 px-mode-page pb-2">
-        {c.message ? (
+      {/* Feedback, right above the thumb. What to do next is the scan bar's own label. */}
+      {c.message ? (
+        <div className="shrink-0 px-mode-page pb-2">
           <Alert
             variant={MESSAGE_VARIANT[c.message.tone]}
             role={c.message.tone === 'error' ? 'alert' : 'status'}
             aria-live="polite"
-            className="mb-2 pr-12"
+            className="pr-12"
           >
             <AlertDescription className="text-role-data opacity-100">{c.message.text}</AlertDescription>
             <IconButton
@@ -230,31 +228,29 @@ export function DirectedPickScreen() {
               className="absolute right-0 top-0 flex h-11 w-11 items-center justify-center"
             />
           </Alert>
-        ) : null}
-        {line ? (
-          <p className="text-role-title text-text-default" aria-live="polite">
-            {c.busy ? 'Saving…' : c.instruction}
-          </p>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {line ? (
         // Keyed per line: each new line's window mounts collapsed (lens off on
-        // the walk); Pair bin lifts it through `armRequest`.
+        // the walk); Pair bin lifts it through `armRequest`. Collapsed, the Scan
+        // bar is the dock's middle cell; with the lens up the dock rides below it.
         <MobileCaptureWindow
           key={line.key}
           label="Pick camera"
-          collapsedLabel={c.pairing ? 'Scan bin' : SCAN_LABEL[step]}
+          collapsedLabel={c.scanLabel}
           status={cameraTarget}
           onDecode={c.handleScan}
           pending={c.busy ? 1 : 0}
           armRequest={c.cameraArmRequest}
           dedupMs={PICK_DEDUP_MS}
           initiallyArmed={false}
+          onArmedChange={setCameraUp}
+          collapsedFrame={(scan) => <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" center={scan} />}
         />
       ) : null}
 
-      <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" />
+      {!line || cameraUp ? <DetailDock label="Pick actions" verbs={verbs} onVerb={onVerb} size="glove" /> : null}
 
       {line ? (
         <>

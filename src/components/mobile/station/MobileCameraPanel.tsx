@@ -46,6 +46,7 @@ export function MobileCameraPanel({
   fitContent = false,
   /** Ground behind the stage. A lens wants the dark stage; a form does not. */
   stageClass = 'bg-stage',
+  collapsedFrame,
   children,
 }: {
   label: string;
@@ -59,6 +60,12 @@ export function MobileCameraPanel({
   doneLabel?: string;
   fitContent?: boolean;
   stageClass?: string;
+  /**
+   * Seats the collapsed Scan bar inside the screen's dock instead of a row of
+   * its own — `(scan) => <DetailDock center={scan} … />`. The bar then fills
+   * its cell (full height, no shadow) and keeps its success fill for hierarchy.
+   */
+  collapsedFrame?: (scan: React.ReactNode) => React.ReactNode;
   children?: React.ReactNode;
 }) {
   const panelId = useId();
@@ -81,8 +88,8 @@ export function MobileCameraPanel({
   }, [open, done]);
 
   if (!open) {
-    return (
-      // The primary CTA of the whole screen while the camera is away — so it is painted as one.
+    // The primary CTA of the whole screen while the camera is away — so it is painted as one.
+    const scan = (
       <Button
         variant="success"
         size="lg"
@@ -91,13 +98,19 @@ export function MobileCameraPanel({
         aria-expanded={false}
         aria-controls={panelId}
         icon={<ChevronUp aria-hidden />}
-        className="min-h-11 w-full shrink-0"
+        className={cn(
+          'w-full shrink-0',
+          collapsedFrame
+            ? 'h-auto min-h-18 flex-col gap-1 whitespace-normal px-1 text-center shadow-none transition-none enabled:active:scale-100'
+            : 'min-h-11',
+        )}
       >
         <span className={cn('text-role-caption', STATION_EYEBROW_CLASS)}>
           {collapsedLabel}
         </span>
       </Button>
     );
+    return collapsedFrame ? collapsedFrame(scan) : scan;
   }
 
   /** The bar, in both of its grounds. */

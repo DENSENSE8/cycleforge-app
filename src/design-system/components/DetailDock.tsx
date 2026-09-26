@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type ReactNode } from 'react';
+import { Fragment, useRef, type ReactNode } from 'react';
 import { X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
@@ -42,6 +42,7 @@ export function DetailDock<Id extends string>({
   selection = null,
   size = 'default',
   placement = 'dock',
+  center,
 }: {
   /** Accessible name of the dock (`Repair actions`, `SKU exception actions`). */
   label: string;
@@ -56,6 +57,14 @@ export function DetailDock<Id extends string>({
   size?: 'default' | 'glove';
   /** `inline` — in-flow under a record instead of the sticky bottom bar. Selection is dock-only. */
   placement?: 'dock' | 'inline';
+  /**
+   * The screen's scan control as the dock's MIDDLE cell, between two verbs
+   * (owner 2026-09-26: scan is centred in the bottom bar, set apart by its
+   * colour, not a row of its own). The node owns its own press and fill —
+   * pass the camera's collapsed bar via `MobileCaptureWindow collapsedFrame`.
+   * Dock placement only; takes the first two verbs.
+   */
+  center?: ReactNode;
 }) {
   const lockedUntil = useRef(0);
   const inFlight = useRef(false);
@@ -82,7 +91,8 @@ export function DetailDock<Id extends string>({
   };
 
   const inline = placement === 'inline';
-  const shown = verbs.slice(0, selection ? 2 : inline ? 4 : 3);
+  const centred = center != null && !inline && !selection;
+  const shown = verbs.slice(0, selection || centred ? 2 : inline ? 4 : 3);
   const cell = inline
     ? 'h-auto min-h-12 w-full whitespace-normal px-2 py-2 text-center text-role-data leading-tight'
     : size === 'glove'
@@ -97,7 +107,7 @@ export function DetailDock<Id extends string>({
     ? shown.length >= 2
       ? 'grid-cols-20'
       : 'grid-cols-10'
-    : shown.length === 3
+    : centred || shown.length === 3
       ? 'grid-cols-3'
       : shown.length === 2 || shown.length === 4
         ? 'grid-cols-2'
@@ -120,20 +130,22 @@ export function DetailDock<Id extends string>({
           {`${selection.count} SEL`}
         </Button>
       ) : null}
-      {shown.map((verb) => (
-        <Button
-          key={verb.id}
-          variant={verb.primary ? 'primary' : 'secondary'}
-          size="lg"
-          radius="flush"
-          className={`${cell} ${verbSpan} ${press} ${shown.length === 1 && !selection ? 'font-bold' : ''}`}
-          icon={verb.icon}
-          disabled={verb.disabled}
-          loading={verb.loading}
-          onClick={() => fire(() => onVerb(verb.id))}
-        >
-          {verb.label}
-        </Button>
+      {shown.map((verb, i) => (
+        <Fragment key={verb.id}>
+          {centred && i === 1 ? center : null}
+          <Button
+            variant={verb.primary ? 'primary' : 'secondary'}
+            size="lg"
+            radius="flush"
+            className={`${cell} ${verbSpan} ${press} ${shown.length === 1 && !selection ? 'font-bold' : ''}`}
+            icon={verb.icon}
+            disabled={verb.disabled}
+            loading={verb.loading}
+            onClick={() => fire(() => onVerb(verb.id))}
+          >
+            {verb.label}
+          </Button>
+        </Fragment>
       ))}
     </>
   );

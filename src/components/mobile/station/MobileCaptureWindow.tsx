@@ -62,6 +62,8 @@ export function MobileCaptureWindow({
    * lens never reads stray labels on the way; the bar is one tap away.
    */
   initiallyArmed = true,
+  /** Seats the collapsed Scan bar in the screen's dock — see `MobileCameraPanel`. */
+  collapsedFrame,
 }: {
   onDecode: (value: string) => void;
   label: string;
@@ -74,6 +76,7 @@ export function MobileCaptureWindow({
   armRequest?: number;
   dedupMs?: number;
   initiallyArmed?: boolean;
+  collapsedFrame?: (scan: React.ReactNode) => React.ReactNode;
 }) {
   const scanner = useBarcodeScanner({ dedupMs });
   const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning } = scanner;
@@ -201,6 +204,7 @@ export function MobileCaptureWindow({
         onOpenChange={setOpen}
         fitContent={manualOpen}
         stageClass={manualOpen ? 'bg-surface-card' : 'bg-stage'}
+        collapsedFrame={collapsedFrame}
         /* ONE slot, both modes — and it rides the bar, not the picture. */
         leading={
           manualOpen ? (

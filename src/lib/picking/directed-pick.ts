@@ -223,13 +223,13 @@ export function directedPickStep(state: {
   return 'item';
 }
 
-/** The instruction line above the dock, per step. */
-export function directedPickInstruction(step: DirectedPickStep, line: DirectedPickLine | null, pickedCount: number): string {
-  if (step === 'tote') return 'Scan a tote for this order';
-  if (step === 'location') return 'Scan location barcode';
+/** The scan bar's verb per step — the one place the screen says what to do next. */
+export function directedPickScanLabel(step: DirectedPickStep, line: DirectedPickLine | null, pickedCount: number): string {
+  if (step === 'tote') return 'Scan tote';
+  if (step === 'location') return 'Scan bin';
   if (step === 'item' && line) {
     const left = line.units.length - pickedCount;
-    return line.units.length > 1 ? `Scan item · ${left} of ${line.units.length} left` : 'Scan item';
+    return line.units.length > 1 ? `Scan item · ${left} left` : 'Scan item';
   }
   return 'Line complete';
 }

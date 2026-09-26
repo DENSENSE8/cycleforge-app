@@ -120,6 +120,7 @@ Pass/fail: fail any of R1–R4 on the mobile SoT → not done.
 | `DetailSectionHeading` | Section band between two blocks of one screen (well-grey strip, mono caption) — never on a hub |
 | `DetailDock` | The ONE bottom execution bar: ≤3 verbs, one primary; 72px flush cells, instant ink press, 500ms leading-edge lock (the selection ✕ fires past it and re-arms it), press buzz only with the staff `receiving.scanHaptics` toggle. One verb = a job screen's full-width bar; `selection` = ✕ N SEL + ≤2 verbs |
 | `DetailDock placement="inline"` | The same band in-flow under a record (board row, order card): full width, `border-t` rule, not sticky, no safe-area pad; ≤4 verbs (four = flush 2×2); 48px cells, labels wrap, never truncate. Replaces any padded `grid-cols-2 gap-2` of bordered Buttons |
+| `DetailDock center` | A scanning job screen's collapsed Scan bar as the dock's middle cell (success fill), between two verbs — via `MobileCaptureWindow collapsedFrame`. The bar's label is the step's next action (`Scan tote`, `Scan item · 3 left`, `Saving…`); no instruction sentence above it. Lens up → the dock renders alone under the panel |
 
 **Flat (operator 2026-09-25).** Every record screen's column is `divide-y divide-mode-rule`
 with no page padding, gaps, or boxed panels: blocks run the full width, square, one 1px

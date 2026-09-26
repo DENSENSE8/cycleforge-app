@@ -7,7 +7,7 @@ import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet'
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import {
-  directedPickInstruction,
+  directedPickScanLabel,
   directedPickStep,
   locationFace,
   matchItemScan,
@@ -52,7 +52,8 @@ interface DirectedPickController {
   /** The tote armed for the current order, or null until one is scanned. */
   tote: string | null;
   step: DirectedPickStep;
-  instruction: string;
+  /** The scan bar's verb — the step's next action, `Saving…` while a scan is in flight. */
+  scanLabel: string;
   pickedCount: number;
   busy: boolean;
   message: DirectedPickMessage | null;
@@ -524,7 +525,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     line,
     tote,
     step,
-    instruction: pairing && line ? `Scan the bin to pair ${line.title}` : directedPickInstruction(step, line, picked.size),
+    scanLabel: busy ? 'Saving…' : pairing ? 'Scan bin to pair' : directedPickScanLabel(step, line, picked.size),
     pickedCount: picked.size,
     busy,
     message,
