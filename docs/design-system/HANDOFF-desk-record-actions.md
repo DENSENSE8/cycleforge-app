@@ -16,22 +16,23 @@ Rules now in code — reuse, don't fork:
 - Corners: `rounded-mode` (card), `rounded-mode-control` (controls), `rounded-mode-pill`. Photos stay square.
 - Only the two record columns lift (shadow); header/list stay planted on one white page.
 
-## Owner's open ask — the ACTIONS surface (build this first)
+## Actions — landed shape (owner 2026-09-26, supersedes the rail plan)
 
-Owner, verbatim intent: an **Actions** header is needed because a record is not only item triage and order lookup — actions link to other display methods (print manuals, view manuals, view label, go to the overall rules page — not just "assign rule"; "SKU stock ↗" is an action too; "give this person a task with this order context").
+Owner simplified the plan: no right rail, no split actions bar, no duplicates.
+1. **Top strip = quick triage only**: Report out of stock · Mark urgent · Mark scanned out · Select, then **⋮** (the record's other actions), Delete isolated (`ORDER_BULK_VERB_IDS` in `to-ship/MorphingRowActionMenu.tsx`). The desk's check-set strip shows the same bulk buttons with the rest in ⋮; phones keep the full strip.
+2. **More actions below the details** (`order-record-more-actions`): the same list as ⋮, one source — `useOrderRecordMoreVerbs` → Paperwork · Copy · Print · Download photos · SKU stock · Rules (+ task verbs).
+3. **No duplicates** (`RECORD_INLINE_VERB_IDS`): Pick/Pack assign live on the stage rows, condition + qty on the item card, ship-by in the details, the rule is a pencil on the item card (`OrderAutoAssignRuleAction`, tooltip = current rule), label · slip · manuals are ONE **Paperwork** action; Flag / Export are list-level.
+4. **Paperwork is inline, never a popover**: `PaperworkPanel` replaces the record body with a Back button (`dispatchOpenOrderPaperwork` / `subscribeOpenOrderPaperwork` in `utils/events.ts`); the item # opens the item-number view the same way. Tabs use the In place / Split segmented face.
+5. Item card stage order: QC by · Picked by · Packed by · Scanned out by (then pre-box / bench).
 
-Owner's proposed placement (verify, then build):
-1. **Bulk actions above the data table** (selection → bulk verbs). Note: another session removed the toolbar above the To-ship ledger (`cf3be25d9`, "controls move to the contextual sidebar") — reconcile: a *selection-only* bulk bar (appears when ≥1 checked) is not the removed toolbar; the planned floating bottom-centre bar (`SelectionActionBar`) may be the answer. Confirm with owner.
-2. **Record actions**: **In place → right-side action rail** beside the two columns; **Split → an actions bar on top** of the record (the 1/3 pane is too narrow for a rail). One action list, two placements, decided by `useDeskRecordView()` — same pattern as `DeskRecordLayout`.
-3. Contents (grouped, sentence case): *Documents* — print manual, view manual, view label, packing slip; *Go to* — SKU stock, overall rules page (not just the assign-rule pencil), listing; *Task* — "Create task for someone with this order" (order context prefilled; find the existing task/assignment composer before building one — `StationComposerHost` / tasks in `src/lib/assistant` or `/api/v1` tasks).
-4. Existing pieces to fold in, not duplicate: `OrderRecordActionStrip` / `MorphingRowActionMenu` verbs (`useOrderActionVerbs`), `OrderDocumentsSection`, `ItemPaperworkDialog`, `OrderAutoAssignRuleLine`, the "SKU stock ↗" link in `OrderRecordView.tsx`. Move "SKU stock" out of the item card into Actions.
+Split list: full width of its two thirds with side gutters, a plain scrollable list (no card, no floating bottom). Rows show the full order number (`LEDGER_ORDER_NUMBER_SLOT_CLASS`, `OrderNumberMenuChip face="full"`).
 
-Build it as a design-system component (e.g. `DeskRecordActions` in `src/design-system/components/`) taking typed action groups; `OrderRecordView` supplies the order's groups. Run `ds_contract` first.
+eBay placeholder: ShipStation adopt now re-keys rows filed under a bare platform onto the store's linked account (`placeholderRowsToRekey`); `orderPlatformChoices` offers accounts, not bare "eBay"; last-7-day backfill `scripts/backfill-shipstation-ebay-account-source.sql` (215 orders moved, 1 left without a ShipStation ref: order 14211).
 
 ## Other open items
 
 - **Order # link follows the imported platform**: `getOrderPlatformLabel` lets a recognised `account_source` (ShipStation store → platform) beat the 4-digit Ecwid guess, so Shopify 11xx orders read Shopify and open `admin.shopify.com/.../orders?query=<n>`; Ecwid 5043 opens `my.ecwid.com/store/<id>#order:id=5043` (browser-checked 2026-09-26).
-- **Details are for reading (owner 2026-09-26)**: the Label row and its Print label / Print slip bar left the To-ship / Pending details; the strip's **Label** action now leads with View label / View slip (`OrderPaperworkDialog`, print on the preview). Shipped / Search keep the label history (`label-entries`). Price row reads the paid price in green, no "Net" (net stays inside the disclosure). Listing row: the link opens, copy (`LedgerCopyAction`) sits far right on the ↗ / ✎ axis. Trailing ↗ / ✎ / copy share `RECORD_TRAILING_ACTION_CLASS` (region control corner) via `IconButton radius="control"`.
+- **Details are for reading (owner 2026-09-26)**: no Label row / print bar in To-ship / Pending details (Shipped / Search keep the label history, `label-entries`). Price row = paid price in green, no "Net". Listing row: link opens, copy (`LedgerCopyAction`) far right on the ↗ / ✎ axis. Trailing ↗ / ✎ / copy share `RECORD_TRAILING_ACTION_CLASS` via `IconButton radius="control"`.
 - **Same details-panel face on other records**: repair (`repair-record-sections.tsx`), carton (`carton-record-facts.tsx`), incoming (`incoming-record-sections.tsx`) still use `OrderNumberIdentity`/`TrackingIdentity` (dot + last-8). Swap to `RecordFullId`.
 - **Remaining caps / square bits**: `DESK_BAR_SEGMENT_CLASS` (e.g. "SKU STOCK") is uppercase; list row state codes (URG/RDY/NOTE) are intentional codes — ask before changing. `IconButton` default radius is still `flush`.
 - **To-ship row redesign** (handoff `HANDOFF-desktop-triage-foundation.md` §spec) and **row selection + floating bar** are still to do.
@@ -40,7 +41,7 @@ Build it as a design-system component (e.g. `DeskRecordActions` in `src/design-s
 ## Working rules
 
 - Verify at `http://localhost:3050` only (sign in: `/api/auth/staff-picker` → `/api/auth/signin`, tenant `usav`, see `scripts/ds-trial-shots.ts`). Screenshot in place + split + a phone viewport (`/m/pick`, `isMobile/hasTouch`) — phones must stay industrial (square, caps, flush).
-- Many files carry other sessions' uncommitted hunks. Commit **by name**; for mixed files stage HEAD + your hunks only (`git hash-object -w` + `git update-index --cacheinfo`). Never `git add -A`. Push with `--no-verify`.
+- Many files carry other sessions' uncommitted hunks. Commit **by name**; for mixed files stage HEAD + your hunks only (`git apply --cached` of your hunks). Never `git add -A`.
 - `pnpm tokens:build` after any `modes.ts` edit; `pnpm verify:fast` before calling done.
 
 ## Paste-ready prompt

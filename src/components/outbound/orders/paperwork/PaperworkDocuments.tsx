@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
+  ChevronLeft,
   Download,
   ExternalLink,
   FileText,
@@ -24,7 +25,6 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   TRIAGE_PANEL_INNER_CORNER,
-  TRIAGE_PANEL_SEGMENT_ENDS,
   triagePanelControl,
 } from '@/design-system/tokens/triage-panel';
 import {
@@ -366,7 +366,10 @@ export function PaperworkDocuments({
             this item number shows and packs them.
           </p>
         ) : (
-          <div role="tablist" aria-label="Paperwork kind" className={cn('inline-flex border border-border-soft', TRIAGE_PANEL_SEGMENT_ENDS)}>
+          // The record's segmented face (same as In place / Split): a sunken
+          // track, the chosen tab lifted as a card — region corners, rounded on
+          // the desk record (owner 2026-09-26).
+          <div role="tablist" aria-label="Paperwork kind" className="inline-flex shrink-0 items-center gap-0.5 rounded-mode-control bg-surface-sunken p-0.5">
             {(['shipping_label', 'packing_slip', 'manual', 'all'] as const).map((kind) => (
               <button
                 key={kind}
@@ -376,13 +379,13 @@ export function PaperworkDocuments({
                 data-testid={`paperwork-tab-${kind}`}
                 onClick={() => onTabChange(kind)}
                 className={cn(
-                  'ds-raw-button inline-flex h-9 items-center gap-1.5 border-l border-border-soft px-3 text-role-caption font-semibold first:border-l-0',
-                  tab === kind ? 'bg-surface-inverse text-text-inverse' : 'bg-surface-card text-text-default hover:bg-surface-sunken',
+                  'ds-raw-button inline-flex h-8 items-center gap-1.5 rounded-mode-control px-3 text-role-caption font-medium transition-colors duration-mode-feedback',
+                  tab === kind ? 'bg-surface-card text-text-default shadow-elev-soft' : 'text-text-muted hover:text-text-default',
                   focusRing('control'),
                 )}
               >
                 {TAB_FACE[kind]}
-                <span className={cn('tabular-nums', tab === kind ? 'opacity-80' : 'text-text-muted')}>{count(kind)}</span>
+                <span className={cn('tabular-nums', tab === kind ? 'text-text-muted' : 'text-text-faint')}>{count(kind)}</span>
               </button>
             ))}
           </div>
@@ -926,37 +929,52 @@ export function ItemPaperworkDialog({
   );
 }
 
-/** The order's own paperwork (label · slip · manuals) — the Label action's viewer; print lives on each preview. */
-export function OrderPaperworkDialog({
-  open,
-  onOpenChange,
+/**
+ * The order's paperwork INLINE in the record (owner 2026-09-26: never a popover):
+ * Back returns to the details. `itemView` shows what the item number carries.
+ */
+export function PaperworkPanel({
   orderId,
   orderRef,
-  initialTab = 'shipping_label',
+  itemNumber,
+  tab,
+  onTabChange,
+  onBack,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   orderId: number;
   orderRef: string;
-  initialTab?: PaperworkTab;
+  /** Present ⇒ the item-number view (manuals paired to this item #). */
+  itemNumber?: string | null;
+  tab: PaperworkTab;
+  onTabChange: (tab: PaperworkTab) => void;
+  onBack: () => void;
 }) {
-  const [tab, setTab] = useState<PaperworkTab>(initialTab);
-  useEffect(() => {
-    if (open) setTab(initialTab);
-  }, [open, initialTab]);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[92dvh] max-w-5xl flex-col overflow-y-auto" data-testid="order-paperwork-dialog">
-        <DialogHeader>
-          <DialogTitle>
-            Order <span className="font-mono">{orderRef}</span> paperwork
-          </DialogTitle>
-          <DialogDescription>Shipping label, packing slip and paired manuals. Print from the preview.</DialogDescription>
-        </DialogHeader>
-        {open ? (
-          <PaperworkDocuments orderId={orderId} orderRef={orderRef} tab={tab} onTabChange={setTab} onChanged={() => undefined} />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    <section className="flex min-w-0 flex-col gap-3" data-testid="order-paperwork-panel" aria-label="Paperwork">
+      <div className="flex items-center gap-3">
+        <Button variant="secondary" size="sm" className={TRIAGE_PANEL_INNER_CORNER} icon={<ChevronLeft />} onClick={onBack} data-testid="order-paperwork-back">
+          Back
+        </Button>
+        <p className="min-w-0 truncate text-role-body font-semibold text-text-default">
+          {itemNumber ? (
+            <>
+              Item # <span className="font-mono">{itemNumber}</span> paperwork
+            </>
+          ) : (
+            <>
+              Order <span className="font-mono">{orderRef}</span> paperwork
+            </>
+          )}
+        </p>
+      </div>
+      <PaperworkDocuments
+        orderId={orderId}
+        orderRef={orderRef}
+        tab={itemNumber ? 'manual' : tab}
+        onTabChange={onTabChange}
+        onChanged={() => undefined}
+        itemView={Boolean(itemNumber)}
+      />
+    </section>
   );
 }

@@ -262,6 +262,34 @@ test('plan: another spelling of the platform is adopted (source kept); a legacy 
   assert.equal(counts.reasons['match.claimed'], 1);
 });
 
+test('plan: a store linked to an account re-keys rows under the bare platform; two placeholder spellings stay put', () => {
+  const bound = buildStoreAttributions(STORES, {
+    ...CATALOG,
+    bindings: new Map([[2, { platform: 'ebay', accountSource: 'MEKONG' }]]),
+  });
+  const idle = { storeId: 2, customerId: null, customerEmail: null, shipTo: null, customerUsername: null };
+  const rows = [
+    existing(40, 'E1', 'eBay'),
+    existing(41, 'E2', 'eBay'),
+    existing(42, 'E2', 'ebay'),
+  ];
+  const rowsByNumber = new Map<string, ExistingOrderRow[]>();
+  for (const r of rows) rowsByNumber.set(r.orderId!, [...(rowsByNumber.get(r.orderId!) ?? []), r]);
+  const { planned } = planShipStationOrders([order({ orderNumber: 'E1', ...idle }), order({ orderNumber: 'E2', ...idle })], {
+    attributions: bound,
+    rowsByNumber,
+    platformOf,
+    ignored: new Set(),
+  });
+  const get = (n: string) => planned.find((p) => p.orderNumber === n)!.plan;
+  assert.deepEqual(get('E1'), { outcome: 'enrich', accountSource: 'MEKONG', match: 'adopted', rowIds: [40] }, '"eBay" was a placeholder for the account');
+  assert.equal(get('E2').outcome, 'unchanged', 're-keying both spellings would collide on the MEKONG key');
+
+  // Unbound, the store writes the platform itself: nothing to re-key.
+  const { planned: unbound } = plan([order({ orderNumber: 'E1', ...idle })], [existing(40, 'E1', 'eBay')]);
+  assert.equal(unbound[0].plan.outcome, 'unchanged');
+});
+
 test('plan: unknown store and cross-platform numbers are quarantined with the evidence; cancelled/unpaid/ignored skip', () => {
   const { planned, counts } = plan(
     [

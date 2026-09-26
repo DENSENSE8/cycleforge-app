@@ -21,6 +21,7 @@ import {
   DESK_RECORD_COLUMNS_CLASS,
   DESK_RECORD_MAIN_COLUMN_CLASS,
   DESK_RECORD_MEASURE_CLASS,
+  DESK_SPLIT_LIST_CARD_CLASS,
   DESK_SPLIT_LIST_CLASS,
   DESK_SPLIT_RECORD_CARD_CLASS,
   DESK_SPLIT_RECORD_CLASS,
@@ -226,11 +227,16 @@ export function DeskRecordPlane({
       >
         <div
           ref={listRef}
-          // Split (owner 2026-09-26): the padded list takes two thirds, the
-          // record the right third.
-          className={split ? cn(DESK_SPLIT_LIST_CLASS, 'min-h-0') : 'flex min-h-0 min-w-0 flex-1 flex-col'}
+          // Split (owner 2026-09-26): the list takes two thirds, the record
+          // the right third.
+          className={split ? DESK_SPLIT_LIST_CLASS : 'flex min-h-0 min-w-0 flex-1 flex-col'}
         >
-          {list}
+          {/* Split: the list is one lifted card at a fixed, centred measure
+              (operator 2026-09-26). Always mounted, so toggling the view
+              keeps the list (scroll, virtualizer) rather than remounting it. */}
+          <div className={split ? DESK_SPLIT_LIST_CARD_CLASS : 'flex min-h-0 min-w-0 flex-1 flex-col'}>
+            {list}
+          </div>
         </div>
 
         {split ? (

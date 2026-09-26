@@ -119,6 +119,7 @@ import {
   LEDGER_SPINE_CLASS,
   LEDGER_SPINE_HATCH_CLASS,
   LEDGER_NESTED_HIT_CLASS,
+  LEDGER_ORDER_NUMBER_SLOT_CLASS,
   type LedgerRowZoom,
 } from './outbound-orders-ledger-geometry';
 
@@ -657,7 +658,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
           </LifecycleCode>
           <RecordPlatformFace channel={channel} />
           <span
-            className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-40 shrink-0 items-center truncate')}
+            className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, LEDGER_ORDER_NUMBER_SLOT_CLASS)}
             onClick={stop}
             onPointerDown={stop}
           >
@@ -665,6 +666,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
               value={orderId}
               platformLabel={meta.value ? meta.label : null}
               openHref={marketplaceOrderUrl(orderId, lead.account_source)}
+              face="full"
               plain
               dense
             />
@@ -936,7 +938,7 @@ const LedgerRecord = memo(function LedgerRecord({
   );
   const orderChip = (
     <span
-      className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, 'flex w-40 shrink-0 items-center truncate')}
+      className={cn(RECORD_ID_CLASS, LEDGER_NESTED_HIT_CLASS, LEDGER_ORDER_NUMBER_SLOT_CLASS)}
       onClick={stop}
       onPointerDown={stop}
     >
@@ -944,6 +946,7 @@ const LedgerRecord = memo(function LedgerRecord({
         value={orderId}
         platformLabel={meta.value ? meta.label : null}
         openHref={marketplaceOrderUrl(orderId, view.platformValue)}
+        face="full"
         plain
         dense
       />

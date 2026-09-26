@@ -6,11 +6,10 @@
  * (`OrderRecordActionStrip`, owner 2026-09-25).
  */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { getTrackingUrl, getTrackingUrlByCarrier } from '@/lib/tracking-format';
-import { DESK_BAR_SEGMENT_CLASS, deskBarSegmentTone } from '@/design-system/components/DeskActionSlot';
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { DESK_RECORD_COLUMN_CARD_CLASS } from '@/design-system/tokens/desk-stage';
 import { RecordFullId } from '@/design-system/components/record-ledger/RecordFullId';
@@ -38,7 +37,9 @@ import {
   type OrderRecordSectionId,
 } from '@/lib/selection-context/order-inspector-context';
 import { OrderPriceEvidence } from './OrderPriceEvidence';
-import { OrderAutoAssignRuleLine } from './OrderAutoAssignRuleLine';
+import { OrderAutoAssignRuleAction } from './OrderAutoAssignRuleAction';
+import { useOrderRecordMoreVerbs } from './to-ship/MorphingRowActionMenu';
+import { subscribeOpenOrderPaperwork } from '@/utils/events';
 import {
   OrderCustomerSection,
   OrderLabelsSection,
@@ -71,7 +72,7 @@ import {
   stageFacts,
 } from './outbound-orders-ledger-editors';
 import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
-import { ItemPaperworkDialog } from './paperwork/PaperworkDocuments';
+import { PaperworkPanel, type PaperworkTab } from './paperwork/PaperworkDocuments';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 
@@ -123,6 +124,22 @@ export function OrderRecordView({
   const orderKey = String(record.order_id ?? '').trim();
   const siblings = orderKey ? records.filter((line) => String(line.order_id ?? '').trim() === orderKey) : [];
   const lines = siblings.some((line) => Number(line.id) === Number(record.id)) ? siblings : [record, ...siblings];
+  const moreVerbs = useOrderRecordMoreVerbs(record, mode);
+
+  // Paperwork opens INLINE in place of the details (owner 2026-09-26: never a
+  // popover); Back returns. A new record always opens on its details.
+  const [paperwork, setPaperwork] = useState<{ tab: PaperworkTab; itemNumber: string | null; orderId: number } | null>(null);
+  useEffect(() => {
+    setPaperwork(null);
+  }, [record.id]);
+  // The Paperwork action (top strip ⋮ or More actions) opens it here.
+  useEffect(
+    () =>
+      subscribeOpenOrderPaperwork((orderId) => {
+        if (orderId === Number(record.id)) setPaperwork({ tab: 'shipping_label', itemNumber: null, orderId });
+      }),
+    [record.id],
+  );
 
   const main = (
     <div className={COLUMN_CLASS}>
@@ -154,13 +171,13 @@ export function OrderRecordView({
               key={line.id}
               line={line}
               current={Number(line.id) === Number(record.id)}
-              orderRef={orderRef}
               todayKey={todayKey}
               records={records}
               getStaffName={getStaffName}
               commits={commits}
               chain={shows.has('stages')}
               assign={shows.has('assign')}
+              onOpenItemPaperwork={(itemNumber) => setPaperwork({ tab: 'manual', itemNumber, orderId: Number(line.id) })}
             />
           ))
         : null}
@@ -173,7 +190,7 @@ export function OrderRecordView({
     </div>
   );
 
-  const aside = (
+  const details = (
     <div className={COLUMN_CLASS}>
       {shows.has('buyer-note') ? <BuyerNoteBlock note={String(record.buyer_note ?? '').trim() || null} /> : null}
       {shows.has('shipment') ? <OrderShipmentSection record={record} /> : null}
@@ -269,9 +286,59 @@ export function OrderRecordView({
     </div>
   );
 
+  // Details are for reading; the record's other actions sit BELOW them, the
+  // same list as the top strip's ⋮ (owner 2026-09-26).
+  const aside = (
+    <div className="flex flex-col gap-4">
+      {details}
+      {moreVerbs.length > 0 ? (
+        <section className={cn(COLUMN_CLASS, 'p-2')} aria-label="More actions" data-testid="order-record-more-actions">
+          <p className={cn(RECORD_LABEL_CLASS, 'px-2 pb-1 pt-1 text-mode-muted')}>More actions</p>
+          <div className="flex flex-col">
+            {moreVerbs.map((verb) => (
+              <button
+                key={verb.id}
+                type="button"
+                disabled={verb.disabled}
+                title={verb.disabled ? verb.disabledReason : undefined}
+                data-testid={`record-more-${verb.id}`}
+                onClick={() => void verb.run?.()}
+                className={cn(
+                  'ds-raw-button flex h-8 min-w-0 items-center gap-2 rounded-mode-control px-2 text-left text-role-caption font-medium text-mode-ink hover:bg-mode-hover disabled:cursor-not-allowed disabled:opacity-40',
+                  '[&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0 [&_svg]:text-mode-muted',
+                  focusRing('control'),
+                )}
+              >
+                {verb.icon}
+                <span className="truncate">{verb.label}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+
   return (
     <div className="flex-1 bg-mode-canvas p-4 text-mode-ink" data-testid="order-record-view" data-order-record-mode={mode}>
-      <DeskRecordLayout main={main} aside={aside} />
+      {paperwork ? (
+        <DeskRecordLayout
+          main={
+            <div className={cn(COLUMN_CLASS, 'p-4')}>
+              <PaperworkPanel
+                orderId={paperwork.orderId}
+                orderRef={orderRef}
+                itemNumber={paperwork.itemNumber}
+                tab={paperwork.tab}
+                onTabChange={(tab) => setPaperwork((open) => (open ? { ...open, tab } : open))}
+                onBack={() => setPaperwork(null)}
+              />
+            </div>
+          }
+        />
+      ) : (
+        <DeskRecordLayout main={main} aside={aside} />
+      )}
     </div>
   );
 }
@@ -280,24 +347,25 @@ export function OrderRecordView({
 function OrderItem({
   line,
   current,
-  orderRef,
   todayKey,
   records,
   getStaffName,
   commits,
   chain,
   assign,
+  onOpenItemPaperwork,
 }: {
   line: ShippedOrder;
   current: boolean;
-  orderRef: string;
   todayKey: string;
   records: readonly ShippedOrder[];
   getStaffName: (id: number) => string;
   commits: OrdersQueueCommits;
   chain: boolean;
-  /** The chain's Pick / Pack popovers and the auto-assign rule line (work still to do). */
+  /** The chain's Pick / Pack popovers and the auto-assign rule action (work still to do). */
   assign: boolean;
+  /** The item number's paperwork, inline in the record. */
+  onOpenItemPaperwork: (itemNumber: string) => void;
 }) {
   const r = line as QueueRowRecord;
   const staff = queueRowStaff(r, getStaffName);
@@ -327,7 +395,7 @@ function OrderItem({
   const preboxUnits = Number(line.prebox_unit_count) || 0;
   const preboxed = Number(line.pre_boxed_count) || 0;
   const preboxAt = line.pre_boxed_at ? formatMonthDayTimePST(line.pre_boxed_at) : null;
-  const [paperworkOpen, setPaperworkOpen] = useState(false);
+  const scanOutFacts = stageFacts(resolveOrdersSlotValue(line, 'orders.scanned_out', staff));
 
   return (
     <article
@@ -337,7 +405,7 @@ function OrderItem({
       className={cn('border-b border-mode-fact', current ? 'bg-mode-panel' : 'bg-mode-bar')}
     >
       <div className="flex gap-3 p-3">
-        <span className="relative h-28 w-28 shrink-0 overflow-hidden border border-mode-frame bg-mode-well">
+        <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-mode-control border border-mode-frame bg-mode-well">
           {view.thumbUrl ? (
             <Image src={view.thumbUrl} alt="" fill unoptimized sizes="112px" className="object-cover" />
           ) : (
@@ -347,23 +415,27 @@ function OrderItem({
           )}
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          {view.titleHref ? (
-            <a
-              href={view.titleHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open listing in a new tab"
-              className={cn(
-                // Rest: plain title; hover / focus: the link underline (owner 2026-09-26).
-                'line-clamp-3 text-role-body font-bold no-underline decoration-mode-edge underline-offset-2 hover:underline',
-                focusRing('control'),
-              )}
-            >
-              {title || '—'}
-            </a>
-          ) : (
-            <p className="line-clamp-3 text-role-body font-bold">{title || '—'}</p>
-          )}
+          <div className="flex min-w-0 items-start gap-2">
+            {view.titleHref ? (
+              <a
+                href={view.titleHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open listing in a new tab"
+                className={cn(
+                  // Rest: plain title; hover / focus: the link underline (owner 2026-09-26).
+                  'line-clamp-3 min-w-0 flex-1 text-role-body font-bold no-underline decoration-mode-edge underline-offset-2 hover:underline',
+                  focusRing('control'),
+                )}
+              >
+                {title || '—'}
+              </a>
+            ) : (
+              <p className="line-clamp-3 min-w-0 flex-1 text-role-body font-bold">{title || '—'}</p>
+            )}
+            {/* The rule is an action, not a details row (owner 2026-09-26): a pencil on the right. */}
+            {assign ? <OrderAutoAssignRuleAction record={line} records={records} getStaffName={getStaffName} /> : null}
+          </div>
           {/* Hierarchy (owner 2026-09-26): title · SKU + item # · qty + condition · price. */}
           <p className={cn(RECORD_LABEL_CLASS, 'flex flex-wrap items-baseline gap-x-3 text-mode-muted')}>
             <span>
@@ -376,7 +448,7 @@ function OrderItem({
                   type="button"
                   data-testid="evidence-item-paperwork"
                   title="Paperwork paired to this item number"
-                  onClick={() => setPaperworkOpen(true)}
+                  onClick={() => onOpenItemPaperwork(String(line.item_number))}
                   className={cn(
                     'ds-raw-button',
                     RECORD_ID_CLASS,
@@ -403,16 +475,6 @@ function OrderItem({
             <span className="w-24">
               <LedgerCondition value={line.condition ?? null} onCommit={(value) => commits.handleCommitCondition(line, value)} />
             </span>
-            <a
-              href={sku ? `/inventory?sku=${encodeURIComponent(sku)}` : undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-disabled={!sku}
-              data-testid="evidence-sku-stock"
-              className={cn(DESK_BAR_SEGMENT_CLASS, 'rounded-mode-control border border-mode-edge', deskBarSegmentTone(false), !sku && 'pointer-events-none opacity-40')}
-            >
-              SKU stock ↗
-            </a>
           </div>
           <p className={cn(RECORD_LABEL_CLASS, 'text-mode-muted')} data-testid="evidence-price">
             Price{' '}
@@ -420,15 +482,6 @@ function OrderItem({
               {line.sale_amount != null && Number.isFinite(amount) ? formatCurrency(amount) : '—'}
             </span>
           </p>
-          {line.item_number ? (
-            <ItemPaperworkDialog
-              open={paperworkOpen}
-              onOpenChange={setPaperworkOpen}
-              orderId={line.id}
-              orderRef={orderRef}
-              itemNumber={line.item_number}
-            />
-          ) : null}
         </div>
       </div>
       <div className="flex flex-col px-4" data-testid="order-record-stages">
@@ -466,6 +519,20 @@ function OrderItem({
         </EvidenceFactDisclosure>
         {chain ? (
           <>
+            {/* Triage order (owner 2026-09-26): QC · picked · packed · scanned out. */}
+            <EvidenceFactRow label="QC by">
+              <span data-testid="order-record-qc">
+                <LedgerStageAssign
+                  verb="QC"
+                  doneVerb="QC'd"
+                  role="technician"
+                  facts={qcWho || qcAt ? { who: qcWho, whoStaffId: qcId, at: qcAt, station: null } : null}
+                  selectedStaffId={null}
+                  assignedName="---"
+                  showStamp
+                />
+              </span>
+            </EvidenceFactRow>
             <EvidenceFactRow label="Picked by">
               <LedgerStageAssign
                 verb="Pick"
@@ -490,13 +557,13 @@ function OrderItem({
                 showStamp
               />
             </EvidenceFactRow>
-            <EvidenceFactRow label="QC by">
-              <span data-testid="order-record-qc">
+            <EvidenceFactRow label="Scanned out by">
+              <span data-testid="order-record-scanned-out">
                 <LedgerStageAssign
-                  verb="QC"
-                  doneVerb="QC'd"
-                  role="technician"
-                  facts={qcWho || qcAt ? { who: qcWho, whoStaffId: qcId, at: qcAt, station: null } : null}
+                  verb="Scan out"
+                  doneVerb="Scanned out"
+                  role="packer"
+                  facts={scanOutFacts}
                   selectedStaffId={null}
                   assignedName="---"
                   showStamp
@@ -529,7 +596,6 @@ function OrderItem({
                 <span className={RECORD_LABEL_CLASS}>{bench}</span>
               </EvidenceFactRow>
             ) : null}
-            {assign ? <OrderAutoAssignRuleLine record={line} records={records} getStaffName={getStaffName} /> : null}
           </>
         ) : null}
       </div>

@@ -270,3 +270,17 @@ export function dispatchOpenListingStaffRules(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(OPEN_LISTING_STAFF_RULES_EVENT));
 }
+
+const OPEN_ORDER_PAPERWORK_EVENT = 'open-order-paperwork';
+
+/** The record's Paperwork action (top strip ⋮ or below the details) → the open order record shows its paperwork inline. */
+export function dispatchOpenOrderPaperwork(orderId: number): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<{ orderId: number }>(OPEN_ORDER_PAPERWORK_EVENT, { detail: { orderId } }));
+}
+
+export function subscribeOpenOrderPaperwork(handler: (orderId: number) => void): () => void {
+  const listener = (event: Event) => handler((event as CustomEvent<{ orderId: number }>).detail.orderId);
+  window.addEventListener(OPEN_ORDER_PAPERWORK_EVENT, listener);
+  return () => window.removeEventListener(OPEN_ORDER_PAPERWORK_EVENT, listener);
+}

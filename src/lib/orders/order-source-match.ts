@@ -80,6 +80,33 @@ export function crossSourceBackfillPolicy(
     : { titleAuthoritative: sourceTitleAuthoritative, sourceWrite: 'rekey' };
 }
 
+/** A source that names only its platform (`eBay`), not an account on it. */
+function isPlatformPlaceholder(source: string | null | undefined, platformOf: PlatformOf): boolean {
+  const text = String(source ?? '').trim().toLowerCase();
+  return text !== '' && platformOf(text) === text;
+}
+
+/**
+ * Adopted rows filed under the bare platform (`eBay`) that an incoming account
+ * on that platform (`DRAGON`, from a store link) re-keys: the platform was a
+ * placeholder for the account. Rows under two spellings of the placeholder
+ * (`eBay`, `ebay`) re-key none — both would collide on the account's key.
+ */
+export function placeholderRowsToRekey<R extends { accountSource: string | null }>(
+  incomingSource: string | null | undefined,
+  adoptedRows: readonly R[],
+  platformOf: PlatformOf,
+): Set<R> {
+  const incoming = String(incomingSource ?? '').trim();
+  const platform = incoming ? platformOf(incoming) : null;
+  if (!platform || isPlatformPlaceholder(incoming, platformOf)) return new Set();
+  const rows = adoptedRows.filter(
+    (r) => isPlatformPlaceholder(r.accountSource, platformOf) && platformOf(r.accountSource) === platform,
+  );
+  const spellings = new Set(rows.map((r) => String(r.accountSource ?? '').trim()));
+  return spellings.size === 1 ? new Set(rows) : new Set();
+}
+
 /**
  * Should an update of `existingSource`'s row by `incomingSource` re-key it?
  * Only a legacy aggregator row taken over by a named source — never the

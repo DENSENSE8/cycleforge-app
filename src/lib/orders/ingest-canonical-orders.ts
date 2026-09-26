@@ -40,6 +40,7 @@ import {
   orderCollapseCandidates,
   matchAggregatorOrderRows,
   matchMarketplaceOrderRows,
+  placeholderRowsToRekey,
   shouldRekeyToIncomingSource,
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
@@ -936,8 +937,15 @@ export async function ingestCanonicalOrders(
     } else if (crossSource && (crossSource.kind === 'adopt' || crossSource.kind === 'claim')) {
       // Adopt (aggregator → marketplace rows) or claim (marketplace → the
       // aggregator's row). Every matched row is backfilled; none is deleted.
+      // An adopted row under the bare platform takes the linked account.
       const policy = crossSourceBackfillPolicy(crossSource.kind, !!authoritative.productTitle);
-      for (const row of crossSource.rows) planBackfill(row, policy);
+      const rekey =
+        crossSource.kind === 'adopt' && aggregator
+          ? placeholderRowsToRekey(order.accountSource, crossSource.rows, aggregator.platformOf)
+          : new Set<OrderProjection>();
+      for (const row of crossSource.rows) {
+        planBackfill(row, rekey.has(row) ? { ...policy, sourceWrite: 'rekey' } : policy);
+      }
     } else {
       const shipmentIdList = Array.from(shipmentIds.values());
       ordersToInsert.push({

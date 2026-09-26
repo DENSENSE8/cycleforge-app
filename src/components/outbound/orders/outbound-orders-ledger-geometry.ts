@@ -95,6 +95,17 @@ export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
  */
 export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
 
+/**
+ * The order # slot inside {@link LEDGER_LEAD_CLASS} on band 1 — one fixed
+ * width on the group and record rows so platform and buyer keep their x. The
+ * FULL order number shows (operator 2026-09-26: never last-8 on the desk) and
+ * never ellipsizes: an id wider than the slot wraps (at its dashes first)
+ * inside it. Reaches into the shared chip face the way
+ * {@link LEDGER_NESTED_HIT_CLASS} does, without forking it.
+ */
+export const LEDGER_ORDER_NUMBER_SLOT_CLASS =
+  'flex w-40 min-w-0 shrink-0 items-center [&>*]:max-w-full [&>*]:shrink [&_button>span:last-child]:shrink [&_button>span:last-child]:whitespace-normal [&_button>span:last-child]:[overflow-wrap:anywhere]';
+
 /** A reference column beside an industrial form — the desktop terminal's `.evidence-panel` (`minmax(288px, 24vw)`). */
 export const LEDGER_EVIDENCE_CLASS =
   'flex w-[max(18rem,24vw)] shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-bar';

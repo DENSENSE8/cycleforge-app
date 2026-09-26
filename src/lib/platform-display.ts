@@ -182,7 +182,9 @@ interface OrderPlatformChoice {
   label: string;
 }
 
-/** The order platform picker's options, flat. */
+/** The order platform picker's options, flat. A platform whose stores are
+ *  linked to accounts offers only those accounts: the bare platform would be
+ *  a placeholder (operator 2026-09-26 — "eBay" is not a channel, DRAGON is). */
 export function orderPlatformChoices(
   platforms: readonly Pick<PlatformRow, 'id' | 'slug' | 'label' | 'is_active'>[],
   accounts: readonly Pick<PlatformAccountRow, 'id' | 'platform_id' | 'slug' | 'label' | 'is_active'>[],
@@ -201,12 +203,15 @@ export function orderPlatformChoices(
   };
   for (const p of platforms) {
     if (!p.is_active) continue;
-    push({ value: p.slug, label: p.label });
-    for (const a of accounts) {
-      if (String(a.platform_id) !== String(p.id) || !a.is_active) continue;
-      if (!linkedAccountIds.has(String(a.id)) || isPlatformDefaultAccount(p, a)) continue;
-      push({ value: a.slug, label: `${p.label} · ${a.label}` });
-    }
+    const linkedAccounts = accounts.filter(
+      (a) =>
+        String(a.platform_id) === String(p.id) &&
+        a.is_active &&
+        linkedAccountIds.has(String(a.id)) &&
+        !isPlatformDefaultAccount(p, a),
+    );
+    if (linkedAccounts.length === 0) push({ value: p.slug, label: p.label });
+    for (const a of linkedAccounts) push({ value: a.slug, label: `${p.label} · ${a.label}` });
   }
   return out;
 }

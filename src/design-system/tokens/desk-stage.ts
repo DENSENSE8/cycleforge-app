@@ -22,10 +22,11 @@ export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
 
 /**
  * {@link DeskRecordPlane}'s **split** view (operator 2026-09-25; owner
- * 2026-09-26): the padded LIST takes two thirds on the left for triage, the
- * record pane the right third, its columns stacked into one.
+ * 2026-09-26): the LIST area takes two thirds on the left for triage, the
+ * record pane the right third, its columns stacked into one. Full width with
+ * side gutters; the list scrolls to the bottom edge (no card).
  */
-export const DESK_SPLIT_LIST_CLASS = 'flex min-w-0 basis-2/3 flex-col px-4 pt-2';
+export const DESK_SPLIT_LIST_CLASS = 'flex min-h-0 min-w-0 basis-2/3 flex-col px-6';
 
 /** The record pane beside {@link DESK_SPLIT_LIST_CLASS} — the right third. */
 export const DESK_SPLIT_RECORD_CLASS = 'flex min-w-0 basis-1/3 flex-col';
@@ -45,6 +46,13 @@ export const DESK_SPLIT_RECORD_CARD_CLASS = 'flex min-h-0 flex-1 flex-col overfl
  * (`frame`), square.
  */
 export const DESK_RECORD_COLUMN_CARD_CLASS = `flex min-w-0 flex-col overflow-hidden rounded-mode border border-mode-frame bg-mode-bar ${elevationClass('raised')}`;
+
+/**
+ * The split LIST's body (owner 2026-09-26): full width of its two thirds with
+ * the gutter padding, a plain scrollable list — no card, no rounded or
+ * floating bottom edge, no in-page wrapper.
+ */
+export const DESK_SPLIT_LIST_CARD_CLASS = 'flex min-h-0 min-w-0 w-full flex-1 flex-col';
 
 /**
  * One record, two widths (operator 2026-09-25). In place the record gets the
@@ -180,4 +188,3 @@ export const FIND_STAGE_BY_DENSITY: Record<FindStageDensity, FindStageClasses> =
     elevation: elevationClass('flat'),
   },
 };
-

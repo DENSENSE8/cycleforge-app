@@ -6,7 +6,6 @@ import { useEffect, useLayoutEffect, useRef, useState, type RefObject, type Reac
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/design-system/primitives/Button';
-import { OrderPaperworkDialog } from '@/components/outbound/orders/paperwork/PaperworkDocuments';
 import {
   RecordActionStrip,
   type RecordActionVerb,
@@ -35,7 +34,7 @@ import {
 } from '@/lib/outbound/morphing-row-action';
 import { rememberRowPlaneOpen } from '@/components/tables/compound/compound-row-plane';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import { dispatchOpenShippedDetails, dispatchOpenListingStaffRules } from '@/utils/events';
+import { dispatchOpenShippedDetails, dispatchOpenListingStaffRules, dispatchOpenOrderPaperwork } from '@/utils/events';
 import { OrderNotesTrail } from '@/components/shipped/details-panel/OrderNotesTrail';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import {
@@ -123,6 +122,62 @@ const STRIP_OWNED_CATALOG_KEYS: Record<string, true> = {
   delete: true,
   'listing-rule': true,
 };
+
+/**
+ * The verbs that stay as BUTTONS on the table's top strip (owner 2026-09-26):
+ * bulk work over the list — Report out of stock, Mark urgent, Mark scanned
+ * out, Select, Delete (+ the Exceptions desk's paste / resolve). The rest of
+ * one order's actions go behind ⋮ and below the record's details
+ * ({@link useOrderRecordMoreVerbs}).
+ */
+const ORDER_BULK_VERB_IDS: ReadonlySet<string> = new Set([
+  'paste',
+  'resolve',
+  'out-of-stock',
+  'urgent',
+  'scan-out',
+  'select',
+  'delete',
+]);
+
+/**
+ * Verbs the open record already answers INLINE (owner 2026-09-26: "it's all
+ * duplicates"): Pick / Pack assign on the stage rows, condition + qty on the
+ * item card, ship-by in the details, the rule pencil, and ONE Paperwork
+ * action for label · slip · manuals (upload, print and link live there);
+ * Flag / Export are list-level, not about one order.
+ */
+const RECORD_INLINE_VERB_IDS: ReadonlySet<string> = new Set([
+  'label',
+  'notes',
+  'more-info',
+  'assign-pick',
+  'assign-pack',
+  'condition',
+  'qty',
+  'ship-by',
+  'create-rule',
+  'listing-rule',
+  'print-shipping',
+  'print-paperwork',
+  'link-label',
+  'flag',
+  'export',
+]);
+
+/** Per-order verbs the desk's check-set strip drops: the open record answers them inline. */
+const RAIL_REPLACED_VERB_IDS: ReadonlySet<string> = new Set(['label', 'notes', 'more-info']);
+
+/** Desktop check-set strip: bulk verbs as buttons, the check-set's other verbs in ⋮. */
+function bulkStripVerbs(verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
+  return verbs
+    .filter((verb) => !RAIL_REPLACED_VERB_IDS.has(verb.id))
+    .map((verb) =>
+      ORDER_BULK_VERB_IDS.has(verb.id) || verb.placement === 'overflow' || verb.placement === 'isolated'
+        ? verb
+        : { ...verb, placement: 'overflow' as const },
+    );
+}
 
 /** The open record's own controls, when the strip is armed for it. */
 interface OrderOpenRecordControls {
@@ -668,7 +723,7 @@ function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () 
   );
 }
 
-/** Label — view / print the order's label and slip, link new ones the packer scan prints, or walk the labels. */
+/** Label — link a packing slip / shipping label the packer scan prints, or walk the labels. */
 function LabelDisplay({
   record,
   onOpenLabels,
@@ -682,9 +737,6 @@ function LabelDisplay({
   const slipInputRef = useRef<HTMLInputElement>(null);
   const labelInputRef = useRef<HTMLInputElement>(null);
   const id = Number(record.id);
-  const orderRef = String(record.order_id ?? '').trim() || `#${id}`;
-  // Stays open while the display is: the dialog is the paperwork viewer (print on the preview).
-  const [paperwork, setPaperwork] = useState<'shipping_label' | 'packing_slip' | null>(null);
 
   const upload = (documentType: 'packing_slip' | 'shipping_label', file: File | undefined) => {
     if (!file) return;
@@ -711,19 +763,6 @@ function LabelDisplay({
 
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" data-testid="order-label-display">
-      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<Truck />} data-testid="order-label-view" onClick={() => setPaperwork('shipping_label')}>
-        View label
-      </Button>
-      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<FileText />} data-testid="order-slip-view" onClick={() => setPaperwork('packing_slip')}>
-        View slip
-      </Button>
-      <OrderPaperworkDialog
-        open={paperwork != null}
-        onOpenChange={(next) => !next && setPaperwork(null)}
-        orderId={id}
-        orderRef={orderRef}
-        initialTab={paperwork ?? 'shipping_label'}
-      />
       <input
         ref={slipInputRef}
         type="file"
@@ -848,7 +887,7 @@ export function OrderRecordActionStrip({
   record: ShippedOrder;
   mode: OrderRecordMode;
 } & Partial<OrderOpenRecordControls>) {
-  const verbs = useOrderActionVerbs({
+  const allVerbs = useOrderActionVerbs({
     record,
     rows: [record],
     stateRows: [record],
@@ -856,8 +895,50 @@ export function OrderRecordActionStrip({
     openRecord: { checked, onToggleSelect, onOpenLabels },
     onFinished: () => undefined,
   });
+  // Ledger desks: the quick triage verbs as buttons, the record's other
+  // actions behind ⋮ (the same list the record repeats below its details).
+  // The Shipped package record keeps its full strip.
+  const verbs =
+    mode === 'shipped'
+      ? allVerbs
+      : [
+          ...allVerbs.filter((verb) => ORDER_BULK_VERB_IDS.has(verb.id)),
+          ...recordMoreVerbs(record, allVerbs).map((verb) => ({ ...verb, placement: 'overflow' as const })),
+        ];
   const orderRef = String(record.order_id ?? '').trim() || `#${record.id}`;
   return <RecordActionStrip verbs={verbs} label={`Order ${orderRef} actions`} testId="order-record-actions" />;
+}
+
+/** The record's non-triage actions, deduped against what it answers inline — Paperwork first. */
+function recordMoreVerbs(record: ShippedOrder, verbs: readonly RecordActionVerb[]): RecordActionVerb[] {
+  const sku = String(record.sku ?? '').trim();
+  return [
+    { id: 'paperwork', label: 'Paperwork', icon: <FileText />, run: () => dispatchOpenOrderPaperwork(Number(record.id)) },
+    ...verbs.filter(
+      (verb) =>
+        verb.run &&
+        verb.placement !== 'isolated' &&
+        !ORDER_BULK_VERB_IDS.has(verb.id) &&
+        !RECORD_INLINE_VERB_IDS.has(verb.id),
+    ),
+    ...(sku
+      ? [{ id: 'sku-stock', label: 'SKU stock', icon: <Tag />, run: () => void window.open(`/inventory?sku=${encodeURIComponent(sku)}`, '_blank', 'noopener,noreferrer') }]
+      : []),
+    { id: 'rules', label: 'Rules', icon: <Bookmark />, run: () => dispatchOpenListingStaffRules() },
+  ];
+}
+
+/** The open record's "More actions" (below its details) — the same list as the strip's ⋮. */
+export function useOrderRecordMoreVerbs(record: ShippedOrder, mode: OrderRecordMode): RecordActionVerb[] {
+  const verbs = useOrderActionVerbs({
+    record,
+    rows: [record],
+    stateRows: [record],
+    mode,
+    openRecord: { checked: false },
+    onFinished: () => undefined,
+  });
+  return recordMoreVerbs(record, verbs);
 }
 
 /**
@@ -908,7 +989,7 @@ function MorphingRowActionMenu({
     onClose();
   };
 
-  const verbs = useOrderActionVerbs({
+  const allVerbs = useOrderActionVerbs({
     record,
     rows: actionRows,
     stateRows,
@@ -916,6 +997,8 @@ function MorphingRowActionMenu({
     onOpenNotesSheet: onMobileUrl ? () => setNotesOpen(true) : undefined,
     onFinished: close,
   });
+  // Phones keep the whole strip (no record rail there); the desk shows bulk buttons.
+  const verbs = onMobileUrl ? allVerbs : bulkStripVerbs(allVerbs);
 
   useEffect(() => {
     if (!open) return;

@@ -118,7 +118,7 @@ test('short-label input is trimmed and upper-cased; blank clears', () => {
   assert.equal(normalizeShortLabelInput('   '), null);
 });
 
-test('order platform choices: each platform once; an account only when a store is linked to it', () => {
+test('order platform choices: each platform once, or its linked accounts in its place', () => {
   const ecwid = platform('ecwid', 'ECW');
   const ebay = platform('ebay', 'eBay');
   const hidden = platform('other', 'Other', { is_active: false });
@@ -140,7 +140,6 @@ test('order platform choices: each platform once; an account only when a store i
   );
   assert.deepEqual(choices, [
     { value: 'ecwid', label: 'ECW' },
-    { value: 'ebay', label: 'eBay' },
     { value: 'DRAGON', label: 'eBay · DRAGON' },
-  ]);
+  ], 'the bare "eBay" is a placeholder once a store sells as an account');
 });

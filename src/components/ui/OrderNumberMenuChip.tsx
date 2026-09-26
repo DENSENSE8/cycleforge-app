@@ -22,6 +22,11 @@ interface OrderNumberMenuChipProps {
   plain?: boolean;
   /** Caption-mono face for LedgerGrid Sheets body. */
   dense?: boolean;
+  /**
+   * `last8` (default) — the stationary last-eight footprint. `full` — the whole
+   * order number, sized to its text (desk To-ship rows, operator 2026-09-26).
+   */
+  face?: 'last8' | 'full';
 }
 
 export function OrderNumberMenuChip({
@@ -32,6 +37,7 @@ export function OrderNumberMenuChip({
   onMenuOpenChange,
   plain = false,
   dense = false,
+  face = 'last8',
 }: OrderNumberMenuChipProps) {
   const raw = String(value || '').trim();
   const href = String(openHref || '').trim() || null;
@@ -62,7 +68,7 @@ export function OrderNumberMenuChip({
   const chip = (
     <OrderIdChip
       value={raw}
-      display={getLast8(raw)}
+      display={face === 'full' ? raw : getLast8(raw)}
       platformLabel={platformLabel}
       plain={plain}
       dense={dense}

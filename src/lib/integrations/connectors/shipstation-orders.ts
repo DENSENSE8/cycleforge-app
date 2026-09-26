@@ -6,6 +6,7 @@ import { shipstationMarketplaceSlug } from '@/lib/catalog/shipstation-store-sync
 import {
   crossSourceBackfillPolicy,
   matchAggregatorOrderRows,
+  placeholderRowsToRekey,
   type PlatformOf,
 } from '@/lib/orders/order-source-match';
 import { planOrderRowBackfill, type BackfillPolicy, type BackfillRow } from '@/lib/orders/order-row-backfill';
@@ -313,7 +314,7 @@ const SAME_POLICY: Pick<BackfillPolicy, 'titleAuthoritative' | 'sourceWrite'> = 
 function wouldEnrich(
   line: CanonicalOrderLine,
   rows: readonly ExistingOrderRow[],
-  policy: Pick<BackfillPolicy, 'titleAuthoritative' | 'sourceWrite'>,
+  policyOf: (row: ExistingOrderRow) => Pick<BackfillPolicy, 'titleAuthoritative' | 'sourceWrite'>,
 ): boolean {
   const hasCustomer = Boolean(line.buyer || line.customerName);
   return rows.some((row) => {
@@ -336,7 +337,7 @@ function wouldEnrich(
         customerId: hasCustomer ? 1 : null,
         shipmentIds: [],
       },
-      { ...policy, statusAuthoritative: true },
+      { ...policyOf(row), statusAuthoritative: true },
     );
     return Object.keys(values).length > 0;
   });
@@ -416,9 +417,17 @@ export function planShipStationOrders(
 
     const kind: Exclude<MatchKind, 'inserted'> =
       match.kind === 'same' ? 'same' : match.kind === 'adopt' ? 'adopted' : 'claimed';
+    // Mirrors the writer: an adopted row under the bare platform takes the account.
+    const rekey =
+      match.kind === 'adopt'
+        ? placeholderRowsToRekey(attribution.accountSource, match.rows, inputs.platformOf)
+        : new Set<ExistingOrderRow>();
+    const adoptPolicy = crossSourceBackfillPolicy('adopt', false);
     const enrich =
       match.kind === 'claim' ||
-      wouldEnrich(line, match.rows, match.kind === 'same' ? SAME_POLICY : crossSourceBackfillPolicy('adopt', false));
+      wouldEnrich(line, match.rows, (row) =>
+        match.kind === 'same' ? SAME_POLICY : rekey.has(row) ? { ...adoptPolicy, sourceWrite: 'rekey' } : adoptPolicy,
+      );
     bump(counts, `match.${kind}`);
     if (enrich) counts.enriched++;
     else {

@@ -1,19 +1,21 @@
 'use client';
 
-/** The order record's auto-assign rule as ONE read-only line — owner 2026-09-25, decision 8: */
+/**
+ * The line's auto-assign rule as an ACTION, not a details row (owner
+ * 2026-09-26): a pencil on the item card's right edge whose tooltip reads the
+ * current rule; pressing it opens the rule editor over the record.
+ */
 
 import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { Pencil } from '@/components/Icons';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
-import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
-import { RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';
+import { RECORD_TRAILING_ACTION_CLASS } from '@/design-system/tokens/industrial-record';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { OrderAutoAssignRule, useOrderListingRule } from './OrderAutoAssignRule';
-import { LEDGER_HIT_CLASS } from './outbound-orders-ledger-geometry';
 
-export function OrderAutoAssignRuleLine({
+export function OrderAutoAssignRuleAction({
   record,
   records,
   getStaffName,
@@ -37,7 +39,7 @@ export function OrderAutoAssignRuleLine({
   const face = ruleQuery.isPending
     ? '…'
     : ruleQuery.isError
-      ? 'Unreadable'
+      ? 'Rule unreadable'
       : rule
         ? [stage('Pick', rule.techId, rule.backupTechId), stage('Pack', rule.packerId, rule.backupPackerId)]
             .filter(Boolean)
@@ -47,35 +49,18 @@ export function OrderAutoAssignRuleLine({
 
   return (
     <>
-      <EvidenceFactRow label="Rule">
-        <span className="flex min-w-0 items-center" data-testid="order-rule-line">
-          <span
-            className={cn(
-              'min-w-0 flex-1 truncate',
-              ruleQuery.isError ? 'text-mode-warn' : rule ? 'text-mode-ink' : cn(RECORD_LABEL_CLASS, 'text-mode-muted'),
-            )}
-            title={ruleQuery.isError ? ruleQuery.error.message : `${scope} — primary → backup`}
-          >
-            {face}
-          </span>
-          <button
-            type="button"
-            data-testid="order-rule-edit"
-            aria-haspopup="dialog"
-            aria-label="Edit auto-assign rule"
-            title="Edit auto-assign rule"
-            onClick={() => setEditing(true)}
-            className={cn(
-              'ds-raw-button border-l border-mode-seam text-mode-ink hover:bg-mode-hover',
-              RECORD_TRAILING_CELL_CLASS,
-              LEDGER_HIT_CLASS,
-              focusRing('cell'),
-            )}
-          >
-            <Pencil className="h-3.5 w-3.5" aria-hidden />
-          </button>
-        </span>
-      </EvidenceFactRow>
+      <button
+        type="button"
+        data-testid="order-rule-edit"
+        data-rule={rule ? 'set' : 'none'}
+        aria-haspopup="dialog"
+        aria-label="Change auto-assign rule"
+        title={`Change rule — ${face}`}
+        onClick={() => setEditing(true)}
+        className={cn('ds-raw-button', RECORD_TRAILING_ACTION_CLASS, focusRing('control'))}
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden />
+      </button>
       <DeskStageOverlay
         open={editing}
         onClose={() => setEditing(false)}
