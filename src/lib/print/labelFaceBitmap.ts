@@ -31,7 +31,9 @@ export type PrintLabelRawSource = {
   dataMatrix: LabelFaceModel['matrix'];
 };
 
-const DPI = 203;
+/** Thermal head resolution every raw label job is rastered at. */
+export const LABEL_DPI = 203;
+const DPI = LABEL_DPI;
 const CSS_PX_PER_IN = 96;
 const LABEL_FACE_FONT_SIZE = Math.round((9 * DPI) / 96);
 const cssPxToDots = (value: number) => Math.round((value * DPI) / CSS_PX_PER_IN);
@@ -50,7 +52,8 @@ export function printLabelOptionsToFace(opts: PrintLabelRawSource): LabelFaceMod
   };
 }
 
-function drawFittedText(
+/** Draw `text` at (x, y), stepping the size down (to 8) until it fits `maxWidth`. */
+export function drawFittedText(
   context: CanvasRenderingContext2D,
   text: string,
   x: number,
@@ -87,10 +90,16 @@ function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
   return lines.slice(0, maxLines);
 }
 
-function rasterFace(
-  face: LabelFaceModel,
-  size: PaperSize,
-): { width: number; height: number; tspl: Uint8Array; zplPacked: Uint8Array } {
+/**
+ * A blank sticker for `size` at {@link LABEL_DPI}: white ground, black ink,
+ * top-aligned text. Draw on it, then hand it to {@link labelCanvasToRawCommands}.
+ */
+export function createLabelCanvas(size: PaperSize): {
+  canvas: HTMLCanvasElement;
+  context: CanvasRenderingContext2D;
+  width: number;
+  height: number;
+} {
   if (typeof document === 'undefined') {
     throw new Error('Bitmap label rendering requires a browser document');
   }
@@ -107,7 +116,11 @@ function rasterFace(
   context.fillRect(0, 0, width, height);
   context.fillStyle = '#000';
   context.textBaseline = 'top';
+  return { canvas, context, width, height };
+}
 
+function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
+  const { canvas, context, width, height } = createLabelCanvas(size);
   const paddingX = cssPxToDots(LABEL_FACE_SHELL.paddingXCssPx);
   const paddingY = cssPxToDots(LABEL_FACE_SHELL.paddingYCssPx);
   const gap = cssPxToDots(LABEL_FACE_SHELL.gapCssPx);
@@ -237,25 +250,7 @@ function rasterFace(
       context.textAlign = 'left';
     }
   }
-
-  const rotated = document.createElement('canvas');
-  rotated.width = width;
-  rotated.height = height;
-  const rotatedContext = rotated.getContext('2d', { alpha: false });
-  if (!rotatedContext) throw new Error('Unable to rotate label bitmap');
-  rotatedContext.fillStyle = '#fff';
-  rotatedContext.fillRect(0, 0, width, height);
-  rotatedContext.translate(width, height);
-  rotatedContext.rotate(Math.PI);
-  rotatedContext.drawImage(canvas, 0, 0);
-
-  const image = rotatedContext.getImageData(0, 0, width, height);
-  return {
-    width,
-    height,
-    tspl: packMonochromeBitmap(image.data, width, height, true),
-    zplPacked: packMonochromeBitmap(image.data, width, height, false),
-  };
+  return canvas;
 }
 
 function wrapEscPosRaster(bitmap: Uint8Array, width: number, height: number, copies: number): Uint8Array {
@@ -287,27 +282,47 @@ function wrapEscPosRaster(bitmap: Uint8Array, width: number, height: number, cop
   return out;
 }
 
-export function buildPrintLabelRawCommands(
-  opts: PrintLabelRawSource,
+/**
+ * Raw thermal bytes for one drawn sticker: rotated 180° for the feed
+ * direction, packed monochrome, framed in the profile's language.
+ */
+export function labelCanvasToRawCommands(
+  canvas: HTMLCanvasElement,
   profile: PrinterProfile,
   paper: PaperSize,
 ): string | Uint8Array {
-  const face = printLabelOptionsToFace(opts);
-  const raster = rasterFace(face, paper);
+  const { width, height } = canvas;
+  const rotated = document.createElement('canvas');
+  rotated.width = width;
+  rotated.height = height;
+  const rotatedContext = rotated.getContext('2d', { alpha: false });
+  if (!rotatedContext) throw new Error('Unable to rotate label bitmap');
+  rotatedContext.fillStyle = '#fff';
+  rotatedContext.fillRect(0, 0, width, height);
+  rotatedContext.translate(width, height);
+  rotatedContext.rotate(Math.PI);
+  rotatedContext.drawImage(canvas, 0, 0);
+  const image = rotatedContext.getImageData(0, 0, width, height);
+
   // Per-job multiplicity is NOT a printer repeat count — a run of N stickers is
   // N plates (`labelCopies.expandPlateRun`), because this hardware answers
   // `PRINT N,1` / `^PQN` on a raster job with a single label. What survives here
   // is the printer profile's own Copies setting.
   const copies = clampLabelCopies(profile.copies ?? 1);
   const language: LabelLanguage = profile.language;
-  if (language === 'zpl') {
-    return wrapZplGraphicJob(raster.zplPacked, raster.width, raster.height, copies);
+  if (language === 'none') return '';
+  if (language === 'tspl') {
+    return wrapTsplBitmapJob(packMonochromeBitmap(image.data, width, height, true), width, height, paper, copies);
   }
-  if (language === 'escpos') {
-    return wrapEscPosRaster(raster.zplPacked, raster.width, raster.height, copies);
-  }
-  if (language === 'none') {
-    return '';
-  }
-  return wrapTsplBitmapJob(raster.tspl, raster.width, raster.height, paper, copies);
+  const packed = packMonochromeBitmap(image.data, width, height, false);
+  if (language === 'zpl') return wrapZplGraphicJob(packed, width, height, copies);
+  return wrapEscPosRaster(packed, width, height, copies);
+}
+
+export function buildPrintLabelRawCommands(
+  opts: PrintLabelRawSource,
+  profile: PrinterProfile,
+  paper: PaperSize,
+): string | Uint8Array {
+  return labelCanvasToRawCommands(drawFace(printLabelOptionsToFace(opts), paper), profile, paper);
 }

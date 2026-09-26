@@ -97,6 +97,8 @@ export interface CounterVisitDevice {
   rsNumber: string;
   serialNumber: string;
   productTitle: string;
+  /** repair_service.issue — this device's own reasons (comma-joined) plus any repair note, as written at submit (submit-repair-intake.ts). '' when none. Callers: visit-receipt buildVisitReceipt. */
+  issue: string;
   /** Free-text lifecycle status. See REPAIR_STATUS_OPTIONS in repair-service-queries.ts. */
   status: string;
   /** Parsed via serviceLineCents — the SAME parser the header total was built from. */
@@ -359,7 +361,7 @@ const defaultDeps: ReadVisitDeps = {
     // along in the SAME statement, so N devices cost one round trip.
     const res = await asClient(tx).query<Record<string, unknown>>(
       `SELECT rs.id, rs.ticket_number, rs.serial_number, rs.product_title, rs.status,
-              rs.price, rs.created_at,
+              rs.issue, rs.price, rs.created_at,
               doc.signature_url, doc.signed_at
          FROM repair_service rs
          LEFT JOIN LATERAL (
@@ -380,6 +382,7 @@ const defaultDeps: ReadVisitDeps = {
         rsNumber: (row.ticket_number as string | null) ?? '',
         serialNumber: (row.serial_number as string | null) ?? '',
         productTitle: (row.product_title as string | null) ?? '',
+        issue: ((row.issue as string | null) ?? '').trim(),
         status: (row.status as string | null) ?? '',
         // The ONE canonical parser (counter-transaction-types.ts) — never a
         // second, independent parse of the same TEXT column.

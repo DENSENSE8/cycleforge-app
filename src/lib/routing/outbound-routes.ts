@@ -197,7 +197,12 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Find by order number / tracking / SKU. */
     search: paramText,
-    /** Open row — the details panel's deep-link, same key as the To-ship desk. */
+    /**
+     * The open package (`SHIPMENT_RECORD_PARAM`): a `shipping_tracking_numbers.id`,
+     * or `scan-<id>` for a pack scan that captured no tracking (no package record).
+     */
+    shipment: paramText,
+    /** Legacy open order line — the ledger maps it to that line's package, then drops it. */
     openOrderId: paramPositiveInt,
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
     shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),

@@ -32,8 +32,7 @@
  *
  * **`actions`** — optional contextual icon cluster for occupants whose actions
  * belong on the navigation row. Sits after close, left of the flex spacer +
- * ↑↓. History `detail:history` deliberately does not use this slot: its
- * contextual topics own a dedicated second row.
+ * ↑↓.
  *
  * **`cursor`** — optional `N / M` readout (`CursorPositionReadout`). A readout,
  * not a control: it says where the rail's selection sits, and moving it is the

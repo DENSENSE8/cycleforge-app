@@ -113,20 +113,6 @@ export interface ReceivingEventDetail {
     cartonAspect?: PhotoAspect;
   };
   /**
-   * Unbox History left-click — open the carton triage slide-over
-   * (`detail:history` / HistoryCartonTriagePanel).
-   */
-  'receiving-open-history-triage': {
-    receivingId: number;
-    receivingLineId?: number | null;
-    poNumber?: string | null;
-    title?: string | null;
-    tracking?: string | null;
-    status?: string | null;
-  };
-  /** Close the History triage slide-over. */
-  'receiving-close-history-triage': undefined;
-  /**
    * Export the current Unbox History view as CSV. The Band-1 trailing button
    * triggers it; the table (which holds the rows in hand) formats + downloads —
    * never a second query. History surface only.

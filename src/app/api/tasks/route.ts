@@ -37,8 +37,9 @@ export const dynamic = 'force-dynamic';
  */
 
 const BodySchema = z.object({
-  entityType: z.enum(urgencyEntityTypes() as unknown as [string, ...string[]]),
-  entityId: z.number().int().positive(),
+  /** Both omitted = a standalone task with no record behind it. */
+  entityType: z.enum(urgencyEntityTypes() as unknown as [string, ...string[]]).nullish(),
+  entityId: z.number().int().positive().nullish(),
   assigneeStaffId: z.number().int().positive().max(TASK_STAFF_ID_MAX).optional(),
   assigneeStaffIds: z.array(z.number().int().positive().max(TASK_STAFF_ID_MAX)).min(1).max(TASK_ASSIGNEES_MAX)
     .refine((ids) => new Set(ids).size === ids.length, 'Duplicate assignee').optional(),
@@ -59,17 +60,19 @@ const BodySchema = z.object({
 }).refine((body) => body.assigneeStaffIds === undefined || body.assigneeStaffId === undefined ||
   body.assigneeStaffIds[0] === body.assigneeStaffId, {
   message: 'Primary assignee must be first member',
+}).refine((body) => (body.entityType == null) === (body.entityId == null), {
+  message: 'entityType and entityId go together',
 });
 
 /** Domain refusal → HTTP. Each one is something the operator can act on. */
 const REFUSAL_STATUS: Record<string, number> = {
   unsupported_entity: 400,
+  missing_title: 400,
   invalid_entity_id: 400,
   invalid_assignee: 400,
   note_too_long: 400,
   project_name_too_long: 400,
   invalid_project_name: 400,
-  self_throw: 409,
   invalid_deadline: 400,
   invalid_reminder: 400,
 };

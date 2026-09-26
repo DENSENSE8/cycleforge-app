@@ -89,7 +89,6 @@ const TABLE_ID_VALUES = Object.keys(TABLE_COLUMNS) as [TableId, ...TableId[]];
  */
 const TABLE_ENTITY_FAMILIES = [
   'receiving',
-  'incoming',
   'orders',
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',

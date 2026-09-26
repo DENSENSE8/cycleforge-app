@@ -63,8 +63,13 @@ export function isNotifiableEntityType(v: unknown): v is NotifiableEntityType {
  * nothing can fan a ticket out to derived recipients — which is exactly why
  * widening the subscribable list would have been the wrong fix, and why the
  * inbox row carries no Subscribe toggle. Migration `2026-09-22a`.
+ *
+ * `task` anchors a STANDALONE task — one handed to a person without any
+ * record behind it (migration `2026-09-25f`). Its entity id is the
+ * `work_assignments.id` itself; like the ticket arm it is directly addressed
+ * only and never subscribable.
  */
-export const INBOX_ENTITY_TYPES = [...NOTIFIABLE_ENTITY_TYPES, 'support_ticket'] as const;
+export const INBOX_ENTITY_TYPES = [...NOTIFIABLE_ENTITY_TYPES, 'support_ticket', 'task'] as const;
 
 export type InboxEntityType = (typeof INBOX_ENTITY_TYPES)[number];
 
@@ -90,6 +95,7 @@ export const INBOX_ENTITY_NOUN: Readonly<Record<InboxEntityType, string>> = {
   repair: 'Repair',
   warranty_claim: 'Claim',
   support_ticket: 'Ticket',
+  task: 'Task',
 };
 
 /**
@@ -123,6 +129,8 @@ export const ENTITY_VIEW_PERMISSION: Record<InboxEntityType, PermissionString> =
    * told you were handed a ticket is not being shown the customer's thread.
    */
   support_ticket: 'work_orders.claim',
+  /** Same gate as `GET /api/tasks`, which already shows the task to its assignees. */
+  task: 'work_orders.claim',
 };
 
 /**

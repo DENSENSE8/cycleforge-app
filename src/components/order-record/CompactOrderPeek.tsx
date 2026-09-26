@@ -5,8 +5,9 @@
  * stack / recents). Dense identity + a few facts + hand-off CTA to search
  * feedback.
  *
- * Full inspector body stays on the shipping desk table click
- * (`ShippedDetailsPanel`). Search feedback is `/search?sel=order:…`.
+ * The full record stays on the shipping desks (`OrderRecordView` in the
+ * outbound ledger; on Shipped, the package record `ShipmentRecordView`).
+ * Search feedback is `/search?sel=order:…`.
  */
 
 import { useRouter } from 'next/navigation';

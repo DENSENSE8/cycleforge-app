@@ -665,7 +665,7 @@ async function upsertMatchedReceiving(
       `INSERT INTO receiving_carton
          (source, zoho_purchaseorder_id, carrier, receiving_date_time,
           qa_status, needs_test, updated_at, organization_id)
-       VALUES ('zoho_po', $1, $2, $3::timestamp, 'PENDING', true, $3::timestamptz, $4::uuid)
+       VALUES ('zoho_po', $1, $2, NOW(), 'PENDING', true, $3::timestamptz, $4::uuid)
        ON CONFLICT (zoho_purchaseorder_id) WHERE source = 'zoho_po' AND zoho_purchaseorder_id IS NOT NULL
        DO UPDATE SET
          updated_at = EXCLUDED.updated_at,
@@ -713,7 +713,7 @@ async function createUnmatchedReceiving(
       `INSERT INTO receiving_carton
          (source, shipment_id, carrier, receiving_date_time,
           qa_status, needs_test, updated_at, organization_id)
-       VALUES ('unmatched', $1, $2, $3::timestamp, 'PENDING', true, $3::timestamptz, $4::uuid)
+       VALUES ('unmatched', $1, $2, NOW(), 'PENDING', true, $3::timestamptz, $4::uuid)
        RETURNING id`,
       [shipment?.id ?? null, carrier || null, now, organizationId],
     );

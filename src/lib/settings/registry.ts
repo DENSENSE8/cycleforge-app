@@ -42,8 +42,49 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
   permission: 'admin.manage_features',
 }));
 
+/**
+ * Desks whose fullscreen choice is remembered, by `SIDEBAR_PAGE_NAV` page id
+ * (what `useActiveSidebarChild().pageId` resolves on a `DeskPageLayout`
+ * route). Fullscreen is how the staffer chose to see a desk's records —
+ * list-left / record-right split instead of the record in place of the list
+ * (`DeskRecordPlane`, operator 2026-09-25) — so it sticks per staffer, per
+ * desk. A desk missing here still toggles; it just forgets on reload.
+ */
+export const DESK_FULLSCREEN_DESKS = [
+  { id: 'home', label: 'Daily' },
+  { id: 'outbound', label: 'Shipping' },
+  { id: 'fba', label: 'FBA' },
+  { id: 'incoming', label: 'Deliveries' },
+  { id: 'receive', label: 'Unbox' },
+  { id: 'repair', label: 'Repair Service' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'products', label: 'Products' },
+  { id: 'inventory', label: 'Inventory' },
+  { id: 'sourcing', label: 'Sourcing' },
+  { id: 'support', label: 'Support' },
+  { id: 'sales', label: 'Sales' },
+] as const;
+
+/** Storage key of one desk's remembered fullscreen choice. */
+export function deskFullscreenSettingKey(deskId: string): string {
+  return `desk.${deskId}.fullscreen`;
+}
+
+const DESK_FULLSCREEN_SETTINGS: readonly SettingDef[] = DESK_FULLSCREEN_DESKS.map((desk) => ({
+  key: deskFullscreenSettingKey(desk.id),
+  page: 'desk' as const,
+  group: 'Record view',
+  scope: 'staff' as const,
+  label: `${desk.label}: open fullscreen (list + record side by side)`,
+  description:
+    'Remembered from the fullscreen toggle on the table row. Off: a record opens in place of the list.',
+  control: 'toggle' as const,
+  schema: z.boolean().default(false),
+}));
+
 export const SETTING_PAGES = [
   { id: 'receiving', label: 'Receiving', description: 'Unboxing & intake behavior' },
+  { id: 'desk', label: 'Desks', description: 'How each desk shows its records' },
 ] as const satisfies readonly { id: SettingPage; label: string; description: string }[];
 
 export const SETTINGS: readonly SettingDef[] = [
@@ -411,6 +452,7 @@ export const SETTINGS: readonly SettingDef[] = [
       { value: 'all', label: 'Expand all' },
     ],
   },
+  ...DESK_FULLSCREEN_SETTINGS,
 ];
 
 const BY_KEY = new Map<string, SettingDef>(SETTINGS.map((s) => [s.key, s]));

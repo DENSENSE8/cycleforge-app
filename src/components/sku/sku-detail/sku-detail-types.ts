@@ -45,6 +45,7 @@ export interface SkuDetailData {
     sku: string;
     delta: number;
     reason: string;
+    notes: string | null;
     staff_id: number | null;
     created_at: string;
   }>;

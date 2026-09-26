@@ -73,7 +73,6 @@ export type SlotTableDiscoverReport = {
 
 const GRID_SYMBOL_TABLE_ID: Record<string, string> = {
   RECEIVING_GRID_COLUMNS: 'receiving',
-  INCOMING_GRID_COLUMNS: 'incoming',
   DAILY_GRID_COLUMNS: 'daily',
   TASKS_GRID_COLUMNS: 'tasks',
   CATALOG_LINK_GRID_COLUMNS: 'catalog-link',
@@ -143,7 +142,6 @@ function tableIdForGridSymbol(symbol: string): string {
 function materializationKeepFor(tableId: string): string {
   const map: Record<string, string> = {
     receiving: 'RECEIVING_COMPOUND_COLUMNS (receivingCompoundColumnsFor)',
-    incoming: 'INCOMING_COMPOUND_COLUMNS (incomingCompoundColumnsFor)',
     daily: 'DAILY_COMPOUND_COLUMNS (dailyCompoundColumnsFor)',
     tasks: 'TASKS_COMPOUND_COLUMNS (tasksCompoundColumnsFor)',
     'catalog-link': 'CATALOG_LINK_COMPOUND_COLUMNS (catalogLinkCompoundColumnsFor)',
@@ -429,14 +427,8 @@ function scanTableColumnZombies(peers: Set<string>): SlotTableFinding[] {
       symbol: `TABLE_COLUMNS['${key}']`,
       path: 'src/lib/tables/table-columns.ts',
       refs: [],
-      why:
-        key === 'incoming_embed'
-          ? 'Third hide-bucket for Incoming embed (not a product table). Prefs fork vs fold into incoming slots.'
-          : `${key} looks like a product queue in TABLE_COLUMNS but is not in PRODUCT_TABLES.`,
-      keep:
-        key === 'incoming_embed'
-          ? 'Distinct prefs identity if embed density must not leak into /incoming — or fold later. Do not invent a second Incoming engine.'
-          : `If this is not joining the waist, empty the bucket to [] (keep the key only if TableId still needs it).`,
+      why: `${key} looks like a product queue in TABLE_COLUMNS but is not in PRODUCT_TABLES.`,
+      keep: `If this is not joining the waist, empty the bucket to [] (keep the key only if TableId still needs it).`,
       next: 'Human: join PRODUCT_TABLES or empty the bucket. Agents do not invent a tableId.',
       blockedBy: [],
     });

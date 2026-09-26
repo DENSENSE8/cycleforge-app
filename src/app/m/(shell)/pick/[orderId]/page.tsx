@@ -157,7 +157,7 @@ function PickerInner() {
           onClose={() => setShortSheetOpen(false)}
           pickedQty={0}
           plannedQty={currentTask.plannedQty}
-          productLabel={`${currentTask.productTitle ?? currentTask.sku} · ${currentTask.sku}`}
+          productLabel={currentTask.productTitle ?? currentTask.sku}
           onConfirm={(r) => void handleShortPick(r)}
         />
       )}

@@ -8,9 +8,9 @@
  * `useTasksTableLayout.ts` — 200 lines restating the engine's column law to
  * supply four strings — and both are deleted with the store swap.
  *
- * `recordPlane` names the right-rail occupant a row click opens, so "click the
- * line item → details on the right" is a property of the REGISTERED definition
- * rather than of one page's click handler.
+ * `recordPlane` names what a row click opens, so "click the line item → the
+ * record" is a property of the REGISTERED definition rather than of one page's
+ * click handler. Tasks open on Daily (`/`) through `DeskRecordPlane`.
  */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
@@ -28,7 +28,6 @@ import {
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { TASKS_FAMILY, TASKS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/tasks';
 import type { TaskDeskRow } from '@/lib/tasks/task-desk-row';
-import { TASK_INSPECTOR_RAIL_ID } from './task-inspector-id';
 
 /** The PRODUCT-DEFAULT materialization — the canonical columns and guard SoT. */
 export const TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColumnsFor(
@@ -48,7 +47,7 @@ export const TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColum
  * ledger of assignments where the verb is a transition.
  *
  * `inCellEdit: false` — the row is a pointer at a record. Re-wording a handoff
- * happens in the right-rail inspector, which is where the task's other facts
+ * happens in the record, which is where the task's other facts
  * (record, ticket, history) already are. A cell editor here would be a second
  * write path competing with the record plane.
  */
@@ -100,5 +99,8 @@ export const TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, SlotTableColu
   definition: TASKS_TABLE_DEFINITION,
   columns: TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeTasksGridDescriptor,
-  recordPlane: { kind: 'inspector', occupantId: TASK_INSPECTOR_RAIL_ID },
+  recordPlane: {
+    kind: 'stage-overlay',
+    reason: 'A task opens on Daily (`/?task=`) through RecordLedger → DeskRecordPlane: in place of the list, or split beside it in fullscreen.',
+  },
 };

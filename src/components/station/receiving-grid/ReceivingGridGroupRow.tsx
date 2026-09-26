@@ -44,10 +44,6 @@ interface ReceivingGridGroupRowProps {
   selectGutterChrome?: GridSelectGutterChrome;
   /** Unbox History: click toggles select; double-click opens. */
   clickSelect?: boolean;
-  /** Unbox History: double-click / Enter → LineEditPanel. */
-  onOpenWorkspace?: (row: ReceivingLineRow) => void;
-  /** Unbox History — richer context menu. */
-  historyTriageMenu?: boolean;
   /** Persisted row fills keyed by stringified id. */
   rowFillsById?: Readonly<Record<string, string>>;
   /** Unbox compare crosshair carton id (peer wash). */
@@ -96,8 +92,6 @@ export function ReceivingGridGroupRow({
   columns,
   selectGutterChrome = 'always',
   clickSelect = false,
-  onOpenWorkspace,
-  historyTriageMenu = false,
   rowFillsById,
   linkedReceivingId = null,
   onCrosshairHover,
@@ -158,8 +152,6 @@ export function ReceivingGridGroupRow({
         isLinked={isLinked}
         onSelect={() => handleSelectRow(row)}
         onToggle={handleToggleRow ? () => handleToggleRow(row) : undefined}
-        onOpenWorkspace={onOpenWorkspace ? () => onOpenWorkspace(row) : undefined}
-        historyTriageMenu={historyTriageMenu}
         onCrosshairHover={onCrosshairHover}
         activityAxis={activityAxis}
         isHistory={isHistory}

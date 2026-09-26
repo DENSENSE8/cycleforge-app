@@ -22,13 +22,14 @@ import {
   useRepairRecord,
   useRepairTicketLink,
 } from '@/components/mobile/repair/useRepairWorkbench';
-import { Camera, MessageSquare, Video } from '@/components/Icons';
+import { Camera, Lock, MessageSquare, Send, Video } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import type { TicketThreadVisibility } from '@/lib/composer/ticket-thread-handoff';
 import { TICKET_HANDOFF_MAX_PHOTOS } from '@/lib/composer/ticket-thread-handoff';
 import { repairMediaTimeline } from '@/lib/repair/repair-photos';
 import { formatMegabytes } from '@/lib/photos/video-upload-rules';
 import { Button } from '@/design-system/primitives';
+import { DetailDock, type DetailDockVerb } from '@/design-system/components/DetailDock';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { formatMonthDayTimePST } from '@/utils/date';
 
@@ -36,6 +37,9 @@ const plural = (n: number, one: string) => (n === 1 ? `1 ${one}` : `${n} ${one}s
 
 /** What the video picker offers — the three containers the upload rules accept. */
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm';
+
+/** Dock verbs: idle (select / video / photo) or, while selecting, the two send targets. */
+type PhotoVerb = 'select' | 'video' | 'photo' | TicketThreadVisibility;
 
 /**
  * `/m/rs/[id]/photos` — the repair's evidence photos and videos. Grid + full-screen
@@ -137,7 +141,36 @@ function RepairPhotosInner() {
     .filter(Boolean)
     .join(' · ');
   const videoBusy = uploads.video?.state === 'uploading';
-  const cell = 'min-h-mode-hit-cta w-full rounded-mode px-2';
+  const cell = 'min-h-mode-hit-cta w-full px-2';
+
+  const sendDisabled = selectedIds.length === 0;
+  const dockVerbs: DetailDockVerb<PhotoVerb>[] = selecting
+    ? [
+        { id: 'internal', label: 'Internal note', icon: <Lock />, disabled: sendDisabled },
+        { id: 'public', label: 'Public reply', icon: <Send />, primary: true, disabled: sendDisabled },
+      ]
+    : [
+        ...(canSelect ? [{ id: 'select' as const, label: 'Send to ticket', icon: <MessageSquare /> }] : []),
+        { id: 'video', label: 'Add video', icon: <Video />, disabled: !canUpload || videoBusy },
+        { id: 'photo', label: 'Take photo', icon: <Camera />, primary: true, disabled: !canUpload },
+      ];
+  const onDockVerb = (id: PhotoVerb) => {
+    switch (id) {
+      case 'internal':
+      case 'public':
+        sendTo(id);
+        return;
+      case 'select':
+        setSelecting(true);
+        return;
+      case 'video':
+        videoInputRef.current?.click();
+        return;
+      case 'photo':
+        setCapturing(true);
+        return;
+    }
+  };
 
   return (
     <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
@@ -149,46 +182,40 @@ function RepairPhotosInner() {
         meta={repair?.product_title || undefined}
       />
 
-      <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+      <div className="flex-1 divide-y divide-mode-rule">
         {uploads.uploading > 0 ? (
-          <p role="status" className="text-role-caption font-semibold text-mode-ink">
+          <p role="status" className="bg-mode-panel px-mode-page py-3 text-role-caption font-semibold text-mode-ink">
             Uploading {plural(uploads.uploading, 'photo')}…
           </p>
         ) : null}
 
         {uploads.video?.state === 'uploading' ? (
-          <div role="status" className="space-y-1.5">
+          <div role="status" className="space-y-1.5 bg-mode-panel px-mode-page py-3">
             <p className="text-role-caption font-semibold text-mode-ink">
               Uploading video · {formatMegabytes(uploads.video.file.size)} ·{' '}
               {Math.round(uploads.video.progress * 100)}%
             </p>
             <div
-              className="h-1.5 overflow-hidden rounded-full bg-mode-rule"
+              className="h-1.5 overflow-hidden bg-mode-rule"
               role="progressbar"
               aria-label="Video upload"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(uploads.video.progress * 100)}
             >
-              <div
-                className="h-full rounded-full bg-fill-info transition-[width]"
-                style={{ width: `${Math.round(uploads.video.progress * 100)}%` }}
-              />
+              <div className="h-full bg-fill-info" style={{ width: `${Math.round(uploads.video.progress * 100)}%` }} />
             </div>
           </div>
         ) : null}
 
         {uploads.video?.state === 'failed' ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-role-caption text-rose-700"
-          >
+          <div role="alert" className="space-y-2 bg-rose-50 px-mode-page py-3 text-role-caption text-rose-700">
             <p className="font-semibold">The video didn&apos;t upload — {uploads.video.error}</p>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" size="lg" className={cell} onClick={uploads.discardVideo}>
+              <Button variant="secondary" size="lg" radius="flush" className={cell} onClick={uploads.discardVideo}>
                 Discard
               </Button>
-              <Button variant="primary" size="lg" className={cell} onClick={uploads.retryVideo}>
+              <Button variant="primary" size="lg" radius="flush" className={cell} onClick={uploads.retryVideo}>
                 Retry
               </Button>
             </div>
@@ -196,18 +223,15 @@ function RepairPhotosInner() {
         ) : null}
 
         {uploads.failed.length > 0 ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-role-caption text-rose-700"
-          >
+          <div role="alert" className="space-y-2 bg-rose-50 px-mode-page py-3 text-role-caption text-rose-700">
             <p className="font-semibold">
               {plural(uploads.failed.length, 'photo')} didn&apos;t upload — {uploads.failed[0].error}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" size="lg" className={cell} onClick={uploads.discardFailed}>
+              <Button variant="secondary" size="lg" radius="flush" className={cell} onClick={uploads.discardFailed}>
                 Discard
               </Button>
-              <Button variant="primary" size="lg" className={cell} onClick={uploads.retryFailed}>
+              <Button variant="primary" size="lg" radius="flush" className={cell} onClick={uploads.retryFailed}>
                 Retry
               </Button>
             </div>
@@ -224,132 +248,69 @@ function RepairPhotosInner() {
           <DetailAck onDismiss={uploads.clearCommitted}>Saved the video to {rsCode}</DetailAck>
         ) : null}
 
+        {selecting ? (
+          <p
+            className="bg-mode-well px-mode-page py-2 text-role-caption font-semibold text-mode-ink"
+            aria-live="polite"
+          >
+            {selectedIds.length === 0 ? 'Tap photos to send' : `${plural(selectedIds.length, 'photo')} selected`}
+          </p>
+        ) : null}
+
         {loading && items.length === 0 ? (
-          <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
+          <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
         ) : error ? (
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-role-caption text-rose-600">Couldn&apos;t load photos — {error}</p>
+          <div className="flex items-center justify-between gap-3 bg-rose-50 px-mode-page py-3">
+            <p className="text-role-caption text-rose-700">Couldn&apos;t load photos — {error}</p>
             <Button variant="secondary" size="lg" onClick={reload}>
               Retry
             </Button>
           </div>
         ) : items.length === 0 ? (
-          <p className="py-10 text-center text-role-caption text-mode-muted">
+          <p className="px-mode-page py-10 text-center text-role-caption text-mode-muted">
             No photos or videos on this repair yet.
           </p>
         ) : (
           <>
-            <p className="text-role-caption text-mode-muted">
-              {countLine}
-              {newestAt ? ` · newest ${formatMonthDayTimePST(newestAt)}` : ''}
-            </p>
-            <RepairPhotoGrid
-              items={items}
-              selecting={selecting}
-              selectedIds={selectedIds}
-              onOpen={setViewerIndex}
-              onToggle={toggle}
-            />
+            <div className="space-y-3 bg-mode-panel px-mode-page py-3">
+              <p className="text-role-caption text-mode-muted">
+                {countLine}
+                {newestAt ? ` · newest ${formatMonthDayTimePST(newestAt)}` : ''}
+              </p>
+              <RepairPhotoGrid
+                items={items}
+                selecting={selecting}
+                selectedIds={selectedIds}
+                onOpen={setViewerIndex}
+                onToggle={toggle}
+              />
+            </div>
             {attachBlocked ? (
-              <p className="text-role-caption text-mode-muted">Send to ticket: {attachBlocked}</p>
+              <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
+                Send to ticket: {attachBlocked}
+              </p>
             ) : null}
           </>
         )}
 
         {!canUpload ? (
-          <p className="text-role-caption text-mode-muted">
+          <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
             Your role cannot add repair photos or videos (needs Intake repair).
           </p>
         ) : null}
       </div>
 
-      <nav
-        aria-label="Photo actions"
-        className="sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
-      >
-        {selecting ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-role-caption font-semibold text-mode-ink" aria-live="polite">
-                {selectedIds.length === 0
-                  ? 'Tap photos to send'
-                  : `${plural(selectedIds.length, 'photo')} selected`}
-              </p>
-              <Button variant="ghost" size="lg" onClick={stopSelecting}>
-                Cancel
-              </Button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="secondary"
-                size="lg"
-                className={cell}
-                disabled={selectedIds.length === 0}
-                onClick={() => sendTo('internal')}
-              >
-                Internal note
-              </Button>
-              <Button
-                variant="primary"
-                size="lg"
-                className={cell}
-                disabled={selectedIds.length === 0}
-                onClick={() => sendTo('public')}
-              >
-                Public reply
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {canSelect ? (
-              <Button
-                variant="secondary"
-                size="lg"
-                className={cell}
-                icon={<MessageSquare />}
-                onClick={() => setSelecting(true)}
-              >
-                Send to ticket
-              </Button>
-            ) : null}
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="secondary"
-                size="lg"
-                className={cell}
-                icon={<Video />}
-                disabled={!canUpload || videoBusy}
-                onClick={() => videoInputRef.current?.click()}
-              >
-                Add video
-              </Button>
-              <Button
-                variant="primary"
-                size="lg"
-                className={cell}
-                icon={<Camera />}
-                disabled={!canUpload}
-                onClick={() => setCapturing(true)}
-              >
-                Take photo
-              </Button>
-            </div>
-          </div>
-        )}
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept={VIDEO_ACCEPT}
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden
-          onChange={onVideoPicked}
-          data-testid="repair-video-input"
-        />
-      </nav>
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept={VIDEO_ACCEPT}
+        capture="environment"
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={onVideoPicked}
+        data-testid="repair-video-input"
+      />
 
       <MobileSwipePhotoViewer
         open={viewerIndex != null}
@@ -375,6 +336,13 @@ function RepairPhotosInner() {
           }
         />
       ) : null}
+
+      <DetailDock<PhotoVerb>
+        label={selecting ? 'Photo selection actions' : 'Photo actions'}
+        selection={selecting ? { count: selectedIds.length, onClear: stopSelecting } : null}
+        verbs={dockVerbs}
+        onVerb={onDockVerb}
+      />
     </ModeRegion>
   );
 }

@@ -2,12 +2,13 @@
 
 /**
  * Inventory › **Stock** — every (location, SKU) pair holding stock,
- * warehouse-wide, as an industrial record ledger with a triage evidence column.
+ * warehouse-wide, as an industrial record ledger; the open pair is placed by
+ * the ledger's `DeskRecordPlane` (in place of the list, or split beside it in
+ * fullscreen).
  *
  *   spine │ photo │ RDY · BIN <location> · ROOM ···························│ SEP 22
  *         │       │ title ··················································│ QTY [n]
  *         │       │ SKU … · (TMP → SKU exception ↗) · BIN COUNT / UNITS ····│ → Count
- *   ────────────────────────────────────────────────────────────── │ evidence
  *
  * The rows arrive from the RSC loader (`app/inventory/stock/page.tsx`), which
  * answers `?q=` in SQL and `?room=` over the matched set; this island only
@@ -23,6 +24,7 @@ import { Plus } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import {
   IndustrialRecord,
   RecordBin,
@@ -52,14 +54,14 @@ import {
 import { INVENTORY_STOCK_ROUTE_PARAMS } from '@/lib/routing/query-mode-routes';
 import { parseRouteParams } from '@/lib/routing/route-params';
 import { cn } from '@/utils/_cn';
-import { useProvisionalSku, useProvisionalSkus, useSkuExceptionsRealtime } from '@/hooks/useProvisionalSkus';
+import { useProvisionalSku, useSkuExceptionsRealtime } from '@/hooks/useProvisionalSkus';
 import { SkuExceptionCreateForm } from '@/components/inventory/sku-exceptions/SkuExceptionCreateForm';
 import { SkuExceptionEvidence } from '@/components/inventory/sku-exceptions/SkuExceptionEvidence';
 import { stockLocationFace, stockRecordCountable, stockRecordState, stockRecordTitle } from './stock-record';
-import { StockEvidence } from './StockEvidence';
+import { StockEvidence, stockSummary } from './StockEvidence';
 
 const STOCK_PATH = '/inventory/stock';
-/** Evidence key while the shared ledger holds the new on-hold SKU form. */
+/** Record key while the shared ledger holds the new on-hold SKU form. */
 const CREATE_KEY = 'new-temp-sku';
 
 /** A burst of counts (a gun session) costs one loader re-read. */
@@ -110,7 +112,6 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
     [resolvedOpenKey, rows],
   );
   const openProvisionalSku = openRecord?.is_provisional ? openRecord.sku : requestedSku;
-  const provisionalList = useProvisionalSkus();
   const provisionalRecord = useProvisionalSku(openProvisionalSku);
   useSkuExceptionsRealtime();
   const [creating, setCreating] = useState(false);
@@ -245,7 +246,8 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
   );
 
   const narrowed = Boolean(query.trim()) || selectedRooms.length > 0 || selectedStates.length > 0;
-  const evidenceOpenKey = creating ? CREATE_KEY : resolvedOpenKey;
+  const ledgerOpenKey = creating ? CREATE_KEY : resolvedOpenKey;
+  const summary = useMemo(() => stockSummary(rows, rooms), [rows, rooms]);
 
   return (
     <>
@@ -256,7 +258,7 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
       records={rows}
       recordKey={locationStockRowId}
       renderRecord={renderRecord}
-      openKey={evidenceOpenKey}
+      openKey={ledgerOpenKey}
       onOpenKey={openRecordKey}
       onClose={closeRecord}
       loading={pending && rows.length === 0}
@@ -360,44 +362,45 @@ export function StockLedger({ rows, rooms, selectedRooms, selectedStates, totalC
           {capped ? ` · first ${rows.length} of ${totalCount} — narrow the search` : ''}
         </span>
       }
-      evidenceNoun={openRecord?.is_provisional || creating ? 'SKU exception' : 'stock'}
-      evidenceHead={creating ? 'New temp SKU' : undefined}
-      evidence={
-        creating ? (
-          <SkuExceptionCreateForm
-            onCreated={(sku) => {
-              setCreating(false);
-              replace((params) => {
-                params.set('status', 'on-hold');
-                params.set('sku', sku);
-                params.delete('open');
-              });
-              router.refresh();
-            }}
-            onCancel={closeRecord}
-          />
-        ) : openRecord?.is_provisional ? (
-          <SkuExceptionEvidence
-            sku={openProvisionalSku}
-            item={provisionalRecord.data}
-            loading={provisionalRecord.isLoading}
-            error={provisionalRecord.isError ? provisionalRecord.error : null}
-            mergedInto={provisionalRecord.mergedInto}
-            rows={provisionalList.data ?? []}
-            onExit={() => {
-              closeRecord();
-              router.refresh();
-            }}
-          />
-        ) : (
-          <StockEvidence
-            openKey={resolvedOpenKey}
-            record={openRecord}
-            rows={rows}
-            rooms={rooms}
-            onCounted={() => router.refresh()}
-          />
-        )
+      recordTitle={creating ? 'New temp SKU' : openRecord ? stockRecordTitle(openRecord) : 'Not in this list'}
+      recordSubtitle={
+        !creating && openRecord ? [openRecord.sku, stockLocationFace(openRecord)].filter(Boolean).join(' · ') : undefined
+      }
+      recordNoun={openRecord?.is_provisional || creating ? 'SKU exception' : 'stock pair'}
+      summary={summary}
+      record={
+        <DeskRecordLayout
+          main={
+            creating ? (
+              <SkuExceptionCreateForm
+                onCreated={(sku) => {
+                  setCreating(false);
+                  replace((params) => {
+                    params.set('status', 'on-hold');
+                    params.set('sku', sku);
+                    params.delete('open');
+                  });
+                  router.refresh();
+                }}
+                onCancel={closeRecord}
+              />
+            ) : openRecord?.is_provisional ? (
+              <SkuExceptionEvidence
+                sku={openRecord.sku}
+                item={provisionalRecord.data}
+                loading={provisionalRecord.isLoading}
+                error={provisionalRecord.isError ? provisionalRecord.error : null}
+                mergedInto={provisionalRecord.mergedInto}
+                onExit={() => {
+                  closeRecord();
+                  router.refresh();
+                }}
+              />
+            ) : (
+              <StockEvidence record={openRecord} onCounted={() => router.refresh()} />
+            )
+          }
+        />
       }
       />
     </>

@@ -39,8 +39,8 @@ export async function ensureOrdersExceptionsTable(client: any, orgId?: OrgId): P
       exception_reason VARCHAR(50) NOT NULL DEFAULT 'not_found',
       notes TEXT,
       status VARCHAR(20) NOT NULL DEFAULT 'open',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
     )
   `);
 }

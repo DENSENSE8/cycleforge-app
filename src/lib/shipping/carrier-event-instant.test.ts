@@ -1,0 +1,102 @@
+/**
+ * Carrier scan stamps → true instants. The fixture is the live UPS payload for
+ * 1Z23A1E90339190802 (lane STN 43308): its MP scan is local 11:40:34 at
+ * gmtOffset -07:00, i.e. 18:40:34Z — the pre-fix parser stored 11:40:34Z.
+ *
+ * Host-zone independence matters (a sync box in UTC and one in Pacific must
+ * store the same instant), so run it both ways:
+ *   TZ=UTC tsx --test src/lib/shipping/carrier-event-instant.test.ts
+ *   TZ=America/Los_Angeles tsx --test src/lib/shipping/carrier-event-instant.test.ts
+ */
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { upsActivityInstant, uspsEventInstant, isoStampInstant } from './carrier-event-instant';
+import { parseUPSTrackingPayload } from './providers/ups';
+import { parseFedExTrackingPayload } from './providers/fedex';
+import { parseUSPSTrackingPayload } from './providers/usps';
+
+const upsFixture = JSON.parse(
+  readFileSync(path.join(__dirname, 'providers/fixtures/ups-track-1Z23A1E90339190802.json'), 'utf8'),
+);
+
+test('UPS: live 43308 payload parses the MP scan at its true instant, identity unchanged', () => {
+  const result = parseUPSTrackingPayload(upsFixture);
+  assert.ok(result);
+  assert.equal(result.events.length, 1);
+  const [mp] = result.events;
+  assert.equal(mp.externalStatusCode, 'MP');
+  assert.equal(mp.eventOccurredAt, '2026-07-23T18:40:34.000Z');
+  // external_event_id of the row already stored for this scan — a re-sync must
+  // hit the same dedupe key once the backfill corrects event_occurred_at.
+  assert.equal(mp.externalEventId, 'MP:2026-07-23T11:40:34.000Z');
+  assert.equal(result.latestEventAt, '2026-07-23T18:40:34.000Z');
+});
+
+test('UPS: gmtDate/gmtTime win; local date/time + gmtOffset is the fallback', () => {
+  const act = { date: '20260723', time: '114034', gmtDate: '20260723', gmtTime: '18:40:34', gmtOffset: '-07:00' };
+  assert.equal(upsActivityInstant(act), '2026-07-23T18:40:34.000Z');
+  // No GMT pair: the local clock at its offset (Eastern, crossing midnight UTC).
+  assert.equal(
+    upsActivityInstant({ date: '20260528', time: '214750', gmtOffset: '-04:00' }),
+    '2026-05-29T01:47:50.000Z',
+  );
+});
+
+test('UPS: no zone at all reads the local clock in the warehouse zone (DST-aware)', () => {
+  assert.equal(upsActivityInstant({ date: '20260528', time: '174750' }), '2026-05-29T00:47:50.000Z');
+  assert.equal(upsActivityInstant({ date: '20260115', time: '090000' }), '2026-01-15T17:00:00.000Z');
+  assert.equal(upsActivityInstant({ date: '2026', time: '090000' }), null);
+});
+
+test('FedEx: offset-bearing stamps as given; date-only pickups in the warehouse zone', () => {
+  const payload = {
+    output: {
+      completeTrackResults: [
+        {
+          trackingNumber: '123456789012',
+          trackResults: [
+            {
+              trackingNumberInfo: { trackingNumber: '123456789012' },
+              latestStatusDetail: { code: 'IT', description: 'In transit' },
+              scanEvents: [
+                { date: '2026-05-15T17:39:53-05:00', eventType: 'IT', eventDescription: 'In transit' },
+                { date: '2026-06-12T00:00:00', eventType: 'PU', eventDescription: 'Picked up' },
+              ],
+              dateAndTimes: [{ type: 'ACTUAL_DELIVERY', dateTime: '2026-06-14T10:05:00-07:00' }],
+            },
+          ],
+        },
+      ],
+    },
+  };
+  const result = parseFedExTrackingPayload(payload);
+  assert.ok(result);
+  assert.equal(result.events[0].eventOccurredAt, '2026-05-15T22:39:53.000Z');
+  assert.equal(result.events[1].eventOccurredAt, '2026-06-12T07:00:00.000Z');
+  // FedEx identity embeds the raw carrier string, not a parsed instant.
+  assert.equal(result.events[1].externalEventId, 'PU:2026-06-12T00:00:00');
+  assert.equal(result.deliveredAt, '2026-06-14T17:05:00.000Z');
+  assert.equal(isoStampInstant('not a date'), null);
+});
+
+test('USPS v3: GMTTimestamp wins; eventTimestamp + GMTOffset is the fallback; eventType is the text', () => {
+  // Live lane row 43998 (tracking v3 `trackingEvents[]` shape).
+  const stored = {
+    eventZIP: '92101', GMTOffset: '-07:00', eventCity: 'SAN DIEGO', eventCode: 'SF',
+    eventType: 'Departed Post Office', eventState: 'CA',
+    GMTTimestamp: '2026-06-09T02:40:22Z', eventTimestamp: '2026-06-08T19:40:00',
+  };
+  assert.equal(uspsEventInstant(stored), '2026-06-09T02:40:22.000Z');
+  const { GMTTimestamp: _gmt, ...noGmt } = stored;
+  assert.equal(uspsEventInstant(noGmt), '2026-06-09T02:40:00.000Z');
+
+  const result = parseUSPSTrackingPayload({ trackingNumber: '9400100000000000000000', trackingEvents: [stored] });
+  assert.ok(result);
+  const [ev] = result.events;
+  assert.equal(ev.eventOccurredAt, '2026-06-09T02:40:22.000Z');
+  assert.equal(ev.externalEventId, 'SF:2026-06-09T02:40:22.000Z');
+  assert.equal(ev.externalStatusDescription, 'Departed Post Office');
+});

@@ -19,8 +19,8 @@
  * ## When the burst ends
  *
  * {@link BIN_QTY_COMMIT_IDLE_MS} of no taps, or whichever comes first of the
- * caller's own boundaries — sheet close, next scan decode, keypad open — each
- * of which calls {@link BinQtyCommit.flush}. Unmount flushes too: the fetch
+ * caller's own boundaries — take-reason change, keypad open, leaving the
+ * location record — each of which calls {@link BinQtyCommit.flush}. Unmount flushes too: the fetch
  * outlives the component, so walking away from the phone still records what
  * the thumb already did.
  *
@@ -45,10 +45,10 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 export const BIN_QTY_COMMIT_IDLE_MS = 1200;
 
 /**
- * Reason codes for the quick path. These are the API's own defaults for a
- * bare put/take — the strip does not offer a picker, because a reason that
- * `requires_note` or `requires_photo` cannot be satisfied by a single tap.
- * Deliberate adjustments that need a reason go through the keypad.
+ * Reason codes for the quick path when the caller names none: the API's own
+ * defaults for a bare put/take. A take may carry the page's chosen take reason
+ * (FBA · Orders · Custom…, `src/lib/inventory/take-reason.ts`) via
+ * `takeReason`; a put never carries one.
  */
 const QUICK_PUT_REASON = 'BIN_ADD';
 const QUICK_TAKE_REASON = 'BIN_PULL';
@@ -91,6 +91,7 @@ export function useBinQtyCommit({
   binBarcode,
   staffId,
   invalidateKey,
+  takeReason,
   onCommitStart,
   onCommitted,
   onFailed,
@@ -99,6 +100,11 @@ export function useBinQtyCommit({
   staffId: number;
   /** React-query key invalidated once a burst has been written. */
   invalidateKey: readonly unknown[];
+  /**
+   * Why a take left the location, read when the burst commits. Callers flush
+   * before changing it so one burst never straddles two reasons.
+   */
+  takeReason?: { reason: string; notes: string | null };
   /**
    * Fired the instant a burst leaves the pending state, BEFORE the request.
    * The caller folds the delta into its own committed quantity here so the
@@ -122,14 +128,18 @@ export function useBinQtyCommit({
   /**
    * The location a burst BELONGS to, captured when it opens.
    *
-   * `/m/scan` reuses one sheet instance across consecutive location scans, so
-   * `binBarcode` can change while taps are still uncommitted. Writing those to
-   * whatever label was scanned last would move stock into the wrong bin — the
-   * burst carries its own address instead.
+   * The mounted location can change while taps are still uncommitted (a
+   * client navigation between two location records reuses the hook).
+   * Writing those to whatever location is mounted last would move stock into
+   * the wrong bin — the burst carries its own address instead.
    */
   const burstBarcodeRef = useRef(binBarcode);
   /** The location currently mounted, whatever the open burst belongs to. */
   const binBarcodeRef = useRef(binBarcode);
+  const takeReasonRef = useRef(takeReason);
+  useEffect(() => {
+    takeReasonRef.current = takeReason;
+  }, [takeReason]);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current != null) {
@@ -155,6 +165,7 @@ export function useBinQtyCommit({
     try {
       for (const [sku, delta] of entries) onCommitStart(sku, delta);
       for (const [sku, delta] of entries) {
+        const take = delta < 0 ? takeReasonRef.current : undefined;
         // Fresh key per burst — the server replays the cached response on
         // retry, so a flaky radio cannot double-apply this adjustment.
         const idempotencyKey = safeRandomUUID();
@@ -172,7 +183,8 @@ export function useBinQtyCommit({
               sku,
               qty: Math.abs(delta),
               staffId,
-              reason: delta < 0 ? QUICK_TAKE_REASON : QUICK_PUT_REASON,
+              reason: delta < 0 ? (take?.reason ?? QUICK_TAKE_REASON) : QUICK_PUT_REASON,
+              notes: take?.notes ?? null,
               clientEventId: idempotencyKey,
             }),
           });

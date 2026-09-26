@@ -1,59 +1,28 @@
 'use client';
 
 /**
- * Shipped desk body — the shipment archive, mounted under the shared desk
+ * Shipped desk body — the package archive, mounted under the shared desk
  * chrome at `/shipping/shipped`.
  *
- * ## What moved, and what deliberately did not
+ * The whole desk is {@link ShippedLedger}: the industrial record ledger over
+ * the packer-log week feed, one record per PACKAGE (carrier tracking number),
+ * the open package's record placed by `DeskRecordPlane` — in place of the list
+ * by default, beside it when the staffer turns fullscreen on. The open key is
+ * `?shipment=<id>`; the feed's filter params (`resolveShippedQueryArgs`,
+ * `shipped_saved_views`) are untouched, so an old `?shipped=&carrier=UPS`
+ * bookmark redirects here and reads identically.
  *
- * The table is the EXISTING {@link DashboardShippedTable} — the packer-log week
- * sheet — remounted, not rewritten. Its feed, filters, grouping and empty state
- * were never the thing being changed; what changed is that history now has a
- * door of its own instead of being a lifecycle tab on the open queue. The param
- * resolver (`resolveShippedQueryArgs`) and the saved-view storage key
- * (`shipped_saved_views`) are untouched, which is what lets an old
- * `?shipped=&carrier=UPS` bookmark redirect here and read identically.
- *
- * ## Packed history lives here too
- *
- * This component IS the packer-log sheet, so "Packed history" needs no second
- * home: `?ostatus=PACKED_STAGED` narrows it to the staged lane through the
- * existing outbound-state facet. `/shipping/orders?packed=` stays what it is —
- * a STAGE facet on open work (packed but not yet handed to a carrier is still
- * work in the warehouse), not an archive.
- *
- * ## Details
- *
- * Row click opens the shared order panel through the same
- * {@link useDashboardSelectedOrder} + {@link DashboardOrderDetails} pair the
- * To-ship desk uses, so there is one details SoT and `?openOrderId=` deep-links
- * on both desks.
+ * Packed history lives here too: `?ostatus=PACKED_STAGED` narrows the feed to
+ * the staged lane through the outbound-state facet. `/shipping/orders?packed=`
+ * stays a STAGE facet on open work, not an archive.
  */
 
-import { useCallback } from 'react';
-import { DashboardShippedTable } from '@/components/shipped/DashboardShippedTable';
-import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
-import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
-import { refreshDomain } from '@/lib/refresh/bus';
+import { ShippedLedger } from '@/components/shipped/ledger/ShippedLedger';
 
 export function ShippedWorkspace() {
-  const { selectedShipped, selectedContext, requestCloseSelectedOrder } =
-    useDashboardSelectedOrder(true);
-
-  const refreshShipped = useCallback(() => {
-    refreshDomain('orders.outbound');
-  }, []);
-
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-      <DashboardShippedTable />
-      <DashboardOrderDetails
-        detailsEnabled
-        selectedShipped={selectedShipped}
-        selectedContext={selectedContext}
-        onClose={requestCloseSelectedOrder}
-        onUpdate={refreshShipped}
-      />
+      <ShippedLedger />
     </div>
   );
 }

@@ -113,14 +113,19 @@ export function parseSalesTab(raw: string | null | undefined): SalesTab {
 // ── Repair `?tab=` SoT (station `/repair` + Sales `?mode=repairs`) ────────────
 /** Station / task door default — open work queue. */
 export const DEFAULT_REPAIR_TAB: RepairTab = 'active';
-/** Sales history desk default — completed jobs (overall history posture). */
-export const DEFAULT_SALES_REPAIR_TAB: RepairTab = 'done';
+/**
+ * Sales history desk default — EVERY repair, any status (operator 2026-09-25:
+ * the Sales repair desk "must be the same information" as the kiosk History
+ * face). It opened on `done`, so a repair checked in at the counter minutes
+ * earlier (`Pending Repair`) was on the tablet's History and missing here.
+ */
+export const DEFAULT_SALES_REPAIR_TAB: RepairTab = 'all';
 
 export function parseRepairTab(
   raw: string | null | undefined,
   defaultTab: RepairTab = DEFAULT_REPAIR_TAB,
 ): RepairTab {
-  return raw === 'incoming' || raw === 'active' || raw === 'done' ? raw : defaultTab;
+  return raw === 'incoming' || raw === 'active' || raw === 'done' || raw === 'all' ? raw : defaultTab;
 }
 
 /** True when the URL is the Sales → Repairs history desk (not the station). */

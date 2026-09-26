@@ -13,7 +13,6 @@ import {
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { dockedReceivedQuantity, dockedReceivingState } from '@/lib/receiving/docked-record-state';
-export { dockedReceivingState } from '@/lib/receiving/docked-record-state';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';

@@ -1,79 +1,85 @@
 'use client';
 
 /**
- * Pick the ONE named print station a phone's jobs go to — every computer signed
- * in as this staffer that answered the status poll, by the name its operator
- * gave it (Settings → Hardware), with its readiness. The pick is remembered per
- * staffer on this device by `useStaffPrintBridgeClient`.
+ * Pick the printer a phone's jobs go to: one row per computer signed in as this
+ * staffer with a printer set up, by the name it was given, with one status word.
+ * Tap a row to use it; the pick is remembered per staffer on this device by
+ * `useStaffPrintBridgeClient`, which also re-asks every station on a poll — so
+ * there is no Refresh here.
  *
- * Callers: `/m/print` (MobilePrintWorkspace), `/m/rs/[id]/paperwork`
- * (RepairStationCard).
+ * Callers: `/m/print` (MobilePrintWorkspace), repair paperwork
+ * `/m/rs/[id]/paperwork`, the FNSKU hub's printer sheet.
  */
 
-import { Button } from '@/design-system/primitives';
-import { FilterDropdownSelect } from '@/design-system/components/FilterDropdownSelect';
-import {
-  formatStationLastSeen,
-  isStaffPrintStationLive,
-  roleReady,
-  type StaffPrintStation,
-} from '@/lib/print/staff-print-bridge';
+import { Check, Printer } from '@/components/Icons';
+import { isStaffPrintStationLive, roleReady } from '@/lib/print/staff-print-bridge';
+import type { StaffPrintRole, StaffPrintStation } from '@/lib/print/staff-print-bridge';
+import { cn } from '@/utils/_cn';
 
-/** "label + paper ready" · "paper ready" · "no printer ready" · "offline". */
-function stationReadiness(station: StaffPrintStation, now: number): string {
-  if (!isStaffPrintStationLive(station, now)) return 'offline';
-  const ready = (['label', 'paper'] as const).filter((role) => roleReady(station.status, role));
-  return ready.length ? `${ready.join(' + ')} ready` : 'no printer ready';
+export type PrintStationState = 'Ready' | 'Offline' | 'Not set up';
+
+/** One word for a station, for the printer the job needs (any printer when no role). */
+export function printStationState(station: StaffPrintStation, role: StaffPrintRole | null, now: number): PrintStationState {
+  if (!isStaffPrintStationLive(station, now)) return 'Offline';
+  const ready = role ? roleReady(station.status, role) : roleReady(station.status, 'label') || roleReady(station.status, 'paper');
+  return ready ? 'Ready' : 'Not set up';
 }
 
 export function StaffPrintStationPicker({
   stations,
   target,
   now,
-  staffName,
+  role,
   onPick,
-  onRefresh,
 }: {
   stations: readonly StaffPrintStation[];
   target: StaffPrintStation | null;
   now: number;
-  staffName: string;
+  /** The printer this screen prints on — decides each row's status word; omit when it prints on both. */
+  role?: StaffPrintRole;
   onPick: (stationId: string | null) => void;
-  onRefresh: () => void;
 }) {
+  if (stations.length === 0) {
+    return (
+      <p className="px-mode-page py-3 text-role-caption text-mode-muted" data-testid="print-station-picker">
+        No printer online. Keep CycleForge open on the computer with the printer.
+      </p>
+    );
+  }
   return (
-    <div className="space-y-2" data-testid="print-station-picker">
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
-          <FilterDropdownSelect
-            label="Print station"
-            value={target?.status.stationId ?? ''}
-            onChange={(id) => onPick(id || null)}
-            emptyOption={{
-              value: '',
-              label: stations.length ? 'Pick a station' : 'No station answering yet',
-            }}
-            options={stations.map((station) => ({
-              value: station.status.stationId,
-              label: `${station.status.stationName} — ${stationReadiness(station, now)}`,
-            }))}
-          />
-        </div>
-        <Button variant="ghost" size="sm" onClick={onRefresh}>
-          Refresh
-        </Button>
-      </div>
-      {target ? (
-        <p className="text-role-caption text-text-soft">
-          {target.status.stationName} · heard {formatStationLastSeen(target.lastSeenAt, now)}
-        </p>
-      ) : (
-        <p className="text-role-caption text-text-soft">
-          {stations.length
-            ? 'Pick which computer prints.'
-            : `Open the desk app signed in as ${staffName} on the computer with the printer, and name it in Settings → Hardware.`}
-        </p>
-      )}
+    // Flat radio rows (operator 2026-09-25): full-bleed, one rule under each,
+    // the chosen printer marked by an ink bar on the leading edge — no box.
+    <div role="radiogroup" aria-label="Printer" className="flex flex-col bg-mode-panel" data-testid="print-station-picker">
+      {stations.map((station) => {
+        const selected = station.status.stationId === target?.status.stationId;
+        const state = printStationState(station, role ?? null, now);
+        return (
+          // ds-raw-button: full-width radio row (icon · name · status), not an action button
+          <button
+            key={station.status.stationId}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            onClick={() => onPick(station.status.stationId)}
+            className="group relative flex min-h-mode-hit-cta items-center gap-3 border-b border-mode-rule bg-mode-panel px-mode-page text-left last:border-b-0 active:bg-mode-ink"
+          >
+            {selected ? <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-mode-ink" /> : null}
+            <Printer className="h-5 w-5 shrink-0 text-mode-muted group-active:text-mode-panel" />
+            <span className="min-w-0 flex-1 truncate text-mode-body font-semibold text-mode-ink group-active:text-mode-panel">
+              {station.status.stationName}
+            </span>
+            <span
+              className={cn(
+                'shrink-0 text-role-caption font-semibold group-active:text-mode-panel',
+                state === 'Ready' ? 'text-text-success' : 'text-mode-muted',
+              )}
+            >
+              {state}
+            </span>
+            {selected ? <Check className="h-4 w-4 shrink-0 text-mode-ink group-active:text-mode-panel" /> : null}
+          </button>
+        );
+      })}
     </div>
   );
 }

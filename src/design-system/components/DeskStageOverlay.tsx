@@ -22,14 +22,26 @@
  * @see docs/warehouse-os/LAWS.md Q5
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
-import { useEscapeClose, useRegisterOverlay } from '@/design-system/hooks';
+import { useRegisterOverlay } from '@/design-system/hooks';
+import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
+
+/**
+ * Esc inside a text entry leaves the field before it closes a record. A
+ * `role="combobox"` TRIGGER button (a staff picker after its list closed) is
+ * not a field: the shared predicate counts it, so the record's Esc would be
+ * spent blurring a button.
+ */
+export function isRecordEscTextEntry(target: EventTarget | null): boolean {
+  return isEditableKeyTarget(target) && !(target instanceof HTMLButtonElement);
+}
 
 export type DeskStageOverlayFill = 'inset' | 'stage';
 
@@ -73,6 +85,8 @@ export interface DeskStageOverlayProps {
    * screen reader cannot recover from the desk button.
    */
   showHeader?: boolean;
+  /** The record's own verbs, painted in the header band before the walk controls. */
+  actions?: ReactNode;
 }
 
 export function DeskStageOverlay({
@@ -93,13 +107,40 @@ export function DeskStageOverlay({
   closeOnScrim = true,
   fill = 'inset',
   showHeader = true,
+  actions,
 }: DeskStageOverlayProps) {
-  useRegisterOverlay(open);
-  useEscapeClose(open, onClose);
+  const stageFill = fill === 'stage';
+  // An inset form is a transient layer: it claims the overlay stack, so ambient
+  // record keys stand down while it is up. A stage fill is the record PLANE in
+  // its in-place view (placed by `DeskRecordPlane`), not a layer over the work —
+  // the record cursor's J/K must keep stepping it, so it does not claim.
+  const isTopmost = useRegisterOverlay(open && !stageFill);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Escape closes this overlay only when it owns the key: the innermost open
+  // overlay (a popover or inset form inside the record) goes first, a handler
+  // that already spent the press (a draft field cancelling itself) keeps it,
+  // and in a field the first Escape only leaves the field.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (stageFill ? hasOpenOverlay() : !isTopmost()) return;
+      event.preventDefault();
+      if (isRecordEscTextEntry(event.target)) {
+        (event.target as HTMLElement).blur();
+        return;
+      }
+      onCloseRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, stageFill, isTopmost]);
 
   if (!open) return null;
-
-  const stageFill = fill === 'stage';
 
   return (
     <div
@@ -146,56 +187,17 @@ export function DeskStageOverlay({
         )}
       >
         {showHeader ? (
-        <header className="flex shrink-0 items-start gap-2 border-b border-border-hairline px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-role-title text-text-default">{title}</h2>
-            {subtitle ? (
-              <p className="mt-0.5 truncate text-role-caption text-text-soft">{subtitle}</p>
-            ) : null}
-          </div>
-          {indexLabel ? (
-            <span className="shrink-0 tabular-nums text-role-caption text-text-muted">
-              {indexLabel}
-            </span>
-          ) : null}
-          {(onPrev || onNext) && (
-            <div className="flex shrink-0 items-center gap-0.5">
-              {onPrev ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Previous record"
-                  onClick={onPrev}
-                  disabled={prevDisabled}
-                >
-                  <ChevronLeft className="size-4" />
-                </Button>
-              ) : null}
-              {onNext ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Next record"
-                  onClick={onNext}
-                  disabled={nextDisabled}
-                >
-                  <ChevronRight className="size-4" />
-                </Button>
-              ) : null}
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="Close"
-            onClick={onClose}
-          >
-            <X className="size-4" />
-          </Button>
-        </header>
+          <DeskStageRecordHeader
+            title={title}
+            subtitle={subtitle}
+            indexLabel={indexLabel}
+            onPrev={onPrev}
+            onNext={onNext}
+            prevDisabled={prevDisabled}
+            nextDisabled={nextDisabled}
+            onClose={onClose}
+            actions={actions}
+          />
         ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
@@ -207,5 +209,89 @@ export function DeskStageOverlay({
         ) : null}
       </div>
     </div>
+  );
+}
+
+export interface DeskStageRecordHeaderProps {
+  title: ReactNode;
+  subtitle?: ReactNode;
+  indexLabel?: ReactNode;
+  onPrev?: () => void;
+  onNext?: () => void;
+  prevDisabled?: boolean;
+  nextDisabled?: boolean;
+  onClose: () => void;
+  /** The record's own verbs — painted before n of N / ‹ › / ✕. */
+  actions?: ReactNode;
+}
+
+/**
+ * The record's title / walk / ✕ band. One band for both record views:
+ * {@link DeskStageOverlay} paints it over the stage (in place), and
+ * `DeskRecordPlane` paints it on the split pane — never a second header.
+ */
+export function DeskStageRecordHeader({
+  title,
+  subtitle,
+  indexLabel,
+  onPrev,
+  onNext,
+  prevDisabled,
+  nextDisabled,
+  onClose,
+  actions,
+}: DeskStageRecordHeaderProps) {
+  return (
+    <header className="flex shrink-0 items-start gap-2 border-b border-border-hairline px-4 py-3">
+      <div className="min-w-0 flex-1">
+        <h2 className="truncate text-role-title text-text-default">{title}</h2>
+        {subtitle ? (
+          <p className="mt-0.5 truncate text-role-caption text-text-soft">{subtitle}</p>
+        ) : null}
+      </div>
+      {actions ? <div className="flex shrink-0 items-center gap-1.5">{actions}</div> : null}
+      {indexLabel ? (
+        <span className="shrink-0 tabular-nums text-role-caption text-text-muted">
+          {indexLabel}
+        </span>
+      ) : null}
+      {(onPrev || onNext) && (
+        <div className="flex shrink-0 items-center gap-0.5">
+          {onPrev ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Previous record"
+              onClick={onPrev}
+              disabled={prevDisabled}
+            >
+              <ChevronLeft className="size-4" />
+            </Button>
+          ) : null}
+          {onNext ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-label="Next record"
+              onClick={onNext}
+              disabled={nextDisabled}
+            >
+              <ChevronRight className="size-4" />
+            </Button>
+          ) : null}
+        </div>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        aria-label="Close"
+        onClick={onClose}
+      >
+        <X className="size-4" />
+      </Button>
+    </header>
   );
 }

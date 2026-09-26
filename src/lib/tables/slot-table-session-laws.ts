@@ -86,14 +86,6 @@ export const SLOT_TABLE_SESSION_LAWS: readonly SlotTableSessionLaw[] = [
     eval: 'slot-table',
   },
   {
-    id: 'line-money.inbound-incoming-price',
-    date: '2026-09-05',
-    ruling: 'Incoming catalogs incoming.price as subtitle money. Do not keep an inbound Amount column.',
-    file: 'src/lib/tables/field-catalog/incoming.ts',
-    mustMatch: "id: 'incoming.price'",
-    eval: 'slot-table',
-  },
-  {
     id: 'line-money.inbound-receiving-price',
     date: '2026-09-05',
     ruling: 'Receiving catalogs receiving.price as subtitle money — same engine as outbound orders.amount.',

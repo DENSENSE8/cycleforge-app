@@ -1,17 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
-import {
-  ORDERS_DESK_CONTEXT_KEY,
-  ORDERS_DESK_SUPPORT_CONTEXT,
-  SHIPPING_EXCEPTIONS_PATH,
-  SHIPPING_ORDERS_PATH,
-  SHIPPING_SHORTAGE_PATH,
-  parseOrdersDeskContext,
-} from '@/lib/shipping/orders-desk';
 
 /**
  * The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions.
@@ -77,22 +68,11 @@ export default function ShippingDeskLayout({ children }: { children: ReactNode }
     [cagedCount],
   );
 
-  // To ship is the full-width reference desk. Pending and Exceptions use the
-  // same ledger canvas and tab chrome; Support remains a card because it is a
-  // different context on the shared orders route.
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const flush =
-    pathname === SHIPPING_SHORTAGE_PATH
-    || pathname === SHIPPING_EXCEPTIONS_PATH
-    || (
-      pathname === SHIPPING_ORDERS_PATH
-      && parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) !==
-        ORDERS_DESK_SUPPORT_CONTEXT
-    );
-
+  // Every Shipping desk is a fixed-width card stage (owner 2026-09-25): the
+  // list takes the 1152px stage and a picked row's record opens in its place;
+  // fullscreen — the staffer's choice — is what widens it to the split view.
   return (
-    <DeskPageLayout decorateTabs={decorateTabs} stage={flush ? 'flush' : 'card'}>
+    <DeskPageLayout decorateTabs={decorateTabs} stage="card">
       {children}
     </DeskPageLayout>
   );

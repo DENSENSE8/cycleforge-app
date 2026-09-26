@@ -6,7 +6,8 @@
  * Affected API: this route (staff session, `walk_in.intake` — the same gate as
  *   editing a counter session line).
  * Data schemas: `kiosk_companion_links` via `readCompanionForPhone` /
- *   `queueSerialFromPhone`.
+ *   `queueSerialFromPhone`; the read also names the tablet (`kiosk_devices`)
+ *   and the customer on the cart it holds (`kiosk_carts`) — `CompanionVisit`.
  * User: "join the same repair service session and then scan something like a
  *   serial number to input and update the form on your phone as well".
  *

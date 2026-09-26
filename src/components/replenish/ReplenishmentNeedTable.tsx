@@ -5,12 +5,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
 import type { ReplenishmentRequestStatus } from '@/lib/replenishment-request-status';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
-import { ReplenishmentPlanEvidence, type ReplenishmentPlanPatch } from './ReplenishmentPlanEvidence';
+import { ReplenishmentPlanEvidence, replenishmentPlanSummary, type ReplenishmentPlanPatch } from './ReplenishmentPlanEvidence';
 import { ReplenishmentPlanRecord } from './ReplenishmentPlanRecord';
 import { ACTIVE_STATUSES, type NeedToOrderRow } from './replenish-types';
 
@@ -170,6 +171,7 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
     ),
     [open, selectedIds, toggle],
   );
+  const summary = useMemo(() => replenishmentPlanSummary(rows), [rows]);
 
   return (
     <RecordLedger
@@ -196,7 +198,7 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
             variant="primary"
             size="sm"
             icon={<Plus aria-hidden />}
-            disabled={plannedIds.length === 0 || creatingPo}
+            disabled={plannedIds.length === 0}
             loading={creatingPo}
             onClick={() => void createDraftPos()}
           >
@@ -213,15 +215,23 @@ export function ReplenishmentNeedTable({ skuSearch, statusFilter }: Replenishmen
               : 'No active purchasing requests'}
         </b>
       }
-      evidenceNoun="request"
-      evidence={
-        <ReplenishmentPlanEvidence
-          row={openRow}
-          rows={rows}
-          saving={savingId === openRow?.id}
-          onSave={save}
-          onTransition={transition}
-        />
+      recordTitle={openRow ? (openRow.sku || openRow.item_name || 'Purchasing request') : 'Purchasing request'}
+      recordSubtitle={openRow?.sku ? openRow.item_name : undefined}
+      recordNoun="request"
+      summary={summary}
+      record={
+        openRow ? (
+          <DeskRecordLayout
+            main={
+              <ReplenishmentPlanEvidence
+                row={openRow}
+                saving={savingId === openRow.id}
+                onSave={save}
+                onTransition={transition}
+              />
+            }
+          />
+        ) : null
       }
       footer={
         <>

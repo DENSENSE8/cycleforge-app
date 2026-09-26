@@ -251,7 +251,7 @@ export function useMobilePicker() {
         }
         const expectedBits = [
           currentTask.bin ? `bin ${currentTask.bin}` : null,
-          currentTask.serialNumber ? `serial ${currentTask.serialNumber}` : null,
+          currentTask.serialNumber ? (currentTask.productTitle || currentTask.sku) : null,
         ].filter(Boolean);
         setScanMatched(false);
         setScanError(

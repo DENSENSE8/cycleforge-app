@@ -61,7 +61,7 @@ try {
 
 console.log('\n=== packer_logs activity by day (last 14 days) ===');
 const packDaily = await sql`
-  SELECT DATE_TRUNC('day', created_at)::date::text AS day, COUNT(*)::int AS n
+  SELECT (created_at AT TIME ZONE 'America/Los_Angeles')::date::text AS day, COUNT(*)::int AS n
     FROM packer_logs
    WHERE created_at >= NOW() - INTERVAL '14 days'
    GROUP BY 1 ORDER BY 1 DESC

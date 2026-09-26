@@ -1,6 +1,7 @@
 import { Camera, Check, ExternalLink, History, MapPin, Package } from '@/components/Icons';
 import { sectionLabel, fieldLabel, dataValue, monoValue } from '@/design-system/tokens/typography/presets';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
+import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
 import { formatDate, type SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
 
@@ -142,11 +143,14 @@ export function SkuDetailCards({ c, data }: { c: SkuDetailController; data: SkuD
           <div className="space-y-1">
             {data.ledger.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between rounded-none bg-surface-canvas px-3 py-2">
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   <span className={`text-sm font-semibold ${entry.delta > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
                   </span>
-                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">{entry.reason}</span>
+                  <span className="rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-wider text-text-muted">{takeReasonLedgerLabel(entry.reason)}</span>
+                  {entry.notes?.trim() && (
+                    <span className="truncate text-role-caption text-text-soft">{entry.notes.trim()}</span>
+                  )}
                 </div>
                 <span className="text-role-micro text-text-faint">{formatDate(entry.created_at)}</span>
               </div>

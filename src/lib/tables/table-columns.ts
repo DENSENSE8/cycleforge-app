@@ -69,15 +69,6 @@ export interface TableColumnSpec {
 /** Stable ids for every shared list table that supports column config. */
 export type TableId =
   | 'receiving'
-  /** Incoming POS spreadsheet — distinct from Unbox/History `receiving`. */
-  | 'incoming'
-  /**
-   * Unbox pinned-Inbound EMBED — its OWN prefs bucket so hiding a heavy column
-   * (e.g. Tracking) on the Unbox Inbound tab never touches the full `/incoming`
-   * desk density, and vice versa (Gemini D13). Same descriptor / column
-   * vocabulary as `incoming`; only the staff-prefs identity differs.
-   */
-  | 'incoming_embed'
   | 'orders'
   | 'shipped'
   | 'tech'
@@ -288,20 +279,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * module scope.
    */
   receiving: [],
-  /**
-   * Incoming POS — **deliberately empty** since the wave 1.3 slot port. The
-   * separate bucket was always the point (a Fields toggle on Incoming must not
-   * hide tracks on History/Unbox); it is a separate LAYOUT DOCUMENT now, which
-   * is what a separate tableId buys. The KEY stays for the `TableId` union.
-   */
-  incoming: [],
-  /**
-   * Unbox pinned-Inbound embed — **deliberately empty**, same port. It stays a
-   * distinct key (D13) so the embed's layout deltas persist separately from
-   * `incoming`; that separation is now a separate layout document rather than a
-   * separate hide-key list.
-   */
-  incoming_embed: [],
   /**
    * Orders + its station twins — **deliberately empty** (Wave-1 hand-model
    * kill, `docs/kill-list/07-slot-table-hand-models.md` §3). Hide-by-field-id

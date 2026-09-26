@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import type { ReceivingLineRow } from './receiving-line-row';
 import { dockedReceivedQuantity, dockedReceivingState } from './docked-record-state';
@@ -38,17 +37,4 @@ test('local history search preserves PO, tracking, SKU, serial, and marketplace 
   const sample = row({ id: 123, sku: 'BOSE-418', source_order_id: 'ORDER-009', tracking_number: '1Z999', units: [{ serial: 'SN-123' }] as ReceivingLineRow['units'] });
   for (const q of [' bose-418 ', 'order-009', '1z999', 'sn-123', '123', '']) assert.ok(receivingLineMatchesQuery(sample, q), q);
   assert.equal(receivingLineMatchesQuery(sample, 'absent'), false);
-});
-
-test('Docked uses the record ledger, not the slot spreadsheet or slide-over', () => {
-  const host = readFileSync('src/components/station/ReceivingLinesTable.tsx', 'utf8');
-  const desk = host.slice(host.indexOf('if (isIncomingMode || isInboundDocked)'));
-  const branch = desk.slice(0, desk.indexOf('// History — standalone'));
-  assert.match(branch, /<DockedReceiptsLedger/);
-  assert.doesNotMatch(branch, /receivingGrid\(\)|<ReceivingSpreadsheet|<DataTable[\s>]/);
-  const ledger = readFileSync('src/components/receiving/history/DockedReceiptsLedger.tsx', 'utf8');
-  assert.match(ledger, /<RecordLedger/);
-  assert.doesNotMatch(ledger, /from ['"].*(?:DataTable|useReceivingSpreadsheet)['"]/);
-  assert.match(ledger, /<HistoryCartonTriagePanel[\s\S]*?\bembedded\b/);
-  assert.match(host, /const isHistoryTriage = isHistoryMode && embedded/);
 });

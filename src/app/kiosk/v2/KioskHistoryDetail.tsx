@@ -85,6 +85,7 @@ import {
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { KioskChip } from '@/components/kiosk/KioskChip';
+import { KioskSerialListField } from '@/components/kiosk/KioskSerialListField';
 import {
   Barcode,
   Copy,
@@ -763,8 +764,9 @@ export function KioskHistoryDetail({
 
               {editing && draft ? (
                 <div className="space-y-3 py-3">
-                  <TextField
-                    label="Serial number"
+                  <KioskSerialListField
+                    name="Serial number"
+                    idScope={`history-${device.repairId}`}
                     value={draft.serialNumber}
                     onChange={(serialNumber) =>
                       setDeviceDrafts((d) => ({
@@ -772,9 +774,7 @@ export function KioskHistoryDetail({
                         [device.repairId]: { ...d[device.repairId], serialNumber },
                       }))
                     }
-                    mono
-                    inputClassName="rounded-none"
-                    data-testid="kiosk-history-edit-serial"
+                    testId="kiosk-history-edit-serial"
                   />
                   <TextField
                     label="Issue"

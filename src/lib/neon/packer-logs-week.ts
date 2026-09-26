@@ -63,8 +63,9 @@ export interface FetchPackerLogRowsResult {
   cacheHit: boolean;
 }
 
-// v8: Shipped desk requires SHIP_CONFIRM with staff (packed-only rows stay off it).
-const CACHE_NAMESPACE = 'api:packing-logs-v8';
+// v9: rows carry the PACKAGE (`package_shipment_id` / `package_tracking` /
+// `package_line_count`), and scan-out-only packages join the feed.
+const CACHE_NAMESPACE = 'api:packing-logs-v9';
 const CACHE_TAGS = ['packing-logs'];
 
 // Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
@@ -154,10 +155,35 @@ export async function fetchPackerLogRows(
   }
 
   const params: any[] = [];
-  const conditions: string[] = [`sal.station = 'PACK'`];
+  const conditions: string[] = [];
 
   params.push(orgId);
   conditions.push(`sal.organization_id = $${params.length}`);
+
+  // Row population: every PACK scan, plus ONE row per package that left the
+  // dock without ever being pack-scanned — its latest SHIP_CONFIRM, so the row
+  // sits in the week the box shipped (created_at = the scan-out) with packer
+  // fields null. A package that has any PACK scan is represented by those.
+  conditions.push(`(
+    sal.station = 'PACK'
+    OR (
+      sal.activity_type = 'SHIP_CONFIRM'
+      AND sal.shipment_id IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM station_activity_logs pk
+        WHERE pk.shipment_id = sal.shipment_id
+          AND pk.organization_id = sal.organization_id
+          AND pk.station = 'PACK'
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM station_activity_logs so_newer
+        WHERE so_newer.shipment_id = sal.shipment_id
+          AND so_newer.organization_id = sal.organization_id
+          AND so_newer.activity_type = 'SHIP_CONFIRM'
+          AND (so_newer.created_at, so_newer.id) > (sal.created_at, sal.id)
+      )
+    )
+  )`);
 
   // Shipped desk membership: a dock scan-out with staff + time. Packed-only
   // (IN STAGING) stays on To-ship until SHIP_CONFIRM.
@@ -173,7 +199,7 @@ export async function fetchPackerLogRows(
 
   if (opts.packerId != null && !Number.isNaN(opts.packerId)) {
     params.push(opts.packerId);
-    conditions.push(`sal.staff_id = $${params.length}`);
+    conditions.push(`(sal.station = 'PACK' AND sal.staff_id = $${params.length})`);
   }
 
   if (opts.testedBy != null && !Number.isNaN(opts.testedBy)) {
@@ -188,7 +214,7 @@ export async function fetchPackerLogRows(
     params.push(staffFilterId);
     const staffIdx = params.length;
     conditions.push(
-      `(sal.staff_id = $${staffIdx}`
+      `((sal.station = 'PACK' AND sal.staff_id = $${staffIdx})`
       + ` OR test_data.tested_by = $${staffIdx}`
       + ` OR wa_t.assigned_tech_id = $${staffIdx})`,
     );
@@ -226,9 +252,12 @@ export async function fetchPackerLogRows(
    * The legs are the facts a packer bench row paints, one EXISTS per table so
    * the common (unsearched) page keeps its two-table plan:
    *   · `sal.scan_ref` / `sal.fnsku` — what the scanner actually read.
-   *   · `stn.tracking_number_raw` — the carrier tracking the Tracking cell shows.
+   *   · `stn.tracking_number_raw` — the package's carrier tracking
+   *     (`package_tracking`, the Tracking cell), scan-out-only rows included.
    *   · `packed_staff.name` — this bench's own actor; `packedStep` prints it.
-   *   · the matched order — title, order number, SKU, item number, note.
+   *   · the order(s) owning the package — title, order number, SKU, item
+   *     number, note. Two legs (orders.shipment_id, shipment_links) so each
+   *     rides an index; one OR-joined leg scanned every org order per row.
    *   · `tech_serial_numbers` — the serial cell, and with it the upstream
    *     tester's name, which `testedStep` also prints. Matched by shipment
    *     rather than by order id because the order is not resolved this early;
@@ -242,6 +271,9 @@ export async function fetchPackerLogRows(
   if (searchTerm) {
     params.push(`%${escapeLike(searchTerm)}%`);
     const q = `$${params.length}`;
+    const orderMatchesQ = (o: string) =>
+      `${o}.order_id ILIKE ${q} OR ${o}.product_title ILIKE ${q} OR ${o}.sku ILIKE ${q}`
+      + ` OR ${o}.item_number ILIKE ${q} OR ${o}.notes ILIKE ${q}`;
     conditions.push(`(
         sal.scan_ref ILIKE ${q}
         OR sal.fnsku ILIKE ${q}
@@ -264,18 +296,18 @@ export async function fetchPackerLogRows(
         )
         OR EXISTS (
             SELECT 1 FROM orders o_q
-            LEFT JOIN shipment_links osl_q
-              ON osl_q.owner_id = o_q.id AND osl_q.owner_type = 'ORDER'
             WHERE sal.shipment_id IS NOT NULL
+              AND o_q.shipment_id = sal.shipment_id
               AND o_q.organization_id = sal.organization_id
-              AND (osl_q.shipment_id = sal.shipment_id OR o_q.shipment_id = sal.shipment_id)
-              AND (
-                o_q.order_id ILIKE ${q}
-                OR o_q.product_title ILIKE ${q}
-                OR o_q.sku ILIKE ${q}
-                OR o_q.item_number ILIKE ${q}
-                OR o_q.notes ILIKE ${q}
-              )
+              AND (${orderMatchesQ('o_q')})
+        )
+        OR EXISTS (
+            SELECT 1 FROM shipment_links osl_q
+            JOIN orders o_q ON o_q.id = osl_q.owner_id AND o_q.organization_id = sal.organization_id
+            WHERE sal.shipment_id IS NOT NULL
+              AND osl_q.owner_type = 'ORDER'
+              AND osl_q.shipment_id = sal.shipment_id
+              AND (${orderMatchesQ('o_q')})
         )
         OR EXISTS (
             SELECT 1 FROM tech_serial_numbers tsn_q
@@ -360,6 +392,31 @@ export async function fetchPackerLogRows(
         ) test_data ON TRUE`
     : '';
 
+  // The PACKAGE a row is about: the scanned box (`sal.shipment_id`), not the
+  // order's primary `o.shipment_id` — a multi-box order is one row per box.
+  // `package_line_count` = order lines owning the box (orders.shipment_id OR
+  // shipment_links ORDER), the same set `getShipmentRecord` lists as items;
+  // 0 = an unmatched box, null = no package on the row.
+  const packageCols = `sal.shipment_id::int                   AS package_shipment_id,
+        stn.tracking_number_raw                AS package_tracking,
+        package_lines.line_count               AS package_line_count`;
+  const packageLinesJoin = `LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS line_count
+        FROM (
+            SELECT o_pk.id
+            FROM orders o_pk
+            WHERE o_pk.shipment_id = sal.shipment_id
+              AND o_pk.organization_id = sal.organization_id
+            UNION
+            SELECT o_pk.id
+            FROM shipment_links sl_pk
+            JOIN orders o_pk ON o_pk.id = sl_pk.owner_id AND o_pk.organization_id = sl_pk.organization_id
+            WHERE sl_pk.owner_type = 'ORDER'
+              AND sl_pk.shipment_id = sal.shipment_id
+              AND sl_pk.organization_id = sal.organization_id
+        ) pk_lines
+    ) package_lines ON sal.shipment_id IS NOT NULL`;
+
   // Resolve the page of station_activity_logs rows BEFORE the expensive per-row
   // product-title / serial / order-match laterals run. Previously LIMIT was
   // applied last, so Postgres evaluated every lateral for ALL PACK rows in
@@ -387,7 +444,7 @@ export async function fetchPackerLogRows(
         oe.exception_reason,
         oe.status AS exception_status,
         CASE WHEN oe.id IS NOT NULL AND o.id IS NULL THEN 'exception' ELSE 'order' END AS row_source,
-        sal.staff_id AS packed_by,
+        CASE WHEN sal.station = 'PACK' THEN sal.staff_id END AS packed_by,
         packed_staff.name AS packed_by_name,
         COALESCE(pl.tracking_type,
                  CASE sal.activity_type
@@ -452,7 +509,8 @@ export async function fetchPackerLogRows(
         stn.is_terminal                        AS is_terminal,
         to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
         ship_out.shipped_out_by                AS shipped_out_by,
-        shipped_out_staff.name                 AS shipped_out_by_name
+        shipped_out_staff.name                 AS shipped_out_by_name,
+        ${packageCols}
     FROM station_activity_logs sal
     JOIN page ON page.id = sal.id
     LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id
@@ -500,7 +558,8 @@ export async function fetchPackerLogRows(
     ) ship_out ON TRUE
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
     LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
-    LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id
+    LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id AND sal.station = 'PACK'
+    ${packageLinesJoin}
     LEFT JOIN LATERAL (
         SELECT ord.id
         FROM orders ord
@@ -722,7 +781,7 @@ export async function fetchPackerLogRows(
         SELECT
             COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
             MIN(tsn.tested_by)::int AS tested_by,
-            MIN(tsn.created_at)::text AS test_date_time
+            to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time
         FROM tech_serial_numbers tsn
         WHERE tsn.organization_id = o.organization_id
           AND (
@@ -812,7 +871,7 @@ export async function fetchPackerLogRows(
         oe.exception_reason,
         oe.status AS exception_status,
         CASE WHEN oe.id IS NOT NULL AND o.id IS NULL THEN 'exception' ELSE 'order' END AS row_source,
-        sal.staff_id AS packed_by,
+        CASE WHEN sal.station = 'PACK' THEN sal.staff_id END AS packed_by,
         packed_staff.name AS packed_by_name,
         COALESCE(pl.tracking_type,
                  CASE sal.activity_type
@@ -874,7 +933,8 @@ export async function fetchPackerLogRows(
         stn.is_terminal                        AS is_terminal,
         to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
         ship_out.shipped_out_by                AS shipped_out_by,
-        shipped_out_staff.name                 AS shipped_out_by_name
+        shipped_out_staff.name                 AS shipped_out_by_name,
+        ${packageCols}
     FROM station_activity_logs sal
     JOIN page ON page.id = sal.id
     LEFT JOIN packer_logs pl ON pl.id = sal.packer_log_id
@@ -885,7 +945,10 @@ export async function fetchPackerLogRows(
         FROM orders ord
         LEFT JOIN shipment_links osl ON osl.owner_id = ord.id AND osl.owner_type = 'ORDER'
         LEFT JOIN shipping_tracking_numbers ord_stn ON ord_stn.id = ord.shipment_id
-        WHERE ord.organization_id = sal.organization_id
+        -- The guard lives HERE, as a one-time filter: a lateral's ON clause
+        -- filters after the subquery ran, so the scan ran for every row.
+        WHERE enr.sal_id IS NULL AND sal.station = 'PACK' AND (
+          ord.organization_id = sal.organization_id
           AND (
             sal.shipment_id IS NOT NULL
             AND (
@@ -898,7 +961,7 @@ export async function fetchPackerLogRows(
             AND ord_stn.tracking_number_raw != ''
             AND RIGHT(regexp_replace(UPPER(ord_stn.tracking_number_raw), '[^A-Z0-9]', '', 'g'), 18) =
                 RIGHT(regexp_replace(UPPER(COALESCE(stn.tracking_number_raw, sal.scan_ref, '')), '[^A-Z0-9]', '', 'g'), 18)
-        )
+        ))
         ORDER BY
             CASE
               WHEN sal.shipment_id IS NOT NULL AND osl.shipment_id = sal.shipment_id THEN 0
@@ -909,7 +972,26 @@ export async function fetchPackerLogRows(
             ord.created_at DESC NULLS LAST,
             ord.id DESC
         LIMIT 1
-    ) order_match_fallback ON enr.sal_id IS NULL
+    ) order_match_fallback ON enr.sal_id IS NULL AND sal.station = 'PACK'
+    -- Scan-out-only rows have no enrichment (PACK-only projection) but always a
+    -- package: its owning order is two index probes, not the key18 fallback scan.
+    LEFT JOIN LATERAL (
+        SELECT owner.id
+        FROM (
+            SELECT sl_own.owner_id AS id, 0 AS rank, COALESCE(sl_own.is_primary, false) AS is_primary
+            FROM shipment_links sl_own
+            WHERE sl_own.owner_type = 'ORDER'
+              AND sl_own.shipment_id = sal.shipment_id
+              AND sl_own.organization_id = sal.organization_id
+            UNION ALL
+            SELECT o_own.id, 1, true
+            FROM orders o_own
+            WHERE o_own.shipment_id = sal.shipment_id
+              AND o_own.organization_id = sal.organization_id
+        ) owner
+        ORDER BY owner.rank, owner.is_primary DESC, owner.id DESC
+        LIMIT 1
+    ) package_owner ON sal.station <> 'PACK' AND sal.shipment_id IS NOT NULL
     LEFT JOIN LATERAL (
         SELECT
             MAX(so.created_at) AS ship_confirmed_at,
@@ -921,8 +1003,9 @@ export async function fetchPackerLogRows(
     ) ship_out ON TRUE
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by
     LEFT JOIN fba_fnskus ff ON ff.fnsku = sal.fnsku
-    LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id
-    LEFT JOIN orders o ON o.id = COALESCE(enr.order_row_id, order_match_fallback.id)
+    LEFT JOIN staff packed_staff ON packed_staff.id = sal.staff_id AND sal.station = 'PACK'
+    ${packageLinesJoin}
+    LEFT JOIN orders o ON o.id = COALESCE(enr.order_row_id, order_match_fallback.id, package_owner.id)
       AND o.organization_id = sal.organization_id
     LEFT JOIN orders_exceptions oe ON oe.id = sal.orders_exception_id
     ${deadlineJoin}
@@ -931,7 +1014,7 @@ export async function fetchPackerLogRows(
         SELECT
             COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
             MIN(tsn.tested_by)::int AS tested_by,
-            MIN(tsn.created_at)::text AS test_date_time
+            to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time
         FROM tech_serial_numbers tsn
         WHERE tsn.organization_id = o.organization_id
           AND (
@@ -1060,6 +1143,7 @@ export async function fetchPackerLogRows(
            FROM station_activity_logs sal
            LEFT JOIN packer_log_enrichment enr ON enr.sal_id = sal.id
           WHERE sal.id = ANY($1::int[])
+            AND sal.station = 'PACK'
             AND enr.sal_id IS NULL`,
         [salIds],
       )

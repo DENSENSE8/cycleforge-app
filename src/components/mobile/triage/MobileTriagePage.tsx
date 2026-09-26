@@ -20,9 +20,12 @@
  *   - The list owns the scroll. `min-h-0` on the flex child, which is the
  *     detail every hand-rolled version gets wrong and then "fixes" by giving
  *     the page a fixed height that the OS keyboard breaks.
- *   - No sticky bottom CTA. On a list screen the decision IS the row, and a
- *     screen-wide CTA down there can only mean "the one I most recently
- *     touched", which is a guess about intent.
+ *   - No sticky bottom CTA for the row decision. On a list screen the decision
+ *     IS the row, and a screen-wide CTA down there can only mean "the one I
+ *     most recently touched", which is a guess about intent. The `dock` slot
+ *     is for the way OUT of the list — the verb for when no row is the answer
+ *     (pair: "Not in the catalog → SKU exception", operator 2026-09-25). It
+ *     is a `DetailDock`, pinned under the thumb, never a row's commit.
  *
  * ## Sections, not one flat list
  *
@@ -33,8 +36,8 @@
  */
 
 import type { ReactNode } from 'react';
-import { Loader2, Search } from '@/components/Icons';
-import { TextField } from '@/design-system/primitives';
+import { SearchField } from '@/design-system/primitives/SearchField';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
@@ -60,6 +63,7 @@ export function MobileTriagePage({
   isSearching = false,
   sections,
   footer,
+  dock,
 }: {
   title: string;
   /** The thing being acted ON — a location code, an order number. */
@@ -73,9 +77,13 @@ export function MobileTriagePage({
   sections: TriageSection[];
   /** Optional block under the list — an escape hatch, never the primary CTA. */
   footer?: ReactNode;
+  /** A `DetailDock` pinned to the bottom: the verb for when no row is the answer. */
+  dock?: ReactNode;
 }) {
   return (
-    <div className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
+    // Triage mode owns the rows' tokens (rules, press ink) wherever the page
+    // mounts — a host without a region drew the commit's rule in currentColor.
+    <ModeRegion mode="triage" className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
       {/*
         No `mono`. It used to be `mono={Boolean(subtitle)}` — "has an eyebrow"
         standing in for "the title is an identifier", which is true on a record
@@ -97,19 +105,15 @@ export function MobileTriagePage({
         wins and the field never does.
       */}
       <div className="sticky top-14 z-sticky border-b border-border-hairline bg-surface-card px-3 py-2">
-        <TextField
+        {/* The house search field: magnifier LEADS, clear trails (operator
+            2026-09-25: "the search icon … is always most left"). */}
+        <SearchField
           value={query}
           onChange={onQueryChange}
-          label={searchLabel}
-          autoComplete="off"
-          inputMode="search"
-          trailing={
-            isSearching ? (
-              <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
-            ) : (
-              <Search className="h-4 w-4 text-text-muted" />
-            )
-          }
+          placeholder={searchLabel}
+          tone="neutral"
+          hideUnderline
+          isSearching={isSearching}
         />
       </div>
 
@@ -152,6 +156,7 @@ export function MobileTriagePage({
         })}
         {footer && <div className="px-3 py-4">{footer}</div>}
       </div>
-    </div>
+      {dock}
+    </ModeRegion>
   );
 }

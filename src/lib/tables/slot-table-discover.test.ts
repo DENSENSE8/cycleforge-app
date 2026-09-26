@@ -45,8 +45,8 @@ describe('slot-table discover (delete vs keep)', () => {
 
   it('KEEP includes a materialization for every PRODUCT_TABLES peer on the engine', () => {
     assert.ok(
-      report.keep.some((k) => k.id === 'materialization:INCOMING_COMPOUND_COLUMNS'),
-      'INCOMING_COMPOUND_COLUMNS shares the receiving-grid-layout file — must still be KEEP',
+      report.keep.some((k) => k.id === 'materialization:RECEIVING_COMPOUND_COLUMNS'),
+      'RECEIVING_COMPOUND_COLUMNS is the receiving peer materialization — must still be KEEP',
     );
     assert.ok(
       report.keep.some((k) => k.id === 'materialization:ORDERS_COMPOUND_COLUMNS'),

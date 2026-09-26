@@ -53,6 +53,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
     setUrgent,
     throwing,
     canThrow,
+    missing,
     runResolve,
     submit,
   } = throwTask;
@@ -115,7 +116,7 @@ export function ThrowTaskPanel({ onClose }: ThrowTaskPanelProps) {
             ) : (
               <>
                 <Send className="h-3.5 w-3.5" aria-hidden />
-                {!picked ? 'Find record' : !assignees.length ? 'Pick staff' : 'Throw'}
+                {missing ?? 'Create'}
               </>
             )}
           </Button>

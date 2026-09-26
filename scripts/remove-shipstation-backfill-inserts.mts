@@ -9,8 +9,8 @@
  * Why: the first full-history backfill (2026-09-24) imported years of already
  * shipped orders; the owner's scope is the current week. Only rows the run
  * CREATED are candidates — identified as rows created during the run
- * (`shipstation_sync_runs.started_at` … `updated_at`, `orders.created_at` is
- * naive Pacific) that carry a `shipstation_order_refs` row and no adopted /
+ * (`shipstation_sync_runs.started_at` … `updated_at`; `orders.created_at` is
+ * a timestamptz instant) that carry a `shipstation_order_refs` row and no adopted /
  * claimed ref (those name pre-existing rows). Pre-existing rows and the blanks
  * the run filled on them are never touched.
  *
@@ -31,7 +31,6 @@ const APPLY = args.includes('--apply');
 const ORG = arg('org');
 const RUN = Number(arg('run'));
 const KEEP_DAYS = Number(arg('keep-days') ?? 7);
-const ZONE = 'America/Los_Angeles';
 if (!ORG || !/^[0-9a-f-]{36}$/i.test(ORG) || !Number.isInteger(RUN)) {
   console.error('--org=<uuid> and --run=<shipstation_sync_runs.id> are required');
   process.exit(1);
@@ -58,14 +57,14 @@ try {
   if (run.mode !== 'backfill') throw new Error(`run ${RUN} is ${run.mode}, not a backfill`);
 
   const created = await q<{ id: number; order_id: string; status: string | null; recent: boolean }>(
-    `SELECT o.id, o.order_id, o.status, (o.order_date >= now() - ($5 || ' days')::interval) AS recent
+    `SELECT o.id, o.order_id, o.status, (o.order_date >= now() - ($4 || ' days')::interval) AS recent
        FROM orders o
       WHERE o.organization_id = $1
-        AND (o.created_at AT TIME ZONE $2) BETWEEN $3::timestamptz AND $4::timestamptz + interval '5 minutes'
+        AND o.created_at BETWEEN $2::timestamptz AND $3::timestamptz + interval '5 minutes'
         AND EXISTS (SELECT 1 FROM shipstation_order_refs r WHERE r.organization_id = o.organization_id AND r.order_row_id = o.id)
         AND NOT EXISTS (SELECT 1 FROM shipstation_order_refs r WHERE r.organization_id = o.organization_id
                          AND r.order_row_id = o.id AND r.match_kind IN ('adopted', 'claimed'))`,
-    [ORG, ZONE, run.started_at, run.updated_at, String(KEEP_DAYS)],
+    [ORG, run.started_at, run.updated_at, String(KEEP_DAYS)],
   );
   const inScope = created.filter((r) => r.recent);
   let candidates = created.filter((r) => !r.recent);
@@ -176,10 +175,10 @@ try {
   const orphanCustomers = await q<{ id: number }>(
     `SELECT c.id FROM customers c
       WHERE c.organization_id = $1
-        AND (c.created_at AT TIME ZONE $2) BETWEEN $3::timestamptz AND $4::timestamptz + interval '5 minutes'
-        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id AND NOT (o.id = ANY($5::int[])))
+        AND c.created_at BETWEEN $2::timestamptz AND $3::timestamptz + interval '5 minutes'
+        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id AND NOT (o.id = ANY($4::int[])))
         ${custFks.map((f) => `AND NOT EXISTS (SELECT 1 FROM ${f.tbl} x WHERE x.${ident(f.col)} = c.id)`).join('\n        ')}`,
-    [ORG, ZONE, run.started_at, run.updated_at, ids()],
+    [ORG, run.started_at, run.updated_at, ids()],
   );
   console.log(`customers created by the run and referenced by nothing afterwards: ${orphanCustomers.length}`);
 

@@ -60,7 +60,11 @@ export interface AttachTechSerialInput {
    * (e.g. tech tracking) that carry an explicit org and don't set the session GUC.
    */
   organizationId?: string;
-  /** Historical import timestamp. Omit for live scans so the DB clock owns it. */
+  /**
+   * Historical import timestamp as a true instant (ISO-8601 with `Z`/offset);
+   * a naive wall string would be read in the DB session zone. Omit for live
+   * scans so the DB clock owns it.
+   */
   createdAt?: string | null;
 }
 

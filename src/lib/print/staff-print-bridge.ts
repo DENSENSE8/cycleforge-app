@@ -13,7 +13,8 @@
  * broadcast — every station answers, which is how the phone lists them.
  *
  * Callers: StaffPrintBridgeHost (desktop), useStaffPrintBridgeClient (mobile
- * /m/print and repair paperwork /m/rs/[id]/paperwork). No DB schema — Ably is
+ * /m/print, repair paperwork /m/rs/[id]/paperwork, and the FNSKU hub's Reprint
+ * /m/fnsku/[fnsku]). No DB schema — Ably is
  * ephemeral (same D3 as send-to-device). User: staff ID ↔ silent USB;
  * operator 2026-09-24 "you should be able to pick one named print station."
  */
@@ -22,6 +23,7 @@ import type { LocationSegments } from '@/lib/barcode-routing';
 import {
   MAX_TOTE_PRINT_RUN,
   clampCopiesPerSide,
+  clampLabelCopies,
   DEFAULT_TOTE_COPIES_PER_SIDE,
 } from '@/lib/print/labelCopies';
 
@@ -31,7 +33,7 @@ export const STAFF_PRINT_STATUS_REQUEST_EVENT = 'staff_print_status_request';
 export const STAFF_PRINT_PROGRESS_EVENT = 'staff_print_progress';
 export const STAFF_PRINT_OPTIONS_PATCH_EVENT = 'staff_print_options_patch';
 
-export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair';
+export type StaffPrintGrain = 'rack' | 'bin' | 'papers' | 'tote' | 'repair' | 'fnsku';
 export type StaffPrintRole = 'label' | 'paper';
 
 export type StaffPrintLocationPayload = {
@@ -79,6 +81,18 @@ export function repairDocumentRole(document: StaffPrintRepairDocument): StaffPri
   return document === 'label' ? 'label' : 'paper';
 }
 
+/**
+ * Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the
+ * station's label printer. The wire carries only the key and how many; the
+ * station reads the catalog row itself so the sticker is the org's current
+ * catalog, never a phone's copy of it. `copies` is 1..`MAX_LABEL_COPIES`
+ * stickers — plates in the run, never a printer repeat count.
+ */
+export type StaffPrintFnskuPayload = { fnsku: string; copies: number };
+
+/** A catalog key the station may look up: A-Z/0-9, as `fba_fnskus.fnsku` stores it. */
+const FNSKU_WIRE_RE = /^[A-Z0-9]{1,40}$/;
+
 // The tote run's ceiling lives in `labelCopies` (dependency-free print
 // constants) because the server's zod schema must read the same number
 // without importing this wire module.
@@ -94,6 +108,7 @@ export type StaffPrintJob = {
   papers?: StaffPrintPapersPayload;
   tote?: StaffPrintTotePayload;
   repair?: StaffPrintRepairPayload;
+  fnsku?: StaffPrintFnskuPayload;
 };
 
 /**
@@ -180,11 +195,23 @@ export function parseStaffPrintJob(raw: unknown): StaffPrintJob | null {
     grain !== 'bin' &&
     grain !== 'papers' &&
     grain !== 'tote' &&
-    grain !== 'repair'
+    grain !== 'repair' &&
+    grain !== 'fnsku'
   ) {
     return null;
   }
   const role = rec.role === 'paper' ? 'paper' : 'label';
+
+  if (grain === 'fnsku') {
+    const payload = rec.fnsku;
+    if (!payload || typeof payload !== 'object') return null;
+    const p = payload as Record<string, unknown>;
+    const fnsku = String(p.fnsku ?? '').trim().toUpperCase();
+    if (!FNSKU_WIRE_RE.test(fnsku)) return null;
+    // Clamped, not refused: an absent or junk count from an older phone is one sticker.
+    const copies = clampLabelCopies(asInt(p.copies));
+    return { type: 'staff.print_job', request_id: requestId, targetStationId, grain, role: 'label', fnsku: { fnsku, copies } };
+  }
 
   if (grain === 'repair') {
     const repair = rec.repair;
@@ -388,9 +415,18 @@ export const STAFF_PRINT_STATION_STALE_MS = 40_000;
 export type StaffPrintStation = { status: StaffPrintStatus; lastSeenAt: number };
 
 /**
+ * Whether a host is a print station at all: it can print a label or paper
+ * (USB/serial, or the desk browser's own print — Chrome silent printing), or
+ * has a printer paired. A phone with nothing paired is not one, and its host
+ * stays silent so it never shadows a desk tab that shares its station id.
+ */
+export function isPrintStation(status: StaffPrintStatus): boolean {
+  return status.profiles.length > 0 || status.label.ready || status.paper.ready;
+}
+
+/**
  * Fold one status into the roster: replaces that station's entry, sorted by
- * name then id. Only hosts with something paired are print stations — a
- * phone's own host, or a computer that unpaired everything, drops out.
+ * name then id. A status that is no longer a print station drops out.
  */
 export function upsertStaffPrintStation(
   stations: readonly StaffPrintStation[],
@@ -398,8 +434,7 @@ export function upsertStaffPrintStation(
   now: number,
 ): StaffPrintStation[] {
   const rest = stations.filter((s) => s.status.stationId !== status.stationId);
-  const paired = status.profiles.length > 0 || status.label.ready || status.paper.ready;
-  if (paired) rest.push({ status, lastSeenAt: now });
+  if (isPrintStation(status)) rest.push({ status, lastSeenAt: now });
   return rest.sort(
     (a, b) =>
       a.status.stationName.localeCompare(b.status.stationName) ||
@@ -429,26 +464,15 @@ export function resolveStaffPrintTarget(
   return live.length === 1 ? live[0] : null;
 }
 
-/** "just now" · "25s ago" · "4 min ago" · "2 h ago". */
-export function formatStationLastSeen(lastSeenAt: number, now: number): string {
-  const seconds = Math.max(0, Math.floor((now - lastSeenAt) / 1000));
-  if (seconds < 10) return 'just now';
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-  return `${Math.floor(seconds / 3600)} h ago`;
-}
-
 /** Why a role cannot print on the chosen station right now; null when it can. */
 export function staffPrintBlockedReason(
   station: StaffPrintStation | null,
   role: StaffPrintRole,
   now: number,
 ): string | null {
-  if (!station) return 'Pick a print station first.';
+  if (!station) return 'Choose a printer.';
   const name = station.status.stationName;
-  if (!isStaffPrintStationLive(station, now)) {
-    return `${name} is offline — last heard ${formatStationLastSeen(station.lastSeenAt, now)}.`;
-  }
-  if (!roleReady(station.status, role)) return `No ${role} printer ready on ${name}.`;
+  if (!isStaffPrintStationLive(station, now)) return `${name} is offline.`;
+  if (!roleReady(station.status, role)) return `${name} has no ${role} printer set up.`;
   return null;
 }

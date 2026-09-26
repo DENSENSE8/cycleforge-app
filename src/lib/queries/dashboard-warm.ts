@@ -28,7 +28,7 @@ const UNSHIPPED_WARM_LIMIT = 200;
  * the page-level warm-up effect and the sign-in BootGate so a prefetch and the
  * table that later mounts always hit the same cache key (the factories are the
  * single source of truth). `shippedFilter` falls back to the stored preference,
- * matching how `DashboardShippedTable` resolves it. Returns a promise that
+ * matching how the Shipped ledger (`useShippedTableFilters`) resolves it. Returns a promise that
  * settles when the active view is ready.
  *
  * Warranty Logger lives under Support (`/support?mode=warranty`) — not warmed here.

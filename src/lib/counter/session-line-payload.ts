@@ -16,6 +16,7 @@
 
 import { z } from 'zod';
 import type { KioskLinePayload, KioskLineType } from '@/lib/kiosk/cart-line';
+import { SERIAL_LIST_MAX_CHARS } from '@/lib/kiosk/serial-list';
 
 const RetailPayloadSchema = z.object({
   variationId: z.string().max(120).nullable().default(null),
@@ -28,7 +29,8 @@ const RepairPayloadSchema = z.object({
   sourceSku: z.string().max(120).nullish(),
   repairReasons: z.array(z.string().max(120)).max(20).optional(),
   repairNotes: z.string().max(2_000).nullish(),
-  serialNumber: z.string().trim().max(120),
+  // One unit may carry several serials, joined (`serial-list.ts`).
+  serialNumber: z.string().trim().max(SERIAL_LIST_MAX_CHARS),
   passcode: z.string().max(64).nullish(),
   imei: z.string().max(64).nullish(),
   notes: z.string().max(2_000).nullish(),

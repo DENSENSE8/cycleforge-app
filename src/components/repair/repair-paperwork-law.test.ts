@@ -83,26 +83,6 @@ test('the ticket preview is on the review display', () => {
 });
 
 /**
- * A LINKED ticket outranks the projection (2026-09-15, with the ticket step).
- *
- * This assertion replaced a bare `nextTicketId ?? ''` pin. The law it was
- * defending — the sheet's number comes from one derivation handed to both
- * mounts — is unchanged; what changed is that there are now TWO possible
- * numbers, and only one of them is a fact. `ATTACH_TICKET` stamps
- * `repair_service.ticket_number` with the picked ticket, so a sheet still
- * showing the projection after the counter chose to attach would disagree with
- * the paper it prints.
- */
-test('a picked existing ticket, not the projection, is what the sheet states', () => {
-  const pane = read(PANE);
-  assert.match(
-    pane,
-    /ticketChoice\?\.mode === 'attach'[\s\S]{0,200}ticketId[\s\S]{0,120}:\s*nextTicketId/,
-    'the attach id wins, the projection is the fallback',
-  );
-});
-
-/**
  * The review is the only paperwork mount. Success is the cart's receipt face,
  * so there is no second submitted-paperwork rendering to keep in sync.
  */

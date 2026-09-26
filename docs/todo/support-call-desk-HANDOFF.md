@@ -64,39 +64,39 @@ maxWidth="5xl"`; commands root is `w-full` + scroll. No settings page leaves a b
 - Known regression (by design, restore in Phase 2): the legacy desktop dossier's timeline /
   findings / handoffs no longer show on `/search?sel=order:`.
 
-### D. Global return + replacement label intake (finished and live-proven)
-- The global desktop-header `+` is **not customer support**. It opens
-  `/search?entry=label`, a focused order-number lookup.
-- A match opens the order through `SearchOrderLedger` →
-  `OutboundOrdersLedger`, the same To-ship DataTable and evidence column used by
-  the outbound desk. No parallel order card/display was introduced.
-- An absolute miss offers **Add order exception**. It mounts the existing
-  `OrderIntakeOverlay` and seeds the searched order number; the canonical caged
-  intake still owns G1–G3 and release into To-ship.
-- Every selected order now has a **Problem order · Return + replacement**
-  evidence disclosure. It composes two existing `BuyLabelSection` instances,
-  locked to `return` then `replacement`. Each purchase keeps its own
-  idempotency key and uses the existing ShipStation purchase route.
-- A shared package-weight field feeds both rate requests when an older order has
-  no stored parcel; otherwise the existing order/ShipStation parcel remains the
-  default. Existing purchased return/replacement purposes are recognized and
-  not offered for duplicate purchase.
-- The existing Labels disclosure remains the durable order record:
-  `OrderLabelEntries` lists both purchases by purpose, cost, tracking, actor and
-  time after the existing query invalidation.
-- Main files: `src/components/layout/GlobalHeaderAdd.tsx`,
-  `src/components/search/SearchFindSurface.tsx`,
-  `src/components/search/SearchBrowseShell.tsx`,
-  `src/components/outbound/orders/ReturnReplacementLabelSection.tsx`,
-  `src/components/outbound/labels/BuyLabelSection.tsx`, and
-  `src/components/outbound/orders/OutboundOrderEvidence.tsx`.
-- Live on `:3050`: global `+` → `/search?entry=label`; `4290` resolved to
-  `/search?q=4290&entry=label&sel=order%3A2624` and painted the To-ship ledger.
-  `NOTFOUND-OMP-99999` exposed manual exception intake with the order number
-  prefilled. A real 16 oz return rate-shop returned live carrier rates ($4.39
-  best on this probe). Browser interception then proved the complete return →
-  replacement purchase sequence and the Labels list showed OUTBOUND + RETURN +
-  REPLACEMENT. No real carrier purchase was charged.
+### D. Global label intake desk (finished; live-proven with the carrier mocked)
+- Global desktop-header `+` → `/search?entry=label` → `LabelIntakeDesk`
+  (`src/components/outbound/label-intake/{LabelIntakeDesk,LabelIntakeRates,LabelIntakeLabels}.tsx`,
+  `label-intake-client.ts`). One `ModeRegion mode="triage"` surface; composes
+  record-ledger tokens/primitives only — no DataTable, no `BuyLabelSection`.
+- Server: `src/lib/shipping/label-intake.ts` (lookup, reference rate/buy, pair,
+  PDF source), routes `src/app/api/shipping/label-intake/{route,rates,purchase,pair}`
+  and `labels/[labelId]/pdf`; schemas `src/lib/schemas/label-intake.ts`;
+  `ClaimInput.orderId` is now nullable with `orderRef` / `shipTo`
+  (`label-purchase-ledger.ts`). Permissions: `shipping.view` (lookup, PDF),
+  `shipping.buy_label` (rates, purchase, pair).
+- Migration `2026-09-25f_label_purchase_order_ref.sql` (order_ref TEXT,
+  ship_to JSONB, partial index): operator approved, rolled-back rehearsal
+  passed, applied with `--only`; `tenancy:coverage` regenerated.
+- Paired orders reuse the order-bound rate/purchase routes; reference-only
+  numbers use the intake routes; a reference purchase for a number that IS an
+  order answers 409.
+- Proof on `:3050`: `+` → desk; `4290` pairs to `#2624` with address + item;
+  `OMP-REF-7731` shows Reference only with the inline address form. Browser
+  interception drove replacement → return on the paired order and a
+  replacement on the reference number (request bodies verified, evidence column
+  listed RPL/RTN/"Ref only"). Real DB: ledger claim with NULL order_id +
+  order_ref/ship_to, release, lookup and pair guard exercised; purchase guard
+  409 / validation 400 observed. No carrier label was charged.
+- **Blocker observed:** live rates currently fail with "ShipStation is not
+  connected" — the lane log says the `organization_integrations` ShipStation
+  payload (re-saved 2026-09-25 18:41Z) no longer decrypts with this lane's
+  `INTEGRATION_KMS_KEY`. Re-save the ShipStation key from this environment or
+  align the key; not caused by this slice.
+- Retired from the first cut: exception-intake overlay door
+  (`SearchBrowseShell.onOrderNotFound`, `OrderIntakeOverlay.initialDraft`),
+  `ReturnReplacementLabelSection`, `BuyLabelSection.fixedPurpose/onAnyPurchased`,
+  `EvidenceDisclosure.defaultOpen`, `SearchDetailWorkspace.emptyTitle`.
 - Phase 2 support schema only: operator approved and the rolled-back dry run
   passed, then `2026-09-25d_support_interactions.sql` was applied with `--only`.
   The tables exist under FORCE RLS but have no route or UI yet. Do not edit this

@@ -34,6 +34,7 @@ import {
 import { recordKioskVisitAudit } from '@/lib/counter/kiosk-visit-audit';
 import { AUDIT_ACTION } from '@/lib/audit-logs';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { SERIAL_LIST_MAX_CHARS } from '@/lib/kiosk/serial-list';
 
 export const runtime = 'nodejs';
 
@@ -53,7 +54,7 @@ const EditSchema = z
       .array(
         z.object({
           repairId: z.number().int().positive(),
-          serialNumber: z.string().max(120).optional(),
+          serialNumber: z.string().max(SERIAL_LIST_MAX_CHARS).optional(),
           issue: z.string().max(2000).optional(),
           notes: z.string().max(5000).optional(),
         }),

@@ -322,14 +322,16 @@ export function TaskLinkDoors({
   const anchorLabel = anchorIsTicket ? `#${taskDeskTicketNumber(row) ?? row.entityId}` : String(row.entityId);
   return (
     <ul className="flex flex-col gap-2">
-      <li>
-        <RecordDoor
-          noun={`About · ${TASK_DESK_RECORD_NOUN[row.entityType] ?? 'Record'}`}
-          label={anchorLabel}
-          context={anchorContext}
-          href={anchorHref}
-        />
-      </li>
+      {row.entityType != null ? (
+        <li>
+          <RecordDoor
+            noun={`About · ${TASK_DESK_RECORD_NOUN[row.entityType] ?? 'Record'}`}
+            label={anchorLabel}
+            context={anchorContext}
+            href={anchorHref}
+          />
+        </li>
+      ) : null}
       {links.map((link) => {
         const door = linkDoor(link, canOpenTickets);
         return (

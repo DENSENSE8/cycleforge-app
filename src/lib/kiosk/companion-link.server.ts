@@ -33,7 +33,9 @@ import {
   queueCompanionSerial,
   type CompanionDevice,
   type CompanionSerial,
+  type CompanionVisit,
 } from './companion-shape';
+import { cartCustomerLabel } from './kiosk-cart-snapshot';
 
 /** A visit's worth of time; a new visit's QR rotates the token anyway. */
 const LINK_TTL_MS = 4 * 60 * 60 * 1000;
@@ -112,15 +114,34 @@ export async function syncCompanionFromTablet(
   });
 }
 
-/** The phone's read: the visit's units, scans still in flight included. */
-export async function readCompanionForPhone(
-  orgId: OrgId,
-  token: string,
-): Promise<{ devices: CompanionDevice[]; expiresAt: string } | null> {
-  const res = await tenantQuery<{ devices: unknown; pending_serials: unknown; expires_at: Date }>(
+/**
+ * The phone's read: the visit's units, scans still in flight included, plus
+ * the tablet's name and who the cart it holds is for (`cartCustomerLabel`
+ * over the saved snapshot) so the phone can say whose visit it is.
+ */
+export async function readCompanionForPhone(orgId: OrgId, token: string): Promise<CompanionVisit | null> {
+  const res = await tenantQuery<{
+    devices: unknown;
+    pending_serials: unknown;
+    expires_at: Date;
+    tablet: string | null;
+    cart_id: string | null;
+    customer_name: string | null;
+    customer_phone: string | null;
+  }>(
     orgId,
-    `SELECT devices, pending_serials, expires_at FROM kiosk_companion_links
-      WHERE organization_id = $1 AND token_hash = $2 AND expires_at > NOW()`,
+    `SELECT l.devices, l.pending_serials, l.expires_at, d.label AS tablet,
+            c.id AS cart_id, c.snapshot->>'customerName' AS customer_name,
+            c.snapshot->>'customerPhone' AS customer_phone
+       FROM kiosk_companion_links l
+       LEFT JOIN kiosk_devices d ON d.organization_id = l.organization_id AND d.id = l.device_id
+       LEFT JOIN LATERAL (
+         SELECT id, snapshot FROM kiosk_carts
+          WHERE organization_id = l.organization_id AND held_by_device_id = l.device_id AND status = 'open'
+          ORDER BY updated_at DESC
+          LIMIT 1
+       ) c ON true
+      WHERE l.organization_id = $1 AND l.token_hash = $2 AND l.expires_at > NOW()`,
     [orgId, hashToken(token)],
   );
   const row = res.rows[0];
@@ -128,6 +149,14 @@ export async function readCompanionForPhone(
   return {
     devices: mergeCompanionDevices(readDevices(row.devices), readPending(row.pending_serials)),
     expiresAt: new Date(row.expires_at).toISOString(),
+    tablet: row.tablet,
+    cart:
+      row.cart_id == null
+        ? null
+        : {
+            id: Number(row.cart_id),
+            customer: cartCustomerLabel({ customerName: row.customer_name ?? '', customerPhone: row.customer_phone ?? '' }),
+          },
   };
 }
 
@@ -135,7 +164,11 @@ export type QueueSerialResult =
   | { ok: true; devices: CompanionDevice[] }
   | { ok: false; reason: 'not_found' | 'unknown_unit' };
 
-/** The phone's scan: queue it for the tablet and show it on the snapshot at once. */
+/**
+ * The phone's write — the unit's WHOLE serial list after a scan (appended) or
+ * an undo (removed), per `serial-list.ts`: queue it for the tablet and show it
+ * on the snapshot at once. It replaces any list still queued for that unit.
+ */
 export async function queueSerialFromPhone(
   orgId: OrgId,
   token: string,

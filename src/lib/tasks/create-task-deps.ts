@@ -61,7 +61,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
            RETURNING id, entity_id, priority, notes`,
           [
             organizationId,
-            taskEntityEnum(args.entityType),
+            args.entityType == null ? null : taskEntityEnum(args.entityType),
             args.entityId,
             TASK_WORK_TYPE,
             args.assigneeStaffId,
@@ -87,7 +87,7 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
           // entity_id is BIGINT since 2026-08-08b, and node-postgres returns
           // bigint as a STRING to avoid silent precision loss. Number() here is
           // safe for real ids and keeps the DTO numeric for every caller.
-          entityId: Number(row.entity_id),
+          entityId: row.entity_id == null ? null : Number(row.entity_id),
           assigneeStaffId: args.assigneeStaffId,
           assigneeStaffIds: args.assigneeStaffIds,
           projectName: args.projectName,
@@ -135,13 +135,18 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
               .catch(() => null)
           : null;
 
+      // A standalone task has no record, so its inbox row anchors on the task
+      // itself (migration 2026-09-25f); a record task keeps its record anchor.
+      const anchor = task.entityType != null && task.entityId != null
+        ? { entityType: task.entityType as string, entityId: task.entityId }
+        : { entityType: 'task', entityId: task.id };
       const inserted = await tenantQuery<{ id: number }>(
         organizationId,
         ASSIGN_INBOX_ITEM_SQL,
         assignInboxItemParams(organizationId, {
           staffId: recipientStaffId,
-          entityType: task.entityType,
-          entityId: task.entityId,
+          entityType: anchor.entityType,
+          entityId: anchor.entityId,
           workAssignmentId: task.id,
           actorStaffId,
           note: task.note,
@@ -157,8 +162,8 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
         organizationId,
         recipientId: recipientStaffId,
         itemId: Number(itemId),
-        entityType: task.entityType,
-        entityId: task.entityId,
+        entityType: anchor.entityType,
+        entityId: anchor.entityId,
         eventKey: WORK_TASK_ASSIGNED,
         actorStaffId,
         note: task.note,

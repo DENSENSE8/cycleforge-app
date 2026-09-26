@@ -7,28 +7,6 @@ export type QueueKind =
   | 'station_exception'
   | 'checked';
 
-/**
- * Station exceptions ('station_exception') were removed from the sidebar
- * filter — operators triage those directly from the affected stations.
- * The type union keeps it for back-compat with deep-linked URLs.
- *
- * 'checked' is a pseudo-kind: server-side it maps to kind=all + checked=true.
- */
-export const ENABLED_KINDS: QueueKind[] = [
-  'all',
-  'unmatched_receiving',
-  'email_po',
-  'checked',
-];
-
-export const KIND_LABELS: Record<QueueKind, string> = {
-  all: 'All',
-  unmatched_receiving: 'Unmatched receiving',
-  email_po: 'PO mailbox',
-  station_exception: 'Station exceptions',
-  checked: 'Checked',
-};
-
 export interface QueueRow {
   kind: Exclude<QueueKind, 'all' | 'checked'>;
   source_id: string;
@@ -46,22 +24,12 @@ export interface QueueRow {
   checked_at: string | null;
 }
 
-export interface QueueResponse {
-  success: boolean;
-  rows?: QueueRow[];
-  total?: number;
-  error?: string;
-}
-
 export interface PatchBody {
   zendesk_ticket_id?: string | null;
   usa_team_note?: string | null;
   vietnam_team_note?: string | null;
   checked?: boolean;
 }
-
-export const DEBOUNCE_MS = 400;
-export const UNFOUND_QUEUE_REFRESH_EVENT = 'unfound-queue-refresh';
 
 // Match the trailing " · PO: A, B, C" suffix the email_po view branch appends
 // to the context column (see v_unfound_queue migration). The PO numbers are
@@ -85,13 +53,4 @@ export function splitPoContext(context: string | null): {
     .map((s) => s.trim())
     .filter(Boolean);
   return { prefix, poNumbers };
-}
-
-// ─── Filter-state helpers (URL search params are the source of truth) ─────────
-
-export function parseKind(raw: string | null): QueueKind {
-  if (!raw) return 'all';
-  return (ENABLED_KINDS as readonly string[]).includes(raw)
-    ? (raw as QueueKind)
-    : 'all';
 }

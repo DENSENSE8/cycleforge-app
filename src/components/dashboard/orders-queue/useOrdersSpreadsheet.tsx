@@ -143,6 +143,12 @@ export interface UseOrdersSpreadsheetOptions {
   /** Shortage / blocked-queue paint. Optional — ignored when unset. */
   shortageDesk?: boolean;
   onOpenLabels?: (record: ShippedOrder) => void;
+  /**
+   * The open record's action strip (`OrderRecordActionStrip`), from the desk
+   * that owns the open record — painted in the table's action row while a
+   * record plane has a record open and no row is checked.
+   */
+  openRecordStrip?: ReactNode;
 }
 
 /**
@@ -199,6 +205,7 @@ export function useOrdersSpreadsheet({
   scrollParentRef,
   activeWorkRowId = null,
   renderActiveWorkBand,
+  openRecordStrip,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   const { isMobile } = useUIModeOptional();
 
@@ -450,7 +457,14 @@ export function useOrdersSpreadsheet({
     className,
     testId: dataTestId,
     selectionScope,
-    bodyPrefix: <OrdersMorphingHost records={displayedRecords} selectedIds={selectedIds} />,
+    actionStrip: (
+      <OrdersMorphingHost
+        records={displayedRecords}
+        selectedIds={selectedIds}
+        mode={queueMode === 'shipped' ? 'shipped' : 'to-ship'}
+        openRecordStrip={openRecordStrip}
+      />
+    ),
     // A header key on the compound row is a TRACK; the sort vocabulary is in
     // FACTS. `queueSortForColumnKey` bridges them, and this predicate is what
     // keeps the header offering the sorts the engine will actually perform.

@@ -177,6 +177,7 @@ function ledgerRow(overrides: Partial<SkuLedgerLoaderRow> = {}): SkuLedgerLoader
     ref_serial_unit_id: 41,
     ref_order_id: 48123,
     ref_receiving_line_id: 902,
+    notes: null,
     ...overrides,
   };
 }
@@ -259,11 +260,13 @@ describe('skuLedgerTableRows', () => {
     assert.equal(text(resolveSkuLedgerSlotValue(row, 'sku-ledger.ref_receiving_line')), '902');
   });
 
-  it('drops `notes` — the loader selects it and no cell paints it', () => {
-    const [row] = skuLedgerTableRows([
-      { ...ledgerRow(), notes: 'an internal blob' } as SkuLedgerLoaderRow,
+  it('carries `notes` trimmed, and a blank note as null', () => {
+    const [custom] = skuLedgerTableRows([
+      ledgerRow({ reason: 'TAKE_CUSTOM', notes: '  Returned to vendor ' }),
     ]);
-    assert.ok(!('notes' in row), 'an unpainted column crossed the RSC boundary');
+    assert.equal(text(resolveSkuLedgerSlotValue(custom, 'sku-ledger.notes')), 'Returned to vendor');
+    const [blank] = skuLedgerTableRows([ledgerRow({ notes: '   ' })]);
+    assert.equal(blank.notes, null);
   });
 
   it('keeps the staff id, so the actor paints as a person rather than "system"', () => {

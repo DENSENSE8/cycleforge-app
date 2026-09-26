@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Inventory › Stock — the evidence column beside the ledger (triage evidence
- * stack): what it is (the shelf, the product, its state) → evidence (photo,
- * facts) → the count at THIS location and the decision bar (Count · Open SKU ·
- * SKU exception for a placeholder).
+ * Inventory › Stock — the open stock pair (triage evidence stack), placed by
+ * the ledger's `DeskRecordPlane`: what it is (the shelf, the product, its
+ * state) → evidence (photo, facts) → the count at THIS location and the
+ * decision bar (Count · Open SKU · SKU exception for a placeholder).
  *
- * Nothing open, it reads the list as a whole (pairs · units · on hold · out of
- * stock · rooms).
+ * Nothing open, {@link stockSummary} reads the list as a whole (pairs · units ·
+ * on hold · out of stock · rooms).
  */
 
 import { useMemo } from 'react';
@@ -28,6 +28,7 @@ import {
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
 import { recordInitials } from '@/design-system/components/record-ledger/IndustrialRecord';
+import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,32 +56,20 @@ function stamp(iso: string | null): string | null {
 }
 
 export function StockEvidence({
-  openKey,
   record,
-  rows,
-  rooms,
   onCounted,
 }: {
-  openKey: string | null;
-  /** The open pair (live row), or null. */
+  /** The open pair (live row), or null when the link names a pair no longer listed. */
   record: LocationStockTableRow | null;
-  rows: readonly LocationStockTableRow[];
-  rooms: readonly LocationStockRoomFacet[];
   /** A count landed — re-read the loader. */
   onCounted: () => void;
 }) {
   if (record) return <StockRecordEvidence key={locationStockRowId(record)} record={record} onCounted={onCounted} />;
-  if (openKey) {
-    return (
-      <>
-        <EvidenceTitle>—</EvidenceTitle>
-        <EvidenceNotice tone="warn">
-          <span data-testid="stock-evidence-missing">That stock pair is not in this list any more.</span>
-        </EvidenceNotice>
-      </>
-    );
-  }
-  return <StockSummary rows={rows} rooms={rooms} />;
+  return (
+    <EvidenceNotice tone="warn">
+      <span data-testid="stock-evidence-missing">That stock pair is not in this list any more.</span>
+    </EvidenceNotice>
+  );
 }
 
 function StockRecordEvidence({ record, onCounted }: { record: LocationStockTableRow; onCounted: () => void }) {
@@ -198,51 +187,27 @@ function StockRecordEvidence({ record, onCounted }: { record: LocationStockTable
 }
 
 /** Nothing open: the list read as the floor reads it. */
-function StockSummary({
-  rows,
-  rooms,
-}: {
-  rows: readonly LocationStockTableRow[];
-  rooms: readonly LocationStockRoomFacet[];
-}) {
-  const lines = useMemo(() => {
-    let units = 0;
-    let held = 0;
-    let out = 0;
-    for (const row of rows) {
-      units += Math.max(row.qty, 0);
-      const state = stockRecordState(row);
-      if (state === 'onHold') held += 1;
-      else if (state === 'outOfStock') out += 1;
-    }
-    return [
-      { code: 'PAIRS', label: 'Location × SKU', value: rows.length, warn: false },
-      { code: 'UNITS', label: 'On the shelves', value: units, warn: false },
-      { code: 'HLD', label: 'On hold (TMP)', value: held, warn: held > 0 },
-      { code: 'OOS', label: 'At or below zero', value: out, warn: out > 0 },
-      { code: 'ROOMS', label: 'Rooms', value: rooms.length, warn: false },
-    ];
-  }, [rows, rooms.length]);
-
-  return (
-    <>
-      <EvidenceTitle>—</EvidenceTitle>
-      <EvidenceSection label="No stock pair selected">
-        <dl className="flex flex-col" data-testid="stock-summary">
-          {lines.map((line) => (
-            <div key={line.code} className="flex items-center gap-3 border-b border-mode-rule py-1.5 last:border-b-0">
-              <dt className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-mode-muted')}>{line.code}</dt>
-              <dd className={cn(RECORD_LABEL_CLASS, 'flex-1', line.warn ? 'text-mode-warn' : 'text-mode-ink')}>
-                {line.label}
-              </dd>
-              <dd className="font-mono text-role-data font-bold tabular-nums text-mode-ink">{line.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </EvidenceSection>
-      <p className={cn(RECORD_LABEL_CLASS, 'mt-auto border-t border-mode-rule px-4 py-2 text-mode-muted')}>
-        Open a record · J / K step · Esc closes
-      </p>
-    </>
-  );
+export function stockSummary(
+  rows: readonly LocationStockTableRow[],
+  rooms: readonly LocationStockRoomFacet[],
+): RecordLedgerSummary {
+  let units = 0;
+  let held = 0;
+  let out = 0;
+  for (const row of rows) {
+    units += Math.max(row.qty, 0);
+    const state = stockRecordState(row);
+    if (state === 'onHold') held += 1;
+    else if (state === 'outOfStock') out += 1;
+  }
+  return {
+    title: 'Stock',
+    facts: [
+      { label: 'Location × SKU pairs', value: rows.length },
+      { label: 'Units on the shelves', value: units, toolbar: true },
+      { label: 'On hold (TMP)', value: held, warn: held > 0, toolbar: true },
+      { label: 'At or below zero', value: out, warn: out > 0, toolbar: true },
+      { label: 'Rooms', value: rooms.length },
+    ],
+  };
 }

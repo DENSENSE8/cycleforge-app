@@ -329,6 +329,9 @@ export function VirtualGroupedSections<T>({
 
   // Deep-link / keyboard focus: scroll the target row into view even when it is
   // outside the current window (DOM scrollIntoView can't reach an unmounted row).
+  // `auto`, not `center`: a row already on screen must not move the list — an
+  // opened record would otherwise re-centre the list under it, and the staffer
+  // closes the record onto a different scroll than the one they left.
   useEffect(() => {
     if (!scrollToKey) return;
     const idx = items.findIndex((it) => {
@@ -355,7 +358,7 @@ export function VirtualGroupedSections<T>({
         rowIds,
       });
     });
-    if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center' });
+    if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'auto' });
   }, [scrollToKey]);
 
   const virtualRows = virtualizer.getVirtualItems();

@@ -3,8 +3,8 @@
 /**
  * Inbound desk header CTA — **Add** (primary) plus Import menu.
  *
- * Opens Add PO or Add Return in the RecordLedger evidence column. Also
- * consumes Global Header Add intents for Incoming.
+ * Add / Add return open the centred receiving-order composer on either lane.
+ * Also consumes Global Header Add intents for Incoming.
  */
 
 import { useCallback, useEffect, useMemo } from 'react';
@@ -17,8 +17,10 @@ import {
   consumeGlobalAddIntent,
   type GlobalAddIntent,
 } from '@/lib/global-add/catalog';
-import { closePoIntake, openPoIntake } from '@/lib/inbound/po-intake-store';
-import { closeReturnIntake, openReturnIntake } from '@/lib/inbound/return-intake-store';
+import {
+  closeReceivingOrderComposer,
+  openReceivingOrderComposer,
+} from '@/lib/inbound/receiving-order-composer-store';
 import { useIncomingSyncActions } from '@/components/sidebar/receiving/incoming/useIncomingSyncActions';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
@@ -65,13 +67,11 @@ export function IncomingDeskAddAction() {
   const returnsCsv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
 
   const openIntake = useCallback(() => {
-    closeReturnIntake();
-    openPoIntake({ reset: true });
+    openReceivingOrderComposer('purchase');
   }, []);
 
   const openReturn = useCallback(() => {
-    closePoIntake();
-    openReturnIntake();
+    openReceivingOrderComposer('return');
   }, []);
 
   const armReturnsImport = useCallback(() => {
@@ -85,6 +85,10 @@ export function IncomingDeskAddAction() {
   const importEbay = useCallback(() => {
     void sync.refreshMarketplace();
   }, [sync]);
+
+  // The composer's open state is module-scoped; leaving the desk discards it
+  // so returning to /incoming lands on the ledger, not a stale draft sheet.
+  useEffect(() => closeReceivingOrderComposer, []);
 
   useEffect(() => {
     const parked = consumeGlobalAddIntent();

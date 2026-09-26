@@ -53,7 +53,7 @@ export default function IncomingPage() {
         and stays independent of `deskChrome` — the two are separate facts.
       */}
       <ModeRegion mode="triage" className="contents">
-        <DeskPageLayout className="h-full" stage="flush">
+        <DeskPageLayout className="h-full">
           <IncomingBrowseShell>
             <SurfaceGate surfaceKey="incoming">
               <ReceivingSurfacePage />

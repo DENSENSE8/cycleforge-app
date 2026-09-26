@@ -91,6 +91,7 @@ const REFUSED_NOUN: Partial<Record<ScanType, string>> = {
   sscc: 'a licence plate',
   manifest: 'a kit label',
   'support-ticket': 'a ticket',
+  fnsku: 'an FBA label',
 };
 
 /** Our own carton sticker carries its receiving id in the redirect it routes to. */

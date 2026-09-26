@@ -23,10 +23,10 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/lib/receiving/receiving-constants';
 import { conditionLabel } from '@/lib/conditions';
-import { Button, Panel } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
-import { DetailAck, DetailFactRow, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
+import { DetailAck, DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
 import { useUnitHubRows, type UnitHubVerb } from '@/components/mobile/unit/useUnitHubRows';
 import { UnitLineTestSheet, UnitStashSheet } from '@/components/mobile/unit/UnitLineSheets';
@@ -143,15 +143,13 @@ export default function MobileUnitPage() {
         right={unit ? <StatusPill status={unit.current_status} /> : undefined}
       />
 
-      <div className="flex-1 space-y-5 px-mode-page py-mode-page">
-        {isLoading && <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
+      <div className="flex-1 divide-y divide-mode-rule">
+        {isLoading && <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
 
         {!isLoading && !unit && (
-          <div className="space-y-3 rounded-mode border border-rose-200 bg-rose-50 p-mode-page">
-            <p className="text-mode-body font-semibold text-rose-700">
-              Couldn&apos;t load unit — {error instanceof Error ? error.message : 'try scanning again.'}
-            </p>
-            <Button variant="secondary" onClick={() => router.back()}>
+          <div className="bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700">
+            <p className="mb-2">Couldn&apos;t load unit — {error instanceof Error ? error.message : 'try scanning again.'}</p>
+            <Button variant="secondary" size="lg" radius="flush" onClick={() => router.back()}>
               Back
             </Button>
           </div>
@@ -159,40 +157,22 @@ export default function MobileUnitPage() {
 
         {unit && (
           <>
-            <section aria-labelledby="unit-info" className="space-y-2">
-              <DetailSectionHeading id="unit-info">Information</DetailSectionHeading>
-              <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-                <DetailFactRow
-                  label="Device"
-                  value={unit.product_title || <span className="text-text-faint">No product title</span>}
-                />
-                <DetailFactRow
-                  label="SKU"
-                  value={unit.sku ? <span className="font-mono">{unit.sku}</span> : <span className="text-text-faint">No SKU</span>}
-                />
-                <DetailFactRow label="Serial" value={<span className="font-mono">{unit.serial_number}</span>} />
-                <DetailFactRow
-                  label="Condition"
-                  value={
-                    unit.condition_grade ? (
-                      conditionLabel(unit.condition_grade, 'full')
-                    ) : (
-                      <span className="text-text-faint">Not graded</span>
-                    )
-                  }
-                />
-                <DetailFactRow
-                  label="Location"
-                  value={
-                    unit.current_location ? (
-                      <span className="font-mono">{unit.current_location}</span>
-                    ) : (
-                      <span className="text-text-faint">Not in a bin</span>
-                    )
-                  }
-                />
-              </Panel>
-            </section>
+            <DetailSectionHeading id="unit-info">Information</DetailSectionHeading>
+            <DetailFacts label="Information">
+              <DetailFact label="Device" value={unit.product_title || null} />
+              <DetailFact label="SKU" value={unit.sku || null} mono copy={unit.sku} />
+              <DetailFact label="Serial" value={unit.serial_number} mono copy={unit.serial_number} />
+              <DetailFact
+                label="Condition"
+                value={unit.condition_grade ? conditionLabel(unit.condition_grade, 'full') : 'Not graded'}
+              />
+              <DetailFact
+                label="Location"
+                value={unit.current_location || 'Not in a bin'}
+                mono={Boolean(unit.current_location)}
+                copy={unit.current_location}
+              />
+            </DetailFacts>
 
             {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
 

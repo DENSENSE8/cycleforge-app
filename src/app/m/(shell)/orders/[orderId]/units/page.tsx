@@ -21,9 +21,9 @@ function OrderUnitsInner() {
       }}
     >
       {(d) => (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+        <div className="flex-1 divide-y divide-mode-rule">
           {d.order.serials.length > 0 ? (
-            <ol aria-label={`Serials on ${d.order.order_id}`} className="overflow-hidden rounded-mode border border-mode-edge bg-mode-panel">
+            <ol aria-label={`Serials on ${d.order.order_id}`} className="bg-mode-panel">
               {d.order.serials.map((serial) => (
                 <li key={serial} className="min-h-mode-hit border-b border-mode-rule px-mode-page py-3 font-mono text-mode-body text-mode-ink last:border-b-0">
                   {serial}
@@ -31,7 +31,7 @@ function OrderUnitsInner() {
               ))}
             </ol>
           ) : (
-            <p className="py-10 text-center text-sm font-semibold text-text-soft">No serials recorded on this order yet.</p>
+            <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">No serials recorded on this order yet.</p>
           )}
         </div>
       )}

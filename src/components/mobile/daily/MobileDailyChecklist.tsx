@@ -30,8 +30,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { BottomSheet } from '@/components/ui/BottomSheet';
-import { Button } from '@/design-system/primitives';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { elevationClass } from '@/design-system/tokens/shadows';
@@ -128,7 +126,6 @@ export function MobileDailyChecklist() {
   const [openItemId, setOpenItemId] = useState<number | null>(null);
   const [composerOpen, setComposerOpen] = useState(false);
   const [sharedTaskOpen, setSharedTaskOpen] = useState(false);
-  const [createChoiceOpen, setCreateChoiceOpen] = useState(false);
   const [draft, setDraft] = useState<DailyComposerDraft>(newDailyComposerDraft);
 
   const doneSet = useMemo(() => new Set(data?.mine.doneItemIds ?? []), [data?.mine.doneItemIds]);
@@ -407,11 +404,9 @@ export function MobileDailyChecklist() {
        */}
       {(canManage || canSeeTasks) ? (
         <IconButton
-          onClick={() => {
-            if (canManage && canSeeTasks) setCreateChoiceOpen(true);
-            else if (canSeeTasks) setSharedTaskOpen(true);
-            else setComposerOpen(true);
-          }}
+          // Task first: the checklist is the org's rarer edit, reachable
+          // from inside the task sheet for those who manage it.
+          onClick={() => (canSeeTasks ? setSharedTaskOpen(true) : setComposerOpen(true))}
           ariaLabel="Add task"
           size="touch"
           radius="pill"
@@ -424,13 +419,6 @@ export function MobileDailyChecklist() {
         />
       ) : null}
 
-      <BottomSheet open={createChoiceOpen} onClose={() => setCreateChoiceOpen(false)} forceVariant="sheet" compact>
-        <div className="flex flex-col gap-3 px-1 pb-2">
-          <p className="text-role-data font-semibold text-text-default">What are you adding?</p>
-          <Button variant="primary" size="lg" onClick={() => { setCreateChoiceOpen(false); setSharedTaskOpen(true); }}>Shared task · record or ticket</Button>
-          <Button variant="secondary" size="lg" onClick={() => { setCreateChoiceOpen(false); setComposerOpen(true); }}>Daily checklist item</Button>
-        </div>
-      </BottomSheet>
       {sharedTaskOpen ? (
         <MobileSharedTaskComposerSheet
           onClose={() => setSharedTaskOpen(false)}
@@ -438,6 +426,7 @@ export function MobileDailyChecklist() {
             setSharedTaskOpen(false);
             void queryClient.invalidateQueries({ queryKey: ['tasks'] });
           }}
+          onAddChecklist={canManage ? () => { setSharedTaskOpen(false); setComposerOpen(true); } : undefined}
         />
       ) : null}
 

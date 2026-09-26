@@ -202,14 +202,14 @@ async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<st
         SELECT tested_by AS sid, COUNT(*)::int AS today_count
         FROM tech_serial_numbers
         WHERE tested_by IS NOT NULL
-          AND created_at::date = CURRENT_DATE
+          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date = (now() AT TIME ZONE 'America/Los_Angeles')::date
         GROUP BY tested_by
       ),
       week_tech AS (
         SELECT tested_by AS sid, COUNT(*)::int AS week_count
         FROM tech_serial_numbers
         WHERE tested_by IS NOT NULL
-          AND created_at::date >= CURRENT_DATE - INTERVAL '6 day'
+          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date >= (now() AT TIME ZONE 'America/Los_Angeles')::date - 6
         GROUP BY tested_by
       ),
       today_pack AS (
@@ -217,7 +217,7 @@ async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<st
         FROM packer_logs
         WHERE packed_by IS NOT NULL
           AND completion_state = 'COMPLETED'
-          AND created_at::date = CURRENT_DATE
+          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date = (now() AT TIME ZONE 'America/Los_Angeles')::date
         GROUP BY packed_by
       ),
       week_pack AS (
@@ -225,7 +225,7 @@ async function fetchStaffContext(params: IntentParams, orgId: OrgId): Promise<st
         FROM packer_logs
         WHERE packed_by IS NOT NULL
           AND completion_state = 'COMPLETED'
-          AND created_at::date >= CURRENT_DATE - INTERVAL '6 day'
+          AND (created_at AT TIME ZONE 'America/Los_Angeles')::date >= (now() AT TIME ZONE 'America/Los_Angeles')::date - 6
         GROUP BY packed_by
       )
       SELECT

@@ -52,11 +52,11 @@ function CartonQcInner() {
       }}
     >
       {(d) => (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+        <div className="flex-1 divide-y divide-mode-rule">
           {d.lines.length > 0 ? (
             <DetailNav label={`QC lines on R-${id}`} rows={d.lines.map(qcRow)} />
           ) : (
-            <p className="py-10 text-center text-sm font-semibold text-text-soft">
+            <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">
               No lines on this carton yet — nothing to check.
             </p>
           )}

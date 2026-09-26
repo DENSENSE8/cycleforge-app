@@ -1,9 +1,9 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { Barcode } from '@/components/Icons';
-import { DetailFactRow, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import { Button, Panel } from '@/design-system/primitives';
+import { Barcode, ScanBarcode } from '@/components/Icons';
+import { DetailFact, DetailFacts, DetailNav, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import type { LineSerial } from '@/lib/receiving/serial-projection';
 import { resolveSkuIdentityTitle, type SkuIdentityTitleRow } from '@/lib/sku/sku-identity-law';
 import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
@@ -56,50 +56,50 @@ export function QcLinePicker({
 
   return (
     <>
-      {isLoading ? <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p> : null}
+      <div className="flex-1 divide-y divide-mode-rule">
+        {isLoading ? <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p> : null}
 
-      {error ? (
-        <div className="rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-mode-body font-semibold text-rose-700">
-          {error.message}
-        </div>
-      ) : null}
+        {error ? (
+          <div className="bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700">{error.message}</div>
+        ) : null}
 
-      {line ? (
-        <>
-          <section aria-labelledby="qc-line-info" className="space-y-2">
+        {line ? (
+          <>
             <DetailSectionHeading id="qc-line-info">Line L-{lineId}</DetailSectionHeading>
-            <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-              <DetailFactRow label="Product" value={resolveSkuIdentityTitle(line) || '—'} />
-              <DetailFactRow label="SKU" value={line.sku ? <span className="font-mono">{line.sku}</span> : '—'} />
-              <DetailFactRow label="Units" value={units.length} />
-            </Panel>
-          </section>
+            <DetailFacts label={`Line L-${lineId}`}>
+              <DetailFact label="Product" value={resolveSkuIdentityTitle(line) || null} />
+              <DetailFact label="SKU" value={line.sku || null} mono copy={line.sku} />
+              <DetailFact label="Units" value={units.length} />
+            </DetailFacts>
 
-          {units.length > 0 ? (
-            <section aria-labelledby="qc-line-units" className="space-y-2">
-              <DetailSectionHeading id="qc-line-units">Pick the unit</DetailSectionHeading>
-              <DetailNav
-                label={`Units on line L-${lineId}`}
-                rows={units.map((unit) => ({
-                  id: String(unit.id),
-                  title: unit.serial_number,
-                  icon: <Barcode />,
-                  meta: unit.unit_uid ? `${unit.unit_uid} · ${unit.current_status}` : unit.current_status,
-                  onSelect: () => onPick(String(unit.id)),
-                }))}
-              />
-            </section>
-          ) : (
-            <p className="text-role-caption text-mode-muted">
-              No units on this line yet — unbox labels each unit as it comes out of the box.
-            </p>
-          )}
-        </>
-      ) : null}
+            {units.length > 0 ? (
+              <>
+                <DetailSectionHeading id="qc-line-units">Pick the unit</DetailSectionHeading>
+                <DetailNav
+                  label={`Units on line L-${lineId}`}
+                  rows={units.map((unit) => ({
+                    id: String(unit.id),
+                    title: unit.serial_number,
+                    icon: <Barcode />,
+                    meta: unit.unit_uid ? `${unit.unit_uid} · ${unit.current_status}` : unit.current_status,
+                    onSelect: () => onPick(String(unit.id)),
+                  }))}
+                />
+              </>
+            ) : (
+              <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
+                No units on this line yet — unbox labels each unit as it comes out of the box.
+              </p>
+            )}
+          </>
+        ) : null}
+      </div>
 
-      <Button variant="secondary" size="lg" className="w-full rounded-mode" onClick={onBack}>
-        Scan another label
-      </Button>
+      <DetailDock
+        label="QC line actions"
+        verbs={[{ id: 'scan', label: 'Scan another label', icon: <ScanBarcode />, primary: true }]}
+        onVerb={onBack}
+      />
     </>
   );
 }

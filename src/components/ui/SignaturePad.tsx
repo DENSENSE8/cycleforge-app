@@ -50,6 +50,25 @@ interface SignaturePadProps {
   allowFullscreen?: boolean;
 }
 
+interface StrokeBox {
+  w: number;
+  h: number;
+}
+
+/**
+ * Re-lay strokes captured in box `from` onto box `to`: one uniform factor
+ * (the tighter axis) so the ink keeps its shape and stays inside the pad.
+ * Pen width is left alone — it is a hand size, not a drawing size.
+ */
+function fitStrokes(groups: PointGroup[], from: StrokeBox | null, to: StrokeBox): PointGroup[] {
+  if (!from || (from.w === to.w && from.h === to.h)) return groups;
+  const k = Math.min(to.w / from.w, to.h / from.h);
+  return groups.map((group) => ({
+    ...group,
+    points: group.points.map((p) => ({ ...p, x: p.x * k, y: p.y * k })),
+  }));
+}
+
 export function SignaturePad({
   onSignatureChange,
   label = 'Customer Signature',
@@ -60,6 +79,13 @@ export function SignaturePad({
   const padRef = useRef<SignaturePadLib | null>(null);
   /** Survives fullscreen remount (Dialog portal) so strokes restore after expand/collapse. */
   const strokesRef = useRef<PointGroup[]>([]);
+  /**
+   * The CSS box `strokesRef` was drawn in. Points are canvas pixels, and the
+   * inline pad (~480px) and the fullscreen pad (~1100px) are different boxes:
+   * replaying raw points put fullscreen ink off the right edge of the inline
+   * pad. Restore goes through {@link fitStrokes} from this box to the new one.
+   */
+  const boxRef = useRef<StrokeBox | null>(null);
   const [signed, setSigned] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
@@ -140,10 +166,14 @@ export function SignaturePad({
       });
       padRef.current = pad;
 
+      const box = { w, h };
       if (strokesRef.current.length > 0) {
-        pad.fromData(strokesRef.current);
-        setSigned(true);
+        pad.fromData(fitStrokes(strokesRef.current, boxRef.current, box));
+        // The ink was just re-laid onto a different box (inline ↔ fullscreen),
+        // so the stored strokes and PNG must follow it.
+        emitFromPad(pad);
       }
+      boxRef.current = box;
 
       pad.addEventListener('endStroke', () => {
         if (!pad) return;
@@ -159,10 +189,13 @@ export function SignaturePad({
           return;
         }
         const strokeData = pad.toData();
+        const box = { w: canvas.offsetWidth, h: canvas.offsetHeight };
         scaleSignatureCanvas(canvas);
         pad.clear();
+        const from = boxRef.current;
+        boxRef.current = box;
         if (strokeData.length > 0) {
-          pad.fromData(strokeData);
+          pad.fromData(fitStrokes(strokeData, from, box));
           // Re-export at the new size. Without this the stored data URL stayed
           // the pre-resize crop, so expanding to fullscreen and collapsing
           // again saved a PNG that no longer matched the pad on screen.
@@ -297,24 +330,26 @@ export function SignaturePad({
 
       {allowFullscreen && (
         <Dialog open={expanded} onOpenChange={setExpanded}>
+          {/*
+            Bottom-anchored (operator 2026-09-25): the customer's wrist rests
+            on the tablet's bottom edge, so the pad sits flush against it and
+            the controls stack directly above. `justify-end` puts the spare
+            height ABOVE the header — never between the pad and the edge the
+            hand is on. The pad still keeps its aspect (see {@link fill});
+            only its position changed. `pb` is the safe-area inset alone, so
+            it is 0 on a plain tablet and clears a home indicator where one
+            exists.
+          */}
           <DialogContent
             hideClose
             overlayClassName="bg-surface-canvas"
-            className="fixed inset-0 left-0 top-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-3 rounded-none border-0 bg-surface-canvas p-5 shadow-none sm:p-8"
+            className="fixed inset-0 left-0 top-0 flex h-dvh max-h-none w-screen max-w-none translate-x-0 translate-y-0 flex-col justify-end gap-3 rounded-none border-0 bg-surface-canvas px-5 pb-[env(safe-area-inset-bottom)] pt-5 shadow-none sm:px-8 sm:pt-8"
           >
             <DialogTitle className="sr-only">{label}</DialogTitle>
             <DialogDescription className="sr-only">
               Sign with your finger or stylus. Press Done when finished.
             </DialogDescription>
             {labelRow}
-            {/*
-              The pad keeps its aspect in fullscreen too. This used to be
-              `min-h-0 flex-1`, i.e. a canvas as tall as the viewport — the tall
-              dead space the operator reported, one altitude up.
-            */}
-            <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-              {canvasArea}
-            </div>
             <Button
               type="button"
               size="lg"
@@ -323,6 +358,7 @@ export function SignaturePad({
             >
               {signed ? 'Done' : 'Close'}
             </Button>
+            <div className="shrink-0">{canvasArea}</div>
           </DialogContent>
         </Dialog>
       )}

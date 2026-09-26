@@ -38,6 +38,9 @@ export function notificationHref(entityType: string, entityId: number): string {
     // Warranty claims live behind the shipping workspace's warranty mode.
     case 'warranty_claim':
       return `/shipping?mode=warranty&claim=${entityId}`;
+    // A standalone task has no record: its inbox row opens the task itself.
+    case 'task':
+      return `/?task=${entityId}`;
     default:
       return '/';
   }

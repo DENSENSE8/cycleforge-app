@@ -13,12 +13,13 @@
  * rendered before this existed, because `formatRepairPaperTicketNumber('')`
  * already collapses to no heading.
  *
- * Callers: `KioskRepairPane` (review step).
+ * Callers: `KioskRepairPane` (review step), `KioskPaperworkPanel`.
  * Affected API: GET `/api/kiosk/repair/next-ticket`. Schemas: none.
  */
 
 import { useEffect, useState } from 'react';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
+import type { KioskTicketChoice } from '@/lib/kiosk/repair-ticket-choice';
 
 export function useNextTicketPreview(enabled: boolean): number | null {
   const [nextTicketId, setNextTicketId] = useState<number | null>(null);
@@ -48,5 +49,18 @@ export function useNextTicketPreview(enabled: boolean): number | null {
     };
   }, [enabled, nextTicketId]);
 
+  return nextTicketId;
+}
+
+/**
+ * The number the paperwork states: a LINKED ticket outranks the projection,
+ * because it is a fact — `ATTACH_TICKET` stamps `repair_service.ticket_number`
+ * with the picked ticket, so the printed sheet will carry exactly that number.
+ */
+export function paperworkTicketNumber(
+  ticketChoice: KioskTicketChoice | null,
+  nextTicketId: number | null,
+): number | null {
+  if (ticketChoice?.mode === 'attach' && ticketChoice.ticketId > 0) return ticketChoice.ticketId;
   return nextTicketId;
 }

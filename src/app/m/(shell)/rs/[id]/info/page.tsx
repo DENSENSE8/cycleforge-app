@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
-import { DetailAck, DetailFactRow } from '@/components/mobile/detail/DetailParts';
+import { DetailAck, DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { RepairInfoEditSheet } from '@/components/mobile/repair/RepairInfoEditSheet';
 import { useRepairInfoSave } from '@/components/mobile/repair/useRepairInfoSave';
 import { useRepairRecord } from '@/components/mobile/repair/useRepairWorkbench';
@@ -12,7 +12,7 @@ import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { currentStatusEntry } from '@/lib/repair/repair-history';
 import type { RepairInfoDraft } from '@/lib/repair/repair-info-edit';
 import { formatMonthDayTimePST } from '@/utils/date';
-import { IconButton, Panel } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
@@ -70,45 +70,42 @@ function RepairInfoInner() {
         }
       />
 
-      <div className="flex-1 space-y-4 px-mode-page py-mode-page">
-        {loading && <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
+      <div className="flex-1 divide-y divide-mode-rule">
+        {loading && <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
         {error && (
-          <div className="rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-mode-body font-semibold text-rose-700">
-            {error}
-          </div>
+          <div className="bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700">{error}</div>
         )}
 
         {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
 
         {repair ? (
-          <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-            <DetailFactRow
+          <DetailFacts>
+            <DetailFact label="Device" value={repair.product_title || null} />
+            <DetailFact label="Issue" value={repair.issue || null} />
+            <DetailFact
               label="Status"
               value={
                 repair.status ? (
                   <span
-                    className={`inline-block rounded-mode border px-2 py-0.5 text-role-caption font-semibold ${repairStatusBadgeClass(repair.status)}`}
+                    className={`inline-block border px-2 py-0.5 text-role-caption font-semibold ${repairStatusBadgeClass(repair.status)}`}
                   >
                     {repairStatusOperatorLabel(repair.status)}
                   </span>
                 ) : (
-                  <span className="text-text-faint">Not set</span>
+                  <span className="text-mode-muted">Not set</span>
                 )
               }
               hint={statusEntry ? `since ${formatMonthDayTimePST(statusEntry.timestamp)}` : undefined}
             />
-            <DetailFactRow label="Device" value={repair.product_title || '—'} />
-            <DetailFactRow label="Issue" value={repair.issue || '—'} />
-            <DetailFactRow
-              label="Serial"
-              value={repair.serial_number ? <span className="font-mono">{repair.serial_number}</span> : '—'}
-            />
-            <DetailFactRow label="Customer" value={contact?.name || '—'} />
-            {contact?.phone ? <DetailFactRow label="Phone" value={contact.phone} /> : null}
-            {contact?.email ? <DetailFactRow label="Email" value={<span className="break-all">{contact.email}</span>} /> : null}
-            <DetailFactRow label="Price" value={repair.price || '—'} />
-            <DetailFactRow label="Notes" value={repair.notes || '—'} />
-          </Panel>
+            <DetailFact label="Serial" value={repair.serial_number || null} mono copy={repair.serial_number} />
+            <DetailFact label="Customer" value={contact?.name || null} />
+            {contact?.phone ? <DetailFact label="Phone" value={contact.phone} /> : null}
+            <DetailFact label="Price" value={repair.price || null} />
+            {contact?.email ? (
+              <DetailFact label="Email" value={<span className="break-all">{contact.email}</span>} />
+            ) : null}
+            <DetailFact label="Notes" value={repair.notes || null} />
+          </DetailFacts>
         ) : null}
       </div>
 

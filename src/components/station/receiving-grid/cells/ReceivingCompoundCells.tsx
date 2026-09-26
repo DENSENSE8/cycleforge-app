@@ -10,9 +10,8 @@
  * apart there while agreeing on the body. All that is left for a family is what
  * only it knows: how its row maps to a {@link CompoundRowView}.
  *
- * Serves Unbox / History / Testing AND Incoming — one dispatcher, because they
- * share a row type. The only thing the two split on is which lifecycle the
- * state pill reports, and that is a data question answered by the adapter.
+ * Serves Unbox / History / Testing — one dispatcher, because they share a row
+ * type.
  */
 
 import type { ReactNode } from 'react';
@@ -22,9 +21,7 @@ import {
   renderCompoundGridCell,
 } from '@/components/tables/compound/CompoundGridCell';
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
-import { incomingStateFace } from '@/lib/receiving/incoming-compound-view';
 import { receivingCompoundView } from '@/lib/receiving/receiving-compound-view';
-import { incomingSlotValuesFor } from '@/lib/tables/field-catalog/incoming-resolve';
 import { receivingSlotValuesFor } from '@/lib/tables/field-catalog/receiving-resolve';
 import type {
   ReceivingGridCellColumn,
@@ -36,44 +33,21 @@ export { isCompoundCellKey };
 /**
  * Row → view. The ctx already carries every resolved display string, so this
  * never re-derives display logic that has a SoT elsewhere — it decides SHAPE.
- *
- * **`linePhase` picks the state vocabulary.** `'expected'` is Incoming: the box
- * is still with the carrier, so the pill reports `delivery_state` (or, on the
- * recently-removed lane, why the row left). Everything else is a landed line
- * and reports `workflow_status`. That is a genuine difference in what the row
- * MEANS, which is exactly the kind of difference the shared layout exists to
- * let through — as opposed to a difference in how it is drawn, which it does not.
  */
 function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
-  const incoming = ctx.linePhase === 'expected';
-  const state = incoming ? incomingStateFace(ctx.row) : null;
-
   return {
     // Materialized slot tracks (wave 1.3) — one resolved value per BOUND slot,
-    // keyed by track key. Empty on both product defaults, which is why the port
+    // keyed by track key. Empty on the product default, which is why the port
     // reproduces the row exactly; an org that binds Location gets a real column
     // with no change to this adapter.
-    //
-    // The resolver follows the same split as the state pill above: an Incoming
-    // row answers the CARRIER's question and a landed row answers the
-    // WAREHOUSE's, so `incoming.*` and `receiving.*` are two vocabularies over
-    // one cell map. Routing by `linePhase` also means a binding from the other
-    // family resolves to nothing rather than painting a lane-dependent lie.
-    slots: incoming
-      ? incomingSlotValuesFor(ctx.row, ctx.columns ?? [])
-      : receivingSlotValuesFor(ctx.row, ctx.columns ?? []),
+    slots: receivingSlotValuesFor(ctx.row, ctx.columns ?? []),
     ...receivingCompoundView(ctx.row, {
     title: ctx.productTitle,
-    stateLabel: state ? state.label : ctx.stageLabel,
-    stateTone: state ? state.tone : undefined,
-    stateTip: state ? state.tip : undefined,
+    stateLabel: ctx.stageLabel,
     // Receiving lines have no ship-by deadline, so there is no lateness to
     // report — `null` renders the on-time face rather than inventing a number.
-    // Incoming DOES have one (the expected-arrival date), and `ctx.daysLate` is
-    // the same number the flat Age column shows, so the two layouts cannot
-    // disagree about whether a box is overdue.
-    delayDays: incoming ? (ctx.daysLate ?? null) : null,
-    delayTip: (incoming ? ctx.ageTooltip : ctx.stageTip) || undefined,
+    delayDays: null,
+    delayTip: ctx.stageTip || undefined,
     tracking: (ctx.trackingValue || '').trim() || null,
     orderId: ctx.poValue || null,
     }),
@@ -86,7 +60,7 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
  *
  * Two planes, and the gutter serves whichever this surface split out:
  *
- * - **click-select** (Unbox History / Incoming Sheets): the ROW carries
+ * - **click-select** (Unbox History): the ROW carries
  *   `role="checkbox"` and owns the toggle, so the gutter is DECORATIVE — no
  *   `onToggle`, no second control for a screen reader to disambiguate. It still
  *   paints the face, which is the whole point of the change: that column was

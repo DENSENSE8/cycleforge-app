@@ -345,6 +345,31 @@ export async function openPickingSessionOn(
   return { ok: true, sessionId: Number(insertQ.rows[0].id), reopen: false };
 }
 
+/**
+ * End THIS picker's open session(s) on an order without staging its totes —
+ * Skip and Pass hand the order back (or on) mid-pick, so it must stop being
+ * held by them. Picked units stay picked; the order's tote stays paired.
+ */
+export async function releaseOrderSessions(
+  input: { orderId: number; pickerStaffId: number },
+  orgId: OrgId,
+): Promise<number> {
+  return withTenantTransaction(orgId, async (client) => {
+    const q = await client.query(
+      `UPDATE picking_sessions ps
+          SET ended_at = NOW()
+         FROM orders o
+        WHERE ps.order_id = o.id
+          AND o.organization_id = $1
+          AND ps.order_id = $2
+          AND ps.picker_staff_id = $3
+          AND ps.ended_at IS NULL`,
+      [orgId, input.orderId, input.pickerStaffId],
+    );
+    return q.rowCount ?? 0;
+  });
+}
+
 export async function startSession(input: StartSessionInput, orgId?: OrgId): Promise<StartSessionResult> {
   // ── Org-scoped path: GUC-wrapped transaction. picking_sessions has NO
   // organization_id column (child of orders) → scope via the parent order
@@ -637,6 +662,22 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
 
       if (tote) {
         await bindToteForPick(client, orgId, tote, alloc.order_id, alloc.serial_unit_id, input.actorStaffId);
+      }
+
+      // The first picker of a SKU owns it from now on: its future picks route
+      // to them, with auto-selected backups (`pick-ownership.ts`). An existing
+      // owner is never replaced by a pick — a Pass is the override.
+      if (input.actorStaffId) {
+        await client.query(
+          `INSERT INTO sku_staff_pairings (organization_id, sku, staff_id, note, created_by_staff_id)
+           SELECT $1, su.sku, $3, 'Auto: first confirmed pick', $3
+             FROM serial_units su
+            WHERE su.id = $2
+              AND su.organization_id = $1
+              AND btrim(COALESCE(su.sku, '')) <> ''
+           ON CONFLICT (organization_id, sku) DO NOTHING`,
+          [orgId, alloc.serial_unit_id, input.actorStaffId],
+        );
       }
 
       // Pick time = state-transition timestamp on the inventory_event we just wrote.

@@ -3,14 +3,14 @@
 import { Suspense, useCallback, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { DetailAck, DetailFactRow } from '@/components/mobile/detail/DetailParts';
+import { DetailAck, DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { SkuExceptionScreen } from '@/components/mobile/onhold/SkuExceptionScreen';
 import {
   SkuExceptionEditSheet,
   type SkuExceptionDraft,
   type SkuExceptionEditError,
 } from '@/components/mobile/onhold/SkuExceptionEditSheet';
-import { IconButton, Panel } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { mobileSkuExceptionHref, skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
@@ -87,40 +87,38 @@ function SkuExceptionInfoInner() {
       )}
     >
       {(item) => (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
-          {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
-          <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-            <DetailFactRow label="Title" value={item.productTitle} />
-            <DetailFactRow label="Description" value={item.description?.trim() || '—'} />
-            <DetailFactRow label="SKU" value={<span className="font-mono">{item.sku}</span>} />
-            <DetailFactRow
-              label="Barcode"
-              value={
-                item.barcode ? (
-                  <span className="font-mono">{item.barcode}</span>
-                ) : (
-                  <span className="text-mode-muted">No barcode</span>
-                )
-              }
-              hint={item.barcode ? undefined : 'Add one with the pencil'}
-            />
-            <DetailFactRow label="On hand" value={String(item.stock)} />
-            <DetailFactRow
-              label="Locations"
-              value={
-                item.locations.length > 0
-                  ? item.locations.map((loc) => `${skuExceptionLocationFace(loc.barcode)} ×${loc.qty}`).join(', ')
-                  : '—'
-              }
-            />
-            <DetailFactRow label="Photos" value={String(item.photoCount)} />
-            <DetailFactRow
-              label="Created"
-              value={item.createdByName || '—'}
-              hint={item.createdAt ? formatMonthDayTimePST(item.createdAt) : undefined}
-            />
-            {item.updatedAt ? <DetailFactRow label="Updated" value={formatMonthDayTimePST(item.updatedAt)} /> : null}
-          </Panel>
+        <>
+          <div className="flex-1 divide-y divide-mode-rule">
+            {ack ? <DetailAck onDismiss={() => setAck(null)}>{ack}</DetailAck> : null}
+            <DetailFacts>
+              <DetailFact label="Title" value={item.productTitle || null} />
+              <DetailFact label="Description" value={item.description?.trim() || null} />
+              <DetailFact label="SKU" value={item.sku} mono copy={item.sku} />
+              <DetailFact
+                label="Barcode"
+                value={item.barcode ? item.barcode : <span className="text-mode-muted">No barcode</span>}
+                hint={item.barcode ? undefined : 'Add one with the pencil'}
+                mono={Boolean(item.barcode)}
+                copy={item.barcode || null}
+              />
+              <DetailFact label="On hand" value={String(item.stock)} />
+              <DetailFact label="Photos" value={String(item.photoCount)} />
+              <DetailFact
+                label="Locations"
+                value={
+                  item.locations.length > 0
+                    ? item.locations.map((loc) => `${skuExceptionLocationFace(loc.barcode)} ×${loc.qty}`).join(', ')
+                    : null
+                }
+              />
+              <DetailFact
+                label="Created"
+                value={item.createdByName || null}
+                hint={item.createdAt ? formatMonthDayTimePST(item.createdAt) : undefined}
+              />
+              {item.updatedAt ? <DetailFact label="Updated" value={formatMonthDayTimePST(item.updatedAt)} /> : null}
+            </DetailFacts>
+          </div>
           <SkuExceptionEditSheet
             open={editOpen}
             item={item}
@@ -129,7 +127,7 @@ function SkuExceptionInfoInner() {
             onSave={(draft, changed) => void save(draft, changed)}
             onClose={() => setEditOpen(false)}
           />
-        </div>
+        </>
       )}
     </SkuExceptionScreen>
   );

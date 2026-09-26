@@ -77,12 +77,6 @@ interface UseReceivingRowSelectionArgs {
    */
   openRow?: (row: ReceivingLineRow) => void;
   /**
-   * Record evidence is owned by the mounted body rather than the receiving
-   * workspace event bridge. The hook still owns the selected-row identity and
-   * toggle semantics, but does not dispatch `receiving-select-line`.
-   */
-  localRecordOpen?: boolean;
-  /**
    * Whether opening from THIS table stamps the operator's recents (the Recent
    * tab's feed). Default true — the historical dispatchers all mean "I am
    * working this carton".
@@ -126,7 +120,6 @@ export function useReceivingRowSelection({
   selectMode,
   rowClickOpens = false,
   openRow,
-  localRecordOpen = false,
   recordViewOnOpen = true,
   selectionScope = RECEIVING_SELECTION_SCOPE,
   localRows,
@@ -194,8 +187,6 @@ export function useReceivingRowSelection({
   const rowClickOpensRef = useRef(rowClickOpens);
   useEffect(() => { rowClickOpensRef.current = rowClickOpens; }, [rowClickOpens]);
 
-  const localRecordOpenRef = useRef(localRecordOpen);
-  useEffect(() => { localRecordOpenRef.current = localRecordOpen; }, [localRecordOpen]);
   /** Bulk membership only — the select gutter's job. Never opens a record. */
   const handleToggleRow = useCallback((row: ReceivingLineRow) => {
     setSelectedIds((prev) => {
@@ -220,12 +211,6 @@ export function useReceivingRowSelection({
       // shut: every activate goes somewhere, so it marks the row and leaves.
       setSelectedId(row.id);
       override(row);
-      return;
-    }
-    if (localRecordOpenRef.current) {
-      // RecordLedger owns close/re-click semantics; this shared selection root
-      // only records which row its evidence pane is reading.
-      setSelectedId(row.id);
       return;
     }
     const next = selectedIdRef.current === row.id ? null : row.id;

@@ -14,8 +14,7 @@
  * useStaffPreferences — the same cross-device mechanism the boards use).
  * Skipping hides the card but never deletes the underlying truth.
  *
- * Composed in `MyDayOnboardingPanel` (home right pane) and the Unshipped
- * sidebar. Owns the multi-step activation ladder. Gated behind `dashboard.view`.
+ * Composed in the Unshipped sidebar. Owns the multi-step activation ladder. Gated behind `dashboard.view`.
  */
 
 import Link from 'next/link';

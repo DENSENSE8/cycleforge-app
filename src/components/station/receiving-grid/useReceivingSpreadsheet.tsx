@@ -35,7 +35,6 @@ import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
-export { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 
 export interface ReceivingSpreadsheetProps {
   /** Day-banded PO groups (Unbox / History). */
@@ -127,18 +126,11 @@ export interface ReceivingSpreadsheetProps {
    */
   selectGutterChrome?: GridSelectGutterChrome;
   /**
-   * Unbox History / Incoming click-select: click toggles bulk; double-click
+   * Unbox History click-select: click toggles bulk; double-click
    * opens; select track shows decorative check when selected; header
    * paint-bucket paints selected rows (History).
    */
   clickSelect?: boolean;
-  /**
-   * Unbox History: double-click / Enter opens LineEditPanel while left-click
-   * (`handleSelectRow`) opens the triage rail.
-   */
-  onOpenWorkspace?: (row: ReceivingLineRow) => void;
-  /** Unbox History — richer context menu. */
-  historyTriageMenu?: boolean;
   /**
    * Unbox compare crosshair — carton `receiving_id` to wash as linked peer.
    * Omitted on single-pane mounts.
@@ -199,8 +191,6 @@ export function ReceivingSpreadsheet({
   enableColumnMenu = true,
   selectGutterChrome = 'always',
   clickSelect = false,
-  onOpenWorkspace,
-  historyTriageMenu = false,
   linkedReceivingId = null,
   onCrosshairHover,
   search,
@@ -387,8 +377,6 @@ export function ReceivingSpreadsheet({
           columns={visible}
           selectGutterChrome={selectGutterChrome}
           clickSelect={clickSelect}
-          onOpenWorkspace={onOpenWorkspace}
-          historyTriageMenu={historyTriageMenu}
           rowFillsById={clickSelect ? fillsById : undefined}
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}

@@ -13,6 +13,7 @@ import 'server-only';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
 
 export interface EntityAuditEvent {
   /** Synthetic id stable across runs so React keys hold. */
@@ -116,6 +117,7 @@ interface LedgerRow {
   delta: number;
   reason: string | null;
   staff_id: number | null;
+  notes: string | null;
 }
 
 function metaString(meta: Record<string, unknown> | null, key: string): string | null {
@@ -296,7 +298,7 @@ export async function getSkuAuditHistory(
     (orgId
       ? tenantQuery(
           orgId,
-          `SELECT id, created_at, sku, delta, reason, staff_id
+          `SELECT id, created_at, sku, delta, reason, staff_id, notes
              FROM sku_stock_ledger
             WHERE sku = $1 AND organization_id = $3
             ORDER BY created_at DESC, id DESC
@@ -304,7 +306,7 @@ export async function getSkuAuditHistory(
           [skuValue, limit, orgId],
         )
       : pool.query(
-          `SELECT id, created_at, sku, delta, reason, staff_id
+          `SELECT id, created_at, sku, delta, reason, staff_id, notes
              FROM sku_stock_ledger
             WHERE sku = $1
             ORDER BY created_at DESC, id DESC
@@ -412,7 +414,7 @@ export async function getSkuAuditHistory(
       id: `ledger:${l.id}`,
       occurred_at: l.created_at,
       source: 'sku_stock_ledger',
-      kind: l.reason ?? 'ADJUSTED',
+      kind: l.reason ? takeReasonLedgerLabel(l.reason) : 'ADJUSTED',
       actor_staff_id: l.staff_id,
       actor_name: l.staff_id != null ? staffMap.get(l.staff_id) ?? null : null,
       station: null,
@@ -423,7 +425,7 @@ export async function getSkuAuditHistory(
       location_code: null,
       scan_ref: null,
       reason_code: l.reason,
-      note: null,
+      note: l.notes?.trim() || null,
       before: null,
       after: { delta: l.delta },
       detail: { delta: l.delta },

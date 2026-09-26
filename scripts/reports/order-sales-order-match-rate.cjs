@@ -162,7 +162,7 @@ async function main() {
       SELECT organization_id, ${NORM.replace('%s', 'BTRIM(reference_number)')} AS norm
         FROM sales_orders
     )
-    SELECT o.id, o.order_id, o.account_source, o.created_at::date AS created
+    SELECT o.id, o.order_id, o.account_source, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date AS created
       FROM orders o
      WHERE NULLIF(BTRIM(o.order_id),'') IS NOT NULL
        AND NOT EXISTS (

@@ -1,17 +1,27 @@
 'use client';
 
-import { Clock, ExternalLink, Printer } from '@/components/Icons';
+import { ChevronsRight, Clock, ExternalLink, Printer, User } from '@/components/Icons';
 import { MobileOrderPaperworkSheet } from '@/components/mobile/orders/MobileOrderPaperworkSheet';
 import { ItemCardShipBy } from '@/components/mobile/redesign/ItemCardRow';
 import { orderChannel } from '@/components/mobile/orders/OrderInfoCard';
 import { useOrderDocuments, useOrderManuals } from '@/lib/orders/order-paperwork-client';
 import { Button } from '@/design-system/primitives';
 import { getPlatformLabelByItemNumber, useExternalItemUrl } from '@/hooks/useExternalItemUrl';
-import type { DirectedPickOrder } from '@/lib/picking/directed-pick';
+import type { DirectedPickOrder, PickOwnerVia } from '@/lib/picking/directed-pick';
+
+/** Why this pick is the viewer's, in words. */
+const OWNER_VIA_LABEL: Record<PickOwnerVia, string> = {
+  assigned: 'Assigned to you',
+  sku: 'Your SKU',
+  backup: 'Backup for this SKU',
+};
 
 /**
  * The order the current line belongs to: channel, deadline, remaining units,
- * tote and its attached paperwork. Listing opens the exact item URL in a new tab.
+ * tote, whose pick it is (and its backups), its attached paperwork, and the
+ * two ways to hand it back — Skip (put it back, never offered again this run)
+ * and Pass to… (assign another picker). Listing opens the exact item URL in a
+ * new tab.
  */
 export function DirectedPickOrderCard({
   order,
@@ -19,12 +29,20 @@ export function DirectedPickOrderCard({
   elapsed,
   docsOpen,
   setDocsOpen,
+  viewerStaffId,
+  busy,
+  onSkip,
+  onPass,
 }: {
   order: DirectedPickOrder;
   tote: string | null;
   elapsed: string;
   docsOpen: boolean;
   setDocsOpen: (open: boolean) => void;
+  viewerStaffId: number | null;
+  busy: boolean;
+  onSkip: () => void;
+  onPass: () => void;
 }) {
   const { getExternalUrlByItemNumber, openExternalByItemNumber } = useExternalItemUrl();
   const documentsQuery = useOrderDocuments(order.orderId);
@@ -38,6 +56,13 @@ export function DirectedPickOrderCard({
     : documentsQuery.isError || manualsQuery.isError
       ? 'Documents unavailable'
       : `Documents · ${documentCount}`;
+  const owner = order.owner;
+  const ownership = !owner
+    ? 'Unassigned'
+    : owner.staffId === viewerStaffId
+      ? OWNER_VIA_LABEL[owner.via]
+      : `${owner.name ?? `Staff #${owner.staffId}`}'s pick`;
+  const backups = order.backups.map((b) => b.name ?? `Staff #${b.staffId}`);
 
   return (
     <section aria-label="Order" className="mt-3 border border-border-soft bg-surface-card">
@@ -65,6 +90,10 @@ export function DirectedPickOrderCard({
             'No tote yet — picks land in the tote you scan'
           )}
         </p>
+        <p className="mt-1 truncate text-role-data text-text-muted">
+          <span className="font-semibold text-text-default">{ownership}</span>
+          {backups.length > 0 ? <> · Backups: {backups.join(', ')}</> : null}
+        </p>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border-soft px-4 py-3">
         <Button
@@ -85,6 +114,12 @@ export function DirectedPickOrderCard({
           onClick={() => openExternalByItemNumber(order.itemNumber)}
         >
           {listingHref ? `${getPlatformLabelByItemNumber(order.itemNumber)} listing` : 'No listing'}
+        </Button>
+        <Button variant="secondary" size="md" icon={<ChevronsRight />} disabled={busy} onClick={onSkip}>
+          Skip
+        </Button>
+        <Button variant="secondary" size="md" icon={<User />} disabled={busy} onClick={onPass}>
+          Pass to…
         </Button>
       </div>
       <MobileOrderPaperworkSheet open={docsOpen} onClose={() => setDocsOpen(false)} orderId={order.orderId} orderRef={order.orderLabel} />

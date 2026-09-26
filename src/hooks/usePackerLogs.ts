@@ -21,11 +21,23 @@ export interface PackerRecord {
     tracking: string;
     is_primary: boolean;
   }> | null;
-  packed_by: number;
+  /** Pack scan's staff; null on a scan-out-only row (package never pack-scanned). */
+  packed_by: number | null;
   tracking_type: string | null;
   order_id: string | null;
   order_row_id?: number | null;
   shipment_id?: number | null;
+  /**
+   * The PACKAGE this row is about — the scanned box's `shipping_tracking_numbers.id`
+   * (`sal.shipment_id`), NOT the order's primary `shipment_id`. Key rows and open
+   * the package record (`/api/shipments/[id]/record`) by this. Null for rows with
+   * no package (e.g. an FNSKU scan).
+   */
+  package_shipment_id?: number | null;
+  /** That package's carrier tracking (raw). */
+  package_tracking?: string | null;
+  /** Order lines owning the package (= record items.length); 0 = unmatched box. */
+  package_line_count?: number | null;
   account_source: string | null;
   product_title: string | null;
   quantity?: string | null;

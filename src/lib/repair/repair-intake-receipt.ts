@@ -1,5 +1,6 @@
 import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
 import { formatPhone } from '@/components/repair/repair-intake-logic';
+import { joinSerials } from '@/lib/kiosk/serial-list';
 
 export interface RepairReceiptProps {
   ticketNumber?: string | number;
@@ -10,6 +11,19 @@ export interface RepairReceiptProps {
   contact: string;
   price: string;
   startDateTime: string;
+}
+
+/** The customer facts a repair agreement states — the form's `customer` shape. */
+export type RepairReceiptCustomer = RepairFormData['customer'];
+
+/** Name + contact line, shared by every sheet so no two can format them apart. */
+function receiptCustomerProps(customer: RepairReceiptCustomer): Pick<RepairReceiptProps, 'name' | 'contact'> {
+  return {
+    name: customer.name || '—',
+    contact: [customer.phone ? formatPhone(customer.phone) : '', customer.email]
+      .filter(Boolean)
+      .join(', ') || '—',
+  };
 }
 
 export function buildRepairIntakeReceiptProps(
@@ -23,13 +37,7 @@ export function buildRepairIntakeReceiptProps(
     productTitle: formData.product.model || formData.product.type || '—',
     issue: issueText || '—',
     serialNumber: formData.serialNumber || '—',
-    name: formData.customer.name || '—',
-    contact: [
-      formData.customer.phone ? formatPhone(formData.customer.phone) : '',
-      formData.customer.email,
-    ]
-      .filter(Boolean)
-      .join(', ') || '—',
+    ...receiptCustomerProps(formData.customer),
     price: formData.price || '—',
     startDateTime,
   };
@@ -51,26 +59,28 @@ export interface RepairReceiptDevice {
 /**
  * ONE device's paperwork, on a visit that may have several.
  *
- * The VISIT facts (customer, issue, date, ticket) are shared — one drop-off,
- * one agreement, one signature — so they come from the same builder every
- * other caller uses. Only the three DEVICE facts are overridden, because each
- * unit becomes its own `repair_service` row with its own serial and quote.
+ * The VISIT facts (customer, date, ticket) are shared — one drop-off, one
+ * agreement, one signature — and `issueText` is the caller's per-unit issue
+ * (on the kiosk, that unit's own reasons), because each unit becomes its own
+ * `repair_service` row. The serial is EVERY serial on that unit (a Wave and
+ * its CD changer), in the one stored form `joinSerials` writes.
  *
- * A single-device visit is byte-identical to {@link buildRepairIntakeReceiptProps}:
- * the device's title/serial/price ARE the form's, just read from the cart line
- * that will be written instead of from a flattened copy on the form.
+ * Kiosk caller: `repairPaperworkSheets` (`src/lib/kiosk/repair-paperwork-sheets.ts`).
  */
 export function repairReceiptPropsForDevice(
-  formData: RepairFormData,
+  customer: RepairReceiptCustomer,
   device: RepairReceiptDevice,
   issueText: string,
   startDateTime: string,
   ticketNumber?: string | number,
 ): RepairReceiptProps {
   return {
-    ...buildRepairIntakeReceiptProps(formData, issueText, startDateTime, ticketNumber),
+    ticketNumber: ticketNumber ?? '',
     productTitle: device.title.trim() || '—',
-    serialNumber: device.serialNumber.trim() || '—',
+    issue: issueText || '—',
+    serialNumber: joinSerials([device.serialNumber]) || '—',
+    ...receiptCustomerProps(customer),
     price: device.price.trim() || '—',
+    startDateTime,
   };
 }

@@ -87,9 +87,7 @@ function renderJson(): string {
     for (const [field, value] of Object.entries(LIFECYCLE[state])) flat[`lifecycle.${state}.${field}`] = value;
   }
   for (const state of INBOUND_DELIVERY_STATES) {
-    for (const [field, value] of Object.entries(INBOUND_DELIVERY[state])) {
-      flat[`inboundDelivery.${state}.${field}`] = String(value);
-    }
+    for (const [field, value] of Object.entries(INBOUND_DELIVERY[state])) flat[`inboundDelivery.${state}.${field}`] = value;
   }
   for (const cls of INTAKE_CLASSES) {
     for (const [field, value] of Object.entries(INTAKE[cls])) flat[`intake.${cls}.${field}`] = value;

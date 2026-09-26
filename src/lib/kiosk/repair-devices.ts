@@ -41,6 +41,12 @@ export interface KioskRepairDevice {
   /** The line's money, which is what the cart total and the header are built from. */
   priceCents: number;
   notes: string | null;
+  /**
+   * THIS unit's reasons for repair — the line is the source of truth, so two
+   * units on one visit can carry different answers (operator 2026-09-25:
+   * "all devices, or per device with a switcher").
+   */
+  repairReasons: string[];
   /** A keypad-typed device: its "product" is its price, not a catalog SKU. */
   custom: boolean;
 }
@@ -69,10 +75,30 @@ export function repairDevicesFromLines(
       price: payload.price ?? '',
       priceCents: Number.isFinite(line.unitAmountCents) ? Math.trunc(line.unitAmountCents) : 0,
       notes: payload.notes ?? null,
+      repairReasons: payload.repairReasons ?? [],
       custom: payload.custom === true,
     });
   }
   return devices;
+}
+
+/**
+ * The ONE reasons set every unit shares, or null when the units disagree.
+ *
+ * "Share" is exact: same labels, same order — the All-devices writer stamps
+ * one array onto every line, so anything else was written per device. An
+ * empty visit (or one where no unit has answered yet) shares `[]`.
+ */
+export function sharedRepairReasons(
+  devices: readonly Pick<KioskRepairDevice, 'repairReasons'>[],
+): string[] | null {
+  const first = devices[0]?.repairReasons ?? [];
+  const same = devices.every(
+    (d) =>
+      d.repairReasons.length === first.length &&
+      d.repairReasons.every((reason, i) => reason === first[i]),
+  );
+  return same ? first : null;
 }
 
 /**

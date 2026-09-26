@@ -105,8 +105,8 @@ export function taskDeskCompoundView(
     stateTone: taskStateTone(row, parts.nowMs),
     stateTip:
       row.urgency === 'urgent' && isTaskDeskOpen(row.status)
-        ? `Urgent · ${taskDeskRecordLabel(row)}`
-        : taskDeskRecordLabel(row),
+        ? ['Urgent', taskDeskRecordLabel(row)].filter(Boolean).join(' · ')
+        : taskDeskRecordLabel(row) ?? undefined,
     // A handoff is not worth money. An empty cell, never a `$0.00`.
     amount: null,
     delay: overdueBy == null ? null : { days: overdueBy, overdue: overdueBy > 0 },

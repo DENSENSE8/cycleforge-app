@@ -52,8 +52,8 @@ export function useTaskComposerSections({
   active,
   mode = 'record',
 }: {
-  /** The thrown task's id (null if the response did not carry one). */
-  onCreated: (taskId: number | null) => void;
+  /** The created task's id (null if the response did not carry one), and whether it is mine. */
+  onCreated: (taskId: number | null, mine: boolean) => void;
   /** False while the checklist half is showing — do not steal the caret. */
   active: boolean;
   /**
@@ -86,35 +86,31 @@ export function useTaskComposerSections({
     setDeadline,
     throwing,
     canThrow,
+    missing,
     runResolve,
     submit,
   } = composer;
 
   const scanRef = useRef<HTMLInputElement>(null);
-
-  const focusFirstField = useCallback(() => scanRef.current?.focus(), []);
-
-  useEffect(() => {
-    if (active) scanRef.current?.focus();
-  }, [active]);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
+  const ticketMode = mode === 'ticket';
 
   /**
-   * The disabled CTA names what is missing rather than sitting dead — the
-   * operator should never have to guess which field is holding it.
+   * A plain task starts with its words — the record is an optional link below.
+   * The ticket face starts at the ticket, because anchoring one is its job.
    */
-  const ticketMode = mode === 'ticket';
-  const missing = !picked
-    ? ticketMode
-      ? 'Find the ticket first'
-      : 'Find a record first'
-    : assignees.length === 0
-      ? 'Pick who it goes to'
-      : null;
+  const focusFirstField = useCallback(
+    () => (ticketMode ? scanRef.current?.focus() : noteRef.current?.focus()),
+    [ticketMode],
+  );
 
-  const sections: TriageSectionSpec[] = [
-    {
+  useEffect(() => {
+    if (active) focusFirstField();
+  }, [active, focusFirstField]);
+
+  const recordSection: TriageSectionSpec = {
       id: 'task-record',
-      label: ticketMode ? 'Ticket' : 'Record',
+      label: ticketMode ? 'Ticket' : 'Link a record · optional',
       children: (
         <div className="space-y-3">
           <form
@@ -161,7 +157,7 @@ export function useTaskComposerSections({
             <p className="text-role-caption text-text-faint">
               {ticketMode
                 ? 'The number on the helpdesk thread — 48120. A leading hash is fine.'
-                : 'A task points at a record — an order or a carton.'}
+                : 'Optional — tie the task to an order or a carton. More records can be linked after.'}
             </p>
           ) : resolve.status === 'resolving' ? (
             <p className="flex items-center gap-2 text-role-caption text-text-faint">
@@ -231,8 +227,8 @@ export function useTaskComposerSections({
           )}
         </div>
       ),
-    },
-    {
+    };
+  const assignmentSection: TriageSectionSpec = {
       id: 'task-assignment',
       label: 'Assignment',
       children: (
@@ -295,27 +291,21 @@ export function useTaskComposerSections({
           </div>
         </div>
       ),
-    },
-    {
+    };
+  const detailsSection: TriageSectionSpec = {
       id: 'task-details',
-      label: 'Details',
+      label: ticketMode ? 'Details' : 'Task',
       children: (
         <div className="space-y-3">
-          <TextField
-            label="Project name"
-            value={projectName}
-            onChange={setProjectName}
-            maxLength={TASK_PROJECT_NAME_MAX}
-            data-testid="task-composer-project"
-          />
-          <p className="text-role-caption text-text-faint">Optional. Group shared work under one name, e.g. Return and replacement.</p>
-          <Label htmlFor={`${fieldId}-note`}>What do you need them to do?</Label>
+          <Label htmlFor={`${fieldId}-note`}>What needs doing?</Label>
           <textarea
             id={`${fieldId}-note`}
+            ref={noteRef}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             maxLength={TASK_NOTE_MAX}
             rows={4}
+            placeholder="Call the carrier about Friday's pickup"
             className={cn(
               'w-full resize-none border border-border-soft bg-surface-card px-2.5 py-2',
               TRIAGE_PANEL_INNER_CORNER,
@@ -324,10 +314,21 @@ export function useTaskComposerSections({
             )}
             data-testid="task-composer-note"
           />
+          <TextField
+            label="Project name · optional"
+            value={projectName}
+            onChange={setProjectName}
+            maxLength={TASK_PROJECT_NAME_MAX}
+            data-testid="task-composer-project"
+          />
+          <p className="text-role-caption text-text-faint">Group shared work under one name, e.g. Return and replacement.</p>
         </div>
       ),
-    },
-  ];
+    };
+
+  const sections = ticketMode
+    ? [recordSection, assignmentSection, detailsSection]
+    : [detailsSection, assignmentSection, recordSection];
 
   return {
     sections,

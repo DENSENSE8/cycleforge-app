@@ -46,8 +46,8 @@ async function main() {
           and pl.shipment_id = o.shipment_id
       )
       and o.shipment_id is not null
-      and coalesce(wa_deadline.deadline_at::date, o.created_at::date) >= $1::date
-      and coalesce(wa_deadline.deadline_at::date, o.created_at::date) <= $2::date
+      and coalesce(wa_deadline.deadline_at::date, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date) >= $1::date
+      and coalesce(wa_deadline.deadline_at::date, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date) <= $2::date
   `;
 
   const result = await client.query(sql, [weekStart, weekEnd]);

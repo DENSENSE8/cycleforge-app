@@ -4,7 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
-import { Button } from '@/design-system/primitives';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { Wrench } from '@/components/Icons';
 import { RepairActionTimeline } from '@/components/mobile/repair/RepairActionTimeline';
 import { RepairBenchTimer } from '@/components/mobile/repair/RepairBenchTimer';
@@ -91,9 +91,9 @@ function RepairWorkInner() {
         meta={repair?.product_title || undefined}
       />
 
-      <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+      <div className="flex-1 divide-y divide-mode-rule">
         {repair?.issue ? (
-          <p className="text-role-caption text-mode-muted">
+          <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
             Reported issue: <span className="font-semibold text-mode-ink">{repair.issue}</span>
           </p>
         ) : null}
@@ -108,7 +108,7 @@ function RepairWorkInner() {
               threadHref ? (
                 <Link
                   href={threadHref}
-                  className="mt-2 inline-flex min-h-mode-hit items-center rounded-mode border border-emerald-300 bg-mode-panel px-3 text-role-caption font-semibold text-emerald-800"
+                  className="mt-2 inline-flex min-h-mode-hit items-center border border-emerald-300 bg-mode-panel px-3 text-role-caption font-semibold text-emerald-800"
                 >
                   Draft customer update
                 </Link>
@@ -139,22 +139,6 @@ function RepairWorkInner() {
         />
       </div>
 
-      <nav
-        aria-label="Bench actions"
-        className="sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
-      >
-        <Button
-          variant="primary"
-          size="lg"
-          className="min-h-mode-hit-cta w-full rounded-mode"
-          icon={<Wrench />}
-          onClick={() => setLogOpen(true)}
-        >
-          Log work
-        </Button>
-      </nav>
-
       {logOpen ? (
         <RepairLogWorkSheet
           repairId={repairId}
@@ -167,6 +151,12 @@ function RepairWorkInner() {
           }}
         />
       ) : null}
+
+      <DetailDock
+        label="Bench actions"
+        verbs={[{ id: 'log', label: 'Log work', icon: <Wrench />, primary: true }]}
+        onVerb={() => setLogOpen(true)}
+      />
     </ModeRegion>
   );
 }

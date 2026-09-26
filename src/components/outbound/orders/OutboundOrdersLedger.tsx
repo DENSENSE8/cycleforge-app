@@ -14,13 +14,19 @@
  *
  *   seed parent: fold · ☐ · CODE n/n · BIN (all lines) · platform · order # ·
  *                boxes · lines · Pick · Pack · QTY · $total · → next (worst line)
- *   ─────────────────────────────────────────────────────────── │ evidence column
+ *   ─────────────────────────────────────────────────────────── (no column beside it)
  *
  * Presentation only. The feed (`useOrdersQueueFeed`) is the same one the slot
  * table reads: rows + grouping + URL sort, the selection / cursor / inspector
- * plane, the one assignment waist for every inline edit. The open record reads
- * in {@link OutboundOrderEvidence} beside the rows (the desktop terminal's
- * evidence column), never in the right rail or over the rows. Colour comes
+ * plane, the one assignment waist for every inline edit. The open record is
+ * {@link OrderRecordView}, placed by `DeskRecordPlane` (owner 2026-09-25): in
+ * place of the rows by default — the list keeps the whole fixed stage and stays
+ * mounted under the record — and list-left / record-right when the staffer
+ * turns fullscreen on. Never the right rail, never an evidence aside. The
+ * plane owns Esc; this surface owns J / K (the record cursor). The open
+ * order's verbs live in ONE strip under the toolbar (`OrderRecordActionStrip`,
+ * owner 2026-09-25) — toolbar + strip are the list anchor the in-place record
+ * opens below; the record carries no verbs. Colour comes
  * from the industrial mode (`*-mode-*`) and from `LIFECYCLE`; geometry from
  * `outbound-orders-ledger-geometry.ts`. No motion anywhere on this surface.
  */
@@ -62,6 +68,9 @@ import {
 import { parentOrderLineTotals } from '@/components/dashboard/orders-queue/QueueGroupRow';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { ToShipChrome } from '@/components/unshipped/useToShipChrome';
+import { DESK_RECORD_ANCHOR_ATTR, DeskRecordPlane, useDeskRecordView } from '@/design-system/components/DeskRecordPlane';
+import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
 import { emitSelectionTotal, emitToggleAll } from '@/lib/selection/table-selection';
@@ -112,7 +121,9 @@ import { useLedgerRowZoom } from './useLedgerRowZoom';
 import { CatalogManagerPopover } from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
 import { Popover, PopoverContent, PopoverTrigger } from '@/design-system/primitives/radix-popover';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
-import { OutboundOrderEvidence } from './OutboundOrderEvidence';
+import { OrderRecordView } from './OrderRecordView';
+import { OrderRecordActionStrip } from './to-ship/MorphingRowActionMenu';
+import { OrderQueueSummary, OrderQueueSummaryLine } from './OrderQueueSummary';
 import { LedgerPhotoViewer } from './outbound-orders-ledger-photos';
 import { linePhotoLabel } from '@/lib/photos/line-photos';
 import { groupLocation, initials, recordState, worstState } from './outbound-orders-ledger-state';
@@ -129,7 +140,6 @@ import {
 import {
   LEDGER_BAND_CLASS,
   LEDGER_DENSITY_STYLE,
-  LEDGER_EVIDENCE_CLASS,
   LEDGER_GROUP_CLASS,
   LEDGER_GROUP_PX,
   LEDGER_HIT_CLASS,
@@ -160,12 +170,15 @@ type LedgerItem =
     };
 
 export interface OutboundOrdersLedgerProps {
+  /** The desk this ledger is — decides the open record's sections (`ORDER_RECORD_SECTIONS`). */
+  mode: OrderRecordMode;
   chrome: ToShipChrome;
   /** The queue fetch for the CURRENT find text is still running. */
   searchPending: boolean;
   records: ShippedOrder[];
   loading: boolean;
   onOpenRecord: (record: ShippedOrder) => void;
+  /** The record closed (✕, Esc, or its row left the queue) — strip the surface's deep-link param. */
   onCloseRecord: () => void;
   railSelection: boolean;
   /** Selection namespace; peers may reuse the ledger without sharing To-ship selection. */
@@ -179,14 +192,20 @@ export interface OutboundOrdersLedgerProps {
   /** Paperwork walk opened on one order (To-ship Labels). */
   onOpenLabels?: (record: ShippedOrder) => void;
   /**
+   * The desk's own job for the open order, painted at the record's `resolve`
+   * section (Exceptions: the SKU pairing form).
+   */
+  resolveRecord?: (record: ShippedOrder) => ReactNode;
+  /**
    * Open this record once it is painted — a deep link that names one line
-   * (`/search?sel=order:<id>`). Applied once per id; the operator's own clicks
-   * own the selection after that.
+   * (`/search?sel=order:<id>`, `/shipping/exceptions?order=<id>`). Applied once
+   * per id; the operator's own clicks own the selection after that.
    */
   openRecordId?: number | null;
 }
 
 export function OutboundOrdersLedger({
+  mode,
   chrome,
   searchPending,
   records,
@@ -201,6 +220,7 @@ export function OutboundOrdersLedger({
   searchResultLabel,
   clearSearchLabel,
   onOpenLabels,
+  resolveRecord,
   openRecordId = null,
 }: OutboundOrdersLedgerProps) {
   const searchValue = chrome.search.value;
@@ -229,8 +249,12 @@ export function OutboundOrdersLedger({
   // the short label the band paints (`AMZRN`) is edited where it is read.
   const [platformsOpen, setPlatformsOpen] = useState(false);
 
-  // The plane publishes the record cursor; this surface turns the keyboard on.
-  useRecordCursorKeyboard({ enabled: true, scope: 'record' });
+  // The plane publishes the record cursor; this surface turns J / K on. Esc
+  // belongs to the record plane (first press closes the record, the next
+  // leaves fullscreen), so the ambient hook stands down on it.
+  useRecordCursorKeyboard({ enabled: true, scope: 'record', escape: false });
+  const cursor = useRecordCursor('record');
+  const recordView = useDeskRecordView();
 
   // ── Page (same page model + persisted size as the slot table) ─────────────
   const [pageIndex, setPageIndex] = useState(0);
@@ -338,8 +362,8 @@ export function OutboundOrdersLedger({
   const filterActive = chrome.filter.options.some((o: DataTableFilterOption) => o.active);
   const isNarrowed = Boolean(searchValue.trim()) || filterActive;
   const openId = plane.selectedRecord ? Number(plane.selectedRecord.id) : null;
-  // The evidence column reads the LIVE row (optimistic edits land there), not
-  // the snapshot the selection plane captured when the row was opened.
+  // The record reads the LIVE row (optimistic edits land there), not the
+  // snapshot the selection plane captured when the row was opened.
   const openRecord = useMemo(
     () =>
       openId == null
@@ -351,7 +375,12 @@ export function OutboundOrdersLedger({
   const seededOpenIdRef = useRef<number | null>(null);
   const openRow = plane.handleRowAction;
   useEffect(() => {
-    if (openRecordId == null || seededOpenIdRef.current === openRecordId) return;
+    // The param cleared (the record closed): the same id may be named again.
+    if (openRecordId == null) {
+      seededOpenIdRef.current = null;
+      return;
+    }
+    if (seededOpenIdRef.current === openRecordId) return;
     const target = displayedRecords.find((r) => Number(r.id) === openRecordId);
     if (!target) return;
     seededOpenIdRef.current = openRecordId;
@@ -393,12 +422,32 @@ export function OutboundOrdersLedger({
     ],
   );
 
+  const openOrderRef = openRecord ? String(openRecord.order_id ?? '').trim() || `#${openRecord.id}` : '';
+
   return (
     <div
       className="flex min-h-0 min-w-0 flex-1 bg-mode-canvas text-mode-ink"
       style={LEDGER_DENSITY_STYLE}
     >
+    <DeskRecordPlane
+      open={openRecord != null}
+      onClose={plane.closeRecord}
+      title={openRecord ? `Order ${openOrderRef}` : 'Order'}
+      subtitle={openRecord?.product_title?.trim() || undefined}
+      indexLabel={cursor.available && cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
+      onPrev={cursor.onPrev ?? undefined}
+      onNext={cursor.onNext ?? undefined}
+      prevDisabled={cursor.prevDisabled}
+      nextDisabled={cursor.nextDisabled}
+      recordNoun="order"
+      recordKey={openId != null ? String(openId) : null}
+      summary={<OrderQueueSummary records={displayedRecords} todayKey={feed.todayKey} />}
+      testId="order-record"
+      list={
     <div data-testid="pending-grid-body" className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* ── The list anchor: toolbar + the open record's action strip. In
+          place the record opens below it; both stay live over the record. ── */}
+      <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
       {/* ── Toolbar: read · narrow · order · views · page — gap — draw ─────── */}
       <div
         data-testid="data-table-toolbar"
@@ -526,6 +575,17 @@ export function OutboundOrdersLedger({
           <DataTableFullscreenToggle />
         </span>
       </div>
+      {openRecord ? (
+        <OrderRecordActionStrip
+          key={openRecord.id}
+          record={openRecord}
+          mode={mode}
+          checked={plane.selectedIds.has(Number(openRecord.id))}
+          onToggleSelect={plane.handleToggleSelect}
+          onOpenLabels={onOpenLabels}
+        />
+      ) : null}
+      </div>
       <CatalogManagerPopover open={platformsOpen} kind="platform" onClose={() => setPlatformsOpen(false)} />
 
       {banner}
@@ -610,6 +670,8 @@ export function OutboundOrdersLedger({
       </div>
 
       <TableStatusBar
+        // In place the queue summary rides the list's foot; split, the empty pane shows it.
+        lead={recordView === 'in-place' ? <OrderQueueSummaryLine records={displayedRecords} todayKey={feed.todayKey} /> : undefined}
         shown={paged.shown}
         total={paged.total}
         selected={selectedCount}
@@ -630,19 +692,20 @@ export function OutboundOrdersLedger({
         onLoadMore={onLoadMore}
       />
     </div>
-      <aside aria-label="Selected order" data-testid="ledger-evidence" className={LEDGER_EVIDENCE_CLASS}>
-        <OutboundOrderEvidence
+      }
+    >
+      {openRecord ? (
+        <OrderRecordView
+          mode={mode}
           record={openRecord}
           records={displayedRecords}
           todayKey={feed.todayKey}
           getStaffName={feed.getStaffName}
-          checked={openRecord ? plane.selectedIds.has(Number(openRecord.id)) : false}
-          onToggleSelect={plane.handleToggleSelect}
-          onClose={onCloseRecord}
-          onOpenLabels={onOpenLabels}
           commits={commits}
+          resolve={resolveRecord?.(openRecord)}
         />
-      </aside>
+      ) : null}
+    </DeskRecordPlane>
     </div>
   );
 }
@@ -787,9 +850,10 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
           </span>
         </span>
         {/* Under the buyer / SKU column. Narrow at a 1440 desk: the location
-            (law 1) keeps the room, the box · line count gives it up first. */}
+            (law 1) keeps the room, the box · line count gives it up first.
+            Clipped, so a split-view list never paints QTY over Pick. */}
         <span
-          className="flex min-w-0 flex-1 items-center gap-3"
+          className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden"
           title={`${where.path ?? 'No bin'} · ${boxCount} ${boxCount === 1 ? 'box' : 'boxes'} · ${group.rows.length} lines · QTY ${qty}`}
         >
           <span className={cn('flex min-w-0 shrink items-center gap-1 truncate', RECORD_ID_CLASS)}>
@@ -1088,9 +1152,9 @@ const LedgerRecord = memo(function LedgerRecord({
     />
   );
   // The buyer, from the customer book (`/api/orders` joins it), in band 1's
-  // free span; S has no free span, so it reads in the evidence column only.
+  // free span; S has no free span, so it reads in the order record only.
   // Display-only: a click lands on the row's open target, which opens the
-  // record whose evidence column carries the full Customer block. It is the
+  // record whose identity column carries the full Customer block. It is the
   // band's one elastic span, so it truncates first (full text on hover).
   const customerName = record.customer ? customerFullName(record.customer) : '';
   const customerWhere = record.customer ? customerPlace(record.customer) : '';
@@ -1111,6 +1175,7 @@ const LedgerRecord = memo(function LedgerRecord({
   return (
     <div
       data-order-row-id={record.id}
+      data-desk-record-key={record.id}
       data-state={state}
       className={cn(
         'group/record relative flex border-b border-mode-ink bg-mode-panel hover:bg-mode-hover hover:z-dropdown focus-within:z-dropdown',
@@ -1120,7 +1185,7 @@ const LedgerRecord = memo(function LedgerRecord({
     >
       {/*
         The row's open target: a stretched button under the record, so the whole
-        row opens the triage rail and keyboard / AT get one stop per record. The
+        row opens the order record and keyboard / AT get one stop per record. The
         record sits above it with pointer-events off; controls turn them back on
         and stop propagation, so a check or an edit never also opens.
       */}
@@ -1255,8 +1320,8 @@ const LedgerRecord = memo(function LedgerRecord({
           {/* Band 3 — execution: condition · BIN · SKU ··· pick · pack · next. What the
               hands do, with the physical lookup pair (where it is, what it is) side by
               side (owner 2026-09-25). Price is not here: it is noise on the floor and
-              reads in the evidence column. The buyer note is the NOTE badge on band 1
-              and its full text leads the evidence column. */}
+              reads in the order record. The buyer note is the NOTE badge on band 1
+              and its full text leads the record. */}
           <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
               <span className="pointer-events-auto w-20 shrink-0">{condition}</span>

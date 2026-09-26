@@ -1,217 +1,321 @@
 'use client';
 
 /**
- * RepairScanCompanion — the phone's half of the counter tablet's repair visit.
+ * RepairScanCompanion — the phone's half of the counter tablet's repair visit,
+ * on the mobile exoskeleton (`DetailHubScreen`, operator 2026-09-25).
  *
  * The staffer scans the QR on the tablet's Device & quote step and lands here:
- * the visit's units, grouped by product, each with its serial or a gap, and the
- * house capture window underneath. Every read goes to the unit in focus — the
- * first one still missing a serial, or the one the staffer tapped — and focus
- * moves on to the next gap by itself, so three radios are three scans and no
- * taps. The tablet shows each serial about a second later.
+ *
+ * ```
+ * bar     Cart #42 · 1 of 3 units with serials
+ * card    the visit — customer, units, which tablet  (→ /info)
+ * notice  what the last read did: which unit, the value, Undo
+ * target  where the next read goes: Unit 1 · Wave, adds to its 2 serials
+ * rows    one per unit: its serials (first +N), or "Needs serial"; tap = aim
+ * bottom  the house lens (`MobileCaptureWindow`): camera, Done → "Scan a
+ *         serial" bar, and the keyed fallback — no verbs, no second field
+ * ```
+ *
+ * A unit carries any number of serials (a Wave and its CD changer): a read is
+ * ADDED to the unit in focus (`appendSerial`), never replaces it. Focus is
+ *
+ * 1. the unit the staffer tapped, once it has a serial — it STAYS aimed after
+ *    each read, so every label on one chassis is one scan each, until they
+ *    tap Release (a tapped unit with no serial yet takes one read, then focus
+ *    moves on as below);
+ * 2. else the first unit still missing a serial — focus moves on by itself,
+ *    so three radios are three scans and no taps;
+ * 3. else, every unit having one, the unit the last read went to (the last
+ *    unit before any read) — a further label is most likely that chassis's.
+ *
+ * Each read — camera or the lens's keyed fallback, both through `onDecode` —
+ * is classified first (`classifySerialRead`): a product-page QR gives up the
+ * serial inside it or is offered as a link, noise is refused. A
+ * serial the unit already has is a no-op ("already on this unit"); one on
+ * another unit is written with a warning. Undo takes exactly the last read's
+ * serial back off its unit (`removeSerial`).
  *
  * The tablet owns the visit: this page never adds, removes or prices a unit.
  * It reads the tablet's snapshot (polled) and queues serials; the tablet
  * applies them through the same line write its serial field makes.
  *
  * Callers: `/m/repair-scan`.
- * Affected API: GET/POST `/api/counter/companion`.
- * Schemas: `CompanionDevice`.
+ * Affected API: GET/POST `/api/counter/companion` (via `useRepairScanVisit`).
+ * Schemas: `CompanionVisit`, `CompanionDevice`.
  * User: "scan something like a serial number to input and update the form on
- *   your phone as well" (2026-09-24).
+ *   your phone as well" (2026-09-24); "more useful, on the mobile exoskeleton,
+ *   barcode AND QR" (2026-09-25).
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
-import { repairDeviceKey } from '@/lib/kiosk/repair-devices';
-import type { CompanionDevice } from '@/lib/kiosk/companion-shape';
-import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
+import { useCallback, useMemo, useState } from 'react';
+import { Check, Hash, Pin, Plus, ScanBarcode } from '@/components/Icons';
+import { DetailHubScreen } from '@/design-system/components/DetailHubScreen';
+import { Button } from '@/design-system/primitives/Button';
+import type { CompanionVisit } from '@/lib/kiosk/companion-shape';
+import { classifySerialRead, findDuplicateSerial, sameSerial, unitHasSerial } from '@/lib/kiosk/serial-read';
+import { appendSerial, joinSerials, removeSerial, splitSerials } from '@/lib/kiosk/serial-list';
+import type { DetailDoor } from '@/lib/mobile/detail-door';
+import { RepairScanDock } from './RepairScanDock';
+import { RepairScanReadNotice, type ReadNotice, type UnitName } from './RepairScanReadNotice';
+import { RepairScanVisitCard } from './RepairScanVisitCard';
+import { repairScanInfoHref, useRepairScanVisit } from './useRepairScanVisit';
 
-/** The tablet syncs once a second; reading a touch slower keeps the phone quiet. */
-const POLL_MS = 1500;
+/** Haptics where the phone has them (Android Chrome; iOS Safari has no Vibration API). */
+const BUZZ: Record<'saved' | 'duplicate' | 'refused', number | number[]> = {
+  saved: 40,
+  duplicate: [60, 80, 60],
+  refused: [180],
+};
 
-type LinkState = 'loading' | 'live' | 'expired';
-
-interface ProductGroup {
-  key: string;
-  title: string;
-  sku: string | null;
-  units: CompanionDevice[];
+function buzz(kind: keyof typeof BUZZ) {
+  if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(BUZZ[kind]);
 }
 
-function groupUnits(devices: readonly CompanionDevice[]): ProductGroup[] {
-  const groups = new Map<string, ProductGroup>();
-  for (const unit of devices) {
-    const key = repairDeviceKey(unit.sku, unit.title);
-    const group = groups.get(key);
-    if (group) group.units.push(unit);
-    else groups.set(key, { key, title: unit.title, sku: unit.sku, units: [unit] });
-  }
-  return [...groups.values()];
-}
+const serialCount = (n: number) => `${n} ${n === 1 ? 'serial' : 'serials'}`;
 
 export function RepairScanCompanion({ token }: { token: string }) {
-  const [devices, setDevices] = useState<CompanionDevice[]>([]);
-  const [linkState, setLinkState] = useState<LinkState>('loading');
-  /** The unit the staffer tapped; null → the first one still missing a serial. */
+  const { visit, ended, loading, error, reload, writeSerial } = useRepairScanVisit(token);
+  /** The unit the staffer tapped; reads stay aimed at it until Release. */
   const [picked, setPicked] = useState<string | null>(null);
+  /** The unit the last read went to — the aim once every unit has a serial. */
+  const [touched, setTouched] = useState<string | null>(null);
+  /** Each tap on a unit row re-arms the lens if the staffer had pressed Done. */
+  const [armRequest, setArmRequest] = useState(0);
+  const [notice, setNotice] = useState<ReadNotice | null>(null);
+  /**
+   * The last write: which unit and the serial it added (for Undo), and whether
+   * a re-read of that serial is still taken as the camera's echo — until the
+   * staffer taps a unit, which makes the next read deliberate.
+   */
+  const [lastWrite, setLastWrite] = useState<{ target: UnitName; serial: string; echo: boolean } | null>(null);
   const [pending, setPending] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
-  const read = useCallback(async () => {
-    const res = await fetch(`/api/counter/companion?t=${encodeURIComponent(token)}`, {
-      cache: 'no-store',
-    }).catch(() => null);
-    if (!res) return;
-    if (res.status === 404) {
-      setLinkState('expired');
-      return;
-    }
-    if (!res.ok) return;
-    const json = (await res.json()) as { devices: CompanionDevice[] };
-    setDevices(json.devices);
-    setLinkState('live');
-  }, [token]);
+  const devices = useMemo(() => visit?.devices ?? [], [visit]);
+  const names = useMemo(
+    () => new Map<string, UnitName>(devices.map((d, i) => [d.lineId, { lineId: d.lineId, unit: i + 1, title: d.title }])),
+    [devices],
+  );
+  const pickedId = picked && names.has(picked) ? picked : null;
+  const focusId =
+    pickedId ??
+    devices.find((d) => !d.serialNumber.trim())?.lineId ??
+    (touched && names.has(touched) ? touched : (devices.at(-1)?.lineId ?? null));
+  const focus = focusId ? (names.get(focusId) ?? null) : null;
+  const focusSerials = splitSerials(devices.find((d) => d.lineId === focusId)?.serialNumber);
+  const filled = devices.filter((d) => d.serialNumber.trim()).length;
+  /** Every unit has a serial and nobody aimed: the read is going to the fallback unit. */
+  const fallback = pickedId == null && devices.length > 0 && filled === devices.length;
 
-  useEffect(() => {
-    if (linkState === 'expired') return;
-    void read();
-    const timer = window.setInterval(() => void read(), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [read, linkState]);
-
-  const focusId = useMemo(() => {
-    if (picked && devices.some((d) => d.lineId === picked)) return picked;
-    return devices.find((d) => !d.serialNumber.trim())?.lineId ?? null;
-  }, [picked, devices]);
-
-  const onDecode = useCallback(
-    async (value: string) => {
-      const serialNumber = value.trim();
-      if (!focusId || !serialNumber) return;
+  const commit = useCallback(
+    async (serial: string, via: 'scan' | 'link') => {
+      if (!focus) return;
+      // The camera still pointed at the label it just read re-reads it after
+      // its dedup window. That echo is dropped — never written as a
+      // "duplicate" — and the notice about the real write, which already
+      // shows this serial on its unit and carries the Undo, stays up (or
+      // comes back, if the staffer had dismissed it).
+      if (lastWrite?.echo && sameSerial(lastWrite.serial, serial)) {
+        if (!notice) setNotice({ kind: 'already', target: lastWrite.target, serial });
+        return;
+      }
+      const had = devices.find((d) => d.lineId === focus.lineId)?.serialNumber ?? '';
+      if (unitHasSerial(had, serial)) {
+        setNotice({ kind: 'already', target: focus, serial });
+        return;
+      }
+      const other = findDuplicateSerial(devices, focus.lineId, serial);
+      // Nobody aimed and every unit has a serial: a read already on the visit
+      // is the camera catching an earlier label, not a new serial.
+      if (fallback && other) {
+        setNotice({ kind: 'already', target: names.get(other.lineId) ?? focus, serial });
+        return;
+      }
+      const duplicateOf = other ? (names.get(other.lineId) ?? null) : null;
+      // A tapped unit with no serial yet takes this one read; then focus moves
+      // on to the next gap. One that already had serials stays aimed.
+      if (!had.trim()) setPicked(null);
+      setTouched(focus.lineId);
       setPending((n) => n + 1);
-      setFailed(false);
-      try {
-        const res = await fetch('/api/counter/companion', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ token, lineId: focusId, serialNumber }),
-        });
-        if (res.status === 404) {
-          setLinkState('expired');
-          return;
-        }
-        if (!res.ok) {
-          setFailed(true);
-          return;
-        }
-        const json = (await res.json()) as { devices: CompanionDevice[] };
-        setDevices(json.devices);
-        // Focus moves on to the next gap by itself.
-        setPicked(null);
-      } catch {
-        setFailed(true);
-      } finally {
-        setPending((n) => n - 1);
+      const { status, serialNumber } = await writeSerial(focus.lineId, (current) => appendSerial(current, serial));
+      setPending((n) => n - 1);
+      if (status === 'saved') {
+        buzz(duplicateOf ? 'duplicate' : 'saved');
+        setLastWrite({ target: focus, serial, echo: true });
+        setNotice({ kind: 'saved', target: focus, serial, duplicateOf, via, count: splitSerials(serialNumber).length });
+      } else if (status === 'failed') {
+        buzz('refused');
+        setPicked(focus.lineId);
+        setNotice({ kind: 'failed', target: focus });
       }
     },
-    [focusId, token],
+    [devices, fallback, focus, lastWrite, names, notice, writeSerial],
   );
 
-  const groups = useMemo(() => groupUnits(devices), [devices]);
-  const scanned = devices.filter((d) => d.serialNumber.trim()).length;
-  const focusIndex = devices.findIndex((d) => d.lineId === focusId);
+  const onDecode = useCallback(
+    (raw: string) => {
+      const read = classifySerialRead(raw);
+      if (read.kind === 'reject') {
+        buzz('refused');
+        setNotice({ kind: 'rejected', value: raw.trim().slice(0, 40), reason: read.reason });
+      } else if (read.kind === 'url') {
+        buzz('refused');
+        setNotice({ kind: 'link', url: read.url });
+      } else {
+        void commit(read.serial, read.kind === 'url-serial' ? 'link' : 'scan');
+      }
+    },
+    [commit],
+  );
 
-  const status =
-    linkState === 'expired'
-      ? 'Link ended'
-      : failed
-        ? 'Not saved · scan again'
-        : focusId
-          ? `Serial ${focusIndex + 1} of ${devices.length}`
-          : devices.length > 0
-            ? 'All serials in'
-            : 'Waiting for the tablet';
-
-  if (linkState === 'expired') {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-8 text-center">
-        <p className="text-base font-semibold text-text-default">This phone link has ended</p>
-        <p className="text-sm text-text-soft">
-          Tap “Scan serials with phone” on the tablet and scan the new QR.
-        </p>
-      </div>
+  const undo = useCallback(async () => {
+    if (!lastWrite || undoing) return;
+    setUndoing(true);
+    const { status, serialNumber } = await writeSerial(lastWrite.target.lineId, (current) =>
+      removeSerial(current, lastWrite.serial),
     );
-  }
+    setUndoing(false);
+    if (status === 'saved') {
+      setLastWrite(null);
+      // The undone unit takes focus: the next read is its re-scan.
+      setPicked(lastWrite.target.lineId);
+      setNotice({ kind: 'undone', target: lastWrite.target, restored: serialNumber });
+    } else if (status === 'failed') {
+      setNotice({ kind: 'failed', target: lastWrite.target });
+    }
+  }, [lastWrite, undoing, writeSerial]);
+
+  const rows = (v: CompanionVisit): DetailDoor[] =>
+    v.devices.map((d, i) => {
+      const serials = splitSerials(d.serialNumber);
+      const inFocus = d.lineId === focusId;
+      const aimed = d.lineId === pickedId;
+      const twin = serials.map((s) => findDuplicateSerial(v.devices, d.lineId, s)).find((u) => u != null);
+      const justScanned = notice?.kind === 'saved' && notice.target.lineId === d.lineId;
+      return {
+        id: d.lineId,
+        title: d.title,
+        icon: aimed ? <Pin /> : inFocus ? (serials.length ? <Plus /> : <ScanBarcode />) : serials.length ? <Check /> : <Hash />,
+        meta: (
+          <>
+            {`Unit ${i + 1} · `}
+            {serials.length ? (
+              <>
+                <span className="font-mono text-mode-ink">{serials[0]}</span>
+                {serials.length > 1 ? <span className="font-semibold text-mode-ink">{` +${serials.length - 1}`}</span> : null}
+              </>
+            ) : inFocus ? (
+              'Next read lands here'
+            ) : (
+              'Needs serial'
+            )}
+            {aimed ? <span className="font-semibold text-mode-ink"> · Selected</span> : null}
+            {serials.length && inFocus ? ' · next read adds here' : ''}
+            {justScanned ? ' · just now' : ''}
+            {twin ? <span className="text-amber-700">{` · same serial as Unit ${names.get(twin.lineId)?.unit ?? 0}`}</span> : null}
+          </>
+        ),
+        onSelect: () => {
+          setPicked(d.lineId);
+          setLastWrite((w) => (w ? { ...w, echo: false } : w));
+          setArmRequest((n) => n + 1);
+        },
+      };
+    });
+
+  const cameraAlert = notice?.kind === 'rejected' || notice?.kind === 'failed' || notice?.kind === 'link';
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-card" data-testid="repair-scan-companion">
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-        <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h1 className="text-role-title font-bold text-text-default">Repair serials</h1>
-          <p className="shrink-0 text-sm font-semibold tabular-nums text-text-default" data-testid="repair-scan-count">
-            {scanned} of {devices.length}
-          </p>
-        </div>
-        {linkState === 'loading' ? (
-          <p className="text-sm text-text-soft">Joining the tablet…</p>
-        ) : devices.length === 0 ? (
-          <p className="text-sm text-text-soft">No devices on the tablet yet.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {groups.map((group) => (
-              <section
-                key={group.key}
-                className={cn('border border-border-hairline px-3 py-3', MOBILE_SCAN_ROW_CORNER)}
-              >
-                <p className="text-sm font-semibold text-text-default">{group.title}</p>
-                {group.sku ? <p className="text-role-micro text-text-soft">{group.sku}</p> : null}
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {group.units.map((unit, i) => {
-                    const focused = unit.lineId === focusId;
-                    return (
-                      <button
-                        key={unit.lineId}
-                        type="button"
-                        onClick={() => setPicked(unit.lineId)}
-                        aria-pressed={focused}
-                        data-testid="repair-scan-unit"
-                        data-line-id={unit.lineId}
-                        className={cn(
-                          'ds-raw-button flex min-h-mode-hit items-center justify-between gap-3 border px-3 text-left',
-                          MOBILE_SCAN_ROW_CORNER,
-                          focused ? 'border-border-accent bg-surface-accent' : 'border-border-hairline',
-                        )}
-                      >
-                        <span className="text-sm text-text-soft">
-                          {group.units.length > 1 ? `Serial ${i + 1}` : 'Serial'}
-                        </span>
-                        <span
-                          className={cn(
-                            'min-w-0 truncate font-mono text-sm',
-                            unit.serialNumber ? 'text-text-default' : 'text-text-soft',
-                          )}
-                        >
-                          {unit.serialNumber || (focused ? 'Scan now' : 'Needs serial')}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </div>
-      <MobileCaptureWindow
-        label="Serial number camera"
-        collapsedLabel="Scan a serial"
-        status={status}
-        statusAlert={failed}
-        pending={pending}
-        onDecode={(value) => void onDecode(value)}
-      />
-    </div>
+    <DetailHubScreen<CompanionVisit>
+      record={visit}
+      state={{
+        loading,
+        error,
+        onRetry: reload,
+        notice: ended
+          ? 'This phone link has ended. Tap “Scan serials with phone” on the tablet and scan the new QR.'
+          : undefined,
+      }}
+      bar={{
+        title: visit?.cart ? `Cart #${visit.cart.id}` : 'Repair visit',
+        mono: Boolean(visit?.cart),
+        subtitle: 'Repair serials',
+        backHref: '/m',
+        meta: (v) => `${filled} of ${v.devices.length} units with serials`,
+      }}
+      card={(v) => <RepairScanVisitCard visit={v} href={repairScanInfoHref(token)} />}
+      content={() => (
+        <>
+          {notice ? (
+            <RepairScanReadNotice
+              notice={notice}
+              onUndo={lastWrite ? () => void undo() : null}
+              undoing={undoing}
+              onDismiss={() => setNotice(null)}
+            />
+          ) : null}
+          {focus ? (
+            <section
+              aria-label="Next read"
+              data-testid="repair-scan-target"
+              data-aimed={pickedId ? 'selected' : fallback ? 'last' : 'next-gap'}
+              className="relative flex items-center gap-3 bg-mode-panel px-mode-page py-2.5"
+            >
+              {/* Selected: an ink bar on the leading edge (a border would lose to the column's divide colour). */}
+              {pickedId ? <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-mode-ink" /> : null}
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-mode-well text-mode-muted [&>svg]:h-5 [&>svg]:w-5">
+                {pickedId ? <Pin /> : focusSerials.length ? <Plus /> : <ScanBarcode />}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-role-caption font-semibold text-mode-muted">
+                  {pickedId
+                    ? 'Selected — every read adds here'
+                    : fallback
+                      ? 'Every unit has a serial — next read adds to the last one'
+                      : focusSerials.length
+                        ? 'Next read adds to'
+                        : 'Next read'}
+                </p>
+                <p className="truncate text-mode-body font-semibold text-mode-ink">{`Unit ${focus.unit} · ${focus.title}`}</p>
+                <p className="break-words text-role-caption text-mode-muted">
+                  {focusSerials.length ? (
+                    <>
+                      {`${serialCount(focusSerials.length)}: `}
+                      <span className="font-mono text-mode-ink">{joinSerials(focusSerials)}</span>
+                    </>
+                  ) : (
+                    'No serial yet'
+                  )}
+                </p>
+              </div>
+              {pickedId ? (
+                <Button variant="secondary" size="md" onClick={() => setPicked(null)}>
+                  Release
+                </Button>
+              ) : null}
+            </section>
+          ) : null}
+        </>
+      )}
+      rowsLabel="Units"
+      rows={rows}
+      dock={() => (
+        <RepairScanDock
+          label="Serial number camera"
+          collapsedLabel="Scan a serial"
+          status={
+            focus
+              ? focusSerials.length
+                ? `Adds to Unit ${focus.unit} · ${serialCount(focusSerials.length)}`
+                : `Unit ${focus.unit} · first serial`
+              : 'No units yet'
+          }
+          statusAlert={cameraAlert}
+          pending={pending}
+          onDecode={onDecode}
+          armRequest={armRequest}
+        />
+      )}
+    />
   );
 }

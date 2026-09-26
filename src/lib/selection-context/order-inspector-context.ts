@@ -1,6 +1,8 @@
 /**
  * Order-inspector contextual SoT — what the right-rail record inspector opens
- * on, which planes it exposes, and which bulk actions its lane supports.
+ * on, which planes it exposes, and which bulk actions its lane supports; and
+ * which sections the desk ORDER RECORD (`OrderRecordView` in `DeskRecordPlane`)
+ * paints per outbound desk ({@link ORDER_RECORD_SECTIONS}).
  *
  * One resolver so the panel, the bulk bar, and the E2E expectations can never
  * disagree about "what does Pending offer". The lifecycle scoping already lived
@@ -186,4 +188,99 @@ export function resolveOrderInspectorContext({
   return journeyFirst ? { ...base, defaultTab: 'timeline', openOnIndex: false } : base;
 }
 
+// ── Desk order record (DeskRecordPlane) ─────────────────────────────────────
 
+/**
+ * The outbound desk an order record opens on. To Ship, Pending, Exceptions,
+ * Shipped and the Search lookup share ONE record view (`OrderRecordView`,
+ * shown in place or split by `DeskRecordPlane`); the mode decides which of its
+ * sections paint, in both views (owner 2026-09-25, desk-surface handoff Step 2).
+ */
+export type OrderRecordMode = 'to-ship' | 'pending' | 'exceptions' | 'shipped' | 'search';
+
+/** Every section the order record can paint. */
+export type OrderRecordSectionId =
+  /** Lifecycle code and where the order goes next. */
+  | 'state'
+  | 'buyer-note'
+  /** Pair the item number to a catalog SKU — the write that un-cages a held order. */
+  | 'resolve'
+  /** Each line of the order: photo, Zoho-governed title, SKU, item # paperwork, bin, qty, condition. */
+  | 'item'
+  /** Each line's fulfilment chain: who picked · packed · QC'd · pre-boxed it, and when. */
+  | 'stages'
+  /** The chain's Pick / Pack assign popovers and the line's auto-assign rule — work still to do. */
+  | 'assign'
+  /** The shipment once it has left: scanned out by + when, carrier / TRK#, tracking status. */
+  | 'shipment'
+  /** Outbound label status + print the stored label / slip. */
+  | 'labels'
+  /** Every label on the order, return and replacement stories included. */
+  | 'label-entries'
+  /** Persisted ShipStation price breakdown. */
+  | 'price'
+  /** The order's own note (`order_notes`). */
+  | 'note'
+  | 'customer'
+  /** Shipping facts: platform, order #, listing, TRK#, ship by, ordered. */
+  | 'facts'
+  /** The order's documents (labels, slips, paperwork) — `OrderDocumentsSection`. */
+  | 'documents'
+  /** The order's staff conversation thread — `ThreadPanel`. */
+  | 'conversation';
+
+/**
+ * What a mode may never paint — listing it in {@link ORDER_RECORD_SECTIONS} is
+ * a type error. Return / replacement labels never show on Pending or To Ship
+ * (owner 2026-09-25); the pairing form is the Exceptions desk's job alone; a
+ * shipped order takes no pick / pack assign. Verbs are not sections — they
+ * live in the list's action strip (`useOrderActionVerbs`, mode-aware).
+ */
+interface OrderRecordForbiddenSections {
+  'to-ship': 'label-entries' | 'resolve';
+  pending: 'label-entries' | 'resolve';
+  exceptions: 'label-entries';
+  shipped: 'resolve' | 'assign';
+  search: 'resolve';
+}
+
+/** The order record's sections per desk, in paint order within each column. */
+export const ORDER_RECORD_SECTIONS: {
+  readonly [M in OrderRecordMode]: readonly Exclude<OrderRecordSectionId, OrderRecordForbiddenSections[M]>[];
+} = {
+  'to-ship': ['state', 'buyer-note', 'item', 'stages', 'assign', 'labels', 'price', 'note', 'customer', 'facts'],
+  pending: ['state', 'buyer-note', 'item', 'stages', 'assign', 'labels', 'price', 'note', 'customer', 'facts'],
+  // A held order's job is the pairing; its notes field carries the routing
+  // text (`exceptionRowToQueueRow`), so the note editor stays off.
+  exceptions: ['state', 'buyer-note', 'resolve', 'item', 'stages', 'assign', 'customer', 'facts'],
+  // The shipped archive: what left, who handled each step, where it is now.
+  shipped: [
+    'state',
+    'buyer-note',
+    'item',
+    'stages',
+    'shipment',
+    'facts',
+    'customer',
+    'labels',
+    'label-entries',
+    'price',
+    'note',
+    'documents',
+    'conversation',
+  ],
+  // The on-the-phone lookup: returns and replacements are why the caller rang.
+  search: [
+    'state',
+    'buyer-note',
+    'item',
+    'stages',
+    'assign',
+    'labels',
+    'label-entries',
+    'price',
+    'note',
+    'customer',
+    'facts',
+  ],
+};

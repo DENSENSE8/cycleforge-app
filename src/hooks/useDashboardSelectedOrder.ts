@@ -77,8 +77,12 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
   // Tracks an openOrderId that the user just closed. The URL update from
   // replaceOpenOrderId(null) is async; without this guard, the sync effect re-runs
   // with the stale URL value, re-resolves the order, and reopens the panel —
-  // producing the "X closes halfway then reopens / errors out" bug.
-  const ignoredOpenOrderIdRef = useRef<number | null>(null);
+  // producing the "X closes halfway then reopens / errors out" bug. `seen` is
+  // whether the URL has carried that id: a record closed before its own
+  // `?openOrderId=` write landed must keep ignoring it through that late
+  // landing, not drop the guard on the null URL it was closed from (the
+  // To Ship "Esc, then the record reopens ~800 ms later" bug).
+  const ignoredOpenOrderIdRef = useRef<{ id: number; seen: boolean } | null>(null);
 
   const openOrderId = useMemo(() => {
     return parseDashboardOpenOrderId(searchParams.get('openOrderId'));
@@ -100,6 +104,7 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     const nextContext = normalizeDashboardDetailsContext(order, context);
     const orderId = Number(order.id);
     setSelectedShipped(order);
+    ignoredOpenOrderIdRef.current = null;
     setSelectedContext(nextContext);
     writeStoredSelection(order, nextContext);
 
@@ -110,11 +115,14 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
   }, [openOrderId, replaceOpenOrderId]);
 
   const clearSelectedOrder = useCallback((syncUrl = true) => {
+    // The id being closed: the URL's, or — when the open's URL write is still
+    // in flight — the one that write will land.
+    const closingId = openOrderId ?? pendingOrderIdRef.current;
     setSelectedShipped(null);
     pendingOrderIdRef.current = null;
     clearStoredSelection();
-    if (syncUrl && openOrderId != null) {
-      ignoredOpenOrderIdRef.current = openOrderId;
+    if (syncUrl && closingId != null) {
+      ignoredOpenOrderIdRef.current = { id: closingId, seen: openOrderId === closingId };
       replaceOpenOrderId(null);
     }
   }, [openOrderId, replaceOpenOrderId]);
@@ -181,8 +189,8 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     if (!detailsEnabled) return;
     if (openOrderId == null) {
       // URL has caught up to a cleared state; the close-in-flight guard is no
-      // longer needed.
-      ignoredOpenOrderIdRef.current = null;
+      // longer needed — unless the closed id has not reached the URL yet.
+      if (ignoredOpenOrderIdRef.current?.seen) ignoredOpenOrderIdRef.current = null;
       // CRITICAL: bail if a router.replace from applySelectedOrder hasn't landed yet.
       // Without this, the render between setSelectedShipped(A) and the URL catching up
       // to ?openOrderId=A sees `openOrderId == null && selectedShipped` and clears the
@@ -197,7 +205,12 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     // If this URL value is one the user just closed and the router.replace(null)
     // hasn't landed yet, ignore it — otherwise we'd re-resolve and reopen the
     // panel mid-exit.
-    if (ignoredOpenOrderIdRef.current === openOrderId) return;
+    const ignored = ignoredOpenOrderIdRef.current;
+    if (ignored?.id === openOrderId) {
+      ignored.seen = true;
+      return;
+    }
+    ignoredOpenOrderIdRef.current = null;
 
     // Clear the pending flag once the URL catches up to the value we set.
     if (pendingOrderIdRef.current === openOrderId) {

@@ -21,7 +21,8 @@
  * which refuses a body with no signer, or with both / neither of a signature
  * and a decline reason.
  *
- * Callers: `RepairDetailsPanel` (Start Pickup, portalled over the desk).
+ * Callers: `RepairRecordStrip` (the desk strip's Start pickup) and
+ * `RepairDetailsPanel` (rail body) — Start Pickup, portalled over the desk.
  * Affected API: POST `/api/repair-service/pickup`; GET
  * `/api/repair-service/document/[id]` (the drop-off ink on the review sheet).
  */

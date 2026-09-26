@@ -25,6 +25,10 @@
  * not read and no cell ever painted — they are not facts of this family until
  * something paints them.
  *
+ * `notes` IS a fact: the phone take flow writes the operator's own words there
+ * for a `TAKE_CUSTOM` take (`src/lib/inventory/take-reason.ts`), and the item
+ * cell's note line paints it under the reason.
+ *
  * Field names stay snake_case — the wire names, so the desk hands its rows
  * straight to the family with one mapper and no renaming.
  */
@@ -37,8 +41,13 @@ export interface SkuLedgerTableRow {
   created_at: string;
   /** Signed quantity change. Never null (`NOT NULL` in the schema). */
   delta: number;
-  /** Free-form reason code ('SALE', 'ADJUSTMENT', …). `NOT NULL`. */
+  /**
+   * Free-form reason code ('SALE', 'ADJUSTMENT', 'TAKE_FBA', …). `NOT NULL`.
+   * Painted through `takeReasonLedgerLabel`, never as the raw take code.
+   */
   reason: string;
+  /** What somebody wrote about this movement; trimmed, empty ⇒ `null`. */
+  notes: string | null;
   /** `WAREHOUSE` | `BOXED` — which quantity bucket moved. `NOT NULL`. */
   dimension: string;
   /**

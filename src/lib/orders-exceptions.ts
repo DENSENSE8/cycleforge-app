@@ -32,7 +32,8 @@ export async function getOrderExceptionById(
     orgId,
     `SELECT id, shipping_tracking_number, source_station, staff_id, staff_name,
             exception_reason, notes, status,
-            created_at::text AS created_at, updated_at::text AS updated_at
+            to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at,
+            to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at
      FROM orders_exceptions
      WHERE id = $1 AND organization_id = $2
      LIMIT 1`,
@@ -68,7 +69,8 @@ export async function updateOrderExceptionTracking(
     const beforeResult = await client.query(
       `SELECT id, shipping_tracking_number, source_station, staff_id, staff_name,
               exception_reason, notes, status,
-              created_at::text AS created_at, updated_at::text AS updated_at
+              to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at,
+              to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at
        FROM orders_exceptions
        WHERE id = $1 AND organization_id = $2
        LIMIT 1`,
@@ -110,7 +112,8 @@ export async function updateOrderExceptionTracking(
        WHERE id = $2 AND organization_id = $3
        RETURNING id, shipping_tracking_number, source_station, staff_id, staff_name,
                  exception_reason, notes, status,
-                 created_at::text AS created_at, updated_at::text AS updated_at`,
+                 to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at,
+                 to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at`,
       [tracking, exceptionId, orgId],
     );
     const after = updated.rows[0] as OrdersExceptionRecord | undefined;

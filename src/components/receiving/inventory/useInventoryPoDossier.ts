@@ -2,8 +2,9 @@
 
 /**
  * Shared inventory PO dossier read — same contract as Incoming Details
- * (`GET /api/receiving-lines/incoming/details`). Unbox Inventory Displays and
- * Incoming PoTab compose this; never fork a second fetch shape.
+ * (`GET /api/receiving-lines/incoming/details`). Unbox Inventory Displays
+ * compose this; the incoming delivery record reads the same endpoint through
+ * `useIncomingDetails`. Never fork a second fetch shape.
  */
 
 import { useCallback } from 'react';

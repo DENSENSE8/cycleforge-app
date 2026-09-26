@@ -50,8 +50,7 @@ interface RepairGridRowProps {
 /**
  * Repair queue leaf row — CSS-grid columns matching {@link REPAIR_GRID_COLUMNS}.
  * Airtable skin: always-on left checkbox (toggles selection, stops propagation);
- * the row body opens the detail panel. Twin of `IncomingGridRow`, mapped to the
- * repair-ticket facts.
+ * the row body opens the detail panel, mapped to the repair-ticket facts.
  */
 export const RepairGridRow = memo(function RepairGridRow({
   repair,
@@ -204,6 +203,7 @@ export const RepairGridRow = memo(function RepairGridRow({
     <div
       data-order-row-id={String(repair.id)}
       data-repair-row-id={String(repair.id)}
+      data-desk-record-key={String(repair.id)}
       role="button"
       tabIndex={0}
       aria-pressed={isSelected}

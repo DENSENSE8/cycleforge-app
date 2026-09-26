@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { usePageSettings } from '@/hooks/useSettings';
-import { playScanTone, vibrateScan, type ScanFeedbackKind } from './play';
+import { playScanTone, vibratePress, vibrateScan, type ScanFeedbackKind } from './play';
 import { flashScanBand } from './visual';
 
 /**
@@ -39,4 +39,18 @@ export function useScanFeedback() {
   );
 
   return { playScanFeedback, soundOn, hapticOn };
+}
+
+/**
+ * The press buzz of a flush execution cell (dock verb, tap-to-copy fact),
+ * behind the same staff toggle as the scan buzz (`receiving.scanHaptics`,
+ * default OFF). A no-op until the operator opts in, and always on iOS Safari,
+ * which has no Vibration API — iPhones get the press inversion only.
+ */
+export function usePressHaptic(): () => void {
+  const { byKey } = usePageSettings('receiving');
+  const on = (byKey('receiving.scanHaptics')?.value ?? false) as boolean;
+  return useCallback(() => {
+    if (on) vibratePress();
+  }, [on]);
 }

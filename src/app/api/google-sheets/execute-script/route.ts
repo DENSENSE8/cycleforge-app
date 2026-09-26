@@ -185,10 +185,10 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
                     }
                 }
 
-                const testDateTime = normalizePSTTimestamp(parsedTestDateTime, { fallbackToNow: true })!;
+                const testInstant = parsedTestDateTime.toISOString();
                 const existingByTestDateTime = await client.query(
-                    `SELECT id FROM tech_serial_numbers WHERE created_at = $1::timestamp AND organization_id = $2 LIMIT 1`,
-                    [testDateTime, orgId]
+                    `SELECT id FROM tech_serial_numbers WHERE created_at = $1::timestamptz AND organization_id = $2 LIMIT 1`,
+                    [testInstant, orgId]
                 );
                 if (existingByTestDateTime.rows.length > 0) {
                     skippedExistingForSheet++;
@@ -223,7 +223,7 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
                     scanRef: tsnScanRef,
                     testedBy: techSheet.testedBy,
                     organizationId: orgId,
-                    createdAt: testDateTime,
+                    createdAt: testInstant,
                 }, client, orgId);
 
                 if (insertedTsn.id != null) insertedForSheet++;

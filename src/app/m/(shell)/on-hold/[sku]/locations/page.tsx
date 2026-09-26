@@ -54,39 +54,42 @@ function SkuExceptionLocationsInner() {
         }));
         return (
           <>
-            <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+            <div className="flex-1 divide-y divide-mode-rule">
               {rows.length > 0 ? (
                 <DetailNav label="Locations holding this SKU" rows={rows} />
               ) : (
-                <p className="py-10 text-center text-role-caption text-mode-muted">
+                <p className="px-mode-page py-10 text-center text-role-caption text-mode-muted">
                   Not in a location yet. Scan or type the location it sits in, then count it.
                 </p>
               )}
             </div>
             <form
               aria-label="Count into another location"
-              className="sticky bottom-0 z-sticky flex items-end gap-2 border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
-              style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
+              className="pb-safe sticky bottom-0 z-sticky flex border-t border-mode-rule bg-mode-bar"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitLocation();
               }}
             >
-              <TextField
-                label="Put in another location"
-                value={locationInput}
-                onChange={setLocationInput}
-                mono
-                autoComplete="off"
-                autoCapitalize="characters"
-                enterKeyHint="go"
-                className="flex-1"
-              />
+              {/* The field cell fills the bar; the flush field centres in it. */}
+              <div className="flex min-w-0 flex-1 items-center bg-surface-card">
+                <TextField
+                  appearance="flush"
+                  label="Put in another location"
+                  value={locationInput}
+                  onChange={setLocationInput}
+                  mono
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  enterKeyHint="go"
+                />
+              </div>
               <Button
                 type="submit"
                 variant="primary"
                 size="lg"
-                className="min-h-mode-hit-cta rounded-mode px-4"
+                radius="flush"
+                className="min-h-18 border-l border-mode-rule px-6 shadow-none ring-0 transition-none enabled:active:scale-100 active:bg-mode-ink"
                 disabled={!locationInput.trim()}
               >
                 Count

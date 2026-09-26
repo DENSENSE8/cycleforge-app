@@ -121,7 +121,7 @@ async function listOpenExceptions(
        oe.source_station,
        oe.exception_reason,
        oe.staff_name,
-       oe.created_at::text AS created_at,
+       to_char(oe.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at,
        EXTRACT(EPOCH FROM (NOW() - oe.created_at)) / 3600.0 AS age_hours
      FROM orders_exceptions oe
      WHERE oe.organization_id = $1

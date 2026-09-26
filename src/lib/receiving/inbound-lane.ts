@@ -88,6 +88,8 @@ export function clearCrossLaneParams(
     if (sort && isDockedSort(sort)) next.delete('sort');
     next.delete('page');
   }
+  // The open record belongs to the lane it was picked on.
+  next.delete('openLine');
   return next;
 }
 

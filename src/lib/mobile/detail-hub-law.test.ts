@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  auditCaptureWindowSource,
   auditDetailDockSource,
   auditDetailHubPage,
   auditDetailInfoPage,
@@ -19,6 +20,7 @@ const INFO = 'src/app/m/(shell)/x/[id]/info/page.tsx';
 const MODULES: Record<string, string> = {
   '@/components/mobile/x/XCard': 'export function XCard() { return <DetailSummaryCard href="/m/x/1/info" />; }',
   '@/components/mobile/x/XDock': 'export function XDock() { return <DetailDock label="X" verbs={[]} onVerb={f} />; }',
+  '@/components/mobile/x/XScan': 'export function XScan() { return <MobileCaptureWindow label="X" onDecode={f} />; }',
   '@/components/mobile/x/FakeCard': 'export function FakeCard() { return <div className="card" />; }',
 };
 const read: ModuleReader = (_from, spec) => MODULES[spec] ?? null;
@@ -73,6 +75,33 @@ test('the dock slot must be DetailDock or a mapper over it', () => {
   assert.deepEqual(rules(auditDetailHubPage(HUB, noDock, read)), ['hub-missing-dock']);
 });
 
+test('a scanning hub may make the capture window its dock', () => {
+  const scanning = CLEAN_HUB.replace(
+    "import { XDock } from '@/components/mobile/x/XDock';",
+    "import { XScan as XDock } from '@/components/mobile/x/XScan';",
+  );
+  assert.deepEqual(auditDetailHubPage(HUB, scanning, read), []);
+});
+
+test('capture window: no Scan verb that opens it, no typed field beside it', () => {
+  const F = 'src/components/mobile/x/XScanDock.tsx';
+  const lens = '<MobileCaptureWindow label="Serial camera" onDecode={onDecode} />';
+  assert.deepEqual(auditCaptureWindowSource(F, `export const D = () => ${lens};`), []);
+
+  const opener = `export const D = () => open ? ${lens} : <DetailDock label="X" verbs={[
+    { id: 'undo', label: 'Undo', icon: <I /> },
+    { id: 'scan', label: 'Scan', icon: <I />, primary: true },
+  ]} onVerb={f} />;`;
+  assert.deepEqual(rules(auditCaptureWindowSource(F, opener)), ['capture-scan-verb']);
+
+  const forked = `export const D = () => <>${lens}<TextField label="Serial number" value={v} /></>;`;
+  assert.deepEqual(rules(auditCaptureWindowSource(F, forked)), ['capture-typed-fork']);
+
+  // A navigation verb on a screen that does not host the window is not this law.
+  const nav = `<DetailDock label="X" verbs={[{ id: 'scan', label: 'Scan again', icon: <I /> }]} onVerb={f} />`;
+  assert.deepEqual(auditCaptureWindowSource(F, nav), []);
+});
+
 const PLANTS: [DetailHubRule, string][] = [
   ['hub-edit-affordance', '<Button>Edit</Button>'],
   ['hub-edit-affordance', '<IconButton ariaLabel="Edit details" icon={<Pencil />} />'],
@@ -116,7 +145,7 @@ test('dock: at most three verbs and exactly one primary, wherever it is mounted'
 
 test('/info: the bar pencil is the only write control', () => {
   const clean = `<DetailRecordFrame bar={{ right: () => <IconButton ariaLabel="Edit details" icon={<Pencil />} /> }}>
-    {(r) => <Panel><DetailFactRow label="Title" value={r.title} /><EditSheet open={open} /></Panel>}
+    {(r) => <DetailFacts><DetailFact label="Title" value={r.title} /><EditSheet open={open} /></DetailFacts>}
   </DetailRecordFrame>`;
   assert.deepEqual(auditDetailInfoPage(INFO, clean), []);
   const inline = clean.replace('<EditSheet open={open} />', '<input value={r.title} />');

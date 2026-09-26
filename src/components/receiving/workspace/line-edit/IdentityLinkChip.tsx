@@ -98,7 +98,7 @@ export function IdentityLinkChip({
    */
   editInMenu?: boolean;
   /**
-   * In-app connection / details inspector (e.g. IncomingDetailsPanel). Renders
+   * In-app connection / details record (e.g. the incoming delivery record). Renders
    * after Edit when `actionsInMenu` (Open → Edit → Details).
    */
   onDetails?: () => void;

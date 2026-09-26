@@ -1,15 +1,16 @@
 'use client';
 
+import { ScanBarcode } from '@/components/Icons';
 import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { DetailSummaryCard } from '@/design-system/components/DetailSummaryCard';
 import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
-import { Button, Panel } from '@/design-system/primitives';
 import { summarizeUnitQc, unitQcEmptyReason, unitQcStamp, unitQcTally, unitQcVerdict } from '@/lib/qc/unit-qc';
 import { UnitQcStepRow } from './UnitQcStepRow';
 import { unitChecklistErrorText, useUnitChecklist } from './useUnitQc';
 
-const MESSAGE = 'rounded-mode border border-mode-edge bg-mode-panel p-mode-page text-mode-body text-mode-muted';
-const ERROR = 'rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-mode-body font-semibold text-rose-700';
+const MESSAGE = 'bg-mode-panel px-mode-page py-3 text-mode-body text-mode-muted';
+const ERROR = 'bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700';
 
 /** The card's verdict chip, in the same semantic tones as the step buttons. */
 const VERDICT_CHIP = {
@@ -22,8 +23,8 @@ const VERDICT_CHIP = {
  * The QC runner body for one unit — the compact summary card (the repair
  * hub's; it opens the unit hub for every fact), then the checklist with one
  * Fail · Add note · Pass row per step. Hosts own the `ModeRegion` and top bar
- * and mount this as a direct child of their flex column: it renders the padded
- * body and, with `onNext` (continuous QC), a sticky "Next unit" dock after it.
+ * and mount this as a direct child of their flex column: it renders the flat
+ * body and, with `onNext` (continuous QC), a one-verb "Next unit" dock after it.
  *
  * `unitRef` is whatever the label carried (id, serial or unit_uid); writes key
  * on the resolved numeric id. Everything shown about a result — verdict, who,
@@ -41,9 +42,9 @@ export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: ()
 
   return (
     <>
-      <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+      <div className="flex-1 divide-y divide-mode-rule">
         {unitQuery.isPending ? (
-          <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
+          <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
         ) : null}
         {unitQuery.error ? (
           <div role="alert" className={ERROR}>
@@ -68,7 +69,7 @@ export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: ()
               chip={summary ? VERDICT_CHIP[unitQcVerdict(summary)] : null}
             />
 
-            <section aria-labelledby="qc-steps" className="space-y-2">
+            <section aria-labelledby="qc-steps" className="divide-y divide-mode-rule">
               <DetailSectionHeading id="qc-steps">Checklist</DetailSectionHeading>
               {checklist.error ? (
                 <div role="alert" className={ERROR}>
@@ -77,13 +78,11 @@ export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: ()
               ) : emptyReason ? (
                 <p className={MESSAGE}>{emptyReason}</p>
               ) : steps ? (
-                <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-                  <ul>
-                    {steps.map((step) => (
-                      <UnitQcStepRow key={`${unit.id}:${step.step_id}:${step.verified_at ?? ''}`} unitId={unit.id} step={step} />
-                    ))}
-                  </ul>
-                </Panel>
+                <ul className="bg-mode-panel">
+                  {steps.map((step) => (
+                    <UnitQcStepRow key={`${unit.id}:${step.step_id}:${step.verified_at ?? ''}`} unitId={unit.id} step={step} />
+                  ))}
+                </ul>
               ) : (
                 <p className={MESSAGE}>Loading checklist…</p>
               )}
@@ -93,13 +92,11 @@ export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: ()
       </div>
 
       {onNext ? (
-        // Sticky at the end of the host's flex column, like the repair dock:
-        // it keeps its own box in flow, so the last step is never hidden under it.
-        <div className="sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2">
-          <Button variant="primary" size="lg" radius="mode" className="w-full" onClick={onNext}>
-            Next unit
-          </Button>
-        </div>
+        <DetailDock
+          label="Quality control actions"
+          verbs={[{ id: 'next', label: 'Next unit', icon: <ScanBarcode />, primary: true }]}
+          onVerb={() => onNext()}
+        />
       ) : null}
     </>
   );

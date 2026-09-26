@@ -670,6 +670,10 @@ export const AUDIT_ACTION = {
   ORDERS_EXCEPTIONS_SYNC: 'orders_exceptions.sync',
   /** Manual tracking edit on a single open `orders_exceptions` row. */
   ORDERS_EXCEPTION_UPDATE: 'orders_exceptions.update',
+  /** Unmatched pack scan resolved from the package record by linking its box to an order. */
+  ORDERS_EXCEPTION_RESOLVE: 'orders_exceptions.resolve',
+  /** Unmatched pack scan closed from the package record without an order (reason required). */
+  ORDERS_EXCEPTION_CLOSE: 'orders_exceptions.close',
   // Repair service soft-cancel + its reverse (reopen → restore prior status)
   REPAIR_CANCEL: 'repair_service.cancel',
   REPAIR_REOPEN: 'repair_service.reopen',
@@ -789,6 +793,8 @@ export const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
   // Writing goods off as lost is the one receiving act that ends with no
   // inventory — "which kind of lost" is the whole record.
   AUDIT_ACTION.RECEIVING_LOSS_WRITE_OFF,
+  // Closing an unmatched pack scan with no order ends its trail — say why.
+  AUDIT_ACTION.ORDERS_EXCEPTION_CLOSE,
 ]);
 
 // ── Server-trusted wrapper ─────────────────────────────────────────────────

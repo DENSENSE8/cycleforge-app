@@ -2,16 +2,7 @@
 
 import { Button } from '@/design-system/primitives';
 import { ExternalLink, Printer } from '@/components/Icons';
-import { MobilePrintOptionsDropdown } from '@/components/mobile/print/MobilePrintPrinterStep';
-import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
 import type { RepairPaperDoc } from '@/components/mobile/repair/useRepairPaperwork';
-import type { StaffPrintPatch } from '@/hooks/useStaffPrintBridgeClient';
-import {
-  roleReady,
-  type StaffPrintRole,
-  type StaffPrintStation,
-  type StaffPrintStatus,
-} from '@/lib/print/staff-print-bridge';
 import {
   REPAIR_PRINT_DOCUMENT_TITLE,
   repairPrintWhere,
@@ -20,8 +11,8 @@ import {
 import { formatMonthDayTimePST } from '@/utils/date';
 
 /**
- * Faces of `/m/rs/[id]/paperwork`: one document row (Open + Print to station),
- * the station card (which named station prints, its printers), and the print log.
+ * Faces of `/m/rs/[id]/paperwork`: one document row (Open + Print to station)
+ * and the print log. The printer picker is the shared `StaffPrintStationPicker`.
  */
 
 const OPEN_LINK_CLASS =
@@ -70,62 +61,6 @@ export function RepairDocumentRow({
       </div>
       {printBlockedReason ? <p className="text-role-caption text-text-warning">{printBlockedReason}</p> : null}
     </li>
-  );
-}
-
-function StationRole({ status, role }: { status: StaffPrintStatus; role: StaffPrintRole }) {
-  const face = role === 'paper' ? status.paper : status.label;
-  return (
-    <p className="flex items-baseline justify-between gap-3 text-role-caption">
-      <span className="font-semibold text-mode-ink">{role === 'paper' ? 'Paper' : 'Label'}</span>
-      <span className={roleReady(status, role) ? 'text-text-success' : 'text-text-warning'}>
-        {roleReady(status, role) ? `Ready — ${face.name ?? 'printer'}` : face.name ? `${face.name} not ready` : 'No printer'}
-      </span>
-    </p>
-  );
-}
-
-export function RepairStationCard({
-  staffName,
-  stations,
-  target,
-  now,
-  onPick,
-  onPatch,
-  onRefresh,
-}: {
-  staffName: string;
-  stations: readonly StaffPrintStation[];
-  target: StaffPrintStation | null;
-  now: number;
-  onPick: (stationId: string | null) => void;
-  onPatch: (patch: StaffPrintPatch) => void;
-  onRefresh: () => void;
-}) {
-  const status = target?.status ?? null;
-  return (
-    <div className="space-y-2 rounded-mode border border-mode-edge bg-mode-panel p-mode-page">
-      <StaffPrintStationPicker
-        stations={stations}
-        target={target}
-        now={now}
-        staffName={staffName}
-        onPick={onPick}
-        onRefresh={onRefresh}
-      />
-      {status ? (
-        <>
-          <StationRole status={status} role="label" />
-          <StationRole status={status} role="paper" />
-          {status.profiles.length > 0 ? (
-            <div className="grid gap-2 pt-1">
-              <MobilePrintOptionsDropdown status={status} role="label" onPatch={onPatch} />
-              <MobilePrintOptionsDropdown status={status} role="paper" onPatch={onPatch} />
-            </div>
-          ) : null}
-        </>
-      ) : null}
-    </div>
   );
 }
 

@@ -23,7 +23,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   dispatchAssistantDockClose,
   dispatchStationDeskOccupantClose,
-  dispatchReceivingDetailsOverlayClose,
   STATION_DISPLAYS_CLOSE_EVENT,
 } from '@/utils/events';
 import { stripStaleUnboxRightEdgeParamsFromUrl } from '../unbox-right-edge';
@@ -174,7 +173,6 @@ export function useUnboxDisplayView(currentRecordId: number | null): UnboxDispla
   const setDisplay = useCallback((tab: UnboxDisplayNav | null, opts?: SetUnboxDisplayOpts) => {
     const next = buildDisplayPending(tab, opts, null);
     if (tab) {
-      dispatchReceivingDetailsOverlayClose();
       dispatchAssistantDockClose();
       dispatchStationDeskOccupantClose();
     }
@@ -198,22 +196,14 @@ export function useUnboxDisplayView(currentRecordId: number | null): UnboxDispla
     }
   }, [currentRecordId, requestedDisplay, setDisplay]);
 
-  // More details / desk Add → close Displays so one right-edge surface owns the slot.
+  // Desk tools → close Displays so one right-edge surface owns the slot.
   useEffect(() => {
     const close = () => {
       setSnapshot(CLOSED_SNAPSHOT);
     };
-    const onDetails = () => {
-      if (requestedDisplay == null) return;
-      close();
-    };
-    window.addEventListener('receiving-open-details-overlay', onDetails);
     window.addEventListener(STATION_DISPLAYS_CLOSE_EVENT, close);
-    return () => {
-      window.removeEventListener('receiving-open-details-overlay', onDetails);
-      window.removeEventListener(STATION_DISPLAYS_CLOSE_EVENT, close);
-    };
-  }, [requestedDisplay]);
+    return () => window.removeEventListener(STATION_DISPLAYS_CLOSE_EVENT, close);
+  }, []);
 
   const resolveLinkageAction = useCallback(
     (gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>) =>

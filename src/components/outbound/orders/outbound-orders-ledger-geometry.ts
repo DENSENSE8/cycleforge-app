@@ -117,9 +117,10 @@ export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
 export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
 
 /**
- * The evidence column beside the ledger — the desktop terminal's
- * `.evidence-panel` (`minmax(288px, 24vw)`), always mounted so selecting a
- * record never reflows the rows.
+ * A reference column beside an industrial form — the desktop terminal's
+ * `.evidence-panel` (`minmax(288px, 24vw)`). Label intake's "labels on this
+ * order" column (a `supporting` rail in the desk surface ledger). Never a
+ * picked row's record: the ledger's record opens through `DeskRecordPlane`.
  */
 export const LEDGER_EVIDENCE_CLASS =
   'flex w-[max(18rem,24vw)] shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-bar';

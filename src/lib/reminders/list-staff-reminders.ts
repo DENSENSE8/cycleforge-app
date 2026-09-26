@@ -51,12 +51,13 @@ const DAY_MS = 86_400_000;
 /** A thrown task that may ring — pre-narrowed by staffer and window. */
 export interface TaskReminderCandidate {
   id: number;
-  entityType: TaskEntityType;
-  entityId: number;
+  /** Null on both for a standalone task. */
+  entityType: TaskEntityType | null;
+  entityId: number | null;
   /** `work_assignments.notes` — the thrower's words. */
   note: string | null;
   /** Named umbrella project; falls back to the first line of instructions. */
-  projectName?: string | null;
+  projectName: string | null;
   /** `assignment_status_enum` label, verbatim. */
   status: string;
   priority: number;
@@ -166,7 +167,8 @@ function checklistDayKeys(fromMs: number, toMs: number): string[] {
 function taskReminder(task: TaskReminderCandidate, ringsMs: number): StaffReminder {
   const recordLabel = taskDeskRecordLabel(task);
   // A notification title is one plain line — the instructions are markdown.
-  const parts = [recordLabel];
+  // A standalone task has no record phrase, so its body starts at the sender.
+  const parts: string[] = recordLabel ? [recordLabel] : ['Task'];
   if (task.assignedByName) parts.push(`from ${task.assignedByName}`);
   if (task.deadlineAt) parts.push(`due ${formatMonthDayTimePST(task.deadlineAt, { hour12: true })}`);
   return {

@@ -116,8 +116,14 @@ Pass/fail: fail any of R1–R4 on the mobile SoT → not done.
 | `DetailRecordFrame` | The frame of `/info` and each job screen under a hub |
 | `DetailSummaryCard` | The read-only card on top of a hub; the whole card opens `/info` |
 | `DetailNav` + `detailDoor` | One door per job screen (photos, lines, activity …) |
-| `DetailFactRow` · `DetailAck` | Facts on `/info`; the acknowledgement line |
-| `DetailDock` | ≤3 verbs, one primary — the only surface on a hub that writes |
+| `DetailFacts` + `DetailFact` · `DetailAck` | Facts as full-bleed rows — mono caps label left, value right, one mode rule between rows; a `DetailSectionHeading` band opens each further group; `copy` on identifiers = tap-to-copy. The acknowledgement line |
+| `DetailSectionHeading` | Section band between two blocks of one screen (well-grey strip, mono caption) — never on a hub |
+| `DetailDock` | The ONE bottom execution bar: ≤3 verbs, one primary; 72px flush cells, instant ink press, 500ms leading-edge lock (the selection ✕ fires past it and re-arms it), press buzz only with the staff `receiving.scanHaptics` toggle. One verb = a job screen's full-width bar; `selection` = ✕ N SEL + ≤2 verbs |
+
+**Flat (operator 2026-09-25).** Every record screen's column is `divide-y divide-mode-rule`
+with no page padding, gaps, or boxed panels: blocks run the full width, square, one 1px
+rule between them, and only text keeps the page inset. Rows and cards invert to ink on
+press, with no transition.
 
 **List / job screens (stay):** `MobileShell`, `MobileActionSlot`, `ItemCardRow`,
 `MobileTriagePage`, `BottomSheet`.

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type RefObject,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import {
   DataTableFilterMenu,
   DataTableSortMenu,
@@ -16,32 +9,31 @@ import {
 } from '@/components/tables/DataTable';
 import { SearchField, Button } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { useRouter } from 'next/navigation';
+import { buildIncomingDeliveryVerbs } from './incoming-record-verbs';
 import { RECORD_ID_CLASS } from '@/design-system/tokens/industrial-record';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { IncomingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import type { RowGroup } from '@/lib/group-rows';
 import { foldKey } from '@/lib/group-rows';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import {
-  closePoIntake,
-  getPoIntakeSnapshot,
-  subscribePoIntake,
-} from '@/lib/inbound/po-intake-store';
-import {
-  closeReturnIntake,
-  getReturnIntakeSnapshot,
-  subscribeReturnIntake,
-} from '@/lib/inbound/return-intake-store';
-import { IncomingDeliveryEvidence } from './IncomingDeliveryEvidence';
+  IncomingDeliveryEvidence,
+  incomingDeliverySummary,
+  useIncomingDelivery,
+} from './IncomingDeliveryEvidence';
 import {
   IncomingDeliveryRecord,
   incomingDeliveryRecordState,
+  purchaseIdentity,
   type IncomingLedgerEntry,
 } from './IncomingDeliveryRecord';
-import { IncomingPoIntakeBand } from './IncomingPoIntakeBand';
-import { IncomingReturnEvidence } from './IncomingReturnEvidence';
 
 const receivingLineId = (row: ReceivingLineRow): number => row.id;
+const purchaseKey = (row: ReceivingLineRow): string =>
+  (row.zoho_purchaseorder_id || row.zoho_purchaseorder_number || row.source_order_id || '').trim();
 
 const SORT_OPTIONS: readonly DataTableSortOption[] = [
   { id: 'order', label: 'Purchase order', group: 'Record' },
@@ -103,16 +95,6 @@ export function IncomingDeliveriesLedger({
 }: IncomingDeliveriesLedgerProps) {
   const [folded, setFolded] = useState<Set<string>>(() => new Set());
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const poIntake = useSyncExternalStore(
-    subscribePoIntake,
-    getPoIntakeSnapshot,
-    getPoIntakeSnapshot,
-  );
-  const returnIntakeOpen = useSyncExternalStore(
-    subscribeReturnIntake,
-    getReturnIntakeSnapshot,
-    () => false,
-  );
 
   const entries = useMemo<IncomingLedgerEntry[]>(() => {
     const next: IncomingLedgerEntry[] = [];
@@ -120,14 +102,12 @@ export function IncomingDeliveriesLedger({
       for (const group of dayGroups) {
         const multi = group.rows.length > 1;
         const groupKey = foldKey(date, group.key);
-        if (multi) next.push({ kind: 'group', key: groupKey, date, group });
+        if (multi) next.push({ kind: 'group', key: groupKey, group });
         if (!multi || !folded.has(groupKey)) {
           for (const row of group.rows) {
             next.push({
               kind: 'line',
               key: `line:${row.id}`,
-              date,
-              groupKey,
               row,
               grouped: multi,
             });
@@ -138,10 +118,22 @@ export function IncomingDeliveriesLedger({
     return next;
   }, [groups, folded]);
 
+  // The open line follows `selectedId` (the host's `?openLine=`) whenever that
+  // CHANGES — a deep link, back / forward, a reload — and only then, so a
+  // local open or close never races the URL catching up.
+  const syncedIdRef = useRef<number | null>(null);
+  const openRowIdRef = useRef<number | null>(null);
   useEffect(() => {
-    if (openKey || selectedId == null) return;
-    if (rows.some((row) => row.id === selectedId)) setOpenKey(`line:${selectedId}`);
-  }, [openKey, rows, selectedId]);
+    if (selectedId === syncedIdRef.current) return;
+    if (selectedId == null) {
+      syncedIdRef.current = null;
+      setOpenKey(null);
+      return;
+    }
+    if (!rows.some((row) => row.id === selectedId)) return;
+    syncedIdRef.current = selectedId;
+    if (openRowIdRef.current !== selectedId) setOpenKey(`line:${selectedId}`);
+  }, [rows, selectedId]);
 
   useEffect(() => {
     if (openKey && !entries.some((entry) => entry.key === openKey)) {
@@ -150,12 +142,6 @@ export function IncomingDeliveriesLedger({
     }
   }, [entries, onCloseRow, openKey]);
 
-  useEffect(() => {
-    if (!poIntake.open && !returnIntakeOpen) return;
-    setOpenKey(null);
-    onCloseRow();
-  }, [onCloseRow, poIntake.open, returnIntakeOpen]);
-
   const openEntry = useMemo(
     () => entries.find((entry) => entry.key === openKey) ?? null,
     [entries, openKey],
@@ -163,24 +149,30 @@ export function IncomingDeliveriesLedger({
   const openRow = openEntry?.kind === 'line'
     ? openEntry.row
     : openEntry?.group.rows[0] ?? null;
+  openRowIdRef.current = openRow?.id ?? null;
+  // Every loaded line of the open purchase — the record's items and status.
+  const openLines = useMemo(() => {
+    if (!openRow) return [];
+    if (openEntry?.kind === 'group') return openEntry.group.rows;
+    const key = purchaseKey(openRow);
+    return key ? rows.filter((row) => purchaseKey(row) === key) : [openRow];
+  }, [openEntry, openRow, rows]);
+  const delivery = useIncomingDelivery(openRow);
+  const router = useRouter();
 
   const handleOpen = useCallback((key: string) => {
     const entry = entries.find((candidate) => candidate.key === key);
     if (!entry) return;
     const row = entry.kind === 'line' ? entry.row : entry.group.rows[0];
     if (!row) return;
-    closePoIntake();
-    closeReturnIntake();
     setOpenKey(key);
     onOpenRow(row);
   }, [entries, onOpenRow]);
 
   const close = useCallback(() => {
-    if (poIntake.open) closePoIntake();
-    if (returnIntakeOpen) closeReturnIntake();
     setOpenKey(null);
     onCloseRow();
-  }, [onCloseRow, poIntake.open, returnIntakeOpen]);
+  }, [onCloseRow]);
 
   const openCursorRow = useCallback((
     row: ReceivingLineRow,
@@ -195,8 +187,6 @@ export function IncomingDeliveriesLedger({
         return next;
       });
     }
-    closePoIntake();
-    closeReturnIntake();
     setOpenKey(`line:${row.id}`);
     onOpenRow(row);
   }, [onOpenRow]);
@@ -242,23 +232,7 @@ export function IncomingDeliveriesLedger({
   const shownStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const shownEnd = total === 0 ? 0 : Math.min((page - 1) * pageSize + rows.length, total);
 
-  const createKey = poIntake.open
-    ? 'create:purchase-order'
-    : returnIntakeOpen
-      ? 'create:return'
-      : null;
-  const evidence = poIntake.open
-    ? <IncomingPoIntakeBand placement="evidence" />
-    : returnIntakeOpen
-      ? <IncomingReturnEvidence onClose={close} />
-      : (
-          <IncomingDeliveryEvidence
-            row={openRow}
-            state={openRow ? incomingDeliveryRecordState(openRow) : null}
-            rows={rows}
-            onClose={close}
-          />
-        );
+  const summary = useMemo(() => incomingDeliverySummary(rows), [rows]);
 
   return (
     <RecordLedger
@@ -267,12 +241,12 @@ export function IncomingDeliveriesLedger({
       records={entries}
       recordKey={(entry) => entry.key}
       renderRecord={renderRecord}
-      openKey={createKey ?? openKey}
+      openKey={openKey}
       onOpenKey={handleOpen}
       onClose={close}
       scrollRef={scrollRef}
       loading={loading}
-      navigation={!createKey && recordNavigation.available ? recordNavigation : undefined}
+      navigation={recordNavigation.available ? recordNavigation : undefined}
       toolbar={
         <>
           <SearchField
@@ -295,8 +269,31 @@ export function IncomingDeliveriesLedger({
         </>
       }
       empty={<b className="text-role-body font-bold text-mode-ink">{emptyMessage}</b>}
-      evidenceNoun={createKey ? 'intake' : 'delivery'}
-      evidence={evidence}
+      recordTitle={openRow ? `PO ${purchaseIdentity(openRow)}` : 'Delivery'}
+      recordSubtitle={openRow ? displayReceivingProductTitle(openRow) : undefined}
+      recordNoun="delivery"
+      actionStrip={
+        openRow ? (
+          <RecordActionStrip
+            key={openKey}
+            verbs={buildIncomingDeliveryVerbs({ row: openRow, delivery, navigate: router.push, onRemoved: close })}
+            label={`PO ${purchaseIdentity(openRow)} actions`}
+            testId="incoming-actions"
+          />
+        ) : null
+      }
+      summary={summary}
+      record={
+        openRow ? (
+          <IncomingDeliveryEvidence
+            key={openRow.id}
+            row={openRow}
+            lines={openLines}
+            state={incomingDeliveryRecordState(openRow)}
+            delivery={delivery}
+          />
+        ) : null
+      }
       footer={
         <>
           <span>{shownStart.toLocaleString()}–{shownEnd.toLocaleString()} of {total.toLocaleString()}</span>

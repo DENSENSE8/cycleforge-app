@@ -139,8 +139,9 @@ export function GlobalDetailStackHost() {
   }
 
   if (loaded.kind === 'order') {
-    // Non-desk opens: compact peek only. Full tabbed inspector stays on the
-    // shipping desk table click (`DashboardOrderDetails` → ShippedDetailsPanel).
+    // Non-desk opens: compact peek only. The full order record stays on the
+    // shipping desks (`OrderRecordView` in the outbound ledger; the Shipped desk
+    // opens the package record, `ShipmentRecordView`).
     return <CompactOrderPeek order={loaded.order} onClose={handleClose} />;
   }
 
@@ -163,8 +164,6 @@ export function GlobalDetailStackHost() {
         repair={loaded.repair}
         onClose={handleClose}
         onUpdate={handleUpdate}
-        disableMoveUp
-        disableMoveDown
       />
     );
   }

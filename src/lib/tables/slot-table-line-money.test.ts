@@ -175,7 +175,6 @@ describe('blanket: every SLOT_LAYOUT_TABLES catalog with line money', () => {
     }
     assert.ok(withMoney.includes('orders'));
     assert.ok(withMoney.includes('receiving'));
-    assert.ok(withMoney.includes('incoming'));
     assert.ok(withMoney.length >= 4);
   });
 });

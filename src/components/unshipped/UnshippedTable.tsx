@@ -938,6 +938,7 @@ export function UnshippedTable({
       <OrderStatusTrailStage>
         {ledger ? (
           <OutboundOrdersLedger
+            mode={lockedFulfillmentState === 'BLOCKED' ? 'pending' : 'to-ship'}
             chrome={chrome}
             searchPending={!cagedOnly && query.isFetching}
             records={records}

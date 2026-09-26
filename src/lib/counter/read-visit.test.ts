@@ -144,6 +144,7 @@ function device(overrides: Partial<CounterVisitDevice> = {}): CounterVisitDevice
     rsNumber: 'RS-0001',
     serialNumber: 'SN-1',
     productTitle: 'QuietComfort 45',
+    issue: 'No power',
     status: 'Pending Repair',
     quoteCents: 13000,
     quoteRaw: '$130.00',

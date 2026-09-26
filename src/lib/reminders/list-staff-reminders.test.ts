@@ -44,6 +44,7 @@ function task(over: Partial<TaskReminderCandidate>): TaskReminderCandidate {
     entityType: 'order',
     entityId: 1234,
     note: null,
+    projectName: null,
     status: 'OPEN',
     priority: 100,
     remindAt: null,

@@ -1,37 +1,25 @@
 'use client';
 
 /**
- * Repair details slide-over — thin composition shell. All interactive logic
- * (ticket / notes / status edits, linkage set/clear, soft-cancel delete, pickup
- * toggle) lives in {@link useRepairDetailsPanel}; the status / info / linkage
- * sections are presentational components under `./details-panel/`.
+ * Repair details — the body a repair wears on a RAIL: the Testing bench's
+ * station edge (`TechRepairRail`, exempt from the desk surface law) and the
+ * global detail stack (`GlobalDetailStackHost`). The Repair Service desk does
+ * NOT mount this; its record is `RepairRecordView` on `DeskRecordPlane`.
+ * Thin composition shell: all interactive logic (ticket / notes / status
+ * edits, linkage set/clear, soft-cancel delete, pickup toggle) lives in
+ * {@link useRepairDetailsPanel}, shared with the desk record; the status /
+ * info / linkage sections are presentational components under
+ * `./details-panel/`.
  *
- * NON-MODAL rail inspector (`modal={false}`) on a STABLE occupant id — the
- * repair queue underneath stays live while the operator walks it with the
- * header's prev/next. See the header comment on the registrar below.
- *
- * Topic nav: {@link DeskInspectorIndexShell} (index → leaf). Never
- * PaneHeaderTabs / StationDisplaysPushStack.
- *
- * **Chrome is ONE band**, painted by that same shell:
- * `[‹ Back] [Overview] ……… [verbs] [⤢] [✕]`. Back is the shell's, never a
- * hand-rolled chevron; the title cell is the CURRENT topic and nothing else.
- *
- * Until 2026-08-21 a `PaneHeader` sat above the shell carrying (a) its own
- * `PaneHeaderActionBar` close — a second dismiss beside the host's singleton
- * `✕`, which only ran `onClose` and skipped the lifecycle half — and (b) a
- * stacked identity pair (eyebrow "Repair ticket" over the editable TK number,
- * with a status pill under it). Both are gone: the verbs ride the band's
- * trailing cluster, the host owns the only close, and the ticket editor + status
- * moved into the Overview leaf body, which is where a record's identity belongs
- * once the band's title is the topic.
+ * Topic nav: {@link DeskInspectorIndexShell} (index → leaf) with the verbs on
+ * its band's trailing cluster. The host owns the only close — this body paints
+ * none — and the ticket editor + status live in the Overview leaf body.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Clock, Pencil, PrinterAlt, Receipt } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
-import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
@@ -68,16 +56,9 @@ export function RepairDetailsPanel({
   repair,
   onClose,
   onUpdate,
-  onMoveUp = () => {},
-  onMoveDown = () => {},
-  disableMoveUp = false,
-  disableMoveDown = false,
 }: RepairDetailsPanelProps) {
   const c = useRepairDetailsPanel({ repair, onUpdate });
   const hasSavedNotes = String(repair.notes || '').trim().length > 0;
-  // Identity for the aria name — the SAVED ticket number, never the editable
-  // draft (`c.ticketNumber`), which would re-register the occupant per keystroke.
-  const repairIdentity = String(repair.ticket_number || '').trim() || `RS-${repair.id}`;
   // Selection actions self-gate on the rail-actions store — only light when
   // RepairTable is publishing via useRepairRailSelection.
   const railHeaderActions = useRailHeaderActions();
@@ -243,19 +224,7 @@ export function RepairDetailsPanel({
       ),
     },
   ];
-
   return (
-    // STABLE occupant id (`detail:repair`, not `detail:repair:<id>`): the repair
-    // queue behind this rail is walked row by row, and the host keys its
-    // crossfade on the occupant id — a per-record id played exit→empty→enter on
-    // every step. Safe because `useRepairDetailsPanel` re-seeds notes, ticket,
-    // linkage editors and the open tab on `repair.id` change.
-    <DetailStackRailRegistrar
-      id="detail:repair"
-      onClose={onClose}
-      modal={false}
-      ariaLabel={`Repair ${repairIdentity} details`}
-    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <DeskInspectorIndexShell
           stance="index"
@@ -317,6 +286,5 @@ export function RepairDetailsPanel({
             )
           : null}
       </div>
-    </DetailStackRailRegistrar>
   );
 }

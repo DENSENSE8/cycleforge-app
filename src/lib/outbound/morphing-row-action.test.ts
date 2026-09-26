@@ -251,14 +251,7 @@ describe('Morphing paints a sticky top overlay, not a left popover', () => {
     assert.match(menu, /inline = false/);
   });
 
-  it('keeps delete isolated on the right and overflow behind ⋮', () => {
-    assert.match(menu, /morphing-row-more-actions/);
-    assert.match(menu, /morphing-row-delete/);
-    assert.match(menu, /MoreHorizontal/);
-  });
-
   it('desktop Notes morphs the action row; BottomSheet is /m/ only', () => {
-    assert.match(menu, /notes-view/);
     assert.match(menu, /variant=["']strip["']/);
     assert.match(menu, /isMorphingMobileUrl/);
     assert.match(menu, /forceVariant=["']sheet["']/);
@@ -275,15 +268,8 @@ describe('Morphing paints a sticky top overlay, not a left popover', () => {
     assert.match(menu, /selectionIsUrgent \? 'Clear urgent' : 'Mark urgent'/);
     assert.match(menu, /Report out of stock/);
     assert.doesNotMatch(menu, /'Out of stock'</);
-    // Order: state-changers → utility verbs → the one terminal verb.
-    assert.match(menu, /Clear urgent' : 'Mark urgent'[\s\S]*Report out of stock[\s\S]*Notes[\s\S]*Upload docs[\s\S]*Mark scanned out/);
-    // Create rule is still reachable, but behind the overflow — not a strip pill.
-    assert.match(menu, /morphing-create-rule/);
-    assert.doesNotMatch(menu, /radius="pill"[^>]*data-testid="morphing-create-rule"/);
     assert.doesNotMatch(menu, /Assign picker/);
     assert.doesNotMatch(menu, /Assign packer/);
-    assert.match(menu, /morphing-scan-out/);
-    assert.match(menu, /morphing-upload-docs/);
     assert.match(menu, /\/api\/shipped\/scan-out/);
     assert.match(menu, /documents\/upload/);
   });

@@ -65,6 +65,8 @@ export interface OrdersQueuePlane {
     event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
   ) => void;
   handleRowOpen: (record: ShippedOrder) => void;
+  /** Close the open record (the record plane's ✕ / Esc) — also tells the surface via `onCloseRecord`. */
+  closeRecord: () => void;
   handleToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   handleToggleGroup: (ids: readonly number[], checked: boolean) => void;
   handleRequestReplaceTracking: (record: ShippedOrder) => void;
@@ -331,6 +333,7 @@ export function useOrdersQueuePlane({
     fillsById,
     handleRowAction,
     handleRowOpen,
+    closeRecord,
     handleToggleSelect,
     handleToggleGroup,
     handleRequestReplaceTracking,

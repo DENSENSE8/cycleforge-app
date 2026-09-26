@@ -110,3 +110,37 @@ export function rememberPrintStationId(
     /* private mode / quota — the pick just is not remembered */
   }
 }
+
+// ── One print per job, however many tabs share this station ────────────────
+
+const CLAIMED_JOBS_KEY = 'cf.printStation.claimedJobs';
+/** Recent job ids kept for the claim check — far more than can be in flight. */
+const CLAIMED_JOBS_KEEP = 50;
+
+/**
+ * Run `work` for one print job in exactly ONE tab of this browser. Every tab
+ * of a browser is the same station (one localStorage id), so a desk tab and a
+ * phone tab open side by side both receive the job; the Web Lock serialises
+ * them and the claimed-ids list makes the loser skip, even if it arrives after
+ * the winner released the lock. Resolves true when this tab ran it.
+ */
+export async function runPrintJobOnce(requestId: string, work: () => Promise<void>): Promise<boolean> {
+  const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
+  if (!locks) {
+    await work();
+    return true;
+  }
+  return locks.request(`cf-print-job:${requestId}`, { ifAvailable: true }, async (lock) => {
+    if (!lock) return false;
+    let claimed: string[] = [];
+    try {
+      claimed = JSON.parse(window.localStorage.getItem(CLAIMED_JOBS_KEY) ?? '[]') as string[];
+      if (claimed.includes(requestId)) return false;
+      window.localStorage.setItem(CLAIMED_JOBS_KEY, JSON.stringify([requestId, ...claimed].slice(0, CLAIMED_JOBS_KEEP)));
+    } catch {
+      /* storage unavailable — the lock alone still keeps concurrent tabs apart */
+    }
+    await work();
+    return true;
+  });
+}

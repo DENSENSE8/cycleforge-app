@@ -27,6 +27,8 @@ import {
   repairStepGates,
   type RepairDeviceGateRow,
 } from './repair-intake-logic';
+import type { KioskCartLine } from '@/lib/kiosk/cart-line';
+import { repairDevicesFromLines } from '@/lib/kiosk/repair-devices';
 
 function filled(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
   return buildInitialFormData({
@@ -41,22 +43,30 @@ function filled(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
 
 /**
  * The KIOSK's form: satisfied on every VISIT fact and empty on both device
- * fields, because on that surface the device facts live on the cart line that
- * will be written. Anything these tests get right about it is only meaningful
- * because the form itself carries no serial and no quote.
+ * fields and on reasons, because on that surface the device facts — reasons
+ * included since 2026-09-25 — live on the cart line that will be written.
+ * Anything these tests get right about it is only meaningful because the form
+ * itself carries no serial, no quote and no reason.
  */
 function visitForm(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
   return filled({
     product: { type: '', model: '', sourceSku: null },
+    repairReasons: [],
     serialNumber: '',
     price: '',
     ...overrides,
   });
 }
 
-/** One device as `repair-devices.ts` hands it over — serialised and quoted. */
+/** One device as `repair-devices.ts` hands it over — serialised, quoted, answered. */
 function device(overrides: Partial<RepairDeviceGateRow> = {}): RepairDeviceGateRow {
-  return { title: 'Wave Radio II', serialNumber: 'SN-1', price: '86.00', ...overrides };
+  return {
+    title: 'Wave Radio II',
+    serialNumber: 'SN-1',
+    price: '86.00',
+    repairReasons: ['No power'],
+    ...overrides,
+  };
 }
 
 test('an empty form has no satisfied units', () => {
@@ -212,4 +222,64 @@ test('the refusal names WHICH device is short once there is more than one', () =
     getRepairSubmitBlockReason(visitForm(), true, [device({ serialNumber: '', price: '' })]),
     'Serial number and price required to submit',
   );
+});
+
+/**
+ * REASONS are per unit since 2026-09-25 (operator: "all devices, or per device
+ * with a switcher"). Each unit is its own `repair_service` row whose `issue`
+ * is that unit's reasons, and the counter refuses a row with neither a reason
+ * nor notes (`missingRepairIntakeFields`) — so one answered unit must not
+ * carry the other through.
+ */
+test('the reason unit asks EVERY device; visit notes answer for all of them', () => {
+  const answered = device();
+  const blank = device({ title: 'Acoustimass 6', repairReasons: [] });
+
+  assert.equal(repairStepGates(visitForm(), false, false, [answered, blank])[0], false);
+  assert.equal(canSubmitRepairIntake(visitForm(), true, [answered, blank]), false);
+  assert.equal(
+    getRepairSubmitBlockReason(visitForm(), true, [answered, blank]),
+    'Acoustimass 6 still needs a reason for repair',
+  );
+
+  const notes = visitForm({ repairNotes: 'Both crackle on the left channel' });
+  assert.equal(repairStepGates(notes, false, false, [answered, blank])[0], true);
+
+  assert.equal(
+    repairStepGates(visitForm(), false, false, [answered, device({ title: 'Acoustimass 6', repairReasons: ['Buzzing'] })])[0],
+    true,
+  );
+  assert.equal(
+    repairStepGates(visitForm({ repairReasons: ['No power'] }), false, false, [blank])[0],
+    false,
+    "the form's own reasons do not answer for a unit",
+  );
+});
+
+/**
+ * A LINKED repair was taken in (and given its reason) when its ticket was
+ * written; the reason gate must neither ask it nor count it. The rows come
+ * from the cart through `repairDevicesFromLines`, the one source every gate
+ * reads.
+ */
+test('a linked repair on the cart never gates the reason unit', () => {
+  const lines: KioskCartLine[] = [
+    {
+      id: 'a',
+      type: 'REPAIR',
+      title: 'Wave Radio II',
+      quantity: 1,
+      unitAmountCents: 8600,
+      payload: { productModel: 'Wave Radio II', serialNumber: 'SN-1', price: '86.00', repairReasons: ['No power'] },
+    },
+    {
+      id: 'linked',
+      type: 'REPAIR',
+      title: 'QC35 II',
+      quantity: 1,
+      unitAmountCents: 0,
+      payload: { productModel: 'QC35 II', serialNumber: 'SN-9', price: '0', linkedRepairId: 4411 },
+    },
+  ];
+  assert.equal(repairStepGates(visitForm(), false, false, repairDevicesFromLines(lines))[0], true);
 });

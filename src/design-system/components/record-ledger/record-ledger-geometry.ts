@@ -52,19 +52,9 @@ export const RECORD_LOCATION_CLASS = 'w-44 shrink-0';
 /** Desk hit floor for every in-record control (32px desk, 48 touch). */
 export const RECORD_HIT_CLASS = 'min-h-mode-hit';
 
-/**
- * Toolbar strip over the records — the mode's hit height plus a 1px ink rule,
- * the same line the evidence column's head draws so the two read as one bar.
- */
+/** Toolbar strip over the records — the mode's hit height plus a 1px ink rule. */
 export const RECORD_TOOLBAR_CLASS =
   'flex min-h-mode-hit min-w-0 shrink-0 items-stretch border-b border-mode-ink bg-mode-bar';
-
-/**
- * The evidence column beside the ledger — the desktop terminal's
- * `.evidence-panel` (`max(288px, 24vw)`), always mounted at ≥64rem container so
- * opening a record never reflows the rows. Below that it overlays the rows.
- */
-export const RECORD_EVIDENCE_WIDTH_CLASS = 'w-[max(18rem,24vw)]';
 
 /**
  * Pins the type scale inside the ledger. Row heights are fixed for the

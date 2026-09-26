@@ -21,6 +21,9 @@ import {
 
 type Queryable = Pick<PoolClient, 'query'>;
 
+/** `created_at` (timestamptz) as a UTC ISO-8601 instant — parseable on every client. */
+const CREATED_AT_ISO = `to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at`;
+
 export interface PackerLogWriteRow {
   id: number;
   createdAt: string;
@@ -33,6 +36,11 @@ export interface CreatePackerLogInput {
   scanRef?: string | null;
   trackingType: string;
   packedBy?: number | null;
+  /**
+   * Historical pack time as a warehouse (America/Los_Angeles) wall clock
+   * `YYYY-MM-DD HH:MM:SS` — the `normalizePSTTimestamp()` shape every caller
+   * passes. Omit for live scans so the DB clock owns it.
+   */
   createdAt?: string | null;
   completionState?: PackerLogCompletionState;
   /** Identifies the calling workflow in the canonical event payload. */
@@ -108,9 +116,10 @@ export async function createPackerLog(
     `INSERT INTO packer_logs (
        organization_id, shipment_id, scan_ref, tracking_type,
        completion_state, packed_by, created_at
-     ) VALUES ($1::uuid, $2, $3, $4, $5, $6, COALESCE($7::timestamptz, NOW()))
+     ) VALUES ($1::uuid, $2, $3, $4, $5, $6,
+               COALESCE(($7::timestamp AT TIME ZONE 'America/Los_Angeles'), NOW()))
      ${conflictClause}
-     RETURNING id, created_at::text, completion_state`,
+     RETURNING id, ${CREATED_AT_ISO}, completion_state`,
     [
       input.organizationId,
       input.shipmentId ?? null,
@@ -148,7 +157,7 @@ export async function startPackerLogCapture(
      ON CONFLICT (organization_id, shipment_id)
        WHERE completion_state = 'CAPTURING' AND shipment_id IS NOT NULL
      DO UPDATE SET packed_by = EXCLUDED.packed_by, updated_at = NOW()
-     RETURNING id, created_at::text, completion_state`,
+     RETURNING id, ${CREATED_AT_ISO}, completion_state`,
     [
       input.organizationId,
       input.shipmentId,
@@ -182,7 +191,7 @@ export async function touchPackerLog(
     `UPDATE packer_logs
         SET updated_at = NOW(), packed_by = $2
       WHERE id = $1 AND organization_id = $3::uuid
-      RETURNING id, created_at::text, completion_state`,
+      RETURNING id, ${CREATED_AT_ISO}, completion_state`,
     [input.packerLogId, input.packedBy, input.organizationId],
   );
   return updated.rows[0] ? normalizeRow(updated.rows[0]) : null;
@@ -199,7 +208,7 @@ export async function finalizePackerLogCapture(
       WHERE id = $1
         AND organization_id = $4::uuid
         AND completion_state = $5
-      RETURNING id, created_at::text, completion_state`,
+      RETURNING id, ${CREATED_AT_ISO}, completion_state`,
     [
       input.packerLogId,
       PACKER_LOG_COMPLETED,

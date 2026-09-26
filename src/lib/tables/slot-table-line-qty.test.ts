@@ -185,7 +185,6 @@ describe('blanket: every SLOT_LAYOUT_TABLES catalog with `{family}.qty`', () => 
         `${tableId} must pin ${qty.id} under the title`,
       );
     }
-    assert.ok(withQty.includes('incoming'));
     assert.ok(withQty.includes('receiving'));
     assert.ok(withQty.includes('orders'));
     assert.ok(withQty.includes('pickup'));

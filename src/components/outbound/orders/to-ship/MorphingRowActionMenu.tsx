@@ -1,70 +1,61 @@
 'use client';
 
 /**
- * CYC-82 — the row action manifold that opens off the leading checkbox.
+ * The ORDER verbs — consumer #1 of {@link RecordActionStrip} (owner
+ * 2026-09-25: every record verb lives in ONE strip under the list's search
+ * bar; the record header and the record's columns carry none).
  *
- * ## Where it paints
+ * ## Two armings, one verb list
  *
- * Sticky action row under the column headers (portaled into DataTable /
- * LedgerGrid {@link SLOT_TABLE_ACTION_ROW_ATTR} under
- * {@link SLOT_TABLE_OVERLAY_HOST_ATTR}). Idle the slot is `empty:hidden`.
- * Armed, it grows below Order / Item / Dates and pushes the sheet — it does
- * not cover or replace the column labels. Clicking off either side of the
- * table does not dismiss it — selection does. Primary verbs stay left.
- * Overflow is a ⋮ menu. Delete is isolated on the far right so a mis-click
- * on assign cannot void the order.
+ * - **The open record** ({@link OrderRecordActionStrip}): whenever a record is
+ *   open on an outbound desk (To Ship, Pending, Exceptions — the ledger's
+ *   strip row; Shipped — `DataTable` `actionStrip`), in both views. In place
+ *   the record opens BELOW the search row + this strip, so both stay live.
+ * - **The check-set** ({@link MorphingRowActionMenu}): the CYC-82 manifold
+ *   that opens off the leading checkbox on the slot-table lanes — the same
+ *   verbs over the checked rows. It paints in the table's action row
+ *   (`SLOT_TABLE_ACTION_ROW_ATTR` under the search toolbar, inside
+ *   `SLOT_TABLE_OVERLAY_HOST_ATTR`); a checked row outranks the open record.
+ *
+ * Both build their verbs with {@link useOrderActionVerbs}; the strip chrome
+ * (primary left, ⋮ overflow, isolated Delete far right on a second press,
+ * hotkeys + `?`, morph into a display and back) is the primitive's.
  *
  * ## No confirm step
  *
- * Picking a staffer COMMITS. There is no Confirm/Deny view — a second press to
- * agree with the press you just made is a step that teaches nothing, and the
- * write is already optimistic and visible on the row behind the panel.
+ * Picking a staffer COMMITS. Delete is the one exception, and it is still not
+ * a confirm BUTTON: the same strip button re-labels and takes a second press.
  *
- * Delete is the one exception, and it is still not a confirm BUTTON: the same
- * row re-labels and takes a second press, so an irreversible verb cannot fire
- * on a mis-click without adding a control to the panel.
+ * ## Displays
  *
- * ## Roster
- *
- * Faces come from {@link StaffAvatar} keyed on staff id, so each staffer paints
- * in their assigned colour with their photo when they have one — the operator
- * reads the colour, not the name. Who may appear is
- * {@link morphingRoster}: packers are Tuan and Thuy, pickers are live staff
- * named Sang / Ajax / Lien / Michael, and Kai is never either.
- *
- * Notes stays a pill on this one-row strip. Press (or `N`) morphs the strip
- * into a one-row composer (`notes-view` + {@link OrderNotesTrail}
- * `variant="strip"`). A {@link BottomSheet} (`forceVariant="sheet"` + compact
- * trail) opens only on a mobile URL (`/m/` via {@link isMorphingMobileUrl}).
+ * Out of stock → the OOS product picker (shortage identity: SKU or kit part;
+ * kit parts come from the catalog composition, never Zoho `-P` parsing).
+ * Scan out → staff (StageStaffAssignPopover, StaffAvatar faces) + time.
+ * Label → packing slip / shipping label upload and the Labels walk. Notes →
+ * the one-row composer (`OrderNotesTrail variant="strip"`); a
+ * {@link BottomSheet} (`forceVariant="sheet"`) opens instead only on a mobile
+ * URL (`/m/`, {@link isMorphingMobileUrl}). Add task / Send to staff as task →
+ * the task composer ({@link buildRecordTaskVerbs}).
  */
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
 import { Button } from '@/design-system/primitives/Button';
-import { IconButton } from '@/design-system/primitives/IconButton';
-import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
+  RecordActionStrip,
+  type RecordActionVerb,
+} from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { useDeskRecordPlaneOptional } from '@/design-system/components/DeskRecordPlane';
 import {
   AlertTriangle,
   Bookmark,
+  Copy,
   FileText,
-  MoreHorizontal,
+  Printer,
+  Tag,
   Trash2,
   Truck,
-  Upload,
   Zap,
 } from '@/components/Icons';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -107,11 +98,9 @@ import {
   SLOT_TABLE_ACTION_ROW_ATTR,
   SLOT_TABLE_OVERLAY_HOST_ATTR,
 } from '@/components/tables/slot-table-overlay-host';
-import { useSelectionInlineHotkeysRevealed } from '@/hooks/useSelectionStatusBarHotkeys';
-import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { pushOverlay } from '@/lib/overlay-stack/store';
 import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
-import { resolveSelectionAction } from '@/lib/selection/selection-actions';
+import { resolveSelectionAction, type SelectionAction } from '@/lib/selection/selection-actions';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { showOosPendingToast } from '@/lib/outbound/oos-pending-toast';
 import {
   morphingListingIdentity,
@@ -123,29 +112,9 @@ import {
 } from '@/lib/outbound/morphing-oos';
 import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 import type { KitComposition } from '@/lib/orders/order-kit-composition';
+import type { OrderRecordMode } from '@/lib/selection-context/order-inspector-context';
 import { OosProductCombobox } from '@/components/outbound/orders/oos/OosProductCombobox';
-
-type MenuView =
-  | 'actions'
-  | 'paste'
-  | 'docs'
-  | 'notes'
-  | 'scan-out'
-  | 'oos-pick';
-
-function viewKey(view: MenuView): string {
-  if (view === 'paste') return 'paste-view';
-  if (view === 'docs') return 'docs-view';
-  if (view === 'notes') return 'notes-view';
-  if (view === 'scan-out') return 'scan-out-view';
-  if (view === 'oos-pick') return 'oos-pick-view';
-  return 'actions-view';
-}
-
-function asOosRow(row: unknown): MorphingOosRow {
-  if (!row || typeof row !== 'object') return {};
-  return row as MorphingOosRow;
-}
+import { buildRecordTaskVerbs } from '@/components/tasks/RecordTaskActions';
 
 function orderIdOf(row: unknown): number | null {
   if (!row || typeof row !== 'object' || !('id' in row)) return null;
@@ -178,106 +147,74 @@ function isOutOfStockRow(row: unknown): boolean {
 }
 
 /**
- * The ENGINE-facing face of this panel — what `TableSurfaceBinding.rowPlane`
- * registers for the orders entity.
- *
- * The engine mounts a plane as `{ row, open, onClose, anchorRef }`; this panel
- * has always called its row `record`. One rename adapter, declared beside the
- * panel it adapts, rather than a new file or a churned prop name on 700 lines
- * of working operator surface.
- *
- * Registering it here is what let `OrdersQueueTableRow` go: the panel was the
- * last thing the shared compound row could not mount, so To-ship kept a row
- * component alive to host it.
+ * Catalog verbs the strip paints as its own primary buttons or displays; the
+ * rest of the bulk catalog (`useDashboardBulkSelection`) rides the ⋮ at n=1.
  */
-export function OrdersRowPlane({ row, ...plane }: TableRowPlaneProps<ShippedOrder>) {
-  return <MorphingRowActionMenu record={row} {...plane} />;
+const STRIP_OWNED_CATALOG_KEYS: Record<string, true> = {
+  copy: true,
+  print: true,
+  urgent: true,
+  'scan-out': true,
+  delete: true,
+  'listing-rule': true,
+};
+
+/** The open record's own controls, when the strip is armed for it. */
+export interface OrderOpenRecordControls {
+  /** The open order is in the bulk check-set. */
+  checked: boolean;
+  onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
+  /** To Ship: the paperwork walk on this order. */
+  onOpenLabels?: (record: ShippedOrder) => void;
 }
 
-export function MorphingRowActionMenu({
-  record,
-  open,
-  onClose,
-  anchorRef,
-  inline = false,
-  liveRecords,
-}: {
+export interface OrderActionVerbsOptions {
+  /** The lead order (the open record, or the first checked row). */
   record: ShippedOrder;
-  open: boolean;
-  onClose: () => void;
-  anchorRef: RefObject<HTMLElement | null>;
-  /** Mounted outside the virtualized row window. Portals into the in-flow
-   *  slot under the column header so the labels stay visible. */
-  inline?: boolean;
-  /**
-   * The grid's CURRENT rows, when the host has them. The rail selection store
-   * carries click-time snapshots (it only hears selection events), so a state
-   * derived from `actionRows` alone goes stale the moment a verb lands — the
-   * urgent pill kept promising "Clear urgent" on a row that was already
-   * cleared, and `markUrgent` read the stale flag to pick its direction.
-   * State reads prefer the live row by id and fall back to the snapshot.
-   */
-  liveRecords?: readonly ShippedOrder[];
-}) {
-  const [view, setView] = useState<MenuView>('actions');
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [deleteArmed, setDeleteArmed] = useState(false);
-  const [pasteDraft, setPasteDraft] = useState('');
-  const [pasting, setPasting] = useState(false);
-  const [oosTarget, setOosTarget] = useState<MorphingOosRow | null>(null);
-  const [kitByCatalog, setKitByCatalog] = useState<Map<number, KitComposition>>(new Map());
-  const [kitPartsLoading, setKitPartsLoading] = useState(false);
-  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
-  const barRef = useRef<HTMLDivElement>(null);
-  const hadSelection = useRef(false);
-  const slipInputRef = useRef<HTMLInputElement>(null);
-  const labelInputRef = useRef<HTMLInputElement>(null);
+  /** The orders the verbs act on — the check-set, or `[record]`. */
+  rows: readonly ShippedOrder[];
+  /** The freshest copies of `rows` — state labels read these. */
+  stateRows: readonly ShippedOrder[];
+  mode: OrderRecordMode;
+  /** Present when armed for the open record (adds Select, the Labels walk, tasks). */
+  openRecord?: OrderOpenRecordControls;
+  /** Mobile URL: Notes opens the sheet instead of morphing the strip. */
+  onOpenNotesSheet?: () => void;
+  /** A verb that ends the strip's job (Delete, Resolve, More information). */
+  onFinished: () => void;
+}
+
+/** Every order verb for the strip, mode-aware, over `rows`. */
+export function useOrderActionVerbs({
+  record,
+  rows,
+  stateRows,
+  mode,
+  openRecord,
+  onOpenNotesSheet,
+  onFinished,
+}: OrderActionVerbsOptions): RecordActionVerb[] {
   const assign = useOrderAssignment();
   const queryClient = useQueryClient();
-  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const stage = useDeskStageOptional();
-  const onExceptionsDesk = pathname === SHIPPING_EXCEPTIONS_PATH;
-  const onMobileUrl = isMorphingMobileUrl(pathname);
-
+  const snapshot = useRailActionSnapshot();
+  const catalog =
+    snapshot.scope === DASHBOARD_ORDERS_SELECTION_SCOPE
+      ? (snapshot.actions as SelectionAction<ShippedOrder>[])
+      : [];
+  const actionRows = rows as ShippedOrder[];
   const orderId = Number(record.id);
-  const { rows: selectedRows, actions: catalogActions } = useRailActionSnapshot();
-  const actionRows = selectedRows.length > 0 ? selectedRows : [record];
-  // Freshest row per selected id — see the `liveRecords` prop. Snapshots stay
-  // the fallback so the strip still works on hosts that pass no records.
-  const liveById = new Map((liveRecords ?? []).map((row) => [Number(row.id), row]));
-  const stateRows = actionRows.map((row) => liveById.get(Number(orderIdOf(row))) ?? row);
   const actionIds = actionRows.map(orderIdOf).filter((id): id is number => id != null);
-  const scanOutAction = catalogActions.find((action) => action.key === 'scan-out');
-  const listingRuleAction = catalogActions.find((action) => action.key === 'listing-rule');
-  const scanOutResolved = scanOutAction
-    ? resolveSelectionAction(scanOutAction, actionRows)
-    : null;
-  const scanOutLive = scanOutResolved && !scanOutResolved.disabled ? scanOutResolved : null;
-  const { user } = useAuth();
-  const [scanOutStaffId, setScanOutStaffId] = useState<number | null>(null);
-  const [scanOutAt, setScanOutAt] = useState<Date | undefined>(() => new Date());
-  const [scanOutSaving, setScanOutSaving] = useState(false);
-  const [scanOutStaffOpen, setScanOutStaffOpen] = useState(false);
-  const scanOutStaffRef = useRef<HTMLButtonElement>(null);
-  const deskScanOutFrom = new Date(Date.now() - SCAN_OUT_DESK_MAX_BACKDATE_MS);
+  const shipped = mode === 'shipped';
+  const single = actionRows.length <= 1;
+  const orderRef = String(record.order_id ?? '').trim() || `#${record.id}`;
 
-  const finishScanOutWrites = (ok: number, failed: number, results: PromiseSettledResult<void>[]) => {
-    if (ok > 0) {
-      bustScanOutCaches(queryClient);
-      refreshDomain('orders.outbound');
-      toast.success(ok === 1 ? 'Marked as shipped' : `${ok} orders marked as shipped`);
-    }
-    if (failed > 0) {
-      const first = results.find((row) => row.status === 'rejected');
-      const reason =
-        first && first.status === 'rejected' && first.reason instanceof Error
-          ? first.reason.message
-          : `${failed} of ${results.length} could not be updated`;
-      toast.error(reason);
-    }
-  };
+  const resolved = new Map(
+    catalog.map((action) => [action.key, resolveSelectionAction(action, actionRows)] as const),
+  );
+  const scanOut = resolved.get('scan-out');
 
   const undoScanOut = () => {
     const jobs = actionRows
@@ -310,28 +247,286 @@ export function MorphingRowActionMenu({
     });
   };
 
-  const openScanOut = () => {
-    setDeleteArmed(false);
-    if (scanOutResolved?.direction === 'undo') {
-      undoScanOut();
+  // Live-derived (`stateRows`): the label and the toggle direction must both
+  // answer the row's CURRENT urgency, not the click-time snapshot.
+  const selectionIsUrgent = stateRows.length > 0 && stateRows.every(isUrgentRow);
+  const markUrgent = () => {
+    if (actionIds.length === 0) {
+      toast.error('Select an order first');
       return;
     }
-    setScanOutStaffId(user?.staffId ?? null);
-    setScanOutAt(new Date());
-    setView('scan-out');
+    const next = !selectionIsUrgent;
+    assign.mutate(
+      { orderIds: actionIds, isUrgent: next },
+      {
+        onSuccess: () => toast.success(next ? 'Marked urgent — pinned to top' : 'Urgent cleared'),
+        onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not update urgent'),
+      },
+    );
   };
 
-  const saveScanOut = () => {
-    if (scanOutSaving) return;
-    if (scanOutStaffId == null) {
+  const selectionIsOutOfStock = stateRows.length > 0 && stateRows.every(isOutOfStockRow);
+  const clearOutOfStock = () => {
+    assign.mutate(
+      { orderIds: actionIds, isOutOfStock: false },
+      {
+        onSuccess: () =>
+          toast.success(actionIds.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders'),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Could not clear out of stock'),
+      },
+    );
+  };
+  const oosRows = actionRows.map((row) => row as MorphingOosRow);
+  // Several orders that each carry one known product commit at once; one
+  // order (or a kit) picks the short product in the display.
+  const oosCommitsAtOnce = morphingOosStartView(oosRows) === 'commit-multi';
+  const commitOosEach = () => {
+    const staysPacked = morphingOosStaysPacked(oosRows);
+    void Promise.all(
+      oosRows.map(
+        (row) =>
+          new Promise<void>((resolve, reject) => {
+            const id = morphingOosOrderId(row);
+            if (id == null) {
+              resolve();
+              return;
+            }
+            assign.mutate(morphingOosAssignPayload([id], morphingListingIdentity(row)), {
+              onSuccess: () => resolve(),
+              onError: (err) => reject(err),
+            });
+          }),
+      ),
+    )
+      .then(() =>
+        showOosPendingToast({
+          count: actionIds.length,
+          staysPacked,
+          onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
+        }),
+      )
+      .catch((err) => toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'));
+  };
+
+  const openExceptionResolve = () => {
+    onFinished();
+    if (stage && !stage.fullscreen) stage.toggleFullscreen();
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('order', String(record.id));
+    router.replace(`${SHIPPING_EXCEPTIONS_PATH}?${params.toString()}`, { scroll: false });
+  };
+
+  const deleteOrder = async () => {
+    onFinished();
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
+      if (res.status === 403) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(
+          body.error === 'STEPUP_REQUIRED'
+            ? 'Deleting an order needs a PIN step-up first'
+            : 'You do not have permission to delete an order',
+        );
+        return;
+      }
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string; details?: string };
+        toast.error(body.error ?? body.details ?? 'Could not delete the order');
+        return;
+      }
+      bustFulfillmentCaches(queryClient);
+      await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
+      toast.success('Order deleted');
+    } catch {
+      toast.error('Could not delete the order');
+    }
+  };
+
+  const catalogVerb = (key: string, label: string, icon: ReactNode, hotkey?: string): RecordActionVerb[] => {
+    const r = resolved.get(key);
+    if (!r) return [];
+    return [
+      {
+        id: key,
+        label,
+        icon,
+        hotkey,
+        disabled: r.disabled,
+        disabledReason: r.reason,
+        run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
+      },
+    ];
+  };
+
+  const verbs: RecordActionVerb[] = [];
+
+  if (mode === 'exceptions') {
+    verbs.push({
+      id: 'paste',
+      label: 'Paste item #',
+      hotkey: 'v',
+      display: (done) => (
+        <ExceptionPasteDisplay record={record} onAmbiguous={openExceptionResolve} done={done} />
+      ),
+    });
+    // The record's own Resolve section is the open record's pairing form.
+    if (!openRecord) verbs.push({ id: 'resolve', label: 'Resolve', hotkey: 'r', run: openExceptionResolve });
+  }
+  if (!shipped) {
+    verbs.push({
+      id: 'out-of-stock',
+      label: selectionIsOutOfStock ? 'Clear out of stock' : 'Report out of stock',
+      icon: <AlertTriangle />,
+      hotkey: 'o',
+      tone: 'danger',
+      pressed: selectionIsOutOfStock,
+      ...(selectionIsOutOfStock
+        ? { run: clearOutOfStock }
+        : oosCommitsAtOnce
+          ? { run: commitOosEach }
+          : { display: (done: () => void) => <OosDisplay rows={oosRows} done={done} /> }),
+    });
+    verbs.push({
+      id: 'urgent',
+      label: selectionIsUrgent ? 'Clear urgent' : 'Mark urgent',
+      icon: <Zap />,
+      hotkey: 'u',
+      pressed: selectionIsUrgent,
+      run: markUrgent,
+    });
+  }
+  verbs.push({
+    id: 'label',
+    label: 'Label',
+    icon: <FileText />,
+    hotkey: 'l',
+    display: (done) => (
+      <LabelDisplay record={record} onOpenLabels={openRecord?.onOpenLabels} done={done} />
+    ),
+  });
+  verbs.push({
+    id: 'scan-out',
+    label: scanOut?.label ?? 'Mark scanned out',
+    icon: <Truck />,
+    hotkey: 'x',
+    disabled: scanOut?.disabled,
+    disabledReason: scanOut?.reason,
+    ...(scanOut?.direction === 'undo'
+      ? { run: undoScanOut }
+      : { display: (done: () => void) => <ScanOutDisplay rows={actionRows} done={done} /> }),
+  });
+  verbs.push(
+    onOpenNotesSheet
+      ? { id: 'notes', label: 'Notes', hotkey: MORPHING_NOTES_HOTKEY, run: onOpenNotesSheet }
+      : {
+          id: 'notes',
+          label: 'Notes',
+          hotkey: MORPHING_NOTES_HOTKEY,
+          display: () => (
+            <OrderNotesTrail
+              orderId={orderId}
+              legacyNote={record.notes}
+              autoFocus
+              variant="strip"
+              className="min-w-0 flex-1"
+            />
+          ),
+        },
+  );
+  if (openRecord?.onToggleSelect) {
+    const toggle = openRecord.onToggleSelect;
+    verbs.push({
+      id: 'select',
+      label: openRecord.checked ? 'Selected' : 'Select',
+      pressed: openRecord.checked,
+      run: () => toggle(record, { shiftKey: false }),
+    });
+  }
+  verbs.push(...catalogVerb('copy', 'Copy', <Copy />, 'c'));
+  verbs.push(...catalogVerb('print', 'Print', <Printer />, 'p'));
+
+  // ── ⋮ overflow ──
+  if (!shipped) {
+    verbs.push({
+      id: 'create-rule',
+      label: 'Create rule',
+      icon: <Bookmark />,
+      hotkey: mode === 'exceptions' ? undefined : 'r',
+      placement: 'overflow',
+      run: () => {
+        const rule = catalog.find((action) => action.key === 'listing-rule');
+        if (rule) void rule.run(actionRows);
+        else dispatchOpenListingStaffRules();
+      },
+    });
+  }
+  for (const [key, r] of resolved) {
+    if (STRIP_OWNED_CATALOG_KEYS[key]) continue;
+    verbs.push({
+      id: key,
+      label: r.label,
+      icon: r.action.icon,
+      placement: 'overflow',
+      disabled: r.disabled,
+      disabledReason: r.reason,
+      run: () => r.action.run(actionRows, r.direction ? { direction: r.direction } : undefined),
+    });
+  }
+  if (single) {
+    verbs.push(
+      ...buildRecordTaskVerbs({ entityType: 'order', entityId: orderId, label: `Order ${orderRef}` }),
+    );
+  }
+  if (!openRecord) {
+    verbs.push({
+      id: 'more-info',
+      label: 'More information',
+      icon: <Tag />,
+      hotkey: MORPHING_MORE_INFO_HOTKEY,
+      placement: 'overflow',
+      run: () => {
+        onFinished();
+        dispatchOpenShippedDetails(record, 'queue', { force: true });
+      },
+    });
+  }
+  if (single) {
+    verbs.push({
+      id: 'delete',
+      label: 'Delete',
+      icon: <Trash2 />,
+      hotkey: 'd',
+      tone: 'danger',
+      placement: 'isolated',
+      run: deleteOrder,
+    });
+  }
+  return verbs;
+}
+
+/** Scan out — who and when (backdated at most `SCAN_OUT_DESK_MAX_BACKDATE_MS`), then Save. */
+function ScanOutDisplay({ rows, done }: { rows: readonly ShippedOrder[]; done: () => void }) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [staffId, setStaffId] = useState<number | null>(user?.staffId ?? null);
+  const [at, setAt] = useState<Date | undefined>(() => new Date());
+  const [saving, setSaving] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+  const staffRef = useRef<HTMLButtonElement>(null);
+  const from = new Date(Date.now() - SCAN_OUT_DESK_MAX_BACKDATE_MS);
+
+  const save = () => {
+    if (saving) return;
+    if (staffId == null) {
       toast.error('Select a staffer');
       return;
     }
-    if (!scanOutAt || Number.isNaN(scanOutAt.getTime())) {
+    if (!at || Number.isNaN(at.getTime())) {
       toast.error('Pick a date and time');
       return;
     }
-    const jobs = actionRows
+    const jobs = rows
       .map((row) => trackingOf(row))
       .filter((tracking): tracking is string => Boolean(tracking))
       .map((trackingNumber) =>
@@ -340,8 +535,8 @@ export function MorphingRowActionMenu({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             trackingNumber,
-            staffId: scanOutStaffId,
-            createdAt: scanOutAt.toISOString(),
+            staffId,
+            createdAt: at.toISOString(),
             source: SCAN_OUT_DESK_SOURCE,
           }),
         }).then(async (res) => {
@@ -362,36 +557,169 @@ export function MorphingRowActionMenu({
       toast.error('No shipping label on the selected row(s)');
       return;
     }
-    setScanOutSaving(true);
+    setSaving(true);
     void Promise.allSettled(jobs).then((results) => {
       const failed = results.filter((row) => row.status === 'rejected').length;
       const ok = results.length - failed;
-      finishScanOutWrites(ok, failed, results);
-      setScanOutSaving(false);
-      if (ok > 0 && failed === 0) setView('actions');
+      if (ok > 0) {
+        bustScanOutCaches(queryClient);
+        refreshDomain('orders.outbound');
+        toast.success(ok === 1 ? 'Marked as shipped' : `${ok} orders marked as shipped`);
+      }
+      if (failed > 0) {
+        const first = results.find((row) => row.status === 'rejected');
+        toast.error(
+          first && first.status === 'rejected' && first.reason instanceof Error
+            ? first.reason.message
+            : `${failed} of ${results.length} could not be updated`,
+        );
+      }
+      setSaving(false);
+      if (ok > 0 && failed === 0) done();
     });
   };
 
-  const runListingRule = () => {
-    if (listingRuleAction) {
-      void listingRuleAction.run(actionRows);
-      return;
-    }
-    dispatchOpenListingStaffRules();
-  };
+  return (
+    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1" data-testid="order-scan-out-display">
+      <Button
+        ref={staffRef}
+        type="button"
+        variant="secondary"
+        size="sm"
+        radius="pill"
+        aria-haspopup="listbox"
+        aria-expanded={staffOpen}
+        ariaLabel="Staff who scanned out"
+        data-testid="order-scan-out-staff"
+        onClick={() => setStaffOpen(true)}
+      >
+        {staffId != null ? (
+          <span className="flex min-w-0 items-center gap-2">
+            <StaffAvatar staffId={staffId} name={getStaffName(staffId)} size="sm" colorRing alt="" />
+            <span className="truncate">{getStaffName(staffId)}</span>
+          </span>
+        ) : (
+          'Staff'
+        )}
+      </Button>
+      <StageStaffAssignPopover
+        open={staffOpen}
+        onClose={() => setStaffOpen(false)}
+        anchorRef={staffRef}
+        label="Staff who scanned out"
+        role="all"
+        selectedStaffId={staffId}
+        onCommit={(next) => setStaffId(next)}
+      />
+      <DateTimePickerField
+        value={at}
+        onChange={setAt}
+        placeholder="Date and time"
+        fromDate={from}
+        toDate={new Date()}
+        className="w-[13.5rem] shrink-0"
+      />
+      <Button
+        type="button"
+        variant="success"
+        size="sm"
+        radius="pill"
+        className="ml-auto shrink-0"
+        disabled={saving}
+        data-testid="order-scan-out-save"
+        onClick={save}
+      >
+        {saving ? 'Saving…' : 'Save'}
+      </Button>
+    </div>
+  );
+}
 
-  const openDocs = () => {
-    setDeleteArmed(false);
-    setView('docs');
-  };
+/** Out of stock — pick the short product (a kit's part from its catalog composition), commit. */
+function OosDisplay({ rows, done }: { rows: readonly MorphingOosRow[]; done: () => void }) {
+  const assign = useOrderAssignment();
+  const router = useRouter();
+  const [kitByCatalog, setKitByCatalog] = useState<Map<number, KitComposition>>(new Map());
+  const [loading, setLoading] = useState(false);
 
-  const uploadDocument = (documentType: 'packing_slip' | 'shipping_label', file: File | undefined) => {
-    if (!file) return;
-    const id = actionIds[0] ?? orderId;
-    if (!id) {
+  const catalogKey = rows.map((row) => Number(row.sku_catalog_id) || 0).join(',');
+  useEffect(() => {
+    const ids = [...new Set(catalogKey.split(',').map(Number).filter((id) => id > 0))];
+    if (ids.length === 0) return;
+    let cancelled = false;
+    setLoading(true);
+    void Promise.all(
+      ids.map(async (catalogId) => {
+        const res = await fetch(`/api/sku-catalog/${catalogId}/composition`);
+        const body = (await res.json().catch(() => null)) as { composition?: KitComposition } | null;
+        return [catalogId, body?.composition ?? null] as const;
+      }),
+    )
+      .then((pairs) => {
+        if (cancelled) return;
+        setKitByCatalog(new Map(pairs.filter((pair): pair is readonly [number, KitComposition] => pair[1] != null)));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogKey]);
+
+  const commit = (row: MorphingOosRow, identity: OrderShortageIdentity) => {
+    const id = morphingOosOrderId(row);
+    if (id == null) {
       toast.error('Select an order first');
       return;
     }
+    assign.mutate(morphingOosAssignPayload([id], identity), {
+      onSuccess: () => {
+        showOosPendingToast({
+          count: 1,
+          sku: identity.sku,
+          qtyShort: identity.qtyShort,
+          staysPacked: morphingOosStaysPacked([row]),
+          onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
+        });
+        done();
+      },
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'),
+    });
+  };
+
+  return (
+    <div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1" data-testid="order-oos-display">
+      <OosProductCombobox
+        lines={[...rows]}
+        compositionByCatalogId={kitByCatalog}
+        disabled={loading}
+        onPick={(orderRowId, identity) => {
+          const target = rows.find((row) => morphingOosOrderId(row) === orderRowId) ?? rows[0];
+          if (target) commit(target, identity);
+        }}
+      />
+    </div>
+  );
+}
+
+/** Label — link a packing slip / shipping label the packer scan prints, or walk the labels. */
+function LabelDisplay({
+  record,
+  onOpenLabels,
+  done,
+}: {
+  record: ShippedOrder;
+  onOpenLabels?: (record: ShippedOrder) => void;
+  done: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const slipInputRef = useRef<HTMLInputElement>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const id = Number(record.id);
+
+  const upload = (documentType: 'packing_slip' | 'shipping_label', file: File | undefined) => {
+    if (!file) return;
     const form = new FormData();
     form.set('file', file);
     form.set('documentType', documentType);
@@ -409,60 +737,77 @@ export function MorphingRowActionMenu({
           ? 'Packing slip linked — packer scan will print it'
           : 'Shipping label linked — packer scan will print it',
       );
+      done();
     });
   };
 
-  const close = () => {
-    setView('actions');
-    setNotesOpen(false);
-    setDeleteArmed(false);
-    setPasteDraft('');
-    setPasting(false);
-    setOosTarget(null);
-    setKitByCatalog(new Map());
-    onClose();
-  };
+  return (
+    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1" data-testid="order-label-display">
+      <input
+        ref={slipInputRef}
+        type="file"
+        accept="application/pdf,image/*"
+        className="sr-only"
+        onChange={(event) => {
+          upload('packing_slip', event.target.files?.[0]);
+          event.currentTarget.value = '';
+        }}
+      />
+      <input
+        ref={labelInputRef}
+        type="file"
+        accept="application/pdf,image/*"
+        className="sr-only"
+        onChange={(event) => {
+          upload('shipping_label', event.target.files?.[0]);
+          event.currentTarget.value = '';
+        }}
+      />
+      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<FileText />} onClick={() => slipInputRef.current?.click()}>
+        Upload packing slip
+      </Button>
+      <Button type="button" variant="secondary" size="sm" radius="pill" icon={<Truck />} onClick={() => labelInputRef.current?.click()}>
+        Upload shipping label
+      </Button>
+      {onOpenLabels ? (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          radius="pill"
+          data-testid="order-label-walk"
+          onClick={() => {
+            done();
+            onOpenLabels(record);
+          }}
+        >
+          Labels walk
+        </Button>
+      ) : null}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    if (!open) return;
-    rememberRowPlaneOpen(true);
-    setView('actions');
-    setNotesOpen(false);
-    setDeleteArmed(false);
-    setPasteDraft('');
-    setPasting(false);
-    setOosTarget(null);
-    setKitByCatalog(new Map());
-    return () => rememberRowPlaneOpen(false);
-  }, [open]);
+/** Exceptions — paste the item number or listing URL; a unique match backfills the order. */
+function ExceptionPasteDisplay({
+  record,
+  onAmbiguous,
+  done,
+}: {
+  record: ShippedOrder;
+  onAmbiguous: () => void;
+  done: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState('');
+  const [pasting, setPasting] = useState(false);
 
-  const openExceptionPaste = () => {
-    setDeleteArmed(false);
-    setPasteDraft('');
-    setView('paste');
-  };
-
-  const openExceptionResolve = () => {
-    close();
-    if (stage && !stage.fullscreen) stage.toggleFullscreen();
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('order', String(record.id));
-    const qs = params.toString();
-    router.replace(qs ? `${SHIPPING_EXCEPTIONS_PATH}?${qs}` : SHIPPING_EXCEPTIONS_PATH, {
-      scroll: false,
-    });
-  };
-
-  const commitExceptionPaste = (value: string) => {
+  const commit = (value: string) => {
     const next = value.trim();
     if (!next) return;
     setPasting(true);
     void commitExceptionsItemPaste(next, [
-      {
-        id: orderId,
-        itemNumber: record.item_number ?? null,
-        accountSource: record.account_source ?? null,
-      },
+      { id: Number(record.id), itemNumber: record.item_number ?? null, accountSource: record.account_source ?? null },
     ]).then(async (result) => {
       setPasting(false);
       if (!result.ok) {
@@ -471,7 +816,7 @@ export function MorphingRowActionMenu({
       }
       if (result.outcome === 'ambiguous') {
         toast.error('Several catalog matches — pick one in Resolve.');
-        openExceptionResolve();
+        onAmbiguous();
         return;
       }
       if (result.outcome === 'saved-item') {
@@ -484,231 +829,136 @@ export function MorphingRowActionMenu({
         );
       }
       await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
-      close();
+      done();
     });
   };
 
-  const openNotes = () => {
-    setDeleteArmed(false);
-    if (onMobileUrl) {
-      setNotesOpen(true);
-      return;
-    }
-    setView('notes');
-  };
+  return (
+    <div className="min-w-0 max-w-md flex-1" data-testid="exceptions-paste-item-field">
+      <SearchField
+        value={draft}
+        onChange={setDraft}
+        onSearch={commit}
+        placeholder="Item number or listing URL…"
+        autoFocus
+        hideLeadingIcon
+        hideUnderline
+        fillHost
+        tone="neutral"
+        isSearching={pasting}
+        debounceMs={0}
+      />
+    </div>
+  );
+}
 
-  const backToActions = () => {
-    setView('actions');
+/**
+ * The strip armed for the OPEN record — To Ship, Pending, Exceptions (the
+ * ledger's strip row) and Shipped (`DataTable` `actionStrip`), both views.
+ * Keyed by the order so walking J/K resets an open display / armed Delete.
+ */
+export function OrderRecordActionStrip({
+  record,
+  mode,
+  checked = false,
+  onToggleSelect,
+  onOpenLabels,
+}: {
+  record: ShippedOrder;
+  mode: OrderRecordMode;
+} & Partial<OrderOpenRecordControls>) {
+  const verbs = useOrderActionVerbs({
+    record,
+    rows: [record],
+    stateRows: [record],
+    mode,
+    openRecord: { checked, onToggleSelect, onOpenLabels },
+    onFinished: () => undefined,
+  });
+  const orderRef = String(record.order_id ?? '').trim() || `#${record.id}`;
+  return <RecordActionStrip verbs={verbs} label={`Order ${orderRef} actions`} testId="order-record-actions" />;
+}
+
+/**
+ * The ENGINE-facing face of the check-set strip — what
+ * `TableSurfaceBinding.rowPlane` registers for the orders entity (`row` →
+ * `record`, one rename adapter beside the panel it adapts).
+ */
+export function OrdersRowPlane({ row, ...plane }: TableRowPlaneProps<ShippedOrder>) {
+  return <MorphingRowActionMenu record={row} {...plane} />;
+}
+
+/** The check-set strip (CYC-82): the order verbs over the checked rows. */
+export function MorphingRowActionMenu({
+  record,
+  open,
+  onClose,
+  anchorRef,
+  inline = false,
+  liveRecords,
+  mode,
+}: {
+  record: ShippedOrder;
+  open: boolean;
+  onClose: () => void;
+  anchorRef: RefObject<HTMLElement | null>;
+  /** Mounted in the table's action row by its host (no portal). */
+  inline?: boolean;
+  /**
+   * The grid's CURRENT rows, when the host has them. The rail selection store
+   * carries click-time snapshots, so state labels (Mark / Clear urgent) read
+   * the live row by id and fall back to the snapshot.
+   */
+  liveRecords?: readonly ShippedOrder[];
+  /** The desk; defaults from the route (Exceptions) else To Ship. */
+  mode?: OrderRecordMode;
+}) {
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
+  const hadSelection = useRef(false);
+  const pathname = usePathname();
+  const onMobileUrl = isMorphingMobileUrl(pathname);
+  const { rows: selectedRows } = useRailActionSnapshot();
+  const actionRows = (selectedRows.length > 0 ? selectedRows : [record]) as ShippedOrder[];
+  const liveById = new Map((liveRecords ?? []).map((row) => [Number(row.id), row]));
+  const stateRows = actionRows.map((row) => liveById.get(Number(orderIdOf(row))) ?? row);
+  const close = () => {
     setNotesOpen(false);
-    setDeleteArmed(false);
-    setPasteDraft('');
-    setOosTarget(null);
-    setKitByCatalog(new Map());
-    setScanOutSaving(false);
-    setScanOutStaffOpen(false);
+    onClose();
   };
 
-  const openMoreInformation = () => {
-    close();
-    dispatchOpenShippedDetails(record, 'queue', { force: true });
-  };
+  const verbs = useOrderActionVerbs({
+    record,
+    rows: actionRows,
+    stateRows,
+    mode: mode ?? (pathname === SHIPPING_EXCEPTIONS_PATH ? 'exceptions' : 'to-ship'),
+    onOpenNotesSheet: onMobileUrl ? () => setNotesOpen(true) : undefined,
+    onFinished: close,
+  });
 
-  // Live-derived (see `stateRows`): the label and the toggle direction must
-  // both answer the row's CURRENT urgency, not the click-time snapshot.
-  const selectionIsUrgent = stateRows.length > 0 && stateRows.every(isUrgentRow);
-  const markUrgent = () => {
-    const ids = actionIds.length > 0 ? actionIds : [orderId].filter((id) => Number.isFinite(id) && id > 0);
-    if (ids.length === 0) {
-      toast.error('Select an order first');
-      return;
-    }
-    const next = !selectionIsUrgent;
-    assign.mutate(
-      { orderIds: ids, isUrgent: next },
-      {
-        onSuccess: () => toast.success(next ? 'Marked urgent — pinned to top' : 'Urgent cleared'),
-        onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not update urgent'),
-      },
-    );
-  };
+  useEffect(() => {
+    if (!open) return;
+    rememberRowPlaneOpen(true);
+    setNotesOpen(false);
+    return () => rememberRowPlaneOpen(false);
+  }, [open]);
 
-  const selectionIsOutOfStock = stateRows.length > 0 && stateRows.every(isOutOfStockRow);
-  const toggleOutOfStock = () => {
-    if (!selectionIsOutOfStock) {
-      openOutOfStock();
-      return;
-    }
-    const ids = actionIds.length > 0 ? actionIds : [orderId].filter((id) => Number.isFinite(id) && id > 0);
-    if (ids.length === 0) {
-      toast.error('Select an order first');
-      return;
-    }
-    assign.mutate(
-      { orderIds: ids, isOutOfStock: false },
-      {
-        onSuccess: () =>
-          toast.success(ids.length === 1 ? 'Out of stock cleared' : 'Cleared out of stock on selected orders'),
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : 'Could not clear out of stock'),
-      },
-    );
-  };
-
-  const commitOutOfStock = (rows: MorphingOosRow[], identity: OrderShortageIdentity) => {
-    const ids = rows
-      .map(morphingOosOrderId)
-      .filter((id): id is number => id != null);
-    if (ids.length === 0) {
-      toast.error('Select an order first');
-      return;
-    }
-    const staysPacked = morphingOosStaysPacked(rows);
-    assign.mutate(morphingOosAssignPayload(ids, identity), {
-      onSuccess: () => {
-        showOosPendingToast({
-          count: ids.length,
-          sku: identity.sku,
-          qtyShort: identity.qtyShort,
-          staysPacked,
-          onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
-        });
-        backToActions();
-      },
-      onError: (err) =>
-        toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'),
-    });
-  };
-
-  const loadKitCompositions = (rows: MorphingOosRow[]) => {
-    const ids = Array.from(
-      new Set(
-        rows
-          .map((row) => Number(row.sku_catalog_id))
-          .filter((id) => Number.isFinite(id) && id > 0),
-      ),
-    );
-    if (ids.length === 0) return;
-    setKitPartsLoading(true);
-    void Promise.all(
-      ids.map(async (catalogId) => {
-        const res = await fetch(`/api/sku-catalog/${catalogId}/composition`);
-        const body = (await res.json().catch(() => null)) as { composition?: KitComposition } | null;
-        return [catalogId, body?.composition ?? null] as const;
-      }),
-    )
-      .then((pairs) => {
-        setKitByCatalog((prev) => {
-          const next = new Map(prev);
-          for (const [id, composition] of pairs) {
-            if (composition) next.set(id, composition);
-          }
-          return next;
-        });
-      })
-      .finally(() => setKitPartsLoading(false));
-  };
-
-  const openOutOfStock = () => {
-    setDeleteArmed(false);
-    const rows = (actionRows.length > 0 ? actionRows : [record]).map(asOosRow);
-    const start = morphingOosStartView(rows);
-    if (start === 'commit-multi') {
-      const staysPacked = morphingOosStaysPacked(rows);
-      const ids = rows.map(morphingOosOrderId).filter((id): id is number => id != null);
-      if (ids.length === 0) {
-        toast.error('Select an order first');
-        return;
-      }
-      void Promise.all(
-        rows.map(
-          (row) =>
-            new Promise<void>((resolve, reject) => {
-              const id = morphingOosOrderId(row);
-              if (id == null) {
-                resolve();
-                return;
-              }
-              assign.mutate(morphingOosAssignPayload([id], morphingListingIdentity(row)), {
-                onSuccess: () => resolve(),
-                onError: (err) => reject(err),
-              });
-            }),
-        ),
-      )
-        .then(() => {
-          showOosPendingToast({
-            count: ids.length,
-            staysPacked,
-            onViewPending: () => router.push(SHIPPING_SHORTAGE_PATH),
-          });
-          backToActions();
-        })
-        .catch((err) =>
-          toast.error(err instanceof Error ? err.message : 'Could not mark out of stock'),
-        );
-      return;
-    }
-    setOosTarget(rows[0] ?? asOosRow(record));
-    loadKitCompositions(rows);
-    setView('oos-pick');
-  };
-
-  const deleteOrder = async () => {
-    if (!deleteArmed) {
-      setDeleteArmed(true);
-      return;
-    }
-    close();
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, { method: 'DELETE' });
-      if (res.status === 403) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        toast.error(
-          body.error === 'STEPUP_REQUIRED'
-            ? 'Deleting an order needs a PIN step-up first'
-            : 'You do not have permission to delete an order',
-        );
-        return;
-      }
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          error?: string;
-          details?: string;
-        };
-        toast.error(body.error ?? body.details ?? 'Could not delete the order');
-        return;
-      }
-      bustFulfillmentCaches(queryClient);
-      await queryClient.invalidateQueries({ queryKey: ['order-exceptions'] });
-      toast.success('Order deleted');
-    } catch {
-      toast.error('Could not delete the order');
-    }
-  };
-
+  // The row plane portals into the table's action row (under the search
+  // toolbar); the inline host is already in it.
   useLayoutEffect(() => {
     if (inline) return;
     if (!open) {
       setOverlayHost(null);
       return;
     }
-    const grid =
+    const table =
       anchorRef.current?.closest(`[${SLOT_TABLE_OVERLAY_HOST_ATTR}]`)
       ?? document.querySelector(`[${SLOT_TABLE_OVERLAY_HOST_ATTR}]`);
-    const slot =
-      grid instanceof Element
-        ? grid.querySelector(`[${SLOT_TABLE_ACTION_ROW_ATTR}]`)
-        : document.querySelector(`[${SLOT_TABLE_ACTION_ROW_ATTR}]`);
+    const slot = (table ?? document).querySelector(`[${SLOT_TABLE_ACTION_ROW_ATTR}]`);
     setOverlayHost(slot instanceof HTMLElement ? slot : null);
   }, [open, anchorRef, inline]);
 
-  const showHotkeys = useSelectionInlineHotkeysRevealed();
-
-  useEffect(() => {
-    if (!open) return;
-    return pushOverlay();
-  }, [open]);
-
+  // Unchecking the last row closes the strip.
   useEffect(() => {
     if (!open) {
       hadSelection.current = false;
@@ -721,422 +971,63 @@ export function MorphingRowActionMenu({
     if (hadSelection.current) close();
   }, [open, selectedRows.length]);
 
-  useEffect(() => {
-    if (!open) return;
-    const actionByLetter = new Map<string, () => void>([
-      ['u', markUrgent],
-      ['o', toggleOutOfStock],
-      ['r', runListingRule],
-      [MORPHING_NOTES_HOTKEY.toLowerCase(), openNotes],
-      [MORPHING_MORE_INFO_HOTKEY.toLowerCase(), openMoreInformation],
-      ['x', openScanOut],
-      ['d', () => void deleteOrder()],
-    ]);
-    if (onExceptionsDesk) {
-      actionByLetter.set('v', openExceptionPaste);
-      actionByLetter.set('r', openExceptionResolve);
-    }
-    const onKey = (event: KeyboardEvent) => {
-      const key = event.key;
-      if (key === 'Escape') {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        if (notesOpen) {
-          setNotesOpen(false);
-          return;
-        }
-        if (view === 'paste' || view === 'docs' || view === 'notes' || view === 'scan-out' || view.startsWith('oos-')) {
-          backToActions();
-          return;
-        }
-        if (selectedRows.length === 0) close();
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isEditableKeyTarget(event.target)) return;
-      if (notesOpen) return;
-      if (view !== 'actions') return;
-      const letter = key.length === 1 ? key.toLowerCase() : '';
-      const run = actionByLetter.get(letter);
-      if (!run) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      run();
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  });
-
   if (!open || (!inline && !overlayHost)) return null;
-  const overlay = (
+  const strip = (
     <>
-    <div
-      ref={barRef}
-      role="toolbar"
-      aria-label="Row actions"
-      data-testid="morphing-row-action-menu"
-      data-view={viewKey(view)}
-      className={
-        view === 'notes' || view === 'scan-out' || view.startsWith('oos-')
-          ? 'flex w-full min-w-0 flex-nowrap items-center gap-1 bg-surface-card px-1 py-1.5'
-          : 'flex w-full min-w-0 flex-wrap items-center gap-1 bg-surface-card px-1 py-1.5'
-      }
-    >
-      <AnimatePresence mode="sync" initial={false}>
-        {view === 'actions' ? (
-          <motion.div key="actions-view" className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-              {onExceptionsDesk ? (
-                <>
-                  <Button type="button" variant="execute" size="sm" radius="pill" onClick={openExceptionPaste}>
-                    Paste item #
-                  </Button>
-                  <Button type="button" variant="execute" size="sm" radius="pill" onClick={openExceptionResolve}>
-                    Resolve
-                  </Button>
-                </>
-              ) : null}
-              <Button
-                type="button"
-                variant="yellow"
-                size="sm"
-                radius="pill"
-                icon={<Zap />}
-                data-testid="morphing-urgent"
-                aria-pressed={selectionIsUrgent}
-                onClick={markUrgent}
-              >
-                {/*
-                  A button label is the VERB it performs from the current
-                  state (operator 2026-09-15) — a state word ("Urgent") forces
-                  the operator to guess whether clicking sets, clears, or does
-                  nothing, and the row already reports urgency three other ways
-                  (edge rail + glyph, status pill, pinning). Transition labels
-                  both ways; the pressed styling carries the state, the label
-                  carries the promise. `u` still toggles either way.
-                */}
-                {selectionIsUrgent ? 'Clear urgent' : 'Mark urgent'}
-              </Button>
-              <Button
-                type="button"
-                variant="dangerSoft"
-                size="sm"
-                radius="pill"
-                icon={<AlertTriangle />}
-                data-testid="morphing-out-of-stock"
-                aria-pressed={selectionIsOutOfStock}
-                onClick={toggleOutOfStock}
-              >
-                {selectionIsOutOfStock ? 'Clear out of stock' : 'Report out of stock'}
-              </Button>
-              <Button
-                type="button"
-                variant="execute"
-                size="sm"
-                radius="pill"
-                icon={<FileText />}
-                data-testid="morphing-notes"
-                aria-haspopup={onMobileUrl ? 'dialog' : undefined}
-                aria-expanded={onMobileUrl ? notesOpen : false}
-                onClick={openNotes}
-              >
-                Notes
-              </Button>
-              <Button type="button" variant="execute" size="sm" radius="pill" icon={<Upload />} onClick={openDocs} data-testid="morphing-upload-docs">
-                Upload docs
-              </Button>
-              <Button
-                type="button"
-                variant="success"
-                size="sm"
-                radius="pill"
-                icon={<Truck />}
-                title={scanOutLive?.reason ?? (actionRows.length > 1 ? `${actionRows.length} selected` : 'Mark scanned out')}
-                data-testid="morphing-scan-out"
-                onClick={openScanOut}
-              >
-                {scanOutLive?.label ?? 'Mark scanned out'}
-              </Button>
-            </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    type="button"
-                    size="sm"
-                    radius="pill"
-                    tone="neutral"
-                    icon={<MoreHorizontal className="h-3.5 w-3.5" />}
-                    ariaLabel="More actions"
-                    data-testid="morphing-row-more-actions"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="bottom">
-                  {/*
-                    CREATE RULE lives here, not on the strip (operator
-                    2026-09-15): a listing-level rule is rare and
-                    configuration-flavoured — it does not belong on every
-                    selection ahead of the verbs the floor uses constantly.
-                    The `r` hotkey still runs it without opening this menu.
-                  */}
-                  <DropdownMenuItem onSelect={runListingRule} data-testid="morphing-create-rule">
-                    <Bookmark className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    Create rule
-                    {showHotkeys ? (
-                      <KeyboardKey aria-hidden size="sm" className="ml-auto">
-                        R
-                      </KeyboardKey>
-                    ) : null}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={openMoreInformation}>
-                    More information
-                    {showHotkeys ? (
-                      <KeyboardKey aria-hidden size="sm" className="ml-auto">
-                        {MORPHING_MORE_INFO_HOTKEY}
-                      </KeyboardKey>
-                    ) : null}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                radius="pill"
-                icon={<Trash2 />}
-                data-testid="morphing-row-delete"
-                onClick={() => void deleteOrder()}
-              >
-                {deleteArmed ? 'Delete — press again' : 'Delete'}
-              </Button>
-            </div>
-          </motion.div>
-          ) : view === 'notes' ? (
-            <motion.div
-              key="notes-view"
-              className="flex min-w-0 flex-1 flex-nowrap items-center gap-1"
-              data-testid="morphing-notes-view"
-              onKeyDown={(event) => {
-                if (event.key !== 'Escape') return;
-                event.preventDefault();
-                event.stopPropagation();
-                backToActions();
-              }}
-            >
-              <Button type="button" variant="ghost" size="sm" onClick={backToActions}>
-                Back
-              </Button>
-              <OrderNotesTrail
-                orderId={orderId}
-                legacyNote={record.notes}
-                autoFocus
-                variant="strip"
-                className="min-w-0 flex-1"
-              />
-            </motion.div>
-          ) : view === 'scan-out' ? (
-            <motion.div
-              key="scan-out-view"
-              className="flex min-w-0 flex-1 flex-nowrap items-center gap-1"
-              data-testid="morphing-scan-out-view"
-              onKeyDown={(event) => {
-                if (event.key !== 'Escape') return;
-                event.preventDefault();
-                event.stopPropagation();
-                backToActions();
-              }}
-            >
-              <Button type="button" variant="ghost" size="sm" onClick={backToActions}>
-                Back
-              </Button>
-              <Button
-                ref={scanOutStaffRef}
-                type="button"
-                variant="secondary"
-                size="sm"
-                radius="pill"
-                aria-haspopup="listbox"
-                aria-expanded={scanOutStaffOpen}
-                ariaLabel="Staff who scanned out"
-                data-testid="morphing-scan-out-staff"
-                onClick={() => setScanOutStaffOpen(true)}
-              >
-                {scanOutStaffId != null ? (
-                  <span className="flex min-w-0 items-center gap-2">
-                    <StaffAvatar
-                      staffId={scanOutStaffId}
-                      name={getStaffName(scanOutStaffId)}
-                      size="sm"
-                      colorRing
-                      alt=""
-                    />
-                    <span className="truncate">{getStaffName(scanOutStaffId)}</span>
-                  </span>
-                ) : (
-                  'Staff'
-                )}
-              </Button>
-              <StageStaffAssignPopover
-                open={scanOutStaffOpen}
-                onClose={() => setScanOutStaffOpen(false)}
-                anchorRef={scanOutStaffRef}
-                label="Staff who scanned out"
-                role="all"
-                selectedStaffId={scanOutStaffId}
-                onCommit={(staffId) => setScanOutStaffId(staffId)}
-              />
-              <DateTimePickerField
-                value={scanOutAt}
-                onChange={setScanOutAt}
-                placeholder="Date and time"
-                fromDate={deskScanOutFrom}
-                toDate={new Date()}
-                className="w-[13.5rem] shrink-0"
-              />
-              <Button
-                type="button"
-                variant="success"
-                size="sm"
-                radius="pill"
-                className="ml-auto shrink-0"
-                disabled={scanOutSaving}
-                data-testid="morphing-scan-out-save"
-                onClick={saveScanOut}
-              >
-                {scanOutSaving ? 'Saving…' : 'Save'}
-              </Button>
-            </motion.div>
-          ) : view === 'docs' ? (
-            <motion.div key="docs-view" className="flex min-w-0 flex-1 flex-wrap items-center gap-1" data-testid="morphing-docs-view">
-              <Button type="button" variant="ghost" size="sm" onClick={backToActions}>
-                Back
-              </Button>
-              <input
-                ref={slipInputRef}
-                type="file"
-                accept="application/pdf,image/*"
-                className="sr-only"
-                onChange={(event) => {
-                  uploadDocument('packing_slip', event.target.files?.[0]);
-                  event.currentTarget.value = '';
-                }}
-              />
-              <input
-                ref={labelInputRef}
-                type="file"
-                accept="application/pdf,image/*"
-                className="sr-only"
-                onChange={(event) => {
-                  uploadDocument('shipping_label', event.target.files?.[0]);
-                  event.currentTarget.value = '';
-                }}
-              />
-              <Button type="button" variant="execute" size="sm" radius="pill" icon={<FileText />} onClick={() => slipInputRef.current?.click()}>
-                Packing slip
-              </Button>
-              <Button type="button" variant="success" size="sm" radius="pill" icon={<Truck />} onClick={() => labelInputRef.current?.click()}>
-                Shipping label
-              </Button>
-            </motion.div>
-          ) : view === 'oos-pick' ? (
-            <motion.div
-              key="oos-pick-view"
-              className="flex min-w-0 flex-1 flex-nowrap items-center gap-1"
-              data-testid="morphing-oos-pick-view"
-            >
-              <Button type="button" variant="ghost" size="sm" onClick={backToActions}>
-                Back
-              </Button>
-              <OosProductCombobox
-                lines={(actionRows.length > 0 ? actionRows : [record]).map(asOosRow)}
-                compositionByCatalogId={kitByCatalog}
-                disabled={kitPartsLoading}
-                onPick={(orderRowId, identity) => {
-                  const rows = (actionRows.length > 0 ? actionRows : [record]).map(asOosRow);
-                  const target = rows.find((row) => morphingOosOrderId(row) === orderRowId) ?? oosTarget ?? asOosRow(record);
-                  commitOutOfStock([target], identity);
-                }}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="paste-view"
-              className="flex min-w-0 flex-1 flex-wrap items-center gap-1"
-              data-testid="exceptions-paste-item-field"
-              onKeyDown={(event) => {
-                if (event.key !== 'Escape') return;
-                event.preventDefault();
-                event.stopPropagation();
-                backToActions();
-              }}
-            >
-              <Button type="button" variant="ghost" size="sm" onClick={backToActions}>
-                Back
-              </Button>
-              <div className="min-w-0 max-w-md flex-1">
-                <SearchField
-                  value={pasteDraft}
-                  onChange={setPasteDraft}
-                  onSearch={commitExceptionPaste}
-                  placeholder="Item number or listing URL…"
-                  autoFocus
-                  hideLeadingIcon
-                  hideUnderline
-                  fillHost
-                  tone="neutral"
-                  isSearching={pasting}
-                  debounceMs={0}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-    </div>
-    {onMobileUrl ? (
-    <BottomSheet
-      open={notesOpen}
-      onClose={() => setNotesOpen(false)}
-      title="Notes"
-      forceVariant="sheet"
-      compact
-      maxWidth="22rem"
-    >
-      <OrderNotesTrail
-        orderId={orderId}
-        legacyNote={record.notes}
-        autoFocus
-        variant="compact"
+      <RecordActionStrip
+        key={Number(record.id)}
+        verbs={verbs}
+        label="Row actions"
+        testId="morphing-row-action-menu"
+        onDismiss={selectedRows.length === 0 ? close : undefined}
       />
-    </BottomSheet>
-    ) : null}
+      {onMobileUrl ? (
+        <BottomSheet
+          open={notesOpen}
+          onClose={() => setNotesOpen(false)}
+          title="Notes"
+          forceVariant="sheet"
+          compact
+          maxWidth="22rem"
+        >
+          <OrderNotesTrail orderId={Number(record.id)} legacyNote={record.notes} autoFocus variant="compact" />
+        </BottomSheet>
+      ) : null}
     </>
   );
-
-  return inline ? overlay : createPortal(overlay, overlayHost as HTMLElement);
+  return inline ? strip : createPortal(strip, overlayHost as HTMLElement);
 }
 
 /**
- * Desktop mount — lives in the spreadsheet `bodyPrefix` so selection from
- * the rail snapshot keeps the bar up after the checked row recycles. The
- * DOM portals into the in-flow slot under the column header (`SLOT_TABLE_ACTION_ROW_ATTR`).
+ * The slot-table host of the order strip (`DataTable` `actionStrip`): the
+ * check-set strip while rows are checked, else the open record's strip when
+ * the list sits in a record plane with a record open.
  */
 export function OrdersMorphingHost({
   records,
   selectedIds,
+  mode,
+  openRecordStrip,
 }: {
   records: ShippedOrder[];
   selectedIds: ReadonlySet<number>;
+  mode: OrderRecordMode;
+  /** The open record's strip, from the desk that owns the open record. */
+  openRecordStrip?: ReactNode;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const { rows, scope } = useRailActionSnapshot();
+  const plane = useDeskRecordPlaneOptional();
   const record =
     (rows[0] as ShippedOrder | undefined)
     ?? records.find((row) => selectedIds.has(Number(row.id)));
-  if (!record) return null;
+  if (!record) return plane?.open ? <>{openRecordStrip}</> : null;
   return (
     <MorphingRowActionMenu
       record={record}
       open
+      inline
+      mode={mode}
       liveRecords={records}
       onClose={() => {
         if (scope) emitToggleAll(scope, 'none');
@@ -1146,13 +1037,10 @@ export function OrdersMorphingHost({
   );
 }
 
-
 /**
  * Mobile stack gutter — its own checkbox, so the manifold comes with it.
- * The desktop grid does NOT come through here: it paints its leading track via
- * the shared compound engine, which takes data and not JSX, so the desk row
- * mounts {@link MorphingRowActionMenu}, which portals into the in-flow slot
- * under the column header.
+ * The desktop grid paints its leading track via the shared compound engine
+ * and mounts {@link OrdersRowPlane} from the binding instead.
  */
 export function MorphingSelectGutter({
   record,

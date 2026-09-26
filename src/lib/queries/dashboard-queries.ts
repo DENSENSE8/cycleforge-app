@@ -193,7 +193,7 @@ export function packedOrdersQuery({
   });
 }
 
-/** Shipped/packed records for a week window. Matches `DashboardShippedTable`. */
+/** Shipped/packed records for a week window. Matches the Shipped ledger's feed (`useShippedTableRecords`). */
 export function dashboardShippedQuery({
   weekStart,
   weekEnd,

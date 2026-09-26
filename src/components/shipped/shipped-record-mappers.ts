@@ -1,27 +1,10 @@
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { DerivedPackerRecord } from '@/lib/shipped-records';
-import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 
 /**
- * Pure shape-mappers between the two record types the Shipped table juggles:
- * the `PackerRecord` rows that come back from the week query / scan-out, and the
- * `ShippedOrder` shape the details panel / the outbound spreadsheet expects.
+ * Pure shape-mappers between the `PackerRecord` rows the week query / scan-out
+ * return and the `ShippedOrder` shape the details panel expects.
  */
-
-/**
- * Flat spreadsheet row for the outbound spreadsheet. Uses the packer-log id as the
- * list key (unique per package) and carries `outboundState` for status chrome.
- */
-export function derivedPackerRecordToQueueRow(record: DerivedPackerRecord): QueueRowRecord {
-  const detail = toDetailRecord(record);
-  return {
-    ...detail,
-    id: record.id,
-    outboundState: record.outboundState,
-    has_tech_scan: true,
-  };
-}
 
 /** Build the details-panel `ShippedOrder` payload from a packer record. */
 export function toDetailRecord(record: PackerRecord): ShippedOrder {
@@ -61,6 +44,7 @@ export function toDetailRecord(record: PackerRecord): ShippedOrder {
     packer_log_id: record.packer_log_id ?? null,
     verification_outcome: (record as { verification_outcome?: string | null }).verification_outcome ?? null,
     station_activity_log_id: record.id,
+    order_row_id: record.order_row_id ?? null,
     row_source: ((record as any).row_source || 'order') as ShippedOrder['row_source'],
     exception_reason: (record as any).exception_reason || null,
     exception_status: (record as any).exception_status || null,
@@ -76,11 +60,6 @@ export function toDetailRecord(record: PackerRecord): ShippedOrder {
     exception_at: record.exception_at ?? null,
     is_terminal: record.is_terminal ?? null,
   } as ShippedOrder;
-}
-
-/** Stable detail id for a packer record (order row if linked, else log id). */
-export function getDetailId(record: PackerRecord): number {
-  return Number(record.order_row_id || record.id);
 }
 
 /** Map a search-result `ShippedOrder` back into the `PackerRecord` row shape the table renders. */

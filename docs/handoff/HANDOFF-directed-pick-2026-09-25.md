@@ -51,6 +51,28 @@ The screen: one-row progress band (✕ · bar · `n / N`), location on top with 
 from `orders.item_number` via `useExternalItemUrl().openExternalByItemNumber`, new tab).
 `/m/pick/[orderId]` is untouched.
 
+**Update (2026-09-25, picker assignment):** operator — "display all unassigned with skip, pass to
+other picker"; "if the product is picked by the staff then auto assign the same SKU to future picks,
+auto select back up pickers"; "use the same component for scanning and pairing a location as the
+bottom scan display"; "remove the grade B and the serial number display … product title only".
+- Ownership per order (`src/lib/picking/pick-ownership.ts`, pure + tested): the TEST assignee
+  (Pass / Take through `POST /api/orders/assign`) → the SKU owner in `sku_staff_pairings` → the
+  first auto-selected backup who is in when the owner is out (`listStaffOutOnDate`) → unassigned.
+  Backups = pick history of the order's SKUs (180 days) then the `picker` roster, two kept.
+- `confirmPick` pairs a SKU to its first picker (`INSERT … ON CONFLICT DO NOTHING`); an existing
+  owner is never replaced by a pick.
+- `loadPickCandidates` (`src/lib/picking/pick-board.ts`) is shared by the feed and the board. The
+  feed only feeds my session → passed to me → my SKU / backup work → unassigned, skips
+  `skip_order_ids`, and never someone else's pick. `GET /api/picking/board?scope=unassigned|all`,
+  `POST /api/picking/release {order_id}` (drops my session without staging).
+- The phone: `/m/pick/unassigned` board (Unassigned · All tabs; Take · Pass to…), Skip / Pass to…
+  and the owner / backups line on the order card, `MobileToShipPickerSheet` is the staff list
+  (prop `currentPickerId`). Camera = `MobileCaptureWindow` (the `/m/scan` bottom panel, mounted
+  collapsed per line, `dedupMs` 1500); `DirectedPickCamera` + its `ScanSurface` are deleted, and the
+  dock is Out of Stock · Notes (the detail-hub law refuses a Scan verb next to the capture window).
+  Pair bin lifts the same window. Product shows title only (no SKU line, grade or serial), legacy
+  `/m/pick/[orderId]` card too.
+
 ## The owner's ask
 
 A **directed / sequential pick screen**: one task full-screen, the system feeds the next

@@ -172,7 +172,12 @@ export async function enqueueTicketWork(
 // ── Drain ───────────────────────────────────────────────────────────────────
 
 export interface TicketOutboxDeps {
-  claimPending(limit: number): Promise<TicketWorkClaim[]>;
+  /**
+   * Claim up to `limit` pending rows. `counterTransactionId` narrows the claim
+   * to one visit's rows — the prompt drain the intake route fires right after
+   * a submit, so the paper printed seconds later already carries the ticket.
+   */
+  claimPending(limit: number, scope?: { counterTransactionId?: number }): Promise<TicketWorkClaim[]>;
   /** Null when the org has no helpdesk connected — rows stay pending, not failed. */
   createTicket(
     orgId: OrgId,
@@ -205,7 +210,7 @@ export interface TicketOutboxDeps {
 }
 
 const defaultDeps: TicketOutboxDeps = {
-  async claimPending(limit) {
+  async claimPending(limit, scope) {
     // Crash recovery: a drain that died between claim and mark left claimed_at
     // set with processed_at NULL. Release those so the rows are claimable again
     // (attempts already counted the try).
@@ -216,19 +221,21 @@ const defaultDeps: TicketOutboxDeps = {
           AND claimed_at < now() - ($1::int * INTERVAL '1 minute')`,
       [STALE_CLAIM_MINUTES],
     );
+    const visitId = scope?.counterTransactionId ?? null;
     const res = await pool.query(
       `UPDATE ticket_work_outbox
           SET attempts = attempts + 1, claimed_at = now()
         WHERE id IN (
           SELECT id FROM ticket_work_outbox
            WHERE processed_at IS NULL AND claimed_at IS NULL AND attempts < $2
+             AND ($3::bigint IS NULL OR counter_transaction_id = $3::bigint)
            ORDER BY id
            LIMIT $1
            FOR UPDATE SKIP LOCKED
         )
         RETURNING id, organization_id, work_type, entity_type, entity_id,
                   provider_ticket_id, counter_transaction_id, payload`,
-      [limit, ATTEMPTS_CAP],
+      [limit, ATTEMPTS_CAP, visitId],
     );
     return res.rows.map((r: Record<string, unknown>) => ({
       id: Number(r.id),
@@ -300,13 +307,18 @@ const defaultDeps: TicketOutboxDeps = {
 
   async stampEntityTicketNumber({ orgId, entityType, entityId, providerTicketId }) {
     if (entityType !== 'REPAIR') return;
-    // Only fill a NULL — never overwrite a number an operator or an earlier
-    // successful call already put there.
+    // Only fill an EMPTY slot — never overwrite a number an operator or an
+    // earlier successful call already put there. `createRepair` parks an
+    // `RS-0074` placeholder in the column when no ticket exists yet, and that
+    // placeholder counts as empty (same shape as `isRsDisplayCode`): guarding
+    // on `IS NULL` alone left every counter-minted ticket unstamped, so the
+    // paperwork printed no ticket number (RS-4868 → Zendesk #10063, 2026-09-25).
     await tenantQuery(
       orgId,
       `UPDATE repair_service
           SET ticket_number = $1
-        WHERE id = $2 AND organization_id = $3 AND ticket_number IS NULL`,
+        WHERE id = $2 AND organization_id = $3
+          AND (ticket_number IS NULL OR ticket_number ~* '^RS-?[0-9]+$')`,
       [String(providerTicketId), entityId, orgId],
     );
   },
@@ -357,7 +369,7 @@ const defaultDeps: TicketOutboxDeps = {
  * released WITHOUT burning an attempt, because there is nothing to retry yet.
  */
 export async function drainTicketWorkOutbox(
-  opts: { batchSize?: number } = {},
+  opts: { batchSize?: number; counterTransactionId?: number } = {},
   deps: TicketOutboxDeps = defaultDeps,
 ): Promise<DrainTicketWorkResult> {
   const batchSize = Math.min(Math.max(opts.batchSize ?? 25, 1), 200);
@@ -369,7 +381,10 @@ export async function drainTicketWorkOutbox(
     failed: 0,
   };
 
-  const claims = await deps.claimPending(batchSize);
+  const claims = await deps.claimPending(
+    batchSize,
+    opts.counterTransactionId != null ? { counterTransactionId: opts.counterTransactionId } : undefined,
+  );
   result.claimed = claims.length;
   if (claims.length === 0) return result;
 

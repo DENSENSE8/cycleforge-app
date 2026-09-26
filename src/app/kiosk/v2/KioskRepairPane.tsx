@@ -25,8 +25,10 @@
  * flattened. Step 1 is a REPEATER over {@link repairDevicesFromLines} — the
  * devices are derived from the cart (the session root), so they survive this
  * pane unmounting and cannot disagree with what the submit writes. Serial,
- * price and notes are DEVICE facts; reasons, contact, signature and the ticket
- * choice are VISIT facts, captured once and written onto every line.
+ * price, notes and REASONS are DEVICE facts (reasons since 2026-09-25: one
+ * set for all units, or per unit — `KioskReasonStep`); visit notes, contact,
+ * signature and the ticket choice are VISIT facts, captured once and written
+ * onto every line.
  */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
@@ -37,12 +39,12 @@ import { KioskReasonStep } from '@/components/repair/KioskReasonStep';
 import { KioskTicketStep } from '@/components/kiosk/KioskTicketStep';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
+import { KioskSerialListField } from '@/components/kiosk/KioskSerialListField';
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
 import { KioskCartDoneFace } from './KioskCartDoneFace';
-import { repairReceiptPropsForDevice } from '@/lib/repair/repair-intake-receipt';
+import { repairPaperworkSheets, repairVisitFactsFromLines } from '@/lib/kiosk/repair-paperwork-sheets';
 import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';
-import type { ProductSelection } from '@/components/repair/ProductSelector';
 import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
 import {
   buildInitialFormData,
@@ -60,6 +62,7 @@ import {
   repairDevicesFromLines,
   repairDevicesTotalCents,
   repairUnitToDrop,
+  sharedRepairReasons,
   type KioskRepairDeviceGroup,
 } from '@/lib/kiosk/repair-devices';
 import { stepCartQuantity } from '@/lib/kiosk/cart-card-view';
@@ -69,7 +72,7 @@ import { KioskStepTitleRow } from '@/components/kiosk/KioskStepTitleRow';
 import { KioskCompanionPanel } from '@/components/kiosk/KioskCompanionPanel';
 import { useKioskCompanionLink } from '@/components/kiosk/useKioskCompanionLink';
 import { isKioskTicketChoiceSettled } from '@/lib/kiosk/repair-ticket-choice';
-import { useNextTicketPreview } from '@/lib/kiosk/use-next-ticket-preview';
+import { paperworkTicketNumber, useNextTicketPreview } from '@/lib/kiosk/use-next-ticket-preview';
 import { isRepairPayload, type KioskCartLine, type RepairPayload } from '@/lib/kiosk/cart-line';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import { KIOSK_META, KIOSK_TILE_TITLE } from '@/app/kiosk/kiosk-chrome';
@@ -77,21 +80,6 @@ import { KIOSK_POS_CTA } from '@/app/kiosk/kiosk-pos-surface';
 import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-
-interface KioskRepairPaneProps {
-  /**
-   * The picker's current selection — read for the step-0 reason vocabulary
-   * (`sourceSku`). It is NOT the device list: that is the cart's.
-   */
-  selectedProduct: ProductSelection | null;
-  /**
-   * Exit the step flow back to the repair catalog — the X in the pane's step
-   * band, and `+ Add another device` (the next device is picked from the
-   * catalog like the first). REQUIRED: the flow has no other way out, and the
-   * optional form is what left a dead titled-band branch behind.
-   */
-  onBack: () => void;
-}
 
 /**
  * The four step headers, in order — each the step's own question in plain
@@ -124,45 +112,35 @@ const STEP_HEADERS = [
  * The VISIT facts a fresh mount inherits from the cart.
  *
  * This pane unmounts every time the staffer goes back to the catalog — the
- * stage renders only in `checkout` — so a reason chosen or a signature taken
- * before that exit has to come back from the SESSION ROOT, not from a local
+ * stage renders only in `checkout` — so notes typed or a signature taken
+ * before that exit have to come back from the SESSION ROOT, not from a local
  * draft that died with the component. They are visit-level, so the first
  * repair line answers for all of them: the mirror effect writes the same facts
- * onto every line.
+ * onto every line. REASONS are not here: they are a LINE fact read straight
+ * off each device (`KioskReasonStep`).
  */
 function visitFactsFromLines(lines: readonly KioskCartLine[]): Partial<RepairFormData> {
-  for (const line of lines) {
-    if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
-    return {
-      repairReasons: line.payload.repairReasons ?? [],
-      repairNotes: line.payload.repairNotes ?? '',
-    };
-  }
-  return {};
+  return { repairNotes: repairVisitFactsFromLines(lines).notes };
 }
 
 /** The ink already on the visit, if the customer signed before a re-entry. */
 function signatureFromLines(lines: readonly KioskCartLine[]): SignatureData | null {
-  for (const line of lines) {
-    if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
-    if (!line.payload.signatureDataUrl) return null;
-    return {
-      dataUrl: line.payload.signatureDataUrl,
-      strokes: line.payload.signatureStrokes,
-    } as SignatureData;
-  }
-  return null;
+  const { signatureDataUrl, signatureStrokes } = repairVisitFactsFromLines(lines);
+  if (!signatureDataUrl) return null;
+  return { dataUrl: signatureDataUrl, strokes: signatureStrokes } as SignatureData;
 }
 
 /**
  * ONE product on the visit and every unit of it: its title, its SKU, the
- * cart's `−  N  +`, one serial field per unit, and the product's quote and
+ * cart's `−  N  +`, one serial LIST per unit, and the product's quote and
  * notes.
  *
- * Each unit is still its own cart line and its own `repair_service` row — a
- * serial belongs to exactly one chassis — so `+` adds a line and `−` removes
- * one ({@link repairUnitToDrop}). Price and notes are the PRODUCT's: typing
- * one writes every unit (three identical radios, one quote each).
+ * Each unit is still its own cart line and its own `repair_service` row, so
+ * `+` adds a line and `−` removes one ({@link repairUnitToDrop}). A unit's
+ * serials are its own — a Wave and its CD changer are one unit with two
+ * (`KioskSerialListField`'s `+ Add serial`, 2026-09-25) — and are never shared
+ * across units. Price and notes are the PRODUCT's: typing one writes every
+ * unit (three identical radios, one quote each).
  *
  * `−` at 1 swaps in the cart's `Remove this item?` row (operator 2026-09-24:
  * "it should be like a inline edit display same as the cart for adding
@@ -254,7 +232,7 @@ function KioskRepairDeviceCard({
       {group.units.map((unit, i) => {
         const index = unitIndexOf(unit.lineId);
         return (
-          <KioskEntryField
+          <KioskSerialListField
             key={unit.lineId}
             name={count > 1 ? `Serial number ${i + 1}` : 'Serial number'}
             idScope={unit.lineId}
@@ -285,13 +263,13 @@ function KioskRepairDeviceCard({
   );
 }
 
-export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProps) {
+export function KioskRepairPane({ onBack }: { onBack: () => void }) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   /*
    * Seeded from the cart, LAZILY — on mount, in one shot. An effect would
    * hydrate a render too late, and the mirror effect below would spend that
-   * render writing this pane's empty reasons over the ones the cart is holding.
+   * render writing this pane's empty notes over the ones the cart is holding.
    */
   const [formData, setFormData] = useState<RepairFormData>(() =>
     buildInitialFormData({
@@ -317,8 +295,6 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * submit is how one visit gets recorded twice.
    */
   const submissionKey = useRef<string | null>(null);
-  /** SKU the step-0 reason vocabulary is scoped to (null for an "Other" pick). */
-  const sourceSku = selectedProduct?.sourceSku?.trim() || null;
 
   /**
    * THE DEVICES on this visit, derived from the cart and nothing else.
@@ -437,8 +413,10 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
   /**
    * One more unit of a product on the visit — a new line with the product's
    * identity and quote, and an empty serial (a serial belongs to exactly one
-   * chassis). Visit facts (reasons, signature) reach it through the mirror
-   * effect that writes them onto every line.
+   * chassis). Notes and signature reach it through the mirror effect. Its
+   * REASONS are the visit's shared set when every unit carries one (the
+   * All-devices answer covers it too); after per-device answers it starts
+   * blank and the Reason step asks for it.
    */
   const addUnit = useCallback(
     (group: KioskRepairDeviceGroup) => {
@@ -448,10 +426,30 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
       actions.addRepair({
         title: template.title,
         unitAmountCents: template.unitAmountCents,
-        payload: { productType, productModel, sourceSku, price, notes, custom, serialNumber: '' },
+        payload: {
+          productType,
+          productModel,
+          sourceSku,
+          price,
+          notes,
+          custom,
+          serialNumber: '',
+          repairReasons: sharedRepairReasons(devices) ?? [],
+        },
       });
     },
-    [actions, session.lines],
+    [actions, devices, session.lines],
+  );
+
+  /**
+   * Write a reasons set onto exactly these repair lines — the ONE reasons
+   * writer. All devices hands every unit's id; Per device hands one.
+   */
+  const setUnitReasons = useCallback(
+    (lineIds: readonly string[], repairReasons: string[]) => {
+      for (const lineId of lineIds) patchDevice(lineId, { repairReasons });
+    },
+    [patchDevice],
   );
 
   /*
@@ -512,44 +510,24 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    */
   const nextTicketId = useNextTicketPreview(step === lastStep);
 
-  /**
-   * The number the paperwork states.
-   *
-   * A LINKED ticket outranks the projection, because it is a FACT rather than
-   * a guess: `ATTACH_TICKET` stamps `repair_service.ticket_number` with the
-   * picked ticket (`ticket-outbox.ts`), so the printed sheet will carry that
-   * number. Leaving the projection up here would have the review step and the
-   * paper disagree the moment the customer chose to attach — the same defect
-   * class as the hand-rolled review card that this step deleted.
-   */
-  const paperworkTicketId =
-    session.ticketChoice?.mode === 'attach' && session.ticketChoice.ticketId > 0
-      ? session.ticketChoice.ticketId
-      : nextTicketId;
+  /** The number the paperwork states — see {@link paperworkTicketNumber}. */
+  const paperworkTicketId = paperworkTicketNumber(session.ticketChoice, nextTicketId);
 
   /**
-   * ONE paperwork sheet PER DEVICE, all carrying the one signature.
-   *
-   * The VISIT facts are shared by construction (`repairReceiptPropsForDevice`
-   * overrides only title, serial and price), so a two-device drop-off is two
-   * agreements for the same customer, same issue and same date — which is what
-   * the counter prints, because it is what `repair_service` stores. A
-   * single-device visit is byte-identical to the one sheet this step showed
-   * before.
+   * ONE paperwork sheet PER DEVICE, all carrying the one signature — built by
+   * `repairPaperworkSheets`, the same builder the top-chrome Paperwork panel
+   * uses, so the two can never state different agreements. A single-device
+   * visit is byte-identical to the one sheet this step showed before.
    */
   const paperworkSheets = useMemo(
     () =>
-      devices.map((device) => ({
-        lineId: device.lineId,
-        props: repairReceiptPropsForDevice(
-          formData,
-          device,
-          formData.repairReasons.join(', ') || formData.repairNotes,
-          '',
-          paperworkTicketId ?? '',
-        ),
-      })),
-    [devices, formData, paperworkTicketId],
+      repairPaperworkSheets({
+        customer: formData.customer,
+        visitNotes: formData.repairNotes,
+        devices,
+        ticketNumber: paperworkTicketId ?? '',
+      }),
+    [devices, formData.customer, formData.repairNotes, paperworkTicketId],
   );
 
   /**
@@ -558,16 +536,17 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
    * ONE derivation, two appliers: the mirror effect below keeps every repair
    * line carrying them while the customer is still filling the form, and
    * {@link submitVisit} stamps them once more onto the array it posts so the
-   * write cannot depend on effect timing.
+   * write cannot depend on effect timing. Reasons are deliberately absent:
+   * they are per LINE, written only by {@link setUnitReasons}, so no mirror
+   * can overwrite a per-device answer.
    */
   const visitFacts = useMemo(
     () => ({
-      repairReasons: formData.repairReasons,
       repairNotes: formData.repairNotes || null,
       signatureDataUrl: signatureData?.dataUrl ?? null,
       signatureStrokes: signatureData?.strokes ?? null,
     }),
-    [formData.repairReasons, formData.repairNotes, signatureData],
+    [formData.repairNotes, signatureData],
   );
 
   /**
@@ -589,10 +568,7 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
     for (const line of session.lines) {
       if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
       const payload = line.payload;
-      const reasons = payload.repairReasons ?? [];
       const settled =
-        reasons.length === visitFacts.repairReasons.length &&
-        reasons.every((reason, i) => reason === visitFacts.repairReasons[i]) &&
         (payload.repairNotes ?? null) === visitFacts.repairNotes &&
         (payload.signatureDataUrl ?? null) === visitFacts.signatureDataUrl;
       if (settled) continue;
@@ -603,7 +579,7 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
   /**
    * Submit the VISIT.
    *
-   * The visit facts — reasons, notes, signature — are stamped onto EVERY
+   * The visit facts — notes, signature — are stamped onto EVERY
    * repair line here as well as by the mirror effect above, because
    * `cart-to-counter.ts` reads them off each payload to build that device's
    * `repair_service` row. A signature captured once but stamped on only the
@@ -776,12 +752,9 @@ export function KioskRepairPane({ selectedProduct, onBack }: KioskRepairPaneProp
             {step === 0 ? (
               <KioskReasonStep
                 heading={STEP_HEADERS[0]}
-                sourceSku={sourceSku}
-                selectedReasons={formData.repairReasons}
+                groups={deviceGroups}
                 notes={formData.repairNotes}
-                onReasonsChange={(reasons) =>
-                  setFormData((prev) => ({ ...prev, repairReasons: reasons }))
-                }
+                onReasonsChange={setUnitReasons}
                 onNotesChange={(notes) =>
                   setFormData((prev) => ({ ...prev, repairNotes: notes }))
                 }

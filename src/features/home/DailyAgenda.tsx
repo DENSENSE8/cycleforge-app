@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * Daily (`/`) — the whole agenda as ONE industrial record ledger: the records
- * on the left, the open record's evidence on the right, edge to edge
- * (HANDOFF-industrial-record-ledger).
+ * Daily (`/`) — the whole agenda as ONE industrial record ledger. The open
+ * record is placed by `DeskRecordPlane`: in place of the list by default, or
+ * list-left / record-right when the staffer turns on fullscreen
+ * (HANDOFF-industrial-record-ledger, HANDOFF-desk-surface-law-2026-09-25).
  *
  * ## Three stores, one display, tabs (operator 2026-09-25)
  *
@@ -17,7 +18,7 @@
  * The STORES stay separate — `daily-agenda-row.ts` is where their shapes meet
  * and `agenda-lens.ts` is where the tabs are declared. Only the display merges.
  *
- * ## The evidence column is where the work gets DONE
+ * ## The record is where the work gets DONE
  *
  * A task opens {@link TaskEvidence}: the description, photos and videos of how
  * to do it, every linked order / tracking number / ticket, and its due date +
@@ -47,12 +48,9 @@ import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
-import {
-  EvidenceFact,
-  EvidenceFacts,
-  EvidenceNotice,
-  EvidenceSection,
-} from '@/design-system/components/record-ledger/RecordEvidence';
+import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
+import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -271,7 +269,7 @@ export function DailyAgenda() {
   const addAction = useMemo(
     () => (
       <DeskHeaderAction variant="primary" size="sm" onClick={() => setComposing(true)} data-testid="agenda-add">
-        Add
+        Add task
       </DeskHeaderAction>
     ),
     [setComposing],
@@ -310,7 +308,6 @@ export function DailyAgenda() {
   const frame = (body: ReactNode) => (
     <DeskPageLayout
       className="h-full"
-      stage="flush"
       tabs={lensTabs}
       activeTab={lens}
       onTabChange={(id) => setParam('tab', id === 'all' ? null : id)}
@@ -334,17 +331,17 @@ export function DailyAgenda() {
             />
           }
           onExit={() => setComposing(false)}
-          onCreated={(taskId) => {
+          onCreated={(taskId, mine) => {
             tasks.refresh();
-            // Land ON the new task, in the scope that holds it: a throw goes to
-            // a colleague, so under `mine` it would open onto nothing. The
-            // photos, videos and links are added from its evidence column.
+            // Land ON the new task, in the scope that holds it: a task handed
+            // only to colleagues is not in `mine`, so it opens under Handed off.
+            // The photos, videos and links are added from its record.
             writeParams((p) => {
               p.delete('compose');
               p.delete('check');
               if (taskId != null) {
                 p.set('task', String(taskId));
-                if (scope === 'mine') p.set('scope', 'handed');
+                if (scope === 'mine' && !mine) p.set('scope', 'handed');
               }
             });
           }}
@@ -438,47 +435,51 @@ export function DailyAgenda() {
             </span>
           </>
         }
-        evidenceNoun={openRow?.type === 'checklist' ? 'checklist item' : 'task'}
-        evidenceHead={openKey == null ? 'Agenda' : undefined}
-        hideEvidenceHeading
-        evidence={
-          openRow?.type === 'checklist' ? (
-            <ChecklistEvidence
-              row={openRow}
-              dateKey={dateKey}
-              ticketId={openCheckTicket}
-              nowMs={tasks.nowMs}
-              isToday={isToday}
-              canTick={isToday}
-              canManage={canManage}
-              pending={updateItem.isPending}
-              onToggle={() => toggleRow(openRow)}
-              onSchedule={(patch: ChecklistSchedulePatch) =>
-                updateItem.mutate(
-                  { itemId: openRow.id, ...patch },
-                  { onError: (err) => toast.error(err.message) },
+        recordTitle={openRow ? openRow.title : loading ? 'Loading…' : 'Not in this view'}
+        recordNoun={openRow?.type === 'checklist' ? 'checklist item' : 'task'}
+        summary={agendaSummary(searched, tasks.nowMs, isToday)}
+        record={
+          openKey == null ? null : (
+            <DeskRecordLayout
+              main={
+                openRow?.type === 'checklist' ? (
+                  <ChecklistEvidence
+                    row={openRow}
+                    dateKey={dateKey}
+                    ticketId={openCheckTicket}
+                    nowMs={tasks.nowMs}
+                    isToday={isToday}
+                    canTick={isToday}
+                    canManage={canManage}
+                    pending={updateItem.isPending}
+                    onToggle={() => toggleRow(openRow)}
+                    onSchedule={(patch: ChecklistSchedulePatch) =>
+                      updateItem.mutate(
+                        { itemId: openRow.id, ...patch },
+                        { onError: (err) => toast.error(err.message) },
+                      )
+                    }
+                  />
+                ) : openTask ? (
+                  <TaskEvidence
+                    key={openTask.id}
+                    row={openTask}
+                    nowMs={tasks.nowMs}
+                    pending={tasks.update.isPending}
+                    onPatch={(patch) =>
+                      tasks.update.mutateAsync({ id: openTask.id, patch }).catch((err: unknown) => {
+                        toast.error(err instanceof Error ? err.message : 'Could not save the task.');
+                        throw err;
+                      })
+                    }
+                  />
+                ) : (
+                  <EvidenceNotice tone="warn">
+                    {loading ? 'Loading…' : 'That record is not in this view — try another scope or tab.'}
+                  </EvidenceNotice>
                 )
               }
             />
-          ) : openTask ? (
-            <TaskEvidence
-              key={openTask.id}
-              row={openTask}
-              nowMs={tasks.nowMs}
-              pending={tasks.update.isPending}
-              onPatch={(patch) =>
-                tasks.update.mutateAsync({ id: openTask.id, patch }).catch((err: unknown) => {
-                  toast.error(err instanceof Error ? err.message : 'Could not save the task.');
-                  throw err;
-                })
-              }
-            />
-          ) : openKey != null ? (
-            <EvidenceNotice tone="warn">
-              {loading ? 'Loading…' : 'That record is not in this view — try another scope or tab.'}
-            </EvidenceNotice>
-          ) : (
-            <AgendaSummary rows={searched} nowMs={tasks.nowMs} isToday={isToday} />
           )
         }
       />
@@ -486,8 +487,8 @@ export function DailyAgenda() {
   );
 }
 
-/** The column with nothing open: the agenda read as a whole — what needs a decision. */
-function AgendaSummary({ rows, nowMs, isToday }: { rows: readonly DailyAgendaRow[]; nowMs: number; isToday: boolean }) {
+/** The agenda read as a whole — what needs a decision. */
+function agendaSummary(rows: readonly DailyAgendaRow[], nowMs: number, isToday: boolean): RecordLedgerSummary {
   let open = 0;
   let late = 0;
   let urgent = 0;
@@ -500,17 +501,14 @@ function AgendaSummary({ rows, nowMs, isToday }: { rows: readonly DailyAgendaRow
     if (state.code === 'URG') urgent += 1;
     if (row.remindAtMs != null || row.remindOffsetMinutes != null) reminders += 1;
   }
-  return (
-    <EvidenceSection label="On this view">
-      <EvidenceFacts>
-        <EvidenceFact label="Open" mono>{open}</EvidenceFact>
-        <EvidenceFact label="Past due" mono>{late}</EvidenceFact>
-        <EvidenceFact label="Urgent" mono>{urgent}</EvidenceFact>
-        <EvidenceFact label="Reminders" mono>{reminders}</EvidenceFact>
-      </EvidenceFacts>
-      <p className="mt-3 text-role-data text-mode-muted">
-        Open a record to see its instructions, photos, videos and linked orders. J / K steps, Esc closes.
-      </p>
-    </EvidenceSection>
-  );
+  return {
+    title: 'Agenda',
+    facts: [
+      { label: 'Open', value: open },
+      { label: 'Past due', value: late, warn: late > 0, toolbar: true },
+      { label: 'Urgent', value: urgent, warn: urgent > 0, toolbar: true },
+      { label: 'Reminders', value: reminders },
+    ],
+    note: 'Open a record to see its instructions, photos, videos and linked orders.',
+  };
 }

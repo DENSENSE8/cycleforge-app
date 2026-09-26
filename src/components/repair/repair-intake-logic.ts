@@ -66,6 +66,25 @@ export interface RepairDeviceGateRow {
   title: string;
   serialNumber: string;
   price: string;
+  /** This unit's own reasons — reasons are a LINE fact on the kiosk. */
+  repairReasons: readonly string[];
+}
+
+/**
+ * Is there an issue on the paperwork for every unit?
+ *
+ * Same rule `missingRepairIntakeFields` applies per `repair_service` row —
+ * "Repair Reason or Notes" — asked of EVERY unit, because each unit carries
+ * its own reasons (All devices stamps one set on every line; Per device writes
+ * one line). Notes are a visit fact mirrored onto every line, so notes answer
+ * for every unit at once. Without a device list (staff form) the form's own
+ * reasons are the answer. Linked repairs never reach here:
+ * `repairDevicesFromLines` drops them, and they were answered at their intake.
+ */
+function issueSatisfied(data: RepairFormData, devices?: readonly RepairDeviceGateRow[]): boolean {
+  if (!devices) return hasRepairIssue(data);
+  if (data.repairNotes.trim()) return true;
+  return devices.length > 0 && devices.every((d) => d.repairReasons.length > 0);
 }
 
 /**
@@ -98,7 +117,7 @@ export function canSubmitRepairIntake(
   const productChosen = devices ? devices.length > 0 : isProductSelected(data);
   return (
     productChosen &&
-    hasRepairIssue(data) &&
+    issueSatisfied(data, devices) &&
     isContactCompleteFor(data, devices) &&
     deviceFactsSatisfied(data, devices) &&
     hasSignature
@@ -116,7 +135,14 @@ export function getRepairSubmitBlockReason(
   } else if (!isProductSelected(data)) {
     return 'Select a repair product to submit';
   }
-  if (!hasRepairIssue(data)) return 'Issue or repair notes required to submit';
+  if (!issueSatisfied(data, devices)) {
+    // Name the unit once there is more than one — same reason as the serial
+    // refusal below.
+    const short = devices && devices.length > 1 ? devices.find((d) => d.repairReasons.length === 0) : null;
+    return short
+      ? `${short.title} still needs a reason for repair`
+      : 'Issue or repair notes required to submit';
+  }
   if (!data.customer.name.trim()) return 'Customer name required to submit';
   if (!data.customer.phone.trim()) return 'Phone number required to submit';
   if (devices) {
@@ -210,6 +236,12 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
  * passed a four-device visit on the strength of device one's serial, and the
  * other three were written blank. `devices` omitted = the staff form's single
  * device, unchanged.
+ *
+ * ## Why REASON takes the list too (2026-09-25)
+ *
+ * Reasons became a LINE fact (operator: "all devices, or per device with a
+ * switcher"), so the reason unit asks every device the same way: each needs
+ * at least one reason unless the visit's notes answer for all of them.
  */
 export function repairStepGates(
   data: RepairFormData,
@@ -218,7 +250,7 @@ export function repairStepGates(
   devices?: readonly RepairDeviceGateRow[],
 ): readonly [boolean, boolean, boolean, boolean] {
   return [
-    hasRepairIssue(data),
+    issueSatisfied(data, devices),
     deviceFactsSatisfied(data, devices),
     data.customer.phone.replace(/\D/g, '').length >= 7,
     canSubmitRepairIntake(data, hasSignature, devices) && ticketSettled,

@@ -29,7 +29,7 @@
  * and items it carries.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';
 import { resolveKioskStepUp } from '@/lib/auth/kiosk-device';
@@ -54,6 +54,7 @@ import {
 } from '@/lib/kiosk/price-approval';
 import { catalogUnitPrices } from '@/lib/kiosk/catalog-search';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { drainTicketWorkOutbox } from '@/lib/support/ticket-outbox';
 
 export const runtime = 'nodejs';
 
@@ -393,6 +394,22 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
     });
   } catch (auditErr) {
     console.warn('kiosk intake audit skipped:', auditErr);
+  }
+
+  // Mint this visit's helpdesk tickets NOW rather than on the 5-minute cron,
+  // so the receipt / drop-off paperwork the staffer prints from the Done face
+  // seconds later carries the real ticket number instead of only the RS code.
+  // Scoped to this visit's own outbox rows; the cron still owns retries.
+  const visitId = result?.counterTransactionId ?? null;
+  const newDevices = result && !result.idempotentReplay ? result.repairs.length : 0;
+  if (visitId != null && newDevices > 0) {
+    after(async () => {
+      try {
+        await drainTicketWorkOutbox({ counterTransactionId: visitId, batchSize: newDevices });
+      } catch (drainErr) {
+        console.warn('kiosk intake ticket drain deferred to cron:', drainErr);
+      }
+    });
   }
 
   return NextResponse.json({

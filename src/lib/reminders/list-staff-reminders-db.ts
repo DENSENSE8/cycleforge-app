@@ -99,13 +99,14 @@ export const staffReminderDbDeps: StaffReminderDeps = {
     ]);
     const out: TaskReminderCandidate[] = [];
     for (const r of rows) {
-      const entityType = taskEntityFromEnum(r.entity_type);
-      if (!entityType) continue;
+      // NULL anchor = a standalone task; it rings like any other.
+      const entityType = r.entity_type == null ? null : taskEntityFromEnum(r.entity_type);
+      if (r.entity_type != null && !entityType) continue;
       out.push({
         id: Number(r.id),
         entityType,
         // BIGINT arrives as a string from node-postgres.
-        entityId: Number(r.entity_id),
+        entityId: r.entity_id == null ? null : Number(r.entity_id),
         note: r.notes == null ? null : String(r.notes),
         projectName: r.project_name == null ? null : String(r.project_name),
         status: String(r.status),

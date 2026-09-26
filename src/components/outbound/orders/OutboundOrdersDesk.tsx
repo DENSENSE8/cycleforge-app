@@ -253,7 +253,7 @@ function OutboundOrdersDeskContent({
     useOrderRailSelection(orderView);
 
   // Keeps `?openOrderId=` and the open record in step (deep links, back/forward);
-  // the record itself paints in the ledger's evidence column.
+  // the record itself paints in the ledger's record plane (`OrderRecordView`).
   useDashboardSelectedOrder(detailsEnabled && !isSupportContext);
 
   const { openOrderId, setOpenOrderId } = useSupportOrderOpenParam(isSupportContext);
@@ -298,9 +298,9 @@ function OutboundOrdersDeskContent({
         selectionOverlays={selectionOverlays}
         onPrimaryPainted={onPrimaryPainted}
         stageOverlay={
-          // The open record reads in the ledger's evidence column
-          // (`OutboundOrderEvidence`), never on top of the rows or in the right
-          // rail. The stage only ever carries the hand-entry intake.
+          // The open record is the ledger's own (`OrderRecordView` through
+          // `DeskRecordPlane`), never this slot or the right rail. The stage
+          // only ever carries the hand-entry intake.
           !isSupportContext &&
           parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null &&
           showIngestRail &&

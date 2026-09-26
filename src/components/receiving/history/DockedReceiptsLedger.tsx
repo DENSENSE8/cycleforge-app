@@ -3,14 +3,18 @@
 import { useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import { Button, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
-import { EvidenceNotice, EvidenceTitle } from '@/design-system/components/record-ledger/RecordEvidence';
-import { HistoryCartonTriagePanel } from '@/components/receiving/history/HistoryCartonTriagePanel';
+import { RecordActionStrip } from '@/design-system/components/record-action-strip/RecordActionStrip';
+import { EvidenceNotice } from '@/design-system/components/record-ledger/RecordEvidence';
+import { CartonRecordView } from '@/components/receiving/history/CartonRecordView';
+import { cartonRecordTitle, useCartonRecord } from '@/components/receiving/history/use-carton-record';
+import { useCartonVerbs } from '@/components/receiving/history/carton-record-verbs';
+import { displayReceivingProductTitle } from '@/components/station/receiving-grid/cells';
 import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 import { usePublishRecordCursor, useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import { historyTriageTargetFromRow } from '@/lib/receiving/history-triage-row';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
-import { DockedReceivingRecord, dockedReceivingState } from './DockedReceivingRecord';
+import { DockedReceivingRecord } from './DockedReceivingRecord';
+import { dockedReceivingState } from '@/lib/receiving/docked-record-state';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { defaultDirForReceivingGridSort, isReceivingGridSortable, type ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
@@ -95,7 +99,9 @@ export function DockedReceiptsLedger({
     onClose: close,
   });
   const navigation = useRecordCursor('record');
-  const target = openRow ? historyTriageTargetFromRow(openRow) : null;
+  // The open carton's read — shared by the record view and the strip's verbs.
+  const carton = useCartonRecord(openRow);
+  const verbs = useCartonVerbs(carton, close);
 
   const renderRecord = useCallback(
     (row: ReceivingLineRow, isOpen: boolean) => (
@@ -139,35 +145,67 @@ export function DockedReceiptsLedger({
             fillHost
           />
           <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">{states.find((state) => state.id === stateFilter)?.label || 'State'}</Button></DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {states.find((state) => state.id === stateFilter)?.label || 'State'}
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onSelect={() => setStateFilter(null)}>All states</DropdownMenuItem>
-              {states.map((state) => <DropdownMenuItem key={state.id} onSelect={() => setStateFilter(state.id)}>{state.label}</DropdownMenuItem>)}
+              {states.map((state) => (
+                <DropdownMenuItem key={state.id} onSelect={() => setStateFilter(state.id)}>
+                  {state.label}
+                </DropdownMenuItem>
+              ))}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="sm">{sort ? `${SORTS.find((option) => option.key === sort)?.label || sort} · ${dir}` : 'Sort'}</Button></DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                {sort ? `${SORTS.find((option) => option.key === sort)?.label || sort} · ${dir}` : 'Sort'}
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent>
-              {SORTS.map((option) => <DropdownMenuItem key={option.key} onSelect={() => toggleColumnSort(option.key)}>{option.label}</DropdownMenuItem>)}
+              {SORTS.map((option) => (
+                <DropdownMenuItem key={option.key} onSelect={() => toggleColumnSort(option.key)}>
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
               <DropdownMenuItem onSelect={clear}>Default order</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           {toolbarExtra}
         </>
       }
-      empty={<b className="text-role-body font-bold text-mode-ink">{query.trim() || stateFilter ? 'No matching records in the loaded history.' : emptyMessage}</b>}
-      evidenceNoun="receipt"
-      evidence={
-        target ? <HistoryCartonTriagePanel
-          key={`${target.receivingId}:${target.receivingLineId}`}
-          target={target}
-          seedRow={openRow ?? undefined}
-          onClose={close}
-          embedded
-        /> : <>
-          <EvidenceTitle sub={`${visibleRows.length.toLocaleString()} visible records`}>Receiving history</EvidenceTitle>
-          <EvidenceNotice>{openRow ? 'No carton identity is available for this record.' : 'Select a record to inspect receipt, tracking, photos, and activity.'}</EvidenceNotice>
-        </>
+      actionStrip={
+        openRow && carton ? (
+          <RecordActionStrip
+            key={carton.receivingId}
+            verbs={verbs}
+            label={`${cartonRecordTitle(openRow)} actions`}
+            testId="carton-actions"
+          />
+        ) : null
+      }
+      empty={
+        <b className="text-role-body font-bold text-mode-ink">
+          {query.trim() || stateFilter ? 'No matching records in the loaded history.' : emptyMessage}
+        </b>
+      }
+      recordTitle={openRow ? cartonRecordTitle(openRow) : 'Receipt'}
+      recordSubtitle={openRow ? `Carton ${openRow.receiving_id ?? openRow.id} · ${displayReceivingProductTitle(openRow)}` : undefined}
+      recordNoun="receipt"
+      summary={{
+        title: 'Receiving history',
+        facts: [{ label: 'Visible records', value: visibleRows.length }],
+        note: 'Select a record to inspect its status, items, shipment, photos, and timeline.',
+      }}
+      record={
+        openRow && carton ? (
+          <CartonRecordView key={carton.receivingId} record={carton} openLineId={openRow.id} onClose={close} />
+        ) : openRow ? (
+          <EvidenceNotice>No carton identity is available for this record.</EvidenceNotice>
+        ) : null
       }
       footer={<span>{visibleRows.length.toLocaleString()} docked records</span>}
     />

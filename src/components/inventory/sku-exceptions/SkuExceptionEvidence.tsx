@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * SKU Exceptions — the evidence column beside the ledger (triage evidence
- * stack, BRIEF §4): what it is (the placeholder SKU, its state and next step)
- * → evidence (photos, product, facts, where it sits and how many) → the
- * decision bar (Add photo · Count · Pair · Share link, keys 1–4, the next
- * step's verb ink-filled).
+ * SKU Exceptions — the open placeholder SKU (triage evidence stack, BRIEF §4),
+ * placed by the ledger's `DeskRecordPlane`: what it is (the placeholder SKU,
+ * its state and next step) → evidence (photos, product, facts, where it sits
+ * and how many) → the decision bar (Add photo · Count · Pair · Share link,
+ * keys 1–4, the next step's verb ink-filled).
  *
- * Nothing open, it reads the queue as a whole (held · no photo · unlocated ·
- * units on hold) so the column is never a blank panel.
+ * Nothing open, {@link skuExceptionsSummary} reads the queue as a whole (held ·
+ * no photo · unlocated · units on hold).
  */
 
 import { useCallback, useId, useMemo, useRef } from 'react';
@@ -27,13 +27,12 @@ import {
   EvidenceTitle,
   type EvidenceVerb,
 } from '@/design-system/components/record-ledger/RecordEvidence';
-import { RECORD_LABEL_CLASS } from '@/design-system/tokens/industrial-record';
+import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { lifecycleRecordState } from '@/design-system/tokens/lifecycle';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { skuExceptionShareUrl } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSku, ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { shareRecordLink } from '@/lib/share-link';
-import { cn } from '@/utils/_cn';
 import { skuExceptionNextStep, skuExceptionTitle } from './sku-exception-record';
 import {
   SkuExceptionBarcodeValue,
@@ -44,22 +43,19 @@ import { SkuExceptionPairSection } from './SkuExceptionPairSection';
 import { SkuExceptionPhotosSection } from './SkuExceptionPhotosSection';
 
 export interface SkuExceptionEvidenceProps {
-  /** `?sku=` — the record the URL names, or null. */
-  sku: string | null;
+  /** `?sku=` — the record the URL names. */
+  sku: string;
   item: ProvisionalSkuDetail | null | undefined;
   loading: boolean;
   error: unknown;
   /** The real SKU a paired placeholder became. */
   mergedInto: string | null;
-  /** The queue — the summary face when nothing is open. */
-  rows: readonly ProvisionalSku[];
   /** Leave the record (a completed pair lands here). */
   onExit: () => void;
 }
 
 export function SkuExceptionEvidence(props: SkuExceptionEvidenceProps) {
-  const { sku, item, loading, error, mergedInto, rows } = props;
-  if (!sku) return <SkuExceptionsSummary rows={rows} />;
+  const { sku, item, loading, error, mergedInto } = props;
   if (item) return <SkuExceptionRecordEvidence key={item.sku} item={item} onExit={props.onExit} />;
   return (
     <>
@@ -183,43 +179,22 @@ function SkuExceptionRecordEvidence({ item, onExit }: { item: ProvisionalSkuDeta
 }
 
 /** Nothing open: the queue read as the floor reads it. */
-function SkuExceptionsSummary({ rows }: { rows: readonly ProvisionalSku[] }) {
-  const summary = useMemo(() => {
-    let noPhoto = 0;
-    let unlocated = 0;
-    let units = 0;
-    for (const row of rows) {
-      if (row.photoCount === 0) noPhoto += 1;
-      if (row.locations.length === 0) unlocated += 1;
-      units += row.stock;
-    }
-    return [
-      { code: 'HLD', label: 'On hold', value: rows.length, warn: false },
-      { code: 'PHOTO', label: 'No photo', value: noPhoto, warn: noPhoto > 0 },
-      { code: 'NO BIN', label: 'Unassigned location', value: unlocated, warn: unlocated > 0 },
-      { code: 'UNITS', label: 'Units on hold', value: units, warn: false },
-    ];
-  }, [rows]);
-
-  return (
-    <>
-      <EvidenceTitle>—</EvidenceTitle>
-      <EvidenceSection label="No exception selected">
-        <dl className="flex flex-col" data-testid="sku-exceptions-summary">
-          {summary.map((line) => (
-            <div key={line.code} className="flex items-center gap-3 border-b border-mode-rule py-1.5 last:border-b-0">
-              <dt className={cn(RECORD_LABEL_CLASS, 'w-14 shrink-0 text-mode-muted')}>{line.code}</dt>
-              <dd className={cn(RECORD_LABEL_CLASS, 'flex-1', line.warn ? 'text-mode-warn' : 'text-mode-ink')}>
-                {line.label}
-              </dd>
-              <dd className="font-mono text-role-data font-bold tabular-nums text-mode-ink">{line.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </EvidenceSection>
-      <p className={cn(RECORD_LABEL_CLASS, 'mt-auto border-t border-mode-rule px-4 py-2 text-mode-muted')}>
-        Open a record · J / K step · Esc closes
-      </p>
-    </>
-  );
+export function skuExceptionsSummary(rows: readonly ProvisionalSku[]): RecordLedgerSummary {
+  let noPhoto = 0;
+  let unlocated = 0;
+  let units = 0;
+  for (const row of rows) {
+    if (row.photoCount === 0) noPhoto += 1;
+    if (row.locations.length === 0) unlocated += 1;
+    units += row.stock;
+  }
+  return {
+    title: 'SKU exceptions',
+    facts: [
+      { label: 'On hold', value: rows.length },
+      { label: 'No photo', value: noPhoto, warn: noPhoto > 0, toolbar: true },
+      { label: 'Unassigned location', value: unlocated, warn: unlocated > 0, toolbar: true },
+      { label: 'Units on hold', value: units, toolbar: true },
+    ],
+  };
 }

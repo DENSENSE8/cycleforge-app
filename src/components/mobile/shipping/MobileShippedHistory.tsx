@@ -1,9 +1,15 @@
 'use client';
 
-/** Phone-first shipped-order lookup over the canonical shipped search API. */
+/**
+ * Phone-first shipped lookup over the canonical shipped search API. A row opens
+ * the PACKAGE hub (`/m/shipping/shipments/<id>`) it shipped in; a tracking
+ * number that names a package no order row carries (an unmatched pack scan)
+ * still lands as its own package row through the tracking lookup.
+ */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, History } from '@/components/Icons';
 import { ItemCardRow } from '@/components/mobile/redesign/ItemCardRow';
 import { EmptyState, Inset, SearchField } from '@/design-system/primitives';
@@ -11,6 +17,9 @@ import { useShippedSearch } from '@/hooks/useShippedSearch';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { shippedOrdersAsWorkRows } from '@/lib/work-orders/shipped-as-work-row';
 import { toShipConditionParts, toShipExpectedQty, toShipPriceText } from '@/components/mobile/redesign/to-ship-faces';
+import { shipmentItemsTitle } from '@/components/mobile/shipping/shipment/shipment-faces';
+import { shipmentHubHref } from '@/components/mobile/shipping/shipment/useShipmentHub';
+import { lookupShipmentByTracking, useShipmentRecord } from '@/lib/shipments/shipment-record-client';
 
 export function MobileShippedHistory() {
   const router = useRouter();
@@ -27,6 +36,28 @@ export function MobileShippedHistory() {
     () => shippedOrdersAsWorkRows(shipped.data?.records ?? []),
     [shipped.data?.records],
   );
+  // A tracking-shaped query may name a package with no shipped order row (an
+  // unmatched pack scan); the package lookup finds it. Short text never asks.
+  const trackingLookup = useQuery({
+    queryKey: ['shipment-lookup', debounced],
+    queryFn: () => lookupShipmentByTracking(debounced),
+    enabled: /^[A-Za-z0-9]{8,}$/.test(debounced),
+    staleTime: 30_000,
+  });
+  const lookedUpId = trackingLookup.data?.shipmentId ?? null;
+  const lookedUpTracking = trackingLookup.data?.tracking.toUpperCase() ?? null;
+  // A row with no package id of its own (the unmatched-scan exception row) that
+  // carries the looked-up tracking IS that package: it opens the hub.
+  const rowShipmentId = (row: (typeof rows)[number]): number | null => {
+    const own = Number(row.shipmentId);
+    if (own > 0) return own;
+    return lookedUpId != null && row.trackingNumber?.toUpperCase() === lookedUpTracking ? lookedUpId : null;
+  };
+  const packageOnly =
+    lookedUpId != null && !rows.some((row) => rowShipmentId(row) === lookedUpId) ? lookedUpId : null;
+  const lookedUp = useShipmentRecord(packageOnly);
+  const packageRecord = packageOnly != null ? (lookedUp.data ?? null) : null;
+  const total = rows.length + (packageRecord ? 1 : 0);
 
   return (
     <div
@@ -53,18 +84,18 @@ export function MobileShippedHistory() {
             title="Find a shipped order"
             description="Search an order number, tracking number, serial, SKU, or item number."
           />
-        ) : shipped.isPending ? (
+        ) : shipped.isPending && !packageRecord ? (
           <p className="border-b border-border-hairline px-3 py-4 text-role-caption text-text-muted">
             Searching shipped orders…
           </p>
-        ) : shipped.isError ? (
+        ) : shipped.isError && !packageRecord ? (
           <EmptyState
             tone="danger"
             icon={<AlertTriangle className="h-6 w-6" />}
             title="Couldn't search shipped orders"
             description="Check the identifier and try again."
           />
-        ) : rows.length === 0 ? (
+        ) : total === 0 ? (
           <EmptyState
             title="No shipped order found"
             description={`Nothing matched “${debounced}”.`}
@@ -72,9 +103,21 @@ export function MobileShippedHistory() {
         ) : (
           <>
             <p className="border-b border-border-hairline px-3 py-2 text-role-caption text-text-muted">
-              {rows.length} shipped {rows.length === 1 ? 'order' : 'orders'}
+              {total} shipped {total === 1 ? 'record' : 'records'}
             </p>
             <ul className="flex flex-col">
+              {packageRecord ? (
+                <li key={`package-${packageRecord.shipmentId}`}>
+                  <ItemCardRow
+                    title={shipmentItemsTitle(packageRecord)}
+                    imageUrl={packageRecord.items[0]?.photoUrl ?? null}
+                    reference={`Package  ${getLast8(packageRecord.tracking)}`}
+                    onOpen={() => router.push(shipmentHubHref(packageRecord.shipmentId))}
+                    ariaLabel={`Open package ${packageRecord.tracking}`}
+                    primary={null}
+                  />
+                </li>
+              ) : null}
               {rows.map((row) => (
                 <li key={row.id}>
                   <ItemCardRow
@@ -88,12 +131,15 @@ export function MobileShippedHistory() {
                     qty={toShipExpectedQty(row)}
                     price={toShipPriceText(row)}
                     condition={toShipConditionParts(row)}
-                    onOpen={() =>
+                    onOpen={() => {
+                      const shipmentId = rowShipmentId(row);
                       router.push(
-                        `/m/orders/${encodeURIComponent(String(row.orderId ?? row.entityId))}`,
-                      )
-                    }
-                    ariaLabel={`Open shipped order ${row.orderId ?? row.recordLabel}`}
+                        shipmentId != null
+                          ? shipmentHubHref(shipmentId)
+                          : `/m/orders/${encodeURIComponent(String(row.orderId ?? row.entityId))}`,
+                      );
+                    }}
+                    ariaLabel={`Open the package for shipped order ${row.orderId ?? row.recordLabel}`}
                     primary={null}
                   />
                 </li>

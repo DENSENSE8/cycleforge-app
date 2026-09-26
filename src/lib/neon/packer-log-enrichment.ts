@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from 'pg';
+import type { PoolClient } from 'pg';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
 
 /**
@@ -29,7 +29,8 @@ import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
  * tech_serial_numbers / serial-spine strangle).
  */
 
-type Queryable = Pool | PoolClient;
+/** Any query surface: the pool, a checked-out client, or a tenant-tx client. */
+type Queryable = Pick<PoolClient, 'query'>;
 
 /** The expensive, immutable-per-scan resolution — the heavy half of the read query. */
 const ENRICHMENT_SELECT = /* sql */ `

@@ -16,7 +16,7 @@
  * is session-free; the intake is not.
  *
  * Callers: `KioskCustomerIntake`, `KioskRepairPane`, `KioskTicketStep`,
- * `KioskReasonStep`, `ReasonSelector`, `RepairPickupFlow`.
+ * `KioskReasonStep`, `ReasonSelector`, `RepairPickupFlow`, `KioskSerialListField`.
  * Affected API: none. Schemas: none.
  */
 
@@ -47,6 +47,7 @@ export function KioskEntryField({
   testId,
   idScope,
   onEnter,
+  autoFocus,
 }: {
   name: string;
   value: string;
@@ -81,6 +82,8 @@ export function KioskEntryField({
    * staffer finishes the step from the keyboard that is covering its floor.
    */
   onEnter?: () => void;
+  /** Focus on mount — a field the staffer just asked for (`+ Add serial`). */
+  autoFocus?: boolean;
 }) {
   const id = ['kiosk-entry', idScope, name.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()]
     .filter(Boolean)
@@ -129,6 +132,7 @@ export function KioskEntryField({
             inputMode={inputMode}
             enterKeyHint={onEnter ? 'go' : undefined}
             onKeyDown={onKeyDown}
+            autoFocus={autoFocus}
             data-testid={testId}
             className={cn(KIOSK_POS_ENTRY, withIcon && KIOSK_POS_ENTRY_ICON_INSET)}
           />

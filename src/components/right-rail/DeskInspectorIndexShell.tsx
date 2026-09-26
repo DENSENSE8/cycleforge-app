@@ -34,6 +34,7 @@ import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-cont
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { useDeskRecordPlaneOptional } from '@/design-system/components/DeskRecordPlane';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
 import { cn } from '@/utils/_cn';
 
@@ -205,8 +206,12 @@ export function DeskInspectorIndexShell({
 
   const goIndex = useCallback(() => setActiveId(DESK_INSPECTOR_INDEX), [setActiveId]);
 
-  // Esc: leaf → index. Never parks the rail (desk chrome / Band 3).
+  // Esc: leaf → index. Never parks the rail (desk chrome / Band 3). Inside a
+  // DeskRecordPlane the plane owns Escape (first press closes the record); the
+  // Back chevron still returns to the index.
+  const inRecordPlane = useDeskRecordPlaneOptional() != null;
   useEffect(() => {
+    if (inRecordPlane) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (isEditableKeyTarget(e.target)) return;
@@ -217,7 +222,7 @@ export function DeskInspectorIndexShell({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [goIndex, onIndex]);
+  }, [goIndex, onIndex, inRecordPlane]);
 
   // Gated-away / missing leaf → index (never silent swap to leaves[0]).
   useEffect(() => {

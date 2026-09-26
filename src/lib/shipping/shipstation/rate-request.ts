@@ -74,7 +74,7 @@ export type VoidLabelBody = z.infer<typeof VoidLabelBodySchema>;
 
 type AddressInput = z.infer<typeof ShipAddressSchema>;
 
-function toShipAddress(a: AddressInput): ShipAddress {
+export function toShipAddress(a: AddressInput): ShipAddress {
   return {
     name: a.name,
     phone: a.phone ?? null,
@@ -89,7 +89,7 @@ function toShipAddress(a: AddressInput): ShipAddress {
   };
 }
 
-function toParcel(p: z.infer<typeof ParcelSchema>): Parcel {
+export function toParcel(p: z.infer<typeof ParcelSchema>): Parcel {
   return {
     weight: { value: p.weight.value, unit: p.weight.unit },
     dimensions: p.dimensions

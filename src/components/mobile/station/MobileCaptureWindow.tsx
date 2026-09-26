@@ -144,6 +144,18 @@ export function MobileCaptureWindow({
    * per request — a boolean could not ask twice.
    */
   armRequest,
+  /**
+   * Same-code cooldown. Defaults to {@link DEDUP_MS}; a station that scans one
+   * barcode several times on purpose (picking ×4 of one SKU) passes a shorter
+   * window.
+   */
+  dedupMs = DEDUP_MS,
+  /**
+   * Whether the panel mounts up (lens running) or collapsed to its bar. A
+   * station whose operator walks between scans mounts it collapsed, so the
+   * lens never reads stray labels on the way; the bar is one tap away.
+   */
+  initiallyArmed = true,
 }: {
   onDecode: (value: string) => void;
   label: string;
@@ -154,12 +166,14 @@ export function MobileCaptureWindow({
   onErrorChange?: (errored: boolean) => void;
   onArmedChange?: (armed: boolean) => void;
   armRequest?: number;
+  dedupMs?: number;
+  initiallyArmed?: boolean;
 }) {
-  const scanner = useBarcodeScanner({ dedupMs: DEDUP_MS });
+  const scanner = useBarcodeScanner({ dedupMs });
   const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning } = scanner;
 
   /** Open = the panel is up and the lens is running. */
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(initiallyArmed);
   /** The keyed fallback, for a label the lens cannot read. */
   const [manualOpen, setManualOpen] = useState(false);
   // Threshold under the default 150: IP-address / remote-devtools phones often

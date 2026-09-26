@@ -6,17 +6,14 @@
  * `RightRailHost`. Record open is dblclick / Enter / left-click triage, not
  * checkbox cardinality.
  *
- * Reuses `normalizeRailSelection` so id hygiene stays one place. Occupant ids
- * stay reserved so old registrars do not invent a fourth id.
+ * Reuses `normalizeRailSelection` so id hygiene stays one place. The batch
+ * occupant id stays reserved so old registrars do not invent another. A picked
+ * row's record opens on its ledger's `DeskRecordPlane`, never on this rail.
  */
 
 import { normalizeRailSelection } from '@/lib/right-rail/selection-occupancy';
 
 export const RECEIVING_RAIL_OCCUPANT_ID = {
-  /** One Incoming row — existing `IncomingDetailsPanel`. */
-  inspect: 'detail:incoming',
-  /** One Unbox History row — `HistoryCartonTriagePanel`. */
-  historyInspect: 'detail:history',
   /** Unbox/History 2+ checks, or Incoming 2+. */
   attention: 'detail:receiving-line-batch',
 } as const;
@@ -25,13 +22,6 @@ export type ReceivingRailSurface = 'incoming' | 'lines';
 
 type ReceivingRailOccupancy =
   | { kind: 'none' }
-  | {
-      kind: 'inspect';
-      occupantId:
-        | typeof RECEIVING_RAIL_OCCUPANT_ID.inspect
-        | typeof RECEIVING_RAIL_OCCUPANT_ID.historyInspect;
-      lineIds: readonly [number];
-    }
   | {
       kind: 'attention';
       occupantId: typeof RECEIVING_RAIL_OCCUPANT_ID.attention;

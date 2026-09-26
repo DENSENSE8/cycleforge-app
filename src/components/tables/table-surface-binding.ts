@@ -70,7 +70,7 @@ export type TableRecordPlane =
     }
   /**
    * Legacy `RightRailHost` peek — **forbidden on new master-nav desk bindings.**
-   * Existing `detail:*` occupants (orders, incoming, repair, …) are migration debt.
+   * Existing `detail:*` occupants (orders, repair, …) are migration debt.
    */
   | {
       readonly kind: 'inspector';

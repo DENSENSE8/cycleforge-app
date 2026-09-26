@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import {
-  isHistoryUnfoundRow,
-  resolveReceivingColFromTarget,
-  historyTriageTargetFromRow,
-} from '@/lib/receiving/history-triage-row';
+import { isHistoryUnfoundRow, resolveReceivingColFromTarget } from '@/lib/receiving/history-triage-row';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function row(partial: Partial<ReceivingLineRow> & { id: number }): ReceivingLineRow {
@@ -46,33 +42,6 @@ describe('isHistoryUnfoundRow', () => {
       ),
       false,
     );
-  });
-});
-
-describe('historyTriageTargetFromRow', () => {
-  test('requires receiving_id', () => {
-    assert.equal(historyTriageTargetFromRow(row({ id: 1, receiving_id: null })), null);
-  });
-
-  test('maps identity seed', () => {
-    const t = historyTriageTargetFromRow(
-      row({
-        id: 42,
-        receiving_id: 7,
-        zoho_purchaseorder_number: 'PO-1',
-        tracking_number: '1Z',
-        zoho_item_title: 'Speaker',
-        workflow_status: 'RECEIVED',
-      }),
-    );
-    assert.deepEqual(t, {
-      receivingId: 7,
-      receivingLineId: 42,
-      poNumber: 'PO-1',
-      title: 'Speaker',
-      tracking: '1Z',
-      status: 'RECEIVED',
-    });
   });
 });
 

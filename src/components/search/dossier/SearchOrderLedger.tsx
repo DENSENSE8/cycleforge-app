@@ -7,8 +7,9 @@
  *
  * Not a second order display: it mounts the To-ship {@link OutboundOrdersLedger}
  * over the searched order's lines (any state, shipped included) in the TRIAGE
- * mode, with the searched line open in the same `OutboundOrderEvidence` rail
- * To-ship uses — customer, price, labels, tracking, notes, platform, all
+ * mode, with the searched line open in the same `OrderRecordView` To-ship uses
+ * (its `search` sections add the return / replacement labels) — customer,
+ * price, labels, tracking, notes, platform, all
  * editable through the same commit waist. The ledger's find box searches every
  * order (order #, customer, email, tracking, SKU), so the caller's next order is
  * one type away. The phone keeps the compact dossier until the plan's Phase 6.
@@ -125,6 +126,7 @@ export function SearchOrderLedger({ orderId }: { orderId: string | number }) {
       data-testid="search-order-ledger"
     >
       <OutboundOrdersLedger
+        mode="search"
         chrome={chrome}
         searchPending={linesQuery.isFetching || find.trim() !== debounced.trim()}
         records={records}

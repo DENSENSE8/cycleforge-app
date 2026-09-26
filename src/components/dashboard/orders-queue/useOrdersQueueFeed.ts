@@ -223,6 +223,114 @@ export function useOrdersQueueFeed({
     tableId,
   });
 
+  // One inline-edit waist for every presenter (and the Shipped record).
+  const {
+    handleCommitCondition,
+    handleCommitShipBy,
+    handleCommitStageAssign,
+    handleCommitSubtitleField,
+    handleCommitPlatform,
+    handleCommitSkuBin,
+    handleCommitTracking,
+  } = useOrdersQueueCommits();
+
+  const handleSortMenuSelect = useCallback(
+    (id: string) => {
+      const next = id as QueueDisplaySort;
+      // A name pin is a face, not a direction. Re-selecting "Amazon" must
+      // keep Amazon on top — flipping would bury the name the operator chose.
+      if (isQueueNamePinSort(next)) {
+        setSort(next);
+        return;
+      }
+      if (isQueueColumnSort(next) && sort === next && dir) {
+        setSort(next, flipQueueDisplaySortDir(dir));
+      } else {
+        setSort(next);
+      }
+    },
+    [sort, dir, setSort],
+  );
+
+  const sortMenuOptions = useMemo(
+    () => [
+      ...QUEUE_DISPLAY_SORT_OPTIONS,
+      ...queueColumnSortOptions(),
+      ...queueChannelSortOptions(),
+      ...queueCarrierSortOptions(),
+    ],
+    [],
+  );
+
+  const sortMenu: OrdersQueueSortMenu = {
+    options: sortMenuOptions,
+    active: sort,
+    hot: sort !== 'deadline',
+    onSelect: handleSortMenuSelect,
+    activeFace: queueDisplaySortFace(sort),
+  };
+
+  // The lane's saved views, resolved through the ONE outbound resolver so the
+  // toolbar menu and the rail's `OutboundSavedViewsList` cannot disagree about
+  // what a view captures.
+  //
+  // `shipped` was wired 2026-09-23: `SHIPPED_VIEW_PARAMS` is commented
+  // "matches DashboardShippedTable", the `dashboard_shipped` surface is in
+  // the `saved_views` CHECK set and in `GENERIC_SAVED_VIEW_SURFACES`, and
+  // `SHIPPED_SAVED_VIEWS_KEY` already resolves to it — the Shipped desk was
+  // the one operator worklist with filters + sort whose whole saved-view
+  // path existed and had no control on the table to reach it.
+  //
+  // `staged` and `labels` stay out on purpose, and not for lack of a key:
+  // a view is a named set of FILTER params, and those lanes have no filter
+  // to name. The staged dock's only URL state is its find text, which a view
+  // must never capture (`UNSHIPPED_VIEW_PARAMS`: "filters + sort pin, never
+  // search text"). A Views control there would save nothing.
+  const views =
+    queueMode === 'fulfillment'
+      ? {
+          ...outboundSavedViewsConfig('unshipped'),
+          emptyHint: 'Save a filter and sort combination to come back to it.',
+        }
+      : queueMode === 'shipped'
+        ? {
+            ...outboundSavedViewsConfig('shipped'),
+            emptyHint: 'Save a filter and sort combination to come back to it.',
+          }
+        : undefined;
+
+  return {
+    todayKey,
+    getStaffName,
+    sort,
+    dir,
+    setSort,
+    recentImportedOrders,
+    painted,
+    orderGroupsByDate,
+    displayedRecords,
+    compositionMap,
+    plane,
+    handleCommitCondition,
+    handleCommitShipBy,
+    handleCommitStageAssign,
+    handleCommitSubtitleField,
+    handleCommitPlatform,
+    handleCommitSkuBin,
+    handleCommitTracking,
+    sortMenu,
+    views,
+  };
+}
+
+/**
+ * The outbound inline-edit commits — condition, ship-by, pick / pack assign,
+ * the under-title facts, platform, SKU bin, tracking — each keyed by the
+ * record's `orders.id`. The feed spreads these onto its presenters; a record
+ * opened outside a queue feed (the Shipped desk's `OrderRecordView`) mounts
+ * the same waist directly.
+ */
+export function useOrdersQueueCommits(): OrdersQueueCommits {
   // ONE mutation hook for the whole table (not one per row): every in-place
   // edit commits through the same `useOrderAssignment` waist — a scalar field
   // PATCH with the optimistic row update and rollback that hook already owns.
@@ -363,91 +471,24 @@ export function useOrdersQueueFeed({
     [assignMutate],
   );
 
-  const handleSortMenuSelect = useCallback(
-    (id: string) => {
-      const next = id as QueueDisplaySort;
-      // A name pin is a face, not a direction. Re-selecting "Amazon" must
-      // keep Amazon on top — flipping would bury the name the operator chose.
-      if (isQueueNamePinSort(next)) {
-        setSort(next);
-        return;
-      }
-      if (isQueueColumnSort(next) && sort === next && dir) {
-        setSort(next, flipQueueDisplaySortDir(dir));
-      } else {
-        setSort(next);
-      }
-    },
-    [sort, dir, setSort],
-  );
-
-  const sortMenuOptions = useMemo(
-    () => [
-      ...QUEUE_DISPLAY_SORT_OPTIONS,
-      ...queueColumnSortOptions(),
-      ...queueChannelSortOptions(),
-      ...queueCarrierSortOptions(),
+  return useMemo(
+    () => ({
+      handleCommitCondition,
+      handleCommitShipBy,
+      handleCommitStageAssign,
+      handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
+    }),
+    [
+      handleCommitCondition,
+      handleCommitShipBy,
+      handleCommitStageAssign,
+      handleCommitSubtitleField,
+      handleCommitPlatform,
+      handleCommitSkuBin,
+      handleCommitTracking,
     ],
-    [],
   );
-
-  const sortMenu: OrdersQueueSortMenu = {
-    options: sortMenuOptions,
-    active: sort,
-    hot: sort !== 'deadline',
-    onSelect: handleSortMenuSelect,
-    activeFace: queueDisplaySortFace(sort),
-  };
-
-  // The lane's saved views, resolved through the ONE outbound resolver so the
-  // toolbar menu and the rail's `OutboundSavedViewsList` cannot disagree about
-  // what a view captures.
-  //
-  // `shipped` was wired 2026-09-23: `SHIPPED_VIEW_PARAMS` is commented
-  // "matches DashboardShippedTable", the `dashboard_shipped` surface is in
-  // the `saved_views` CHECK set and in `GENERIC_SAVED_VIEW_SURFACES`, and
-  // `SHIPPED_SAVED_VIEWS_KEY` already resolves to it — the Shipped desk was
-  // the one operator worklist with filters + sort whose whole saved-view
-  // path existed and had no control on the table to reach it.
-  //
-  // `staged` and `labels` stay out on purpose, and not for lack of a key:
-  // a view is a named set of FILTER params, and those lanes have no filter
-  // to name. The staged dock's only URL state is its find text, which a view
-  // must never capture (`UNSHIPPED_VIEW_PARAMS`: "filters + sort pin, never
-  // search text"). A Views control there would save nothing.
-  const views =
-    queueMode === 'fulfillment'
-      ? {
-          ...outboundSavedViewsConfig('unshipped'),
-          emptyHint: 'Save a filter and sort combination to come back to it.',
-        }
-      : queueMode === 'shipped'
-        ? {
-            ...outboundSavedViewsConfig('shipped'),
-            emptyHint: 'Save a filter and sort combination to come back to it.',
-          }
-        : undefined;
-
-  return {
-    todayKey,
-    getStaffName,
-    sort,
-    dir,
-    setSort,
-    recentImportedOrders,
-    painted,
-    orderGroupsByDate,
-    displayedRecords,
-    compositionMap,
-    plane,
-    handleCommitCondition,
-    handleCommitShipBy,
-    handleCommitStageAssign,
-    handleCommitSubtitleField,
-    handleCommitPlatform,
-    handleCommitSkuBin,
-    handleCommitTracking,
-    sortMenu,
-    views,
-  };
 }

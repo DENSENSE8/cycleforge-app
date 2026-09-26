@@ -109,9 +109,9 @@ export interface TaskDeskTicket {
 export interface TaskDeskRow {
   /** `work_assignments.id` — a machine handle, and the only thing column one prints. */
   id: number;
-  /** The record this task is about. */
-  entityType: TaskEntityType;
-  entityId: number;
+  /** The record this task is about, or null for a standalone task. */
+  entityType: TaskEntityType | null;
+  entityId: number | null;
   /** Human umbrella label, separate from the instructions in note. */
   projectName: string | null;
   /** `work_assignments.notes` — task instructions an operator typed. */
@@ -160,8 +160,8 @@ export interface TaskDeskRow {
  */
 export interface TaskDeskWireRow {
   id: number;
-  entityType: TaskEntityType;
-  entityId: number;
+  entityType: TaskEntityType | null;
+  entityId: number | null;
   note: string | null;
   projectName: string | null;
   status: string;
@@ -291,8 +291,12 @@ export function taskDeskTicketNumber(row: TaskRecordRef): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-/** `Ticket 48120` — the record a task is about, in one phrase. */
-export function taskDeskRecordLabel(row: TaskRecordRef): string {
+/**
+ * `Ticket 48120` — the record a task is about, in one phrase. Null for a
+ * standalone task: there is no record, and a placeholder would read as one.
+ */
+export function taskDeskRecordLabel(row: TaskRecordRef): string | null {
+  if (row.entityType == null || row.entityId == null) return null;
   const noun = TASK_DESK_RECORD_NOUN[row.entityType] ?? 'Record';
   // A ticket is named by the number the operator quotes, not by the registry
   // id they have never seen.
@@ -359,5 +363,5 @@ export function taskDeskTitle(row: TaskRecordRef & { note: string | null; projec
       .trim();
     if (line) return line;
   }
-  return taskDeskRecordLabel(row);
+  return taskDeskRecordLabel(row) ?? 'Untitled task';
 }

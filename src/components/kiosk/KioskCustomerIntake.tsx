@@ -25,10 +25,12 @@
  *
  * ## Square's phone-first contact step (operator 2026-09-24)
  *
- * - The phone is typed on a glass keypad ({@link KioskPhoneKeypad}), never the
- *   OS keyboard: an iPad has no phone pad, and its full keyboard covered the
- *   step's Continue key. The input stays (`inputMode="none"`) so a desk
- *   keyboard still types into it.
+ * - The phone is typed on a glass keypad, never the OS keyboard: an iPad has
+ *   no phone pad, and its full keyboard covered the step's Continue key. The
+ *   keypad is NOT part of the form (operator 2026-09-25): tapping the phone
+ *   field mounts {@link KioskFloatingPhoneKeypad} in the pane's dock, above
+ *   Continue, and it goes away when done. The input stays (`inputMode="none"`)
+ *   so a desk keyboard still types into it.
  * - The tenth digit asks whether the number is on file
  *   ({@link useKioskCustomerMatch}); a match fills an empty Name, so a repeat
  *   customer is one keypad entry and Continue.
@@ -36,8 +38,9 @@
  *   that Name / Email raise never has to be dismissed to find the key.
  */
 
-import { useEffect, useRef, type ReactNode } from 'react';
-import { KioskPhoneKeypad, type PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { PhoneKeypadPress } from '@/components/kiosk/KioskAmountKeypad';
+import { KioskFloatingPhoneKeypad } from '@/components/kiosk/KioskFloatingPhoneKeypad';
 import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
 import { useKioskCustomerMatch, type KioskCustomerMatch } from '@/components/kiosk/useKioskCustomerMatch';
 import { TextField } from '@/design-system/primitives';
@@ -115,7 +118,7 @@ function pressPhone(phone: string, key: PhoneKeypadPress): string {
 
 /** The line under the phone: who this number is, before anyone asks a name. */
 function CustomerMatchLine({ match }: { match: KioskCustomerMatch }) {
-  // Always one line tall, so a lookup landing never shifts the keys under a thumb.
+  // Always one line tall, so a lookup landing never shifts the fields below it.
   return (
     <p
       className="min-h-5 px-1 text-sm font-semibold text-text-soft"
@@ -179,6 +182,10 @@ export function KioskCustomerIntake({
     latest.current.patch({ phone });
   };
 
+  // The floating keypad: mounted by a tap on (or focus into) the phone field.
+  const [padOpen, setPadOpen] = useState(false);
+  const phoneAnchor = useRef<HTMLDivElement>(null);
+
   const match = useKioskCustomerMatch(show('phone') ? current.phone : '');
   const matchedName = match.status === 'found' ? match.name : null;
   // The name WE wrote. Only that name is ours to replace or take back — a name
@@ -212,19 +219,27 @@ export function KioskCustomerIntake({
         {show('phone') &&
           (entry ? (
             <div className="space-y-2">
-              <KioskEntryField
-                name="Phone number"
-                value={current.phone}
-                onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
-                type="tel"
-                inputMode="none"
-                autoComplete="tel"
-                maxLength={12}
-                testId="kiosk-customer-phone"
-                onEnter={onSubmit}
-              />
+              <div ref={phoneAnchor} onFocus={() => setPadOpen(true)} onClick={() => setPadOpen(true)}>
+                <KioskEntryField
+                  name="Phone number"
+                  value={current.phone}
+                  onChange={(v) => patch({ phone: formatKioskPhoneInput(v) })}
+                  type="tel"
+                  inputMode="none"
+                  autoComplete="tel"
+                  maxLength={12}
+                  testId="kiosk-customer-phone"
+                  onEnter={onSubmit}
+                />
+              </div>
               <CustomerMatchLine match={match} />
-              <KioskPhoneKeypad onPress={pressKey} />
+              <KioskFloatingPhoneKeypad
+                open={padOpen}
+                phone={current.phone}
+                onPress={pressKey}
+                onClose={() => setPadOpen(false)}
+                anchorRef={phoneAnchor}
+              />
             </div>
           ) : (
             <div className="space-y-2">

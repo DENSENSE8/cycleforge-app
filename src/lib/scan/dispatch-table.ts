@@ -221,9 +221,9 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     reason: 'this bin is not paired to an order',
   },
   {
-    // The catch-all: serial, SKU, kit, ticket, a bare carton or line handle, and
-    // any licence plate with nothing outstanding. Preview is the safe answer —
-    // the existing page opens and no work starts.
+    // The catch-all: serial, SKU, kit, ticket, FNSKU, a bare carton or line
+    // handle, and any licence plate with nothing outstanding. Preview is the
+    // safe answer — the existing page opens and no work starts.
     id: 'preview',
     classes: [
       'sku',
@@ -237,6 +237,7 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
       'carrier-tracking',
       'sscc',
       'bin-paired-order',
+      'fnsku',
     ],
     when: ALWAYS,
     card: 'preview',

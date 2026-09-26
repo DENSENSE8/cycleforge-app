@@ -39,6 +39,7 @@ const CLASS_LABEL: Record<ScanType, string> = {
   'support-ticket': 'Support ticket',
   'carrier-tracking': 'Carrier tracking',
   sscc: 'SSCC pallet',
+  fnsku: 'FBA label (FNSKU)',
 };
 
 /**

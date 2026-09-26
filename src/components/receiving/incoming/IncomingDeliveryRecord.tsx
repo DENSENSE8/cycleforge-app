@@ -24,8 +24,8 @@ import { fmtDate } from '@/components/sidebar/receiving/incoming-details/incomin
 import { cn } from '@/utils/_cn';
 
 export type IncomingLedgerEntry =
-  | { kind: 'group'; key: string; date: string; group: RowGroup<ReceivingLineRow> }
-  | { kind: 'line'; key: string; date: string; groupKey: string; row: ReceivingLineRow; grouped: boolean };
+  | { kind: 'group'; key: string; group: RowGroup<ReceivingLineRow> }
+  | { kind: 'line'; key: string; row: ReceivingLineRow; grouped: boolean };
 
 const DELIVERY_RISK: Record<string, number> = {
   WRONG_DESTINATION: 100,
@@ -49,11 +49,12 @@ export function incomingDeliveryRecordState(row: ReceivingLineRow): RecordStateF
 function groupState(rows: readonly ReceivingLineRow[]): RecordStateFace {
   const worst = [...rows].sort(
     (a, b) => (DELIVERY_RISK[b.delivery_state ?? 'UNKNOWN'] ?? 0) - (DELIVERY_RISK[a.delivery_state ?? 'UNKNOWN'] ?? 0),
-  )[0];
-  return incomingDeliveryRecordState(worst ?? rows[0]!);
+  )[0]!;
+  return incomingDeliveryRecordState(worst);
 }
 
-function purchaseIdentity(row: ReceivingLineRow): string {
+/** The delivery's purchase handle — the record's title wherever it is read. */
+export function purchaseIdentity(row: ReceivingLineRow): string {
   return row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || row.source_order_id || `Line ${row.id}`;
 }
 

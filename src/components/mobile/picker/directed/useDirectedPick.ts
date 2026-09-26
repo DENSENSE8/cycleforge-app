@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet';
+import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import {
   directedPickInstruction,
@@ -22,6 +23,8 @@ import { playScanTone, vibrateScan, type ScanFeedbackKind } from '@/lib/scan-fee
 
 /** Survives a reload so the run's progress bar does not restart at zero. */
 const RUN_KEY = 'cf.pick.directed.runStartedAt';
+/** Orders the picker skipped this run — the feed does not offer them again until the run ends. */
+const SKIP_KEY = 'cf.pick.directed.skippedOrderIds';
 /** A finished line stays on screen this long so the success reads before the next bin replaces it. */
 const ADVANCE_DELAY_MS = 450;
 
@@ -32,6 +35,8 @@ export interface DirectedPickController {
   isLoaded: boolean;
   signedIn: boolean;
   loading: boolean;
+  /** The signed-in picker — the order card says whether a pick is theirs. */
+  viewerStaffId: number | null;
   loadError: string | null;
   retry: () => Promise<void>;
   data: DirectedPickNext | null;
@@ -47,15 +52,24 @@ export interface DirectedPickController {
   dismissMessage: () => void;
   /** Run clock, `m:ss` (or `h:mm:ss`). */
   elapsed: string;
-  cameraOpen: boolean;
-  setCameraOpen: (open: boolean) => void;
+  /**
+   * Re-arm requests for the bottom capture window (a counter — each increment
+   * lifts it once). Reset to 0 per line, so a fresh line's window mounts collapsed.
+   */
+  cameraArmRequest: number;
   shortOpen: boolean;
   setShortOpen: (open: boolean) => void;
   notesOpen: boolean;
   setNotesOpen: (open: boolean) => void;
+  passOpen: boolean;
+  setPassOpen: (open: boolean) => void;
   handleScan: (raw: string) => void;
   handleShort: (result: ShortPickResult) => Promise<void>;
   saveNote: (text: string) => Promise<boolean>;
+  /** Put this order back (unheld, unassigned from me) and never offer it again this run. */
+  skip: () => Promise<void>;
+  /** Assign this order to another picker and let go of it. */
+  passTo: (staff: { id: number; name: string }) => Promise<void>;
   /**
    * Pairing the line's SKU to a bin: the next scan names the location the
    * line's units now live in (NOT the tote — that is the order's carrier).
@@ -63,7 +77,7 @@ export interface DirectedPickController {
   pairing: boolean;
   startPairing: () => void;
   cancelPairing: () => void;
-  /** Forget the run start so the next visit begins a fresh progress count. */
+  /** Forget the run start and its skips so the next visit begins a fresh run. */
   endRun: () => void;
 }
 
@@ -77,6 +91,34 @@ function readRunStart(): string {
   } catch {
     return new Date().toISOString();
   }
+}
+
+function readSkipped(): number[] {
+  try {
+    const kept = JSON.parse(window.sessionStorage.getItem(SKIP_KEY) ?? '[]');
+    return Array.isArray(kept) ? kept.filter((id): id is number => Number.isInteger(id) && id > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSkipped(ids: readonly number[]): void {
+  try {
+    window.sessionStorage.setItem(SKIP_KEY, JSON.stringify(ids));
+  } catch {
+    /* private mode — the skip lasts this page only */
+  }
+}
+
+/** End the caller's open session(s) on an order so it is not held by this picker. */
+async function releaseOrder(orderId: number): Promise<void> {
+  const res = await fetch('/api/picking/release', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ order_id: orderId }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok || !body?.ok) throw new Error(body?.error || `Could not release the order (${res.status})`);
 }
 
 /** Every accepted or refused scan is heard and felt — the worker rarely looks down. */
@@ -94,6 +136,7 @@ function feedback(kind: ScanFeedbackKind): void {
 export function useDirectedPick(scanPaused = false): DirectedPickController {
   const { user, isLoaded } = useAuth();
   const { execute } = useWmsRealtime();
+  const { mutateAsync: assignOrder } = useOrderAssignment();
 
   const [runStartedAt, setRunStartedAt] = useState<string | null>(null);
   const [data, setData] = useState<DirectedPickNext | null>(null);
@@ -104,16 +147,20 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
   const [picked, setPicked] = useState<ReadonlySet<number>>(() => new Set());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<DirectedPickMessage | null>(null);
-  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraArmRequest, setCameraArmRequest] = useState(0);
   const [shortOpen, setShortOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [passOpen, setPassOpen] = useState(false);
   const [pairing, setPairing] = useState(false);
   /** The bin this line was just paired to — it replaces the feed's location until the next line. */
   const [pairedLocation, setPairedLocation] = useState<DirectedPickLocation | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const advanceTimer = useRef<number | null>(null);
+  /** This run's skipped orders — a ref so skipping does not re-key `fetchNext` (and re-fire the load). */
+  const skipped = useRef<number[]>([]);
 
   useEffect(() => {
+    skipped.current = readSkipped();
     setRunStartedAt(readRunStart());
   }, []);
 
@@ -146,7 +193,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
       const res = await fetch('/api/picking/next', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run_started_at: runStartedAt }),
+        body: JSON.stringify({ run_started_at: runStartedAt, skip_order_ids: skipped.current }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body?.ok) throw new Error(body?.error || `Could not load the next pick (${res.status})`);
@@ -157,6 +204,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
       setPicked(new Set());
       setPairing(false);
       setPairedLocation(null);
+      setCameraArmRequest(0);
       if (next.stagedTotes.length > 0) {
         setMessage({ tone: 'success', text: `Tote ${next.stagedTotes.join(', ')} staged for pack` });
       }
@@ -172,7 +220,6 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
   }, [isLoaded, user, runStartedAt, fetchNext]);
 
   const advanceSoon = useCallback(() => {
-    setCameraOpen(false);
     if (advanceTimer.current != null) window.clearTimeout(advanceTimer.current);
     advanceTimer.current = window.setTimeout(() => {
       advanceTimer.current = null;
@@ -199,7 +246,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
         nextPicked.add(allocationId);
         setPicked(nextPicked);
         if (nextPicked.size >= line.units.length) {
-          setMessage({ tone: 'success', text: `Picked ${line.units.length} × ${line.sku}` });
+          setMessage({ tone: 'success', text: `Picked ${line.units.length} × ${line.title}` });
           advanceSoon();
         } else {
           setMessage(null);
@@ -273,7 +320,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
         setPairing(false);
         setMessage({
           tone: 'success',
-          text: `${line.sku} paired to ${locationFace(paired)}${open.length > 1 ? ` · ${open.length} units` : ''}`,
+          text: `${line.title} paired to ${locationFace(paired)}${open.length > 1 ? ` · ${open.length} units` : ''}`,
         });
       } catch (err) {
         feedback('reject');
@@ -310,7 +357,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
   const handleScan = useCallback(
     (raw: string) => {
       const value = raw.trim();
-      if (!value || busy || scanPaused || shortOpen || notesOpen || !line || !order) return;
+      if (!value || busy || scanPaused || shortOpen || notesOpen || passOpen || !line || !order) return;
       if (pairing) {
         void pairBin(value);
         return;
@@ -340,13 +387,13 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
         const allocationId = matchItemScan(value, line, picked);
         if (allocationId == null) {
           feedback('reject');
-          setMessage({ tone: 'error', text: `Scanned "${value}" — not ${line.sku}` });
+          setMessage({ tone: 'error', text: `Scanned "${value}" — not ${line.title}` });
           return;
         }
         void confirmUnit(allocationId);
       }
     },
-    [busy, scanPaused, shortOpen, notesOpen, line, order, step, picked, confirmUnit, pairing, pairBin, armTote],
+    [busy, scanPaused, shortOpen, notesOpen, passOpen, line, order, step, picked, confirmUnit, pairing, pairBin, armTote],
   );
 
   // Hardware scanner: claim every wedge read on this screen so a bin label
@@ -428,16 +475,57 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
   }, [now, runStartedAt]);
 
   const endRun = useCallback(() => {
+    skipped.current = [];
     try {
       window.sessionStorage.removeItem(RUN_KEY);
+      window.sessionStorage.removeItem(SKIP_KEY);
     } catch {
       /* private mode — nothing kept */
     }
   }, []);
 
+  const skip = useCallback(async () => {
+    if (!order || !user) return;
+    setBusy(true);
+    try {
+      await releaseOrder(order.orderId);
+      if (order.owner?.via === 'assigned' && order.owner.staffId === user.staffId) {
+        await assignOrder({ orderId: order.orderId, testerId: 0 });
+      }
+      skipped.current = [...new Set([...skipped.current, order.orderId])];
+      writeSkipped(skipped.current);
+      setMessage({ tone: 'info', text: `Skipped ${order.orderLabel}` });
+      await fetchNext();
+    } catch (err) {
+      setMessage({ tone: 'error', text: err instanceof Error ? err.message : 'Skip failed — try again' });
+    } finally {
+      setBusy(false);
+    }
+  }, [order, user, assignOrder, fetchNext]);
+
+  const passTo = useCallback(
+    async (staff: { id: number; name: string }) => {
+      if (!order) return;
+      setBusy(true);
+      try {
+        await assignOrder({ orderId: order.orderId, testerId: staff.id, testerName: staff.name });
+        await releaseOrder(order.orderId);
+        setPassOpen(false);
+        setMessage({ tone: 'success', text: `Passed ${order.orderLabel} to ${staff.name}` });
+        await fetchNext();
+      } catch (err) {
+        setMessage({ tone: 'error', text: err instanceof Error ? err.message : 'Pass failed — try again' });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [order, assignOrder, fetchNext],
+  );
+
   return {
     isLoaded,
     signedIn: Boolean(user),
+    viewerStaffId: user?.staffId ?? null,
     loading,
     loadError,
     retry: fetchNext,
@@ -446,26 +534,29 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     line,
     tote,
     step,
-    instruction: pairing && line ? `Scan the bin to pair ${line.sku}` : directedPickInstruction(step, line, picked.size),
+    instruction: pairing && line ? `Scan the bin to pair ${line.title}` : directedPickInstruction(step, line, picked.size),
     pickedCount: picked.size,
     busy,
     message,
     dismissMessage: () => setMessage(null),
     elapsed,
-    cameraOpen,
-    setCameraOpen,
+    cameraArmRequest,
     shortOpen,
     setShortOpen,
     notesOpen,
     setNotesOpen,
+    passOpen,
+    setPassOpen,
     handleScan,
     handleShort,
     saveNote,
+    skip,
+    passTo,
     pairing,
     startPairing: () => {
       setPairing(true);
       setMessage(null);
-      setCameraOpen(true);
+      setCameraArmRequest((n) => n + 1);
     },
     cancelPairing: () => setPairing(false),
     endRun,

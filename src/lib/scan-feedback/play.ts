@@ -70,3 +70,17 @@ export function vibrateScan(kind: ScanFeedbackKind): void {
     /* vibrate is best-effort; ignore unsupported hardware */
   }
 }
+
+/**
+ * The press pulse of a flush execution cell (dock verb, tap-to-copy): one
+ * heavy 40ms buzz so a glove on the floor feels the verb land. Best-effort —
+ * iOS Safari has no Vibration API, so an iPhone gets the press inversion only.
+ */
+export function vibratePress(): void {
+  if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+  try {
+    navigator.vibrate(40);
+  } catch {
+    /* vibrate is best-effort; ignore unsupported hardware */
+  }
+}

@@ -7,9 +7,8 @@
  *   select · order · title · status · date · qty · price · cond · location · tracking · serial · _fill
  *
  * Frozen identity pane: `select · order` (PO stays pinned while Product / Date /
- * facts h-scroll). Incoming keeps its own Expected / Age / Status columns
- * ({@link INCOMING_GRID_COLUMNS}, co-located below — a separate array, never
- * filtered into {@link RECEIVING_GRID_COLUMNS}). The activity-axis stamp (Unboxed / Scanned /
+ * facts h-scroll). Incoming POS mounts no column model — `/incoming` is a
+ * RecordLedger; only its sort vocabulary lives below. The activity-axis stamp (Unboxed / Scanned /
  * Tested) renders as `date` (civil day; full stamp on hover) and its stage NAME
  * as `status`; there is no separate `stage` track. Location is triage shelf
  * placement (`staging_location_label`).
@@ -19,10 +18,6 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import {
-  INCOMING_FIELD_CATALOG,
-  INCOMING_PRODUCT_LAYOUT,
-} from '@/lib/tables/field-catalog/incoming';
 import {
   RECEIVING_FIELD_CATALOG,
   RECEIVING_PRODUCT_LAYOUT,
@@ -84,16 +79,15 @@ export interface ReceivingGridColumn
 /**
  * COMPOUND (two-row) Unbox / History / Testing columns.
  *
- * A **sibling array, never a filter of {@link RECEIVING_GRID_COLUMNS}** — the
- * same rule `INCOMING_GRID_COLUMNS` follows above. The two models answer
- * different questions: the flat one is a spreadsheet (one fact per track, each
+ * A **sibling array, never a filter of {@link RECEIVING_GRID_COLUMNS}**. The
+ * two models answer different questions: the flat one is a spreadsheet (one fact per track, each
  * independently sortable), this one is a scan list (four compound cells, each
  * pairing an identifier with its qualifier).
  *
  * **The geometry is not declared here.** It comes from `COMPOUND_TRACKS`
  * (`components/tables/compound/compound-columns.ts`), the one declaration every
  * compound family derives from, so Receiving cannot drift from Orders /
- * Incoming / Tasks by an edit to this file. This line only narrows the key type
+ * Tasks by an edit to this file. This line only narrows the key type
  * to `ReceivingGridColumnKey`.
  *
  * **The engine is unchanged.** `LedgerGridSurface` still owns width, freeze,
@@ -269,8 +263,8 @@ export {
 } from '@/design-system/components/grid/grid-cell-chrome';
 
 // ---------------------------------------------------------------------------
-// Incoming POS — its own key union and prefs identity. Both families mount the
-// shared compound tracks; neither keeps a flat spreadsheet array any more.
+// Incoming POS — sort vocabulary only. `/incoming` mounts the RecordLedger
+// (`IncomingDeliveriesLedger`); no Incoming column model or slot table exists.
 // ---------------------------------------------------------------------------
 
 export type IncomingGridColumnKey =
@@ -285,7 +279,7 @@ export type IncomingGridColumnKey =
   | 'order'
   | 'tracking'
   | 'zoho'
-  /** Compound (two-row) presentation tracks — see {@link INCOMING_COMPOUND_COLUMNS}. */
+  /** Compound (two-row) presentation tracks the ledger header may name. */
   | 'thumb'
   | 'item'
   | 'fulfillment'
@@ -297,68 +291,11 @@ export type IncomingGridColumnKey =
   | `status:${number}`
   | `subtitle:${number}`;
 
-/** Extends the house model — see {@link LedgerGridColumnModel}; only `key` narrows. */
-export interface IncomingGridColumn
-  extends Omit<LedgerGridColumnModel, 'key'>,
-    SlotTrackFields {
-  key: IncomingGridColumnKey;
-  /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
-  sortable?: boolean;
-}
-
-/**
- * COMPOUND (two-row) Incoming columns.
- *
- * The SAME tracks Receiving, Orders and Tasks mount — derived from
- * `COMPOUND_TRACKS`, not copied. This line only narrows the key type.
- *
- * **There is no lane variant, and specifically no compound twin of
- * {@link incomingGridColumnsFor}.** The flat model appends a `removed` track on
- * the recently-removed lane because that lane exists to answer "why did this
- * leave"; the compound row answers it in the STATE pill instead
- * (`incomingStateFace` — see `incoming-compound-view.ts`), so the column model
- * stays byte-identical to every other family's. A lane-conditional compound
- * array would be the first crack in "any visual difference between two tables
- * is a data difference".
- */
-export function incomingCompoundColumnsFor(
-  layout: SlotLayout,
-): readonly IncomingGridColumn[] {
-  return materializeTracks<IncomingGridColumn>({
-    layout,
-    catalog: INCOMING_FIELD_CATALOG,
-    base: compoundColumnsFor<IncomingGridColumn>(),
-    // Default anchor: the status band opens after the `state` pill, the same
-    // position Orders' and Receiving's bound facts take on this skeleton.
-  });
-}
-
-/**
- * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
- *
- * With the product layout's empty status band that is the shared
- * `COMPOUND_TRACKS` verbatim: the port reproduces what the Incoming rails paint
- * today, and every catalog fact becomes bindable without a deploy. Incoming and
- * Receiving keep SEPARATE layout documents (two tableIds) for the same reason
- * they keep separate prefs buckets — one cell map, two vocabularies.
- */
-export const INCOMING_COMPOUND_COLUMNS: readonly IncomingGridColumn[] =
-  incomingCompoundColumnsFor(INCOMING_PRODUCT_LAYOUT);
-
-/**
- * Frozen pane of the MOUNTED model — `select · order · thumb`. Derived from the
- * compound materialization's `frozen` flag (one declaration for freeze +
- * immovability + offset math). The flat array it used to read is deleted.
- */
-export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridFrozenKeys(
-  INCOMING_COMPOUND_COLUMNS,
-);
-
 /**
  * The fact words this family sorts by — declared, not derived (see
  * {@link receivingSortFactFor} for why a vocabulary is not a layout).
  */
-export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
+const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
   'order',
   'title',
   'date',
@@ -400,20 +337,11 @@ export function isIncomingGridSortable(key: string): key is IncomingGridColumnKe
   return incomingSortFactFor(key) != null;
 }
 
-export function isIncomingGridFrozen(key: string): boolean {
-  return INCOMING_GRID_LOCKED_KEYS.includes(key as IncomingGridColumnKey);
-}
-
-
 /** Default direction when first activating a column sort. */
 export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): GridSortDir {
   // Age: most overdue / oldest first (urgency scan), matching Pending.
   if (key === 'age') return 'desc';
   return 'asc';
-}
-
-export function flipIncomingGridSortDir(dir: GridSortDir): GridSortDir {
-  return dir === 'asc' ? 'desc' : 'asc';
 }
 
 /** Civil date source for the Date column (expected → PO → created). */
@@ -429,11 +357,3 @@ export function incomingRowDateSource(row: {
     null
   );
 }
-
-// Shared spreadsheet chrome — same ledgerGridCell atoms as Receiving, aliased
-// so Incoming freeze / header call sites stay on Incoming names.
-export {
-  LEDGER_GRID_FROZEN_CELL as INCOMING_GRID_FROZEN_CELL,
-  ledgerGridCell as incomingGridCell,
-  ledgerGridRowShellClass as incomingGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';

@@ -101,10 +101,24 @@ function lineItemRowHtml(item: VisitReceiptLineItem): string {
         </tr>`;
 }
 
+/**
+ * One repair device: its title, then THIS device's own issue (its reasons as
+ * written at submit) right under it, then its identity — RS code, helpdesk
+ * ticket when there is one, serial. Rendered identically on the customer and
+ * staff copies; `copy` only adds the staff banner.
+ */
 function repairRowHtml(item: VisitReceiptRepairItem): string {
+  const identity = [
+    escapeHtml(item.rsCode),
+    item.ticket ? `Ticket ${escapeHtml(item.ticket)}` : '',
+    item.serialNumber ? `SN ${escapeHtml(item.serialNumber)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const issue = item.issue ? `<br><span class="issue">Issue: ${escapeHtml(item.issue)}</span>` : '';
   return `
         <tr>
-          <td class="desc">${escapeHtml(item.productTitle)}<br><span class="meta">${escapeHtml(item.rsNumber)} · SN ${escapeHtml(item.serialNumber)}</span></td>
+          <td class="desc">${escapeHtml(item.productTitle)}${issue}<br><span class="meta">${identity}</span></td>
           <td class="num">1</td>
           <td class="num">${formatCents(item.quoteCents)}</td>
           <td class="num">${formatCents(item.quoteCents)}</td>
@@ -225,6 +239,7 @@ export function renderVisitReceiptHtml(
   table.items td.desc { max-width: 160px; word-break: break-word; }
   table.items th.num, table.items td.num { text-align: right; white-space: nowrap; padding-left: 6px; }
   .meta { color: #555; font-size: 10px; }
+  .issue { font-size: 9px; line-height: 1.3; }
   .tag { color: #555; font-size: 10px; }
   .totals-row { display: flex; justify-content: space-between; font-size: 10px; padding: 1px 0; }
   .totals-row.total { font-weight: bold; font-size: 11px; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; }

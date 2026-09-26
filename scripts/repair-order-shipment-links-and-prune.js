@@ -42,7 +42,7 @@ async function main() {
         client,
         `select count(*)::int as n
          from orders o
-         where o.created_at = $1::timestamp
+         where o.created_at = ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and not exists (
              select 1
              from packer_logs pl
@@ -105,7 +105,7 @@ async function main() {
     const deletePreview = await client.query(
       `select o.id, o.order_id, o.shipment_id, o.shipping_tracking_number
        from orders o
-       where o.created_at = $1::timestamp
+       where o.created_at = ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
          and not exists (
            select 1
            from packer_logs pl
@@ -117,7 +117,7 @@ async function main() {
 
     const deletedOrders = await client.query(
       `delete from orders o
-       where o.created_at = $1::timestamp
+       where o.created_at = ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
          and not exists (
            select 1
            from packer_logs pl
@@ -146,7 +146,7 @@ async function main() {
         client,
         `select count(*)::int as n
          from orders o
-         where o.created_at = $1::timestamp
+         where o.created_at = ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and not exists (
              select 1
              from packer_logs pl

@@ -38,6 +38,11 @@ tree.
     holds every fact and the only edit (the bar pencil)
   - rows → `DetailNav` doors built with `detailDoor()`; one per exact job
   - dock → **DetailDock**, at most three verbs, one primary
+  - scanning → **MobileCaptureWindow** as the bottom surface (lens + collapsed
+    Scan bar + keyed fallback for typing) — or no scan at all. Never a Scan verb
+    that opens it, never a typed-entry bar beside it (rules `capture-scan-verb`,
+    `capture-typed-fork`; operator 2026-09-25). A verb that navigates to
+    `/m/scan` is not a scanner.
   - `/info` and job screens → `DetailRecordFrame`
   - never: `MobileTriagePage` / `ItemCardRow` / a `BottomSheet` as the record
 

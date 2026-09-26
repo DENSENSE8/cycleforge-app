@@ -9,11 +9,13 @@
  *     (e.g. "/m/r/42") so legacy or wedge-captured scans still resolve.
  *   - Legacy carton string "RCV-123".
  *   - Static SKU:   starts with a digit AND contains ":" (e.g. "12345:HP-PSU").
+ *   - Amazon FNSKU: `X00` + 7 (the FBA unit label) — typed `fnsku`, no redirect.
  *   - Bin barcode:  starts with a letter (e.g. "A12", "B04").
  *   - Anything else falls back to SKU lookup (safer default).
  */
 
 import { inventoryLocationsHref, LOCATIONS_BAY_CODE_RE } from '@/lib/inventory/locations-path';
+import { scannedFnsku } from '@/lib/scan-resolver';
 import {
   detectCarrierFromTracking,
   toDisplayCarrier,
@@ -31,7 +33,8 @@ export type ScanType =
   | 'support-ticket'   // T-class — provider ticket id → /support?ticket=
   | 'carrier-tracking'
   | 'sscc'
-  | 'bin-paired-order';
+  | 'bin-paired-order'
+  | 'fnsku';           // Amazon FBA unit label (X00…) — the phone opens /m/fnsku/{fnsku}
 
 export interface ScanRoute {
   type: ScanType;
@@ -334,6 +337,15 @@ export function routeScan(raw: string): ScanRoute | null {
   if (/^[A-Z0-9][A-Z0-9-]*-\d{4}-\d{6}$/i.test(value)) {
     return { type: 'serial-unit', value, redirect: `/m/u/${encodeURIComponent(value)}` };
   }
+
+  // 3c. Amazon FNSKU — the FBA unit label (`X00` + 7). Ahead of the
+  //     letter→bin fallback, which used to take it for a bin and open a
+  //     location record. Deliberately NO redirect: desk FBA stations scan
+  //     FNSKUs all day through their own sinks, and the app-wide wedge must not
+  //     navigate them away. The phone scan kernel lands it on its hub
+  //     (`landScanIdentify`).
+  const fnsku = scannedFnsku(value);
+  if (fnsku) return { type: 'fnsku', value: fnsku };
 
   // 4. Static SKU: digit prefix + contains ":".
   if (/^\d/.test(value) && value.includes(':')) return { type: 'sku', value };

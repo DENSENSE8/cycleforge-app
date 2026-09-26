@@ -56,10 +56,7 @@ import { CATALOG_LINK_COMPOUND_COLUMNS } from '@/features/review/catalog-link/gr
 import { IMPORT_EXCEPTION_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
-import {
-  INCOMING_COMPOUND_COLUMNS,
-  RECEIVING_COMPOUND_COLUMNS,
-} from '@/lib/receiving/receiving-grid-layout';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
 import { TECH_ALL_SHEET_COLUMNS } from '@/lib/tech/tech-all-grid-layout';
 
@@ -73,7 +70,6 @@ type Col = { key: string; label?: string; gridLabel?: string };
 const MATERIALIZATIONS: readonly { name: string; columns: readonly Col[] }[] = [
   { name: 'ORDERS_COMPOUND_COLUMNS', columns: ORDERS_COMPOUND_COLUMNS },
   { name: 'RECEIVING_COMPOUND_COLUMNS', columns: RECEIVING_COMPOUND_COLUMNS },
-  { name: 'INCOMING_COMPOUND_COLUMNS', columns: INCOMING_COMPOUND_COLUMNS },
   { name: 'TASKS_COMPOUND_COLUMNS', columns: TASKS_COMPOUND_COLUMNS },
   { name: 'DAILY_COMPOUND_COLUMNS', columns: DAILY_COMPOUND_COLUMNS },
   { name: 'CATALOG_LINK_COMPOUND_COLUMNS', columns: CATALOG_LINK_COMPOUND_COLUMNS },

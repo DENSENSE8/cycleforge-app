@@ -20,13 +20,11 @@ function QcLineInner() {
   return (
     <ModeRegion mode="triage" className="flex min-h-screen flex-col bg-mode-panel">
       <MobileDetailTopBar backHref={QC_SCAN_HREF} subtitle="Quality control" title={`L-${lineId}`} mono />
-      <div className="flex-1 space-y-5 px-mode-page py-mode-page">
-        <QcLinePicker
-          lineId={lineId}
-          onPick={(unitRef) => router.push(`/m/u/${encodeURIComponent(unitRef)}/qc`)}
-          onBack={() => router.push(QC_SCAN_HREF)}
-        />
-      </div>
+      <QcLinePicker
+        lineId={lineId}
+        onPick={(unitRef) => router.push(`/m/u/${encodeURIComponent(unitRef)}/qc`)}
+        onBack={() => router.push(QC_SCAN_HREF)}
+      />
     </ModeRegion>
   );
 }

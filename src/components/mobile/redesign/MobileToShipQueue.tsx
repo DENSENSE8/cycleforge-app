@@ -626,7 +626,7 @@ export function MobileToShipQueue({
         resolveName={getStaffName}
       />
       <MobileToShipPickerSheet
-        row={passPickRow}
+        currentPickerId={passPickRow?.techId ?? null}
         open={passPickRow != null}
         onClose={() => setPassPickRow(null)}
         onPass={(staff) => {

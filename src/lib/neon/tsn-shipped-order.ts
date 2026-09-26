@@ -21,7 +21,7 @@ const TSN_ATTACH_INSTANT_SQL = `COALESCE(
                 FROM station_activity_logs added
                WHERE added.tech_serial_number_id = t.id
                  AND added.activity_type = 'SERIAL_ADDED'),
-             timezone('America/Los_Angeles', t.created_at::timestamp)
+             t.created_at
            )`;
 
 /** Exported so tests can pin the post-pack exclusion without a live DB. */

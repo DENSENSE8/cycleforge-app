@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-25T16:29:54Z",
-  "totalRoutes": 1087,
+  "generatedAt": "2026-09-25T20:59:44Z",
+  "totalRoutes": 1095,
   "summary": {
-    "permissionGated": 884,
+    "permissionGated": 892,
     "authenticatedNoPermission": 120,
     "anonymousIntentional": 36,
     "serviceToService": 47,
@@ -5343,12 +5343,30 @@
       "exemptReason": null
     },
     {
+      "path": "/api/picking/board/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/picking/next/route.ts",
       "methods": [
         "POST"
       ],
       "gate": "withAuth (no permission)",
       "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/picking/release/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {
@@ -7624,6 +7642,51 @@
       "exemptReason": null
     },
     {
+      "path": "/api/shipping/label-intake/labels/[labelId]/pdf/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/pair/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/purchase/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/rates/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.buy_label",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/shipping/label-intake/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "shipping.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/shipping/labels/route.ts",
       "methods": [
         "POST"
@@ -9788,6 +9851,15 @@
       "gate": "NONE",
       "permission": null,
       "exemptReason": "retired endpoint (always 410 Gone)"
+    },
+    {
+      "path": "/api/wms/commands/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
     },
     {
       "path": "/api/work-orders/calendar/route.ts",

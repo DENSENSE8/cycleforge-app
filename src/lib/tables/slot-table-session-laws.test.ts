@@ -9,10 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
-import {
-  INCOMING_COMPOUND_COLUMNS,
-  RECEIVING_COMPOUND_COLUMNS,
-} from '@/lib/receiving/receiving-grid-layout';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { isLineMoneyFieldId } from '@/lib/tables/slot-table-line-money';
 import { SLOT_TABLE_SESSION_LAWS } from './slot-table-session-laws';
 
@@ -55,13 +52,8 @@ describe('slot-table session laws (operator rulings as greps)', () => {
     });
   }
 
-  it('engine.inbound-shares-skeleton — Incoming and Receiving keys match COMPOUND_COLUMN_KEYS', () => {
+  it('engine.inbound-shares-skeleton — Receiving keys match COMPOUND_COLUMN_KEYS', () => {
     const skeleton = [...COMPOUND_COLUMN_KEYS];
-    assert.deepEqual(
-      INCOMING_COMPOUND_COLUMNS.map((c) => c.key),
-      skeleton,
-      'Incoming must mount the shared skeleton — Orders is not a different table',
-    );
     assert.deepEqual(
       RECEIVING_COMPOUND_COLUMNS.map((c) => c.key),
       skeleton,
@@ -74,7 +66,6 @@ describe('slot-table session laws (operator rulings as greps)', () => {
     assert.equal(isLineMoneyFieldId('sku-velocity.stock'), false);
     assert.equal(isLineMoneyFieldId('dead-stock.stock'), false);
     assert.equal(isLineMoneyFieldId('bins.total_qty'), false);
-    assert.equal(isLineMoneyFieldId('incoming.price'), true);
     assert.equal(isLineMoneyFieldId('receiving.price'), true);
     assert.equal(isLineMoneyFieldId('orders.amount'), true);
   });

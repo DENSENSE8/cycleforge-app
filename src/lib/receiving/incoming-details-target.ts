@@ -1,7 +1,6 @@
 /**
- * Resolve an Incoming grid row into an {@link IncomingDetailsTarget} for the
- * desk inspector (`detail:incoming`). Shared by the dblclick / Enter open path
- * and Incoming 1-check → inspect (selection occupancy).
+ * Resolve an Incoming row into an {@link IncomingDetailsTarget} — the key the
+ * incoming delivery record's details read (`useIncomingDetails`) opens on.
  */
 
 import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
@@ -16,7 +15,7 @@ export interface IncomingDetailsTarget {
   inboundSourceOrderId?: string | null;
   /** Unbox/Triage carton focus — preferred receiving row for notes/shipment. */
   receivingId?: number | null;
-  /** Active line focus — PoTab highlights matching line_items row. */
+  /** Active line focus — the record marks the matching PO line as current. */
   receivingLineId?: number | null;
   /**
    * Grid row that opened the panel — seeds Package Pairing (`CartonMatchHub`)
@@ -25,7 +24,7 @@ export interface IncomingDetailsTarget {
   seedRow?: ReceivingLineRow | null;
 }
 
-type IncomingDetailsFromRowResult =
+export type IncomingDetailsFromRowResult =
   | { ok: true; target: IncomingDetailsTarget }
   | { ok: false; toast: string };
 

@@ -46,8 +46,8 @@ const entityTypeSchema = z.custom<TaskEntityType>((value) => isTaskEntityType(va
 
 const wireRowSchema: z.ZodType<TaskDeskWireRow> = z.object({
   id: z.number(),
-  entityType: entityTypeSchema,
-  entityId: z.number(),
+  entityType: entityTypeSchema.nullable(),
+  entityId: z.number().nullable(),
   note: z.string().nullable(),
   projectName: z.string().nullable(),
   status: z.string(),

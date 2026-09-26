@@ -102,6 +102,10 @@ export const qk = {
     /** One exception's hub reads; per-facet keys append one string. */
     hub: (sku: string, facet: string) => ['sku-exceptions', 'hub', sku, facet] as const,
   },
+  kioskCompanion: {
+    /** A staff phone joined to a counter tablet's repair visit (`GET /api/counter/companion?t=`). */
+    phone: (token: string) => ['kiosk-companion', 'phone', token] as const,
+  },
   skuCatalog: {
     /** Broad invalidation prefix — matches every SKU catalog admin query. */
     all: ['sku-catalog'] as const,

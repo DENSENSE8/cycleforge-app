@@ -21,7 +21,7 @@ export async function GET(
 
     const result = await tenantQuery(
       gate.ctx.organizationId,
-      `SELECT fnsku, product_title, asin, sku, is_active, last_seen_at, created_at, updated_at
+      `SELECT fnsku, product_title, asin, sku, condition, is_active, last_seen_at, created_at, updated_at
        FROM fba_fnskus
        WHERE fnsku = $1 AND organization_id = $2`,
       [normalizedFnsku, gate.ctx.organizationId]

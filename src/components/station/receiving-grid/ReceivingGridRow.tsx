@@ -96,13 +96,6 @@ interface ReceivingGridRowProps {
    * single-gesture apply.
    */
   clickSelect?: boolean;
-  /**
-   * When set (Unbox History triage), double-click / Enter call this instead of
-   * `onSelect` so left-click can open the inspect rail while Enter opens work.
-   */
-  onOpenWorkspace?: () => void;
-  /** Unbox History — richer column + row-state context menu. */
-  historyTriageMenu?: boolean;
   /** Persisted custom row fill hex (Sheets paint). Selection wash outranks. */
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
@@ -136,8 +129,6 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   inventoryProviderLabel = 'Inventory',
   columns,
   clickSelect = false,
-  onOpenWorkspace,
-  historyTriageMenu = false,
   rowFillHex = null,
   quietIdentity = false,
   selectGutterChrome = 'always',
@@ -216,8 +207,6 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     trackingValue: displayTrackingNumber(row) ?? '',
     onEditTracking: onSelect,
     onEditOrder: onSelect,
-    // Double-click's destination, reused by the compound chevron.
-    onOpenRecord: onOpenWorkspace,
     serialsCsv: resolveReceivingLineSerialsCsv(row),
     statusDot:
       coarsePaint?.dot
@@ -248,6 +237,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     <div
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
+      data-desk-record-key={String(row.id)}
       data-receiving-id={row.receiving_id ?? undefined}
       data-group-child={quietIdentity ? '' : undefined}
       // Click-select: row IS the checkbox. Split planes: body opens (button).
@@ -279,11 +269,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         onSelect();
       }}
       onDoubleClick={() => {
-        if (clickSelect) {
-          onSelect();
-          return;
-        }
-        onOpenWorkspace?.();
+        if (clickSelect) onSelect();
       }}
       onKeyDown={(event) => {
         if (clickSelect) {
@@ -301,8 +287,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         }
         if (event.key === 'Enter') {
           event.preventDefault();
-          if (onOpenWorkspace) onOpenWorkspace();
-          else onSelect();
+          onSelect();
           return;
         }
         if (event.key === ' ') {

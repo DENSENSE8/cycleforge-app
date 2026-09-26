@@ -14,6 +14,7 @@ import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useDashboardRealtime } from '@/hooks/useDashboardRealtime';
+import { useDashboardSelectedOrder } from '@/hooks/useDashboardSelectedOrder';
 
 function ShortageDeskContent({
   onPrimaryPainted,
@@ -22,6 +23,10 @@ function ShortageDeskContent({
 }) {
   const { selectMode, selectionEnabled, selectionOverlays } = useOrderRailSelection('unshipped');
   useDashboardRealtime();
+  // Keeps `?openOrderId=` and the open record in step (deep links, reload,
+  // back/forward) — the same owner To ship mounts; the record itself is the
+  // ledger's record plane.
+  useDashboardSelectedOrder(true);
 
   return (
     <OrdersViewChromeProvider>

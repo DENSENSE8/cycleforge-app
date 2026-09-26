@@ -70,6 +70,31 @@ export const DESK_RECORD_MEASURE_PX = 736;
 /** Tailwind twin of {@link DESK_RECORD_MEASURE_PX} (46rem). */
 export const DESK_RECORD_MEASURE_CLASS = 'w-[46rem]';
 
+/**
+ * The record pane of {@link DeskRecordPlane}'s **split** view — the right side
+ * when the staffer has chosen fullscreen (operator 2026-09-25): list left for
+ * selection, the open record right. Starts at {@link DESK_RECORD_MEASURE_PX}
+ * for the same reason that column is fixed: the record's fields must not move
+ * when the window does. `shrink-0` so the list, not the record, gives way.
+ */
+export const DESK_SPLIT_RECORD_CLASS = 'w-[46rem] shrink-0';
+
+/**
+ * One record, two widths (operator 2026-09-25). In place the record gets the
+ * fixed stage and splits main 2/3 (the work) · aside 1/3 (identity facts); in
+ * the split pane it gets {@link DESK_SPLIT_RECORD_CLASS} and the two stack.
+ * A CONTAINER query on the plane's record body — never a viewport breakpoint,
+ * because the same viewport shows both views. `@4xl` = 56rem: wider than the
+ * split pane (46rem), narrower than the fixed stage (72rem).
+ */
+export const DESK_RECORD_COLUMNS_CLASS = 'grid grid-cols-1 items-start gap-4 @4xl:grid-cols-3';
+
+/** The main (work) column of {@link DESK_RECORD_COLUMNS_CLASS}. */
+export const DESK_RECORD_MAIN_COLUMN_CLASS = 'min-w-0 @4xl:col-span-2';
+
+/** The identity-facts column of {@link DESK_RECORD_COLUMNS_CLASS}. */
+export const DESK_RECORD_ASIDE_COLUMN_CLASS = 'min-w-0';
+
 /** Fullscreen stage: the gutters collapse and the body takes the content canvas. */
 export const DESK_STAGE_FULLSCREEN_CLASS = 'w-full';
 

@@ -10,11 +10,6 @@ export {
   type InboundDeliveryState,
 } from '@cycleforge/design-tokens';
 
-/** Resolve one inbound carrier state into the generic industrial-record face. */
-export function inboundDeliveryRecordState(state: InboundDeliveryState): RecordStateFace {
-  return { id: state, ...INBOUND_DELIVERY[state] };
-}
-
 /** Unknown/null carrier answers paint the explicit UNKNOWN face, never an outbound alias. */
 export function resolveInboundDeliveryRecordState(
   state: string | null | undefined,
@@ -22,5 +17,5 @@ export function resolveInboundDeliveryRecordState(
   const key = state && state in INBOUND_DELIVERY
     ? state as InboundDeliveryState
     : 'UNKNOWN';
-  return inboundDeliveryRecordState(key);
+  return { id: key, ...INBOUND_DELIVERY[key] };
 }

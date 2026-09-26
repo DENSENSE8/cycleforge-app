@@ -72,18 +72,19 @@ export function DetailRecordFrame<T>({
       {live != null ? (
         children(live)
       ) : (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+        // Flat like the record it stands in for: full-width bands, no box.
+        <div className="flex-1">
           {state.loading ? (
-            <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
+            <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>
           ) : state.notice ? (
-            <div className="rounded-mode border border-mode-edge bg-mode-panel p-mode-page text-mode-body text-mode-ink">
+            <div className="border-b border-mode-rule bg-mode-panel px-mode-page py-3 text-mode-body text-mode-ink">
               {state.notice}
             </div>
           ) : (
-            <div className="space-y-2 rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-mode-body font-semibold text-rose-700">
+            <div className="space-y-2 border-b border-rose-200 bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700">
               <p>{state.error || state.missing || 'Not found.'}</p>
               {state.error && state.onRetry ? (
-                <Button variant="secondary" size="lg" className="rounded-mode" onClick={state.onRetry}>
+                <Button variant="secondary" size="lg" radius="flush" onClick={state.onRetry}>
                   Retry
                 </Button>
               ) : null}
@@ -103,6 +104,8 @@ export function DetailRecordFrame<T>({
  * MobileDetailTopBar  ‹ Back · IDENT (mono) · meta ··········· Scan
  * card                read-only DetailSummaryCard; whole card → /info
  * ack                 server-stamped, dismissable
+ * content             optional: the record's live working set (a location's
+ *                     SKUs with their ± strips) — never facts or edits
  * rows                DetailNav doors, one per exact job (detailDoor)
  * dock                DetailDock — ≤3 verbs, one primary
  * ```
@@ -110,6 +113,10 @@ export function DetailRecordFrame<T>({
  * The slots are the law, so a hub cannot put a heading above the card, an Edit
  * button on it, or a second dock under it. `/info` owns every fact and the only
  * edit; each door opens one job screen. `children` is for the dock's sheets.
+ *
+ * Edge to edge (operator 2026-09-25): no page padding and no gaps. Card, ack,
+ * content and door rows run the full width, separated by one mode rule; only
+ * text keeps its inset. `content` owns its own inset (or none).
  * Gate: `scripts/detail-hub-guard.ts` (`src/lib/mobile/detail-hub-law.ts`).
  */
 export function DetailHubScreen<T>({
@@ -119,6 +126,7 @@ export function DetailHubScreen<T>({
   card,
   ack,
   onAckDismiss,
+  content,
   rowsLabel,
   rows,
   dock,
@@ -131,6 +139,8 @@ export function DetailHubScreen<T>({
   card: (record: T) => ReactNode;
   ack?: ReactNode;
   onAckDismiss?: () => void;
+  /** The record's live working set, between the card and the doors. */
+  content?: (record: T) => ReactNode;
   /** Accessible name of the door list (`Repair screens`). */
   rowsLabel: string;
   rows: (record: T) => readonly DetailDoor[];
@@ -142,9 +152,10 @@ export function DetailHubScreen<T>({
     <DetailRecordFrame record={record} state={state} bar={bar}>
       {(live) => (
         <>
-          <div className="flex-1 space-y-5 px-mode-page py-mode-page">
+          <div className="flex-1 divide-y divide-mode-rule">
             {card(live)}
             {ack && onAckDismiss ? <DetailAck onDismiss={onAckDismiss}>{ack}</DetailAck> : null}
+            {content ? content(live) : null}
             <DetailNav label={rowsLabel} rows={rows(live)} />
           </div>
           {dock(live)}

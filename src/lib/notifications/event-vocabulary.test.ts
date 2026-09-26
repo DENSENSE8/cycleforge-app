@@ -26,7 +26,7 @@ const MIGRATION = join(
 /** Where `staff_inbox_items_entity_type_chk` last got its list. */
 const INBOX_MIGRATION = join(
   process.cwd(),
-  'src/lib/migrations/2026-09-22a_staff_inbox_support_ticket.sql',
+  'src/lib/migrations/2026-09-25f_standalone_tasks.sql',
 );
 
 test('entity vocabulary is a partition of OPS_EVENT_ENTITY_TYPES', () => {
@@ -62,7 +62,7 @@ test('inbox entity types match the DB CHECK byte-for-byte', () => {
   // that only checked one of them would have called that drift.
   const sql = readFileSync(INBOX_MIGRATION, 'utf8');
   const match = sql.match(
-    /ADD CONSTRAINT staff_inbox_items_entity_type_chk\s+CHECK \(entity_type IN \(([^)]+)\)\)/,
+    /ADD CONSTRAINT staff_inbox_items_entity_type_chk CHECK \(\s*entity_type = ANY \(ARRAY\[([^\]]+)\]\)\s*\)/,
   );
   assert.ok(match, 'entity_type CHECK not found in the widening migration');
   const inDb = match[1]

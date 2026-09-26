@@ -67,6 +67,16 @@ export interface ShippedOrder {
   /** SHIP_CONFIRM station_activity_logs.staff_id — who scanned it out at the dock. */
   shipped_out_by?: number | null;
   shipped_out_by_name?: string | null;
+  /**
+   * Pre-box facts (`PREBOX_FACTS_LATERAL`): the line's live allocated units, how
+   * many of them sit in a SEALED `label_manifests` PREBOX, who created that
+   * manifest and when it was sealed. `prebox_unit_count` 0 / absent means the
+   * line maps to no serial unit, so its pre-box state is unknown — not "no".
+   */
+  prebox_unit_count?: number | null;
+  pre_boxed_count?: number | null;
+  pre_boxed_by_name?: string | null;
+  pre_boxed_at?: string | null;
   next_pack_activity_at?: string | null;
   /**
    * Current packing-bench placement (`order_pack_placements` → `locations`),
@@ -179,6 +189,13 @@ export interface ShippedOrder {
   verification_outcome?: string | null;
   /** `station_activity_logs.id` when delete has no packer_logs row (e.g. some FBA scans). */
   station_activity_log_id?: number | null;
+  /**
+   * The `orders.id` a Shipped package row resolved to (`packer-logs-week`
+   * `o.id AS order_row_id`); null when the scan matched no order line (FBA /
+   * exception packages). Set on Shipped detail records only — there `id` falls
+   * back to the scan id, so it cannot tell the two apart by itself.
+   */
+  order_row_id?: number | null;
   /** FK to customers — linked buyer (e.g. Amazon MFN shipping contact). */
   customer_id?: number | null;
   /**

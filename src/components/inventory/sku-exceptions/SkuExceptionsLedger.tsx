@@ -33,6 +33,7 @@ import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { SearchField } from '@/design-system/primitives';
 import { RecordLedger } from '@/design-system/components/record-ledger/RecordLedger';
+import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import {
   IndustrialRecord,
   RecordBin,
@@ -66,11 +67,11 @@ import {
   skuExceptionTitle,
 } from './sku-exception-record';
 import { SkuExceptionCreateForm } from './SkuExceptionCreateForm';
-import { SkuExceptionEvidence } from './SkuExceptionEvidence';
+import { SkuExceptionEvidence, skuExceptionsSummary } from './SkuExceptionEvidence';
 
 const recordKey = (row: ProvisionalSku) => row.sku;
 
-/** The ledger's open key while the create form holds the evidence column — no SKU carries it. */
+/** The ledger's open key while the create form is the open record — no SKU carries it. */
 const CREATE_KEY = 'new-temp-sku';
 
 export function SkuExceptionsLedger() {
@@ -141,6 +142,7 @@ export function SkuExceptionsLedger() {
   });
 
   const shown = useMemo(() => rows.filter((row) => skuExceptionMatches(row, query)), [rows, query]);
+  const summary = useMemo(() => skuExceptionsSummary(rows), [rows]);
 
   const renderRecord = useCallback(
     (row: ProvisionalSku, open: boolean) => <SkuExceptionRecord row={row} open={open} onOpen={openRecord} />,
@@ -206,22 +208,27 @@ export function SkuExceptionsLedger() {
             </>
           )
         }
-        evidenceNoun="exception"
-        evidenceHead={creating ? 'New exception' : undefined}
-        evidence={
-          creating ? (
-            <SkuExceptionCreateForm onCreated={openRecord} onCancel={closeRecord} />
-          ) : (
-            <SkuExceptionEvidence
-              sku={selectedSku}
-              item={record.data}
-              loading={record.isLoading}
-              error={record.isError ? record.error : null}
-              mergedInto={record.mergedInto}
-              rows={rows}
-              onExit={closeRecord}
-            />
-          )
+        recordTitle={creating ? 'New temp SKU' : (selectedSku ?? 'SKU exception')}
+        recordSubtitle={!creating && record.data ? skuExceptionTitle(record.data) : undefined}
+        recordNoun="exception"
+        summary={summary}
+        record={
+          <DeskRecordLayout
+            main={
+              creating ? (
+                <SkuExceptionCreateForm onCreated={openRecord} onCancel={closeRecord} />
+              ) : selectedSku ? (
+                <SkuExceptionEvidence
+                  sku={selectedSku}
+                  item={record.data}
+                  loading={record.isLoading}
+                  error={record.isError ? record.error : null}
+                  mergedInto={record.mergedInto}
+                  onExit={closeRecord}
+                />
+              ) : null
+            }
+          />
         }
       />
     </>

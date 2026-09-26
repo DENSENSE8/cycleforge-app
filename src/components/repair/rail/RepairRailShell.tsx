@@ -3,8 +3,8 @@
 /**
  * The rail body for a MULTI-row repair selection — occupant `detail:repair-batch`.
  *
- * One row is the existing `RepairDetailsPanel` (`detail:repair`). Close clears
- * the check-set (History / order-rail D4).
+ * One repair opens as `RepairRecordView` on the desk's record plane, not here.
+ * Close clears the check-set (History / order-rail D4).
  */
 
 import { useCallback, useMemo } from 'react';

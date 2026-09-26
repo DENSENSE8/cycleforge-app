@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, Suspense } from 'react';
-import { motion, AnimatePresence } from '@/design-system/motion';
+import { useState, useEffect, Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { MobileTopBar } from './MobileTopBar';
 import { MobileSidebarDrawer } from './MobileSidebarDrawer';
@@ -61,12 +60,7 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
   const [isHydrated, setIsHydrated] = useState(false);
   const showHeader = !!pathname && !mobileRouteOwnsTopBar(pathname);
   const overlayHeader = !!pathname && wantsOverlayHeader(pathname);
-  // True only while the document's first page is mounting (SSR + hydration).
-  // Read during render, flipped after — every later `key={pathname}` mount is a
-  // client navigation and gets the crossfade.
-  const firstPaintRef = useRef(true);
   useEffect(() => {
-    firstPaintRef.current = false;
     setIsHydrated(true);
   }, []);
 
@@ -110,30 +104,15 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
           <WmsRealtimeStatus />
 
           <div className="relative min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-contain">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              // FIRST PAINT IS NEVER ANIMATED. `initial={{opacity:0}}` applies
-              // to the SSR mount too, so every `/m/*` document shipped its whole
-              // page inside `style="opacity:0"` and only revealed it once
-              // hydration ran the fade — LCP stopped measuring the HTML (~0.4s)
-              // and started measuring the bundle (~9s on the mobile profile).
-              // Route-to-route crossfades still animate; the document's first
-              // mount shows immediately.
-              initial={firstPaintRef.current ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 0.15,
-                ease: [0.23, 1, 0.32, 1],
-              }}
-              className="h-full"
-            >
-              <ErrorBoundary key={pathname} label="mobile-page" fallback={MobilePageError}>
-                {children}
-              </ErrorBoundary>
-            </motion.div>
-          </AnimatePresence>
+          {/* No route animation (operator 2026-09-25: "it shouldn't even display
+              an animation at all"). The crossfade held every tap for 150ms of
+              exit + 150ms of enter; the new screen now paints the frame it
+              is ready. `key` still resets the error boundary per route. */}
+          <div className="h-full">
+            <ErrorBoundary key={pathname} label="mobile-page" fallback={MobilePageError}>
+              {children}
+            </ErrorBoundary>
+          </div>
           </div>
         </div>
 

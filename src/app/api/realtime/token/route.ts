@@ -22,6 +22,7 @@ import {
   getMasterPlanChannel,
   getOpsPlansChannelName,
   getForgeRunsChannelName,
+  printBridgeStaffId,
 } from '@/lib/realtime/channels';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import { deskKioskCapability } from '@/lib/realtime/kiosk-capability';
@@ -76,7 +77,9 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
   const inboxOwn = getInboxChannelName(orgId, staffId);
   const phoneOwn = getPhoneBridgeChannelName(orgId, staffId);
   const packerOwn = getPackerBridgeChannelName(orgId, staffId);
-  const printOwn = getStaffPrintBridgeChannelName(orgId, staffId);
+  // Production: this staffer's own channel. Non-production: the shared test
+  // channel (`printBridgeStaffId`), so any staffer can test one printer.
+  const printOwn = getStaffPrintBridgeChannelName(orgId, printBridgeStaffId(staffId));
   const staffStationOwn = getStaffStationBridgeChannelName(orgId, staffId);
   const scanLogOwn = getScanLogChannelName(orgId, staffId);
 

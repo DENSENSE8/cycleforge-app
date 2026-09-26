@@ -43,7 +43,6 @@ export interface ProductTable {
  */
 export const PRODUCT_TABLES: readonly ProductTable[] = [
   { tableId: 'receiving', label: 'Unbox · History · Testing' },
-  { tableId: 'incoming', label: 'Incoming POs' },
   { tableId: 'orders', label: 'To-ship' },
   { tableId: 'daily', label: 'Daily checks' },
   { tableId: 'tasks', label: 'My tasks' },

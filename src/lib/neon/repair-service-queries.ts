@@ -56,7 +56,14 @@ export const REPAIR_STATUS_OPTIONS = [
   'Picked Up',
 ] as const;
 
-export type RepairTab = 'incoming' | 'active' | 'done';
+/**
+ * `all` is the HISTORY book: every repair in any status, newest first — the
+ * same row set the kiosk History face reads (`list-kiosk-visits.ts`, whose
+ * standalone-repair spine carries no status predicate). The Sales → Repair
+ * Service desk opens on it, so a repair checked in a minute ago (status
+ * `Pending Repair`) is on the desk exactly as it is on the tablet.
+ */
+export type RepairTab = 'incoming' | 'active' | 'done' | 'all';
 
 /** Statuses shown on the Done tab — also used by station “next repair” exclusions. */
 export const REPAIR_DONE_TAB_STATUSES = ['Done', 'Picked Up', 'Shipped'] as const;
@@ -175,6 +182,9 @@ function buildRepairTabWhere(tab: RepairTab, needsLabel?: boolean) {
   if (tab === 'incoming') {
     return `WHERE rs.status = ${incomingSt} ${label}`;
   }
+  if (tab === 'all') {
+    return `WHERE TRUE ${label}`;
+  }
   if (tab === 'done') {
     return `WHERE rs.status IN ${terminalList} ${label}`;
   }
@@ -201,7 +211,7 @@ function buildRepairSearchWhere(idx: number, tab?: RepairTab, needsLabel?: boole
   const label = buildRepairNeedsLabelWhere(needsLabel);
   const terminalList = sqlStatusInTerminal();
   const incomingSt = sqlIncomingTabStatus();
-  if (!tab) return `WHERE ${base} ${label}`;
+  if (!tab || tab === 'all') return `WHERE ${base} ${label}`;
   if (tab === 'incoming') return `WHERE rs.status = ${incomingSt} AND ${base} ${label}`;
   if (tab === 'done') return `WHERE rs.status IN ${terminalList} AND ${base} ${label}`;
   return `WHERE rs.status != ${incomingSt}

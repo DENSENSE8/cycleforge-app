@@ -2,17 +2,15 @@
 
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { ScanSurface } from '@/components/mobile/ScanSurface';
-import { SkuIdentity } from '@/components/inventory/SkuIdentity';
 import {
   framerPresenceMobile,
   framerTransitionMobile,
 } from '@/design-system/foundations/motion-framer';
-import { conditionBadgeTone, conditionGradeTableLabel } from '@/lib/receiving/receiving-constants';
 import { Button } from '@/design-system/primitives';
 import type { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { PickTask } from './picker-shared';
 
-/** The current-pick card — bin chip, SKU identity, progressive details, gated scanner. */
+/** The current-pick card — bin chip, product title, progressive details, gated scanner. */
 export function PickerTaskCard({
   currentTask,
   scanner,
@@ -44,26 +42,15 @@ export function PickerTaskCard({
           {currentTask.bin ?? '—'}
         </p>
 
-        {/* Product identity — canonical SKU primary, platform mappings beneath */}
+        {/* Product — the title only. */}
         <div className="mt-4">
-          <SkuIdentity
-            canonicalSku={currentTask.sku}
-            productTitle={currentTask.productTitle}
-            platforms={currentTask.platforms}
-          />
+          <p className="line-clamp-3 text-lg font-semibold leading-snug text-text-default">
+            {currentTask.productTitle || currentTask.sku}
+          </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center rounded-none border border-border-soft bg-surface-canvas px-3 py-1 text-sm font-semibold tabular-nums text-text-default">
               Qty {currentTask.plannedQty}
             </span>
-            {currentTask.conditionGrade && (
-              <span
-                className={`inline-flex items-center rounded-none px-3 py-1 text-xs font-semibold uppercase tracking-wide ${conditionBadgeTone(
-                  currentTask.conditionGrade,
-                )}`}
-              >
-                {conditionGradeTableLabel(currentTask.conditionGrade)}
-              </span>
-            )}
           </div>
         </div>
 
@@ -86,10 +73,6 @@ export function PickerTaskCard({
               className="mt-2 grid grid-cols-2 gap-2 overflow-hidden text-xs"
             >
               <div className="rounded-none bg-surface-canvas px-3 py-2">
-                <dt className="font-semibold uppercase tracking-wider text-text-soft">Serial unit</dt>
-                <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.serialUnitId}</dd>
-              </div>
-              <div className="rounded-none bg-surface-canvas px-3 py-2">
                 <dt className="font-semibold uppercase tracking-wider text-text-soft">Allocation</dt>
                 <dd className="mt-0.5 font-mono font-semibold text-text-default">#{currentTask.allocationId}</dd>
               </div>
@@ -101,25 +84,13 @@ export function PickerTaskCard({
             aim at; the in-place error appears if a wrong code decodes. */}
         <div className="mt-5">
           <p className="mb-2 text-xs font-semibold text-text-soft">
-            Scan to verify
-            {currentTask.serialNumber ? ' this unit, then confirm' : ', or confirm below'}{' '}
-            {currentTask.bin && (
-              <span className="font-mono font-semibold text-text-muted">{currentTask.bin}</span>
-            )}
-            {currentTask.bin && currentTask.serialNumber && ' or '}
-            {currentTask.serialNumber && (
-              <span className="font-mono font-semibold text-text-muted">
-                serial {currentTask.serialNumber}
-              </span>
-            )}
-            {!currentTask.bin && !currentTask.serialNumber && (
-              <span className="font-mono font-semibold text-text-muted">{currentTask.sku}</span>
-            )}
+            Scan to verify, or confirm below{' '}
+            <span className="font-mono font-semibold text-text-muted">{currentTask.bin ?? currentTask.sku}</span>
           </p>
           <ScanSurface
             scanner={scanner}
             onDecode={onDecode}
-            manualPlaceholder="Type serial, bin, or SKU…"
+            manualPlaceholder="Type the bin or item code…"
           />
           {scanError && (
             <div

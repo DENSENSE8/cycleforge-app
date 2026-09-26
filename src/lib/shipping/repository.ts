@@ -350,30 +350,45 @@ export async function updateShipmentSummary(
   const run = async (client: PoolClient): Promise<void> => {
     const status = result.latestStatusCategory;
 
-    // ─── A1: derive delivered from the append-only event log, not just the
+    // ─── A1: derive milestones from the append-only event log, not the
     // latest snapshot. Callers (poll + every webhook) upsert events *before*
     // calling this, so the log is authoritative and immune to out-of-order /
     // late-arriving events that leave `latest_status_category` on an in-transit
-    // value even though a DELIVERED scan exists. Earliest such event time is the
-    // honest delivered_at.
-    const logAgg = await client.query<{ has_delivered: boolean; first_delivered_at: string | null }>(
+    // value even though a DELIVERED scan exists. Each milestone is the carrier's
+    // own scan instant for that category (first for label / accepted / in
+    // transit / delivered, latest for out-for-delivery / exception) — never the
+    // time this sync happened to run. `now()` survives only as the fallback
+    // when the snapshot shows a status the log has no timed event for.
+    const logAgg = await client.query<{
+      has_delivered: boolean | null;
+      first_delivered_at: string | null;
+      first_label_created_at: string | null;
+      first_accepted_at: string | null;
+      first_in_transit_at: string | null;
+      last_out_for_delivery_at: string | null;
+      last_exception_at: string | null;
+      last_event_at: string | null;
+    }>(
       `SELECT
-         bool_or(normalized_status_category = 'DELIVERED')                                  AS has_delivered,
-         min(event_occurred_at) FILTER (WHERE normalized_status_category = 'DELIVERED')     AS first_delivered_at
+         bool_or(normalized_status_category = 'DELIVERED')                                      AS has_delivered,
+         min(event_occurred_at) FILTER (WHERE normalized_status_category = 'DELIVERED')         AS first_delivered_at,
+         min(event_occurred_at) FILTER (WHERE normalized_status_category = 'LABEL_CREATED')     AS first_label_created_at,
+         min(event_occurred_at) FILTER (WHERE normalized_status_category = 'ACCEPTED')          AS first_accepted_at,
+         min(event_occurred_at) FILTER (WHERE normalized_status_category = 'IN_TRANSIT')        AS first_in_transit_at,
+         max(event_occurred_at) FILTER (WHERE normalized_status_category = 'OUT_FOR_DELIVERY')  AS last_out_for_delivery_at,
+         max(event_occurred_at) FILTER (WHERE normalized_status_category = 'EXCEPTION')         AS last_exception_at,
+         max(event_occurred_at)                                                                 AS last_event_at
        FROM shipment_tracking_events
        WHERE shipment_id = $1`,
       [shipmentId]
     );
-    const deliveredFromLog = logAgg.rows[0]?.has_delivered === true;
-    const firstDeliveredAt = logAgg.rows[0]?.first_delivered_at ?? null;
+    const log = logAgg.rows[0];
+    const deliveredFromLog = log?.has_delivered === true;
 
     // Delivered if the log has it, the snapshot says so, or the carrier handed
     // us an explicit delivered timestamp. The SQL OR with the stored column
     // (A2) makes it monotonic — a stray later in-transit event can't un-deliver.
     const deliveredNow = deliveredFromLog || status === 'DELIVERED' || result.deliveredAt != null;
-    // Earliest known delivery instant from any source. NULL is fine — the SQL
-    // coheres it to now() under the A4 invariant when delivered is true.
-    const deliveredAtValue = firstDeliveredAt ?? result.deliveredAt ?? null;
     // Terminal is sticky: delivered (now or previously) or a fresh RETURNED.
     const isTerminal = deliveredNow || status === 'RETURNED';
     // A5 coherence: `latest_status_category` is what every desk FILTERS and
@@ -403,21 +418,25 @@ export async function updateShipmentSummary(
          -- A2: monotonic terminal — a delivered shipment stays terminal.
          is_terminal          = (is_terminal OR $11::boolean),
 
-         label_created_at    = CASE WHEN $12::boolean AND label_created_at IS NULL    THEN now() ELSE label_created_at    END,
-         carrier_accepted_at = CASE WHEN $13::boolean AND carrier_accepted_at IS NULL THEN now() ELSE carrier_accepted_at END,
-         first_in_transit_at = CASE WHEN $14::boolean AND first_in_transit_at IS NULL THEN now() ELSE first_in_transit_at END,
-         out_for_delivery_at = CASE WHEN $15::boolean THEN now() ELSE out_for_delivery_at END,
-         -- A4 coherence: is_delivered ⇒ delivered_at IS NOT NULL. Keep the
-         -- earliest known instant; only ever fill, never push it later.
+         -- Log instant when the carrier gave one (it also corrects an earlier
+         -- sync-time stamp); else the old fill-once / latest-seen fallback.
+         label_created_at    = COALESCE($24::timestamptz, CASE WHEN $12::boolean AND label_created_at IS NULL    THEN now() ELSE label_created_at    END),
+         carrier_accepted_at = COALESCE($25::timestamptz, CASE WHEN $13::boolean AND carrier_accepted_at IS NULL THEN now() ELSE carrier_accepted_at END),
+         first_in_transit_at = COALESCE($26::timestamptz, CASE WHEN $14::boolean AND first_in_transit_at IS NULL THEN now() ELSE first_in_transit_at END),
+         out_for_delivery_at = COALESCE($27::timestamptz, CASE WHEN $15::boolean THEN now() ELSE out_for_delivery_at END),
+         -- A4 coherence: is_delivered ⇒ delivered_at IS NOT NULL. The log's
+         -- first DELIVERED scan wins; without one, keep the earliest known
+         -- instant — only ever fill, never push it later.
          delivered_at        = CASE
                                  WHEN $16::boolean
-                                   THEN LEAST(COALESCE(delivered_at, $17::timestamptz, now()),
-                                              COALESCE($17::timestamptz, delivered_at, now()))
+                                   THEN COALESCE($17::timestamptz,
+                                                 LEAST(COALESCE(delivered_at, $30::timestamptz, now()),
+                                                       COALESCE($30::timestamptz, delivered_at, now())))
                                  ELSE delivered_at
                                END,
-         exception_at        = CASE WHEN $18::boolean THEN now() ELSE exception_at END,
+         exception_at        = COALESCE($28::timestamptz, CASE WHEN $18::boolean THEN now() ELSE exception_at END),
 
-         latest_event_at          = COALESCE($19::timestamptz, latest_event_at),
+         latest_event_at          = COALESCE($29::timestamptz, $19::timestamptz, latest_event_at),
          last_checked_at          = now(),
          next_check_at            = $20::timestamptz,
          check_attempt_count      = check_attempt_count + 1,
@@ -449,7 +468,7 @@ export async function updateShipmentSummary(
         status === 'IN_TRANSIT',                       // $14 first_in_transit_at gate
         status === 'OUT_FOR_DELIVERY',                 // $15 out_for_delivery_at gate
         deliveredNow,                                  // $16 delivered_at gate (log-derived)
-        deliveredAtValue,                              // $17 delivered_at value (earliest from log/result)
+        log?.first_delivered_at ?? null,               // $17 delivered_at from the log (first DELIVERED scan)
         status === 'EXCEPTION',                        // $18 exception_at gate
 
         result.latestEventAt ?? null,                  // $19
@@ -457,6 +476,14 @@ export async function updateShipmentSummary(
         JSON.stringify(result.payload ?? {}),          // $21
         JSON.stringify(result.metadata ?? {}),         // $22
         shipmentId,                                    // $23
+
+        log?.first_label_created_at ?? null,           // $24 label_created_at from the log
+        log?.first_accepted_at ?? null,                // $25 carrier_accepted_at from the log
+        log?.first_in_transit_at ?? null,              // $26 first_in_transit_at from the log
+        log?.last_out_for_delivery_at ?? null,         // $27 out_for_delivery_at from the log
+        log?.last_exception_at ?? null,                // $28 exception_at from the log
+        log?.last_event_at ?? null,                    // $29 latest_event_at from the log
+        result.deliveredAt ?? null,                    // $30 carrier-declared delivered instant (no log scan)
       ]
     );
 

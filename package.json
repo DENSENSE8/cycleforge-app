@@ -87,6 +87,7 @@
     "test:receiving-state-machine": "tsx --test src/lib/receiving/state-machine.test.ts",
     "test:receiving-exceptions": "tsx --test src/lib/receiving/exceptions.test.ts",
     "test:shipment-links": "tsx --test src/lib/shipping/shipment-links.test.ts",
+    "test:shipments": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/shipments/*.test.ts src/lib/shipped-records.test.ts src/lib/shipping/carrier-event-instant.test.ts src/components/shipped/shipped-record-mappers.test.ts src/components/mobile/shipping/shipment/outbound-scan-land.test.ts",
     "test:shipstation": "tsx --test src/lib/shipping/shipstation/client.test.ts src/lib/shipping/shipstation/orders-v1.test.ts src/lib/shipping/shipstation/rate-request.test.ts",
     "test:parcel-dims": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/orders/parcel-dims.test.ts",
     "test:label-purchase": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test --test-force-exit src/lib/shipping/label-purchase-ledger.test.ts",

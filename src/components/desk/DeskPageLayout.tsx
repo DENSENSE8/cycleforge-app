@@ -20,10 +20,12 @@
  *
  * **A route GROUP, not a shared page.** Next keeps a layout mounted across
  * sibling segments, so switching tabs swaps only the body — and fullscreen
- * survives the switch. Fullscreen is deliberately session state rather than a
- * URL param: it is how this operator wants THIS screen right now, not part of
- * the address of what they are looking at, and a stage that reopened wide from
- * a pasted link would be a link that changed the page.
+ * survives the switch. Fullscreen is a per-staffer, per-desk PREFERENCE, not a
+ * URL param (operator 2026-09-25): it is how this staffer chose to see this
+ * desk's records — list-left / record-right split (`DeskRecordPlane`) instead
+ * of the record in place of the list — so it is remembered through the
+ * Settings Registry (`desk.<deskId>.fullscreen`, staff scope) and a pasted
+ * link never changes the reader's page.
  *
  * **Scan stations must never mount this.** They keep the edge-to-edge station
  * shell (`kind: 'station'` never opts in).
@@ -33,7 +35,10 @@
  * app's spine.
  */
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
+import { useSetting } from '@/hooks/useSettings';
+import { deskFullscreenSettingKey, settingByKey } from '@/lib/settings/registry';
 import {
   DeskPageChrome,
   type DeskPageTab,
@@ -123,8 +128,7 @@ function DeskPageFrame({
   const tabs = tabsOverride ?? nav.tabs;
   const activeTab = tabsOverride ? (activeTabOverride ?? '') : nav.activeTab;
   const onTabChange = tabsOverride ? (onTabChangeOverride ?? noop) : nav.onTabChange;
-  const [fullscreen, setFullscreen] = useState(false);
-  const toggleFullscreen = useCallback(() => setFullscreen((v) => !v), []);
+  const { fullscreen, toggleFullscreen } = useDeskFullscreen(useActiveSidebarChild().pageId);
   const addSlot = useDeskActionSlotNode();
 
   const decorated = useMemo(
@@ -149,4 +153,35 @@ function DeskPageFrame({
       {children}
     </DeskPageChrome>
   );
+}
+
+/**
+ * The desk's fullscreen state, seeded from and written to the staffer's
+ * remembered choice for THIS desk. The local value answers the click at once
+ * and is keyed by desk, so a layout shared by two desks (Shipping's route
+ * group spans `outbound` and `fba`) never carries one desk's choice into the
+ * other. A desk with no registry row toggles without remembering.
+ */
+function useDeskFullscreen(deskId: string) {
+  const key = deskFullscreenSettingKey(deskId);
+  const remembered = settingByKey(key) != null;
+  const setting = useSetting<boolean>('desk', key);
+  const [local, setLocal] = useState<{ deskId: string; value: boolean } | null>(null);
+  const fullscreen =
+    local?.deskId === deskId ? local.value : remembered ? setting.value === true : false;
+
+  // `useSetting`'s setter is a fresh function every render; the ref keeps the
+  // toggle (and so the DeskStageProvider value) stable between clicks.
+  const setRef = useRef(setting.set);
+  useEffect(() => {
+    setRef.current = setting.set;
+  }, [setting.set]);
+  const toggleFullscreen = useCallback(() => {
+    const next = !fullscreen;
+    setLocal({ deskId, value: next });
+    // The click already took effect; a failed write only means it is not remembered.
+    if (remembered) void setRef.current(next).catch(() => undefined);
+  }, [deskId, fullscreen, remembered]);
+
+  return { fullscreen, toggleFullscreen };
 }

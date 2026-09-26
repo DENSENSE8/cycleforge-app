@@ -1,45 +1,51 @@
+import test from 'node:test';
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
-import { isShippedDeskRow } from '@/lib/shipped-records';
+import type { PackerRecord } from '@/hooks/usePackerLogs';
+import { dedupeShippedRecords } from './shipped-records';
 
-describe('isShippedDeskRow', () => {
-  it('keeps a row with scan-out staff and timestamp', () => {
-    assert.equal(
-      isShippedDeskRow({
-        ship_confirmed_at: '2026-09-09 10:11:12',
-        shipped_out_by: 1,
-      }),
-      true,
-    );
-  });
+function row(over: Partial<PackerRecord> & Pick<PackerRecord, 'id'>): PackerRecord {
+  return {
+    created_at: '2026-08-28 16:00:00',
+    scan_ref: null,
+    shipping_tracking_number: '',
+    packed_by: 4,
+    tracking_type: 'ORDERS',
+    order_id: 'FBA19JY9D8PV',
+    account_source: null,
+    product_title: null,
+    condition: null,
+    sku: null,
+    packer_photos_url: [],
+    ...over,
+  };
+}
 
-  it('rejects IN STAGING — packed but never scanned out', () => {
-    assert.equal(
-      isShippedDeskRow({
-        ship_confirmed_at: null,
-        shipped_out_by: null,
-      }),
-      false,
-    );
-  });
+test('a multi-box order stays one row per box even though every box carries the order primary shipment_id', () => {
+  const out = dedupeShippedRecords([
+    row({ id: 1, shipment_id: 43308, package_shipment_id: 43308 }),
+    row({ id: 2, shipment_id: 43308, package_shipment_id: 43309 }),
+    row({ id: 3, shipment_id: 43308, package_shipment_id: 43311 }),
+  ]);
 
-  it('rejects a timestamp without a staff id', () => {
-    assert.equal(
-      isShippedDeskRow({
-        ship_confirmed_at: '2026-09-09 10:11:12',
-        shipped_out_by: null,
-      }),
-      false,
-    );
-  });
+  assert.deepEqual(out.map((r) => r.package_shipment_id).sort(), [43308, 43309, 43311]);
+});
 
-  it('rejects the sentinel timestamp "1"', () => {
-    assert.equal(
-      isShippedDeskRow({
-        ship_confirmed_at: '1',
-        shipped_out_by: 1,
-      }),
-      false,
-    );
-  });
+test('re-scans of the same box collapse to the newest scan', () => {
+  const out = dedupeShippedRecords([
+    row({ id: 9, package_shipment_id: 52848, packed_by: 4 }),
+    row({ id: 3, package_shipment_id: 52848, packed_by: 2 }),
+  ]);
+
+  assert.deepEqual(out.map((r) => r.id), [9]);
+});
+
+test('rows with no package fall back to the order number, then the scanned reference', () => {
+  const out = dedupeShippedRecords([
+    row({ id: 1, package_shipment_id: null, order_id: 'A-1' }),
+    row({ id: 2, package_shipment_id: null, order_id: 'A-1' }),
+    row({ id: 3, package_shipment_id: null, order_id: null, scan_ref: 'X00ABC' }),
+    row({ id: 4, package_shipment_id: null, order_id: null, scan_ref: 'X00DEF' }),
+  ]);
+
+  assert.deepEqual(out.map((r) => r.id).sort(), [2, 3, 4]);
 });

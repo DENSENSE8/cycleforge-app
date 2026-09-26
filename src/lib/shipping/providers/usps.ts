@@ -1,5 +1,6 @@
 import { normalizeUSPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
+import { uspsEventInstant } from '../carrier-event-instant';
 
 // Single host for all USPS APIs; expose the base so the subscription client
 // builds its URL from the same root (and so a sandbox host can be swapped in).
@@ -69,28 +70,15 @@ export async function getAccessToken(forceRefresh = false): Promise<string> {
   return tokenInFlight;
 }
 
-function parseUSPSDate(eventDate: string, eventTime: string): string | null {
-  // USPS v3 dates: "March 9, 2025", times: "8:00 am"
-  if (!eventDate) return null;
-  try {
-    const combined = eventTime ? `${eventDate} ${eventTime}` : eventDate;
-    const d = new Date(combined);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  } catch {
-    return null;
-  }
-}
-
 export function parseUSPSEvent(raw: any): CarrierTrackingEvent {
-  const eventText = raw?.event ?? raw?.Event ?? '';
+  // Tracking v3 names the event text `eventType`; older/notification shapes
+  // use `event`.
+  const eventText = raw?.event ?? raw?.Event ?? raw?.eventType ?? raw?.EventType ?? '';
   const statusCategory = raw?.statusCategory ?? raw?.StatusCategory ?? null;
   const eventCode = raw?.eventCode ?? raw?.EventCode ?? null;
   const category = normalizeUSPSStatus(statusCategory, eventText);
 
-  const occurredAt = parseUSPSDate(
-    raw?.eventDate ?? raw?.EventDate ?? '',
-    raw?.eventTime ?? raw?.EventTime ?? ''
-  );
+  const occurredAt = uspsEventInstant(raw);
 
   return {
     externalEventId: eventCode ? `${eventCode}:${occurredAt ?? 'x'}` : null,

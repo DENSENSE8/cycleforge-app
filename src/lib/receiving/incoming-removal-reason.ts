@@ -132,39 +132,6 @@ export function isVendorCancelledStatus(status: string | null | undefined): bool
   return s.length > 0 && TERMINAL_SET.has(s) && !isZohoReceivedLikeStatus(s);
 }
 
-/** The row fields the ladder reads. A structural subset of `ReceivingLineRow`. */
-interface IncomingRemovalRowFacts {
-  is_delivered?: boolean | null;
-  scanned_at?: string | null;
-  unboxed_at?: string | null;
-  quantity_received?: number | null;
-  zoho_status?: string | null;
-  /** Server-computed signals (`view=incoming_removed` only). */
-  removed_written_off?: boolean | null;
-  removed_aged_out?: boolean | null;
-}
-
-/**
- * A grid row → its removal reason.
- *
- * The row-shaped adapter, so the LANE and the bulk-paste residual report reach
- * the same ladder from two different row shapes instead of each mapping fields
- * to signals in its own component. `null` = the row has not left.
- */
-export function resolveIncomingRemovalReasonForRow(
-  row: IncomingRemovalRowFacts,
-): IncomingRemovalReason | null {
-  return resolveIncomingRemovalReason({
-    delivered: row.is_delivered === true,
-    scanned: Boolean(row.scanned_at),
-    unboxed: Boolean(row.unboxed_at) || Number(row.quantity_received ?? 0) > 0,
-    writtenOff: row.removed_written_off === true,
-    vendorReceived: isZohoReceivedLikeStatus(row.zoho_status),
-    vendorCancelled: isVendorCancelledStatus(row.zoho_status),
-    agedOut: row.removed_aged_out === true,
-  });
-}
-
 interface IncomingRemovalReasonFace {
   /** Operator wording. Capability nouns only — never a vendor product sentence. */
   label: string;

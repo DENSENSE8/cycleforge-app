@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
+import { DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { repairActionTypeToneClass } from '@/lib/repair-action-type-tone';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import {
@@ -37,28 +38,25 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 export function RepairActionTimeline({ actions, loading, error, highlightId = null, onRetryTicketPost }: Props) {
   const nowMs = Date.now();
   return (
-    <section>
-      <div className="px-1 mb-2 flex items-baseline justify-between">
-        <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
-          What was repaired
-        </p>
-        <span className="text-role-micro text-text-faint">
-          {actions.length} action{actions.length === 1 ? '' : 's'}
-        </span>
-      </div>
+    // Flat (operator 2026-09-25): a band, then full-bleed tone rows split by
+    // one rule — no cards. The host mounts it straight in its divide column.
+    <section className="divide-y divide-mode-rule">
+      <DetailSectionHeading>
+        What was repaired · {actions.length} action{actions.length === 1 ? '' : 's'}
+      </DetailSectionHeading>
 
       {error && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+        <div className="bg-rose-50 px-mode-page py-3 text-sm font-semibold text-rose-700">
           {error}
         </div>
       )}
 
       {loading && actions.length === 0 && (
-        <p className="text-center text-sm font-semibold text-text-soft py-6">Loading…</p>
+        <p className="bg-mode-panel px-mode-page py-6 text-center text-sm font-semibold text-text-soft">Loading…</p>
       )}
 
       {!loading && actions.length === 0 && !error && (
-        <div className="rounded-lg border border-dashed border-border-default bg-surface-card p-6 text-center">
+        <div className="bg-mode-panel px-mode-page py-6 text-center">
           <p className="text-sm font-semibold text-text-muted">No actions logged yet.</p>
           <p className="mt-1 text-role-caption text-text-soft">
             Use Log work below to record the first one.
@@ -67,7 +65,7 @@ export function RepairActionTimeline({ actions, loading, error, highlightId = nu
       )}
 
       {actions.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-mode-rule">
           {actions.map((a) => {
             const tone = repairActionTypeToneClass(a.action_type);
             const ActionIcon = TYPE_ICON[a.action_type] ?? Tool;
@@ -76,7 +74,7 @@ export function RepairActionTimeline({ actions, loading, error, highlightId = nu
             return (
               <li
                 key={a.id}
-                className={`rounded-mode border ${tone} p-mode-page shadow-none ${a.id === highlightId ? 'ring-2 ring-emerald-400' : ''}`}
+                className={`${tone} px-mode-page py-3 ${a.id === highlightId ? 'ring-2 ring-inset ring-emerald-400' : ''}`}
               >
                 <div className="flex items-start gap-3">
                   <ActionIcon className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" aria-hidden />

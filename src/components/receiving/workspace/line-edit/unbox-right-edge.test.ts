@@ -7,28 +7,9 @@ import {
   UNBOX_RIGHT_EDGE_PARAMS,
   clearAllUnboxRightEdgeParams,
   clearPeerRightEdgeParams,
-  clearUnboxPeerRightEdgeSurfaces,
   stripStaleUnboxRightEdgeParamsFromUrl,
   yieldUnboxStationPushesOnAssistantOpen,
 } from './unbox-right-edge';
-
-test('clearUnboxPeerRightEdgeSurfaces suspends details', () => {
-  let detailsClosed = 0;
-  const prev = globalThis.window;
-  // @ts-expect-error test stub
-  globalThis.window = {
-    dispatchEvent: (e: Event) => {
-      if (e.type === 'receiving-close-details-overlay') detailsClosed += 1;
-      return true;
-    },
-  };
-  try {
-    clearUnboxPeerRightEdgeSurfaces();
-    assert.equal(detailsClosed, 1);
-  } finally {
-    globalThis.window = prev;
-  }
-});
 
 test('clearPeerRightEdgeParams keeps display surface params when keep=display', () => {
   const params = new URLSearchParams(

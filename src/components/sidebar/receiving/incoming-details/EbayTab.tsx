@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * eBay tab for the IncomingDetailsPanel (Universal Incoming, plan §7.3).
+ * Marketplace section of the incoming delivery record (Universal Incoming, plan §7.3).
  *
  * Read-only marketplace identity for a non-Zoho Incoming row — the eBay order#,
  * buyer account, seller, status, payment, listing — plus the bidirectional

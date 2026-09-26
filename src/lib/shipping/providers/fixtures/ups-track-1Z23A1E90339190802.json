@@ -1,0 +1,105 @@
+{
+    "trackResponse": {
+        "shipment": [
+            {
+                "package": [
+                    {
+                        "weight": {
+                            "weight": "19.00",
+                            "unitOfMeasurement": "LBS"
+                        },
+                        "service": {
+                            "code": "518",
+                            "levelCode": "003",
+                            "description": "UPS Ground"
+                        },
+                        "activity": [
+                            {
+                                "date": "20260723",
+                                "time": "114034",
+                                "status": {
+                                    "code": "MP",
+                                    "type": "M",
+                                    "statusCode": "003",
+                                    "description": "Shipper created a label, UPS has not received the package yet. "
+                                },
+                                "gmtDate": "20260723",
+                                "gmtTime": "18:40:34",
+                                "location": {
+                                    "address": {
+                                        "country": "US",
+                                        "countryCode": "US"
+                                    }
+                                },
+                                "gmtOffset": "-07:00",
+                                "logicalScan": false
+                            }
+                        ],
+                        "dimension": {
+                            "width": "14.00",
+                            "height": "10.00",
+                            "length": "18.00",
+                            "unitOfDimension": "IN"
+                        },
+                        "deliveryDate": [
+                        ],
+                        "deliveryTime": {
+                            "type": "EDW",
+                            "endTime": "103000",
+                            "startTime": "083000"
+                        },
+                        "packageCount": 7,
+                        "taxIndicator": "false",
+                        "currentStatus": {
+                            "code": "003",
+                            "description": "Shipment Ready for UPS"
+                        },
+                        "isSmartPackage": false,
+                        "packageAddress": [
+                            {
+                                "type": "ORIGIN",
+                                "address": {
+                                    "city": "SEATTLE",
+                                    "country": "US",
+                                    "countryCode": "US",
+                                    "stateProvince": "WA"
+                                }
+                            },
+                            {
+                                "type": "DESTINATION",
+                                "address": {
+                                    "city": "OAKLAND",
+                                    "country": "US",
+                                    "countryCode": "US",
+                                    "stateProvince": "CA"
+                                }
+                            },
+                            {
+                                "type": "ORIGINAL_DESTINATION",
+                                "address": {
+                                    "city": "OAKLAND",
+                                    "country": "US",
+                                    "countryCode": "US",
+                                    "stateProvince": "CA"
+                                }
+                            }
+                        ],
+                        "trackingNumber": "1Z23A1E90339190802",
+                        "deliveryInformation": {
+                            "deliveryPhoto": {
+                                "isNonPostalCodeCountry": false,
+                                "isProximityMapViewable": false
+                            }
+                        },
+                        "isHealthCarePackage": false,
+                        "isInsureShieldProtected": false
+                    }
+                ],
+                "pickupDate": "20260723",
+                "shipmentType": "S",
+                "inquiryNumber": "1Z23A1E90339190802",
+                "shipperNumber": "23A1E9"
+            }
+        ]
+    }
+}

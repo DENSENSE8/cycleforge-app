@@ -14,9 +14,7 @@ import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { COMPOUND_COLUMN_KEYS } from '@/components/tables/compound/compound-columns';
 import { isQueueSortableColumnKey } from '@/utils/queue-display-sort';
 import {
-  INCOMING_COMPOUND_COLUMNS,
   RECEIVING_COMPOUND_COLUMNS,
-  isIncomingGridSortable,
   isReceivingGridSortable,
 } from '@/lib/receiving/receiving-grid-layout';
 import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
@@ -305,7 +303,6 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       'outbound spreadsheet must not freeze newest/deadline — useQueueDisplaySort is the SoT',
     );
     for (const host of [
-      'src/components/shipped/DashboardShippedTable.tsx',
       'src/components/outbound/scan-out/StagedQueueTable.tsx',
       'src/features/review/ReviewPackingTable.tsx',
       'src/features/review/pairing/ReviewPairingTable.tsx',
@@ -351,21 +348,6 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
       /placement=["']left-start["']/,
       'Morphing must not park beside the row',
-    );
-    assert.match(
-      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
-      /morphing-row-more-actions/,
-      'overflow ⋮ is required on the sticky action row',
-    );
-    assert.match(
-      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
-      /morphing-row-delete/,
-      'Delete stays isolated on the far right',
-    );
-    assert.match(
-      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
-      /notes-view/,
-      'desktop Notes morphs the action row into a one-row composer',
     );
     assert.match(
       read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
@@ -463,11 +445,6 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       queueRowSrc,
       /enabled=\{queueMode === ['"]fulfillment['"]\}/,
       'mobile MorphingSelectGutter must stay armed on Shipped',
-    );
-    assert.match(
-      read('src/components/shipped/DashboardShippedTable.tsx'),
-      /<DataTable/,
-      'Shipped page mounts DataTable, the same engine as To-ship',
     );
     assert.match(SLOT_TABLE_PAINT_LAW.stageAssign, /StageStaffAssignPopover/);
     assert.match(SLOT_TABLE_PAINT_LAW.stageAssign, /CompoundRow/);
@@ -681,11 +658,10 @@ function assertCompoundFamilyHeaderSort(
 }
 
 describe('slot-table header-sort law on compound PRODUCT_TABLES peers', () => {
-  it('orders / receiving / incoming / tasks / daily / review default mounts', () => {
+  it('orders / receiving / tasks / daily / review default mounts', () => {
     const families: Array<[string, readonly { key: string; fieldId?: string }[], (key: string, fieldId?: string | null) => boolean]> = [
       ['orders', ORDERS_COMPOUND_COLUMNS, isQueueSortableColumnKey],
       ['receiving', RECEIVING_COMPOUND_COLUMNS, isReceivingGridSortable],
-      ['incoming', INCOMING_COMPOUND_COLUMNS, isIncomingGridSortable],
       [
         'tasks',
         TASKS_COMPOUND_COLUMNS,

@@ -139,11 +139,11 @@ export const AgendaRecord = memo(function AgendaRecord({
               <span className={cn(RECORD_LABEL_CLASS, 'w-8 shrink-0 text-mode-muted')}>{KIND_CODE[row.type]}</span>
               {row.recordLabel ? (
                 <span className={cn(RECORD_ID_CLASS, 'shrink-0 truncate text-mode-ink')}>{row.recordLabel}</span>
-              ) : (
+              ) : row.type === 'checklist' ? (
                 <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>
                   {row.cadence === 'once' ? 'One-off' : 'Every day'}
                 </span>
-              )}
+              ) : null}
               {links ? (
                 <span className={cn(RECORD_LABEL_CLASS, 'truncate text-mode-muted')} title={row.links.map((l) => l.label).join(', ')}>
                   + {links}

@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel } from '@/design-system/primitives';
+import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
 
 
 interface EntityAuditEvent {
@@ -220,7 +221,7 @@ export function AuditTimeline(props: Props) {
                     )}
                     {ev.reason_code && (
                       <span className="rounded-sm bg-surface-sunken px-1 py-px text-role-micro text-text-muted">
-                        {ev.reason_code}
+                        {takeReasonLedgerLabel(ev.reason_code)}
                       </span>
                     )}
                   </div>

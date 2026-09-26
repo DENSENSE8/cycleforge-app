@@ -33,13 +33,15 @@ test('a queue route keeps the host header — the trailing slash is the whole ru
   assert.equal(mobileRouteOwnsTopBar('/m/scan'), false);
 });
 
-test('pairing keeps the host header, so its own bar paints no second seat', () => {
-  // Operator 2026-09-15: "remove the scan button from the same header with the
-  // text pair location." The screen is NOT in the denylist, which is exactly
-  // how the record bar knows to withhold the seat.
-  assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101'), false);
-  assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101/00157'), false);
+test('pairing owns its back bar — two headers: back, then search', () => {
+  // Operator 2026-09-25 reversed the 2026-09-15 ruling: the back bar replaces
+  // the host header, so the screen stacks back bar + search, not host + back +
+  // search. The seat moves into the pair bar and still exists exactly once.
+  assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101'), true);
+  assert.equal(mobileRouteOwnsTopBar('/m/pair/A0101101/00157'), true);
   assert.equal(mobileRouteOwnsTopBar('/m/on-hold'), false);
+  // …and an on-hold RECORD and its doors own the bar (one header, one seat).
+  assert.equal(mobileRouteOwnsTopBar('/m/on-hold/TMP-X/locations'), true);
 });
 
 test('no pathname is not an own-bar route', () => {

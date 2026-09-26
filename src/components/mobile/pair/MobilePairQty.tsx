@@ -12,8 +12,8 @@
  * own Back does something different from the screen's Back.
  *
  * As a route it is continuous with the screen before it: the location is still
- * in the header, Back returns to the candidate list, and a reload mid-count
- * lands you in the same place.
+ * in the header, Back returns to the location record (or the candidate list
+ * mid-pairing), and a reload mid-count lands you in the same place.
  *
  * ## Adding, not replacing
  *
@@ -24,35 +24,41 @@
  * next cycle count disagrees.
  *
  * `− TAKE` is still offered, since arriving here from a PAIRED row is the same
- * job in the other direction, but `plus` is the opening mode: you are here
- * because you are holding stock.
+ * job in the other direction, but `plus` is the opening mode unless the
+ * location record's Take opened it (`initialMode`). A take may name why
+ * (FBA · Orders · Custom…, `TakeReasonChooser`); a put carries no reason.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Loader2, X } from '@/components/Icons';
+import { Check, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
-import { Panel, TextField } from '@/design-system/primitives';
+import { DetailDock } from '@/design-system/components/DetailDock';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
-import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
-import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePicker';
+import { takeReasonPayload, type TakeReasonChoice } from '@/lib/inventory/take-reason';
+import { TakeReasonChooser } from './TakeReasonChooser';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { previousMobilePath } from '@/lib/mobile/nav-trail';
+import { locationHubHref } from '@/lib/mobile/location-hub-href';
 import { locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { OnHoldBadge } from './OnHoldBadge';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
-import { motion } from '@/design-system/motion';
 
 type Mode = 'minus' | 'plus';
 
 const KEYS: ReadonlyArray<string | number> = [1, 2, 3, 4, 5, 6, 7, 8, 9, 'clear', 0, 'back'];
-const MotionButton = motion.create(Button);
+
+/** Flush keypad / toggle cell: square, no gap, instant ink press, no scale or transition. */
+const CELL = 'h-auto w-full justify-center shadow-none ring-0 transition-none enabled:active:scale-100';
+
+/** The tally's mono micro-label — the same face as `DetailFact`. */
+const TALLY_LABEL = 'font-mono text-role-eyebrow uppercase text-mode-muted';
 
 interface LocationContents {
   sku: string;
@@ -64,14 +70,17 @@ export function MobilePairQty({
   code,
   sku,
   returnHref,
+  initialMode = 'plus',
 }: {
   code: string;
   sku: string;
   /**
-   * The screen that sent the operator here and should get them back — the SKU
-   * exception record. Omitted: Back is the candidate list, Confirm the scan loop.
+   * The screen that sent the operator here and should get them back — the
+   * location record or the SKU exception record. Omitted: Back is the
+   * candidate list, Confirm the location record.
    */
   returnHref?: string;
+  initialMode?: Mode;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -79,12 +88,11 @@ export function MobilePairQty({
   const { execute: executeWmsCommand } = useWmsRealtime();
   const pendingCommandId = useRef<string | null>(null);
 
-  const [mode, setMode] = useState<Mode>('plus');
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [reason, setReason] = useState<ReasonCode | null>(null);
-  const [noteDraft, setNoteDraft] = useState('');
+  const [takeReason, setTakeReason] = useState<TakeReasonChoice>(null);
 
   const face = useMemo(() => {
     const segs = parseLocationCodeFlat(code);
@@ -109,11 +117,9 @@ export function MobilePairQty({
   const onHand = Number(current?.qty) || 0;
   const title = current?.productTitle?.trim() || sku;
 
-  // A reason that needs a note or a photo cannot be satisfied here, so the
-  // picker resets with direction and takes its canonical default.
+  // Puts carry no reason; leaving TAKE drops the take reason with it.
   useEffect(() => {
-    setReason(null);
-    setNoteDraft('');
+    if (mode === 'plus') setTakeReason(null);
   }, [mode]);
 
   const numericDraft = useMemo(() => {
@@ -146,8 +152,11 @@ export function MobilePairQty({
       setError('Tap a number first');
       return;
     }
-    if (reason?.requires_note && !noteDraft.trim()) {
-      setError(`Reason “${reason.label}” needs a note`);
+    const reason = mode === 'minus'
+      ? takeReasonPayload(takeReason)
+      : { ok: true as const, reason: 'BIN_ADD', notes: null };
+    if (!reason.ok) {
+      setError(reason.error);
       return;
     }
     setBusy(true);
@@ -168,23 +177,20 @@ export function MobilePairQty({
           sku,
           direction: mode === 'minus' ? 'take' : 'put',
           qty: numericDraft,
-          reason: reason?.code ?? (mode === 'minus' ? 'BIN_PULL' : 'BIN_ADD'),
-          reasonCodeId: reason?.id ?? null,
-          notes: noteDraft.trim() || null,
+          reason: reason.reason,
+          reasonCodeId: null,
+          notes: reason.notes,
         },
       });
       pendingCommandId.current = null;
       await queryClient.invalidateQueries({ queryKey: invalidateKey });
       if (isProvisionalSku(sku)) await invalidateSkuExceptions(queryClient);
-      if (returnHref) {
-        // Pop when the record is the entry below, so its own Back still works.
-        if (previousMobilePath() === returnHref) router.back();
-        else router.replace(returnHref);
-        return;
-      }
-      // Straight back to the scan loop: the job that brought you here is done,
-      // and the next thing an operator does is scan the next label.
-      router.replace('/m/scan');
+      // Back to the record that sent us — the location record by default, so
+      // the new count is visible where the operator is working.
+      const target = returnHref ?? locationHubHref(code);
+      // Pop when the record is the entry below, so its own Back still works.
+      if (previousMobilePath() === target.split('?')[0]) router.back();
+      else router.replace(target);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
       setBusy(false);
@@ -194,19 +200,25 @@ export function MobilePairQty({
     code,
     invalidateKey,
     mode,
-    noteDraft,
     numericDraft,
     queryClient,
-    reason,
     returnHref,
     router,
     sku,
+    takeReason,
     user,
     executeWmsCommand,
   ]);
 
+  const confirmLabel = busy
+    ? 'Saving…'
+    : `${mode === 'minus' ? 'Take' : 'Add'} ${numericDraft || 0} · after ${projected}`;
+
   return (
-    <div className={cn('flex min-h-svh flex-col', appMobilePageGroundClass)}>
+    // Flat like every record screen; the working half — direction, keypad,
+    // confirm — is pinned to the bottom under the thumb (operator
+    // 2026-09-25: "the keypad is not pinned to the bottom").
+    <ModeRegion mode="triage" className="flex min-h-svh flex-col bg-mode-panel">
       <MobileDetailTopBar
         title={title}
         subtitle={face}
@@ -214,66 +226,30 @@ export function MobilePairQty({
         backHref={returnHref ?? `/m/pair/${encodeURIComponent(code)}`}
       />
 
-      <div className="flex-1 space-y-4 px-4 py-4">
+      <div className="flex-1 divide-y divide-mode-rule">
         {/*
           The header already carries the product name, and when the catalog has
           no title that name IS the SKU — printing it again underneath is the
-          same string twice for no information. The badge still needs somewhere
-          to live, so the row survives when there is something to say.
+          same string twice for no information. The status still needs somewhere
+          to live: bottom-right, like every record row (`DetailSummaryCard`).
         */}
         {(title !== sku || isProvisionalSku(sku)) && (
-          <div className="flex items-center gap-2">
-            {title !== sku && (
-              <span className="min-w-0 truncate font-mono text-role-caption text-text-soft">
-                {sku}
-              </span>
-            )}
+          <div className="flex items-center justify-between gap-2 px-mode-page py-3">
+            <span className="min-w-0 truncate font-mono text-role-caption text-mode-muted">
+              {title !== sku ? sku : ''}
+            </span>
             {isProvisionalSku(sku) && <OnHoldBadge />}
           </div>
         )}
 
-        <div
-          className={cn(
-            'grid grid-cols-2 overflow-hidden border border-border-default bg-surface-card',
-            cornerClass('control'),
-          )}
-        >
-          <MotionButton
-            variant="ghost"
-            radius="flush"
-            aria-pressed={mode === 'minus'}
-            onClick={() => setMode('minus')}
-            whileTap={{ scale: 0.96 }}
-            className={cn(
-              'h-auto w-full justify-center py-3 text-base',
-              mode === 'minus' ? 'bg-rose-600 text-white' : 'bg-surface-card text-text-muted',
-            )}
-          >
-            − TAKE
-          </MotionButton>
-          <MotionButton
-            variant="ghost"
-            radius="flush"
-            aria-pressed={mode === 'plus'}
-            onClick={() => setMode('plus')}
-            whileTap={{ scale: 0.96 }}
-            className={cn(
-              'h-auto w-full justify-center py-3 text-base',
-              mode === 'plus' ? 'bg-emerald-600 text-white' : 'bg-surface-card text-text-muted',
-            )}
-          >
-            + PUT
-          </MotionButton>
-        </div>
-
-        <Panel radius="lg" padding="none" className="grid grid-cols-3 items-center gap-2 px-4 py-4">
-          <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">On hand</p>
-            <p className="mt-1 font-mono text-role-title font-semibold tabular-nums">{onHand}</p>
+        <dl className="grid grid-cols-3 divide-x divide-mode-rule">
+          <div className="px-mode-page py-3">
+            <dt className={TALLY_LABEL}>On hand</dt>
+            <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{onHand}</dd>
           </div>
-          <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Change</p>
-            <p
+          <div className="px-mode-page py-3">
+            <dt className={TALLY_LABEL}>Change</dt>
+            <dd
               className={cn(
                 'mt-1 font-mono text-role-title font-semibold tabular-nums',
                 mode === 'minus' ? 'text-rose-600' : 'text-emerald-600',
@@ -281,70 +257,88 @@ export function MobilePairQty({
             >
               {mode === 'minus' ? '−' : '+'}
               {numericDraft || 0}
-            </p>
+            </dd>
           </div>
-          <div className="text-center">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">After</p>
-            <p className="mt-1 font-mono text-role-title font-semibold tabular-nums">{projected}</p>
+          <div className="px-mode-page py-3">
+            <dt className={TALLY_LABEL}>After</dt>
+            <dd className="mt-1 font-mono text-role-title font-semibold tabular-nums text-mode-ink">{projected}</dd>
           </div>
-        </Panel>
+        </dl>
 
-        <ReasonCodePicker
-          direction={mode === 'minus' ? 'out' : 'in'}
-          value={reason?.id ?? null}
-          onChange={setReason}
-          compact
-        />
-        {reason?.requires_note && (
-          <TextField
-            value={noteDraft}
-            onChange={setNoteDraft}
-            label={`Why — ${reason.label}`}
-            inputMode="text"
-            autoComplete="off"
-          />
+        {mode === 'minus' && (
+          <div className="px-mode-page py-3">
+            <TakeReasonChooser value={takeReason} onChange={setTakeReason} />
+          </div>
         )}
 
-        <div className="grid grid-cols-3 gap-2">
+        {error && (
+          <p role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
+            {error}
+          </p>
+        )}
+      </div>
+
+      <div className="sticky bottom-0 z-sticky bg-mode-panel">
+        <div
+          role="group"
+          aria-label="Direction"
+          className="grid grid-cols-2 divide-x divide-mode-rule border-t border-mode-rule"
+        >
+          <Button
+            variant="secondary"
+            radius="flush"
+            aria-pressed={mode === 'minus'}
+            onClick={() => setMode('minus')}
+            className={cn(
+              CELL,
+              'min-h-14 font-mono text-base uppercase',
+              mode === 'minus' ? 'bg-rose-600 text-white active:bg-rose-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
+            )}
+          >
+            − Take
+          </Button>
+          <Button
+            variant="secondary"
+            radius="flush"
+            aria-pressed={mode === 'plus'}
+            onClick={() => setMode('plus')}
+            className={cn(
+              CELL,
+              'min-h-14 font-mono text-base uppercase',
+              mode === 'plus' ? 'bg-emerald-600 text-white active:bg-emerald-700' : 'bg-mode-panel text-mode-muted active:bg-mode-ink active:text-mode-panel',
+            )}
+          >
+            + Put
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-px border-t border-mode-rule bg-mode-rule">
           {KEYS.map((key) => (
-            <MotionButton
+            <Button
               key={String(key)}
-              variant="ghost"
+              variant="secondary"
               radius="flush"
               ariaLabel={typeof key === 'string' ? key : `digit ${key}`}
               onClick={() => pressKey(key)}
-              whileTap={{ scale: 0.96 }}
               className={cn(
-                'h-14 w-full justify-center text-2xl',
-                cornerClass('control'),
-                key === 'clear' || key === 'back'
-                  ? 'bg-surface-strong text-text-muted'
-                  : 'border border-border-default bg-surface-card text-text-default',
+                CELL,
+                'min-h-16 font-mono text-2xl active:bg-mode-ink active:text-mode-panel',
+                key === 'clear' || key === 'back' ? 'bg-mode-well text-mode-muted' : 'bg-mode-panel text-mode-ink',
               )}
             >
               {key === 'clear' ? <X className="h-5 w-5" /> : key === 'back' ? '⌫' : String(key)}
-            </MotionButton>
+            </Button>
           ))}
         </div>
 
-        {error && <p className="text-center text-role-caption text-text-danger">{error}</p>}
+        <DetailDock
+          label="Count actions"
+          verbs={[
+            { id: 'confirm', label: confirmLabel, icon: <Check />, primary: true, disabled: busy || numericDraft <= 0 },
+          ]}
+          onVerb={() => confirm()}
+        />
       </div>
-
-      <footer className="sticky bottom-0 border-t border-border-soft bg-surface-card px-4 py-3">
-        <MotionButton
-          variant={mode === 'minus' ? 'danger' : 'success'}
-          size="lg"
-          radius="flush"
-          className="w-full"
-          disabled={busy || numericDraft <= 0}
-          icon={busy ? <Loader2 className="animate-spin" /> : <Check />}
-          onClick={() => void confirm()}
-          whileTap={busy || numericDraft <= 0 ? undefined : { scale: 0.96 }}
-        >
-          {mode === 'minus' ? `Take ${numericDraft || 0}` : `Add ${numericDraft || 0}`} · after{' '}
-          {projected}
-        </MotionButton>
-      </footer>
-    </div>
+    </ModeRegion>
   );
 }

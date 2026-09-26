@@ -33,7 +33,5 @@ test('Unbox/History lines: checkbox selection never claims the batch rail', () =
 });
 
 test('occupant ids are mode-stable — never fold a record id in', () => {
-  assert.equal(RECEIVING_RAIL_OCCUPANT_ID.inspect, 'detail:incoming');
-  assert.equal(RECEIVING_RAIL_OCCUPANT_ID.historyInspect, 'detail:history');
   assert.equal(RECEIVING_RAIL_OCCUPANT_ID.attention, 'detail:receiving-line-batch');
 });

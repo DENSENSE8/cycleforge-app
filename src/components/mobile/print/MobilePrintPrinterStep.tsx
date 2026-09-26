@@ -2,8 +2,8 @@
 
 /**
  * /m/print printer step — PrintPreferences (USB/serial pair, profiles) plus the
- * picked print station (one named computer signed in as this staffer) and its
- * live status. Copy uses the signed-in name and the station's name.
+ * printer picker (computers signed in as this staffer) and, off-desk, which
+ * saved profile that computer prints on.
  *
  * Callers: MobilePrintWorkspace options step. Pairing needs a user gesture on
  * the document that owns the USB port (this page on the packing computer).
@@ -20,12 +20,7 @@ import { PrintPreferences } from '@/components/settings/PrintPreferences';
 import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
 import type { StaffPrintPatch } from '@/hooks/useStaffPrintBridgeClient';
 import { isBrowserPrintSupported } from '@/lib/print/browserPrint';
-import {
-  roleReady,
-  type StaffPrintRole,
-  type StaffPrintStation,
-  type StaffPrintStatus,
-} from '@/lib/print/staff-print-bridge';
+import type { StaffPrintRole, StaffPrintStation, StaffPrintStatus } from '@/lib/print/staff-print-bridge';
 
 export function MobilePrintOptionsDropdown({
   status,
@@ -53,10 +48,10 @@ export function MobilePrintOptionsDropdown({
             onPatch({ routing: role === 'paper' ? { paper: id } : { label: id } });
           }}
         >
-          <option value="">{profiles.length ? 'Choose a profile' : 'None paired on that computer'}</option>
+          <option value="">{profiles.length ? 'Choose a printer' : 'No printer on that computer'}</option>
           {profiles.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} ({p.kind})
+              {p.name}
             </option>
           ))}
         </select>
@@ -70,7 +65,6 @@ export function MobilePrintPrinterStep({
   target,
   now,
   role,
-  staffName,
   onPick,
   onPatch,
   onRefresh,
@@ -79,46 +73,27 @@ export function MobilePrintPrinterStep({
   target: StaffPrintStation | null;
   now: number;
   role: StaffPrintRole;
-  staffName: string;
   onPick: (stationId: string | null) => void;
   onPatch: (patch: StaffPrintPatch) => void;
   onRefresh: () => void;
 }) {
   const localCapable = isBrowserPrintSupported();
   const status = target?.status ?? null;
-  const ready = roleReady(status, role);
 
   return (
     <>
-      <p className="text-role-caption text-text-muted">
-        Pair the printer on this page while signed in on the computer with the USB plug.
-        A phone signed in as {staffName} picks which station prints and which saved profile it uses.
-      </p>
-
       <PrintPreferences embedded onStoreChange={onRefresh} />
 
       <StaffPrintStationPicker
         stations={stations}
         target={target}
         now={now}
-        staffName={staffName}
+        role={role}
         onPick={onPick}
-        onRefresh={onRefresh}
       />
 
       {!localCapable && status && (
         <MobilePrintOptionsDropdown status={status} role={role} onPatch={onPatch} />
-      )}
-
-      {status && !ready && (
-        <p className="text-role-caption text-text-warning">
-          Not ready yet. Pair USB/serial on {status.stationName}, then Refresh.
-        </p>
-      )}
-      {ready && (
-        <p className="text-role-caption text-text-success">
-          Ready — {role === 'paper' ? status?.paper.name : status?.label.name} on {status?.stationName}.
-        </p>
       )}
     </>
   );

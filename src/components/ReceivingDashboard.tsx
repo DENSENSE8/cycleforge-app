@@ -12,34 +12,22 @@
  * rail instead of the bottom capsule:
  *   - useReceivingDashboardMode .... `?mode=` → surface flags
  *   - useReceivingWorkspacePane .... workspace + nav + scan loader + recovery
- *   - useReceivingDetailOverlays ... carton details stack + incoming PO panel
  *   - useReceivingLineRailSelection  publish + claim for History/Incoming
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback } from 'react';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useAuth } from '@/contexts/AuthContext';
-import { dispatchReceivingWorkspaceClose, dispatchReceivingCloseHistoryTriage } from '@/utils/events';
+import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { useReceivingDashboardMode } from '@/components/receiving/useReceivingDashboardMode';
 import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWorkspacePane';
-import { useReceivingDetailOverlays } from '@/components/receiving/useReceivingDetailOverlays';
 import { ReceivingRightPane } from '@/components/receiving/ReceivingRightPane';
 import { ReceivingDashboardOverlays } from '@/components/receiving/ReceivingDashboardOverlays';
-
-/** Copy line for a receiving carton/line: PO • SKU • tracking. */
-function formatReceivingCopyRow(r: ReceivingLineRow): string {
-  const po = (r.zoho_purchaseorder_number || r.zoho_purchaseorder_id || '').trim();
-  const sku = (r.sku || '').trim();
-  const tracking = (r.tracking_number || '').trim();
-  return [po && `PO ${po}`, sku && `SKU ${sku}`, tracking && `TRK ${tracking}`]
-    .filter(Boolean)
-    .join(' • ');
-}
+import { formatReceivingCopyRow } from '@/lib/receiving/receiving-copy-row';
 
 export default function ReceivingDashboard() {
   useRealtimeInvalidation({ receiving: true });
@@ -62,18 +50,7 @@ export default function ReceivingDashboard() {
   } = useReceivingWorkspacePane();
 
   const {
-    overlayLog,
-    setOverlayLog,
-    incomingDetails,
-    setIncomingDetails,
-    historyTriage,
-    setHistoryTriage,
-    enrichOverlayLog,
-  } = useReceivingDetailOverlays(isIncomingMode);
-
-  const {
     selectMode,
-    selectedRows,
     claimRow,
     setClaimRow,
     exitSelectMode,
@@ -84,51 +61,12 @@ export default function ReceivingDashboard() {
     formatCopyRow: formatReceivingCopyRow,
   });
 
-  // Incoming check → inspector occupancy:
-  //   1 check → open `detail:incoming` (same target as dblclick / Enter)
-  //   0 checks → clear inspect
-  //   2+ checks → yield inspect to the batch shell (R3 / R5)
-  const blockedInspectToastRowIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (!isIncomingMode) return;
-    if (selectedRows.length === 0) {
-      blockedInspectToastRowIdRef.current = null;
-      return;
-    }
-    if (selectedRows.length >= 2) {
-      blockedInspectToastRowIdRef.current = null;
-      if (incomingDetails) setIncomingDetails(null);
-      return;
-    }
-    return;
-  }, [isIncomingMode, selectedRows, incomingDetails, setIncomingDetails]);
-
-  // History triage (1-row inspect) yields to the batch shell at 2+ checks.
-  useEffect(() => {
-    if (selectedRows.length >= 2 && historyTriage) {
-      setHistoryTriage(null);
-    }
-  }, [selectedRows.length, historyTriage, setHistoryTriage]);
-
   const closeWorkspace = useCallback(() => {
     setWorkspace(null);
     setNav(null);
     dispatchReceivingWorkspaceClose();
     emitReceiving('receiving-clear-line');
   }, [setWorkspace, setNav]);
-
-  const closeIncoming = useCallback(() => {
-    setIncomingDetails(null);
-    emitReceiving('receiving-clear-line');
-    // R6 / D4 — close clears the check-set so rows do not stay selected with
-    // no visible dismiss affordance after the capsule is gone.
-    exitSelectMode();
-  }, [setIncomingDetails, exitSelectMode]);
-
-  const closeHistoryTriage = useCallback(() => {
-    dispatchReceivingCloseHistoryTriage();
-    emitReceiving('receiving-clear-line');
-  }, []);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -145,20 +83,10 @@ export default function ReceivingDashboard() {
         lookupReceipt={lookupReceipt}
         onClearLookupReceipt={clearLookupReceipt}
         staffId={staffId}
-        incomingDetails={incomingDetails}
-        onCloseIncoming={closeIncoming}
-        historyTriage={historyTriage}
-        onCloseHistoryTriage={closeHistoryTriage}
         onCloseWorkspace={closeWorkspace}
       />
 
       <ReceivingDashboardOverlays
-        overlayLog={overlayLog}
-        onCloseOverlayLog={() => setOverlayLog(null)}
-        onOverlayLogUpdated={() => {
-          if (overlayLog?.id) void enrichOverlayLog(Number(overlayLog.id));
-        }}
-        onOverlayLogDeleted={() => setOverlayLog(null)}
         claimRow={claimRow}
         onCloseClaim={() => setClaimRow(null)}
         onClaimFiled={() => {

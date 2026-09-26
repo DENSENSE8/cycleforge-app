@@ -71,6 +71,8 @@ export const MOBILE_FIRST_ROUTE_PREFIXES = [
   '/m/b',
   '/m/p',
   '/m/pair',
+  '/m/loc',
+  '/m/fnsku',
   '/m/enroll',
   '/m/unit-photos',
   // The manager read (Track R2). Registered the RIGHT way round — the phone

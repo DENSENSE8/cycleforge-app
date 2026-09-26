@@ -9,7 +9,7 @@
 
 import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
-import { RepairDetailsPanel } from '@/components/repair/RepairDetailsPanel';
+import { TechRepairRail } from '@/components/tech/TechRepairRail';
 import { TestingAssignDialog } from '@/components/tech/TestingAssignDialog';
 import { toast } from '@/lib/toast';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -47,7 +47,7 @@ export function TechDashboardOverlays({
       )}
       <AnimatePresence>
         {repairPanel && (
-          <RepairDetailsPanel
+          <TechRepairRail
             repair={repairPanel.record}
             assignmentId={repairPanel.assignmentId}
             assignedTechId={repairPanel.assignedTechId}

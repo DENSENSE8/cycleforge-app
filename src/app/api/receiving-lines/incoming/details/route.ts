@@ -3,7 +3,7 @@
  *   optional: &receiving_id=<carton> — prefer that carton for notes/shipment
  *             when it belongs to the PO (multi-box Unbox focus).
  *
- * One round-trip read for the IncomingDetailsPanel tabs:
+ * One round-trip read for the incoming delivery record (`IncomingDeliveryEvidence`):
  *   - po               — zoho_po_mirror header
  *   - line_items       — zoho_po_mirror.raw.line_items + per-line received qty
  *   - shipment         — receiving.shipment_id + carrier status + last 25 events

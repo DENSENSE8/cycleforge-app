@@ -7,21 +7,25 @@
  * only (`targetStationId`), with the subscribe-before-publish ACK
  * (`sendToDevice`).
  *
- * This phone runs its own bridge host too (mounted on `/m/*`), so its own
- * status comes back on the channel; a status carrying this browser's station id
- * is dropped, which is what keeps the phone out of its own picker.
+ * This browser runs its own bridge host too (mounted on every shell), so its
+ * own status comes back on the channel. It is listed like any other station:
+ * a phone with nothing paired drops out in `upsertStaffPrintStation`, and a
+ * desk tab and a phone tab open in ONE browser (localhost testing) share one
+ * station id — the tab that claims the job first prints it
+ * (`runPrintJobOnce`), so it prints once.
  *
  * Same channel, events and wire as the host (`useStaffPrintBridgeHost`,
  * `@/lib/print/staff-print-bridge`). No second queue.
  *
- * Callers: `/m/print` (MobilePrintWorkspace), `/m/rs/[id]/paperwork`.
+ * Callers: `/m/print` (MobilePrintWorkspace), `/m/rs/[id]/paperwork`, the
+ * FNSKU hub `/m/fnsku/[fnsku]`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAblyClient } from '@/contexts/AblyContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
-import { getStaffPrintBridgeChannelName, safeChannelName } from '@/lib/realtime/channels';
+import { getStaffPrintBridgeChannelName, printBridgeStaffId, safeChannelName } from '@/lib/realtime/channels';
 import { sendToDevice, type SendToDeviceState } from '@/lib/realtime/device-handshake';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
@@ -40,11 +44,7 @@ import {
   type StaffPrintProgress,
   type StaffPrintStation,
 } from '@/lib/print/staff-print-bridge';
-import {
-  readPrintStation,
-  readRememberedPrintStationId,
-  rememberPrintStationId,
-} from '@/lib/print/print-station';
+import { readRememberedPrintStationId, rememberPrintStationId } from '@/lib/print/print-station';
 
 export type StaffPrintPatch = Omit<StaffPrintOptionsPatch, 'type' | 'targetStationId'>;
 
@@ -65,8 +65,7 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
   const { getClient } = useAblyClient();
   const orgId = user?.organizationId ?? '';
   const staffId = user?.staffId ?? 0;
-  const staffName = user?.name?.trim() || 'you';
-  const channelName = safeChannelName(() => getStaffPrintBridgeChannelName(orgId, staffId));
+  const channelName = safeChannelName(() => getStaffPrintBridgeChannelName(orgId, printBridgeStaffId(staffId)));
   const enabled = !!channelName && staffId > 0;
 
   const [stations, setStations] = useState<StaffPrintStation[]>([]);
@@ -86,7 +85,7 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
     STAFF_PRINT_STATUS_EVENT,
     (message) => {
       const next = parseStaffPrintStatus(message?.data);
-      if (!next || next.stationId === readPrintStation().id) return;
+      if (!next) return;
       const at = Date.now();
       setNow(at);
       setStations((prev) => upsertStaffPrintStation(prev, next, at));
@@ -189,7 +188,6 @@ export function useStaffPrintBridgeClient({ active = true }: { active?: boolean 
   );
 
   return {
-    staffName,
     /** Every station heard from, this device excluded, sorted by name. */
     stations,
     /** The station jobs go to right now (remembered pick, else the only live one). */

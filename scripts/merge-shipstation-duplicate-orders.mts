@@ -38,8 +38,8 @@
  * `*order_id` columns without an FK that point at a duplicate id (listed for a
  * human; they are NOT rewritten because the column may name another table).
  *
- * `orders.created_at` is timestamp WITHOUT time zone holding Pacific wall time
- * (the app pool's session zone), so `--since` is compared in that zone.
+ * `orders.created_at` is a timestamptz instant, so `--since` (an ISO instant)
+ * is compared to it directly.
  */
 import { Client } from 'pg';
 import { planOrderRowBackfill } from '../src/lib/orders/order-row-backfill';
@@ -51,7 +51,6 @@ const arg = (name: string) => args.find((a) => a.startsWith(`--${name}=`))?.slic
 const APPLY = args.includes('--apply');
 const ORG = arg('org');
 const SINCE = arg('since') ?? '2026-09-24T21:10:00Z';
-const CREATED_AT_ZONE = 'America/Los_Angeles';
 
 if (!ORG || !/^[0-9a-f-]{36}$/i.test(ORG)) {
   console.error('--org=<uuid> is required');
@@ -127,8 +126,8 @@ try {
        FROM orders s
       WHERE s.organization_id = $1
         AND s.account_source = 'shipstation'
-        AND (s.created_at AT TIME ZONE $3) >= $2::timestamptz`,
-    [ORG, SINCE, CREATED_AT_ZONE],
+        AND s.created_at >= $2::timestamptz`,
+    [ORG, SINCE],
   );
   const pairs = candidates.filter((c) => c.mk_id != null).map((c) => ({ ss: c.ss_id, mk: c.mk_id! }));
   const keepers = candidates.filter((c) => c.mk_id == null);
@@ -327,13 +326,13 @@ try {
     `SELECT c.id, c.created_at::text, c.order_id
        FROM customers c
       WHERE c.organization_id = $1
-        AND (c.created_at AT TIME ZONE $3) >= $2::timestamptz
-        AND c.id IN (SELECT customer_id FROM orders WHERE id = ANY($4::int[]) AND customer_id IS NOT NULL)
-        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id AND NOT (o.id = ANY($4::int[])))
-        AND NOT (c.id = ANY($5::int[]))
+        AND c.created_at >= $2::timestamptz
+        AND c.id IN (SELECT customer_id FROM orders WHERE id = ANY($3::int[]) AND customer_id IS NOT NULL)
+        AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id AND NOT (o.id = ANY($3::int[])))
+        AND NOT (c.id = ANY($4::int[]))
         ${otherCustomerRefs.length ? `AND NOT (${otherCustomerRefs.join(' OR ')})` : ''}
       ORDER BY c.id`,
-    [ORG, SINCE, CREATED_AT_ZONE, ssIds, Array.from(movedCustomers)],
+    [ORG, SINCE, ssIds, Array.from(movedCustomers)],
   );
   console.log(`\nCustomers created by the run that end up referenced by nothing (NOT deleted): ${orphans.length}`);
   for (const o of orphans.slice(0, 50)) console.log(`  #${o.id} created ${o.created_at} order_id=${o.order_id ?? ''}`);

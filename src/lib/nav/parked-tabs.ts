@@ -11,7 +11,7 @@
  * `@/lib/nav/lanes`, and it is written in the same shape on purpose. That gate
  * hides a whole LANE (Sales · Support), which is the wrong instrument here:
  * Inventory itself is in daily desktop use and must keep its row. What has to
- * go is seven TABS inside it.
+ * go is six TABS inside it.
  *
  * Three properties are what make the lane gate work, and none of them is the
  * flag — so they are reproduced here rather than a `parked?: true` being
@@ -29,8 +29,8 @@
  *
  * Two consequences an editor must not "tidy away":
  *
- * - **Parking removes the DOOR, not the route.** `/inventory/pulse`,
- *   `/inventory/graph`, `?section=replenish` all still resolve for a bookmark,
+ * - **Parking removes the DOOR, not the route.** `/inventory/pulse` and
+ *   `/inventory/graph` still resolve for a bookmark,
  *   and each child keeps its `to()` and its `resolveChild()` clause so a pasted
  *   URL still lands. The tab band then lights nothing, which is the same honest
  *   shape the ex-admin inventory desks already wear (`resolveChild` → `null`).
@@ -52,7 +52,7 @@ export type ParkedTabKey = `${string}:${string}`;
  */
 export const PARKED_TABS: Readonly<Record<ParkedTabKey, string>> = {
   // Inventory (operator 2026-09-15) — the whole ex-admin + analytics half of
-  // the desk. Ledger · Stock · Locations stay: those are the tabs that work.
+  // the desk. Ledger · Stock · Locations · Replenish stay: those are the tabs that work.
   'inventory:triage': 'Tracking Exceptions — Zoho re-query path unreliable.',
   'inventory:pulse': 'Pulse — throughput board not reading live movement.',
   'inventory:graph': 'Graph — stock-flow view incomplete.',

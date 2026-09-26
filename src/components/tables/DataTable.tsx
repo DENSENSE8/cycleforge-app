@@ -113,6 +113,7 @@ import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscre
 import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
+import { DESK_RECORD_ANCHOR_ATTR, useDeskRecordPlaneOptional } from '@/design-system/components/DeskRecordPlane';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { SlotLayoutReorderProvider } from '@/components/tables/SlotLayoutReorderContext';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -165,6 +166,7 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DESK_TABLE_SURFACE_CLASS } from '@/design-system/tokens/desk-stage';
 import {
+  SLOT_TABLE_ACTION_ROW_ATTR,
   SLOT_TABLE_OVERLAY_HOST_ATTR,
 } from '@/components/tables/slot-table-overlay-host';
 import { cn } from '@/utils/_cn';
@@ -659,6 +661,13 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * (Incoming PO intake). Not chrome — never search/filter/sort.
    */
   bodyPrefix?: ReactNode;
+  /**
+   * The record action strip (`RecordActionStrip`) — painted in the in-flow
+   * action row under the search toolbar, inside the list anchor
+   * (`DESK_RECORD_ANCHOR_ATTR`), so an in-place record opens below both.
+   * Row-anchored planes portal into the same row.
+   */
+  actionStrip?: ReactNode;
 }
 
 /**
@@ -1539,6 +1548,9 @@ function useDataTableRowRoving({
   gridHostRef: RefObject<HTMLDivElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
 }) {
+  // While a DeskRecordPlane needs Escape (a record open, or the split view whose
+  // next Esc exits fullscreen), the row's own Esc → find field stands down.
+  const planeOwnsEscape = useDeskRecordPlaneOptional()?.ownsEscape ?? false;
   const focusRow = useCallback((row: HTMLElement) => {
     // `tabIndex` is only absent on surfaces with no activation gesture; setting
     // -1 keeps the Tab order exactly as it was.
@@ -1575,6 +1587,7 @@ function useDataTableRowRoving({
       if (!row) return;
 
       if (event.key === 'Escape') {
+        if (planeOwnsEscape) return;
         event.preventDefault();
         focusSearch();
         return;
@@ -1600,7 +1613,7 @@ function useDataTableRowRoving({
         focusSearch();
       }
     },
-    [gridHostRef, focusRow, focusSearch],
+    [gridHostRef, focusRow, focusSearch, planeOwnsEscape],
   );
 
   return { focusFirstRow, onBodyKeyDown };
@@ -1656,6 +1669,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   ariaLabel,
   className,
   bodyPrefix,
+  actionStrip,
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
@@ -1939,8 +1953,13 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         {exportInHeader ? (
           <DeskActionSlotRegistrar role="overall">{exportControl}</DeskActionSlotRegistrar>
         ) : null}
-        <div className={cn(DESK_TABLE_SURFACE_CLASS, className)}>
-      {/* ── One row, two controls ──────────────────────────────────────────── */}
+        <div
+          className={cn(DESK_TABLE_SURFACE_CLASS, className)}
+          {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
+        >
+      {/* ── The list anchor: search row + record action strip. In place, the
+          open record opens below it; both stay live over the record. ──────── */}
+      <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
       {!hideToolbar ? <div
         data-testid="data-table-toolbar"
         className={cn(
@@ -2020,11 +2039,18 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           <DataTableFullscreenToggle />
         </span>
       </div> : null}
+        <div
+          {...{ [SLOT_TABLE_ACTION_ROW_ATTR]: '' }}
+          data-testid="data-table-action-row"
+          className="min-w-0 w-full empty:hidden"
+        >
+          {actionStrip}
+        </div>
+      </div>
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}
       <div
         ref={gridHostRef}
-        {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
         onKeyDown={onBodyKeyDown}
         className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col"
       >

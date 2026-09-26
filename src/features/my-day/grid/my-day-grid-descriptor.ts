@@ -1,8 +1,8 @@
 /**
  * My Day grid surface descriptor — lifts the house {@link MY_DAY_GRID_COLUMNS}
  * SoT into the TanStack defs `LedgerGridSurface` mounts. Sorting stays inside
- * the Today sort vocabulary; row ORDER stays with the house comparator in
- * `MyDayWorkspace` (TanStack owns state math only).
+ * the Today sort vocabulary; row ORDER stays with the house comparator
+ * (TanStack owns state math only).
  */
 
 import {

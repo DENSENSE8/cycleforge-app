@@ -205,6 +205,19 @@ UI, storage, validation, audit, permission gating, and plan-gating are automatic
 `receiving.autoTicket` is the one item that is genuinely new behavior (there is no auto-trigger to
 gate today), so its trigger is built separately from this framework.
 
+## Desk catalog
+
+**Personal** (`scope: 'staff'`), one row per desk in `DESK_FULLSCREEN_DESKS`:
+
+| key | control | scope | decision point |
+|---|---|---|---|
+| `desk.<deskId>.fullscreen` | toggle | staff | `DeskPageLayout` seeds the desk's fullscreen state from it and writes it from the table-row ⤢ toggle (and Esc-exit) |
+
+`<deskId>` is the desk's `SIDEBAR_PAGE_NAV` page id (`home`, `outbound`, `incoming`, …). Fullscreen is
+the staffer's choice of record view (operator 2026-09-25): off → a record opens in place of the
+fixed-width list; on → list left, record right (`DeskRecordPlane`). A desk with no row still toggles,
+it just forgets on reload.
+
 ## File map
 
 | Concern | File |

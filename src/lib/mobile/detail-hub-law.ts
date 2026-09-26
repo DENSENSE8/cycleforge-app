@@ -9,9 +9,11 @@
  * MobileDetailTopBar  ‹ Back · IDENT (mono) · meta ··········· Scan
  * DetailSummaryCard   read-only; the whole card → /<entity>/[id]/info
  * DetailAck           server-stamped, dismissable
+ * content             optional live working set (a location's SKUs + ± strips)
  * DetailNav           one door per exact job (Photos · Locations · …)
- * DetailDock          ≤3 verbs, one primary
- * /info               every fact (DetailFactRow) + the ONLY edit (bar pencil)
+ * DetailDock          ≤3 verbs, one primary — OR, when the hub's job is
+ *                     scanning, MobileCaptureWindow itself (lens + keyed entry)
+ * /info               every fact (DetailFacts grid of DetailFact) + the ONLY edit (bar pencil)
  * /<job>              one job per screen, its own sticky job bar
  * ```
  *
@@ -35,7 +37,7 @@ export const DETAIL_HUB_KIT = [
   {
     name: 'DetailHubScreen',
     file: 'src/design-system/components/DetailHubScreen.tsx',
-    role: 'The hub: bar · card · ack · doors · dock, plus loading / error / notice / missing faces.',
+    role: 'The hub: bar · card · ack · content · doors · dock, plus loading / error / notice / missing faces.',
   },
   {
     name: 'DetailRecordFrame',
@@ -68,14 +70,22 @@ export const DETAIL_HUB_KIT = [
     role: 'Server-stamped save acknowledgement; dismissable, never a modal.',
   },
   {
-    name: 'DetailFactRow',
+    name: 'DetailFacts',
     file: 'src/components/mobile/detail/DetailParts.tsx',
-    role: 'One fact on /info.',
+    role: 'Facts on /info (and a record screen\'s facts): full-bleed DetailFact rows — mono caps label left, value right, one mode rule between rows; a DetailSectionHeading band opens each further group; copy= for identifier keys.',
   },
   {
     name: 'MobileDetailTopBar',
     file: 'src/components/mobile/redesign/MobileDetailTopBar.tsx',
     role: 'Identity bar; Back via backHref (nav-trail), the /info pencil in its right slot.',
+  },
+  {
+    name: 'MobileCaptureWindow',
+    file: 'src/components/mobile/station/MobileCaptureWindow.tsx',
+    role:
+      'The bottom scan surface. When a hub\'s job is scanning (serials into a visit), it IS the dock: ' +
+      'the lens, its collapsed "Scan" bar to re-arm, and the keyed fallback for typing a code by hand. ' +
+      'Never a Scan verb that opens it and never a second typed field beside it.',
   },
 ] as const;
 
@@ -90,7 +100,10 @@ export const DETAIL_HUB_REFUSAL =
   'nested <main>, no useEffect+fetch for hub data (React Query), no hand-rolled sticky dock, and never ' +
   'MobileTriagePage as a record screen. The primary record of the job being worked is never a phone ' +
   'BottomSheet: it opens as its hub route with an X back to the job; every phone sheet declares its role ' +
-  'in src/lib/mobile/mobile-sheet-roles.ts and record sheets only shrink. See src/lib/mobile/detail-hub-law.ts.';
+  'in src/lib/mobile/mobile-sheet-roles.ts and record sheets only shrink. Scanning on a phone is the ' +
+  'bottom MobileCaptureWindow or nothing (operator 2026-09-25): a screen that scans mounts it as its ' +
+  'bottom surface — no Scan button that opens it, no hand-rolled typed-entry bar beside it, because its ' +
+  'keyed fallback already types. See src/lib/mobile/detail-hub-law.ts.';
 
 export type DetailHubRule =
   | 'hub-missing-screen'
@@ -106,7 +119,9 @@ export type DetailHubRule =
   | 'dock-too-many-verbs'
   | 'dock-many-primary'
   | 'info-write-control'
-  | 'sheet-unclassified';
+  | 'sheet-unclassified'
+  | 'capture-scan-verb'
+  | 'capture-typed-fork';
 
 export interface DetailHubViolation {
   /** Repo-relative, POSIX separators. */
@@ -230,7 +245,7 @@ function rendersKit(
   file: string,
   text: string,
   name: string,
-  kit: 'DetailSummaryCard' | 'DetailDock',
+  kit: 'DetailSummaryCard' | 'DetailDock' | 'MobileCaptureWindow',
   read: ModuleReader,
 ): boolean {
   if (name === kit) return true;
@@ -260,8 +275,16 @@ export function auditDetailHubPage(file: string, source: string, read: ModuleRea
       push(card?.index ?? screen, 'hub-missing-card', `card slot is not a DetailSummaryCard mapper${card ? ` (${card.name})` : ''}`);
     }
     const dock = slotComponent(text, 'dock');
-    if (!dock || !rendersKit(file, text, dock.name, 'DetailDock', read)) {
-      push(dock?.index ?? screen, 'hub-missing-dock', `dock slot is not DetailDock or a mapper over it${dock ? ` (${dock.name})` : ''}`);
+    const dockIsKit =
+      dock != null &&
+      (rendersKit(file, text, dock.name, 'DetailDock', read) ||
+        rendersKit(file, text, dock.name, 'MobileCaptureWindow', read));
+    if (!dockIsKit) {
+      push(
+        dock?.index ?? screen,
+        'hub-missing-dock',
+        `dock slot is not DetailDock, MobileCaptureWindow, or a mapper over one${dock ? ` (${dock.name})` : ''}`,
+      );
     }
   }
 
@@ -306,6 +329,58 @@ export function auditDetailDockSource(file: string, source: string): DetailHubVi
     if (primaries > 1) {
       out.push({ file, line, rule: 'dock-many-primary', detail: `${primaries} primary verbs (exactly one)` });
     }
+  }
+  return out;
+}
+
+/** The definition of the capture window — the one file allowed to own its keyed field. */
+export const CAPTURE_WINDOW_FILE = 'src/components/mobile/station/MobileCaptureWindow.tsx';
+
+/**
+ * Rules for a phone file that mounts `<MobileCaptureWindow` (operator
+ * 2026-09-25: *"scan serial number button should not be mounted to the bottom,
+ * it must be using the bottom scan … display component or not using it, the
+ * bottom scan mounting has the needed manual typing already"*).
+ *
+ * - `capture-scan-verb` — a `DetailDock` in the same file carrying a scan verb
+ *   (id or label says scan). The window IS the scan surface; a verb that opens
+ *   it is a second control for the one job, parked where the window belongs.
+ * - `capture-typed-fork` — a text field in the same file (`TextField`,
+ *   `<input`, `<Input`, `KioskEntryField`, `<textarea`). Typing a code by hand
+ *   is the window's keyed fallback (its leading slot), committed through the
+ *   same `onDecode`; a second field forks that path.
+ *
+ * Navigation verbs elsewhere ("Scan again" → `/m/scan`) are not this rule:
+ * those files do not host the window.
+ */
+export function auditCaptureWindowSource(file: string, source: string): DetailHubViolation[] {
+  if (file === CAPTURE_WINDOW_FILE || !isPhoneSheetScope(file)) return [];
+  const text = stripComments(source);
+  if (!/<MobileCaptureWindow\b/.test(text)) return [];
+  const out: DetailHubViolation[] = [];
+  for (const m of text.matchAll(/<DetailDock\b/g)) {
+    const at = m.index ?? 0;
+    const verbsAt = text.indexOf('verbs={', at);
+    const close = text.indexOf('/>', at);
+    if (verbsAt < 0 || (close >= 0 && verbsAt > close)) continue;
+    const list = balancedSpan(text, verbsAt + 'verbs='.length);
+    const scanVerb = list.match(/\b(?:id|label):\s*['"`]([^'"`]*\bscan[^'"`]*)['"`]/i);
+    if (scanVerb) {
+      out.push({
+        file,
+        line: lineAt(text, at),
+        rule: 'capture-scan-verb',
+        detail: `dock verb "${scanVerb[1]}" opens a scanner — mount MobileCaptureWindow as the bottom instead`,
+      });
+    }
+  }
+  for (const m of text.matchAll(/<(?:TextField|input|Input|KioskEntryField|textarea)\b/g)) {
+    out.push({
+      file,
+      line: lineAt(text, m.index ?? 0),
+      rule: 'capture-typed-fork',
+      detail: `${m[0]} beside MobileCaptureWindow — its keyed fallback is the typed entry`,
+    });
   }
   return out;
 }

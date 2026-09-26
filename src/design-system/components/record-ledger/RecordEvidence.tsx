@@ -9,10 +9,11 @@
  *   sections      photos · fields · facts · counts (mono label heads, 1px rules)
  *   decision bar  2–4 verbs, keys 1–4, primary = ink fill
  *
- * Mounted inside {@link RecordLedger}'s evidence column, whose head bar
- * (`SELECTED … · k / n · ‹ › ✕`) the ledger owns. Colours are the region's
- * mode; the corner is `rounded-mode` (4 in triage, 0 in industrial), so the
- * same parts read correctly in either region.
+ * Mounted as a {@link RecordLedger} record, which `DeskRecordPlane` places in
+ * place of the list or in the split pane; the plane owns the header band
+ * (title · n of N · ‹ › ✕). Colours are the region's mode; the corner is
+ * `rounded-mode` (4 in triage, 0 in industrial), so the same parts read
+ * correctly in either region.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -61,7 +62,6 @@ export function EvidenceTitle({ children, sub }: { children: ReactNode; sub?: Re
 
 /** `HLD · On hold ··· → Photo` — state and the next step, one strip. */
 export function EvidenceStateStrip({ state, next }: { state: RecordStateFace; next?: string | null }) {
-  const spec = state;
   return (
     <div
       className={cn(
@@ -71,7 +71,7 @@ export function EvidenceStateStrip({ state, next }: { state: RecordStateFace; ne
     >
       <span aria-hidden className={cn('h-2 w-2 shrink-0', STATE_TONE_CLASSES[state.tone].dot)} />
       <span className={cn(RECORD_LABEL_CLASS, recordStateCodeClass(state))}>
-        {spec.code} · {spec.label}
+        {state.code} · {state.label}
       </span>
       {next ? <span className={cn(RECORD_LABEL_CLASS, 'ml-auto text-mode-ink')}>→ {next}</span> : null}
     </div>

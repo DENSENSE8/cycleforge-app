@@ -34,10 +34,7 @@ import {
 } from '@/components/tables/compound/compound-row-chrome';
 import { receivingStateTone } from '@/lib/receiving/receiving-compound-view';
 import { ordersStateTone } from '@/lib/orders/orders-compound-view';
-import {
-  INCOMING_COMPOUND_COLUMNS,
-  RECEIVING_COMPOUND_COLUMNS,
-} from '@/lib/receiving/receiving-grid-layout';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { TASKS_COMPOUND_COLUMNS } from '@/features/tasks/grid/tasks-table-definition';
 import { DAILY_COMPOUND_COLUMNS } from '@/features/home/grid/daily-table-definition';
@@ -55,7 +52,6 @@ const widths = (c: readonly { key: string; width?: string }[]) =>
  */
 const FAMILIES = [
   ['Receiving (Unbox · History · Testing)', RECEIVING_COMPOUND_COLUMNS],
-  ['Incoming', INCOMING_COMPOUND_COLUMNS],
   // Tasks and Daily are NOT here: both are engine-record families
   // (`TASKS_FAMILY`, `DAILY_FAMILY`), so the engine binds their identity fact
   // into the identity chrome track and the array is DERIVED rather than the

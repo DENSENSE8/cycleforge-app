@@ -47,12 +47,6 @@ interface ShippedDetailsPanelProps {
   onUpdate: () => void;
   /** Inspector capability lane — not a body layout switch. */
   context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed';
-  /**
-   * `rail` — legacy `DetailStackRailRegistrar` / `RightRailHost` (stations,
-   * search, staged embeds). `stage` — Center Lock body only; chrome lives on
-   * {@link DeskStageOverlay}.
-   */
-  surface?: 'rail' | 'stage';
 }
 
 export function ShippedDetailsPanel({
@@ -60,7 +54,6 @@ export function ShippedDetailsPanel({
   onClose,
   onUpdate,
   context = 'shipped',
-  surface = 'rail',
 }: ShippedDetailsPanelProps) {
   const router = useRouter();
   /**
@@ -305,10 +298,6 @@ export function ShippedDetailsPanel({
       />
     </div>
   );
-
-  if (surface === 'stage') {
-    return panelBody;
-  }
 
   return (
     <DetailStackRailRegistrar

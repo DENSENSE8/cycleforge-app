@@ -491,7 +491,7 @@ Desktop framing is `ResponsiveLayout` + the MasterNav spine.
 Migrate existing components to consume new design system primitives:
 
 1. **OrderCard / FbaItemCard / RepairCard** — replace inline `getConditionColor` helpers with `ConditionText` primitive
-2. **TechTable / PackerTable / DashboardShippedTable** — replace inline sticky date headers with `DateGroupHeader` component
+2. **TechTable / PackerTable** — replace inline sticky date headers with `DateGroupHeader` component
 3. **UpNextFilterBar** — replace inline AnimatePresence toggle with `OverlaySearch` component
 4. **Sidebar form sections** — replace inline label styling with `FormField` component
 5. **All expand/collapse patterns** — drive `AnimatePresence`+`motion.div` from `framerPresence.collapseHeight` (the `ExpandableSection` primitive was deleted 2026-07-31 — zero call sites)

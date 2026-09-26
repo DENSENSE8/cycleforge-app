@@ -3,12 +3,13 @@
 /**
  * Silent-print host — this browser's print station. Listens on this staff ID's
  * print channel, answers status requests with its station id + name + printer
- * faces, and drives USB/serial via printLabelRun for jobs ADDRESSED TO THIS
- * STATION (`targetStationId`) that it can actually silent-print.
+ * faces, and prints jobs ADDRESSED TO THIS STATION (`targetStationId`): raw
+ * over a paired USB/serial printer, else through the desk browser's own print
+ * (Chrome `--kiosk-printing` = silent to the default printer).
  *
- * Mount on the desk frame and on `/m/*` (phone-frame SoT). Another computer
- * signed in as the same staffer — or a phone with no paired printer — never
- * acks a job aimed at a different station.
+ * Mount on the desk frame and on `/m/*` (phone-frame SoT). A phone with no
+ * paired printer is not a station and never answers; another computer signed
+ * in as the same staffer never acks a job aimed at a different station.
  */
 
 import { useEffect, useRef } from 'react';
@@ -17,6 +18,7 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import {
   getStaffPrintBridgeChannelName,
+  printBridgeStaffId,
   safeChannelName,
 } from '@/lib/realtime/channels';
 import { publishDeviceAck } from '@/lib/realtime/device-handshake';
@@ -29,12 +31,13 @@ import {
   parseStaffPrintJob,
   parseStaffPrintOptionsPatch,
   thisDeviceCanFulfillPrintJob,
+  isPrintStation,
   type StaffPrintJob,
   type StaffPrintStatus,
 } from '@/lib/print/staff-print-bridge';
 import { getProfileForRole, listProfiles, setRoute } from '@/lib/print/browserPrint';
 import { isSilentPrintEnabled, setSilentPrintEnabled, SILENT_PRINT_CHANGED_EVENT } from '@/lib/print/printMode';
-import { PRINT_STATION_CHANGED_EVENT, readPrintStation } from '@/lib/print/print-station';
+import { PRINT_STATION_CHANGED_EVENT, readPrintStation, runPrintJobOnce } from '@/lib/print/print-station';
 import {
   printBinLabelRun,
   printHandlingUnitLabelRun,
@@ -46,8 +49,19 @@ import { registerLocations } from '@/components/barcode/bin-label-printer/bin-pr
 import { registerRackLocations } from '@/components/barcode/rack-printer/rack-printer-api';
 import { triggerPackPrintBundle } from '@/lib/print/pack-print-bundle-client';
 import { printRepairStationJob } from '@/lib/print/printRepairStationJob';
+import { printFnskuStationJob } from '@/lib/print/printFnskuStationJob';
 import type { RackSegments } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
+
+/**
+ * A desk browser (fine pointer) can always print through its own print path:
+ * Chrome started with `--kiosk-printing` sends it silently to the default
+ * printer; any other browser shows the print dialog at the desk. A phone
+ * (coarse pointer) cannot, so without a paired printer it is no station.
+ */
+function deskBrowserCanPrint(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches === true;
+}
 
 function snapshotStatus(): StaffPrintStatus {
   const label = getProfileForRole('label');
@@ -56,19 +70,20 @@ function snapshotStatus(): StaffPrintStatus {
   const station = readPrintStation();
   const labelUsb =
     !!label && label.kind !== 'os' && label.language !== 'none';
+  const browserPrint = deskBrowserCanPrint();
   return {
     type: 'staff.print_status',
     stationId: station.id,
     stationName: station.name,
     silent,
     label: {
-      ready: silent && labelUsb,
+      ready: silent && (labelUsb || browserPrint),
       name: label?.name ?? null,
       kind: label?.kind ?? null,
       profileId: label?.id ?? null,
     },
     paper: {
-      ready: silent && !!paper,
+      ready: silent && (!!paper || browserPrint),
       name: paper?.name ?? null,
       kind: paper?.kind ?? null,
       profileId: paper?.id ?? null,
@@ -88,16 +103,20 @@ export function useStaffPrintBridgeHost() {
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const channelName = safeChannelName(() =>
-    getStaffPrintBridgeChannelName(orgId ?? '', staffId),
+    getStaffPrintBridgeChannelName(orgId ?? '', printBridgeStaffId(staffId)),
   );
   const busyRef = useRef(false);
 
   const publishStatus = async () => {
     if (!channelName) return;
+    const status = snapshotStatus();
+    // Not a station (a phone with nothing paired): say nothing, so a desk tab
+    // sharing this browser's station id is never shadowed by it.
+    if (!isPrintStation(status)) return;
     try {
       const client = await getClient();
       const channel = client?.channels.get(channelName);
-      await channel?.publish(STAFF_PRINT_STATUS_EVENT, snapshotStatus());
+      await channel?.publish(STAFF_PRINT_STATUS_EVENT, status);
     } catch {
       /* best-effort */
     }
@@ -153,9 +172,13 @@ export function useStaffPrintBridgeHost() {
   );
 
   async function runJob(job: StaffPrintJob) {
-    const snap = snapshotStatus();
-    if (!thisDeviceCanFulfillPrintJob(job, snap)) return;
+    if (!thisDeviceCanFulfillPrintJob(job, snapshotStatus())) return;
+    // Every tab of this browser is this station; only the one that claims the
+    // job acks and prints it.
+    await runPrintJobOnce(job.request_id, () => printJob(job));
+  }
 
+  async function printJob(job: StaffPrintJob) {
     busyRef.current = true;
     try {
       const client = await getClient();
@@ -182,6 +205,12 @@ export function useStaffPrintBridgeHost() {
 
       if (job.grain === 'repair' && job.repair) {
         const error = await printRepairStationJob(job.repair, job.request_id);
+        if (error) toast.error(error);
+        return;
+      }
+
+      if (job.grain === 'fnsku' && job.fnsku) {
+        const error = await printFnskuStationJob(job.fnsku, job.request_id);
         if (error) toast.error(error);
         return;
       }

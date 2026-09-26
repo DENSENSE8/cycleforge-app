@@ -6,7 +6,7 @@
  * The Exceptions surface is the same full-width industrial ledger as To ship
  * and Pending. It does not mount the slot `DataTable`: `OutboundOrdersLedger`
  * owns the toolbar, row chrome, grouping, paging, fullscreen affordance, and
- * evidence column. Exception rows are adapted into the shared `ShippedOrder`
+ * the order record. Exception rows are adapted into the shared `ShippedOrder`
  * shape, so the design-system table has one implementation and one visual law.
  *
  * Category controls are a narrow banner passed into that ledger. They filter
@@ -19,44 +19,23 @@
  * no photo; the shared Image chrome still mounts. Dropping `thumb` here was the
  * skeleton-cut fork the header-sort law forbids.
  *
- * ## The record is a PAGE, beside a persistent queue rail
+ * ## The record is the order record, placed by the desk
  *
- * `?order=<id>` swaps the BODY from the table to {@link ExceptionEditor}. Not a
- * `RightRailHost` occupant (ruled out explicitly), not a modal, not an inline
- * expansion. The deep link an operator sends a colleague — "this one is wrong,
- * look" — still lands on the same record it always did.
+ * A row (or `?order=<id>`, or the header's Resolve) opens the held order's
+ * record — the same `OrderRecordView` every outbound desk opens, in its
+ * `exceptions` sections — through `DeskRecordPlane` (owner 2026-09-25): in
+ * place of the ledger by default, list-left / record-right when the staffer
+ * turns fullscreen on. Not a `RightRailHost` occupant, not a modal, not a body
+ * swap with a second queue rail: in the split view the ledger IS the queue you
+ * walk (J / K) while you fix one. The deep link an operator sends a colleague
+ * — "this one is wrong, look" — still lands on the same record.
  *
- * {@link ExceptionsRecentRail} rides the RECORD state, not the table state
- * (operator 2026-08-31: "a CTA button to access the full screen form display
- * that will then display the recent rail and the full screen form"). The table
- * is for EXACT triage — columns, sort, prefs, the facts you compare ACROSS
- * orders — and the rail is for WALKING the queue while you fix ONE. Different
- * questions, so they are not shown at once.
+ * ## What the record is for (R-FLOW-7)
  *
- * That split is also what makes the small state fit. The stage caps at
- * `DESK_STAGE_MAX_PX` (1152px) and the mounted compound tracks minus `thumb`
- * come to 55rem / 880px; a 22rem rail beside them leaves 800px and the table
- * scrolls horizontally out of the box, worse with every status binding a
- * manager adds — those tracks are fixed `minmax` widths and do not shrink under
- * pressure. Table alone gets the full 1152px. (Measured with cycleforge-app-c4,
- * 2026-08-31.)
- *
- * The rail is a preset over `SidebarRecentRailBase` — the same shell as the
- * unbox and testing rails, with their row anatomy (status dot, title, quantity
- * on the meta line). Not a hand-rolled list; that fork was deleted once
- * already.
- *
- * The editor autosaves, owns its own Escape handler (→ `onExit`) and reseeds on
- * `row.id` only, so this host must not remount it on `onChanged` and must not
- * add a second Escape listener. It needs a `min-h-0` flex parent or its
- * scrollport will not scroll.
- *
- * ## What the editor is for (R-FLOW-7)
- *
- * Pairing the item number to the Zoho inventory SKU. That write un-cages the
- * order and it leaves this queue. Manuals and shipping labels are a sibling
- * To-ship form — same walk chrome (table, then record + recents rail),
- * different job.
+ * Pairing the item number to the Zoho inventory SKU
+ * ({@link ExceptionResolveSection}, the record's `resolve` section). That write
+ * un-cages the order and it leaves this queue, which closes the record and
+ * hands the operator the queue back.
  *
  * ## Scope is fixed to `actionable`
  *
@@ -69,7 +48,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { ExceptionsRecentRail } from './ExceptionsRecentRail';
 import {
   DeskActionSlotRegistrar,
   DeskHeaderAction,
@@ -85,7 +63,7 @@ import {
   type OrderExceptionCategory,
   type OrderExceptionRow,
 } from '@/lib/orders/order-exception-types';
-import { ExceptionEditor } from './ExceptionEditor';
+import { ExceptionResolveSection } from './ExceptionResolveSection';
 
 interface ExceptionsPayload {
   ok: boolean;
@@ -154,7 +132,6 @@ export function OrderExceptionsWorkbench() {
     () => sortExceptionQueueRows(query.data?.exceptions ?? []),
     [query.data],
   );
-  const selected = exceptions.find((r) => r.id === selectedId) ?? null;
 
   // Memoized: this list is the input to the grouped row model, so an
   // unmemoized re-derive would re-identify every row on every render.
@@ -173,29 +150,24 @@ export function OrderExceptionsWorkbench() {
     [patchParams],
   );
 
-  /**
-   * Leave the record, paint the queue. The editor's ✕, its context-header ◁
-   * and its Escape all land here.
-   */
+  /** Leave the record, paint the queue: the plane's ✕ and Esc land here. */
   const closeRecord = useCallback(() => patchParams({ order: null }), [patchParams]);
 
   /**
-   * After a write: refetch. When the row RESOLVED it has left the actionable
-   * set, and a page host has no next row to advance to — so the honest answer
-   * is to hand the operator the queue back rather than pushing them at some
-   * arbitrary neighbour. (Resolve-and-advance was the rail's ergonomic; a page
-   * does not have it, and faking it would land them on a record they did not
-   * choose.)
+   * After a write: refetch. A RESOLVED row leaves the actionable set, and the
+   * ledger's selection closes a record whose row left the queue — the operator
+   * gets the queue back rather than being pushed at an arbitrary neighbour.
    */
-  const handleChanged = useCallback(
-    async (opts?: { resolved?: boolean }) => {
-      const next = await query.refetch();
-      if (!opts?.resolved) return;
-      const remaining = next.data?.exceptions ?? [];
-      if (remaining.some((r) => r.id === selectedId)) return; // still blocked; stay put
-      closeRecord();
+  const { refetch } = query;
+  const handleChanged = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+  const resolveRecord = useCallback(
+    (record: ShippedOrder) => {
+      const row = exceptions.find((r) => r.id === Number(record.id));
+      return row ? <ExceptionResolveSection key={row.id} row={row} onChanged={handleChanged} /> : null;
     },
-    [query, selectedId, closeRecord],
+    [exceptions, handleChanged],
   );
   const toShipChrome = useToShipChrome();
   const chrome = useMemo(
@@ -210,11 +182,10 @@ export function OrderExceptionsWorkbench() {
     [patchParams, search, toShipChrome],
   );
 
-
   /**
-   * Header verb: open the SKU-pairing record. Fullscreen stays on the table
-   * toolbar ({@link DataTableFullscreenToggle}) — a second expand control
-   * above the grid is the duplicate the operator refused.
+   * Header verb: open the SKU-pairing record (the open one, else the first).
+   * Fullscreen stays on the table toolbar ({@link DataTableFullscreenToggle}) —
+   * a second expand control above the grid is the duplicate the operator refused.
    */
   const openResolveForm = useCallback(() => {
     const target = selectedId ?? exceptions[0]?.id ?? null;
@@ -250,66 +221,51 @@ export function OrderExceptionsWorkbench() {
         </div>
       ) : null}
 
-      {selected ? (
-        // Record walk: Unbox-width queue rail beside the pairing form.
-        <ExceptionEditor
-          key={selected.id}
-          row={selected}
-          onChanged={handleChanged}
-          onExit={closeRecord}
-          queue={
-            <ExceptionsRecentRail
-              rows={exceptions}
-              selectedId={selectedId}
-              onSelect={(id) => patchParams({ order: String(id) })}
-              loading={query.isLoading}
-            />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
+        <OutboundOrdersLedger
+          mode="exceptions"
+          chrome={chrome}
+          searchPending={query.isFetching || search.trim() !== debounced.trim()}
+          records={records}
+          loading={query.isLoading}
+          onOpenRecord={openRecord}
+          onCloseRecord={closeRecord}
+          openRecordId={selectedId}
+          resolveRecord={resolveRecord}
+          railSelection={false}
+          selectionScope={EXCEPTIONS_SELECTION_SCOPE}
+          searchEmptyTitle="No held order found"
+          searchResultLabel="held orders"
+          clearSearchLabel="Show all held orders"
+          banner={
+            <nav
+              aria-label="Exception category"
+              className="flex shrink-0 items-stretch overflow-x-auto border-b border-mode-ink bg-mode-bar"
+              data-testid="exception-category-tabs"
+            >
+              <button
+                type="button"
+                aria-pressed={category == null}
+                onClick={() => patchParams({ category: null })}
+                className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-ink aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+              >
+                All <span className="ml-1 font-mono">{exceptions.length}</span>
+              </button>
+              {ORDER_EXCEPTION_CATEGORIES.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  aria-pressed={category === item}
+                  onClick={() => patchParams({ category: item })}
+                  className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-muted hover:bg-mode-hover aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
+                >
+                  {item} <span className="ml-1 font-mono">{categoryCounts[item]}</span>
+                </button>
+              ))}
+            </nav>
           }
         />
-      ) : (
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
-          <OutboundOrdersLedger
-            chrome={chrome}
-            searchPending={query.isFetching || search.trim() !== debounced.trim()}
-            records={records}
-            loading={query.isLoading}
-            onOpenRecord={openRecord}
-            onCloseRecord={closeRecord}
-            railSelection={false}
-            selectionScope={EXCEPTIONS_SELECTION_SCOPE}
-            searchEmptyTitle="No held order found"
-            searchResultLabel="held orders"
-            clearSearchLabel="Show all held orders"
-            banner={
-              <nav
-                aria-label="Exception category"
-                className="flex shrink-0 items-stretch overflow-x-auto border-b border-mode-ink bg-mode-bar"
-                data-testid="exception-category-tabs"
-              >
-                <button
-                  type="button"
-                  aria-pressed={category == null}
-                  onClick={() => patchParams({ category: null })}
-                  className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-ink aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
-                >
-                  All <span className="ml-1 font-mono">{exceptions.length}</span>
-                </button>
-                {ORDER_EXCEPTION_CATEGORIES.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    aria-pressed={category === item}
-                    onClick={() => patchParams({ category: item })}
-                    className="min-h-mode-hit border-r border-mode-edge px-3 text-role-eyebrow font-bold uppercase tracking-widest text-mode-muted hover:bg-mode-hover aria-pressed:bg-mode-ink aria-pressed:text-mode-bar"
-                  >
-                    {item} <span className="ml-1 font-mono">{categoryCounts[item]}</span>
-                  </button>
-                ))}
-              </nav>
-            }
-          />
-        </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -439,7 +439,7 @@ body {
    Driven by a selector rather than a prop because the row and the chip have
    different owners: the chip is the shared `GridStatusCellValue`, the row is
    whichever grid registry mounted it (`OrdersQueueTableRow`,
-   `ReceivingGridRow`, `IncomingGridRow` — all three carry
+   `ReceivingGridRow` — both carry
    `data-order-row-id`). Threading a "did my status just change" boolean up
    through six surfaces to paint a background is exactly the page-local wiring
    `:has()` exists to avoid.

@@ -16,6 +16,7 @@ import { DetailAck } from '@/components/mobile/detail/DetailParts';
 import { SkuExceptionScreen } from '@/components/mobile/onhold/SkuExceptionScreen';
 import { useSkuExceptionPhotoUploads } from '@/components/mobile/onhold/useSkuExceptionPhotoUploads';
 import { Camera } from '@/components/Icons';
+import { DetailDock } from '@/design-system/components/DetailDock';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
@@ -78,30 +79,27 @@ function SkuExceptionPhotosBody({ item }: { item: ProvisionalSkuDetail }) {
   };
 
   const newest = item.photos.length > 0 ? item.photos[item.photos.length - 1] : null;
-  const cell = 'min-h-mode-hit-cta w-full rounded-mode px-2';
+  const cell = 'min-h-mode-hit-cta w-full px-2';
 
   return (
     <>
-      <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+      <div className="flex-1 divide-y divide-mode-rule">
         {uploads.uploading > 0 ? (
-          <p role="status" className="text-role-caption font-semibold text-mode-ink">
+          <p role="status" className="bg-mode-panel px-mode-page py-3 text-role-caption font-semibold text-mode-ink">
             Uploading {plural(uploads.uploading, 'photo')}…
           </p>
         ) : null}
 
         {uploads.failed.length > 0 ? (
-          <div
-            role="alert"
-            className="space-y-2 rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-role-caption text-rose-700"
-          >
+          <div role="alert" className="space-y-2 bg-rose-50 px-mode-page py-3 text-role-caption text-rose-700">
             <p className="font-semibold">
               {plural(uploads.failed.length, 'photo')} didn&apos;t upload — {uploads.failed[0].error}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="secondary" size="lg" className={cell} onClick={uploads.discardFailed}>
+              <Button variant="secondary" size="lg" radius="flush" className={cell} onClick={uploads.discardFailed}>
                 Discard
               </Button>
-              <Button variant="primary" size="lg" className={cell} onClick={uploads.retryFailed}>
+              <Button variant="primary" size="lg" radius="flush" className={cell} onClick={uploads.retryFailed}>
                 Retry
               </Button>
             </div>
@@ -115,11 +113,11 @@ function SkuExceptionPhotosBody({ item }: { item: ProvisionalSkuDetail }) {
         ) : null}
 
         {item.photos.length === 0 ? (
-          <p className="py-10 text-center text-role-caption text-mode-muted">
+          <p className="px-mode-page py-10 text-center text-role-caption text-mode-muted">
             No photos yet. A photo is what lets a teammate recognise the product to pair it.
           </p>
         ) : (
-          <>
+          <div className="space-y-3 bg-mode-panel px-mode-page py-3">
             <p className="text-role-caption text-mode-muted">
               {plural(item.photos.length, 'photo')}
               {newest ? ` · newest ${formatMonthDayTimePST(newest.createdAt)}` : ''}
@@ -140,32 +138,21 @@ function SkuExceptionPhotosBody({ item }: { item: ProvisionalSkuDetail }) {
                 </li>
               ))}
             </ul>
-          </>
+          </div>
         )}
 
         {!canUpload ? (
-          <p className="text-role-caption text-mode-muted">
+          <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
             Your role cannot add photos to a SKU exception (needs Adjust stock).
           </p>
         ) : null}
       </div>
 
-      <nav
-        aria-label="Photo actions"
-        className="sticky bottom-0 z-sticky border-t border-mode-rule bg-mode-bar px-mode-page pt-2"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
-      >
-        <Button
-          variant="primary"
-          size="lg"
-          className={cell}
-          icon={<Camera />}
-          disabled={!canUpload}
-          onClick={() => setCapturing(true)}
-        >
-          Take photo
-        </Button>
-      </nav>
+      <DetailDock
+        label="Photo actions"
+        verbs={[{ id: 'photo', label: 'Take photo', icon: <Camera />, primary: true, disabled: !canUpload }]}
+        onVerb={() => setCapturing(true)}
+      />
 
       <MobileSwipePhotoViewer
         open={viewerIndex != null}

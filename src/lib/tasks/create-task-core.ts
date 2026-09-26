@@ -33,8 +33,9 @@ import {
 
 export interface TaskRow {
   id: number;
-  entityType: TaskEntityType;
-  entityId: number;
+  /** The record the task is about, or null for a standalone task. */
+  entityType: TaskEntityType | null;
+  entityId: number | null;
   assigneeStaffId: number;
   assigneeStaffIds: number[];
   projectName: string | null;
@@ -43,8 +44,8 @@ export interface TaskRow {
 }
 
 export interface InsertTaskArgs {
-  entityType: TaskEntityType;
-  entityId: number;
+  entityType: TaskEntityType | null;
+  entityId: number | null;
   assigneeStaffId: number;
   assigneeStaffIds: number[];
   projectName: string | null;
@@ -84,8 +85,9 @@ export interface CreateTaskDeps {
 }
 
 export interface CreateTaskInput {
-  entityType: unknown;
-  entityId: unknown;
+  /** Absent/null on BOTH = a standalone task with no record behind it. */
+  entityType?: unknown;
+  entityId?: unknown;
   assigneeStaffId: unknown;
   assigneeStaffIds?: unknown;
   projectName?: unknown;
@@ -114,12 +116,14 @@ export interface CreateTaskInput {
  *   • `already`    — it was already urgent; nothing was written
  *   • `not_urgent` — the thrower did not mark it urgent
  *   • `failed`     — promotion was attempted and did not land (see above)
+ *   • `no_record`  — marked urgent, but a standalone task has no record to
+ *                    promote; the task's own priority carries the urgency
  */
 export type CreateTaskResult =
   | {
       ok: true;
       task: TaskRow;
-      urgency: 'promoted' | 'already' | 'not_urgent' | 'failed';
+      urgency: 'promoted' | 'already' | 'not_urgent' | 'failed' | 'no_record';
       /**
        * Whether the recipient was told:
        *   • `sent`           — durable inbox row written and pushed
@@ -140,9 +144,9 @@ export type CreateTaskResult =
       ok: false;
       reason:
         | 'unsupported_entity'
+        | 'missing_title'
         | 'invalid_entity_id'
         | 'invalid_assignee'
-        | 'self_throw'
         | 'note_too_long'
         | 'project_name_too_long'
         | 'invalid_project_name'
@@ -164,11 +168,17 @@ export async function createTaskCore(
   input: CreateTaskInput,
   deps: CreateTaskDeps,
 ): Promise<CreateTaskResult> {
-  if (!isTaskEntityType(input.entityType)) return { ok: false, reason: 'unsupported_entity' };
-  const entityType: TaskEntityType = input.entityType;
-
-  const entityId = Number(input.entityId);
-  if (!Number.isInteger(entityId) || entityId <= 0) return { ok: false, reason: 'invalid_entity_id' };
+  // Both absent = a standalone task. Half an anchor is a malformed request,
+  // never silently a standalone task.
+  const standalone = input.entityType == null && input.entityId == null;
+  let entityType: TaskEntityType | null = null;
+  let entityId: number | null = null;
+  if (!standalone) {
+    if (!isTaskEntityType(input.entityType)) return { ok: false, reason: 'unsupported_entity' };
+    entityType = input.entityType;
+    entityId = Number(input.entityId);
+    if (!Number.isInteger(entityId) || entityId <= 0) return { ok: false, reason: 'invalid_entity_id' };
+  }
 
   const rawAssignees = input.assigneeStaffIds === undefined ? [input.assigneeStaffId] : input.assigneeStaffIds;
   if (!Array.isArray(rawAssignees) || rawAssignees.length < 1 ||
@@ -180,12 +190,6 @@ export async function createTaskCore(
   const assigneeStaffIds: number[] = rawAssignees;
   const assigneeStaffId = assigneeStaffIds[0];
 
-  // A task handed only to yourself is a no-op handoff; joining a team you are
-  // handing work to is not, so the creator may be one member among others.
-  if (input.actorStaffId != null && assigneeStaffIds.length === 1 && assigneeStaffId === input.actorStaffId) {
-    return { ok: false, reason: 'self_throw' };
-  }
-
   const rawNote = typeof input.note === 'string' ? input.note.trim() : '';
   if (rawNote.length > TASK_NOTE_MAX) return { ok: false, reason: 'note_too_long' };
   const note = rawNote.length > 0 ? rawNote : null;
@@ -196,6 +200,8 @@ export async function createTaskCore(
   if (projectName && projectName.length > TASK_PROJECT_NAME_MAX) {
     return { ok: false, reason: 'project_name_too_long' };
   }
+  // With no record there is nothing else to name the task by.
+  if (standalone && !note && !projectName) return { ok: false, reason: 'missing_title' };
 
   const urgency: TaskUrgency = input.urgency ?? 'normal';
 
@@ -240,6 +246,10 @@ export async function createTaskCore(
     : notifications.some(({ status }) => status === 'skipped_entity') ? 'skipped_entity' : 'sent';
 
   if (!isUrgent) return { ok: true, task, urgency: 'not_urgent', notified, notifications };
+  // Urgency lives on the task's own priority; there is no record to promote.
+  if (entityType == null || entityId == null) {
+    return { ok: true, task, urgency: 'no_record', notified, notifications };
+  }
 
   let outcome: PromoteOutcome;
   try {
@@ -263,12 +273,13 @@ function isoInstantOrNull(raw: unknown): string | null | undefined {
 async function notifyQuietly(
   deps: CreateTaskDeps,
   args: NotifyAssigneeArgs,
-  entityType: TaskEntityType,
+  entityType: TaskEntityType | null,
 ): Promise<'sent' | 'skipped_entity' | 'failed'> {
   // Refuse in the domain rather than letting the insert raise a CHECK
   // violation: `staff_inbox_items.entity_type` does not admit every throwable
   // kind yet, and a constraint error is not something an operator can act on.
-  if (!isInboxAnchorable(entityType)) return 'skipped_entity';
+  // A standalone task anchors on itself (`task`), which the CHECK admits.
+  if (entityType != null && !isInboxAnchorable(entityType)) return 'skipped_entity';
 
   try {
     await deps.notifyAssignee(args);

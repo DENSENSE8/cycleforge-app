@@ -2,8 +2,6 @@ import type { ShippedOrder } from '@/types/orders';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import type { SearchSelection } from '@/lib/search/search-selection';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
@@ -244,83 +242,6 @@ export function dispatchReceivingWorkspaceNavState(
   window.dispatchEvent(
     new CustomEvent('receiving-workspace-nav-state', { detail: payload }),
   );
-}
-
-export type ReceivingDetailsOverlayDetail = {
-  receivingId: number;
-  /** Row/list fields for instant overlay render before the enrich fetch lands. */
-  seed?: Partial<ReceivingDetailsLog>;
-};
-
-/**
- * Open the Incoming connection details panel (PO / inbound / shipment) on the
- * receiving right rail — same inspector Incoming mode uses. Dispatched from
- * Unbox/Triage order-chip "Details" so connection CRUD is available without
- * leaving the station workspace.
- *
- * Listener: {@link useReceivingDetailOverlays}. Mount: {@link ReceivingRightPane}.
- */
-export const RECEIVING_OPEN_INCOMING_DETAILS_EVENT = 'receiving-open-incoming-details';
-
-export type ReceivingOpenIncomingDetailsDetail = {
-  poId: string | null;
-  poNumber: string | null;
-  shipmentId?: number | null;
-  inboundSourceType?: string | null;
-  inboundSourceOrderId?: string | null;
-  /** Open Unbox/Triage carton — details API prefers this receiving row for notes/shipment. */
-  receivingId?: number | null;
-  /** Active receiving_line id — PoTab highlights the matching line item. */
-  receivingLineId?: number | null;
-};
-
-export function dispatchReceivingOpenIncomingDetails(
-  detail: ReceivingOpenIncomingDetailsDetail,
-): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(
-    new CustomEvent(RECEIVING_OPEN_INCOMING_DETAILS_EVENT, { detail }),
-  );
-}
-
-/**
- * Open the Unbox History carton triage slide-over (`detail:history`).
- * Left-click on History rows dispatches this; double-click still opens
- * LineEditPanel via `dispatchSelectLine`.
- *
- * Listener: {@link useReceivingDetailOverlays}. Mount: {@link ReceivingRightPane}.
- */
-export function dispatchReceivingOpenHistoryTriage(detail: {
-  receivingId: number;
-  receivingLineId?: number | null;
-  poNumber?: string | null;
-  title?: string | null;
-  tracking?: string | null;
-  status?: string | null;
-}): void {
-  emitReceiving('receiving-open-history-triage', detail);
-}
-
-export function dispatchReceivingCloseHistoryTriage(): void {
-  emitReceiving('receiving-close-history-triage');
-}
-
-/**
- * Open event for `ReceivingDetailsStack` (`receiving-open-details-overlay`).
- * Observe openers navigate to `/carton/[id]` instead; the dashboard listener
- * remains for any residual custom-event opens. Ticket mutual-exclusion still
- * closes via {@link dispatchReceivingDetailsOverlayClose}.
- */
-
-/**
- * Close the receiving details float (`detail:receiving`). Dispatched when Unbox
- * Ticket (`?ticketView=1`), Claim (`?claimView=1`), or a tool push (move photos /
- * photo note / audit) opens so details and the station push column stay mutually
- * exclusive (one coherent right-edge surface).
- */
-export function dispatchReceivingDetailsOverlayClose(): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('receiving-close-details-overlay'));
 }
 
 /**

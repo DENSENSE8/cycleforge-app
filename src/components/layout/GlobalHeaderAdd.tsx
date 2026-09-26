@@ -3,9 +3,9 @@
 /**
  * Global header `+` — the always-visible door into shipping-label intake.
  *
- * The specialized search entry keeps order identity first: resolve the order,
- * show it through the To-ship ledger, then buy the return and replacement
- * labels against that record.
+ * Opens `LabelIntakeDesk` (`/search?entry=label`): type an order number, it
+ * pairs to its order or stays a reference-only number, and the return /
+ * replacement label is bought on that one surface.
  */
 
 import { useRouter } from 'next/navigation';

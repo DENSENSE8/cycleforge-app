@@ -59,6 +59,23 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
     status: 'unported',
   },
   {
+    // A scanned location (operator 2026-09-25: "a full page, not just a
+    // mounted display at the bottom"). Not `/m/b/`: proxy rewrites it to /bin/.
+    entity: 'location',
+    route: '/m/loc/[code]',
+    hub: 'src/app/m/(shell)/loc/[code]/page.tsx',
+    info: 'src/app/m/(shell)/loc/[code]/info/page.tsx',
+    status: 'ported',
+  },
+  {
+    // A scanned Amazon FBA unit label; the dock reprints it at the print station.
+    entity: 'FBA label (FNSKU)',
+    route: '/m/fnsku/[fnsku]',
+    hub: 'src/app/m/(shell)/fnsku/[fnsku]/page.tsx',
+    info: 'src/app/m/(shell)/fnsku/[fnsku]/info/page.tsx',
+    status: 'ported',
+  },
+  {
     entity: 'order',
     route: '/m/orders/[orderId]',
     hub: 'src/app/m/(shell)/orders/[orderId]/page.tsx',
@@ -72,6 +89,16 @@ export const DETAIL_HUB_PEERS: readonly DetailHubPeer[] = [
     route: '/m/pack/start/[orderId]',
     hub: 'src/app/m/(shell)/pack/start/[orderId]/page.tsx',
     info: 'src/app/m/(shell)/orders/[orderId]/info/page.tsx',
+    status: 'ported',
+  },
+  {
+    // One carrier tracking number (`shipping_tracking_numbers.id`) — the
+    // phone twin of the Shipped desk record; an unmatched pack scan resolves
+    // from its dock.
+    entity: 'package (tracking number)',
+    route: '/m/shipping/shipments/[shipmentId]',
+    hub: 'src/app/m/(shell)/shipping/shipments/[shipmentId]/page.tsx',
+    info: 'src/app/m/(shell)/shipping/shipments/[shipmentId]/info/page.tsx',
     status: 'ported',
   },
   {

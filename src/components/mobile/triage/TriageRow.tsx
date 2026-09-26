@@ -6,13 +6,17 @@
  * ## BRIEF §4 triage, in one place
  *
  * Every phone triage list (exceptions, on-hold, inbox, pair) mounts this row,
- * so the triage grammar lives here and nowhere else:
- *   - the row LEADS with its state code (`code`, a {@link StateCode} from
- *     `LIFECYCLE` or `INTAKE`), then the title;
+ * so the triage grammar lives here and nowhere else — and it reads like every
+ * other record on the phone (`DetailSummaryCard`: title first, identifier
+ * bottom-left, status bottom-right; operator 2026-09-25):
+ *   - the TITLE leads its line alone; `meta` (SKU, order #) sits under it on
+ *     the left and the state code (`code`, a {@link StateCode} from
+ *     `LIFECYCLE` or `INTAKE`) sits bottom-right on the same line;
  *   - the selected row wears the 2px INK outline — never a coloured one;
- *   - the region's corner, hit and body size (`rounded-mode`,
- *     `min-h-mode-hit`, `text-mode-body`);
- *   - the commit is the one ink-filled decision (`Button variant="ink"`).
+ *   - the commit is a flush cell the full height of the row, split off by one
+ *     mode rule and styled like a secondary dock cell — quiet, not an ink
+ *     block (operator 2026-09-25: "should not look extremely loud"); press
+ *     inverts it to ink, instantly;
  *   - no motion: nothing on the row moves (opacity-only is the ceiling).
  *
  * ## Two targets, deliberately, and never nested
@@ -80,7 +84,10 @@ export function TriageRow({
       data-triage-row=""
       data-selected={selected || undefined}
       className={cn(
-        'flex items-center gap-2 bg-mode-panel pr-mode-page',
+        // `items-stretch` + no right inset: the commit is a flush cell the full
+        // height of the row (operator 2026-09-25: "the pair button would be the
+        // proper height … not lower in height from the row").
+        'flex items-stretch bg-mode-panel',
         selected && 'outline outline-2 -outline-offset-2 outline-text-default',
       )}
     >
@@ -95,7 +102,7 @@ export function TriageRow({
         aria-current={selected || undefined}
         onClick={onInspect}
         className={cn(
-          'ds-raw-button flex min-h-mode-hit min-w-0 flex-1 items-center gap-3 py-2 pl-mode-page text-left active:bg-mode-hover',
+          'ds-raw-button flex min-h-mode-hit min-w-0 flex-1 items-center gap-3 py-2 pl-mode-page pr-3 text-left active:bg-mode-hover',
           focusRing('cell', 'accent'),
         )}
       >
@@ -110,19 +117,23 @@ export function TriageRow({
           />
         ) : null}
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="flex min-w-0 items-center gap-1.5">
-            {code}
-            <span className="min-w-0 truncate text-mode-body font-semibold text-mode-ink">{title}</span>
-          </span>
-          {meta ? <span className="flex min-w-0 items-center gap-1.5">{meta}</span> : null}
+          <span className="min-w-0 truncate text-mode-body font-semibold text-mode-ink">{title}</span>
+          {meta || code ? (
+            <span className="flex min-w-0 items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-1.5">{meta}</span>
+              {code ? <span className="shrink-0">{code}</span> : null}
+            </span>
+          ) : null}
         </span>
       </button>
 
       <Button
-        variant="ink"
+        variant="secondary"
         size="lg"
-        radius="mode"
-        className="min-h-mode-hit shrink-0"
+        radius="flush"
+        // The dock's secondary cell: panel ground, ink label, one rule to its
+        // left, full row height; instant inversion, no scale or transition.
+        className="h-auto min-h-mode-hit min-w-22 shrink-0 self-stretch border-l border-mode-rule bg-mode-panel px-5 text-mode-ink shadow-none ring-0 transition-none enabled:active:scale-100 active:bg-mode-ink active:text-mode-panel"
         ariaLabel={actionName}
         loading={busy}
         onClick={onAction}

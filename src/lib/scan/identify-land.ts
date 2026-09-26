@@ -16,12 +16,17 @@
  * which the GS1 resolver sends to the DESK page `/serial/{serial}`; the floor
  * must stay in the phone shell.
  *
+ * FBA unit labels (FNSKU, `X00…`) land on the FNSKU hub `/m/fnsku/{fnsku}`
+ * with an X back here. `routeScan` gives them no redirect so desk FBA stations
+ * keep their scans; the phone opens the record here instead.
+ *
  * QC is a session on this same kernel, not a second scan door: `/m/scan`
  * armed with `?work=qc` (`QC_SCAN_SESSION`, dispatch-table) turns a unit label into the
  * unit's checklist and a line label into a pick of that line's units.
  */
 
 import { scannedUnitKey, type ScanRoute } from '@/lib/barcode-routing';
+import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
 import type { ScanDispatch } from '@/lib/scan/dispatch-table';
 
 /** The kernel armed for QC — where the runner's "Next unit" returns. */
@@ -42,6 +47,7 @@ export function landScanIdentify(
 ): ScanIdentifyLand {
   if (dispatch.card === 'arrival') return { kind: 'intake' };
   if (isLocationScan(route)) return { kind: 'settle' };
+  if (route?.type === 'fnsku') return { kind: 'identify', href: fnskuHubHref(route.value) };
   if (route?.type === 'serial-unit') {
     const key = scannedUnitKey(route.value);
     if (key) {

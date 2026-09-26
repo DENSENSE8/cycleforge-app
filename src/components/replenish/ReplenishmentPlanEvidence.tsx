@@ -10,12 +10,14 @@ import {
   EvidenceStateStrip,
   EvidenceTitle,
 } from '@/design-system/components/record-ledger/RecordEvidence';
+import type { RecordLedgerSummary } from '@/design-system/components/record-ledger/RecordLedgerSummary';
 import { Button, TextField } from '@/design-system/primitives';
 import { REPLENISHMENT_RECORD_STATE } from '@/design-system/tokens/replenishment';
-import { REPLENISHMENT_ALLOWED_TRANSITIONS } from '@/lib/replenishment-request-status';
-import type { ReplenishmentRequestStatus } from '@/lib/replenishment-request-status';
-import type { NeedToOrderRow } from './replenish-types';
-import { numText } from './replenish-types';
+import {
+  REPLENISHMENT_ALLOWED_TRANSITIONS,
+  type ReplenishmentRequestStatus,
+} from '@/lib/replenishment-request-status';
+import { numText, type NeedToOrderRow } from './replenish-types';
 
 export interface ReplenishmentPlanPatch {
   quantity_to_order?: number;
@@ -36,36 +38,30 @@ const STATUS_LABEL: Readonly<Record<ReplenishmentRequestStatus, string>> = {
   cancelled: 'Cancelled',
 };
 
-function PlanSummary({ rows }: { rows: readonly NeedToOrderRow[] }) {
+/** The open plan read as a whole — the ledger's summary with nothing open. */
+export function replenishmentPlanSummary(rows: readonly NeedToOrderRow[]): RecordLedgerSummary {
   const blocked = rows.reduce(
     (sum, row) => sum + (Array.isArray(row.orders_waiting) ? row.orders_waiting.length : 0),
     0,
   );
-  return (
-    <>
-      <EvidenceTitle sub="Review detected demand, plan quantities by vendor, then create Zoho draft POs">
-        Purchasing plan
-      </EvidenceTitle>
-      <EvidenceSection label="Open plan">
-        <EvidenceFacts>
-          <EvidenceFact label="Requests" mono>{rows.length.toLocaleString()}</EvidenceFact>
-          <EvidenceFact label="Orders blocked" mono>{blocked.toLocaleString()}</EvidenceFact>
-        </EvidenceFacts>
-      </EvidenceSection>
-      <EvidenceNotice>Select a request to review stock, edit purchasing facts, and move it through the plan.</EvidenceNotice>
-    </>
-  );
+  return {
+    title: 'Purchasing plan',
+    sub: 'Review detected demand, plan quantities by vendor, then create Zoho draft POs',
+    facts: [
+      { label: 'Requests', value: rows.length },
+      { label: 'Orders blocked', value: blocked, warn: blocked > 0, toolbar: true },
+    ],
+    note: 'Select a request to review stock, edit purchasing facts, and move it through the plan.',
+  };
 }
 
 export function ReplenishmentPlanEvidence({
   row,
-  rows,
   saving,
   onSave,
   onTransition,
 }: {
-  row: NeedToOrderRow | null;
-  rows: readonly NeedToOrderRow[];
+  row: NeedToOrderRow;
   saving: boolean;
   onSave: (row: NeedToOrderRow, patch: ReplenishmentPlanPatch) => Promise<void>;
   onTransition: (row: NeedToOrderRow, status: ReplenishmentRequestStatus) => Promise<void>;
@@ -77,14 +73,12 @@ export function ReplenishmentPlanEvidence({
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    setQuantity(row?.quantity_to_order ?? row?.quantity_needed ?? '');
-    setVendorName(row?.vendor_name ?? '');
-    setVendorId(row?.vendor_zoho_contact_id ?? '');
-    setUnitCost(row?.unit_cost ?? '');
-    setNotes(row?.notes ?? '');
+    setQuantity(row.quantity_to_order ?? row.quantity_needed ?? '');
+    setVendorName(row.vendor_name ?? '');
+    setVendorId(row.vendor_zoho_contact_id ?? '');
+    setUnitCost(row.unit_cost ?? '');
+    setNotes(row.notes ?? '');
   }, [row]);
-
-  if (!row) return <PlanSummary rows={rows} />;
 
   const state = REPLENISHMENT_RECORD_STATE[row.status];
   const transitions = REPLENISHMENT_ALLOWED_TRANSITIONS[row.status].filter(
@@ -134,7 +128,6 @@ export function ReplenishmentPlanEvidence({
           variant="primary"
           size="sm"
           icon={<Check aria-hidden />}
-          disabled={saving}
           loading={saving}
           onClick={() => void save()}
           className="mt-3 w-full"

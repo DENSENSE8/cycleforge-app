@@ -14,9 +14,8 @@ import {
   canSubmitAddInbound,
 } from '@/lib/inbound/build-add-inbound-payload';
 import { toast } from '@/lib/toast';
-
-/** Prefer purchase sources operators fix unfound cartons with. */
-const INBOUND_PLATFORM_PRIORITY = ['amazon', 'goodwill', 'ebay', 'walmart', 'shopify'] as const;
+import { postInboundImport } from '@/lib/inbound/inbound-import-client';
+import { rankInboundPlatformOptions } from '@/lib/inbound/inbound-platform-options';
 
 const PRIORITY_AUTO = 'auto';
 
@@ -123,25 +122,15 @@ export function IncomingAddInboundForm({
     ],
   );
 
-  const platformOptions = useMemo(() => {
-    const catalog = platformCatalog.options ?? [];
-    const ranked = [...catalog].sort((a, b) => {
-      const ai = INBOUND_PLATFORM_PRIORITY.indexOf(
-        a.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const bi = INBOUND_PLATFORM_PRIORITY.indexOf(
-        b.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const ar = ai === -1 ? 99 : ai;
-      const br = bi === -1 ? 99 : bi;
-      return ar - br || a.label.localeCompare(b.label);
-    });
-    return ranked.map((o) => ({
-      value: o.value,
-      label: o.label,
-      group: 'Platforms',
-    }));
-  }, [platformCatalog.options]);
+  const platformOptions = useMemo(
+    () =>
+      rankInboundPlatformOptions(platformCatalog.options ?? []).map((o) => ({
+        value: o.value,
+        label: o.label,
+        group: 'Platforms',
+      })),
+    [platformCatalog.options],
+  );
 
   const priorityOptions = useMemo(
     () => [
@@ -190,38 +179,17 @@ export function IncomingAddInboundForm({
     setError(null);
     setTicketDraftBody(null);
     try {
-      const res = await fetch('/api/receiving/inbound/import-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildAddInboundImportBody(formInput)),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        error?: string;
-        created?: boolean;
-        draftBody?: string;
-        ticket?: {
-          success?: boolean;
-          error?: string;
-          draftBody?: string;
-          ticketNumber?: string;
-        };
-        ticket_number?: string;
-      } | null;
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || data?.draftBody || `Import failed (${res.status})`);
-      }
+      const result = await postInboundImport(buildAddInboundImportBody(formInput));
       invalidateReceivingFeeds(queryClient);
       const label = isReturn ? 'Return' : 'Purchase';
-      toast.success(data.created ? `${label} added to Incoming` : `${label} refreshed on Incoming`);
-      if (isReturn && data.ticket && !data.ticket.success) {
-        const draft = data.ticket.draftBody ?? data.draftBody ?? null;
-        if (draft) setTicketDraftBody(draft);
-        toast.error(data.ticket.error ?? 'Return saved — ticket could not be filed');
+      toast.success(result.created ? `${label} added to Incoming` : `${label} refreshed on Incoming`);
+      if (isReturn && result.ticket && !result.ticket.success) {
+        if (result.ticket.draftBody) setTicketDraftBody(result.ticket.draftBody);
+        toast.error(result.ticket.error ?? 'Return saved — ticket could not be filed');
         return;
       }
-      if (isReturn && data.ticket?.success && data.ticket_number) {
-        toast.success(`Ticket ${data.ticket_number} linked`);
+      if (isReturn && result.ticket?.success && result.ticketNumber) {
+        toast.success(`Ticket ${result.ticketNumber} linked`);
       }
       onClose();
     } catch (err) {

@@ -80,6 +80,21 @@ test('a unit label lands on the phone unit hub, whatever its frame', () => {
   }
 });
 
+test('an FBA label (FNSKU) opens its hub — never a location record, never a desk redirect', () => {
+  for (const raw of ['X002LXYGWN', ' x002lxygwn ', 'X002-LXYGWN']) {
+    const { route, land } = landFor(raw);
+    strictEqual(route?.type, 'fnsku', raw);
+    strictEqual(route?.value, 'X002LXYGWN', raw);
+    // No redirect: the desk wedge must not navigate an FBA station away.
+    strictEqual(route?.redirect, undefined, raw);
+    strictEqual(land.kind, 'identify', raw);
+    if (land.kind === 'identify') strictEqual(land.href, '/m/fnsku/X002LXYGWN?back=%2Fm%2Fscan', raw);
+  }
+  // An ASIN is not an FBA unit label; a short X0 code is still a bin guess.
+  strictEqual(routeScan('B001DLTDQC')?.type, 'bin');
+  strictEqual(routeScan('X00123')?.type, 'bin');
+});
+
 test('the kernel armed for QC lands a unit label on its checklist, a line on its unit pick', () => {
   for (const [raw, href] of [
     ['U-CN1A2B3', '/m/u/CN1A2B3/qc'],

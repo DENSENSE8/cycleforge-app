@@ -42,7 +42,7 @@ async function main() {
         client,
         `select count(*)::int as n
          from orders
-         where created_at <= $1::timestamp
+         where created_at <= ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and shipment_id is not null`,
         [CUTOFF]
       ),
@@ -51,7 +51,7 @@ async function main() {
         `select count(distinct o.shipment_id)::int as n
          from orders o
          left join shipping_tracking_numbers stn on stn.id = o.shipment_id
-         where o.created_at <= $1::timestamp
+         where o.created_at <= ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and o.shipment_id is not null
            and not coalesce(
              stn.is_carrier_accepted or stn.is_in_transit
@@ -74,7 +74,7 @@ async function main() {
        where stn.id in (
          select distinct o.shipment_id
          from orders o
-         where o.created_at <= $1::timestamp
+         where o.created_at <= ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and o.shipment_id is not null
        )
        returning stn.id`,
@@ -105,7 +105,7 @@ async function main() {
         `select count(*)::int as n
          from orders o
          left join shipping_tracking_numbers stn on stn.id = o.shipment_id
-         where o.created_at <= $1::timestamp
+         where o.created_at <= ($1::timestamp AT TIME ZONE 'America/Los_Angeles')
            and o.shipment_id is not null
            and not coalesce(
              stn.is_carrier_accepted or stn.is_in_transit

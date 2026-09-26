@@ -11,7 +11,7 @@
  * instead of plumbing a boolean up from the row that opened the peek.
  *
  * The id is matched by **prefix**, because occupants that walk a queue register
- * a stable id (`detail:incoming`) while per-entity ones append the record
+ * a stable id (`detail:receiving-line-batch`) while per-entity ones append the record
  * (`detail:sku:<sku>`) — SoT: source-of-truth.md → Right-rail modality.
  */
 

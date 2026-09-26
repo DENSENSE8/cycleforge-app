@@ -4,15 +4,11 @@ import { Suspense, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { DetailAck, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
-import {
-  RepairDocumentRow,
-  RepairPrintLogList,
-  RepairStationCard,
-} from '@/components/mobile/repair/RepairPaperworkParts';
+import { RepairDocumentRow, RepairPrintLogList } from '@/components/mobile/repair/RepairPaperworkParts';
+import { StaffPrintStationPicker } from '@/components/mobile/print/StaffPrintStationPicker';
 import { useRepairPaperwork, type RepairPaperDoc } from '@/components/mobile/repair/useRepairPaperwork';
 import { useStaffPrintBridgeClient } from '@/hooks/useStaffPrintBridgeClient';
 import { repairDocumentRole, staffPrintBlockedReason } from '@/lib/print/staff-print-bridge';
-import { Panel } from '@/design-system/primitives';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
 /** How long after an ack the station's own print-log write is expected to land. */
@@ -44,7 +40,7 @@ function RepairPaperworkInner() {
   }, [result, reloadLog]);
 
   const print = async (doc: RepairPaperDoc) => {
-    const stationName = bridge.target?.status.stationName ?? 'The print station';
+    const stationName = bridge.target?.status.stationName ?? 'The printer';
     setSendingKey(doc.key);
     setResult(null);
     const acked = await bridge.sendJob({
@@ -66,80 +62,67 @@ function RepairPaperworkInner() {
         meta={repair?.product_title || undefined}
       />
 
-      <div className="flex-1 space-y-5 px-mode-page py-mode-page">
-        {loading && <p className="py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
-        {error && (
-          <div className="rounded-mode border border-rose-200 bg-rose-50 p-mode-page text-mode-body font-semibold text-rose-700">
-            {error}
-          </div>
-        )}
+      <div className="flex-1 divide-y divide-mode-rule">
+        {loading && <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Loading…</p>}
+        {error && <div className="bg-rose-50 px-mode-page py-3 text-mode-body font-semibold text-rose-700">{error}</div>}
 
         {result ? (
           result.acked ? (
             <DetailAck onDismiss={() => setResult(null)}>
               <span>
-                {result.doc.title} sent to {result.stationName} — it prints and logs it.
+                {result.doc.title} sent to {result.stationName}.
               </span>
             </DetailAck>
           ) : (
-            <div
-              role="alert"
-              className="rounded-mode border border-rose-200 bg-rose-50 px-mode-page py-2.5 text-role-caption font-semibold text-rose-700"
-            >
-              {result.stationName} did not answer. Keep the desk app open on it, signed in as {bridge.staffName} with
-              a printer paired, then Print again.
+            <div role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
+              {result.stationName} didn&apos;t respond. Try again.
             </div>
           )
         ) : null}
 
         {repair ? (
           <>
-            <section className="space-y-2">
-              <DetailSectionHeading>Printing</DetailSectionHeading>
-              <RepairStationCard
-                staffName={bridge.staffName}
+            <section className="divide-y divide-mode-rule">
+              <DetailSectionHeading>Printer</DetailSectionHeading>
+              <StaffPrintStationPicker
                 stations={bridge.stations}
                 target={bridge.target}
                 now={bridge.now}
                 onPick={bridge.pickStation}
-                onPatch={(patch) => void bridge.patchStation(patch)}
-                onRefresh={() => void bridge.requestStatus()}
               />
             </section>
 
-            <section className="space-y-2">
+            <section className="divide-y divide-mode-rule">
               <DetailSectionHeading>Documents</DetailSectionHeading>
-              <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-                <ul>
-                  {documents.map((doc) => (
-                    <RepairDocumentRow
-                      key={doc.key}
-                      doc={doc}
-                      printBlockedReason={staffPrintBlockedReason(
-                        bridge.target,
-                        repairDocumentRole(doc.job.document),
-                        bridge.now,
-                      )}
-                      printing={sendingKey === doc.key}
-                      onPrint={() => void print(doc)}
-                    />
-                  ))}
-                </ul>
-              </Panel>
-              <p className="text-role-caption text-mode-muted">
-                {manualsLoading
-                  ? 'Looking up manuals…'
-                  : documents.some((d) => d.job.document === 'manual')
-                    ? null
+              <ul className="bg-mode-panel">
+                {documents.map((doc) => (
+                  <RepairDocumentRow
+                    key={doc.key}
+                    doc={doc}
+                    printBlockedReason={staffPrintBlockedReason(
+                      bridge.target,
+                      repairDocumentRole(doc.job.document),
+                      bridge.now,
+                    )}
+                    printing={sendingKey === doc.key}
+                    onPrint={() => void print(doc)}
+                  />
+                ))}
+              </ul>
+              {manualsLoading || !documents.some((d) => d.job.document === 'manual') ? (
+                <p className="bg-mode-panel px-mode-page py-3 text-role-caption text-mode-muted">
+                  {manualsLoading
+                    ? 'Looking up manuals…'
                     : repair.source_sku
                       ? `No manual on file for ${repair.source_sku}.`
                       : 'No SKU on this repair, so no manual.'}
-              </p>
+                </p>
+              ) : null}
             </section>
 
-            <section className="space-y-2">
+            <section className="divide-y divide-mode-rule">
               <DetailSectionHeading>Print log</DetailSectionHeading>
-              <div className="rounded-mode border border-mode-edge bg-mode-panel p-mode-page">
+              <div className="bg-mode-panel px-mode-page py-3">
                 {logError ? (
                   <p className="text-role-caption text-rose-700">{logError}</p>
                 ) : log ? (

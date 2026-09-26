@@ -26,13 +26,8 @@ export interface MyDayQueueCard {
 }
 
 /**
- * The rail's current pick, shared by every module in the My Day split
- * (`MyDayRail` writes it, `MyDayWorkspace` holds it, `MyDayTriagePane` /
- * `MyDayContextPane` read it). One declaration — three structurally identical
- * copies is the fork this consolidation removes.
- *
- * Selection is local component state today, not URL-durable: F0 is a display
- * extraction and adds no routing (`daily-triage-FRONTEND-PLAN-VALIDATION.md`).
+ * One My Day feed item — a work order or an interrupt — as the task read
+ * model (`my-day-tasks.ts`) carries it. One declaration, never a structural copy.
  */
 export type MyDaySelectedItem =
   | { kind: 'work_order'; row: WorkOrderRow }

@@ -64,6 +64,7 @@ const createRepairSchema = z.object({
 function normalizeTab(raw: string): RepairTab {
   if (raw === 'incoming') return 'incoming';
   if (raw === 'done') return 'done';
+  if (raw === 'all') return 'all';
   return 'active';
 }
 

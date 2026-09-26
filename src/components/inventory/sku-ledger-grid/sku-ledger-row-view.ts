@@ -6,12 +6,14 @@
  *
  * ## What the compound row says about one movement
  *
- * - TITLE — the REASON. A ledger row is an event, and what an operator scans a
- *   stock history for is why the number changed.
- * - the note line — the signed CHANGE in words, as a FALLBACK only: `delta` is
- *   bound to `status:1`, so this line shows the movement again just for an org
- *   that unbinds the track. It is the one fact a ledger row cannot be read
- *   without.
+ * - TITLE — the REASON, through `takeReasonLedgerLabel` (a phone take reads
+ *   `Taken · FBA`, not `TAKE_FBA`). A ledger row is an event, and what an
+ *   operator scans a stock history for is why the number changed.
+ * - the note line — the `notes` somebody wrote about the movement (a custom
+ *   take's own words: `Taken` over `Returned to vendor`). A row with no note
+ *   falls back to the signed CHANGE in words: `delta` is bound to `status:1`,
+ *   so that fallback only matters to an org that unbinds the track, and it is
+ *   the one fact a ledger row cannot be read without.
  * - IDS — the ORDER behind the movement. No tracking line: a ledger entry has
  *   no carrier, and inventing one would paint a chip over a fact this feed does
  *   not have.
@@ -39,7 +41,10 @@ import type {
   CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import type { SkuLedgerTableRow } from '@/lib/inventory/sku-ledger-row';
-import { skuLedgerDeltaText } from '@/lib/tables/field-catalog/sku-ledger-resolve';
+import {
+  skuLedgerDeltaText,
+  skuLedgerReasonText,
+} from '@/lib/tables/field-catalog/sku-ledger-resolve';
 
 /**
  * A ledger entry is a record of stock that already moved. Nothing on this desk
@@ -75,7 +80,7 @@ export function skuLedgerClockFace(iso: string | null | undefined): string | nul
 }
 
 export function skuLedgerCompoundView(row: SkuLedgerTableRow): CompoundRowView {
-  const reason = str(row.reason);
+  const reason = skuLedgerReasonText(row.reason);
   const dimension = str(row.dimension);
   const instant = parseInstant(row.created_at);
   const day = instant
@@ -91,7 +96,7 @@ export function skuLedgerCompoundView(row: SkuLedgerTableRow): CompoundRowView {
     // it by its own id rather than painting "Untitled" over the one fact it
     // definitely has.
     title: reason ?? `Ledger #${row.id}`,
-    note: skuLedgerDeltaText(row.delta),
+    note: str(row.notes) ?? skuLedgerDeltaText(row.delta),
     orderId: str(row.ref_order_id),
     tracking: null,
     // No marketplace and no carrier behind a stock movement: the identity chip

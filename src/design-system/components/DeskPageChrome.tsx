@@ -107,6 +107,7 @@
  */
 
 import { useEffect, type ReactNode } from 'react';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { cornerClass } from '../tokens/radius';
 import { focusRing } from '../tokens/focus-ring';
 import { DeskStageProvider } from './DeskStageContext';
@@ -222,13 +223,14 @@ export function DeskPageChrome({
   const flush = stage === 'flush' && !fullscreen;
   const measure = fullscreen || flush ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
 
-  // Escape is the keyboard half of the one-click-out budget. Bubble phase and a
-  // `defaultPrevented` check so a dialog or menu that owns Escape closes itself
-  // WITHOUT also collapsing the stage underneath it.
+  // Escape is the keyboard half of the one-click-out budget. Bubble phase, a
+  // `defaultPrevented` check and the overlay stack, so a dialog, menu or record
+  // that owns Escape closes itself WITHOUT also collapsing the stage underneath
+  // it (in the record split, the first Escape closes the record).
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.key !== 'Escape' || event.defaultPrevented || hasOpenOverlay()) return;
       onToggleFullscreen();
     };
     window.addEventListener('keydown', onKeyDown);

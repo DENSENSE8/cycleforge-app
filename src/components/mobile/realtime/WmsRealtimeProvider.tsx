@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { wmsTicketRefreshDelayMs } from '@/lib/realtime/wms-ticket-lifetime';
+import { chooseWmsTransport, postWmsCommand } from '@/lib/realtime/wms-command-transport';
 
 export const WMS_SEND_EVENT = 'cycleforge:wms:send';
 
@@ -119,15 +120,19 @@ function deviceId(): string {
   return created;
 }
 
+type PendingCommand = {
+  command: WmsExecutionCommand;
+  transport: 'socket' | 'http';
+  resolve: (receipt: WmsExecutionCommandReceipt) => void;
+  reject: (error: Error) => void;
+};
+
 export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
   const socketRef = useRef<WebSocket | null>(null);
   const ticketRef = useRef<{ token: string; deviceId: string } | null>(null);
   const retryRef = useRef<number | null>(null);
   const ticketRefreshRef = useRef<number | null>(null);
-  const pendingCommandsRef = useRef(new Map<string, {
-    resolve: (receipt: WmsExecutionCommandReceipt) => void;
-    reject: (error: Error) => void;
-  }>());
+  const pendingCommandsRef = useRef(new Map<string, PendingCommand>());
   const stoppedRef = useRef(false);
   const [status, setStatus] = useState<State['status']>('connecting');
   const [latest, setLatest] = useState<WmsResult | null>(null);
@@ -146,34 +151,67 @@ export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
     return true;
   }, []);
 
+  /** Command settled: idle is unpainted; only a real failure paints. */
+  const settle = useCallback((failure: string | null) => {
+    const open = socketRef.current?.readyState === WebSocket.OPEN;
+    setStatus(failure ? 'error' : open ? 'connected' : 'connecting');
+    setMessage(failure);
+  }, []);
+
+  const runOverHttp = useCallback((pending: PendingCommand) => {
+    pending.transport = 'http';
+    postWmsCommand<WmsExecutionCommandReceipt>(pending.command).then(
+      (receipt) => {
+        pendingCommandsRef.current.delete(pending.command.commandId);
+        settle(null);
+        pending.resolve(receipt);
+      },
+      (error: Error) => {
+        pendingCommandsRef.current.delete(pending.command.commandId);
+        settle(error.message);
+        pending.reject(error);
+      },
+    );
+  }, [settle]);
+
   const execute = useCallback((command: WmsExecutionCommand): Promise<WmsExecutionCommandReceipt> => {
-    const socket = socketRef.current;
-    const ticket = ticketRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN || !ticket) {
-      return Promise.reject(new Error('Realtime execution connection is not ready.'));
-    }
     if (pendingCommandsRef.current.has(command.commandId)) {
       return Promise.reject(new Error(`Command ${command.commandId} is already pending.`));
     }
-    return new Promise((resolve, reject) => {
-      pendingCommandsRef.current.set(command.commandId, { resolve, reject });
-      try {
-        socket.send(JSON.stringify({
-          type: 'wms.command',
-          token: ticket.token,
-          deviceId: ticket.deviceId,
-          command,
-        }));
-      } catch (error) {
-        pendingCommandsRef.current.delete(command.commandId);
-        reject(error instanceof Error ? error : new Error('Unable to send WMS command.'));
-      }
+    const socket = socketRef.current;
+    const ticket = ticketRef.current;
+    const transport = chooseWmsTransport({
+      socketOpen: socket?.readyState === WebSocket.OPEN,
+      hasTicket: ticket != null,
     });
-  }, []);
+    const { promise, resolve, reject } = Promise.withResolvers<WmsExecutionCommandReceipt>();
+    const pending: PendingCommand = { command, transport, resolve, reject };
+    pendingCommandsRef.current.set(command.commandId, pending);
+    if (transport === 'http' || !socket || !ticket) {
+      runOverHttp(pending);
+      return promise;
+    }
+    try {
+      socket.send(JSON.stringify({
+        type: 'wms.command',
+        token: ticket.token,
+        deviceId: ticket.deviceId,
+        command,
+      }));
+    } catch {
+      // Same commandId over HTTP: replays if the socket frame did land.
+      runOverHttp(pending);
+    }
+    return promise;
+  }, [runOverHttp]);
 
   useEffect(() => {
     stoppedRef.current = false;
     let attempt = 0;
+    let everOpened = false;
+    // A host without the switchboard gateway (Vercel) never opens the socket;
+    // HTTP serves commands there, so back off to a slow probe.
+    const retryDelay = () => Math.min(everOpened ? 5_000 : 60_000, 250 * (2 ** attempt));
 
     const connect = async () => {
       if (stoppedRef.current) return;
@@ -192,6 +230,7 @@ export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
         socketRef.current = socket;
         socket.onopen = () => {
           attempt = 0;
+          everOpened = true;
           setStatus('connected');
           setMessage(null);
           if (ticketRefreshRef.current != null) window.clearTimeout(ticketRefreshRef.current);
@@ -221,9 +260,8 @@ export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
           } else if (next.type === 'wms.command.result') {
             const pending = pendingCommandsRef.current.get(next.commandId);
             pendingCommandsRef.current.delete(next.commandId);
+            settle(null);
             pending?.resolve(next.receipt);
-            setStatus('committed');
-            setMessage(null);
           } else if (next.type === 'wms.error') {
             if (next.commandId) {
               const pending = pendingCommandsRef.current.get(next.commandId);
@@ -242,18 +280,19 @@ export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
           }
           socketRef.current = null;
           ticketRef.current = null;
+          // In-flight socket commands fail over to HTTP with the same
+          // commandId; a frame that already committed replays.
           for (const pending of pendingCommandsRef.current.values()) {
-            pending.reject(new Error('Realtime connection interrupted; retrying is safe.'));
+            if (pending.transport === 'socket') runOverHttp(pending);
           }
-          pendingCommandsRef.current.clear();
-          const delay = Math.min(5_000, 250 * (2 ** attempt));
+          const delay = retryDelay();
           attempt += 1;
           retryRef.current = window.setTimeout(() => void connect(), delay);
         };
-      } catch (error) {
-        setStatus('error');
-        setMessage(error instanceof Error ? error.message : 'Realtime connection failed');
-        const delay = Math.min(5_000, 250 * (2 ** attempt));
+      } catch {
+        // Connection trouble is not an operator error: commands still run
+        // over HTTP. Only a failed command paints the status strip.
+        const delay = retryDelay();
         attempt += 1;
         retryRef.current = window.setTimeout(() => void connect(), delay);
       }
@@ -272,7 +311,7 @@ export function WmsRealtimeProvider({ children }: { children: ReactNode }) {
       }
       pendingCommandsRef.current.clear();
     };
-  }, []);
+  }, [runOverHttp, settle]);
 
   useEffect(() => {
     const listener = (event: Event) => {

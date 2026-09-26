@@ -19,12 +19,22 @@
  * into the focused barcode field works for the same reason the station's
  * manual-entry field works — it is just keystrokes ending in Enter.
  *
- * ## This is a modal, and should be
+ * ## This is a sheet, and should be
  *
- * Unlike `MobileStationSheet` (the station's always-present working surface),
- * this interrupts to ask a few questions and goes away. It mounts inside the
- * bind sheet's own slot rather than over the whole screen so the location code
- * stays visible above it — you are naming a thing that goes in THAT bin.
+ * It interrupts to ask a few questions and goes away — the `dock-verb` sheet
+ * of the pair screen's "SKU exception" verb (operator 2026-09-25: a triage
+ * sheet with its corner radius is correct here). The pair screen stays under
+ * it, so the location being filled is never out of mind; the sheet repeats
+ * it in its Put-away band anyway.
+ *
+ * ## Three bands: identify · triage · put away
+ *
+ * The questions answer three different people, so the sheet splits them
+ * (operator 2026-09-25: "the identification and triageability and
+ * operational split"): IDENTIFY is what the thing is (name, barcode — camera
+ * or wedge); TRIAGE is what whoever merges it into a real SKU later needs
+ * (notes, photos); PUT AWAY is the operational fact this creates — on hold,
+ * in THIS location, counted on the next screen.
  *
  * ## Description and photos are optional, and follow the SKU
  *
@@ -39,15 +49,17 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Camera, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives/Button';
 import { TextField } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
+import { BottomSheet } from '@/components/ui/BottomSheet';
 import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
+import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
+import { ScanValueField } from '@/components/mobile/repair/ScanValueField';
 import type { StagedPhoto } from '@/hooks/useTicketPhotoStaging';
 import { invalidateSkuExceptions } from '@/hooks/useProvisionalSkus';
 import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import { cn } from '@/utils/_cn';
 import type { SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
 
@@ -68,15 +80,23 @@ function looksLikeBarcode(value: string): boolean {
   return compact.length >= 8 && /^[0-9]+$/.test(compact);
 }
 
+/** Flush sheet cells: instant ink press, no scale (the dock's press law). */
+const CELL = 'min-h-18 w-full shadow-none ring-0 transition-none enabled:active:scale-100';
+
 export function ProvisionalCreateSheet({
+  open,
   seed,
   staffId,
+  locationFace,
   onCancel,
   onCreated,
 }: {
+  open: boolean;
   /** Whatever was in the search box when the operator gave up on the catalog. */
   seed: string;
   staffId: number;
+  /** The location being filled (`C-04-01-3-00`) — shown in the Put-away band. */
+  locationFace: string;
   onCancel: () => void;
   /** Hands back a catalog-shaped item so the caller's normal pairing path runs. */
   onCreated: (item: SkuCatalogItem) => void;
@@ -208,114 +228,117 @@ export function ProvisionalCreateSheet({
     });
   }, [barcode, busy, description, hasBarcode, onCreated, queryClient, ready, sourceRef, staffId, staged, title]);
 
+  const close = busy ? () => {} : onCancel;
+
   return (
-    <div
-      className={cn(
-        // The border delimits this form; a second GROUND inside a white flow is
-        // the wrap the kiosk retired ("There should just be a white
-        // background", `kiosk-chrome.ts`) and the phone follows it.
-        'flex flex-col gap-2 border border-border-soft bg-surface-card p-3',
-        cornerClass('surface'),
-      )}
-    >
-      <p className="text-role-caption font-semibold text-text-default">SKU exception</p>
+    <BottomSheet open={open} onClose={close} title="New SKU exception" scrollBody dragDisabled={busy}>
+      {/* BottomSheet portals out of the page's region; re-declare triage. The
+          negative margin cancels the sheet body's inset so the bands and the
+          footer cells run the full width of the panel, like every flat screen. */}
+      <ModeRegion mode="triage" className="-mx-6 -mb-6 flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 divide-y divide-mode-rule overflow-y-auto border-t border-mode-rule">
+          <DetailSectionHeading id="exception-identify">Identify · what is it</DetailSectionHeading>
+          <div className="space-y-3 bg-mode-panel px-mode-page py-3">
+            <TextField
+              value={title}
+              onChange={setTitle}
+              label="What is it? (required)"
+              inputMode="text"
+              autoComplete="off"
+              autoFocus={seedIsBarcode}
+            />
+            <ScanValueField
+              id="exception-barcode"
+              label="Barcode / UPC (optional)"
+              value={barcode}
+              onChange={setBarcode}
+              mono
+              helper={hasBarcode ? undefined : 'No barcode? Leave it empty — scan one on later from its details.'}
+            />
+          </div>
 
-      <TextField
-        value={barcode}
-        onChange={setBarcode}
-        label="Barcode / UPC (optional)"
-        mono
-        inputMode="text"
-        autoComplete="off"
-        autoFocus={!seedIsBarcode ? false : undefined}
-      />
-      {!hasBarcode ? (
-        <p className="text-role-micro text-text-faint">
-          No barcode? Leave it empty — add one later from the product’s details.
-        </p>
-      ) : null}
-      <TextField
-        value={title}
-        onChange={setTitle}
-        label="What is it?"
-        inputMode="text"
-        autoComplete="off"
-        autoFocus={seedIsBarcode}
-      />
-      <TextField
-        value={description}
-        onChange={(next) => setDescription(next.slice(0, DESCRIPTION_MAX))}
-        label="Description (optional)"
-        multiline
-        rows={3}
-        maxLength={DESCRIPTION_MAX}
-        autoComplete="off"
-      />
+          <DetailSectionHeading id="exception-triage">Triage · for whoever merges it</DetailSectionHeading>
+          <div className="space-y-3 bg-mode-panel px-mode-page py-3">
+            <TextField
+              value={description}
+              onChange={(next) => setDescription(next.slice(0, DESCRIPTION_MAX))}
+              label="Notes — model, colour, markings, damage"
+              multiline
+              rows={3}
+              maxLength={DESCRIPTION_MAX}
+              autoComplete="off"
+            />
+            <input
+              ref={fileInput}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                addFiles(event.target.files);
+                event.target.value = '';
+              }}
+            />
+            <ComposerStagedPhotoStrip staged={staged} onRemove={busy ? () => {} : removeStaged} />
+            <Button
+              variant="secondary"
+              size="lg"
+              radius="flush"
+              className="w-full"
+              icon={<Camera />}
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+            >
+              {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
+            </Button>
+          </div>
 
-      <input
-        ref={fileInput}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        className="hidden"
-        onChange={(event) => {
-          addFiles(event.target.files);
-          event.target.value = '';
-        }}
-      />
-      <ComposerStagedPhotoStrip
-        staged={staged}
-        onRemove={busy ? () => {} : removeStaged}
-      />
-      <Button
-        variant="secondary"
-        size="lg"
-        radius="flush"
-        icon={<Camera />}
-        disabled={busy}
-        onClick={() => fileInput.current?.click()}
-      >
-        {staged.length > 0 ? `Add photos (${staged.length})` : 'Add photos'}
-      </Button>
+          <DetailSectionHeading id="exception-put-away">Put away</DetailSectionHeading>
+          <DetailFacts label="Put away">
+            <DetailFact label="Location" value={locationFace} mono />
+            <DetailFact label="Next" value="Count how many" />
+            <DetailFact
+              label="Status"
+              value="On hold — stock counts now, not sellable until it is merged into a real SKU"
+            />
+          </DetailFacts>
 
-      {error && (
-        <p role="alert" className="text-role-caption text-text-danger">
-          {error}
-        </p>
-      )}
+          {error ? (
+            <p role="alert" className="bg-rose-50 px-mode-page py-3 text-role-caption font-semibold text-rose-700">
+              {error}
+            </p>
+          ) : null}
+        </div>
 
-      <p className="text-role-micro text-text-faint">
-        Stock counts immediately. Not sellable until it is merged into a real SKU.
-      </p>
-
-      <div className="flex items-stretch gap-2">
-        <Button
-          variant="ghost"
-          size="lg"
-          radius="flush"
-          className="flex-1"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          size="lg"
-          radius="flush"
-          className="flex-1"
-          disabled={!ready || busy}
-          icon={busy ? <Loader2 className="animate-spin" /> : undefined}
-          onClick={() => void submit()}
-        >
-          {phase === 'creating'
-            ? 'Creating…'
-            : phase === 'uploading'
-              ? 'Uploading photos…'
-              : 'Create & count'}
-        </Button>
-      </div>
-    </div>
+        <div className="grid grid-cols-10 divide-x divide-mode-rule border-t border-mode-rule bg-mode-bar">
+          <Button
+            variant="secondary"
+            size="lg"
+            radius="flush"
+            className={`${CELL} col-span-3 active:bg-mode-ink active:text-mode-panel`}
+            disabled={busy}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            radius="flush"
+            className={`${CELL} col-span-7 font-bold active:bg-mode-ink`}
+            disabled={!ready || busy}
+            icon={busy ? <Loader2 className="animate-spin" /> : undefined}
+            onClick={() => void submit()}
+          >
+            {phase === 'creating'
+              ? 'Creating…'
+              : phase === 'uploading'
+                ? 'Uploading photos…'
+                : 'Create & count'}
+          </Button>
+        </div>
+      </ModeRegion>
+    </BottomSheet>
   );
 }

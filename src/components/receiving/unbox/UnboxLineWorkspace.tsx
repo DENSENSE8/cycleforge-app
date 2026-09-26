@@ -96,17 +96,6 @@ interface UnboxLineWorkspaceProps {
   lookupReceipt?: UnboxLookupScanDetail | null;
   onClearLookupReceipt?: () => void;
   onCloseWorkspace: () => void;
-  /**
-   * A carton is PICKED in the `detail:history` inspector — suppress the batch
-   * rail so two inspectors don't fight for the slot.
-   */
-  recordInspectOpen?: boolean;
-  /**
-   * Either inspector state (picked carton OR the View-only shell) — drives the
-   * Band 3 toggle's open face. Kept separate from {@link recordInspectOpen}:
-   * the View shell has no row selection, so it must not suppress bulk actions.
-   */
-  inspectorOpen?: boolean;
 }
 
 export function UnboxLineWorkspace({
@@ -117,8 +106,6 @@ export function UnboxLineWorkspace({
   lookupReceipt = null,
   onClearLookupReceipt,
   onCloseWorkspace,
-  recordInspectOpen = false,
-  inspectorOpen = false,
 }: UnboxLineWorkspaceProps) {
   // `motionRole.swap.scan` — the station-cadence swap, carried as one pair so
   // the carton→carton exit can never drift off its zero-duration contract.
@@ -192,11 +179,7 @@ export function UnboxLineWorkspace({
           {showRestoreSkeleton ? (
             <UniversalLoader isLoading label="Restoring carton" />
           ) : (
-            <UnboxWorkspaceView
-              selectedLine={row}
-              recordInspectOpen={recordInspectOpen}
-              inspectorOpen={inspectorOpen}
-            />
+            <UnboxWorkspaceView selectedLine={row} />
           )}
         </LoaderFieldCover>
       </div>

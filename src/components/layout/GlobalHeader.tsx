@@ -37,10 +37,10 @@ import { cn } from '@/utils/_cn';
  *   - **Floor page chip** — {@link HeaderPageSwitcher} (Scan Stations triage
  *     with the spine closed; desks stay on DeskPageChrome)
  *   - **Context** — page `panelContent`
- *   - **Actions** — a visible `+` starts shipping-label intake from every
- *     desktop page. The flow resolves an order first, displays it through the
- *     To-ship ledger, and keeps return and replacement purchases attached to
- *     that order. The activity inbox stays far right.
+ *   - **Actions** — a visible `+` opens the label intake (`LabelIntakeDesk`)
+ *     from every desktop page: order number → paired order or reference-only
+ *     number → return / replacement label, one surface. The activity inbox
+ *     stays far right.
  *
  *     A standing beam seat is earned by FREQUENCY. `HeaderGoalChip` and
  *     `GlobalHeaderAssistantButton` stay unmounted for the same reason; both

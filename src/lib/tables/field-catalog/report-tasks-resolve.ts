@@ -46,6 +46,7 @@ const URGENCY_LABEL: Readonly<Record<TaskUrgency, string>> = {
 export function reportTasksRecordText(row: TaskDeskRow): string {
   const subject = row.ticket?.subject?.trim();
   const label = taskDeskRecordLabel(row);
+  if (!label) return 'No linked record';
   return subject ? `${label} · ${subject}` : label;
 }
 

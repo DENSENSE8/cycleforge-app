@@ -29,7 +29,8 @@
  * should be a keypad not a keyboard display").
  *
  * Callers: `KioskKeypadFace` (slab), `KioskCartLineEditor` (price adjustment),
- * `KioskCustomerIntake` (phone). Affected API: none.
+ * `KioskFloatingPhoneKeypad` (phone — mounted by `KioskCustomerIntake`).
+ * Affected API: none.
  */
 
 import { useRef, type KeyboardEvent } from 'react';
@@ -45,7 +46,7 @@ import { cn } from '@/utils/_cn';
 
 const KEY_CLASS = 'h-16 text-2xl font-semibold tabular-nums';
 const SLAB_KEY_CLASS = 'h-20 w-full text-2xl font-normal tabular-nums text-text-default border-border-hairline';
-/** Phone keys sit above three contact fields, so they run one notch shorter. */
+/** Phone keys share the pane with the contact form (the dock), so they run one notch shorter. */
 const PHONE_KEY_CLASS = 'h-16 w-full text-2xl font-normal tabular-nums text-text-default border-border-hairline';
 const SLAB_SHAPE = { variant: 'ghost', radius: 'flush' } as const;
 
@@ -161,7 +162,7 @@ export type PhoneKeypadPress = (typeof PHONE_KEYS)[number];
 /**
  * The phone slab. Stateless: the caller owns the number (it lives on the
  * session or the pane draft) and applies each press. No focus of its own — the
- * phone input beside it takes a desk keyboard's digits natively.
+ * phone input it types for takes a desk keyboard's digits natively.
  */
 export function KioskPhoneKeypad({
   onPress,

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Shared inventory PO line list — Incoming PoTab (read) and Unbox Inventory
+ * Shared inventory PO line list — Unbox Inventory
  * Displays instrument mode (edge-to-edge editable line notes).
  */
 

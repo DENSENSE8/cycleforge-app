@@ -1,5 +1,6 @@
 import { normalizeFedExStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
+import { isoStampInstant } from '../carrier-event-instant';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 export const FEDEX_BASE_URL =
@@ -120,7 +121,9 @@ function buildFedExResultFromTrackResult(
       externalStatusLabel: scan?.derivedStatus ?? null,
       externalStatusDescription: scan?.eventDescription ?? null,
       normalizedStatusCategory: category,
-      eventOccurredAt: scan?.date ? new Date(scan.date).toISOString() : null,
+      // Offset-bearing ISO as given; date-only pickups ("…T00:00:00", no
+      // offset) read in the warehouse zone instead of the host's.
+      eventOccurredAt: isoStampInstant(scan?.date),
       city: loc.city ?? null,
       state: loc.stateOrProvinceCode ?? null,
       postalCode: loc.postalCode ?? null,
@@ -137,9 +140,7 @@ function buildFedExResultFromTrackResult(
   const deliveryDateEntry = dateAndTimes.find(
     (d: any) => d?.type === 'ACTUAL_DELIVERY'
   ) as any;
-  const deliveredAt = deliveryDateEntry?.dateTime
-    ? new Date(deliveryDateEntry.dateTime).toISOString()
-    : null;
+  const deliveredAt = isoStampInstant(deliveryDateEntry?.dateTime);
 
   const latestEventAt = events.map((e) => e.eventOccurredAt).filter(Boolean).sort().reverse()[0] ?? null;
 

@@ -53,12 +53,13 @@ the law, including the 2026-09-24 "Changed" note under §11. Do not commit; the 
 | SSR stand-in at the same geometry | `OrdersLedgerStandIn` in `src/components/dashboard/OrdersQueueFirstPaint.tsx` |
 
 Mounted on **To ship only**: `DashboardOrdersView` passes `ledger`; `UnshippedTable` renders the
-ledger instead of `UnshippedSheet`. Pending, Shipped, Exceptions and the station embeds still run
-the slot `DataTable`.
+ledger instead of `UnshippedSheet`. Pending, Exceptions and the station embeds still run the slot
+`DataTable` (Shipped adopted the shared primitive — see below).
 
 **Inventory › Stock · SKU Exceptions (2026-09-24)** run the ledger through the shared primitive
 `src/design-system/components/record-ledger/` — `RecordLedger` (toolbar slot · virtual 97px rows
-· evidence column · J/K/Esc), `IndustrialRecord` (spine · photo · 3 bands · one right lane) and
+· the open record placed by `DeskRecordPlane` — in place of the list, or split beside it when the
+staffer turns on fullscreen (2026-09-25) · J/K), `IndustrialRecord` (spine · photo · 3 bands · one right lane) and
 `RecordEvidence` (triage evidence stack: title · state strip · sections · decision bar keys 1–4 ·
 `EvidenceCountStepper`). Frame: `InventoryDeskFrame` mounts `stage="flush"` in a `triage`
 `ModeRegion` on those two routes only. Placeholder SKUs read `LIFECYCLE.onHold` (`HLD`, warning).
@@ -68,17 +69,50 @@ To ship still runs its own ledger files; it can adopt the primitive in its own p
 shared primitive without replacing their domain services. `/incoming` mounts
 `ModeRegion mode="triage"` → `DeskPageLayout stage="flush"` → `RecordLedger`; On the way adapts
 the existing `useReceivingLinesData` PO/line feed into `IncomingDeliveryRecord` and opens the
-existing consolidated `useIncomingDetails` read model in `IncomingDeliveryEvidence`. Add PO and
-Add Return are evidence-column modes; PO listing URLs are line-level. Scans still resolve through
-`routeScan` and write through `recordReceivingScan`.
+existing consolidated `useIncomingDetails` read model in `IncomingDeliveryEvidence`. Scans still
+resolve through `routeScan` and write through `recordReceivingScan`.
+
+Add (either lane) swaps the ledger for the receiving-order composer
+(`src/components/receiving/incoming/order-composer/`): `ReceivingOrderSheet` is the foundation —
+fixed 720px sheet centred on the stage, head (title · kind switch · close), `<form>`, foot
+(status · Cancel · submit) — and `PurchaseOrderComposer` / `ReturnOrderComposer` build on it from
+small sections (`OrderDocumentFill`, `PurchaseOrderFields`, `PurchaseOrderLines`,
+`ReturnOrderFields`, `CatalogItemPicker`). Its controls live in
+`receiving-order-composer-parts.tsx`, not the shared form primitives (owner 2026-09-25). Wire
+calls are `lib/inbound/po-intake-client.ts` and `inbound-import-client.ts`, shared with the Unbox
+PO band and the legacy add form.
 
 `/incoming?lane=docked` is a separate receiving-lifecycle ledger (`SCANNED` · `UNBOXED` ·
-`RECEIVED` · `ON_HOLD` · `EXCEPTION`) backed by the history feed; its evidence embeds the existing
-carton history reader. Inventory › Replenish adapts `/api/need-to-order` into
+`RECEIVED` · `ON_HOLD` · `EXCEPTION`) backed by the history feed; its record embeds the existing
+carton history reader. Both lanes mount inside `ReceivingRightPane`'s table host, which is a flex
+column so `RecordLedger`'s `flex-1` bounds the list and it scrolls. Inventory › Replenish adapts
+`/api/need-to-order` into
 `ReplenishmentPlanRecord` / `ReplenishmentPlanEvidence`; edits and workflow transitions stay in
 `src/lib/replenishment.ts`, and draft-PO creation stays in `/api/replenish/bulk-create-po`.
 `inventory:replenish` is no longer parked. These are presentation adapters over the established
 scan, query, cursor, mutation and PO-creation roots—not parallel data services.
+
+**Shipping › Shipped (2026-09-25)** is the whole `/shipping/shipped` page on the shared primitive,
+one record per PACKAGE (carrier tracking number), not per order line:
+`ShippedWorkspace` → `ShippedLedger` (`src/components/shipped/ledger/`). The feed is unchanged —
+`useShippedTableFilters` → `useShippedTableRecords` (`/api/packerlogs`, week buckets, load-more);
+period (`DateRangePickerField variant="compact"`), type, carrier, status and exceptions-only are
+toolbar facets over the same URL params, free text is the server `?q=`. Rows
+(`ShippedPackageRecord`) key on the feed's `package_shipment_id`; the open key is
+`?shipment=<shipping_tracking_numbers.id>` (`SHIPMENT_RECORD_PARAM`, `replaceState`), may name a
+package outside the loaded window (a sibling box, or a tracking # the find box resolves through
+`/api/shipments/lookup`), and legacy `?openOrderId=` bookmarks map to that line's package. The
+record, `ShipmentRecordView` (`GET /api/shipments/[id]/record`), is `DeskRecordLayout`: main =
+Items · Actions (newest first) · Other boxes on this order; aside = tracking · carrier · packer ·
+packed · shipped + by (`Backfilled` marker) · carrier milestones · box k of N · orders ·
+exception · sync error. The strip under the toolbar is the package's verbs (Resolve exception
+while an unmatched pack scan is open → `ResolveShipmentExceptionDialog`: link to an order line or
+close with a reason; Copy tracking; Track) followed by the primary order line's
+`OrderRecordActionStrip` (Shipped mode, via `shipped-order-line.tsx`). State faces
+(`shipped-package-state.ts`) read `LIFECYCLE.packed` / `LIFECYCLE.shipped`; an open unmatched
+scan is the hatched `UNM` face. `DashboardOrderDetails`, `ShippedOrderRecord` and
+`DashboardShippedTable` were deleted in this cutover; `ShippedDetailsPanel` stays for the station
+embeds. The phone twin is the package hub at `/m/shipping/shipments/[shipmentId]`.
 
 ## The record — one anatomy on every device
 
@@ -202,8 +236,8 @@ Order: **Pending** (`/shipping/shortage`) → **Exceptions** → **Shipped**. Pe
   If a page needs a different band fact, add it to the ledger's band model — never fork a row.
 - Switch that route to `stage="flush"` in `src/app/shipping/(desk)/layout.tsx`; when all four are
   flush, set it for the whole desk and delete the `'card'` branch for Shipping.
-- Give it the evidence column; stop mounting `DashboardOrderDetails` there. When the last tab
-  adopts, delete `DashboardOrderDetails` and its `DeskStageOverlay` path.
+- Give it the record plane (`DeskRecordPlane`, through `RecordLedger`). `DashboardOrderDetails`
+  and its `DeskStageOverlay` path were deleted with the Shipped cutover (2026-09-25).
 - Update that page's first-paint stand-in to the ledger geometry.
 - Station embeds (`PackerTable`, `TechAllTriageTable`, `ShortageDesk` inside `/pack` / `/tech`)
   stay on the slot table until their own page adopts.

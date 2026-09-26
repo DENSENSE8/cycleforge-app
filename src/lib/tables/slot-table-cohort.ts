@@ -50,7 +50,6 @@ export const SLOT_TABLE_ENGINE = {
   lineMoney: 'src/lib/tables/slot-table-line-money.ts',
   sessionLaws: 'src/lib/tables/slot-table-session-laws.ts',
   compoundRowModel: 'src/components/tables/compound/compound-row-model.ts',
-  incomingCatalog: 'src/lib/tables/field-catalog/incoming.ts',
   receivingCatalog: 'src/lib/tables/field-catalog/receiving.ts',
   ordersLayout: 'src/lib/dashboard-order-row-layout.ts',
   ordersQueueRow: 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx',
@@ -154,7 +153,6 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   { tableId: 'orders', path: 'src/components/dashboard/orders-queue/useOrdersTableLayout.ts' },
   { tableId: 'orders-import', path: 'src/components/outbound/orders/import-staging/useOrdersImportTableLayout.ts' },
   { tableId: 'receiving', path: 'src/components/station/receiving-grid/useReceivingTableLayout.ts' },
-  { tableId: 'incoming', path: 'src/components/station/incoming-grid/useIncomingTableLayout.ts' },
   { tableId: 'ready', path: 'src/components/outbound/ready/grid/useReadyTableLayout.ts' },
   { tableId: 'pickup', path: 'src/components/receiving/pickup/grid/usePickupTableLayout.ts' },
   { tableId: 'unfound', path: 'src/components/receiving/unfound/grid/useUnfoundTableLayout.ts' },
@@ -179,7 +177,6 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
   // banded agenda (`DAILY_FAMILY`): the surface calls
   // `useSlotTableLayout(DAILY_FAMILY)` directly, so there is no
   // `useDailyTableLayout.ts` left to name here.
-  { tableId: 'my-day', path: 'src/features/my-day/grid/useMyDayTableLayout.ts' },
   {
     tableId: 'kiosk-devices',
     path: 'src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts',
@@ -311,13 +308,11 @@ export const SLOT_TABLE_GRID_ROW_ALLOWLIST = [
   'src/components/products/catalog/catalog-grid/CatalogGridRow.tsx',
   'src/components/receiving/unfound/grid/UnfoundGridRow.tsx',
   'src/components/repair/repair-grid/RepairGridRow.tsx',
-  'src/components/station/incoming-grid/IncomingGridRow.tsx',
   'src/components/station/receiving-grid/ReceivingGridRow.tsx',
   'src/components/tech/all/TechAllGridRow.tsx',
   'src/components/tracking-exceptions/grid/TrackingExceptionsGridRow.tsx',
   'src/components/warehouse/bins-grid/BinsGridRow.tsx',
   'src/components/warranty/grid/WarrantyGridRow.tsx',
-  'src/features/my-day/grid/MyDayGridRow.tsx',
 ] as const;
 
 /**
@@ -460,7 +455,6 @@ export const SLOT_TABLE_ENGINE_CONTRACT = {
   datesDueHover: /COMPOUND_DATES_DUE_HOVER = 'Due date'/,
   datesStartHover: /COMPOUND_DATES_START_HOVER = 'Start date'/,
   datesStartedHoverField: /startedHover\?:/,
-  incomingPriceField: /id:\s*'incoming\.price'/,
   receivingPriceField: /id:\s*'receiving\.price'/,
   groupParentSelectChevronBand: /COMPOUND_GUTTER_CHEVRON_BAND_CLASS/,
   leafDetailSelectStack: /data-row-detail/,
@@ -532,8 +526,6 @@ export function slotTableEngineContractSource(name: SlotTableEngineContractName)
     case 'datesStartHover':
     case 'datesStartedHoverField':
       return SLOT_TABLE_ENGINE.compoundRowModel;
-    case 'incomingPriceField':
-      return SLOT_TABLE_ENGINE.incomingCatalog;
     case 'receivingPriceField':
       return SLOT_TABLE_ENGINE.receivingCatalog;
     case 'groupParentSelectChevronBand':

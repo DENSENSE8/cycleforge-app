@@ -68,7 +68,7 @@ const UNSHIPPED_VIEW_PARAMS = [
   'dir',
 ] as const;
 
-/** Shipped board saved views — matches DashboardShippedTable. */
+/** Shipped board saved views — matches the Shipped ledger's feed (`useShippedTableFilters`). */
 const SHIPPED_VIEW_PARAMS = [
   'shippedFilter',
   'shippedSearchField',

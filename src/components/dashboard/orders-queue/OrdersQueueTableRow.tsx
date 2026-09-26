@@ -331,6 +331,8 @@ interface OrdersQueueRowShellProps {
   'aria-pressed'?: boolean;
   'aria-label': string;
   'data-order-row-id': string;
+  /** `DeskRecordPlane` hands focus back to this row when its record closes. */
+  'data-desk-record-key': string;
   'data-marketplace-order-id'?: string;
   'data-group-child'?: string;
   role: React.AriaRole;
@@ -1128,6 +1130,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ? `Select order ${record.order_id || record.id}`
         : `Open order ${record.order_id || record.id}`,
     'data-order-row-id': String(record.id),
+    'data-desk-record-key': String(record.id),
     'data-marketplace-order-id': String(record.order_id || ''),
     'data-group-child': quietIdentity ? '' : undefined,
     className: cn(

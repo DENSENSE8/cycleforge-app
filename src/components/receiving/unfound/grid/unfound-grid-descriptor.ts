@@ -1,7 +1,7 @@
 /**
  * Unfound queue grid surface descriptor — lifts {@link UNFOUND_GRID_COLUMNS}
- * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
- * house comparator in `UnfoundQueueTable` (state math only).
+ * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER belongs to the
+ * mounting host (state math only).
  */
 
 import {

@@ -15,24 +15,6 @@ type LineApiRow = {
   listing_url?: string | null;
 };
 
-/** Minimal log for instant overlay mount — enriched async afterward. */
-export function receivingDetailsInstantSeed(
-  receivingId: number,
-  seed?: Partial<ReceivingDetailsLog>,
-): ReceivingDetailsLog {
-  const id = String(receivingId);
-  const timestamp =
-    seed?.timestamp ??
-    seed?.received_at ??
-    new Date().toISOString();
-
-  return {
-    ...seed,
-    id,
-    timestamp,
-  };
-}
-
 export function buildReceivingDetailsLogFromApi(
   receivingId: number,
   carton: CartonApiRow,

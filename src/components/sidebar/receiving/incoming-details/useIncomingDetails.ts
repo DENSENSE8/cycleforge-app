@@ -1,19 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DetailsResponse, IncomingDetailsPanelProps, TabId } from './incoming-details-shared';
+import type { DetailsResponse, IncomingDetailsQuery } from './incoming-details-shared';
 
 /**
- * Owns the incoming-details panel's data + actions: the consolidated details
- * query (PO- or shipment-keyed, with 60s carrier polling), Ably `shipment.changed`
- * live refresh, per-order Sync (Zoho re-pull + carrier re-poll), the two-step
- * delete (PO lines or PO-less shipment row), and the derived header/mode flags.
- * Returns a controller bag the thin panel shell renders from.
+ * Owns the incoming record's data + actions: the consolidated details query
+ * (PO- or shipment-keyed, with 60s carrier polling), Ably `shipment.changed`
+ * live refresh, per-order Sync (Zoho re-pull + carrier re-poll), the delete
+ * (PO lines or PO-less shipment row), and the derived header/mode flags.
  */
 export function useIncomingDetails({
   zohoPurchaseOrderId,
@@ -22,19 +21,19 @@ export function useIncomingDetails({
   inboundSourceType,
   inboundSourceOrderId,
   focusReceivingId,
-}: IncomingDetailsPanelProps) {
-  // Shipment-only mode: a delivered box with no resolved PO. The panel keys on
-  // the shipment id instead, defaults to the Shipment tab, hides PO-only actions
-  // (Sync), and its delete hard-removes the shipment from Incoming.
+}: IncomingDetailsQuery) {
+  // Shipment-only mode: a delivered box with no resolved PO. The read keys on
+  // the shipment id instead, hides PO-only actions (Sync), and its delete
+  // hard-removes the shipment from Incoming.
   const isShipmentOnly = !zohoPurchaseOrderId && shipmentId != null;
   // Inbound-only mode (Universal Incoming §7.3): a non-Zoho (eBay) row with no
-  // zoho PO of its own — the panel keys on the polymorphic link identity, defaults
-  // to the eBay tab, hides the Zoho Sync, and deletes the spine line.
+  // zoho PO of its own — keys on the polymorphic link identity, hides the Zoho
+  // Sync, and deletes the spine line.
   const isInboundOnly =
     !zohoPurchaseOrderId &&
     shipmentId == null &&
     Boolean(inboundSourceType && inboundSourceOrderId);
-  // Carton-only unpaired: dash-Order row with a receiving carton — Pairing tab.
+  // Carton-only unpaired: dash-Order row with a receiving carton — Pairing.
   const isCartonOnly =
     !zohoPurchaseOrderId &&
     shipmentId == null &&
@@ -42,12 +41,6 @@ export function useIncomingDetails({
     focusReceivingId != null &&
     Number.isFinite(focusReceivingId) &&
     focusReceivingId > 0;
-  // Unpaired (no Zoho PO) opens on Pairing — Package Pairing is the job.
-  const defaultTab: TabId = !zohoPurchaseOrderId
-    ? isInboundOnly
-      ? 'ebay'
-      : 'pairing'
-    : 'po';
   // Stable react-query key for the details fetch in each mode.
   const detailsKey = zohoPurchaseOrderId
     ?? (shipmentId != null
@@ -62,17 +55,10 @@ export function useIncomingDetails({
       ? focusReceivingId
       : null;
 
-  const [tab, setTab] = useState<TabId>(defaultTab);
   const [syncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const stationChannel = safeChannelName(() => getStationChannelName(user?.organizationId!));
-
-  // Reset to the default tab when the row changes (PO id / shipment id / inbound id).
-  useEffect(
-    () => setTab(defaultTab),
-    [zohoPurchaseOrderId, shipmentId, inboundSourceOrderId, focusReceivingId, defaultTab],
-  );
 
   const invalidateIncoming = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['incoming-details', detailsKey, focusKey] });
@@ -237,20 +223,11 @@ export function useIncomingDetails({
     ? (data?.inbound?.order_number || inboundSourceOrderId || '').trim()
     : '';
 
-  // After a successful Pairing link the details payload gains a PO — leave the
-  // Pairing tab so the operator lands on the PO face.
-  useEffect(() => {
-    if (tab === 'pairing' && data?.po?.zoho_purchaseorder_id) {
-      setTab('po');
-    }
-  }, [tab, data?.po?.zoho_purchaseorder_id]);
-
   return {
     isShipmentOnly,
     isInboundOnly,
     isCartonOnly,
     headerOrder,
-    tab, setTab,
     syncing, syncOne,
     handleDelete,
     data, isLoading, isError, refetch,

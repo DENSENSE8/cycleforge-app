@@ -16,7 +16,6 @@ const row = (over: Partial<DirectedPickUnitRow>): DirectedPickUnitRow => ({
   sku: '00114-P-1',
   title: 'Bose Solo & Cinemate - Remote Control',
   imageUrl: null,
-  conditionGrade: null,
   locationName: 'C-04-09-2',
   locationBarcode: 'C0409200',
   locationRoom: 'Zone 3 - Parts',

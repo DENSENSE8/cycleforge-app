@@ -23,6 +23,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { resolveThrowTargets, type ThrowTarget } from '@/lib/tasks/throw-targets';
@@ -66,7 +67,7 @@ export function throwTargetKey(target: ThrowTarget): string {
 
 /** Refusals `POST /api/tasks` can return, in words an operator can act on. */
 const REFUSAL_COPY: Record<string, string> = {
-  self_throw: 'Add someone besides yourself to the team.',
+  missing_title: 'Say what needs doing, or link a record.',
   unsupported_entity: 'That record kind cannot carry a task.',
   invalid_entity_id: 'That record could not be identified.',
   invalid_assignee: 'That person could not be found.',
@@ -85,12 +86,16 @@ export function useThrowTask({
   onThrown,
   mode = 'record',
 }: {
-  /** Called with the created task's id (null if the response omitted it). */
-  onThrown: (taskId: number | null) => void;
+  /**
+   * Called with the created task's id (null if the response omitted it) and
+   * whether the creator is one of its assignees — i.e. it lands in "mine".
+   */
+  onThrown: (taskId: number | null, mine: boolean) => void;
   /** Which question the record field asks. See {@link ThrowTaskMode}. */
   mode?: ThrowTaskMode;
 }) {
-
+  const { user } = useAuth();
+  const selfId = user?.staffId ?? null;
   const [raw, setRaw] = useState('');
   const [resolve, setResolve] = useState<ThrowResolveState>({ status: 'idle' });
   const [picked, setPicked] = useState<ThrowTarget | null>(null);
@@ -106,16 +111,19 @@ export function useThrowTask({
   // a no-op server-side instead of throwing the same record twice.
   const idempotencyKey = useRef(safeRandomUUID());
 
-  // The recipient list is needed on every throw, so it loads with the surface
-  // rather than on demand — a picker that spins after the record resolves puts
-  // the wait in the middle of the flow instead of before it.
+  // The recipient list is needed on every create, so it loads with the surface
+  // rather than on demand. The creator is listed first and preselected: a task
+  // you write is yours until you hand it to someone — untick yourself to pass it on.
   useEffect(() => {
     let cancelled = false;
     fetch('/api/auth/staff-picker', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { staff?: StaffRecipient[] } | null) => {
         if (cancelled) return;
-        setStaff(data?.staff ?? []);
+        const list = data?.staff ?? [];
+        const me = list.find((s) => s.id === selfId);
+        setStaff(me ? [me, ...list.filter((s) => s.id !== selfId)] : list);
+        if (me) setAssignees((current) => (current.length > 0 ? current : [me]));
       })
       .catch(() => {
         if (!cancelled) setStaff([]);
@@ -123,7 +131,7 @@ export function useThrowTask({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selfId]);
 
   /**
    * Switching what the field ASKS FOR invalidates what it found. A carton
@@ -201,8 +209,16 @@ export function useThrowTask({
     }
   }, [raw, mode, resolveTicket]);
 
+  /**
+   * A record is OPTIONAL on a plain task: without one, the words are the task,
+   * so they are required instead. The ticket face exists to anchor a ticket,
+   * so there the ticket stays required.
+   */
+  const hasWords = Boolean(note.trim() || projectName.trim());
+  const ready = assignees.length > 0 && (picked != null || (mode === 'record' && hasWords));
+
   const submit = useCallback(async () => {
-    if (!picked || assignees.length === 0 || throwing) return;
+    if (!ready || throwing) return;
     setThrowing(true);
     try {
       const res = await fetch('/api/tasks', {
@@ -212,8 +228,7 @@ export function useThrowTask({
           'Idempotency-Key': idempotencyKey.current,
         },
         body: JSON.stringify({
-          entityType: picked.entityType,
-          entityId: picked.entityId,
+          ...(picked ? { entityType: picked.entityType, entityId: picked.entityId } : {}),
           assigneeStaffIds: assignees.map((person) => person.id),
           projectName: projectName.trim() || undefined,
           note: note.trim() || undefined,
@@ -234,34 +249,35 @@ export function useThrowTask({
       // Honest reporting: the task landed, but say so if an amplifier did not.
       const notified: string = data?.notified ?? 'sent';
       const urgency: string = data?.urgency ?? 'not_urgent';
-      const thrown = `${projectName.trim() || picked.label} → ${assignees.map((person) => person.name).join(', ')}`;
+      const title = projectName.trim() || note.trim().split('\n')[0] || picked?.label || 'Task';
+      const thrown = `${title} → ${assignees.map((person) => person.name).join(', ')}`;
 
       if (notified === 'sent' && urgency !== 'failed') {
-        toast.success(`Thrown · ${thrown}`);
+        toast.success(`Task created · ${thrown}`);
       } else if (notified === 'skipped_entity') {
-        toast.warning(`Thrown · ${thrown}`, {
+        toast.warning(`Task created · ${thrown}`, {
           description: 'This record kind cannot raise an inbox item yet, so they were not notified.',
         });
       } else if (notified === 'failed') {
-        toast.warning(`Thrown · ${thrown}`, {
+        toast.warning(`Task created · ${thrown}`, {
           description: 'One or more team members were not notified; the task was created.',
         });
       } else {
-        toast.warning(`Thrown · ${thrown}`, {
+        toast.warning(`Task created · ${thrown}`, {
           description: 'The task was created but the record was not marked urgent.',
         });
       }
       // A fresh key for the NEXT task — the composer stays mounted after a
       // send, so reusing the settled key would make the second task a no-op.
       idempotencyKey.current = safeRandomUUID();
-      onThrown(data?.task?.id ?? null);
+      onThrown(data?.task?.id ?? null, assignees.some((person) => person.id === selfId));
     } catch {
       toast.error('Could not throw that task.');
       idempotencyKey.current = safeRandomUUID();
     } finally {
       setThrowing(false);
     }
-  }, [picked, assignees, throwing, note, projectName, urgent, deadline, onThrown]);
+  }, [ready, picked, assignees, throwing, note, projectName, urgent, deadline, onThrown, selfId]);
 
   /** Keep the first selected member as the lead; a tap toggles membership. */
   const toggleAssignee = useCallback((person: StaffRecipient) => {
@@ -287,12 +303,13 @@ export function useThrowTask({
     setRaw('');
     setResolve({ status: 'idle' });
     setPicked(null);
-    setAssignees([]);
+    const me = staff?.find((s) => s.id === selfId);
+    setAssignees(me ? [me] : []);
     setProjectName('');
     setNote('');
     setUrgent(false);
     setDeadline(null);
-  }, []);
+  }, [staff, selfId]);
 
   return {
     raw,
@@ -314,7 +331,15 @@ export function useThrowTask({
     deadline,
     setDeadline,
     throwing,
-    canThrow: Boolean(picked && assignees.length > 0) && !throwing,
+    canThrow: ready && !throwing,
+    /** What still blocks the create, in field order; null when ready. */
+    missing: picked == null && !(mode === 'record' && hasWords)
+      ? mode === 'ticket'
+        ? 'Find the ticket first'
+        : 'Say what needs doing'
+      : assignees.length === 0
+        ? 'Pick who it goes to'
+        : null,
     runResolve,
     submit,
     reset,

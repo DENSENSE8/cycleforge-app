@@ -153,6 +153,24 @@ export const getPackerBridgeChannelName = (orgId: string, staffId: number | stri
 export const getStaffPrintBridgeChannelName = (orgId: string, staffId: number | string) =>
   `${orgChannelPrefix(orgId)}:print:${normalizeChannelName(String(staffId), 'none')}`;
 
+/** The staff id every non-production print bridge shares unless overridden. */
+const DEV_PRINT_BRIDGE_STAFF_ID = 1;
+
+/**
+ * Whose print channel a session joins. Production: the signed-in staffer —
+ * a phone only ever prints on computers signed in as the same staff ID.
+ * Every other build (localhost, dev tunnel, Tailscale IP — all `next dev`):
+ * ONE shared channel, staff 1 by default or `NEXT_PUBLIC_PRINT_BRIDGE_STAFF_ID`,
+ * so a phone and a desk signed in as different staffers can test the same
+ * printer (operator 2026-09-25). Read by the token grant AND both bridge
+ * hooks, so the grant and the channel can never disagree.
+ */
+export function printBridgeStaffId(staffId: number): number {
+  if (process.env.NODE_ENV === 'production') return staffId;
+  const pinned = Number(process.env.NEXT_PUBLIC_PRINT_BRIDGE_STAFF_ID || DEV_PRINT_BRIDGE_STAFF_ID);
+  return Number.isInteger(pinned) && pinned > 0 ? pinned : staffId;
+}
+
 /**
  * Per-staff desktop↔phone lookup echo bridge. Was the raw `station:{staffId}`,
  * renamed to `staffstation:` so the org's `:station:*` broadcast grant can never

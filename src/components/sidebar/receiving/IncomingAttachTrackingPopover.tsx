@@ -61,7 +61,7 @@ interface IncomingAttachTrackingPopoverProps {
   onOpenChange?: (open: boolean) => void;
   /**
    * Fired after a successful attach — lets a host that owns its own query keys
-   * (e.g. the IncomingDetailsPanel) refresh beyond the shared receiving feeds.
+   * (e.g. the incoming delivery record) refresh beyond the shared receiving feeds.
    */
   onAttached?: () => void;
 }

@@ -6,34 +6,40 @@
  * out, for every page that adopts the ledger after it
  * (HANDOFF-industrial-record-ledger).
  *
- *   ┌ toolbar (page slot) ─────────────────────────┬ SELECTED … · k / n ‹ › ✕ ┐
- *   │ record                                        │ evidence (page slot)       │
- *   │ record          virtual, fixed 97px rows      │                            │
- *   │ …                                             │                            │
- *   └ footer (page slot) ───────────────────────────┴────────────────────────────┘
+ *   ┌ toolbar (page slot) ··· tally · ⤢ ┐
+ *   │ record                             │
+ *   │ record   virtual, fixed 97px rows  │
+ *   │ …                                  │
+ *   └ footer (page slot) ────────────────┘
  *
  * - Deliberately NOT the slot `DataTable`: no column header, no gutters, no
  *   card. Records are {@link IndustrialRecord}s the page renders.
  * - Rows are virtualized at a FIXED height ({@link RECORD_ROW_PX}); the
  *   virtualizer never measures.
- * - The evidence column is always mounted at ≥64rem container width, so opening
- *   a record never reflows the rows; below that it overlays them while open.
- * - Keys: J / K step the open record, Esc closes it (never inside a field, and
- *   never when a menu or dialog already handled Escape).
+ * - The open record is placed by {@link DeskRecordPlane} (operator
+ *   2026-09-25): in place of the list by default, list-left / record-right
+ *   split when the staffer turns on fullscreen with the toolbar's ⤢. The
+ *   ledger paints no evidence column of its own.
+ * - Nothing open: the split pane reads the list as a whole ({@link
+ *   RecordLedgerSummary}); in place, the facts that are not already on the
+ *   page are tallied at the toolbar's right end.
+ * - Keys: J / K step the open record (never inside a field, and never when a
+ *   menu or dialog already handled the key). Esc belongs to the plane.
  * - The URL is the page's business: `openKey` comes in, `onOpenKey` /
  *   `onClose` go out.
  */
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
+import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
 import { RECORD_LABEL_CLASS } from '../../tokens/industrial-record';
-import { focusRing } from '../../tokens/focus-ring';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { cn } from '@/utils/_cn';
+import { DESK_RECORD_ANCHOR_ATTR, DESK_RECORD_KEY_ATTR, DeskRecordPlane, useDeskRecordView } from '../DeskRecordPlane';
+import { useDeskStageOptional } from '../DeskStageContext';
+import { RecordLedgerSummaryPane, RecordLedgerTally, type RecordLedgerSummary } from './RecordLedgerSummary';
 import {
   RECORD_DENSITY_STYLE,
-  RECORD_EVIDENCE_WIDTH_CLASS,
   RECORD_HIT_CLASS,
   RECORD_ROW_CLASS,
   RECORD_ROW_PX,
@@ -45,12 +51,6 @@ const OVERSCAN = 6;
 
 /** Stand-in rows while the first page loads. */
 const LOADING_ROWS = 6;
-
-const HEAD_ICON_CLASS = cn(
-  'ds-raw-button inline-flex w-8 items-center justify-center text-mode-ink hover:bg-mode-hover disabled:opacity-40',
-  RECORD_HIT_CLASS,
-  focusRing('control'),
-);
 
 export interface RecordLedgerNavigation {
   position: number | null;
@@ -68,7 +68,7 @@ export interface RecordLedgerProps<T> {
   recordKey: (record: T) => string;
   /** One record — an {@link IndustrialRecord}. */
   renderRecord: (record: T, open: boolean) => ReactNode;
-  /** The open record's key, or null. May name a record not in `records` (a share link). */
+  /** The open record's key, or null. May name a record not in `records` (a share link, a create form). */
   openKey: string | null;
   onOpenKey: (key: string) => void;
   onClose: () => void;
@@ -78,18 +78,19 @@ export interface RecordLedgerProps<T> {
   toolbar: ReactNode;
   /** Optional strip under the toolbar (errors, notices). */
   banner?: ReactNode;
-  /** Head of the evidence column: `Selected <noun>`. */
-  evidenceNoun: string;
   /**
-   * Replaces the `Selected <noun>` head while the column holds something that
-   * is not a record yet — a create form opened with `openKey` set to a key no
-   * record carries (`New exception`).
+   * The record action strip (`RecordActionStrip`) under the toolbar. Toolbar
+   * + strip form the list anchor: in place, the open record opens below them.
    */
-  evidenceHead?: string;
-  /** Omit the visible generic heading when the evidence body names itself. */
-  hideEvidenceHeading?: boolean;
-  /** Evidence column body — the open record, or the list read as a whole. */
-  evidence: ReactNode;
+  actionStrip?: ReactNode;
+  /** The open record's handle — the record header and its region's accessible name. */
+  recordTitle: ReactNode;
+  recordSubtitle?: ReactNode;
+  /** `Select a <noun>`; names the record region when the title is not a string. */
+  recordNoun: string;
+  /** The open record's view — the same component in place and in the split pane. */
+  record: ReactNode;
+  summary: RecordLedgerSummary;
   loading?: boolean;
   /** Painted when there are no records and nothing is loading. */
   empty: ReactNode;
@@ -97,6 +98,7 @@ export interface RecordLedgerProps<T> {
   footer?: ReactNode;
   /** Optional shared scroll owner for prepend-to-top behavior in an existing feed. */
   scrollRef?: RefObject<HTMLDivElement>;
+  /** On the ledger; the record carries `<testId>-record` in both views. */
   testId?: string;
 }
 
@@ -111,10 +113,12 @@ export function RecordLedger<T>({
   navigation,
   toolbar,
   banner,
-  evidenceNoun,
-  evidenceHead,
-  hideEvidenceHeading = false,
-  evidence,
+  actionStrip,
+  recordTitle,
+  recordSubtitle,
+  recordNoun,
+  record,
+  summary,
   loading = false,
   empty,
   footer,
@@ -123,6 +127,8 @@ export function RecordLedger<T>({
 }: RecordLedgerProps<T>) {
   const keys = useMemo(() => records.map(recordKey), [records, recordKey]);
   const openIndex = openKey == null ? -1 : keys.indexOf(openKey);
+  const inPlace = useDeskRecordView() === 'in-place';
+  const onStage = useDeskStageOptional() != null;
 
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const scrollRef = providedScrollRef ?? internalScrollRef;
@@ -151,6 +157,8 @@ export function RecordLedger<T>({
     },
     [keys, navigation, openIndex, openKey, onOpenKey],
   );
+  const stepPrev = useCallback(() => step(-1), [step]);
+  const stepNext = useCallback(() => step(1), [step]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -163,152 +171,113 @@ export function RecordLedger<T>({
       } else if (key === 'k') {
         event.preventDefault();
         step(-1);
-      } else if (key === 'escape' && openKey != null) {
-        onClose();
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [step, openKey, onClose]);
+  }, [step]);
 
   const open = openKey != null;
+  const position = navigation?.position ?? (openIndex >= 0 ? openIndex + 1 : null);
+  const indexLabel = open && position != null ? `${position} of ${navigation?.total ?? keys.length}` : undefined;
+
+  const list = (
+    <>
+      <div {...{ [DESK_RECORD_ANCHOR_ATTR]: '' }} className="flex min-w-0 shrink-0 flex-col">
+        <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
+          <div className="flex min-w-0 flex-1 items-stretch">{toolbar}</div>
+          {inPlace ? <RecordLedgerTally summary={summary} /> : null}
+          {onStage ? (
+            <span className="flex shrink-0 items-center border-l border-mode-edge px-1.5">
+              <DataTableFullscreenToggle />
+            </span>
+          ) : null}
+        </div>
+        {actionStrip}
+      </div>
+      {banner}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        {records.length === 0 ? (
+          loading ? (
+            <div aria-busy role="status" aria-label={`Loading ${label}`}>
+              {Array.from({ length: LOADING_ROWS }, (_, index) => (
+                <div
+                  key={index}
+                  className={cn('flex border-b border-mode-rule bg-mode-panel', RECORD_ROW_CLASS)}
+                >
+                  <span className="w-[5px] shrink-0 bg-mode-well" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-40 flex-col items-center justify-center gap-2 border-b border-mode-ink text-center">
+              {empty}
+            </div>
+          )
+        ) : (
+          <div
+            role="list"
+            aria-label={label}
+            aria-busy={loading || undefined}
+            className="relative w-full"
+            style={{ height: virtualizer.getTotalSize() }}
+          >
+            {virtualizer.getVirtualItems().map((item) => {
+              const row = records[item.index];
+              if (row === undefined) return null;
+              return (
+                <div
+                  key={item.key}
+                  role="listitem"
+                  {...{ [DESK_RECORD_KEY_ATTR]: keys[item.index] }}
+                  className="absolute left-0 top-0 w-full"
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  {renderRecord(row, item.index === openIndex)}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {footer ? (
+        <div
+          className={cn(
+            'flex shrink-0 items-center gap-3 border-t border-mode-ink bg-mode-bar px-3 text-mode-muted',
+            RECORD_HIT_CLASS,
+            RECORD_LABEL_CLASS,
+          )}
+        >
+          {footer}
+        </div>
+      ) : null}
+    </>
+  );
 
   return (
     <div
       data-testid={testId}
-      className="@container flex min-h-0 min-w-0 flex-1 bg-mode-canvas text-mode-ink"
+      className="flex min-h-0 min-w-0 flex-1 bg-mode-canvas text-mode-ink"
       style={RECORD_DENSITY_STYLE}
     >
-      <div className="relative flex min-h-0 min-w-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div data-testid="record-ledger-toolbar" className={RECORD_TOOLBAR_CLASS}>
-            {toolbar}
-          </div>
-          {banner}
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-            {records.length === 0 ? (
-              loading ? (
-                <div aria-busy role="status" aria-label={`Loading ${label}`}>
-                  {Array.from({ length: LOADING_ROWS }, (_, index) => (
-                    <div
-                      key={index}
-                      className={cn('flex border-b border-mode-rule bg-mode-panel', RECORD_ROW_CLASS)}
-                    >
-                      <span className="w-[5px] shrink-0 bg-mode-well" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-40 flex-col items-center justify-center gap-2 border-b border-mode-ink text-center">
-                  {empty}
-                </div>
-              )
-            ) : (
-              <div
-                role="list"
-                aria-label={label}
-                aria-busy={loading || undefined}
-                className="relative w-full"
-                style={{ height: virtualizer.getTotalSize() }}
-              >
-                {virtualizer.getVirtualItems().map((item) => {
-                  const record = records[item.index];
-                  if (record === undefined) return null;
-                  return (
-                    <div
-                      key={item.key}
-                      role="listitem"
-                      className="absolute left-0 top-0 w-full"
-                      style={{ transform: `translateY(${item.start}px)` }}
-                    >
-                      {renderRecord(record, item.index === openIndex)}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {footer ? (
-            <div
-              className={cn(
-                'flex shrink-0 items-center gap-3 border-t border-mode-ink bg-mode-bar px-3 text-mode-muted',
-                RECORD_HIT_CLASS,
-                RECORD_LABEL_CLASS,
-              )}
-            >
-              {footer}
-            </div>
-          ) : null}
-        </div>
-
-        <aside
-          aria-label={evidenceHead ?? `Selected ${evidenceNoun}`}
-          data-testid="record-evidence"
-          className={cn(
-            'min-h-0 shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-panel',
-            RECORD_EVIDENCE_WIDTH_CLASS,
-            open ? 'absolute inset-y-0 right-0 z-sticky flex' : 'hidden',
-            '@5xl:static @5xl:z-auto @5xl:flex',
-          )}
-        >
-          <div className="flex min-h-full flex-col">
-            <div
-              className={cn(
-                'box-content flex shrink-0 items-center border-b border-mode-ink bg-mode-bar pl-4',
-                RECORD_HIT_CLASS,
-              )}
-            >
-              {hideEvidenceHeading ? (
-                <span className="flex-1" aria-hidden />
-              ) : (
-                <span className={cn(RECORD_LABEL_CLASS, 'flex-1 text-mode-muted')}>
-                  {evidenceHead ?? `Selected ${evidenceNoun}`}
-                </span>
-              )}
-              {open && (navigation?.position != null || openIndex >= 0) ? (
-                <span className={cn(RECORD_LABEL_CLASS, 'px-2 tabular-nums text-mode-muted')}>
-                  {navigation?.position ?? openIndex + 1} / {navigation?.total ?? keys.length}
-                </span>
-              ) : null}
-              {open ? (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Previous record"
-                    aria-keyshortcuts="K"
-                    className={HEAD_ICON_CLASS}
-                    disabled={navigation ? navigation.prevDisabled : openIndex <= 0}
-                    onClick={() => step(-1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Next record"
-                    aria-keyshortcuts="J"
-                    className={HEAD_ICON_CLASS}
-                    disabled={navigation ? navigation.nextDisabled : openIndex < 0 || openIndex >= keys.length - 1}
-                    onClick={() => step(1)}
-                  >
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Close record"
-                    aria-keyshortcuts="Escape"
-                    data-testid="record-evidence-close"
-                    className={cn(HEAD_ICON_CLASS, 'border-l border-mode-edge')}
-                    onClick={onClose}
-                  >
-                    <X className="h-4 w-4" aria-hidden />
-                  </button>
-                </>
-              ) : null}
-            </div>
-            {evidence}
-          </div>
-        </aside>
-      </div>
+      <DeskRecordPlane
+        open={open}
+        onClose={onClose}
+        title={recordTitle}
+        subtitle={recordSubtitle}
+        indexLabel={indexLabel}
+        onPrev={stepPrev}
+        onNext={stepNext}
+        prevDisabled={navigation ? navigation.prevDisabled : openIndex <= 0}
+        nextDisabled={navigation ? navigation.nextDisabled : openIndex < 0 || openIndex >= keys.length - 1}
+        list={list}
+        summary={<RecordLedgerSummaryPane summary={summary} />}
+        recordNoun={recordNoun}
+        recordKey={openKey}
+        testId={testId ? `${testId}-record` : undefined}
+      >
+        {record}
+      </DeskRecordPlane>
     </div>
   );
 }

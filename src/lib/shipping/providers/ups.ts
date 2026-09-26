@@ -1,5 +1,6 @@
 import { normalizeUPSStatus, normalizeTrackingNumber } from '../normalize';
 import type { CarrierTrackingEvent, CarrierTrackingResult } from '../types';
+import { upsActivityInstant, upsActivityLegacyStamp } from '../carrier-event-instant';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
 // UPS uses one host for both production and the CIE sandbox swap (wwwcie.ups.com).
@@ -62,22 +63,6 @@ export async function getAccessToken(forceRefresh = false): Promise<string> {
     tokenInFlight = fetchFreshToken().finally(() => { tokenInFlight = null; });
   }
   return tokenInFlight;
-}
-
-function parseUPSDate(date: string, time: string): string | null {
-  // UPS dates: "YYYYMMDD", times: "HHMMSS"
-  if (!date || date.length < 8) return null;
-  try {
-    const y = date.slice(0, 4);
-    const m = date.slice(4, 6);
-    const d = date.slice(6, 8);
-    const h = time?.slice(0, 2) ?? '00';
-    const min = time?.slice(2, 4) ?? '00';
-    const s = time?.slice(4, 6) ?? '00';
-    return new Date(`${y}-${m}-${d}T${h}:${min}:${s}Z`).toISOString();
-  } catch {
-    return null;
-  }
 }
 
 function firstValue<T>(...values: T[]): T | null {
@@ -159,10 +144,13 @@ function buildUPSResultFromPayload(payload: any, shipment: any, pkg: any): Carri
   const events: CarrierTrackingEvent[] = activities.map((act: any) => {
     const status = act?.status ?? {};
     const addr = act?.location?.address ?? {};
-    const occurredAt = parseUPSDate(act?.date, act?.time);
+    const occurredAt = upsActivityInstant(act);
 
     return {
-      externalEventId: [status.code ?? null, occurredAt ?? null, addr.city ?? null].filter(Boolean).join(':') || null,
+      // Identity keeps the legacy local-as-UTC stamp: stored rows embed it, and
+      // the dedupe key (shipment, id, code, instant) must match on re-sync.
+      externalEventId:
+        [status.code ?? null, upsActivityLegacyStamp(act), addr.city ?? null].filter(Boolean).join(':') || null,
       externalStatusCode: status.code ?? null,
       externalStatusLabel: status.type ?? null,
       externalStatusDescription: status.description ?? null,

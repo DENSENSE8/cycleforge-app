@@ -44,6 +44,7 @@ function device(overrides: Partial<CounterVisitDevice> = {}): CounterVisitDevice
     rsNumber: 'RS-0001',
     serialNumber: 'SN-1',
     productTitle: 'QuietComfort 45',
+    issue: 'No power',
     status: 'Pending Repair',
     quoteCents: 13000,
     quoteRaw: '$130.00',
@@ -135,20 +136,20 @@ describe('buildVisitReceipt', () => {
     assert.equal(r.barcodeValue, `CT-${v.id}`, 'no single device — falls back to the visit id');
   });
 
-  it('a repair-only visit: repairs from devices, no line items, RS number as the barcode', () => {
+  it('a repair-only visit: repairs from devices, no line items, RS code as the barcode', () => {
     const v = visit({
       subtotalCents: 0,
       totalCents: 13000,
-      devices: [device()],
+      devices: [device({ id: 74, rsNumber: '12345' })],
     });
     const r = buildVisitReceipt(v, letterhead());
 
     assert.equal(r.lineItems.length, 0);
     assert.equal(r.repairs.length, 1);
-    assert.equal(r.repairs[0].rsNumber, 'RS-0001');
+    assert.equal(r.repairs[0].rsCode, 'RS-74');
     assert.equal(r.repairs[0].quoteCents, 13000);
     assert.equal(r.totalCents, 13000);
-    assert.equal(r.barcodeValue, 'RS-0001', 'exactly one device — the RS number stands in for the visit');
+    assert.equal(r.barcodeValue, 'RS-74', 'exactly one device — its RS code, never the helpdesk ticket, stands in for the visit');
   });
 
   it('a mixed visit: retail lines AND repairs both print, and the REPAIR-type cart line is NOT re-printed as a line item', () => {
@@ -175,7 +176,7 @@ describe('buildVisitReceipt', () => {
     assert.equal(r.lineItems.length, 1, 'only the retail line — the REPAIR-type line is deduped against devices');
     assert.equal(r.lineItems[0].title, 'Case');
     assert.equal(r.repairs.length, 1);
-    assert.equal(r.barcodeValue, 'RS-0001', 'two devices? no — one device, one repair line dropped');
+    assert.equal(r.barcodeValue, 'RS-1', 'two devices? no — one device, one repair line dropped');
   });
 
   it('totals add up: subtotal is line items only, total is subtotal + every repair quote', () => {
@@ -295,6 +296,25 @@ describe('buildVisitReceipt', () => {
     assert.match(repairVisit.footer, /warranty/i);
     assert.doesNotMatch(retailVisit.footer, /warranty/i);
   });
+
+  it('each device carries its OWN issue, and a helpdesk ticket only when ticket_number is a real ticket', () => {
+    const v = visit({
+      devices: [
+        device({ id: 74, rsNumber: 'RS-0074', productTitle: 'Wave Radio', issue: 'CD Changer no power' }),
+        device({ id: 75, rsNumber: '98765', productTitle: 'SoundLink Mini', issue: 'Battery, Charging port - drops on drop' }),
+      ],
+    });
+    const r = buildVisitReceipt(v, letterhead());
+
+    assert.deepEqual(
+      r.repairs.map((d) => ({ title: d.productTitle, issue: d.issue, rsCode: d.rsCode, ticket: d.ticket })),
+      [
+        { title: 'Wave Radio', issue: 'CD Changer no power', rsCode: 'RS-74', ticket: '' },
+        { title: 'SoundLink Mini', issue: 'Battery, Charging port - drops on drop', rsCode: 'RS-75', ticket: '#98765' },
+      ],
+    );
+    assert.equal(r.barcodeValue, `CT-${v.id}`, 'two devices — no single RS code for the whole receipt');
+  });
 });
 
 // ── renderVisitReceiptHtml ───────────────────────────────────────────────────
@@ -394,5 +414,34 @@ describe('renderVisitReceiptHtml', () => {
     });
     const html = renderVisitReceiptHtml(buildVisitReceipt(v, letterhead()));
     assert.ok(html.includes('https://squareup.com/receipt/abc'));
+  });
+
+  it('prints each device\'s own issue under its own title, on the customer AND staff copies', () => {
+    const v = visit({
+      devices: [
+        device({ id: 74, rsNumber: 'RS-0074', productTitle: 'Wave Radio', issue: 'CD Changer no power' }),
+        device({ id: 75, rsNumber: '98765', productTitle: 'SoundLink Mini', issue: 'Battery <loose>' }),
+      ],
+    });
+    const receipt = buildVisitReceipt(v, letterhead());
+
+    for (const copy of ['customer', 'staff'] as const) {
+      const html = renderVisitReceiptHtml(receipt, { copy });
+      const radio = html.indexOf('Wave Radio');
+      const radioIssue = html.indexOf('CD Changer no power');
+      const mini = html.indexOf('SoundLink Mini');
+      const miniIssue = html.indexOf('Battery &lt;loose&gt;');
+      assert.ok(radio >= 0 && mini >= 0, `${copy}: both titles print`);
+      assert.ok(radio < radioIssue && radioIssue < mini, `${copy}: the radio's issue sits under the radio, before the next device`);
+      assert.ok(mini < miniIssue, `${copy}: the mini's issue sits under the mini`);
+      assert.ok(!html.includes('Battery <loose>'), `${copy}: the issue is escaped`);
+
+      // Identity: RS code always; the ticket only where a real one exists.
+      const radioRow = html.slice(radio, mini);
+      const miniRow = html.slice(mini, html.indexOf('</tr>', mini));
+      assert.match(radioRow, /RS-74/);
+      assert.doesNotMatch(radioRow, /Ticket/, `${copy}: an RS placeholder is not a ticket`);
+      assert.match(miniRow, /RS-75 · Ticket #98765/);
+    }
   });
 });

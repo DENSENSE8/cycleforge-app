@@ -6,7 +6,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/app/m/(shell)/id/pick/[orderId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
   "src/app/m/(shell)/id/scan-out/[orderId]/page.tsx => src/components/identification/IdentificationJobFace.tsx",
   "src/app/m/(shell)/layout.tsx => src/components/station/capture-upload/index.ts",
-  "src/app/m/(shell)/pick/[orderId]/_picker/PickerTaskCard.tsx => src/components/inventory/SkuIdentity.tsx",
   "src/app/m/(shell)/pick/[orderId]/_picker/picker-shared.ts => src/components/inventory/SkuIdentity.tsx",
   "src/app/m/(shell)/qr-auth/page.tsx => src/components/auth/StaffChoiceRowButton.tsx",
   "src/app/m/(shell)/r/[id]/layout.tsx => src/components/qr/public-qr-landing.tsx",
@@ -20,7 +19,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/mobile/packer/MobilePackingRow.tsx => src/components/receiving/ReceivingIdentityChips.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/packing/OrderPackChecklist.tsx",
   "src/components/mobile/packer/MobilePackingSheet.tsx => src/components/shipped/PhotoGallery.tsx",
-  "src/components/mobile/pair/MobilePairQty.tsx => src/components/sku/ReasonCodePicker.tsx",
   // Operator ruling 2026-09-15: the /m/print tote preview must render the REAL
   // print HTML, like the location and Unbox previews. That means the shared
   // LabelFacePreview iframe, reached through its per-family wrapper — the same
@@ -52,7 +50,6 @@ export const BOUNDARY_EXEMPTIONS: readonly string[] = [
   "src/components/mobile/redesign/MobileSidebarDrawer.tsx => src/components/sidebar/sidebar-spine.ts",
   "src/components/mobile/redesign/MobileToShipPickerSheet.tsx => src/components/auth/StaffChoiceRowButton.tsx",
   "src/components/mobile/redesign/MobileToShipPickerSheet.tsx => src/components/tables/compound/staff-stage-lane.ts",
-  "src/components/mobile/redesign/MobileToShipPickerSheet.tsx => src/components/work-orders/types.ts",
   "src/components/mobile/redesign/MobileToShipQueue.tsx => src/components/work-orders/types.ts",
   // Same edge as the six siblings below — the WorkOrderRow type the to-ship
   // screens map onto the shared ItemCardRow. Moved into to-ship-faces when the

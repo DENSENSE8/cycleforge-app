@@ -102,5 +102,8 @@ export const DAILY_TABLE_BINDING: TableSurfaceBinding<DailyAgendaRow, SlotTableC
   definition: DAILY_TABLE_DEFINITION,
   columns: DAILY_COMPOUND_COLUMNS,
   makeDescriptor: makeDailyGridDescriptor,
-  recordPlane: { kind: 'inspector', occupantId: 'detail:daily-check' },
+  recordPlane: {
+    kind: 'stage-overlay',
+    reason: 'Daily (`/`) opens a task or checklist item through RecordLedger → DeskRecordPlane: in place of the list, or split beside it in fullscreen.',
+  },
 };

@@ -435,7 +435,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
                 // Check for an existing row by shipment_id or scan_ref last-8 to avoid duplicates
                 const nfExisting = await client.query(`
-                    SELECT id, created_at::text
+                    SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at
                     FROM packer_logs
                     WHERE organization_id = $3
                       AND ((shipment_id IS NOT NULL AND shipment_id = $1)
@@ -612,7 +612,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
             // Check for an existing row by shipment_id to avoid duplicate rows on re-scan
             const foundExisting = await client.query(`
-                SELECT id, created_at::text
+                SELECT id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS created_at
                 FROM packer_logs
                 WHERE shipment_id = $1
                   AND organization_id = $2

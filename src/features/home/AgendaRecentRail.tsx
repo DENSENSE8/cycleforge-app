@@ -83,10 +83,10 @@ export function AgendaRecentRail({
   nowMs: number;
 }) {
   /**
-   * The desk owns the fetch (it also drives the table and the inspector), so
+   * The desk owns the fetch (it also drives the ledger and the record), so
    * the rail is handed settled rows and its `fetchFn` just returns them. The
-   * key carries the row identity so the shell re-reads when a feed settles —
-   * the same handoff `ExceptionsRecentRail` uses.
+   * query key carries every row's identity and done state, so the shell
+   * re-reads the moment a feed settles instead of serving a stale cache.
    */
   const version = useMemo(
     () => rows.map((r) => `${r.key}:${r.done ? 1 : 0}`).join('|'),

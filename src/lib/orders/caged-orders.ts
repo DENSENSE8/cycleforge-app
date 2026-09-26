@@ -209,7 +209,7 @@ const GATE_SELECT = `
     o.released_at::text            AS released_at,
     o.released_by,
     o.docs_not_required,
-    o.created_at::text             AS created_at,
+    to_char(o.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
     o.parcel_weight_oz,
     o.parcel_length_in,
     o.parcel_width_in,

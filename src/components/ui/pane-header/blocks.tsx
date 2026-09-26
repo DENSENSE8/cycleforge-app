@@ -355,8 +355,8 @@ export interface PaneHeaderActionBarAction {
   /** Override the rendered aria-label. Defaults to `label`. */
   ariaLabel?: string;
   /**
-   * Hairline before this action — Display | Edit topic groups on History peek
-   * (`detail:history` golden). Prefer this over a second ActionBar + local rule.
+   * Hairline before this action — separates action groups in one bar. Prefer
+   * this over a second ActionBar + local rule.
    */
   dividerBefore?: boolean;
 }

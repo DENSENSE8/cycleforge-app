@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { derivedPackerRecordToQueueRow, toDetailRecord } from '@/components/shipped/shipped-record-mappers';
-import { resolveRowStatus } from '@/components/dashboard/orders-queue/helpers';
+import { toDetailRecord } from '@/components/shipped/shipped-record-mappers';
 import type { DerivedPackerRecord } from '@/lib/shipped-records';
 
 function fakePacker(overrides: Partial<DerivedPackerRecord> = {}): DerivedPackerRecord {
@@ -23,23 +22,15 @@ function fakePacker(overrides: Partial<DerivedPackerRecord> = {}): DerivedPacker
   } as DerivedPackerRecord;
 }
 
-describe('derivedPackerRecordToQueueRow', () => {
-  it('keeps packer-log id as list key and carries outboundState', () => {
-    const row = derivedPackerRecordToQueueRow(fakePacker());
-    assert.equal(row.id, 9001);
-    assert.equal(row.outboundState, 'SCANNED_OUT');
-    assert.equal(row.order_id, 'ORD-1');
-    assert.equal(row.product_title, 'Test Product');
-  });
-
-  it('detail open still uses order_row_id via toDetailRecord', () => {
+describe('toDetailRecord', () => {
+  it('opens the order line (order_row_id), keeping the scan as station_activity_log_id', () => {
     const detail = toDetailRecord(fakePacker());
     assert.equal(detail.id, 42);
+    assert.equal(detail.station_activity_log_id, 9001);
   });
 
-  it('resolveRowStatus(shipped) uses outboundState meta', () => {
-    const row = derivedPackerRecordToQueueRow(fakePacker({ outboundState: 'DELIVERED' }));
-    const status = resolveRowStatus(row, 'shipped');
-    assert.equal(status.label, 'Delivered');
+  it('falls back to the scan id when the package matched no order line', () => {
+    const detail = toDetailRecord(fakePacker({ order_row_id: null }));
+    assert.equal(detail.id, 9001);
   });
 });

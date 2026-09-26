@@ -197,6 +197,55 @@ export const SHIP_OUT_LATERAL = `
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by`;
 
 /**
+ * Pre-box facts for one order line. Alias: `prebox` (+ `prebox_staff` face).
+ *
+ * The only order→unit link is `order_unit_allocations` (live rows: not
+ * RELEASED / RETURNED); a unit is pre-boxed when its live
+ * `label_manifest_items` row belongs to a SEALED `PREBOX` manifest
+ * (2026-07-06b: one live manifest per unit, dissolve deletes the items). The
+ * manifest records no sealer, so "by" is its `created_by`; "when" is
+ * `sealed_at`.
+ *
+ * An aggregate lateral, so it always yields one row: `unit_count` 0 means the
+ * line maps to no serial unit and its pre-box state is UNKNOWN (the record
+ * paints nothing), not "not pre-boxed". Index path: idx_oua_order_state
+ * (order_id, state) → ux_label_manifest_items_one_live (organization_id,
+ * serial_unit_id) → label_manifests_pkey.
+ *
+ * Joined by `/api/orders` (the To Ship feed and the Shipped record's line
+ * read); the grouping readers in this file do not project it.
+ */
+export const PREBOX_FACTS_LATERAL = `
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int  AS unit_count,
+        COUNT(lm.id)::int AS pre_boxed_count,
+        (ARRAY_AGG(lm.created_by ORDER BY lm.sealed_at DESC, lm.id DESC)
+          FILTER (WHERE lm.id IS NOT NULL))[1] AS pre_boxed_by,
+        MAX(lm.sealed_at) AS pre_boxed_at
+      FROM order_unit_allocations prebox_oua
+      LEFT JOIN label_manifest_items lmi
+        ON lmi.organization_id = prebox_oua.organization_id
+       AND lmi.serial_unit_id  = prebox_oua.serial_unit_id
+      LEFT JOIN label_manifests lm
+        ON lm.id              = lmi.manifest_id
+       AND lm.organization_id = lmi.organization_id
+       AND lm.manifest_type   = 'PREBOX'
+       AND lm.status          = 'SEALED'
+      WHERE prebox_oua.order_id        = o.id
+        AND prebox_oua.organization_id = o.organization_id
+        AND prebox_oua.state NOT IN ('RELEASED', 'RETURNED')
+    ) prebox ON true
+    LEFT JOIN staff prebox_staff ON prebox_staff.id = prebox.pre_boxed_by`;
+
+/** The four projected pre-box columns (see {@link PREBOX_FACTS_LATERAL}). */
+export const PREBOX_FACTS_SELECT = `
+      prebox.unit_count       AS prebox_unit_count,
+      prebox.pre_boxed_count  AS pre_boxed_count,
+      prebox_staff.name       AS pre_boxed_by_name,
+      to_char(prebox.pre_boxed_at, 'YYYY-MM-DD HH24:MI:SS') AS pre_boxed_at`;
+
+/**
  * Latest physical dock-stage scan for a shipment. This is deliberately
  * separate from packing: a packed carton is not eligible for scan-out until
  * this append-only `DOCK_STAGED` event exists.
@@ -341,14 +390,14 @@ const ORDER_SERIALS_CTE = `
       stn.is_terminal,
       stn.is_delivered,
       stn.carrier,
-      to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+      to_char(o.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
       'order'::text AS row_source,
       NULL::text AS exception_reason,
       NULL::text AS exception_status,
       wa_t.assigned_tech_id   AS tester_id,
       wa_p.assigned_packer_id AS packer_id,
       pl.packed_by,
-      to_char(pl.packed_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
+      to_char(pl.packed_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
       to_char(pack_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
       to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
       ship_out.shipped_out_by                AS shipped_out_by,
@@ -360,7 +409,7 @@ const ORDER_SERIALS_CTE = `
       to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
       COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
       MIN(tsn.tested_by)::int AS tested_by,
-      MIN(tsn.created_at)::text AS test_date_time,
+      to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time,
       to_char(test_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at
     FROM orders o
     ${WA_DEADLINE_LATERAL}
@@ -677,11 +726,11 @@ export async function getPackedOrdersForAi(opts: {
         o.account_source,
         o.sale_amount,
         o.currency,
-        to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+        to_char(o.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
         'order'::text AS row_source,
         pl.packed_by,
         s_packer.name AS packed_by_name,
-        to_char(pl.packed_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
+        to_char(pl.packed_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
         wa_t.assigned_tech_id AS tester_id,
         s_tester.name AS tester_name,
         MIN(tsn.tested_by)::int AS tested_by,
@@ -730,7 +779,9 @@ export async function getPackedOrdersForAi(opts: {
       LEFT JOIN staff s_tested ON s_tested.id = tsn.tested_by
       WHERE (
         -- Packed in this date range
-        (pl.packed_at IS NOT NULL AND pl.packed_at::date >= $1::date AND pl.packed_at::date <= $2::date)
+        (pl.packed_at IS NOT NULL
+         AND (pl.packed_at AT TIME ZONE 'America/Los_Angeles')::date >= $1::date
+         AND (pl.packed_at AT TIME ZONE 'America/Los_Angeles')::date <= $2::date)
         OR
         -- OR carrier tracking confirmed in this date range
         (COALESCE(stn.is_carrier_accepted OR stn.is_in_transit OR stn.is_out_for_delivery OR stn.is_delivered, false)
@@ -803,11 +854,11 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           stn.is_terminal,
           stn.is_delivered,
           stn.carrier,
-          to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+          to_char(o.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
           wa_t.assigned_tech_id   AS tester_id,
           wa_p.assigned_packer_id AS packer_id,
           pl.packed_by,
-          to_char(pl.packed_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
+          to_char(pl.packed_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
           to_char(pack_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS pack_activity_at,
           pl.packer_photos_url,
           pl.tracking_type,
@@ -816,7 +867,7 @@ export async function getShippedOrderById(id: number, orgId?: OrgId): Promise<Sh
           to_char(COALESCE(pick_alloc.picked_at, pick_sess.picked_at, pick_station.picked_at), 'YYYY-MM-DD HH24:MI:SS') AS picked_at,
           COALESCE(STRING_AGG(tsn.serial_number, ',' ORDER BY tsn.created_at), '') AS serial_number,
           MIN(tsn.tested_by)::int AS tested_by,
-          MIN(tsn.created_at)::text AS test_date_time,
+          to_char(MIN(tsn.created_at) AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS test_date_time,
           to_char(test_sal.created_at, 'YYYY-MM-DD HH24:MI:SS') AS test_activity_at
         FROM orders o
         LEFT JOIN LATERAL (
@@ -1309,14 +1360,14 @@ export async function searchShippedOrders(
            oe.status AS shipment_status,
            false AS is_delivered,
            NULL::text AS carrier,
-           to_char(oe.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+           to_char(oe.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS created_at,
            'exception'::text AS row_source,
            oe.exception_reason,
            oe.status AS exception_status,
            NULL::int AS tester_id,
            NULL::int AS packer_id,
            oe.staff_id AS packed_by,
-           to_char(oe.created_at, 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
+           to_char(oe.created_at AT TIME ZONE 'America/Los_Angeles', 'YYYY-MM-DD HH24:MI:SS') AS packed_at,
            NULL::text AS pack_activity_at,
            '[]'::jsonb AS packer_photos_url,
            'EXCEPTION'::text AS tracking_type,

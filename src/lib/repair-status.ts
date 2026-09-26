@@ -41,18 +41,19 @@ const REPAIR_STATUS_HUE: Record<string, RepairStatusHue> = {
   Done: 'success',
 };
 
-function hueFor(status: string): RepairStatusHue {
+/** The one canonical hue for a stored status (`neutral` when unknown). */
+export function repairStatusHue(status: string): RepairStatusHue {
   return REPAIR_STATUS_HUE[status] ?? 'neutral';
 }
 
 /** Bordered pill classes (mobile station + toggle buttons). */
 export function repairStatusBadgeClass(status: string): string {
-  return HUE_BADGE[hueFor(status)];
+  return HUE_BADGE[repairStatusHue(status)];
 }
 
 /** Flat chip classes (desktop ops modal). */
 export function repairStatusChipClass(status: string): string {
-  return HUE_CHIP[hueFor(status)];
+  return HUE_CHIP[repairStatusHue(status)];
 }
 
 /**

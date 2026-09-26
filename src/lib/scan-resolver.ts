@@ -54,15 +54,38 @@ interface SerialMatchResult {
 const SERIAL_FULL_REGEX    = /^[A-Z0-9]{15,17}([A-Z]{2})?$/i;
 const SERIAL_PARTIAL_REGEX = /^[A-Z0-9]{1,10}$/i;
 
+/** Amazon FNSKU — `X00` + 7 A-Z/0-9, the barcode on an FBA unit label. */
+const FNSKU_REGEX = /^X00[A-Z0-9]{7}$/;
+/** Amazon ASIN (B0 + 8) — accepted wherever an FNSKU is, never an FBA unit label. */
+const ASIN_REGEX = /^B0[A-Z0-9]{8}$/;
+
+/**
+ * The canonical FNSKU a scan carries (`X00…`, upper-cased, scanner punctuation
+ * stripped), or null. Strictly the FBA unit label — an ASIN is not one.
+ */
+export function scannedFnsku(value: string): string | null {
+  const v = normalizeTrackingCanonical(value);
+  return FNSKU_REGEX.test(v) ? v : null;
+}
+
+/**
+ * The FNSKU a typed tail stands for — the 7 characters after `X00`, which is
+ * what an operator reads off a worn label (`36X1R51` → `X0036X1R51`). Exact
+ * shape only (no punctuation stripping, so a `L-123456` handle never counts);
+ * a candidate, not a match — the caller confirms it against the catalog.
+ */
+export function fnskuFromTail(value: string): string | null {
+  const v = value.trim().toUpperCase();
+  return /^[A-Z0-9]{7}$/.test(v) ? `X00${v}` : null;
+}
+
 /**
  * Amazon FNSKU (X00 + 7) or ASIN (B0 + 8). Exactly 10 A-Z/0-9 characters.
  * Normalized before matching so scanner punctuation does not break detection.
  */
-const FNSKU_OR_ASIN_REGEX = /^(X00[A-Z0-9]{7}|B0[A-Z0-9]{8})$/;
-
 export function looksLikeFnsku(value: string): boolean {
   const v = normalizeTrackingCanonical(value);
-  return FNSKU_OR_ASIN_REGEX.test(v);
+  return FNSKU_REGEX.test(v) || ASIN_REGEX.test(v);
 }
 
 /**

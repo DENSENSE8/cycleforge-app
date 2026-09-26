@@ -350,12 +350,15 @@ function ticket(row: TaskDeskSqlRow): TaskDeskTicket | null {
  */
 function mapRow(raw: Record<string, unknown>): TaskDeskWireRow | null {
   const row = raw as unknown as TaskDeskSqlRow;
-  const entityType = taskEntityFromEnum(row.entity_type);
-  if (!entityType) return null;
+  // NULL anchor = a standalone task (2026-09-25f). A NON-null label outside
+  // the vocabulary is still dropped: its record door would be wrong.
+  const standalone = row.entity_type == null;
+  const entityType = standalone ? null : taskEntityFromEnum(row.entity_type);
+  if (!standalone && !entityType) return null;
 
   const id = toIntOrNull(row.id);
-  const entityId = toIntOrNull(row.entity_id);
-  if (id == null || entityId == null) return null;
+  const entityId = standalone ? null : toIntOrNull(row.entity_id);
+  if (id == null || (!standalone && entityId == null)) return null;
 
   const assignee = person(row.assignee_staff_id, row.assignee_name);
   return {

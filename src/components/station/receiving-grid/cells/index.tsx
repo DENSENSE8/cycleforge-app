@@ -2,19 +2,16 @@
 
 import { GridFillCell } from '@/design-system/components/grid';
 import type { ReactNode } from 'react';
-import type { IncomingGridColumn, ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
+import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import { CustomFieldCell } from '@/components/tables/CustomFieldCell';
 import {
   isCustomFieldColumnKey,
   parseCustomFieldDefKey,
 } from '@/lib/tables/custom-field-keys';
-import { ReceivingAgeCell } from './ReceivingAgeCell';
 import { ReceivingConditionCell } from './ReceivingConditionCell';
 import { ReceivingDateCell } from './ReceivingDateCell';
-import { ReceivingDeliveryStatusCell } from './ReceivingDeliveryStatusCell';
 import { ReceivingLocationCell } from './ReceivingLocationCell';
 import { ReceivingOrderCell } from './ReceivingOrderCell';
-import { ReceivingPlatformCell } from './ReceivingPlatformCell';
 import { ReceivingPriceCell } from './ReceivingPriceCell';
 import { ReceivingQtyCell } from './ReceivingQtyCell';
 import { ReceivingSelectCell } from './ReceivingSelectCell';
@@ -37,18 +34,16 @@ export type { ReceivingGridCellCtx } from './receiving-grid-cell-types';
 export { receivingCompoundRowView } from './ReceivingCompoundCells';
 export {
   displayReceivingProductTitle,
-  incomingDateCell,
   receivingStageTooltip,
 } from './receiving-grid-row-helpers';
 
 /**
- * Dispatch one Unbox / History / Testing / Incoming LedgerGrid cell by column
+ * Dispatch one Unbox / History / Testing LedgerGrid cell by column
  * key. Row shell builds {@link ReceivingGridCellCtx}; edit the matching
- * `*Cell.tsx`. Expected-phase `status` is delivery_state — never
- * {@link ReceivingStatusCell}.
+ * `*Cell.tsx`.
  */
 export function renderReceivingGridCell(
-  col: ReceivingGridColumn | IncomingGridColumn,
+  col: ReceivingGridColumn,
   last: boolean,
   ctx: ReceivingGridCellCtx,
   detail?: {
@@ -76,8 +71,6 @@ export function renderReceivingGridCell(
       return <ReceivingTitleCell {...props} />;
     case 'date':
       return <ReceivingDateCell {...props} />;
-    case 'age':
-      return <ReceivingAgeCell {...props} />;
     case 'qty':
       return <ReceivingQtyCell {...props} />;
     case 'price':
@@ -85,19 +78,7 @@ export function renderReceivingGridCell(
     case 'condition':
       return <ReceivingConditionCell {...props} />;
     case 'status':
-      return ctx.linePhase === 'expected'
-        ? (
-            <div
-              data-col="status"
-              className={receivingDataCellClass(col, rule, ctx)}
-              style={receivingDataCellStyle(col, ctx)}
-            >
-              <ReceivingDeliveryStatusCell row={ctx.row} />
-            </div>
-          )
-        : <ReceivingStatusCell {...props} />;
-    case 'platform':
-      return <ReceivingPlatformCell {...props} />;
+      return <ReceivingStatusCell {...props} />;
     case 'location':
       return <ReceivingLocationCell {...props} />;
     case 'order':

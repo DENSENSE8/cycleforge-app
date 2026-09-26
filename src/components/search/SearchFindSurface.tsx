@@ -24,13 +24,16 @@
  * ## Query field ownership
  *
  * The compact phone surface always owns a query field because its shell has no
- * global Find face. Desktop normally finds through `GlobalHeaderSearch`; the
- * named `?entry=label` door deliberately owns an order-number field so the
- * global `+` begins with order identity instead of opening a generic action or
- * customer-support surface.
+ * global Find face. Desktop finds through `GlobalHeaderSearch`.
+ *
+ * ## `?entry=label`
+ *
+ * The global `+` door. It is not a search: the whole body becomes
+ * {@link LabelIntakeDesk} — order number → pair → return / replacement label,
+ * one triage surface.
  *
  * Callers: src/app/search/page.tsx, src/app/m/(shell)/search/page.tsx.
- * Schema: `?entry=label`, `?q=` browse, `?sel=` dossier. No recents rail.
+ * Schema: `?entry=label` (+ `?q=` the order number), `?q=` browse, `?sel=` dossier. No recents rail.
  * User: searching for orders I must see who packed/picked/scanned out and identifier routing.
  */
 
@@ -39,7 +42,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
-import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
+import { LabelIntakeDesk } from '@/components/outbound/label-intake/LabelIntakeDesk';
 import { useSearchSelParam } from '@/hooks/useSearchSelParam';
 import { SEARCH_SEL_PARAM } from '@/lib/search/search-selection';
 import {
@@ -53,7 +56,7 @@ function findPathFor(pathname: string | null): '/search' | '/m/search' {
     : '/search';
 }
 
-function SearchFindQueryField({ labelEntry = false }: { labelEntry?: boolean }) {
+function SearchFindQueryField() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -85,8 +88,7 @@ function SearchFindQueryField({ labelEntry = false }: { labelEntry?: boolean }) 
         onChange={setDraft}
         onSearch={commit}
         onClear={() => commit('')}
-        placeholder={labelEntry ? 'Order number…' : 'Order, serial, tracking…'}
-        autoFocus={labelEntry}
+        placeholder="Order, serial, tracking…"
         tone="neutral"
         hideUnderline
       />
@@ -114,67 +116,24 @@ export function SearchFindSurface({ density }: { density: FindDensity }) {
    * something else and auto-open arms itself, with nothing to reset.
    */
   const [browsedQuery, setBrowsedQuery] = useState<string | null>(null);
-  const [exceptionNumber, setExceptionNumber] = useState<string | null>(null);
-  const [exceptionOrderId, setExceptionOrderId] = useState<number | null>(null);
-
-  const openExceptionIntake = useCallback((searchedOrderNumber: string) => {
-    setExceptionOrderId(null);
-    setExceptionNumber(searchedOrderNumber);
-  }, []);
-
-  const closeExceptionIntake = useCallback(() => {
-    setExceptionNumber(null);
-    setExceptionOrderId(null);
-  }, []);
-
-  const bindExceptionOrder = useCallback(
-    (orderId: number) => {
-      setExceptionOrderId(orderId);
-      setSel({ entityType: 'order', id: orderId });
-    },
-    [setSel],
-  );
 
   const exitToResults = useCallback(() => {
     setBrowsedQuery(q);
     setSel(null);
   }, [q, setSel]);
 
+  if (labelEntry) return <LabelIntakeDesk />;
+
   return (
     <FindDensityProvider density={density}>
       <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-        {density === 'compact' || labelEntry ? (
-          <SearchFindQueryField labelEntry={labelEntry} />
-        ) : null}
+        {density === 'compact' ? <SearchFindQueryField /> : null}
         {q && !sel ? (
-          <SearchBrowseShell
-            setSel={setSel}
-            autoOpen={browsedQuery !== q}
-            onOrderNotFound={labelEntry ? openExceptionIntake : undefined}
-          />
+          <SearchBrowseShell setSel={setSel} autoOpen={browsedQuery !== q} />
         ) : (
-          <SearchDetailWorkspace
-            sel={sel}
-            hasQuery={Boolean(q)}
-            onExit={exitToResults}
-            emptyTitle={labelEntry ? 'Add shipping labels' : undefined}
-            emptyDescription={
-              labelEntry
-                ? 'Enter an order number. The matching order opens in the To-ship ledger before any label is purchased.'
-                : undefined
-            }
-          />
+          <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} onExit={exitToResults} />
         )}
       </div>
-      {labelEntry ? (
-        <OrderIntakeOverlay
-          open={exceptionNumber !== null}
-          orderId={exceptionOrderId}
-          initialDraft={exceptionNumber ? { orderNumber: exceptionNumber } : undefined}
-          onOrderCreated={bindExceptionOrder}
-          onClose={closeExceptionIntake}
-        />
-      ) : null}
     </FindDensityProvider>
   );
 }

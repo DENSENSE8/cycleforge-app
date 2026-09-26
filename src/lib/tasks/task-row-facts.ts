@@ -21,7 +21,7 @@ import { formatDateKeyShort, toPSTDateKey } from '@/utils/date';
  * `resolveThrowTargets` labels a scan with (`Carton 4471`) rather than a second
  * word for one object.
  */
-export function taskRecordLabel(row: Pick<TaskDeskRow, 'entityType' | 'entityId' | 'ticket'>): string {
+export function taskRecordLabel(row: Pick<TaskDeskRow, 'entityType' | 'entityId' | 'ticket'>): string | null {
   if (row.entityType === 'support_ticket') {
     const subject = row.ticket?.subject?.trim();
     if (subject) return subject;

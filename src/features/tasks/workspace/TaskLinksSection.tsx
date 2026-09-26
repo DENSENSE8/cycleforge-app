@@ -73,8 +73,8 @@ export function TaskLinksSection({
   onRemove,
   onOpenTicket,
 }: {
-  /** `Order 12345` — the record the task is ABOUT; not removable here. */
-  anchorLabel: string;
+  /** `Order 12345` — the record the task is ABOUT; null for a standalone task. */
+  anchorLabel: string | null;
   anchorHref: string | null;
   links: readonly TaskLink[];
   loading: boolean;
@@ -156,7 +156,7 @@ export function TaskLinksSection({
   const grouped = TASK_LINK_KINDS.map((k) => [k, links.filter((link) => link.kind === k)] as const);
 
   return (
-    <EvidenceSection label={`Linked records · ${links.length + 1}`} testId="task-links">
+    <EvidenceSection label={`Linked records · ${links.length + (anchorLabel ? 1 : 0)}`} testId="task-links">
       <form
         className="flex flex-col gap-2"
         onSubmit={(event) => {
@@ -221,7 +221,9 @@ export function TaskLinksSection({
       </form>
 
       <ul className="mt-3 flex flex-col" aria-label="Linked records">
-        <LinkRow code="ANC" label={anchorLabel} context="What this task is about" href={anchorHref} />
+        {anchorLabel ? (
+          <LinkRow code="ANC" label={anchorLabel} context="What this task is about" href={anchorHref} />
+        ) : null}
         {loading && links.length === 0 ? (
           <li className={cn(RECORD_LABEL_CLASS, 'py-2 text-mode-muted')}>Loading links…</li>
         ) : null}

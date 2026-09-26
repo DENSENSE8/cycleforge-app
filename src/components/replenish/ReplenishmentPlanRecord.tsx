@@ -12,8 +12,7 @@ import {
   RecordTitle,
 } from '@/design-system/components/record-ledger/IndustrialRecord';
 import { REPLENISHMENT_RECORD_STATE } from '@/design-system/tokens/replenishment';
-import type { NeedToOrderRow } from './replenish-types';
-import { numText } from './replenish-types';
+import { numText, type NeedToOrderRow } from './replenish-types';
 
 const NEXT_ACTION: Readonly<Record<NeedToOrderRow['status'], string>> = {
   detected: 'Review',

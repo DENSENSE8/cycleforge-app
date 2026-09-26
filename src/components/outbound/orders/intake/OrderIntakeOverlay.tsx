@@ -29,14 +29,12 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { OrderIntakeForm } from './OrderIntakeForm';
-import type { CanonicalOrderIntake } from '@/lib/orders/canonical-order-intake';
 
 export function OrderIntakeOverlay({
   open,
   orderId,
   onClose,
   onOrderCreated,
-  initialDraft,
 }: {
   open: boolean;
   /** Order the session is bound to. `null` = start a new caged order. */
@@ -45,8 +43,6 @@ export function OrderIntakeOverlay({
   onClose: () => void;
   /** Binds the URL to a created (or opened-existing) order id. */
   onOrderCreated?: (orderId: number) => void;
-  /** Seeds a manually-added exception with the order number already searched. */
-  initialDraft?: Partial<CanonicalOrderIntake>;
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
@@ -72,7 +68,6 @@ export function OrderIntakeOverlay({
           orderId={orderId}
           onOrderCreated={onOrderCreated}
           onReleased={onClose}
-          initialDraft={initialDraft}
         />
       </DialogContent>
     </Dialog>

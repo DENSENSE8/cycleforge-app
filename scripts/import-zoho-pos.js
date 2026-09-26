@@ -234,7 +234,13 @@ async function importPO(rawPo, recCols, lineCols) {
   const poNumber   = asStr(data.purchaseorder_number, data.po_number);
   const vendor     = asStr(data.vendor_name);
   const poDate     = asStr(data.date, data.purchase_date);
-  const normDate   = poDate ? `${poDate.substring(0, 10)} 00:00:00` : new Date().toISOString();
+  // Zoho PO dates are LA wall-clock text; the SQL placeholder (recPh) converts
+  // them to an instant explicitly so the GMT script session can't shift them.
+  const normDate   = poDate
+    ? `${poDate.substring(0, 10)} 00:00:00`
+    : new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' });
+  const recPh = (col, n) =>
+    col === 'receiving_date_time' ? `($${n}::timestamp AT TIME ZONE 'America/Los_Angeles')` : `$${n}`;
   const warehouseId = asStr(data.warehouse_id);
   const lineItems   = Array.isArray(data.line_items) ? data.line_items : [];
 
@@ -275,7 +281,7 @@ async function importPO(rawPo, recCols, lineCols) {
       const updates = []; const vals = []; let i = 1;
       for (const [col, val] of Object.entries(recValues)) {
         if (!recCols.has(col)) continue;
-        updates.push(`${col} = $${i++}`); vals.push(val);
+        updates.push(`${col} = ${recPh(col, i++)}`); vals.push(val);
       }
       vals.push(receivingId);
       if (updates.length) {
@@ -287,7 +293,7 @@ async function importPO(rawPo, recCols, lineCols) {
         if (!recCols.has(col)) continue;
         cols.push(col); vals.push(val);
       }
-      const ph = cols.map((_, i) => `$${i + 1}`).join(', ');
+      const ph = cols.map((c, i) => recPh(c, i + 1)).join(', ');
       const ins = await client.query(
         `INSERT INTO receiving_carton (${cols.join(', ')}) VALUES (${ph}) RETURNING id`, vals
       );

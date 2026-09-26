@@ -442,10 +442,7 @@ export function KioskShell() {
   const checkoutStage =
     session.activeCommand === 'repair' ? (
       <div className={KIOSK_CENTRE_SURFACE}>
-        <KioskRepairPane
-          selectedProduct={selectedProduct}
-          onBack={returnToRepairCatalog}
-        />
+        <KioskRepairPane onBack={returnToRepairCatalog} />
       </div>
     ) : null;
 

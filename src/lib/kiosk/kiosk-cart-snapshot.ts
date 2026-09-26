@@ -119,15 +119,22 @@ export function cartSnapshotIsEmpty(s: KioskCartSnapshot): boolean {
 }
 
 /**
- * The list's name for a cart: who it is for, else what is in it. The phone is
- * masked to its last four — the list is glanceable across the counter, and a
- * full number there is a number shown to the next customer in line.
+ * Who a cart is for: the customer's name, else their phone masked to its last
+ * four — glanceable across the counter, and a full number there is a number
+ * shown to the next customer in line. Null before either is typed. Also the
+ * phone companion's name for the visit (`readCompanionForPhone`).
  */
-export function cartListLabel(s: KioskCartSnapshot): string | null {
+export function cartCustomerLabel(s: Pick<KioskCartSnapshot, 'customerName' | 'customerPhone'>): string | null {
   const name = s.customerName.trim();
   if (name) return name;
   const digits = s.customerPhone.replace(/\D/g, '');
-  if (digits.length >= 4) return `••• ${digits.slice(-4)}`;
+  return digits.length >= 4 ? `••• ${digits.slice(-4)}` : null;
+}
+
+/** The list's name for a cart: who it is for, else what is in it. */
+export function cartListLabel(s: KioskCartSnapshot): string | null {
+  const customer = cartCustomerLabel(s);
+  if (customer) return customer;
   const first = s.lines[0]?.title.trim();
   if (!first) return null;
   return s.lines.length > 1 ? `${first} + ${s.lines.length - 1} more` : first;

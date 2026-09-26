@@ -37,6 +37,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import {
+  auditCaptureWindowSource,
   auditDetailDockSource,
   auditDetailHubPage,
   auditDetailInfoPage,
@@ -103,7 +104,7 @@ function checkOne(rel: string): Report {
   const text = read(rel);
   if (text == null) throw new Error(`no such file: ${rel}`);
   const peer = DETAIL_HUB_PEERS.find((p) => p.hub === rel);
-  const violations: DetailHubViolation[] = [...auditDetailDockSource(rel, text)];
+  const violations: DetailHubViolation[] = [...auditDetailDockSource(rel, text), ...auditCaptureWindowSource(rel, text)];
   let advisory = false;
   if (peer || /<DetailHubScreen\b/.test(text)) {
     violations.push(...auditDetailHubPage(rel, text, readModule));
@@ -133,6 +134,7 @@ function checkAll(): Report {
   for (const rel of files) {
     const text = readFileSync(path.join(REPO, rel), 'utf8');
     if (text.includes('<DetailDock')) violations.push(...auditDetailDockSource(rel, text));
+    if (text.includes('<MobileCaptureWindow')) violations.push(...auditCaptureWindowSource(rel, text));
     if (text.includes('<BottomSheet')) sheetFiles.push({ file: rel, source: text });
     if (rel.startsWith('src/app/m/') && /<DetailHubScreen\b/.test(text) && !DETAIL_HUB_PEERS.some((p) => p.hub === rel)) {
       problems.push(`${rel} mounts DetailHubScreen but is not in DETAIL_HUB_PEERS (src/lib/mobile/detail-hub-cohort.ts)`);

@@ -13,8 +13,9 @@
  *   - useReceivingTableNavigation . arrow/chevron + detail-overlay nav
  *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
  *   - useReceivingAutoWeek ........ History empty-week back-jump
- *   - Incoming POS (inline) → DataTable
- *   - ReceivingSpreadsheet ... Unbox / History → DataTable
+ *   - IncomingDeliveriesLedger ... Incoming (Unbox Inbound, `/incoming`) → RecordLedger
+ *   - DockedReceiptsLedger ....... History (Unbox History, `/incoming?lane=docked`) → RecordLedger
+ *   - ReceivingSpreadsheet ....... Unbox Queue / Recent, standalone History → DataTable
  *
  * Types + dispatchers live in leaf modules — import those, never this file,
  * unless you are mounting the table:
@@ -25,17 +26,21 @@
  * Re-exports below remain for accidental legacy imports; new code must use leaves.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
-import { IncomingPoIntakeTableShell } from '@/components/receiving/incoming/IncomingPoIntakeBand';
 import { IncomingDeliveriesLedger } from '@/components/receiving/incoming/IncomingDeliveriesLedger';
 import { DockedReceiptsLedger } from '@/components/receiving/history/DockedReceiptsLedger';
+import { ReceivingOrderComposer } from '@/components/receiving/incoming/order-composer/ReceivingOrderComposer';
+import {
+  getReceivingOrderComposerKind,
+  subscribeReceivingOrderComposer,
+} from '@/lib/inbound/receiving-order-composer-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -43,36 +48,19 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import {
-  incomingCompoundColumnsFor,
   receivingCompoundColumnsFor,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
-  type IncomingGridColumn,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import { useQueryClient } from '@tanstack/react-query';
-import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
-import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
-import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
-import type { GroupedRenderOrder } from '@/lib/group-rows';
-import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
-import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
-import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
-import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
-import {
-  getDetailInspectorCollapsed,
-  setDetailInspectorCollapsed,
-} from '@/design-system/shells/detail-stack';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   buildReceivingHistoryExportCsv,
   receivingHistoryExportFilename,
 } from '@/lib/receiving/history-export-csv';
-import { DataTable } from '@/components/tables/DataTable';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -83,9 +71,9 @@ import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink'
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
-import { ReceivingSpreadsheet, receivingLineMatchesQuery } from '@/components/station/receiving-grid/useReceivingSpreadsheet';
+import { ReceivingSpreadsheet } from '@/components/station/receiving-grid/useReceivingSpreadsheet';
+import { receivingLineMatchesQuery } from '@/lib/receiving/receiving-line-search';
 import { useReceivingTableLayout } from '@/components/station/receiving-grid/useReceivingTableLayout';
-import { useIncomingTableLayout } from '@/components/station/incoming-grid/useIncomingTableLayout';
 import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
 import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -96,19 +84,7 @@ import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cartonReadHref, INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { toast } from '@/lib/toast';
-import {
-  dispatchReceivingOpenHistoryTriage,
-  dispatchReceivingOpenIncomingDetails,
-} from '@/utils/events';
-import {
-  historyTriageTargetFromRow,
-} from '@/lib/receiving/history-triage-row';
-import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
-import {
-  dispatchSelectLine,
-  poGroupAnchorMs,
-  RECEIVING_SELECTION_SCOPE,
-} from '@/components/station/receiving-lines-table-helpers';
+import { poGroupAnchorMs } from '@/components/station/receiving-lines-table-helpers';
 import { AlertTriangle, Check, Clock, Inbox, Search, Truck } from '@/components/Icons';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import {
@@ -170,27 +146,22 @@ export { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 export interface ReceivingLinesTableProps {
   selectMode?: boolean;
   /**
-   * Mounted inside the Unbox workbench rather than as its own desk. Suppresses
-   * the table's own History/Incoming framing; the week pill portals into
-   * `toolbarPortalTarget` (controls slot). Column display is gone —
-   * it is the grid's own header lip — chrome never carries Fields.
+   * Mounted inside the Unbox workbench rather than as its own desk. Queue and
+   * Recent paint the receiving spreadsheet; History and Inbound mount the same
+   * RecordLedgers as `/incoming` (Docked / On the way).
    */
   embedded?: boolean;
-  /** Portal ▦ column trigger into Unbox History View controls (week lives in Refine). */
-  toolbarPortalTarget?: HTMLElement | null;
 }
 
 export default function ReceivingLinesTable({
   selectMode = false,
   embedded = false,
-  toolbarPortalTarget = null,
 }: ReceivingLinesTableProps = {}) {
   const { isMobile } = useUIModeOptional();
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
-  // Band-3 no longer hosts ▦ — Show inspector opens Column display.
-  // Unbox embed still portals into the inspector View cluster.
+  // Shared scroll owner for the painted body (spreadsheet or ledger).
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -231,11 +202,18 @@ export default function ReceivingLinesTable({
 
   const isUnboxTableMode = mode.id === 'unbox_queue' || mode.id === 'unbox_viewed';
 
-  // Inbound desk (`/incoming`) hosts Pipeline + Docked. Docked resolves as
-  // history mode but the host owns chrome (IncomingWorkspaceHeader) — never
-  // nest HistoryWorkspaceHeader there.
+  // Inbound desk (`/incoming`) hosts On the way + Docked. Docked resolves as
+  // history mode, but each lane renders its own RecordLedger (toolbar included,
+  // records on DeskRecordPlane) — never the History sheet chrome.
   const isInboundDeskHost = pathname.startsWith(INCOMING_SURFACE_ROUTE);
   const isInboundDocked = isInboundDeskHost && parseInboundLane(searchParams.get('lane')) === 'docked';
+  // Add swaps the ledger for the receiving-order composer — either lane of the
+  // Inbound desk, and the Unbox Inbound tab (its header's Add purchase order).
+  const composerKind = useSyncExternalStore(
+    subscribeReceivingOrderComposer,
+    getReceivingOrderComposerKind,
+    () => null,
+  );
 
   // Returns CSV/TSV staging — session draft + `?import=csv` (Orders golden path).
   const returnsImportDraft = useTableImportDraft(
@@ -243,8 +221,9 @@ export default function ReceivingLinesTable({
   );
   const { active: returnsImportActive, setActive: setReturnsImportActive } =
     useTableImportParam(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
+  // Inbound desk only — the Unbox Inbound tab never hosts the returns import.
   const showReturnsImportStaging =
-    isIncomingMode && returnsImportActive && Boolean(returnsImportDraft);
+    isInboundDeskHost && isIncomingMode && returnsImportActive && Boolean(returnsImportDraft);
 
   useEffect(() => {
     if (!isIncomingMode) return;
@@ -278,12 +257,10 @@ export default function ReceivingLinesTable({
   }, [isIncomingMode, returnsImportDraft, returnsImportActive]);
 
   // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the
-  // Unbox workbench's default tab (`embedded`), and `/incoming?lane=docked`
-  // (former `/dashboard?mode=inbound`) — and they do NOT open the same thing,
-  // so the mode id alone can never decide the gesture. `embedded` is the Unbox
-  // workbench, whose three tabs share one strip and one bulk bar: it opens the
-  // LineEditPanel workspace in place, while the standalone History surface
-  // navigates to the carton read page.
+  // Unbox workbench's History tab (`embedded`), and `/incoming?lane=docked` —
+  // so the mode id alone can never decide the gesture. The Unbox tab and the
+  // Docked lane mount the Docked ledger (record on DeskRecordPlane); only the
+  // standalone History surface navigates to the carton read page.
   const isHistorySurface = isHistoryMode && !embedded && !isInboundDocked;
   // The Unbox workbench — all three of its tabs. Measured on dogfood before the
   // flip: Recent 117 rows, Queue 12, Viewed 22, every one of them ticking a
@@ -292,16 +269,34 @@ export default function ReceivingLinesTable({
   // `useReceivingWorkspacePane` says operators "open a line via click or scan".
   // Flipped as a SET so no tab diverges from its siblings.
   const isUnboxWorkbench = embedded;
-  // Unbox History keeps the legacy triage rail. Inbound Docked now renders the
-  // same history reader inside RecordLedger evidence and therefore must not
-  // publish or dispatch the right-rail triage path.
-  const isHistoryTriage = isHistoryMode && embedded;
-  // Incoming Pipeline: click toggles bulk; double-click / Enter opens the
-  // inspector (not carton).
-  const incomingClickSelect = isIncomingMode;
-  // Sheets click-select face — Incoming only (History uses split planes).
-  const selectGutterChrome =
-    incomingClickSelect ? ('sheets' as const) : ('always' as const);
+  // Every RecordLedger host — Unbox History + Inbound tabs and the `/incoming`
+  // On the way + Docked lanes — shows a picked row on the ledger's
+  // DeskRecordPlane. The open row rides `?openLine=`, so a reload restores it
+  // in whichever view (in place / split) the staffer's setting selects.
+  const isUnboxHistory = isHistoryMode && embedded;
+  const isLedgerHost = isIncomingMode || isInboundDocked || isUnboxHistory;
+  const openLineRaw = isLedgerHost ? searchParams.get('openLine') : null;
+  const openLineId =
+    openLineRaw && Number.isFinite(Number(openLineRaw)) && Number(openLineRaw) !== 0
+      ? Number(openLineRaw)
+      : null;
+  // Reads the LIVE query string: J/K can step faster than `useSearchParams`
+  // re-renders, and a stale snapshot would drop the other params.
+  const setOpenLine = useCallback(
+    (lineId: number | null) => {
+      const params = new URLSearchParams(window.location.search);
+      if (lineId == null) params.delete('openLine');
+      else params.set('openLine', String(lineId));
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
+    },
+    [pathname, router],
+  );
+  const openLedgerRow = useCallback((row: ReceivingLineRow) => setOpenLine(row.id), [setOpenLine]);
+  const closeLedgerRow = useCallback(() => setOpenLine(null), [setOpenLine]);
+  // Split planes on every receiving body: the row body opens its record, the
+  // gutter checkbox owns bulk membership (checks never open the record plane).
+  const selectGutterChrome = 'always' as const;
 
   /**
    * History's record plane: the durable carton READ page. `receiving_id` is the
@@ -320,43 +315,6 @@ export default function ReceivingLinesTable({
     },
     [router],
   );
-
-  /** Unbox History + Inbound Docked — left-click opens the triage slide-over. */
-  const openHistoryTriage = useCallback((row: ReceivingLineRow) => {
-    const target = historyTriageTargetFromRow(row);
-    if (!target) {
-      toast.error('No carton record for this row yet');
-      return;
-    }
-    dispatchReceivingOpenHistoryTriage(target);
-  }, []);
-
-  /** Double-click / Enter on Unbox History — full station LineEditPanel. */
-  const openHistoryWorkspace = useCallback((row: ReceivingLineRow) => {
-    dispatchSelectLine(row, { recordView: false });
-  }, []);
-
-  /**
-   * Unbox pinned Inbound tab — open Incoming details rail (same event as order-
-   * chip Details). Must not `dispatchSelectLine` (that opens LineEditPanel).
-   */
-  const openIncomingDetails = useCallback((row: ReceivingLineRow) => {
-    const resolved = incomingDetailsTargetFromRow(row);
-    if (!resolved.ok) {
-      toast.info(resolved.toast);
-      return;
-    }
-    const t = resolved.target;
-    dispatchReceivingOpenIncomingDetails({
-      poId: t.poId,
-      poNumber: t.poNumber,
-      shipmentId: t.shipmentId,
-      inboundSourceType: t.inboundSourceType,
-      inboundSourceOrderId: t.inboundSourceOrderId,
-      receivingId: t.receivingId,
-      receivingLineId: t.receivingLineId,
-    });
-  }, []);
 
   const { data, isLoading, isError, refetch, localRows } = useReceivingLinesData({
     mode,
@@ -392,7 +350,7 @@ export default function ReceivingLinesTable({
   const exportRowsRef = useRef<typeof orderedVisibleRows>(orderedVisibleRows);
   exportRowsRef.current = orderedVisibleRows;
   useEffect(() => {
-    if (!isHistoryTriage && !isInboundDocked) return;
+    if (!isUnboxHistory && !isInboundDocked) return;
     const onExport = () => {
       const rows = exportRowsRef.current;
       const csv = buildReceivingHistoryExportCsv(rows);
@@ -409,7 +367,7 @@ export default function ReceivingLinesTable({
     };
     window.addEventListener('receiving-export-history', onExport);
     return () => window.removeEventListener('receiving-export-history', onExport);
-  }, [isHistoryTriage, isInboundDocked]);
+  }, [isUnboxHistory, isInboundDocked]);
 
   const {
     selectedId,
@@ -421,21 +379,13 @@ export default function ReceivingLinesTable({
     selectModeRef,
   } = useReceivingRowSelection({
     selectMode,
-    // Incoming splits the planes: row body opens the record, gutter checkbox
-    // owns bulk. Without this, `selectMode` (pinned ON by
-    // `useReceivingLineBulkSelection` for every `isTableOnlyMode` surface)
-    // swallowed every row click, so `IncomingDetailsPanel` had no reachable
-    // trigger at all.
+    // Row body opens, the gutter checkbox owns bulk membership. The ledger
+    // hosts open through `openLedgerRow` directly; this hook still serves the
+    // spreadsheet bodies (Unbox Queue / Recent, standalone History).
     //
-    // History splits them too, but its "open" is a different destination —
-    // see `openRow` below. Scoped to the history SURFACE, not the shared
-    // `mode.id` (see `isHistorySurface`), because the Unbox workbench carries
-    // that same id on one of its tabs and opens something else entirely.
-    //
-    // Unbox (`isUnboxWorkbench`) splits them as well, and needs no `openRow`:
-    // its `receiving-select-line` already opens the LineEditPanel in place —
-    // exactly what its own recent rail has always done — so the default
-    // dispatch IS the right destination. It only ever lacked the gesture.
+    // Unbox (`isUnboxWorkbench`) needs no `openRow`: its `receiving-select-line`
+    // already opens the LineEditPanel in place — the default dispatch IS the
+    // right destination.
     rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
     // History's default `receiving-select-line` branch does
     // `router.replace('/unbox?openReceivingId=…')`, i.e. it drops a browse click
@@ -450,14 +400,7 @@ export default function ReceivingLinesTable({
     // sidebar or overlay host. It has been a dead click since it shipped (its
     // own release note says so); giving it the same carton destination is the
     // fix that note asked for, and costs nothing here.
-    openRow: isHistoryTriage
-      ? openHistoryTriage
-      : isHistorySurface
-        ? openHistoryCarton
-        : embedded && isIncomingMode
-          ? openIncomingDetails
-          : undefined,
-    localRecordOpen: isInboundDeskHost && (isIncomingMode || isInboundDocked),
+    openRow: isHistorySurface ? openHistoryCarton : undefined,
     // A click on the Unbox FEED opens the carton but does NOT stamp the
     // operator's recents. Browsing a queue is navigation; Recent answers "which
     // cartons did I actually open", and if the map itself counted it would
@@ -476,61 +419,8 @@ export default function ReceivingLinesTable({
     rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
     scrollRef,
     selectedId,
-    // History / Incoming / Unbox workbench table own the chevron channel.
-    tableNavEnabled:
-      (isHistoryMode || isIncomingMode || isUnboxTableMode || embedded) &&
-      !(isInboundDeskHost && (isIncomingMode || isInboundDocked)),
-  });
-
-  // Unbox History — publish on-screen order for ambient ↑↓ / j/k / Esc
-  // (record-cursor SoT). Left-click path stays triage; Enter on a focused row
-  // still opens LineEdit via the row's own key handler.
-  const historyCursorOrder = useMemo((): GroupedRenderOrder<ReceivingLineRow> => {
-    if (!isHistoryTriage) return [];
-    return Object.entries(filteredGroupedRecords)
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([date, dayGroups]) => {
-        const sorted = mode.serverSorted
-          ? dayGroups
-          : [...dayGroups].sort((a, b) => poGroupAnchorMs(b) - poGroupAnchorMs(a));
-        return [
-          date,
-          sorted.map((group) => ({ key: group.key, rows: group.rows })),
-        ] as const;
-      });
-  }, [isHistoryTriage, filteredGroupedRecords, mode.serverSorted]);
-
-  const handleHistoryCursorOpen = useCallback(
-    (row: ReceivingLineRow, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
-      handleSelectRow(row);
-    },
-    [handleSelectRow],
-  );
-
-  const handleHistoryCursorClose = useCallback(() => {
-    // Esc: park first (keep target); second Esc clears triage.
-    if (!getDetailInspectorCollapsed()) {
-      setDetailInspectorCollapsed(true);
-      return;
-    }
-    emitReceiving('receiving-close-history-triage');
-  }, []);
-
-  usePublishRecordCursor<ReceivingLineRow>({
-    surfaceId: 'unbox-history-grid',
-    scope: 'record',
-    enabled: isHistoryTriage,
-    priority: RECORD_CURSOR_PRIORITY.grid,
-    order: historyCursorOrder,
-    openId: isHistoryTriage ? selectedId : null,
-    getId: (row) => row.id,
-    onOpen: handleHistoryCursorOpen,
-    onClose: handleHistoryCursorClose,
-  });
-
-  useRecordCursorKeyboard({
-    enabled: isHistoryTriage,
-    scope: 'record',
+    // The spreadsheet bodies own the chevron channel; ledgers own J/K.
+    tableNavEnabled: (isHistoryMode || isIncomingMode || isUnboxTableMode || embedded) && !isLedgerHost,
   });
 
   useReceivingDeepLink({ isLoading, localRows, setSelectedId });
@@ -569,12 +459,10 @@ export default function ReceivingLinesTable({
   // keep showing them; a background refetch error must not blank the grid.
   const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
 
-  // Incoming grid adapter (was `IncomingGridView`): the table mounts the
-  // registry host directly for the Incoming POS spreadsheet. Column sort is
-  // DURABLE on `?colsort=`/`?coldir=` — deliberately NOT `?sort=` (that param is
-  // the Incoming SERVER ORDER BY vocabulary). `isIncomingGridSortable` resolves
-  // a receiving/history column key to null, so this always-live hook never acts
-  // on the other family's sort while its grid is off screen.
+  // Incoming column sort — DURABLE on `?colsort=`/`?coldir=`, deliberately NOT
+  // `?sort=` (that param is the Incoming SERVER ORDER BY vocabulary).
+  // `isIncomingGridSortable` resolves a receiving/history column key to null,
+  // so this always-live hook never acts on the other family's sort.
   const {
     sort: incomingColumnSort,
     dir: incomingSortDir,
@@ -639,31 +527,6 @@ export default function ReceivingLinesTable({
     },
     [pathname, router, searchParams],
   );
-
-  /**
-   * Inline note commit for an Incoming row.
-   *
-   * An Incoming row IS a `receiving_line`, so its note is the same scalar
-   * working field Unbox edits and it writes through the same helper — not a
-   * second commit path. Optimistic with a rollback toast: `ReceivingSpreadsheet`
-   * makes exactly this call for its own lanes.
-   */
-  const queryClient = useQueryClient();
-  const handleIncomingCommitNote = useCallback(
-    (row: ReceivingLineRow, next: string) => {
-      if (row.id <= 0) return;
-      void commitReceivingLineNote({
-        queryClient,
-        lineId: row.id,
-        previous: row.notes ?? null,
-        next,
-      }).catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to save note');
-      });
-    },
-    [queryClient],
-  );
-
   // Pipeline (board) layout for Incoming / History (behind the boards flag). The
   // board buckets the flat rows by the receiving lane SoT and day-bands per lane;
   // it replaces the header + dense list (SwimlaneBoard supplies its own toolbar).
@@ -701,9 +564,7 @@ export default function ReceivingLinesTable({
       />
     );
     return (
-      // Board layout can fire inside the Unbox Inbound embed (`?layout=board`) —
-      // keep it on the same `incoming_embed` bucket as the embed sheet so the
-      // split from `/incoming` holds across both presentations (D13).
+      // Board layout (`?layout=board`, behind the boards flag) replaces any body.
       <>
         <div className="flex h-full min-w-0 overflow-hidden bg-surface-card">
           {isIncomingMode ? (
@@ -736,10 +597,9 @@ export default function ReceivingLinesTable({
     );
   }
 
-  // Unbox / History spreadsheet body — ReceivingSpreadsheet → DataTable (same
-  // family as the Incoming grid). Date is a per-row column; no sticky day bands.
-  // The drill pane went with the display teardown (2026-08-29) — the folded
-  // list is the only History body now.
+  // Unbox Queue / Recent + standalone History spreadsheet body —
+  // ReceivingSpreadsheet → DataTable. Date is a per-row column; no sticky day
+  // bands.
   const weekCount = getWeekCount();
   /** The one find field for every receiving body — session-local; typing never writes the URL. */
   // The effective slot layout (staff ?? org ?? product) materialized into the
@@ -750,15 +610,6 @@ export default function ReceivingLinesTable({
   const receivingColumns = useMemo(
     () => receivingCompoundColumnsFor(receivingLayout),
     [receivingLayout],
-  );
-
-  // Incoming keeps its OWN document — same compound cells, different question
-  // (what the carrier has done, not what the warehouse has done).
-  const { effectiveLayout: incomingLayout, fields: incomingFields } =
-    useIncomingTableLayout();
-  const incomingColumns = useMemo(
-    () => incomingCompoundColumnsFor(incomingLayout),
-    [incomingLayout],
   );
 
   const receivingSearch = {
@@ -802,135 +653,52 @@ export default function ReceivingLinesTable({
         statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
         selectGutterChrome={selectGutterChrome}
         clickSelect={false}
-        onOpenWorkspace={isHistoryTriage ? openHistoryWorkspace : undefined}
-        historyTriageMenu={isHistoryTriage}
         scrollRef={scrollRef}
         className="h-full min-h-0 flex-1"
       />
     </div>
   );
 
-  // Unbox Queue / Viewed skip the week filter — do NOT portal a static
+  // Unbox Queue / Recent skip the week filter — do NOT paint a static
   // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
-  // Unbox History week lives in the Band 3 Refine funnel (`?weekOffset=`) — do
-  // not portal a week pill into the inspector View cluster. Standalone History
-  // still mounts the week pill on its own Band 3. Column display portals into
-  // the View / triage controls slot via GridColumnGutter.triggerPortalTarget.
+  // History (Unbox tab, Docked lane, standalone) carries the week pill.
   const chromePill =
-    isHistoryMode && embedded
-      ? null
-      : isHistoryMode || !skipWeekFilter
-        ? (
-          <DateRangePickerPill
-            label={
-              weekExplicit
-                ? formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)
-                : 'All time'
-            }
-            count={weekCount}
-            // Triage-band peer of filter / column icons — ghost ToolbarButton, not
-            // a pill island (WORKBENCH_CHROME_PILL_CLASS is for Band 1 CTA neighbors).
-            weekNav={{
-              weekOffset,
-              onPrev: () => setWeekOffset(weekOffset + 1),
-              onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
-            }}
-          />
-        )
-        : null;
+    isHistoryMode || !skipWeekFilter
+      ? (
+        <DateRangePickerPill
+          label={
+            weekExplicit
+              ? formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)
+              : 'All time'
+          }
+          count={weekCount}
+          // Triage-band peer of filter / column icons — ghost ToolbarButton, not
+          // a pill island (WORKBENCH_CHROME_PILL_CLASS is for Band 1 CTA neighbors).
+          weekNav={{
+            weekOffset,
+            onPrev: () => setWeekOffset(weekOffset + 1),
+            onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
+          }}
+        />
+      )
+      : null;
 
-  // Unbox workbench embeds the table under UnboxWorkspaceHeader — week pill
-  // (History only) portals into the top tabs bar controls slot.
-  // Pinned Inbound (`?unboxview=incoming`): Incoming spreadsheet on its OWN
-  // `tableId="incoming_embed"` prefs bucket — hiding a heavy column here never
-  // touches the full `/incoming` desk density (Gemini D13). Triage/read only:
-  // it mounts the host directly, never the Incoming desk header — so no
-  // Check/Import/Add CTA cluster on this tab (Unbox owns Band 1).
-  if (embedded) {
-    if (isIncomingMode) {
-      return (
-        <>
-          {incomingDegraded ? (
-            <div className="p-3">
-              <GridDegradedBox onRetry={refetch} />
-            </div>
-          ) : (
-            <IncomingPoIntakeTableShell>
-            <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
-              binding={INCOMING_TABLE_BINDING}
-              search={receivingSearch}
-              filter={incomingChrome.filter}
-              selectionScope={RECEIVING_SELECTION_SCOPE}
-              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
-              // Testing, To-Ship and Tasks mount. No lane variant: the
-              // recently-removed lane's reason rides the STATE pill
-              // (`incomingStateFace`) instead of a sixth column only that lane
-              // can use.
-              columns={incomingColumns}
-              fields={incomingFields}
-              orderGroupsByDate={incomingGroups}
-              rows={incomingFlatRows}
-              sort={incomingColumnSort}
-              dir={incomingSortDir}
-              onSortChange={setIncomingSort}
-              loading={isLoading && localRows.length === 0}
-              emptyMessage={emptyMessage}
-              scrollRef={scrollRef}
-              renderGroup={(group, baseStripeIndex, { columns: visible }) => (
-                <IncomingGridGroupRow
-                  group={group}
-                  baseStripeIndex={baseStripeIndex}
-                  isMobile={isMobile}
-                  selectMode={selectMode}
-                  selectedId={selectedId}
-                  selectedIds={selectedIds}
-                  handleSelectRow={handleSelectRow}
-                  handleToggleRow={handleToggleRow}
-                  clickSelect={incomingClickSelect}
-                  selectGutterChrome={selectGutterChrome}
-                  columns={visible}
-                />
-              )}
-              renderRow={(row, stripeIndex, { columns: visible }) => (
-                <IncomingGridGroupRow
-                  group={{ key: `k:${row.id}`, rows: [row] }}
-                  baseStripeIndex={stripeIndex}
-                  isMobile={isMobile}
-                  selectMode={selectMode}
-                  selectedId={selectedId}
-                  selectedIds={selectedIds}
-                  handleSelectRow={handleSelectRow}
-                  handleToggleRow={handleToggleRow}
-                  clickSelect={incomingClickSelect}
-                  selectGutterChrome={selectGutterChrome}
-                  columns={visible}
-                />
-              )}
-            />
-            </IncomingPoIntakeTableShell>
-          )}
-        </>
-      );
+  // Record ledgers — Incoming (Unbox Inbound tab, `/incoming` On the way) and
+  // Docked history (Unbox History tab, `/incoming?lane=docked`). One list and
+  // one record per collection: each RecordLedger owns its toolbar and shows the
+  // open row on DeskRecordPlane. On the Inbound desk, Add replaces either
+  // ledger with the centred receiving-order composer until it closes, and
+  // Returns CSV staging swaps the On the way centre (Orders golden path).
+  if (isLedgerHost) {
+    // The ledgers paint on the industrial record face (`mode-*` tokens). The
+    // Inbound desk page declares its triage region; the Unbox workbench does
+    // not, so its History / Inbound tabs carry the same region here.
+    const inTriageRegion = (body: ReactNode) =>
+      isInboundDeskHost ? body : <ModeRegion mode="triage" className="contents">{body}</ModeRegion>;
+    if (composerKind && (isInboundDeskHost || isIncomingMode)) {
+      return inTriageRegion(<ReceivingOrderComposer kind={composerKind} />);
     }
-    const portaledToolbar =
-      toolbarPortalTarget != null && chromePill != null
-        ? createPortal(chromePill, toolbarPortalTarget)
-        : null;
-    return (
-      <>
-        {portaledToolbar}
-        {receivingGrid()}
-      </>
-    );
-  }
-
-  // Inbound desk — Pipeline (Incoming) + Docked (history). Host owns
-  // IncomingWorkspaceHeader for both lanes so Docked never double-mounts
-  // HistoryWorkspaceHeader. IncomingWorkspaceHeader already paints Band 1 +
-  // Band 3 (no KPI); the sheet shell owns the chrome stack + host.
-  // Returns CSV staging swaps the Pipeline centre (Orders golden path).
-  if (isIncomingMode || isInboundDocked) {
-    return (
+    return inTriageRegion(
       <>
         {showReturnsImportStaging ? <IncomingReturnsImportStagingRail /> : null}
         {
@@ -956,10 +724,10 @@ export default function ReceivingLinesTable({
                     if (incomingColumnSort === key) toggleIncomingSort(key);
                     else setIncomingSort(key);
                   }}
-                  selectedId={selectedId}
+                  selectedId={openLineId}
                   selectedIds={selectedIds}
-                  onOpenRow={handleSelectRow}
-                  onCloseRow={() => setSelectedId(null)}
+                  onOpenRow={openLedgerRow}
+                  onCloseRow={closeLedgerRow}
                   onToggleRow={handleToggleRow}
                   page={incomingPage}
                   pageSize={INCOMING_PAGE_SIZE}
@@ -977,10 +745,10 @@ export default function ReceivingLinesTable({
                 onQueryChange={setReceivingSearchValue}
                 activityAxis={historyAxis}
                 toolbarExtra={chromePill}
-                selectedId={selectedId}
+                selectedId={openLineId}
                 selectedIds={selectedIds}
-                onOpenRow={handleSelectRow}
-                onCloseRow={() => setSelectedId(null)}
+                onOpenRow={openLedgerRow}
+                onCloseRow={closeLedgerRow}
                 onToggleRow={handleToggleRow}
                 scrollRef={scrollRef}
               />
@@ -990,20 +758,5 @@ export default function ReceivingLinesTable({
     );
   }
 
-  // History — standalone `/receiving/history` (until redirected). Unbox embeds
-  // use the `embedded` branch above — never wrap that host. 1+3 sheet: Band 1
-  // tabs + Band 3 triage; no KPI.
-  if (isHistoryMode) {
-    return (
-      <>
-        {receivingGrid()}
-      </>
-    );
-  }
-
-  return (
-    <>
-      {receivingGrid()}
-    </>
-  );
+  return <>{receivingGrid()}</>;
 }

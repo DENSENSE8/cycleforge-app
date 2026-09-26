@@ -45,18 +45,15 @@ export function EvidenceDisclosure({
   label,
   summary,
   testId,
-  defaultOpen = false,
   children,
 }: {
   label: string;
   summary?: ReactNode;
   testId?: string;
-  /** Opens a workflow-specific disclosure on first mount; operator may still collapse it. */
-  defaultOpen?: boolean;
   children: ReactNode;
 }) {
   return (
-    <details open={defaultOpen} data-testid={testId} className="group/section border-b border-mode-ink">
+    <details data-testid={testId} className="group/section border-b border-mode-ink">
       <summary className={cn(SUMMARY_CLASS, 'gap-2 px-4', HIT_CLASS)}>
         <span className={cn(RECORD_LABEL_CLASS, 'shrink-0 text-mode-muted')}>{label}</span>
         <span className="flex min-w-0 flex-1 items-center justify-end truncate">{summary}</span>

@@ -39,17 +39,37 @@
  * keyboard"). The floor takes the obscured band ({@link useKeyboard}) as a
  * bottom margin: the scroll body shrinks and the keys stay in sight.
  *
- * Callers: `KioskRepairPane`, `KioskCartLedger`, `KioskCartDoneFace`.
+ * ## The dock sits on the floor
+ *
+ *   [ scrolling body ]
+ *   [ dock           ]   ← empty until a body control mounts a pad into it
+ *   [ action floor   ]
+ *
+ * A body control that needs a thumb-zone surface (the Contact step's phone
+ * keypad, {@link KioskFloatingPhoneKeypad}) portals it into the dock through
+ * {@link useKioskPaneDock}. The dock is in flow ABOVE the floor, so the pad can
+ * never cover the step's Continue: mounting it shrinks the scroll body, and
+ * the floor does not move. Empty, the dock is zero height.
+ *
+ * Callers: `KioskRepairPane`, `KioskCartLedger`, `KioskCartDoneFace`;
+ * `useKioskPaneDock` ← `KioskFloatingPhoneKeypad`.
  * Affected API: none. Schemas: none.
  * User: "extract the pane frame" (kiosk DS unification Phase 1).
  */
 
-import type { ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { StepProgressHeader } from '@/design-system/primitives/StepProgressHeader';
 import { KIOSK_PANE_FOOTER_BAND } from '@/app/kiosk/kiosk-chrome';
 import { KIOSK_POS_FORM_MEASURE } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
+
+const KioskPaneDockContext = createContext<HTMLElement | null>(null);
+
+/** The pane's dock element (above the action floor), or null outside a pane. */
+export function useKioskPaneDock(): HTMLElement | null {
+  return useContext(KioskPaneDockContext);
+}
 
 export interface KioskPaneProgress {
   /** COMPLETED units, never the index of the step in view (PG6). */
@@ -91,50 +111,55 @@ export function KioskPaneForm({
   children?: ReactNode;
 }) {
   const { keyboardHeight } = useKeyboard();
+  const [dock, setDock] = useState<HTMLDivElement | null>(null);
   return (
-    <div className="flex h-full flex-col" data-testid={testId}>
-      {progress ? (
-        <StepProgressHeader
-          current={progress.current}
-          total={progress.total}
-          onClose={progress.onClose}
-          closeLabel={progress.closeLabel}
-          label={progress.label}
-        />
-      ) : null}
+    <KioskPaneDockContext.Provider value={dock}>
+      <div className="flex h-full flex-col" data-testid={testId}>
+        {progress ? (
+          <StepProgressHeader
+            current={progress.current}
+            total={progress.total}
+            onClose={progress.onClose}
+            closeLabel={progress.closeLabel}
+            label={progress.label}
+          />
+        ) : null}
 
-      {hero ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-          {hero}
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        {hero ? (
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+            {hero}
+          </div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div
+              className={cn(
+                'w-full',
+                KIOSK_POS_FORM_MEASURE,
+                measure === 'divided' && 'flex flex-col divide-y divide-border-hairline',
+              )}
+            >
+              {children}
+            </div>
+          </div>
+        )}
+
+        <div ref={setDock} className="shrink-0" data-kiosk-pane-dock />
+
+        {footer ? (
           <div
             className={cn(
-              'w-full',
-              KIOSK_POS_FORM_MEASURE,
-              measure === 'divided' && 'flex flex-col divide-y divide-border-hairline',
+              // Step flows float their key; shell-titled panes carry the floor
+              // hairline. Derived from `progress`, never a per-pane flag.
+              !progress && KIOSK_PANE_FOOTER_BAND,
+              'flex flex-wrap items-center justify-center gap-2 px-4 py-4',
             )}
+            data-kiosk-footer-band
+            style={keyboardHeight > 0 ? { marginBottom: keyboardHeight } : undefined}
           >
-            {children}
+            {footer}
           </div>
-        </div>
-      )}
-
-      {footer ? (
-        <div
-          className={cn(
-            // Step flows float their key; shell-titled panes carry the floor
-            // hairline. Derived from `progress`, never a per-pane flag.
-            !progress && KIOSK_PANE_FOOTER_BAND,
-            'flex flex-wrap items-center justify-center gap-2 px-4 py-4',
-          )}
-          data-kiosk-footer-band
-          style={keyboardHeight > 0 ? { marginBottom: keyboardHeight } : undefined}
-        >
-          {footer}
-        </div>
-      ) : null}
-    </div>
+        ) : null}
+      </div>
+    </KioskPaneDockContext.Provider>
   );
 }

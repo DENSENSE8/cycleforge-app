@@ -26,11 +26,12 @@ export type MobileSheetRole = 'edit' | 'dock-verb' | 'confirm' | 'picker' | 'lin
 /** Repo-relative file (POSIX) → the role of the sheet(s) it mounts. A file with several sheets takes the heaviest role. */
 export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
   // daily
-  'src/components/mobile/daily/MobileDailyChecklist.tsx': 'picker', // plus button chooses checklist or shared task
-  'src/components/mobile/daily/MobileDailyComposerSheet.tsx': 'dock-verb', // add-a-task form
+  'src/components/mobile/daily/MobileDailyComposerSheet.tsx': 'dock-verb', // add-a-checklist-item form
   'src/components/mobile/daily/MobileDailySheets.tsx': 'edit', // a checklist row's pencil lands here, title focused
   'src/components/mobile/daily/MobileTaskSheet.tsx': 'dock-verb', // a handed task's row CTA: instructions + Start / Mark done / Add media
-  'src/components/mobile/daily/MobileSharedTaskComposerSheet.tsx': 'dock-verb', // create one task for several staff
+  'src/components/mobile/daily/MobileSharedTaskComposerSheet.tsx': 'dock-verb', // Add task: words, who, optional record
+  // fnsku
+  'src/components/mobile/fnsku/FnskuStationSheet.tsx': 'picker', // which print station takes the FBA label reprint
   // on-hold
   'src/components/mobile/onhold/SkuExceptionEditSheet.tsx': 'edit', // /m/on-hold/[sku]/info pencil
   // orders
@@ -63,6 +64,10 @@ export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
   // reports
   'src/components/mobile/reports/MobilePackerItemsSheet.tsx': 'linked-peek', // one packer's packs, from the day report
   'src/components/mobile/reports/MobileStaffDayReport.tsx': 'linked-peek', // one staffer's day, from the day report
+  // scan
+  'src/components/mobile/scan/ProvisionalCreateSheet.tsx': 'dock-verb', // pair screen's "SKU exception" verb: identify · triage · put away
+  // shipping
+  'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx': 'dock-verb', // package hub's Resolve exception
   // unit
   'src/components/mobile/unit/UnitLineSheets.tsx': 'dock-verb', // Line test · Stash in bin
   'src/components/mobile/unit/UnitSheetParts.tsx': 'dock-verb', // shell of the unit hub's verb sheets

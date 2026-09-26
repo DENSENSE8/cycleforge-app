@@ -29,7 +29,11 @@ export const REPAIR_TABLE_BINDING: TableSurfaceBinding<RSRecord, RepairGridColum
   definition: REPAIR_TABLE_DEFINITION,
   columns: REPAIR_SHEET_COLUMNS,
   makeDescriptor: makeRepairGridDescriptor,
-  // `RepairDetailsPanel`, keyed on `?openRepair=` — the desk peek, and the
-  // landing target for a printed repair QR.
-  recordPlane: { kind: 'inspector', occupantId: 'detail:repair' },
+  // `RepairRecordView` on DeskRecordPlane, keyed on `?openRepair=` — the
+  // desk record, and the landing target for a printed repair QR.
+  recordPlane: {
+    kind: 'stage-overlay',
+    reason:
+      'The repair opens on DeskRecordPlane — in place of the queue, or beside it in fullscreen (?openRepair=).',
+  },
 };

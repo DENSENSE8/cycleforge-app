@@ -1,17 +1,16 @@
 /**
- * Shared context for Unbox / History / Testing / Incoming LedgerGrid cells.
+ * Shared context for Unbox / History / Testing LedgerGrid cells.
  * Row shell builds this once; cells stay column-scoped.
  */
 
 import { gridDataCellClass } from '@/design-system/components/grid';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
   RECEIVING_GRID_FROZEN_CELL,
-  type IncomingGridColumn,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { SourcePlatformMeta } from '@/lib/source-platform';
@@ -40,7 +39,7 @@ export type ReceivingGridCellCtx = {
   isChecked: boolean;
   /**
    * Toggle bulk membership. Present only on surfaces that split the two planes
-   * (Incoming / History); absent on the legacy single-gesture rows, where the
+   * (History); absent on the legacy single-gesture rows, where the
    * gutter stays a painted span and the ROW click does the ticking.
    */
   onToggle?: () => void;
@@ -102,22 +101,10 @@ export type ReceivingGridCellCtx = {
   clickSelect?: boolean;
   /** Live defs for `custom:*` columns — type lookup for {@link CustomFieldCell}. */
   customFieldDefs?: readonly CustomFieldDef[];
-  /**
-   * Incoming POS is `'expected'` (delivery_state status, Age / Platform /
-   * Removed / attach-tracking). History / Unbox / Testing omit or pass
-   * `'landed'` so `status` stays {@link ReceivingStatusCell}.
-   */
-  linePhase?: 'expected' | 'landed';
-  daysLate?: number | null;
-  laneAgeLabel?: string | null;
-  laneAgeHours?: number | null;
-  ageTooltip?: string;
-  markLabel?: string;
-  trackingAction?: ReactNode;
 };
 
-/** Column model a cell may receive — Incoming keys stay a separate array. */
-export type ReceivingGridCellColumn = ReceivingGridColumn | IncomingGridColumn;
+/** Column model a cell may receive. */
+export type ReceivingGridCellColumn = ReceivingGridColumn;
 
 export type ReceivingGridCellProps = {
   col: ReceivingGridCellColumn;

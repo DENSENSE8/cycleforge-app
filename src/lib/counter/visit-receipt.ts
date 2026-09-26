@@ -30,8 +30,9 @@
  */
 
 import type { OrgLetterhead } from '@/lib/branding/letterhead';
+import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket';
 import type { CounterTransactionStatus } from './counter-transaction-types';
-import type { CounterVisit, CounterVisitCustomer, CounterVisitLine } from './read-visit';
+import type { CounterVisit, CounterVisitCustomer, CounterVisitDevice, CounterVisitLine } from './read-visit';
 import { visitLineAdjustmentText } from './visit-line-adjustment';
 
 // ── The document model ──────────────────────────────────────────────────────
@@ -56,9 +57,14 @@ export interface VisitReceiptLineItem {
 /** One device taken in for repair, as printed. Sourced from `visit.devices` only. */
 export interface VisitReceiptRepairItem {
   id: number;
-  rsNumber: string;
+  /** `RS-{repair_service.id}` — the row's own code, always present, and what a scanner resolves. */
+  rsCode: string;
+  /** The helpdesk ticket (`#12345`) when `repair_service.ticket_number` is a real ticket; '' when it is only an RS placeholder or empty. */
+  ticket: string;
   productTitle: string;
   serialNumber: string;
+  /** `repair_service.issue` — THIS device's own reasons / note as written at submit. '' when none was recorded. */
+  issue: string;
   /** Canonically parsed via `serviceLineCents` upstream (read-visit.ts) — never re-parsed here. */
   quoteCents: number;
   /** `repair_service.price` as recorded, for a quote that never disagrees with what was signed for. */
@@ -101,10 +107,10 @@ export interface VisitReceipt {
   totalCents: number;
   payment: VisitReceiptPayment;
   /**
-   * What a scanner reads off the printed copy: the single device's RS number
-   * when there is exactly one, otherwise the visit itself (`CT-{id}`) — a
-   * multi-device or retail-only visit has no single RS number to stand in
-   * for the whole receipt.
+   * What a scanner reads off the printed copy: the single device's RS code
+   * (`RS-{id}`) when there is exactly one, otherwise the visit itself
+   * (`CT-{id}`) — a multi-device or retail-only visit has no single RS code
+   * to stand in for the whole receipt.
    */
   barcodeValue: string;
   footer: string;
@@ -174,10 +180,32 @@ function paymentSummary(visit: CounterVisit): VisitReceiptPayment {
   return { status: visit.status, tender, amountPaidCents, amountDueCents, taxCents, receiptUrl };
 }
 
+// ── Repair items ─────────────────────────────────────────────────────────────
+
+function rsCodeFor(device: CounterVisitDevice): string {
+  return `RS-${device.id}`;
+}
+
+function toRepairItem(device: CounterVisitDevice): VisitReceiptRepairItem {
+  return {
+    id: device.id,
+    rsCode: rsCodeFor(device),
+    // `rsNumber` is raw `repair_service.ticket_number`: an RS placeholder
+    // until a helpdesk ticket lands, then the ticket id. Only the latter is
+    // a separate identity worth printing.
+    ticket: formatRepairPaperTicketNumber(device.rsNumber),
+    productTitle: device.productTitle,
+    serialNumber: device.serialNumber,
+    issue: device.issue.trim(),
+    quoteCents: device.quoteCents,
+    quoteRaw: device.quoteRaw,
+  };
+}
+
 // ── Barcode value ────────────────────────────────────────────────────────────
 
 function barcodeValueFor(visit: CounterVisit): string {
-  if (visit.devices.length === 1) return visit.devices[0].rsNumber || `CT-${visit.id}`;
+  if (visit.devices.length === 1) return rsCodeFor(visit.devices[0]);
   return `CT-${visit.id}`;
 }
 
@@ -205,14 +233,7 @@ export function buildVisitReceipt(visit: CounterVisit, header: OrgLetterhead): V
     visitDate: visit.createdAt,
     customer: toCustomer(visit.customer),
     lineItems: visit.lines.filter(isBillableRetailLine).map(toLineItem),
-    repairs: visit.devices.map((d) => ({
-      id: d.id,
-      rsNumber: d.rsNumber,
-      productTitle: d.productTitle,
-      serialNumber: d.serialNumber,
-      quoteCents: d.quoteCents,
-      quoteRaw: d.quoteRaw,
-    })),
+    repairs: visit.devices.map(toRepairItem),
     subtotalCents: visit.subtotalCents,
     totalCents: visit.totalCents,
     payment: paymentSummary(visit),

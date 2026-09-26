@@ -2,7 +2,7 @@
 
 /**
  * Shared inventory PO header — dense Action Plane fact bands.
- * Composed by Incoming PoTab (full / compact strip) and Unbox Inventory
+ * Composed by Unbox Inventory
  * Displays Information (`instrument` = WMS horizontal rows).
  * Capability nouns in labels ("inventory"), not vendor product.
  */

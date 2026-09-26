@@ -129,7 +129,13 @@ async function main() {
   const normalizedPoId = String(po.purchaseorder_id || poId);
   const poNumber = po.purchaseorder_number || normalizedPoId;
   const poDate = po.date;
-  const normalizedDate = poDate ? `${poDate} 00:00:00` : new Date().toISOString();
+  // Zoho PO dates are LA wall-clock text; recPh converts receiving_date_time to
+  // an instant explicitly so the GMT script session can't shift it.
+  const normalizedDate = poDate
+    ? `${poDate} 00:00:00`
+    : new Date().toLocaleString('sv-SE', { timeZone: 'America/Los_Angeles' });
+  const recPh = (col, n) =>
+    col === 'receiving_date_time' ? `($${n}::timestamp AT TIME ZONE 'America/Los_Angeles')` : `$${n}`;
 
   const recValues = {
     receiving_tracking_number: poNumber,
@@ -183,7 +189,7 @@ async function main() {
     }
 
     if (receivingId) {
-      const setClauses = validRecCols.map((c, i) => `${c} = $${i+1}`).join(', ');
+      const setClauses = validRecCols.map((c, i) => `${c} = ${recPh(c, i + 1)}`).join(', ');
       await client.query(
         `UPDATE receiving_carton SET ${setClauses} WHERE id = $${validRecCols.length + 1}`,
         [...validRecCols.map(c => recValues[c]), receivingId]
@@ -191,7 +197,7 @@ async function main() {
     } else {
       const cols = validRecCols;
       const vals = cols.map(c => recValues[c]);
-      const placeholders = cols.map((_, i) => `$${i+1}`).join(', ');
+      const placeholders = cols.map((c, i) => recPh(c, i + 1)).join(', ');
       const r = await client.query(
         `INSERT INTO receiving_carton (${cols.join(', ')}) VALUES (${placeholders}) RETURNING id`,
         vals

@@ -8,18 +8,21 @@
  * ## Which order
  *
  * Order-at-a-time, because a pick needs the order's tote (`pick.confirm`
- * refuses without one) and one tote carries one order:
+ * refuses without one) and one tote carries one order. Candidates and their
+ * owners come from `loadPickCandidates` (shared with the Unassigned board);
+ * this picker is fed, in tiers (`pickFeedTier`):
  *
- *   1. an order this picker already has an open session on (finish it);
- *   2. else the most urgent unheld order — ship-by within 24h first, then the
- *      earliest ship-by, then the oldest order.
+ *   1. an order they already have an open session on (finish it);
+ *   2. an order passed to them (Pass / Take — the TEST assignee);
+ *   3. an order whose SKU they own, or back up for an owner who is out;
+ *   4. an unassigned order;
  *
- * An order is HELD when another picker opened a session on it in the last
- * {@link HOLD_MINUTES} minutes and has not closed it — the claim. The choice
- * and the session insert run under one advisory lock so two phones asking at
- * once cannot both claim the same order. A stale hold simply lapses; a race
- * that still slips through is refused per unit by `confirmPick`'s row lock
- * (409), and the phone re-asks.
+ * and within a tier the most urgent first (ship-by within 24h, earliest
+ * ship-by, oldest order). Orders owned by someone else, held by another
+ * picker's fresh open session, or skipped this run (`skipOrderIds`) are not
+ * fed. The choice and the session insert run under one advisory lock so two
+ * phones asking at once cannot both claim the same order; a race that still
+ * slips through is refused per unit by `confirmPick`'s row lock (409).
  *
  * ## Closing
  *
@@ -46,30 +49,14 @@ import {
   type DirectedPickPlatformId,
   type DirectedPickUnitRow,
 } from './directed-pick';
-
-/** How long another picker's open session holds its order. */
-export const HOLD_MINUTES = 60;
-
-/** Ship-by inside this window paints the line as a rush. */
-const RUSH_HOURS = 24;
-
-interface CandidateRow {
-  order_id: number;
-  order_label: string | null;
-  account_source: string | null;
-  item_number: string | null;
-  open_units: number;
-  deadline_at: string | null;
-  mine: boolean;
-  rush: boolean;
-}
+import { loadPickCandidates, loadStaffNames, orderLabelOf } from './pick-board';
+import { pickEligibleFor, pickFeedTier, toStaffRefs } from './pick-ownership';
 
 interface UnitDbRow {
   allocation_id: number;
   serial_unit_id: number;
   serial_number: string | null;
   sku: string;
-  condition_grade: string | null;
   zoho_item_title: string | null;
   catalog_product_title: string | null;
   zoho_item_id: string | null;
@@ -82,69 +69,12 @@ interface UnitDbRow {
   platforms: DirectedPickPlatformId[] | null;
 }
 
-/**
- * Orders with open units the picker may be fed, best first. `$1` org, `$2`
- * picker. Held orders (another picker, fresh open session) are excluded.
- */
-const CANDIDATES_SQL = `
-  WITH open_units AS (
-    SELECT oua.order_id, COUNT(*)::int AS open_units
-      FROM order_unit_allocations oua
-     WHERE oua.organization_id = $1
-       AND oua.state IN ('ALLOCATED', 'PICKING')
-     GROUP BY oua.order_id
-  )
-  SELECT o.id                     AS order_id,
-         o.order_id               AS order_label,
-         o.account_source,
-         o.item_number,
-         ou.open_units,
-         to_json(dl.deadline_at) #>> '{}' AS deadline_at,
-         EXISTS (
-           SELECT 1 FROM picking_sessions mine
-            WHERE mine.order_id = o.id
-              AND mine.picker_staff_id = $2
-              AND mine.ended_at IS NULL
-         )                        AS mine,
-         COALESCE(dl.deadline_at <= NOW() + INTERVAL '${RUSH_HOURS} hours', false) AS rush
-    FROM open_units ou
-    JOIN orders o ON o.id = ou.order_id AND o.organization_id = $1
-    -- The order's SLA, picked exactly as the orders feed picks it for the
-    -- to-ship card (\`/api/orders\`): the TEST assignment, live status first.
-    LEFT JOIN LATERAL (
-      SELECT wa.deadline_at
-        FROM work_assignments wa
-       WHERE wa.entity_type = 'ORDER'
-         AND wa.entity_id = o.id
-         AND wa.work_type = 'TEST'
-         AND wa.organization_id = o.organization_id
-       ORDER BY CASE wa.status
-                  WHEN 'IN_PROGRESS' THEN 1
-                  WHEN 'ASSIGNED'    THEN 2
-                  WHEN 'OPEN'        THEN 3
-                  WHEN 'DONE'        THEN 4
-                  ELSE 5
-                END,
-                wa.updated_at DESC,
-                wa.id DESC
-       LIMIT 1
-    ) dl ON TRUE
-   WHERE NOT EXISTS (
-           SELECT 1 FROM picking_sessions held
-            WHERE held.order_id = o.id
-              AND held.picker_staff_id <> $2
-              AND held.ended_at IS NULL
-              AND held.started_at > NOW() - INTERVAL '${HOLD_MINUTES} minutes'
-         )
-   ORDER BY mine DESC, rush DESC, dl.deadline_at ASC NULLS LAST, o.id ASC`;
-
 /** The chosen order's open units in walk order. `$1` org, `$2` order. */
 const UNITS_SQL = `
   SELECT oua.id                   AS allocation_id,
          su.id                    AS serial_unit_id,
          su.serial_number,
          su.sku,
-         su.condition_grade::text AS condition_grade,
          zi.name                  AS zoho_item_title,
          sc.product_title         AS catalog_product_title,
          zi.zoho_item_id,
@@ -208,7 +138,6 @@ function toUnitRow(row: UnitDbRow): DirectedPickUnitRow {
       zohoImageDocumentId: row.zoho_image_document_id,
       catalogImageUrl: row.catalog_image_url,
     }),
-    conditionGrade: row.condition_grade,
     locationName: row.location_name,
     locationBarcode: row.location_barcode,
     locationRoom: row.location_room,
@@ -247,8 +176,11 @@ export async function nextDirectedPick(input: {
   staffId: number;
   runStartedAt: string | null;
   deviceId: string | null;
+  /** Orders the picker skipped this run — never fed back to them. */
+  skipOrderIds?: readonly number[];
 }): Promise<DirectedPickNext> {
   const { orgId, staffId } = input;
+  const skipped = new Set(input.skipOrderIds ?? []);
   const stagedTotes = await closeFinishedSessions(orgId, staffId);
 
   return withTenantTransaction(orgId, async (client) => {
@@ -256,8 +188,14 @@ export async function nextDirectedPick(input: {
     // insert below must not interleave with another phone's.
     await client.query(`SELECT pg_advisory_xact_lock(hashtext('picking.next:' || $1::text))`, [orgId]);
 
-    const candidates = await client.query<CandidateRow>(CANDIDATES_SQL, [orgId, staffId]);
-    const openTotal = candidates.rows.reduce((sum, row) => sum + Number(row.open_units), 0);
+    const candidates = await loadPickCandidates(client, orgId, staffId);
+    const unassignedCount = candidates.filter((c) => c.ownership.owner == null && c.heldByStaffId == null).length;
+    const eligible = candidates
+      .filter((c) => !skipped.has(c.orderId) && pickEligibleFor(staffId, { ...c, heldByOther: c.heldByStaffId != null }))
+      .map((c, index) => ({ c, index, tier: pickFeedTier(staffId, c) }))
+      .sort((a, b) => a.tier - b.tier || a.index - b.index)
+      .map(({ c }) => c);
+    const openTotal = eligible.reduce((sum, c) => sum + c.openUnits, 0);
 
     const doneQ = input.runStartedAt
       ? await client.query<{ done: number }>(
@@ -273,42 +211,48 @@ export async function nextDirectedPick(input: {
     const done = doneQ?.rows[0]?.done ?? 0;
     const progress = { done, total: done + openTotal };
 
-    const pick = candidates.rows[0];
-    if (!pick) return { sessionId: null, order: null, line: null, progress, stagedTotes };
+    const pick = eligible[0];
+    if (!pick) return { sessionId: null, order: null, line: null, progress, stagedTotes, unassignedCount };
 
     const session = await openPickingSessionOn(
       client,
-      { orderId: pick.order_id, pickerStaffId: staffId, deviceId: input.deviceId },
+      { orderId: pick.orderId, pickerStaffId: staffId, deviceId: input.deviceId },
       orgId,
     );
     if (!session.ok) throw new Error(session.error);
 
-    const units = await client.query<UnitDbRow>(UNITS_SQL, [orgId, pick.order_id]);
-    const lines = groupDirectedPickLines(pick.order_id, units.rows.map(toUnitRow));
+    const units = await client.query<UnitDbRow>(UNITS_SQL, [orgId, pick.orderId]);
+    const lines = groupDirectedPickLines(pick.orderId, units.rows.map(toUnitRow));
 
     const tote = await client.query<{ code: string }>(
       `SELECT code FROM handling_units
         WHERE organization_id = $1 AND paired_order_id = $2 AND status = 'OPEN'
         ORDER BY paired_at DESC NULLS LAST, id DESC
         LIMIT 1`,
-      [orgId, pick.order_id],
+      [orgId, pick.orderId],
     );
+
+    const owner = pick.ownership.owner;
+    const names = await loadStaffNames(client, orgId, [...(owner ? [owner.staffId] : []), ...pick.ownership.backups]);
 
     return {
       sessionId: session.sessionId,
       order: {
-        orderId: pick.order_id,
-        orderLabel: pick.order_label ? `#${pick.order_label}` : `#${pick.order_id}`,
-        accountSource: pick.account_source?.trim() || null,
-        itemNumber: pick.item_number?.trim() || null,
-        deadlineAt: pick.deadline_at,
+        orderId: pick.orderId,
+        orderLabel: orderLabelOf(pick),
+        accountSource: pick.accountSource,
+        itemNumber: pick.itemNumber,
+        deadlineAt: pick.deadlineAt,
         rush: pick.rush,
-        unitsRemaining: Number(pick.open_units),
+        unitsRemaining: pick.openUnits,
         toteCode: tote.rows[0]?.code ?? null,
+        owner: owner ? { staffId: owner.staffId, name: names.get(owner.staffId) ?? null, via: owner.via } : null,
+        backups: toStaffRefs(pick.ownership.backups, names),
       },
       line: lines[0] ?? null,
       progress,
       stagedTotes,
+      unassignedCount,
     };
   });
 }

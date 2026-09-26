@@ -3400,7 +3400,7 @@ export const serialUnits = pgTable('serial_units', {
   shippingTrackingNumber: text('shipping_tracking_number'),
   shipmentId: bigint('shipment_id', { mode: 'number' }),
   legacyNotes: text('legacy_notes'),
-  legacyDateTime: timestamp('legacy_date_time'),
+  legacyDateTime: timestamp('legacy_date_time', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   /** Handling-unit (H-#### testing tote) this unit currently sits in, if any. */

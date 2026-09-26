@@ -1,7 +1,7 @@
-> **Status 2026-09-25:** Phase 1 built (uncommitted). The global-header `+` is
-> now shipping-label intake, not customer support: order-number lookup →
-> To-ship ledger → return + replacement purchases. An order miss can enter the
-> existing caged intake as a manual exception. Support Phase 2 remains deferred.
+> **Status 2026-09-25:** Phase 1 built (uncommitted). The global-header `+`
+> opens the **label intake desk**: order number (paired order or reference-only
+> number) → return / replacement label, one triage surface. Support Phase 2
+> remains deferred.
 > Continue from [`support-call-desk-HANDOFF.md`](./support-call-desk-HANDOFF.md).
 
 # Support call desk — plan (global Add · label on a call · live Nextiva)
@@ -72,25 +72,27 @@ price, labels, tracking, notes, platform) without leaving the page.
 
 ## Phase 3 — Global label intake, in triage (BUILT 2026-09-25)
 
-- The visible global-header `+` opens `/search?entry=label` with a focused
-  order-number field. It does **not** open customer support.
-- A match uses the Phase-1 `SearchOrderLedger`, so the order appears through the
-  existing To-ship `OutboundOrdersLedger` DataTable and evidence rail.
-- An absolute miss offers **Add order exception**, mounting the existing
-  `OrderIntakeOverlay` with the searched order number prefilled. Its canonical
-  G1–G3 flow still controls release into To-ship.
-- The selected order's evidence includes **Problem order · Return +
-  replacement**. Two locked `BuyLabelSection` instances purchase
-  `purpose: 'return'` then `purpose: 'replacement'`; the existing purchase
-  route, idempotency contract and ShipStation rate shop remain the waist.
-- One editable package weight feeds both labels when the order/ShipStation
-  parcel has no weight. Existing purchased return/replacement purposes complete
-  their step instead of offering an accidental duplicate.
-- Both purchases invalidate the order-label summary and appear in the existing
-  Labels disclosure through `OrderLabelEntries`, including purpose, tracking,
-  cost, actor, time, print and ticket actions.
+- The global-header `+` opens `/search?entry=label`, which mounts
+  `LabelIntakeDesk` (`src/components/outbound/label-intake/`) — a purpose-built
+  triage ledger, not the search browse / To-ship DataTable and not
+  `BuyLabelSection`. Rows: Order # (fixed-width, pairs as you type) · Item ·
+  Label (RPL / RTN) · Ship to/from · Parcel · Rate ledger · Buy (buy → confirm →
+  bought → print → offer the other label). Evidence column: every label under
+  the number, print per row, **Pair** verb.
+- **Paired** (number is an order): the order's address and parcel prefill;
+  rates/buys go through `/api/shipping/order-rates` +
+  `/api/shipping/order-labels/purchase` (tracking, documents, notes,
+  buyer-note interlock, replacement tracking email).
+- **Reference only** (number not in the system): address typed inline;
+  `/api/shipping/label-intake/{rates,purchase}` rate and buy from it and record
+  the row in `shipping_label_purchases` with `order_id` NULL, `order_ref`,
+  `ship_to` (migration `2026-09-25f`, applied). When the order later exists,
+  `/api/shipping/label-intake/pair` attaches those rows (replacement joins
+  tracking, notes trail written).
+- Retired: the exception-intake overlay door and the evidence-rail
+  "Problem order" section from the first cut.
 - Future generic Add verbs may still use `global-add/catalog.ts` and a
-  `DeskStageOverlay`, but that menu is not part of this v1 label workflow.
+  `DeskStageOverlay`; not part of this label workflow.
 
 ## Phase 4 — Label suggestion rule
 

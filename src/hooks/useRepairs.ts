@@ -24,6 +24,11 @@ export function useRepairsTable(
     queryKey,
     queryFn: async () => {
       const params = new URLSearchParams({ tab });
+      // The API's default page is 50 rows and this table has no server paging,
+      // so the desk silently stopped at the 50th repair while the kiosk History
+      // face (keyset-paged) reached every one. Ask for the route's ceiling —
+      // the whole book is a few hundred rows; the grid pages it client-side.
+      params.set('limit', '500');
       if (search) params.set('q', search);
       if (needsLabel) params.set('needsLabel', '1');
       const res = await fetch(`/api/repair-service?${params.toString()}`);

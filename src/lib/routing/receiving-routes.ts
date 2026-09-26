@@ -169,6 +169,12 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * Shared with Testing (`SHARED_OWNED_KEYS.composerMode`).
      */
     composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+    /**
+     * History / Inbound tab record plane — the open row's `receiving_line` id
+     * (negative for a lineless unfound carton). `DeskRecordPlane` shows it in
+     * place of the list, or beside it when the staffer chose fullscreen.
+     */
+    openLine: paramText,
   },
   carries: SCAN_SURFACE_CARRIES,
 });
@@ -232,6 +238,12 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     /** Docked (history) search field / carton-source scope. */
     [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
     [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
+    /**
+     * Record plane — the open row's `receiving_line` id on either lane.
+     * `DeskRecordPlane` shows it in place of the list, or beside it when the
+     * staffer chose fullscreen; a reload restores it.
+     */
+    openLine: paramText,
   },
   carries: BROWSE_SURFACE_CARRIES,
 });

@@ -8,13 +8,12 @@
  * create verb merged with it: one CTA, one stage, and a type switch that says
  * which of the two stores the row will land in.
  *
- * ## The grammar is the order-exceptions editor
+ * ## The grammar: queue rail left, grouped sections right
  *
  * Host `CONTEXT_PANEL_HOST_CLASS`, the agenda queue as a resizable
  * context-panel rail on the left, grouped {@link TriageScrollLayout} sections
- * on the right — the same shape `ExceptionEditor` uses, and the shape the
- * operator asked for by name. The table is unmounted while this is open: one
- * surface answers one question at a time.
+ * on the right — the editor shape the operator asked for by name. The table
+ * is unmounted while this is open: one surface answers one question at a time.
  *
  * ## Two stores, one form
  *
@@ -62,9 +61,9 @@ import { DailyComposerRow } from './DailyComposerRow';
  * two stores would have been the fourth task system this page exists to refuse.
  */
 const TYPE_TABS: Array<{ id: DailyAgendaType; label: string }> = [
-  { id: 'checklist', label: DAILY_AGENDA_TYPE_LABEL.checklist },
   { id: 'task', label: DAILY_AGENDA_TYPE_LABEL.task },
   { id: 'ticket', label: DAILY_AGENDA_TYPE_LABEL.ticket },
+  { id: 'checklist', label: DAILY_AGENDA_TYPE_LABEL.checklist },
 ];
 
 /**
@@ -100,7 +99,7 @@ export function DailyAgendaComposer({
   /** Leave the composer: the ✕ and Escape both land here. */
   onExit: () => void;
   /** A row landed — the agenda refetches, leaves the composer and opens the new task. */
-  onCreated: (taskId: number | null) => void;
+  onCreated: (taskId: number | null, mine: boolean) => void;
   /**
    * The checklist LIST is org-managed, so adding to it is gated on
    * `admin.manage_staff`. Without it the type switch offers Task only — an
@@ -113,7 +112,8 @@ export function DailyAgendaComposer({
   checklistPending: boolean;
   checklistError: string | null;
 }) {
-  const [type, setType] = useState<DailyAgendaType>(canAddChecklist ? 'checklist' : 'task');
+  // Task is what an operator reaches for; the org checklist is the rarer edit.
+  const [type, setType] = useState<DailyAgendaType>('task');
 
   /**
    * Task and Ticket are the WORK faces — one store, one form, one CTA. Only

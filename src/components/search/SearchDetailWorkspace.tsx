@@ -35,15 +35,10 @@ export function SearchDetailWorkspace({
   sel,
   hasQuery,
   onExit,
-  emptyTitle,
-  emptyDescription,
 }: {
   sel: SearchSelection | null;
   hasQuery: boolean;
   onExit: () => void;
-  /** Named entry workflow; generic `/search` remains an intentionally blank plane. */
-  emptyTitle?: string;
-  emptyDescription?: string;
 }) {
   const { presence, transition } = useMotionRole(motionRole.swap.focus);
   const primaryPaint = useSearchPrimaryPaintOptional();
@@ -61,14 +56,6 @@ export function SearchDetailWorkspace({
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="Select a result"
           description="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
-        />
-      </PaneCentre>
-    ) : emptyTitle ? (
-      <PaneCentre>
-        <EmptyState
-          icon={<Search className="h-6 w-6 text-text-faint" />}
-          title={emptyTitle}
-          description={emptyDescription}
         />
       </PaneCentre>
     ) : (

@@ -30,12 +30,12 @@ export const UNFOUND_TABLE_BINDING: TableSurfaceBinding<QueueRow, UnfoundGridCol
   definition: UNFOUND_TABLE_DEFINITION,
   columns: UNFOUND_SHEET_COLUMNS,
   makeDescriptor: makeUnfoundGridDescriptor,
-  // Triage happens IN the cell (`LedgerCellEditor` PATCHes ticket + note), and
-  // the row's open gesture goes to the SOURCE the line came from. There is no
-  // unfound-line record to peek at — the row is the absence of one.
+  // No desk mounts this table since the PO Mailbox door was retired
+  // (2026-09-25): its only host and its right-rail detail panel are gone. The
+  // family stays registered for its slot layout and field catalog.
   recordPlane: {
-    kind: 'navigate',
+    kind: 'none',
     reason:
-      'Triage is in-cell; the open gesture goes to the source record the line failed to match.',
+      'Unmounted — the PO Mailbox door that hosted the unfound queue was retired; no row opens anything.',
   },
 };

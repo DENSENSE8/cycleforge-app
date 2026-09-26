@@ -18,8 +18,8 @@
  * face Device & quote and the contact step wear — and every write goes through
  * the rule its line type already has elsewhere:
  *
- * - **Repair**: Serial number, Price and Notes, exactly as on its Device &
- *   quote card. The quote is typed, not "adjusted": it is the repair's price,
+ * - **Repair**: Serial numbers (every serial on the unit), Price and Notes,
+ *   exactly as on its Device & quote card. The quote is typed, not "adjusted": it is the repair's price,
  *   written by {@link repairQuotePatch}, the one quote rule both surfaces use.
  *   No PIN — a repair has no catalog price to deviate from.
  * - **Custom amount** (the Keypad's line): Change amount on the same keypad
@@ -42,6 +42,7 @@ import { Receipt, Trash2 } from '@/components/Icons';
 import { KioskChip } from '@/components/kiosk/KioskChip';
 import { KioskAmountKeypad } from '@/components/kiosk/KioskAmountKeypad';
 import { KioskEntryField } from '@/components/kiosk/KioskEntryField';
+import { KioskSerialListField } from '@/components/kiosk/KioskSerialListField';
 import {
   KioskPriceApprovalSheet,
   type KioskPriceApproval,
@@ -242,7 +243,7 @@ export function KioskCartLineEditor({
       {repair && !linked ? (
         // The Device & quote card's fields, in its order, with its writes.
         <>
-          <KioskEntryField
+          <KioskSerialListField
             name="Serial number"
             idScope={line.id}
             value={repair.serialNumber}

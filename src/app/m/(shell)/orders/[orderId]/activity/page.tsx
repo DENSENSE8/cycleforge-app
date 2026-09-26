@@ -21,9 +21,9 @@ function OrderActivityInner() {
       }}
     >
       {(d) => (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+        <div className="flex-1 divide-y divide-mode-rule">
           {d.activity.length > 0 ? (
-            <ol aria-label={`Activity on ${d.order.order_id}`} className="overflow-hidden rounded-mode border border-mode-edge bg-mode-panel">
+            <ol aria-label={`Activity on ${d.order.order_id}`} className="bg-mode-panel">
               {d.activity.map((event, index) => (
                 <li key={`${event.event_at}-${index}`} className="border-b border-mode-rule px-mode-page py-3 last:border-b-0">
                   <p className="text-mode-body font-semibold text-mode-ink">{activityTitle(event)}</p>
@@ -34,7 +34,7 @@ function OrderActivityInner() {
               ))}
             </ol>
           ) : (
-            <p className="py-10 text-center text-sm font-semibold text-text-soft">Nothing recorded on this order yet.</p>
+            <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Nothing recorded on this order yet.</p>
           )}
         </div>
       )}

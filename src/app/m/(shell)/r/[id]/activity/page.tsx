@@ -28,9 +28,9 @@ function CartonActivityInner() {
       }}
     >
       {(d) => (
-        <div className="flex-1 space-y-4 px-mode-page py-mode-page">
+        <div className="flex-1 divide-y divide-mode-rule">
           {d.events.length > 0 ? (
-            <ol aria-label={`Activity on R-${id}`} className="overflow-hidden rounded-mode border border-mode-edge bg-mode-panel">
+            <ol aria-label={`Activity on R-${id}`} className="bg-mode-panel">
               {d.events.map((event) => (
                 <li key={event.id} className="border-b border-mode-rule px-mode-page py-3 last:border-b-0">
                   <p className="text-mode-body font-semibold text-mode-ink">{eventTitle(event)}</p>
@@ -44,7 +44,7 @@ function CartonActivityInner() {
               ))}
             </ol>
           ) : (
-            <p className="py-10 text-center text-sm font-semibold text-text-soft">Nothing recorded on this carton yet.</p>
+            <p className="px-mode-page py-10 text-center text-sm font-semibold text-text-soft">Nothing recorded on this carton yet.</p>
           )}
         </div>
       )}

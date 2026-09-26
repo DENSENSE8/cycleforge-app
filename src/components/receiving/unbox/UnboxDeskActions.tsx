@@ -3,7 +3,7 @@
 /**
  * Unbox page-header CTAs — **Unbox** (resume last carton), **Check**
  * (unreceived-orders rail), and on the Inbound tab **Add purchase order**
- * (inline intake band under the Incoming embed).
+ * (the same receiving-order composer the Inbound desk's Add opens).
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -19,7 +19,7 @@ import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { openPoIntake } from '@/lib/inbound/po-intake-store';
+import { openReceivingOrderComposer } from '@/lib/inbound/receiving-order-composer-store';
 
 export function UnboxDeskActions() {
   const searchParams = useSearchParams();
@@ -36,7 +36,7 @@ export function UnboxDeskActions() {
 
   const handleAddPo = useCallback(() => {
     setUnboxView('incoming', { clearLine: false });
-    openPoIntake({ reset: true });
+    openReceivingOrderComposer('purchase');
   }, [setUnboxView]);
 
   const handleUnbox = useCallback(() => {

@@ -58,17 +58,22 @@ export function isShippedDeskRow(row: {
  * Collapse duplicate scans of the SAME package, while keeping a multi-package
  * order as one row PER package (they ship at different times). Shared by the
  * table and the scan-out sidebar so both count/show the same set.
+ *
+ * The package is `package_shipment_id` (the scanned box). The order's own
+ * `shipment_id` is its PRIMARY box only, so keying on it folded every box of a
+ * multi-box order into one row. Rows without a package fall back to the order
+ * number, then the scanned reference. The newest scan (highest id) wins.
  */
 export function dedupeShippedRecords(records: PackerRecord[]): PackerRecord[] {
   const seen = new Map<string, PackerRecord>();
   [...records].sort((a, b) => a.id - b.id).forEach((record) => {
     const orderKey = String(record.order_id || '').trim();
-    const shipKey = record.shipment_id != null ? String(record.shipment_id) : '';
-    const key = orderKey
-      ? shipKey
-        ? `${orderKey}::${shipKey}`
+    const key =
+      record.package_shipment_id != null
+        ? `package:${record.package_shipment_id}`
         : orderKey
-      : (record.shipping_tracking_number || record.scan_ref || String(record.id)).trim();
+          ? `order:${orderKey}`
+          : `scan:${(record.shipping_tracking_number || record.scan_ref || String(record.id)).trim()}`;
     seen.set(key, record);
   });
   return Array.from(seen.values());

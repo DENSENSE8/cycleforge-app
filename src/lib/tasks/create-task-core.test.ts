@@ -113,14 +113,6 @@ test('a THROWN promotion still lands the task', async () => {
   assert.equal(inserts.length, 1);
 });
 
-test('throwing at yourself is refused before anything is written', async () => {
-  const { deps, inserts } = fakes();
-  const result = await createTaskCore({ ...base, assigneeStaffId: ACTOR }, deps);
-
-  assert.deepEqual(result, { ok: false, reason: 'self_throw' });
-  assert.equal(inserts.length, 0);
-});
-
 test('an unsupported record kind is refused before anything is written', async () => {
   for (const entityType of ['receiving_line', 'serial_unit', 'repair', null, undefined, 3]) {
     const { deps, inserts } = fakes();
@@ -295,7 +287,7 @@ test('invalid or repeated members write nothing', async () => {
   }
 });
 
-test('the creator may join a team but is never notified of their own throw', async () => {
+test('the creator may own a task alone or join a team, and is never notified of their own create', async () => {
   const { deps, inserts, notifications } = fakes();
   const result = await createTaskCore({ ...base, assigneeStaffIds: [ACTOR, 9] }, deps);
   assert.equal(result.ok, true);
@@ -303,9 +295,33 @@ test('the creator may join a team but is never notified of their own throw', asy
   assert.deepEqual(notifications.map(({ recipientStaffId }) => recipientStaffId), [9]);
 
   const alone = fakes();
-  assert.deepEqual(await createTaskCore({ ...base, assigneeStaffIds: [ACTOR] }, alone.deps),
-    { ok: false, reason: 'self_throw' });
-  assert.equal(alone.inserts.length, 0);
+  const personal = await createTaskCore({ ...base, assigneeStaffIds: [ACTOR] }, alone.deps);
+  assert.equal(personal.ok, true);
+  assert.equal(alone.inserts.length, 1);
+  assert.equal(alone.notifications.length, 0);
+});
+
+test('a standalone task needs words, and never touches a record', async () => {
+  const standalone = { assigneeStaffIds: [9], actorStaffId: ACTOR };
+  const blank = fakes();
+  assert.deepEqual(await createTaskCore(standalone, blank.deps), { ok: false, reason: 'missing_title' });
+  assert.equal(blank.inserts.length, 0);
+
+  const { deps, inserts, promotions, notifications } = fakes();
+  const result = await createTaskCore({ ...standalone, note: 'Call the carrier', urgency: 'urgent' }, deps);
+  assert.equal(result.ok && result.urgency, 'no_record');
+  assert.equal(inserts[0].entityType, null);
+  assert.equal(inserts[0].entityId, null);
+  assert.equal(inserts[0].priority, 10, 'urgency still lands on the task itself');
+  assert.equal(promotions.length, 0);
+  assert.equal(notifications.length, 1);
+});
+
+test('half a record anchor is refused, not treated as standalone', async () => {
+  const { deps, inserts } = fakes();
+  const result = await createTaskCore({ entityType: 'order', assigneeStaffIds: [9], note: 'x', actorStaffId: ACTOR }, deps);
+  assert.deepEqual(result, { ok: false, reason: 'invalid_entity_id' });
+  assert.equal(inserts.length, 0);
 });
 
 test('one failed recipient does not prevent notification of subsequent members', async () => {

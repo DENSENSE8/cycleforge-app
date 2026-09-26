@@ -17,10 +17,16 @@
  * the retired cell carried it in both the glyph and the colour, and tone is
  * never the fact. `Number('+12')` is `12`, so the numeric comparator still
  * orders the column as arithmetic.
+ *
+ * `reason` resolves through `takeReasonLedgerLabel`: a phone take's stable code
+ * (`TAKE_FBA`) reads as the words the operator chose (`Taken · FBA`), and every
+ * other code passes through verbatim. `notes` is its own fact — the operator's
+ * text for a custom take — so the reason track never grows a sentence.
  */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { SkuLedgerTableRow } from '@/lib/inventory/sku-ledger-row';
+import { takeReasonLedgerLabel } from '@/lib/inventory/take-reason';
 
 function str(value: string | number | null | undefined): string | null {
   const s = String(value ?? '').trim();
@@ -35,6 +41,15 @@ export function skuLedgerDeltaText(delta: number): string {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
+/**
+ * The reason as the operator reads it. Exported because the adapter's title and
+ * the bound track (and the item header's sort) must never disagree about it.
+ */
+export function skuLedgerReasonText(reason: string | null | undefined): string | null {
+  const code = str(reason);
+  return code ? takeReasonLedgerLabel(code) : null;
+}
+
 export function resolveSkuLedgerSlotValue(
   row: SkuLedgerTableRow,
   fieldId: string,
@@ -43,7 +58,9 @@ export function resolveSkuLedgerSlotValue(
     case 'sku-ledger.ref_order':
       return { kind: 'value', text: str(row.ref_order_id) };
     case 'sku-ledger.reason':
-      return { kind: 'value', text: str(row.reason) };
+      return { kind: 'value', text: skuLedgerReasonText(row.reason) };
+    case 'sku-ledger.notes':
+      return { kind: 'value', text: str(row.notes) };
     case 'sku-ledger.delta':
       return { kind: 'value', text: skuLedgerDeltaText(row.delta) };
     case 'sku-ledger.dimension':

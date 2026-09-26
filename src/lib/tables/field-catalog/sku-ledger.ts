@@ -36,16 +36,21 @@
  * person face draws the absence and no sentinel is invented (the same shape as
  * `audit-log.actor`).
  *
+ * ## `notes` — the ninth fact
+ *
+ * The retired table had no notes column, so `notes` stayed off the wire until
+ * something painted it. The phone take flow now writes the operator's own
+ * words there (`TAKE_CUSTOM`, `src/lib/inventory/take-reason.ts`), and the item
+ * cell's NOTE line paints it under the reason — chrome, like the title — so it
+ * is a catalog fact (searchable, sortable, bindable) that ships unbound.
+ *
  * ## Not here, and deliberately
  *
- * `notes` is selected by the desk's query and painted by NOTHING — the retired
- * table had no notes column and no row expansion. A fact nothing paints is not
- * a catalog entry: it does not cross the RSC boundary
- * (`SkuLedgerTableRow` omits it) and `sku-ledger.test.ts` fails the day the
- * name appears in a `paths` here without a cell behind it. The same goes for
- * the refs this desk never selected (`ref_packer_log_id`, `ref_tech_log_id`,
- * `ref_sal_id`, `ref_shipment_id`) and for `reason_code_id`, the typed twin of
- * the free-text `reason`.
+ * The refs this desk never selected (`ref_packer_log_id`, `ref_tech_log_id`,
+ * `ref_sal_id`, `ref_shipment_id`) and `reason_code_id`, the typed twin of the
+ * free-text `reason`, are painted by NOTHING. A fact nothing paints is not a
+ * catalog entry, and `sku-ledger.test.ts` fails the day one of those names
+ * appears in a `paths` here without a cell behind it.
  *
  * Resolution is `./sku-ledger-resolve.ts`, kept separate so this module stays a
  * LEAF.
@@ -69,7 +74,10 @@ export const SKU_LEDGER_FIELD_CATALOG: FieldCatalog = [
     slotKinds: ['identity', 'status', 'subtitle'],
     paths: { value: 'ref_order_id' },
   },
-  /** WHY the stock moved, in whatever code the writing path recorded. */
+  /**
+   * WHY the stock moved, in whatever code the writing path recorded — painted
+   * through `takeReasonLedgerLabel`, so a phone take reads `Taken · FBA`.
+   */
   {
     id: 'sku-ledger.reason',
     family: 'sku-ledger',
@@ -77,6 +85,18 @@ export const SKU_LEDGER_FIELD_CATALOG: FieldCatalog = [
     displayType: 'text',
     slotKinds: ['status', 'subtitle'],
     paths: { value: 'reason' },
+  },
+  /**
+   * What somebody wrote about this movement — the operator's text for a custom
+   * take. Painted by the item cell's note line, so it ships unbound.
+   */
+  {
+    id: 'sku-ledger.notes',
+    family: 'sku-ledger',
+    label: 'Notes',
+    displayType: 'note',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'notes' },
   },
   /**
    * HOW MUCH, signed. The sign is part of the resolved TEXT, never a colour:
@@ -153,20 +173,21 @@ export const SKU_LEDGER_FIELD_CATALOG: FieldCatalog = [
  * The skeleton mounts WHOLE (no geometry cut — `COMPOUND_SKELETON_FILTER_DEBT`
  * is documented shrink-only), so `select · fulfillment · thumb · item · dates ·
  * state · status:N · _fill` leaves FOUR status slots under
- * `MAX_DEFAULT_VISIBLE_TRACKS`. This desk spends three, because four of its
- * eight facts are painted by chrome the skeleton already mounts:
+ * `MAX_DEFAULT_VISIBLE_TRACKS`. This desk spends three, because five of its
+ * nine facts are painted by chrome the skeleton already mounts:
  *
  * - `when` — the DATES chrome. Hash line = the civil day, Calendar line = the
  *   clock face with seconds, which is the precision the retired
  *   `toLocaleString()` cell had and a ledger cannot lose: two movements a
  *   heartbeat apart are a different story from two an hour apart.
  * - `reason` — the item cell's TITLE. A track repeating the title is noise.
+ * - `notes` — the item cell's NOTE line, under the reason.
  * - `dimension` — the state pill (adapter chrome).
  * - `ref_order` — the identity chip (`identityFieldId`).
  *
- * All four stay catalog FACTS, so their headers sort and the search box matches
+ * All five stay catalog FACTS, so their headers sort and the search box matches
  * them, and the fourth status slot is free for `ref_receiving_line` (or for any
- * of those four as an explicit column).
+ * of those five as an explicit column).
  *
  * `amountFieldId: null` — a quantity movement is not money, and the compound
  * skeleton paints no amount track at all (`COMPOUND_COLUMN_KEYS`). `delta`

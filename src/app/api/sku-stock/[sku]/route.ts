@@ -130,7 +130,7 @@ export async function GET(
         // 5. Stock ledger (audit trail)
         tenantQuery(
           orgId,
-          `SELECT id, sku, delta, reason, staff_id, created_at
+          `SELECT id, sku, delta, reason, notes, staff_id, created_at
            FROM sku_stock_ledger
            WHERE sku = $1 AND organization_id = $2
            ORDER BY created_at DESC

@@ -2,8 +2,8 @@
  * Unbox right-edge secondary surfaces — one at a time.
  *
  * After Displays unify: **Displays** (local React state via
- * `useUnboxDisplayView`) ∪ `detail:receiving` ∪ AI ∪ desk Add inbound
- * (`detail:incoming-desk-tools`). Root Index → leaf drill-down; Ticket nests
+ * `useUnboxDisplayView`) ∪ AI ∪ desk tools (`detail:incoming-desk-tools`).
+ * Root Index → leaf drill-down; Ticket nests
  * Chat · Claim; photo tools nest under Photos — not peer push columns.
  *
  * Stale URL keys (`display`, nest actions, legacy `ticketView` / `claimView`)
@@ -21,7 +21,6 @@
 import {
   dispatchAssistantDockClose,
   dispatchStationDeskOccupantClose,
-  dispatchReceivingDetailsOverlayClose,
   dispatchStationDisplaysClose,
 } from '@/utils/events';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
@@ -84,14 +83,6 @@ export function stripStaleUnboxRightEdgeParamsFromUrl(): void {
 }
 
 /**
- * Suspend receiving More details (legacy helper name kept for call sites that
- * previously also cleared Claim/Ticket peer flags — those are now Displays).
- */
-export function clearUnboxPeerRightEdgeSurfaces(): void {
-  dispatchReceivingDetailsOverlayClose();
-}
-
-/**
  * AI dock just opened (false→true) — yield every Unbox station right-edge surface.
  *
  * Unbox twin of {@link useYieldStationDisplaysOnAssistantOpen}: closes Displays
@@ -113,9 +104,9 @@ export function yieldUnboxStationPushesOnAssistantOpen(opts: {
 
 /**
  * Claim the right edge for a DESK occupant of `RightRailHost` mounted on a
- * station page — Add inbound, Check receipts, and any future Band-1 tool. One
- * wrapper with Displays / details / AI: strips stale Unbox Displays URL keys,
- * closes Arrival's React-state Displays, receiving details, and the assistant.
+ * station page — Check receipts and any future Band-1 tool. One wrapper with
+ * Displays / AI: strips stale Unbox Displays URL keys, closes Arrival's
+ * React-state Displays and the assistant.
  *
  * Every occupant MUST call this as it opens, and MUST close itself on
  * {@link STATION_DESK_OCCUPANT_CLOSE_EVENT} — the two halves of the exclusion.
@@ -136,7 +127,6 @@ export function yieldStationRightEdgeForDeskOccupant(replaceUrl?: (qs: string) =
       window.history.replaceState(window.history.state, '', after ? `${path}?${after}` : path);
     }
   }
-  dispatchReceivingDetailsOverlayClose();
   dispatchAssistantDockClose();
   dispatchStationDisplaysClose();
 }

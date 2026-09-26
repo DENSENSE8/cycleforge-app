@@ -47,7 +47,7 @@ const ORDER_SELECT = `
   ) AS customer_name,
   stn.tracking_number_raw AS tracking_number,
   CASE WHEN stn.is_delivered THEN stn.latest_event_at::text END AS delivered_at,
-  pl.packed_at::text AS packed_scanned_at
+  to_char(pl.packed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS packed_scanned_at
 `;
 
 const ORDER_FROM = `

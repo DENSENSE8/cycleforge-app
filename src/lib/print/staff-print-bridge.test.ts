@@ -111,6 +111,30 @@ describe('parseStaffPrintJob', () => {
       7,
     );
   });
+
+  it('an FNSKU job is always a label job carrying one catalog key', () => {
+    const base = { request_id: 'req-6', targetStationId: BENCH, grain: 'fnsku' };
+    const job = parseStaffPrintJob({ ...base, role: 'paper', fnsku: { fnsku: ' x002lxygwn ' } });
+    assert.equal(job?.role, 'label');
+    assert.deepEqual(job?.fnsku, { fnsku: 'X002LXYGWN', copies: 1 });
+    assert.equal(parseStaffPrintJob({ ...base, fnsku: { fnsku: '' } }), null);
+    assert.equal(parseStaffPrintJob({ ...base, fnsku: { fnsku: 'X00/../../x' } }), null);
+    assert.equal(parseStaffPrintJob(base), null);
+  });
+
+  it('an FNSKU job carries 1..99 stickers — clamped, never refused', () => {
+    const base = { request_id: 'req-7', targetStationId: BENCH, grain: 'fnsku' };
+    const copiesOf = (copies: unknown) => parseStaffPrintJob({ ...base, fnsku: { fnsku: 'X004O69DL9', copies } })?.fnsku?.copies;
+    assert.equal(copiesOf(3), 3);
+    assert.equal(copiesOf('12'), 12);
+    assert.equal(copiesOf(99), 99);
+    assert.equal(copiesOf(100), 99);
+    assert.equal(copiesOf(5000), 99);
+    assert.equal(copiesOf(0), 1);
+    assert.equal(copiesOf(-4), 1);
+    assert.equal(copiesOf(undefined), 1);
+    assert.equal(copiesOf('lots'), 1);
+  });
 });
 
 describe('parseStaffPrintStatus', () => {

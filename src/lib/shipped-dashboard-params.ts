@@ -32,7 +32,7 @@ function parseStaffParam(raw: string | null): number | undefined {
 /**
  * Single source of truth for how the Shipped dashboard turns URL state into the
  * `dashboardShippedQuery` arguments + the client-side filter values. Both the
- * main table (`DashboardShippedTable`) and the sidebar scan-out panel resolve
+ * Shipped ledger's feed (`useShippedTableFilters`) and the sidebar scan-out panel resolve
  * params through here so they build an IDENTICAL React Query key and share one
  * fetch (per the dedupe rule in lib/queries/dashboard-queries.ts).
  */

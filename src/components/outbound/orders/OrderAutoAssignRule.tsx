@@ -66,17 +66,12 @@ function saveOutcome(body: SaveResponse): { text: string; failed: boolean } {
   return { text: parts.join(' · '), failed: failed.length > 0 };
 }
 
-export function OrderAutoAssignRule({
-  record,
-  records,
-  getStaffName,
-}: {
-  record: ShippedOrder;
-  /** The painted queue — every order sharing this pair is assigned on save. */
-  records: readonly ShippedOrder[];
-  getStaffName: (id: number) => string;
-}) {
-  const queryClient = useQueryClient();
+/**
+ * The rule that keys this order — the exact item # + SKU pair first, then the
+ * item-#-only rule. One query for the record's read-only rule line and this
+ * editor, so the two can never disagree.
+ */
+export function useOrderListingRule(record: ShippedOrder) {
   const orderId = Number(record.id);
   const itemNumber = normalizeItemNumber(record.item_number);
   const sku = normalizeSku(record.sku);
@@ -99,6 +94,22 @@ export function OrderAutoAssignRule({
     enabled: Number.isFinite(orderId) && orderId > 0 && itemNumber.length > 0,
     staleTime: 30_000,
   });
+
+  return { orderId, itemNumber, sku, ruleKey, ruleQuery };
+}
+
+export function OrderAutoAssignRule({
+  record,
+  records,
+  getStaffName,
+}: {
+  record: ShippedOrder;
+  /** The painted queue — every order sharing this pair is assigned on save. */
+  records: readonly ShippedOrder[];
+  getStaffName: (id: number) => string;
+}) {
+  const queryClient = useQueryClient();
+  const { orderId, itemNumber, sku, ruleKey, ruleQuery } = useOrderListingRule(record);
 
   const saved = slotsFromRule(ruleQuery.data ?? null);
   // null = untouched: the face follows the saved rule until the operator edits.

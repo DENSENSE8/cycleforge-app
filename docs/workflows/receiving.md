@@ -36,10 +36,15 @@ Serial capture is **unbox-only** — the serial is not visible until the carton 
 triage `RecordLedger` frame over the existing receiving roots:
 
 - **On the way** groups purchase orders and lines from `useReceivingLinesData`; selecting a row
-  opens the consolidated `useIncomingDetails` model in the evidence column.
-- **Add PO** and **Add Return** open in that evidence column. Purchase listing URLs are stored per
-  line; return listing URLs are included in the claim-ticket detail. CSV return intake remains a
-  separate import path.
+  opens the consolidated `useIncomingDetails` model as the record (`DeskRecordPlane`: in place of
+  the list by default, or split beside it when the staffer turns on fullscreen).
+- **Add** (either lane) replaces the lane's ledger with the receiving-order composer: one
+  fixed-width sheet centred on the stage, no record list or evidence column beside it. Its
+  kind switch covers **Purchase order** (one PO, N lines, each with its own listing URL; pasted
+  text or screenshots fill the draft via `extract-po`; submits to `confirm-po`) and **Return**
+  (inventory item + return tracking; submits to `import-purchase`, which files the support
+  ticket and carries the listing URL). Close/Cancel returns the ledger. CSV return intake
+  remains a separate import path.
 - **Docked** (`/incoming?lane=docked`) is a separate warehouse-lifecycle ledger over the history
   feed. It presents `SCANNED`, `UNBOXED`, `RECEIVED`, `ON_HOLD`, and `EXCEPTION` without changing
   the triage/unbox timestamp laws above.

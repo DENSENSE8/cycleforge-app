@@ -11,6 +11,10 @@
  * `?work=qc` arms the QC session on this same kernel (there is no second QC
  * scan door): a unit label opens its checklist, a line label its unit pick,
  * and any other label lands exactly as it does unarmed.
+ *
+ * An FBA label opens its FNSKU hub — scanned whole (`X00…`), or typed as the
+ * 7-character tail a worn label still shows (`36X1R51`), which is confirmed
+ * against the catalog before it wins over the bin / SKU guess.
  */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -35,7 +39,12 @@ import {
   parseArrivalTypeHint,
 } from '@/lib/receiving/arrival-mobile-flow';
 import { withJobReturn } from '@/lib/mobile/nav-trail';
+import { locationHubHref } from '@/lib/mobile/location-hub-href';
+import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';
 import { routeScan, unwrapScannedLocation, locationCode, parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { fnskuFromTail } from '@/lib/scan-resolver';
+import { fetchFnskuRecord } from '@/components/mobile/fnsku/useFnskuRecord';
+import { landOutboundTracking } from '@/components/mobile/shipping/shipment/outbound-scan-land';
 import { landScanIdentify } from '@/lib/scan/identify-land';
 import { QC_SCAN_SESSION } from '@/lib/scan/dispatch-table';
 import { useScanDispatch } from '@/hooks/useScanDispatch';
@@ -45,78 +54,30 @@ import { MobileArrivalClassifyFlow } from '@/components/mobile/receiving/MobileA
 import { ARRIVAL_DEDUPE_KIND, arrivalTapeEntry, type SettledArrival } from '@/components/mobile/receiving/arrival-station-tape';
 import { useArrivalHistory } from '@/components/mobile/receiving/useArrivalHistory';
 import { useArrivalStation } from '@/components/mobile/receiving/useArrivalStation';
-import { MobileLocationBindSheet } from '@/components/mobile/scan/MobileLocationBindSheet';
-import type {
-  LocationBindContent,
-  LocationBindSnapshot,
-} from '@/components/mobile/scan/location-bind-types';
 
 function locationFace(code: string): string {
   const segs = parseLocationCodeFlat(code);
   return segs ? locationCode(segs) : code;
 }
 
-async function loadLocationBind(
-  raw: string,
-  seq: number,
-): Promise<{ entry: StationTapeEntry; contents: LocationBindContent[]; code: string }> {
-  const code = unwrapScannedLocation(raw);
-  const face = locationFace(code);
-  let contents: LocationBindContent[] = [];
-
-  try {
-    const res = await fetch(`/api/locations/${encodeURIComponent(code)}`, {
-      credentials: 'include',
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      const json = (await res.json()) as {
-        contents?: Array<{
-          sku?: string;
-          qty?: number;
-          productTitle?: string | null;
-        }>;
-      };
-      contents = (json.contents ?? [])
-        .filter((c) => Number(c.qty) > 0 && c.sku)
-        .map((c) => ({
-          sku: String(c.sku),
-          qty: Number(c.qty) || 0,
-          productTitle: c.productTitle ?? null,
-          imageUrl: null,
-        }));
-    }
-  } catch {
-    /* offline / 5xx → honest empty face */
-  }
-
-  const paired = contents.length > 0;
-  const first = contents[0];
-  const entry: StationTapeEntry = {
+/** The scan-tape / session-feed row for a location that opened its record. */
+function locationTapeEntry(code: string, seq: number): StationTapeEntry {
+  return {
     id: `location-${seq}`,
-    tone: paired ? 'ok' : 'warn',
-    verb: paired ? 'Paired' : 'Empty',
-    title: first
-      ? first.productTitle?.trim() || first.sku
-      : paired
-        ? 'Paired location'
-        : 'Empty location',
-    identifier: face,
+    tone: 'ok',
+    verb: 'Location',
+    title: 'Location',
+    identifier: locationFace(code),
     recordId: null,
     conditionGrade: null,
-    imageUrl: first?.imageUrl ?? null,
+    imageUrl: null,
     actor: null,
     actorId: null,
-    message: paired
-      ? contents.length === 1
-        ? `SKU ${first!.sku} · qty ${first!.qty}`
-        : `${contents.length} SKUs in this location`
-      : 'No SKU paired to this location yet.',
+    message: 'Opened the location record',
     at: new Date().toISOString(),
     dedupeKey: `location:${code.toUpperCase()}`,
     live: true,
   };
-  return { entry, contents, code };
 }
 
 function MobileScanIdentifyInner() {
@@ -176,10 +137,8 @@ function MobileScanIdentifyInner() {
   const { resolve } = useScanDispatch();
   const [dispatching, setDispatching] = useState(0);
   const locationSeqRef = useRef(0);
-  const [bindRaw, setBindRaw] = useState<string | null>(null);
-  const [bindContents, setBindContents] = useState<LocationBindContent[]>([]);
 
-  const applyLocationTape = useCallback((entry: StationTapeEntry) => {
+  const applyLocationTape = useCallback((entry: StationTapeEntry, href: string) => {
     setTape((prev) => pushStationTape(prev, entry));
     recordMobileSessionEntry({
       id: entry.id,
@@ -187,41 +146,12 @@ function MobileScanIdentifyInner() {
       title: entry.title,
       identifier: entry.identifier,
       entityId: null,
-      state: entry.tone === 'ok' ? 'done' : entry.tone === 'warn' ? 'blocked' : 'error',
-      href: '/m/scan',
+      state: 'done',
+      href,
       at: entry.at,
       dedupeKey: entry.dedupeKey ? `display:${entry.dedupeKey}` : null,
     });
   }, []);
-
-  const onBindChanged = useCallback(
-    (snap: LocationBindSnapshot) => {
-      setBindContents(snap.contents);
-      const paired = snap.contents.length > 0;
-      const first = snap.contents[0];
-      applyLocationTape({
-        id: `location-live-${snap.code}`,
-        tone: paired ? 'ok' : 'warn',
-        verb: paired ? 'Paired' : 'Empty',
-        title: first
-          ? first.productTitle?.trim() || first.sku
-          : 'Empty location',
-        identifier: snap.face,
-        recordId: null,
-        conditionGrade: null,
-        imageUrl: first?.imageUrl ?? null,
-        actor: null,
-        actorId: null,
-        message: paired
-          ? `SKU ${first!.sku} · qty ${first!.qty}`
-          : 'No SKU paired to this location yet.',
-        at: new Date().toISOString(),
-        dedupeKey: `location:${snap.code.toUpperCase()}`,
-        live: true,
-      });
-    },
-    [applyLocationTape],
-  );
 
   const onDecode = useCallback(
     (raw: string) => {
@@ -244,24 +174,37 @@ function MobileScanIdentifyInner() {
             return;
           }
           const route = routeScan(value);
+          // A bare 7-character guess may be an FNSKU tail; the catalog decides.
+          const tail = route?.redirect ? null : fnskuFromTail(value);
+          if (tail && (await fetchFnskuRecord(tail).catch(() => null))) {
+            router.push(fnskuHubHref(tail));
+            return;
+          }
           const land = landScanIdentify(dispatch, route);
           if (land.kind === 'identify') {
             router.push(land.href);
             return;
           }
           if (land.kind === 'intake') {
+            // A never-seen tracking may be a box WE packed or shipped — that
+            // is its package (or its order), not an inbound arrival.
+            const outbound = route?.type === 'carrier-tracking' ? await landOutboundTracking(value, '/m/scan') : null;
+            if (outbound) {
+              router.push(outbound);
+              return;
+            }
             submitRaw(value);
             return;
           }
           if (route?.type === 'bin' || route?.type === 'bin-paired-order') {
-            const seq = ++locationSeqRef.current;
-            const { entry, contents, code } = await loadLocationBind(value, seq);
-            applyLocationTape(entry);
-            setBindRaw(code);
-            setBindContents(contents);
-            const kind = entry.tone === 'ok' ? 'success' : 'reject';
-            playScanFeedback(kind);
-            if (!hapticOn) vibrateScan(kind);
+            // A location is a full-screen record with an X back here, never
+            // a sheet over the camera (operator 2026-09-25).
+            const code = unwrapScannedLocation(value);
+            const href = locationHubHref(code);
+            applyLocationTape(locationTapeEntry(code, ++locationSeqRef.current), href);
+            playScanFeedback('success');
+            if (!hapticOn) vibrateScan('success');
+            router.push(href);
           }
         } finally {
           setDispatching((n) => Math.max(0, n - 1));
@@ -292,13 +235,20 @@ function MobileScanIdentifyInner() {
    * record of the job is a full screen with an X back to the job, never a
    * sheet or a verb strip). The triage decisions — photos, classify
    * (Platform → Type → Priority), unbox — live on the carton hub `/m/r/[id]`:
-   * Take photo in its dock, Classify as its door `/m/r/[id]/classify`.
+   * Take photo in its dock, Classify as its door `/m/r/[id]/classify`. A
+   * location row reopens its location record.
    */
   const opens = useMemo(() => {
     const map = new Map<string, () => void>();
     for (const entry of tape) {
+      if (!entry.dedupeKey) continue;
+      if (entry.dedupeKey.startsWith('location:')) {
+        const href = locationHubHref(entry.dedupeKey.slice('location:'.length));
+        map.set(entry.dedupeKey, () => router.push(href));
+        continue;
+      }
       const receivingId = stationDedupeId(ARRIVAL_DEDUPE_KIND, entry.dedupeKey);
-      if (receivingId == null || !entry.dedupeKey) continue;
+      if (receivingId == null) continue;
       const href = withJobReturn(`/m/r/${receivingId}`, '/m/scan');
       map.set(entry.dedupeKey, () => router.push(href));
     }
@@ -376,29 +326,16 @@ function MobileScanIdentifyInner() {
       }
       itemOpen={itemOpen}
       window={
-        bindRaw ? (
-          <MobileLocationBindSheet
-            rawCode={bindRaw}
-            initialContents={bindContents}
-            onClose={() => {
-              setBindRaw(null);
-              setBindContents([]);
-              setArmRequest((n) => n + 1);
-            }}
-            onChanged={onBindChanged}
-          />
-        ) : (
-          <MobileCaptureWindow
-            label="Scan camera"
-            collapsedLabel={qcArmed ? 'Scan a unit label' : 'Scan a label'}
-            status={status}
-            statusAlert={cameraOff || !online}
-            pending={pending}
-            onDecode={onDecode}
-            onErrorChange={setCameraOff}
-            armRequest={armRequest}
-          />
-        )
+        <MobileCaptureWindow
+          label="Scan camera"
+          collapsedLabel={qcArmed ? 'Scan a unit label' : 'Scan a label'}
+          status={status}
+          statusAlert={cameraOff || !online}
+          pending={pending}
+          onDecode={onDecode}
+          onErrorChange={setCameraOff}
+          armRequest={armRequest}
+        />
       }
     />
   );

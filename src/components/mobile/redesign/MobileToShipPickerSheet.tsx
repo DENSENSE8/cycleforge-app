@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Pass-pick sheet — pick another picker for this order. Commits on tap.
+ * Pass-pick sheet — pick another picker for an order. Commits on tap.
+ * Shared by the to-ship queue, the directed picker and the pick board.
  * Sign-in SwitchStaffSheet is a different job (pinless act-as switch).
  */
 
@@ -11,15 +12,15 @@ import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
 import { SearchField, Inset, Stack } from '@/design-system/primitives';
 import { staffMatchesStageLane } from '@/components/tables/compound/staff-stage-lane';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
-import type { WorkOrderRow } from '@/components/work-orders/types';
 
 export function MobileToShipPickerSheet({
-  row,
+  currentPickerId,
   open,
   onClose,
   onPass,
 }: {
-  row: WorkOrderRow | null;
+  /** Who holds the pick now — marked as the recent choice. */
+  currentPickerId: number | null;
   open: boolean;
   onClose: () => void;
   onPass: (staff: { id: number; name: string }) => void;
@@ -55,8 +56,6 @@ export function MobileToShipPickerSheet({
     return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
   }, [query, staff]);
 
-  if (!row) return null;
-
   return (
     <BottomSheet
       open={open}
@@ -90,7 +89,7 @@ export function MobileToShipPickerSheet({
                       staffId={member.id}
                       name={member.name}
                       role={member.role || 'Picker'}
-                      isRecent={member.id === row.techId}
+                      isRecent={member.id === currentPickerId}
                       ariaLabel={`Pass pick to ${member.name}`}
                       onPick={() => onPass({ id: member.id, name: member.name })}
                     />

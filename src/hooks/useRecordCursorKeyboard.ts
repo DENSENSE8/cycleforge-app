@@ -90,6 +90,7 @@ function stepCursor(top: RecordCursorPublication, direction: 'prev' | 'next'): b
 export function useRecordCursorKeyboard({
   enabled,
   scope,
+  escape = true,
 }: {
   /**
    * The host's visibility/ownership claim. Required — a hook that inferred it
@@ -102,6 +103,15 @@ export function useRecordCursorKeyboard({
    * different totals — so this is REQUIRED and undefaulted, like `intent`.
    */
   scope: CursorScope;
+  /**
+   * `false` when a `DeskRecordPlane` shows the record: the plane owns Escape
+   * (first press closes the record, the next reaches `DeskPageChrome` and
+   * exits fullscreen). This hook's capture-phase `stopPropagation` would
+   * otherwise eat every Escape while the grid publishes, open record or not,
+   * and the split view could never be left from the keyboard. J/K, arrows and
+   * Enter stay here.
+   */
+  escape?: boolean;
 }): void {
   useEffect(() => {
     if (!enabled) return;
@@ -133,6 +143,7 @@ export function useRecordCursorKeyboard({
       // Phase 1). With no publisher at all the dispatch is a no-op, so the key
       // is left un-swallowed rather than consumed by a listener that did nothing.
       if (code === 'Escape') {
+        if (!escape) return;
         if (top?.close) {
           e.preventDefault();
           e.stopPropagation();
@@ -193,5 +204,5 @@ export function useRecordCursorKeyboard({
 
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [enabled, scope]);
+  }, [enabled, scope, escape]);
 }

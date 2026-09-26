@@ -8,10 +8,6 @@ export interface RepairDetailsPanelProps {
   assignedTechId?: number | null;
   onClose: () => void;
   onUpdate: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  disableMoveUp?: boolean;
-  disableMoveDown?: boolean;
 }
 
 export type RepairTabId = 'overview' | 'links';

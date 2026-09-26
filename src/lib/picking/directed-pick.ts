@@ -37,11 +37,28 @@ export interface DirectedPickLine {
   sku: string;
   title: string;
   imageUrl: string | null;
-  conditionGrade: string | null;
   /** `null` when the units have no bin on record — the location step is skipped. */
   location: DirectedPickLocation | null;
   units: DirectedPickUnit[];
   platforms: DirectedPickPlatformId[];
+}
+
+/**
+ * Why an order's pick belongs to a picker:
+ *   - `assigned` — someone passed it to them (the order's TEST assignee);
+ *   - `sku`      — they own one of its SKUs (`sku_staff_pairings`, set by
+ *                  their first pick of it);
+ *   - `backup`   — the owner is out today and they are next in line.
+ */
+export type PickOwnerVia = 'assigned' | 'sku' | 'backup';
+
+export interface PickStaffRef {
+  staffId: number;
+  name: string | null;
+}
+
+export interface PickOwner extends PickStaffRef {
+  via: PickOwnerVia;
 }
 
 /** The order a line belongs to, as the directed screen's order card shows it. */
@@ -60,6 +77,10 @@ export interface DirectedPickOrder {
   unitsRemaining: number;
   /** An OPEN tote already paired to the order — the phone arms it without a scan. */
   toteCode: string | null;
+  /** Who the pick belongs to; `null` = unassigned, anyone may take it. */
+  owner: PickOwner | null;
+  /** Auto-selected backup pickers — they get it when the owner is out. */
+  backups: PickStaffRef[];
 }
 
 /** `POST /api/picking/next` — one line, or `line: null` when the run is empty. */
@@ -71,14 +92,35 @@ export interface DirectedPickNext {
   progress: { done: number; total: number };
   /** Totes staged for pack by sessions this call closed. */
   stagedTotes: string[];
+  /** Orders with open picks and no owner — the Unassigned board's count. */
+  unassignedCount: number;
 }
+
+/** One order on the pick board (`GET /api/picking/board`). */
+export interface PickBoardRow {
+  orderId: number;
+  orderLabel: string;
+  accountSource: string | null;
+  deadlineAt: string | null;
+  rush: boolean;
+  openUnits: number;
+  /** The first line in walk order — what the picker walks to first. */
+  title: string;
+  imageUrl: string | null;
+  location: DirectedPickLocation | null;
+  owner: PickOwner | null;
+  backups: PickStaffRef[];
+  /** Another picker's live session on the order, if any. */
+  heldBy: PickStaffRef | null;
+}
+
+export type PickBoardScope = 'unassigned' | 'all';
 
 /** A unit row as the feed reads it, already in walk order. */
 export interface DirectedPickUnitRow extends DirectedPickUnit {
   sku: string;
   title: string;
   imageUrl: string | null;
-  conditionGrade: string | null;
   locationName: string | null;
   locationBarcode: string | null;
   locationRoom: string | null;
@@ -106,7 +148,6 @@ export function groupDirectedPickLines(orderId: number, rows: readonly DirectedP
         sku: row.sku,
         title: row.title,
         imageUrl: row.imageUrl,
-        conditionGrade: row.conditionGrade,
         location: hasLocation
           ? {
               name: row.locationName ?? (row.locationBarcode ? null : row.rawLocation),

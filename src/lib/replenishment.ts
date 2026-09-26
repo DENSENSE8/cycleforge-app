@@ -13,7 +13,6 @@ import {
   type ReplenishmentRequestStatus,
 } from '@/lib/replenishment-request-status';
 
-
 export interface ReplenishmentRequestRow {
   id: string;
   item_id: string;
@@ -47,7 +46,6 @@ const ACTIVE_STATUSES: ReplenishmentRequestStatus[] = [
   'po_created',
   'waiting_for_receipt',
 ];
-
 
 function toNumber(value: unknown, fallback = 0): number {
   const parsed = Number(value);

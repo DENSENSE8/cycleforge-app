@@ -4,28 +4,8 @@ import {
   type ReceivingActivityAxis,
 } from '@/components/station/receiving-lines-table-helpers';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
-import {
-  formatDateKeyMedium,
-  formatDateKeyShort,
-  formatDateTimePST,
-  toPSTDateKey,
-} from '@/utils/date';
+import { formatDateTimePST } from '@/utils/date';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
-
-/** Incoming Expected date face — civil day; medium weekday+year on hover. */
-export function incomingDateCell(source: string | null | undefined): {
-  label: string;
-  tooltip: string;
-} | null {
-  if (!source) return null;
-  const key = toPSTDateKey(source);
-  if (!key || key === 'Unknown') return null;
-  const when = formatDateKeyMedium(key, { weekday: 'short', withYear: true });
-  return {
-    label: formatDateKeyShort(key),
-    tooltip: when,
-  };
-}
 
 export function displayReceivingProductTitle(row: ReceivingLineRow): string {
   // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.

@@ -39,7 +39,6 @@
  * `table-surface-binding.ts`). The tuple keeps every element exactly typed.
  */
 
-import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
@@ -93,11 +92,6 @@ import { SEARCH_HITS_TABLE_BINDING } from '@/components/search/hits-grid/search-
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
   RECEIVING_TABLE_BINDING,
-  // Incoming Pipeline is not a separate table: `ReceivingLinesTable` is ONE
-  // component serving both, switching column model and header by mode. It
-  // survives because deleting it would mean cutting a branch out of the kept
-  // surface, not removing a table.
-  INCOMING_TABLE_BINDING,
   // To-Ship / Packed / station queues share this parametric Orders grid —
   // ONE binding since the Wave-1 hand-model kill (`fulfillment.tested` was
   // layout as a second definition; `?ustatus=TESTED` narrows rows instead).

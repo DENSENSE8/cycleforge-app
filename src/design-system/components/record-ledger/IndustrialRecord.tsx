@@ -122,11 +122,10 @@ export function IndustrialRecord({ state, open, openLabel, onOpen, photo, bands,
 
 /** The state code on band 1: `HLD`, read aloud as the full word. */
 export function RecordStateCode({ state }: { state: RecordStateFace }) {
-  const spec = state;
   return (
-    <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))} title={spec.label}>
-      <span aria-hidden>{spec.code}</span>
-      <span className="sr-only">{spec.label}</span>
+    <span className={cn(RECORD_LABEL_CLASS, 'w-9 shrink-0', recordStateCodeClass(state))} title={state.label}>
+      <span aria-hidden>{state.code}</span>
+      <span className="sr-only">{state.label}</span>
     </span>
   );
 }

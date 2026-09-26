@@ -10,10 +10,10 @@
  *   The test pins that they are three independent facts and that no resolver
  *   re-introduces the prefixes (which would break the id track's digit-aware
  *   collation).
- * - the NOTES NON-GOAL. `notes` is selected by the desk's query and painted by
- *   nothing. A future agent reading "the row already has it" will be tempted to
- *   bind it; the catalog must not name it until a cell paints it, and it must
- *   not cross the RSC boundary.
+ * - the UNPAINTED refs. The refs and codes this desk's `SELECT` never reads
+ *   are painted by nothing; the catalog must not name them until a cell paints
+ *   them. `notes` IS painted — the item cell's note line — since phone takes
+ *   write the operator's own words there.
  * - the CLOCK face. The retired `toLocaleString()` cell printed the stamp to
  *   the second, and an authoritative ledger whose entry order is unreadable has
  *   lost the thing that makes `SUM(delta)` auditable.
@@ -38,12 +38,10 @@ import { resolveSkuLedgerSlotValue, skuLedgerDeltaText } from './sku-ledger-reso
 import { parseSlotLayout } from '../slot-layout';
 
 /**
- * Columns of `sku_stock_ledger` that no cell has ever painted — `notes` is
- * fetched by the desk's query, the rest are refs and codes this `SELECT` does
- * not even read. None is a fact until something paints it.
+ * Columns of `sku_stock_ledger` that no cell has ever painted — refs and codes
+ * this `SELECT` does not even read. None is a fact until something paints it.
  */
 const UNPAINTED_COLUMNS = [
-  'notes',
   'reason_code_id',
   'ref_packer_log_id',
   'ref_tech_log_id',
@@ -57,6 +55,7 @@ function row(overrides: Partial<SkuLedgerTableRow> = {}): SkuLedgerTableRow {
     created_at: '2026-09-10T23:04:12.000Z',
     delta: -3,
     reason: 'SALE',
+    notes: null,
     dimension: 'WAREHOUSE',
     staff_id: 17,
     staff_name: 'David',
@@ -78,12 +77,13 @@ describe('sku-ledger catalog', () => {
     }
   });
 
-  it('names the EIGHT facts the six retired cells painted, and no others', () => {
+  it('names the EIGHT facts the six retired cells painted, plus the note', () => {
     assert.deepEqual(
       SKU_LEDGER_FIELD_CATALOG.map((f) => f.id),
       [
         'sku-ledger.ref_order',
         'sku-ledger.reason',
+        'sku-ledger.notes',
         'sku-ledger.delta',
         'sku-ledger.dimension',
         'sku-ledger.staff',
@@ -125,7 +125,7 @@ describe('sku-ledger catalog', () => {
     });
   });
 
-  it('does NOT name `notes` or any unpainted ref — no cell paints them', () => {
+  it('does NOT name any unpainted ref — no cell paints them', () => {
     for (const field of SKU_LEDGER_FIELD_CATALOG) {
       const paths = Object.values(field.paths ?? {});
       for (const unpainted of UNPAINTED_COLUMNS) {
@@ -143,8 +143,6 @@ describe('sku-ledger catalog', () => {
     for (const unpainted of UNPAINTED_COLUMNS) {
       assert.equal(resolveSkuLedgerSlotValue(row(), `sku-ledger.${unpainted}`), null);
     }
-    // The wire row does not carry them across the RSC boundary at all.
-    assert.ok(!('notes' in row()), 'notes crossed the RSC boundary');
   });
 
   it('product default parses, and the ORDER ref is the identity', () => {
@@ -170,8 +168,9 @@ describe('sku-ledger catalog', () => {
     ]);
     const unbound = SKU_LEDGER_FIELD_CATALOG.filter((f) => !bound.has(f.id)).map((f) => f.id);
     assert.deepEqual(unbound, [
-      // Title, pill and Dates chrome paint these three…
+      // Title, note line, pill and Dates chrome paint these four…
       'sku-ledger.reason',
+      'sku-ledger.notes',
       'sku-ledger.dimension',
       // …and the receiving-line ref rides the free fourth slot when an org
       // wants it (the whole skeleton leaves exactly four).
@@ -345,5 +344,25 @@ describe('sku-ledger row view', () => {
     assert.equal(view.stateLabel, 'Unknown bucket');
     assert.equal(view.orderedAt, null);
     assert.equal(view.delay, null);
+  });
+
+  it('paints a phone take in words, with the operator note under it', () => {
+    const fba = skuLedgerCompoundView(row({ reason: 'TAKE_FBA', delta: -2 }));
+    assert.equal(fba.title, 'Taken · FBA');
+    // No note written ⇒ the note line keeps the movement.
+    assert.equal(fba.note, '-2');
+    assert.deepEqual(resolveSkuLedgerSlotValue(row({ reason: 'TAKE_FBA' }), 'sku-ledger.reason'), {
+      kind: 'value',
+      text: 'Taken · FBA',
+    });
+
+    const custom = row({ reason: 'TAKE_CUSTOM', notes: 'Returned to vendor' });
+    const view = skuLedgerCompoundView(custom);
+    assert.equal(view.title, 'Taken');
+    assert.equal(view.note, 'Returned to vendor');
+    assert.deepEqual(resolveSkuLedgerSlotValue(custom, 'sku-ledger.notes'), {
+      kind: 'value',
+      text: 'Returned to vendor',
+    });
   });
 });

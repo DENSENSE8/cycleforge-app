@@ -131,10 +131,6 @@ import {
   TECH_ALL_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/tech-all';
 import {
-  INCOMING_FIELD_CATALOG,
-  INCOMING_TABLE_LAYOUT_ID,
-} from '@/lib/tables/field-catalog/incoming';
-import {
   RECEIVING_FIELD_CATALOG,
   RECEIVING_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/receiving';
@@ -197,10 +193,6 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // all mount the same compound row, so a stored `sheet` layout would open
   // subtitle tracks nothing draws.
   [RECEIVING_TABLE_LAYOUT_ID]: { catalog: RECEIVING_FIELD_CATALOG, morphs: ['compound'] },
-  // Incoming rides the same compound cells and the same row type as receiving,
-  // and still gets its OWN document: "status" means the carrier's answer here
-  // and the warehouse's answer there. Two tableIds, one cell map.
-  [INCOMING_TABLE_LAYOUT_ID]: { catalog: INCOMING_FIELD_CATALOG, morphs: ['compound'] },
   // The shift checklist — an information table like every other, so "what we
   // check on the shift board" is layout, not a new column file.
   [DAILY_TABLE_LAYOUT_ID]: { catalog: DAILY_FIELD_CATALOG, morphs: ['compound'] },

@@ -5,17 +5,22 @@
  * + the repair table definition) directly.
  * Dual-door: Scan Stations `/repair` (task/intake) and Sales `?mode=repairs`
  * (overall history). Same table; surface defaults differ (active vs done).
- * Owns fetch, the open (detail-panel) record + keyboard move, the `?openRepair=`
- * deep-link, rail multi-select (History SoT — no bottom capsule), and workbench chrome.
+ * Owns fetch, the open record + keyboard move, the `?openRepair=` deep-link,
+ * rail multi-select (History SoT — no bottom capsule), and workbench chrome.
  * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the
  * top-bar dropdown and the grid header clicks share one state (dashboard
- * parity). Per-row Print / Square-pay live in `RepairDetailsPanel`.
+ * parity). The open repair is `RepairRecordView` on `DeskRecordPlane`; its
+ * verbs live only in the action strip under the search row (`RepairRecordStrip`).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
-import { RepairDetailsPanel } from './RepairDetailsPanel';
+import { RepairRecordView } from './RepairRecordView';
+import { RepairRecordStrip } from './repair-record-verbs';
+import { DeskRecordPlane } from '@/design-system/components/DeskRecordPlane';
+import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { DataTable } from '@/components/tables/DataTable';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import type { RowGroup } from '@/lib/group-rows';
@@ -48,7 +53,8 @@ export function RepairTable({ filter }: RepairTableProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
-  const [selectedRepair, setSelectedRepair] = useState<RSRecord | null>(null);
+  // A repair found by `?openRepair=` that the current list does not carry.
+  const [fetchedRepair, setFetchedRepair] = useState<RSRecord | null>(null);
   const [repairControlsEl, setRepairControlsEl] = useState<HTMLDivElement | null>(null);
 
   // URL-backed display sort — `newest` (default) keeps the server `created_at
@@ -77,77 +83,56 @@ export function RepairTable({ filter }: RepairTableProps) {
     [repairs, columnSort, dir],
   );
 
-  const handleOpen = useCallback((repair: RSRecord) => setSelectedRepair(repair), []);
+  // The open repair rides `?openRepair=` — the deep link (printed QR, search)
+  // and the plane's state are one param, so reload restores the record.
+  const openRaw = Number(searchParams.get('openRepair'));
+  const openRepairId = Number.isFinite(openRaw) && openRaw > 0 ? openRaw : null;
+  const selectedRepair = openRepairId
+    ? (displayRepairs.find((r) => r.id === openRepairId) ??
+      (fetchedRepair?.id === openRepairId ? fetchedRepair : null))
+    : null;
 
-  const { selectedRows } = useRepairRailSelection({
+  const setOpenRepair = useCallback(
+    (id: number | null) => {
+      const next = new URLSearchParams(window.location.search);
+      if (id == null) next.delete('openRepair');
+      else next.set('openRepair', String(id));
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router],
+  );
+  const handleOpen = useCallback((repair: RSRecord) => setOpenRepair(repair.id), [setOpenRepair]);
+
+  useRepairRailSelection({
     onOpenRepair: handleOpen,
   });
 
-  // Cardinality decides the body: 1 → inspect panel; 2+ → batch shell (panel off).
+  // `?openRepair=` for a repair outside the loaded list — fetch it once.
   useEffect(() => {
-    if (selectedRows.length >= 2) {
-      setSelectedRepair(null);
-    }
-  }, [selectedRows]);
-
-  /** Open RepairDetailsPanel when landing from a printed repair QR (`?openRepair=`). */
-  useEffect(() => {
-    const raw = searchParams.get('openRepair');
-    if (!raw) return;
-    const openId = parseInt(raw, 10);
-    if (!Number.isFinite(openId) || openId <= 0) return;
-    if (loading) return;
-
+    if (openRepairId == null || loading) return;
+    if (repairs.some((r) => r.id === openRepairId)) return;
     let cancelled = false;
-
-    const run = async () => {
-      const fromList = repairs.find((r) => r.id === openId);
-      if (fromList) {
-        if (!cancelled) setSelectedRepair(fromList);
-      } else {
-        try {
-          const res = await fetch(`/api/repair-service/${openId}`);
-          if (!res.ok) return;
-          const data = (await res.json()) as RSRecord;
-          if (!cancelled && data?.id) setSelectedRepair(data);
-        } catch {
-          /* ignore */
-        }
+    void (async () => {
+      try {
+        const res = await fetch(`/api/repair-service/${openRepairId}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as RSRecord;
+        if (!cancelled && data?.id) setFetchedRepair(data);
+      } catch {
+        /* ignore */
       }
-
-      if (cancelled) return;
-      const next = new URLSearchParams(searchParams.toString());
-      if (!next.has('openRepair')) return;
-      next.delete('openRepair');
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    };
-
-    void run();
-
+    })();
     return () => {
       cancelled = true;
     };
-  }, [loading, pathname, repairs, router, searchParams]);
+  }, [openRepairId, loading, repairs]);
 
-  // D4: closing the rail clears the check-set.
+  // D4: closing the record clears the check-set.
   const handleCloseDetails = useCallback(() => {
-    setSelectedRepair(null);
+    setOpenRepair(null);
     emitToggleAll(REPAIR_SELECTION_SCOPE, 'none');
-  }, []);
-
-  // Keyboard move up/down walks the DISPLAYED order (matches the grid).
-  const selectedIndex = selectedRepair
-    ? displayRepairs.findIndex((r) => r.id === selectedRepair.id)
-    : -1;
-  const handleMoveUp = useCallback(() => {
-    if (selectedIndex > 0) setSelectedRepair(displayRepairs[selectedIndex - 1]);
-  }, [selectedIndex, displayRepairs]);
-  const handleMoveDown = useCallback(() => {
-    if (selectedIndex >= 0 && selectedIndex < displayRepairs.length - 1) {
-      setSelectedRepair(displayRepairs[selectedIndex + 1]);
-    }
-  }, [selectedIndex, displayRepairs]);
+  }, [setOpenRepair]);
 
   // Grid adapter (was `RepairGridView`): the host mounts here directly. The
   // always-on left gutter (airtable) toggles the shared selection scope; the row
@@ -179,6 +164,23 @@ export function RepairTable({ filter }: RepairTableProps) {
     [toggle],
   );
 
+  // J/K / ↑↓ step the open repair in both record views; the plane owns Esc.
+  const cursor = usePublishRecordCursor<RSRecord>({
+    surfaceId: 'repair-queue',
+    scope: 'record',
+    enabled: true,
+    order: orderGroupsByDate,
+    openId: openRepairId,
+    getId: (r) => r.id,
+    onOpen: onOpenRow,
+    onClose: handleCloseDetails,
+  });
+  useRecordCursorKeyboard({ enabled: true, scope: 'record', escape: false });
+  const stepTo = (id: number | string | undefined) => {
+    const row = displayRepairs.find((r) => r.id === Number(id));
+    if (row) onOpenRow(row);
+  };
+
   const renderRepairLeaf = useCallback(
     (repair: RSRecord, visible: readonly RepairGridColumn[]) => (
       <RepairGridRow
@@ -194,69 +196,83 @@ export function RepairTable({ filter }: RepairTableProps) {
     [selectedId, selectedIds, onOpenRow, onToggleSelect],
   );
 
+  const refresh = useCallback(() => {
+    void refetchRepairs();
+  }, [refetchRepairs]);
+
   return (
     <div className="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <DataTable<RSRecord, RepairGridColumnKey, RepairGridColumn>
-          binding={REPAIR_TABLE_BINDING}
-          columns={columns}
-          fields={repairFields}
-          orderGroupsByDate={orderGroupsByDate}
-          rows={displayRepairs}
-          getRowId={(r) => String(r.id)}
-          sort={repairColumnKeyForSort(columns, columnSort)}
-          dir={dir}
-          // A header click speaks in TRACK keys; `?sort=` speaks in the
-          // queue's own words. Map back through the mounted model so a
-          // bookmarked URL keeps its meaning after a rebind.
-          onSortChange={(key, nextDir) => {
-            const word = repairSortFactFor(
-              columns.find((c) => c.key === key) ?? ({ key } as RepairGridColumn),
-            );
-            if (word && isRepairColumnSort(word)) setSort(word, nextDir);
-          }}
-          loading={loading}
-          emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-          // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=`
-          // (:27); the route answers it over the CONTACT joins — customer email
-          // and phone — plus source tracking / SKU / serial
-          // (repair-service-queries.ts:188-199), and returns only its top 20.
-          // Email, tracking, SKU and serial have no field in the repair catalog,
-          // so no layout can mount them and only the server can find those rows.
-          // `pending` is the live fix: `useRepairsTable` keeps the PREVIOUS
-          // query's rows through `placeholderData` (useRepairs.ts:36) with
-          // `isLoading` false, so without it the grid presented one search's
-          // repairs as the answer to another.
-          search={{
-            value: search,
-            onChange: setSearch,
-            placeholder: 'Filter repairs…',
-            answeredBy: 'server',
-            pending: fetching,
-          }}
-          selectionScope={REPAIR_SELECTION_SCOPE}
-          renderGroup={(group, _stripe, { columns: visible }) =>
-            renderRepairLeaf(group.rows[0], visible)
-          }
-          renderRow={(row, _stripe, { columns: visible }) => renderRepairLeaf(row, visible)}
-        />
-      </div>
+      <DeskRecordPlane
+        open={selectedRepair != null}
+        onClose={handleCloseDetails}
+        title={selectedRepair ? String(selectedRepair.ticket_number || '').trim() || `RS-${selectedRepair.id}` : ''}
+        subtitle={selectedRepair?.product_title ?? undefined}
+        indexLabel={cursor.position != null ? `${cursor.position} of ${cursor.total}` : undefined}
+        onPrev={() => stepTo(cursor.prev?.id)}
+        onNext={() => stepTo(cursor.next?.id)}
+        prevDisabled={!cursor.prev}
+        nextDisabled={!cursor.next}
+        recordNoun="repair"
+        recordKey={openRepairId != null ? String(openRepairId) : null}
+        testId="repair-record"
+        list={
+          <DataTable<RSRecord, RepairGridColumnKey, RepairGridColumn>
+              binding={REPAIR_TABLE_BINDING}
+              columns={columns}
+              fields={repairFields}
+              orderGroupsByDate={orderGroupsByDate}
+              rows={displayRepairs}
+              getRowId={(r) => String(r.id)}
+              sort={repairColumnKeyForSort(columns, columnSort)}
+              dir={dir}
+              // A header click speaks in TRACK keys; `?sort=` speaks in the
+              // queue's own words. Map back through the mounted model so a
+              // bookmarked URL keeps its meaning after a rebind.
+              onSortChange={(key, nextDir) => {
+                const word = repairSortFactFor(
+                  columns.find((c) => c.key === key) ?? ({ key } as RepairGridColumn),
+                );
+                if (word && isRepairColumnSort(word)) setSort(word, nextDir);
+              }}
+              loading={loading}
+              emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
+              // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=`
+              // (:27); the route answers it over the CONTACT joins — customer email
+              // and phone — plus source tracking / SKU / serial
+              // (repair-service-queries.ts:188-199), and returns only its top 20.
+              // Email, tracking, SKU and serial have no field in the repair catalog,
+              // so no layout can mount them and only the server can find those rows.
+              // `pending` is the live fix: `useRepairsTable` keeps the PREVIOUS
+              // query's rows through `placeholderData` (useRepairs.ts:36) with
+              // `isLoading` false, so without it the grid presented one search's
+              // repairs as the answer to another.
+              search={{
+                value: search,
+                onChange: setSearch,
+                placeholder: 'Filter repairs…',
+                answeredBy: 'server',
+                pending: fetching,
+              }}
+              selectionScope={REPAIR_SELECTION_SCOPE}
+              actionStrip={
+                selectedRepair ? (
+                  <RepairRecordStrip key={selectedRepair.id} repair={selectedRepair} onClose={handleCloseDetails} onUpdate={refresh} />
+                ) : null
+              }
+              renderGroup={(group, _stripe, { columns: visible }) =>
+                renderRepairLeaf(group.rows[0], visible)
+              }
+              renderRow={(row, _stripe, { columns: visible }) => renderRepairLeaf(row, visible)}
+            />
+        }
+      >
+        {selectedRepair ? (
+          <RepairRecordView key={selectedRepair.id} repair={selectedRepair} onUpdate={refresh} />
+        ) : null}
+      </DeskRecordPlane>
 
       <RepairRailShell />
 
-      {selectedRepair ? (
-        <RepairDetailsPanel
-          repair={selectedRepair}
-          onClose={handleCloseDetails}
-          onUpdate={() => {
-            void refetchRepairs();
-          }}
-          onMoveUp={handleMoveUp}
-          onMoveDown={handleMoveDown}
-          disableMoveUp={selectedIndex <= 0}
-          disableMoveDown={selectedIndex < 0 || selectedIndex >= displayRepairs.length - 1}
-        />
-      ) : null}
     </div>
   );
 }

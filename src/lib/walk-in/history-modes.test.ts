@@ -63,21 +63,23 @@ test('per-mode tab parsers default correctly', () => {
   assert.equal(parseRepairTab(null), DEFAULT_REPAIR_TAB);
   assert.equal(parseRepairTab('done'), 'done');
   assert.equal(parseRepairTab('bogus'), 'active');
-  assert.equal(parseRepairTab(null, DEFAULT_SALES_REPAIR_TAB), 'done');
-  assert.equal(parseRepairTab('bogus', DEFAULT_SALES_REPAIR_TAB), 'done');
+  // The Sales desk is the history book: every status, like the kiosk History face.
+  assert.equal(parseRepairTab(null, DEFAULT_SALES_REPAIR_TAB), 'all');
+  assert.equal(parseRepairTab('bogus', DEFAULT_SALES_REPAIR_TAB), 'all');
+  assert.equal(parseRepairTab('done', DEFAULT_SALES_REPAIR_TAB), 'done');
 });
 
 test('defaultTabForMode matches the per-mode defaults', () => {
   assert.equal(defaultTabForMode('pickup'), 'completed');
   assert.equal(defaultTabForMode('sales'), 'today');
-  assert.equal(defaultTabForMode('repairs'), 'done');
+  assert.equal(defaultTabForMode('repairs'), 'all');
 });
 
 test('Sales repairs desk vs station default tab', () => {
   const salesSp = new URLSearchParams('mode=repairs');
   assert.equal(isSalesRepairsDesk('/dashboard', salesSp), true);
   assert.equal(isSalesRepairsDesk('/repair', salesSp), false);
-  assert.equal(defaultRepairTabForSurface('/dashboard', salesSp), 'done');
+  assert.equal(defaultRepairTabForSurface('/dashboard', salesSp), 'all');
   assert.equal(defaultRepairTabForSurface('/repair', new URLSearchParams()), 'active');
 });
 

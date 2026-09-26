@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The phone's evidence column — the desk ledger's `OutboundOrderEvidence` as a
+ * The phone's evidence column — the desk ledger's `OrderRecordView` as a
  * bottom sheet (HANDOFF Step 3: "bottom sheet for evidence"). Opened by
  * tapping a {@link MobileOrderRecord} on `/m/orders?display=ledger`.
  *

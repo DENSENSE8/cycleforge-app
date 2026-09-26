@@ -19,13 +19,13 @@
  * set where categories are managed rather than in the middle of a triage queue.
  *
  * The "unpaired" notice is NOT here: it states a fact about the ORDER, so it
- * rides the editor's banner slot above this card ({@link ExceptionUnpairedBanner}).
+ * rides above this card in the resolve section ({@link ExceptionUnpairedBanner}).
  * Filing it under a "Catalog Pairing" heading implied the problem was local to
  * this panel — which is also why the header badge kept reading as a duplicate.
  *
  * The search reads the LOCAL Zoho inventory mirror (`searchField=zoho_catalog`
  * → the `items` table joined to `sku_catalog` on `provider_item_id`), never the
- * Zoho API. See `ExceptionEditor` for the call.
+ * Zoho API. See `ExceptionResolveSection` for the call.
  */
 
 import { AlertCircle, Check } from '@/components/Icons';
@@ -48,8 +48,8 @@ export interface CatalogHit {
 
 /**
  * The record-level "nothing in the catalog answers to this" notice. Rendered
- * by {@link ExceptionEditor} into the layout's banner slot, above the first
- * card — never inside the pairing panel.
+ * by {@link ExceptionResolveSection} above the pairing card — never inside
+ * the pairing panel.
  */
 export function ExceptionUnpairedBanner({ row }: { row: OrderExceptionRow }) {
   if (row.skuCatalogId) return null;

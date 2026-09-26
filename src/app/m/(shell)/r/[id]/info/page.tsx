@@ -1,10 +1,9 @@
 'use client';
 
 import { Suspense } from 'react';
-import { DetailFactRow } from '@/components/mobile/detail/DetailParts';
+import { DetailFact, DetailFacts } from '@/components/mobile/detail/DetailParts';
 import { useCartonHub } from '@/components/mobile/receiving/useCartonHub';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';
-import { Panel } from '@/design-system/primitives';
 import { conditionGradeTableLabel } from '@/lib/conditions';
 import { cartonPoNumbers, cartonStage, formatCartonStamp, type CartonHubData } from '@/lib/receiving/carton-hub';
 import { workflowStageLabel } from '@/lib/receiving/workflow-stages';
@@ -12,10 +11,10 @@ import { sourcePlatformMeta } from '@/lib/source-platform';
 
 const words = (raw: string | null | undefined) => (raw ? raw.replace(/_/g, ' ') : null);
 
-/** A stamp and who made it, or an honest dash. */
-function stamped(at: string | null | undefined, by: string | null | undefined): string {
+/** A stamp and who made it, or null for the fact's empty dash. */
+function stamped(at: string | null | undefined, by: string | null | undefined): string | null {
   const when = formatCartonStamp(at);
-  if (!when) return '—';
+  if (!when) return null;
   return by ? `${when} · ${by}` : when;
 }
 
@@ -37,41 +36,46 @@ function CartonInfoInner() {
         const platform = c.source_platform ? sourcePlatformMeta(c.source_platform).label || c.source_platform : null;
         const pos = cartonPoNumbers(d);
         return (
-          <div className="flex-1 space-y-4 px-mode-page py-mode-page">
-            <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-              <DetailFactRow label="Carton" value={<span className="font-mono">R-{c.id}</span>} />
-              <DetailFactRow label="Stage" value={workflowStageLabel(cartonStage(d.lines))} />
-              <DetailFactRow
+          <div className="flex-1 divide-y divide-mode-rule">
+            <DetailFacts>
+              <DetailFact label="Carton" value={`R-${c.id}`} mono copy={`R-${c.id}`} />
+              <DetailFact label="Stage" value={workflowStageLabel(cartonStage(d.lines))} />
+              <DetailFact
                 label="Tracking"
-                value={c.tracking ? <span className="font-mono">{c.tracking}</span> : '—'}
+                value={c.tracking || null}
+                mono
+                copy={c.tracking}
                 hint={c.carrier ?? undefined}
               />
-              <DetailFactRow label="Platform" value={platform ?? '—'} />
-              <DetailFactRow label={pos.length > 1 ? 'Purchase orders' : 'Purchase order'} value={pos.join(', ') || '—'} />
-              <DetailFactRow
+              <DetailFact label="Platform" value={platform ?? null} />
+              <DetailFact
+                label={pos.length > 1 ? 'Purchase orders' : 'Purchase order'}
+                value={pos.join(', ') || null}
+              />
+              <DetailFact
                 label="Progress"
                 value={`${d.totals.received}/${d.totals.expected || '?'} units`}
                 hint={`${d.totals.lines_complete}/${d.totals.lines} lines done`}
               />
-              <DetailFactRow label="Unboxed" value={stamped(c.unboxed_at, c.unboxed_by_name)} />
-              <DetailFactRow label="Received" value={stamped(c.received_at, c.received_by_name)} />
+              <DetailFact label="Created" value={formatCartonStamp(c.created_at) ?? null} />
+              <DetailFact label="Unboxed" value={stamped(c.unboxed_at, c.unboxed_by_name)} />
+              <DetailFact label="Received" value={stamped(c.received_at, c.received_by_name)} />
               {c.is_return || c.return_platform ? (
-                <DetailFactRow
+                <DetailFact
                   label="Return"
                   value={words(c.return_platform) ?? 'Yes'}
                   hint={c.return_reason ?? undefined}
                 />
               ) : null}
-              {c.target_channel ? <DetailFactRow label="Target channel" value={c.target_channel} /> : null}
+              {c.target_channel ? <DetailFact label="Target channel" value={c.target_channel} /> : null}
               {c.qa_status && c.qa_status !== 'PENDING' ? (
-                <DetailFactRow
+                <DetailFact
                   label="QA"
                   value={words(c.qa_status)}
                   hint={c.condition_grade ? conditionGradeTableLabel(c.condition_grade) : undefined}
                 />
               ) : null}
-              <DetailFactRow label="Created" value={formatCartonStamp(c.created_at) ?? '—'} />
-            </Panel>
+            </DetailFacts>
           </div>
         );
       }}

@@ -4,8 +4,8 @@
  * STATUS cell peek — Center Lock L2 inset over the slot table.
  *
  * Opens the existing {@link OrderTimelineSection} on the carrier lens. Not a
- * tracking page, Dialog, or right rail. Full record edit stays
- * {@link DashboardOrderDetails} (`fill="stage"`).
+ * tracking page, Dialog, or right rail. The full record stays the desk's record
+ * plane (`DeskRecordPlane`; on Shipped, the package record `ShipmentRecordView`).
  */
 
 import {

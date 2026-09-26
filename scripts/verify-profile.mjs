@@ -271,6 +271,21 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
+    name: 'Desk surface',
+    // Which surface a desktop job may use (operator 2026-09-25): a picked row's
+    // record opens as a DeskStageOverlay in place of the fixed-width list,
+    // never in the right rail; search never remounts a desk table; no new
+    // `inspector` table bindings. Every rail is classified in
+    // src/lib/design/desk-surface-ledger.ts and the debt baselines only shrink.
+    // `always`: a source read (<1s), and the increments that break it — a new
+    // DetailStackRailRegistrar, a hand-rolled evidence aside, a DataTable
+    // under /search — are `verify:fast` increments. Rules live in
+    // src/lib/design/desk-surface-law.ts (add a rule there to extend the base).
+    cmd: localBin('tsx'),
+    args: ['scripts/desk-surface-guard.ts'],
+    profiles: 'always',
+  },
+  {
     name: 'Design tokens',
     // The committed platform artifacts (desktop tokens.css, iOS
     // DesignTokens.swift, design-mcp tokens.json) must be exactly what

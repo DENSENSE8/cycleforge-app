@@ -21,6 +21,7 @@ import {
   linePriceAdjustment,
   type KioskCartLine,
 } from './cart-line';
+import { compactSerials } from './line-identification';
 
 /** Minor units → a display string. Sign is carried by the figure AND the tone. */
 export function formatCartCents(cents: number): string {
@@ -62,7 +63,7 @@ export function cartLineIdentifiers(
       : null;
     return {
       primary: linked ?? id('SKU', p.sourceSku),
-      secondary: id('SN', p.serialNumber) ?? id('IMEI', p.imei),
+      secondary: id('SN', compactSerials(p.serialNumber)) ?? id('IMEI', p.imei),
     };
   }
   if (isBuybackPayload(p)) {

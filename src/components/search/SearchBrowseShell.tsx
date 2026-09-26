@@ -81,12 +81,10 @@ import { useSearchPrimaryPaintOptional } from '@/components/search/search-primar
 import { cn } from '@/utils/_cn';
 import { useFindDensity } from '@/components/search/find-density-context';
 import { FIND_STAGE_BY_DENSITY } from '@/design-system/tokens/desk-stage';
-import { Button, EmptyState } from '@/design-system/primitives';
 
 export function SearchBrowseShell({
   setSel,
   autoOpen = true,
-  onOrderNotFound,
 }: {
   /** Paint-pending sel from the page hook — browse→detail in the click commit. */
   setSel: (next: SearchSelection | null) => void;
@@ -96,8 +94,6 @@ export function SearchBrowseShell({
    * the file header.
    */
   autoOpen?: boolean;
-  /** Label-intake escape hatch after an exact order lookup returns no rows. */
-  onOrderNotFound?: (searchedOrderNumber: string) => void;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -370,36 +366,21 @@ export function SearchBrowseShell({
             )}
             data-testid="search-results-card"
           >
-            {zeroHits && onOrderNotFound ? (
-              <EmptyState
-                title={`Order ${q} was not found`}
-                description="Add it as a manual exception, then complete intake before buying its return and replacement labels."
-                action={
-                  <Button type="button" variant="primary" onClick={() => onOrderNotFound(q)}>
-                    Add order exception
-                  </Button>
-                }
-                className="min-h-64 flex-1"
-              />
-            ) : (
-              <>
-                {showRefineChrome ? <SearchRefineControls hits={browseHits} /> : null}
-                <SearchResultsSurface
-                  className="min-h-0 flex-1 overflow-y-auto"
-                  scope="global"
-                  query={q}
-                  etype={etype}
-                  hstat={hstat}
-                  chan={chan}
-                  sort={sort}
-                  showEmptyTeach={false}
-                  onSelectHit={handleSelectHit}
-                  onResults={handleResults}
-                  onLoadingChange={handleLoadingChange}
-                  onSettle={handleRetrieveSettle}
-                />
-              </>
-            )}
+            {showRefineChrome ? <SearchRefineControls hits={browseHits} /> : null}
+            <SearchResultsSurface
+              className="min-h-0 flex-1 overflow-y-auto"
+              scope="global"
+              query={q}
+              etype={etype}
+              hstat={hstat}
+              chan={chan}
+              sort={sort}
+              showEmptyTeach={false}
+              onSelectHit={handleSelectHit}
+              onResults={handleResults}
+              onLoadingChange={handleLoadingChange}
+              onSettle={handleRetrieveSettle}
+            />
           </div>
         </div>
       ) : (

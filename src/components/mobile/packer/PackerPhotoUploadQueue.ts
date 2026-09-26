@@ -352,11 +352,16 @@ export const packerPhotoUploadQueue = {
   },
 };
 
+// Stable empty reference: a fresh `[]` per call makes React report
+// "The result of getServerSnapshot should be cached" (same fix as PhotoUploadQueue).
+const EMPTY_ENTRIES: UploadEntry[] = [];
+const getServerSnapshot = (): UploadEntry[] => EMPTY_ENTRIES;
+
 export function usePackerUploadQueue(packerLogId?: number): UploadEntry[] {
   const all = useSyncExternalStore(
     packerPhotoUploadQueue.subscribe,
     packerPhotoUploadQueue.snapshot,
-    () => [] as UploadEntry[],
+    getServerSnapshot,
   );
   if (packerLogId == null) return all;
   return all.filter((e) => e.scope.packerLogId === packerLogId);

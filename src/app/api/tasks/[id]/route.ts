@@ -161,7 +161,7 @@ export const PATCH = withAuth(
       const added = result.task.assignees
         .map(({ id }) => id)
         .filter((id) => !before.has(id) && id !== ctx.staffId);
-      if (added.length > 0 && isInboxAnchorable(result.task.entityType)) {
+      if (added.length > 0 && (result.task.entityType == null || isInboxAnchorable(result.task.entityType))) {
         const deps = createTaskDeps(ctx.organizationId);
         const ids = result.task.assignees.map(({ id }) => id);
         const task = {

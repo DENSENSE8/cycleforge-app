@@ -15,6 +15,8 @@ import { customerDisplayJsonSql } from '@/lib/customers/customer-display';
 import {
   DOCK_STAGING_LATERAL,
   PICK_FACTS_LATERALS,
+  PREBOX_FACTS_LATERAL,
+  PREBOX_FACTS_SELECT,
   PRICE_FACTS_LATERALS,
   SHIP_OUT_LATERAL,
 } from '@/lib/neon/orders-queries';
@@ -638,6 +640,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         to_char(ship_out.ship_confirmed_at, 'YYYY-MM-DD HH24:MI:SS') AS ship_confirmed_at,
         ship_out.shipped_out_by AS shipped_out_by,
         shipped_out_staff.name  AS shipped_out_by_name,
+        ${PREBOX_FACTS_SELECT},
         staff_pick_assignee.color_hex AS tester_color_hex,
         staff_pack_assignee.color_hex AS packer_color_hex,
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
@@ -787,6 +790,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ) sku_home ON TRUE
       ${PICK_FACTS_LATERALS}
       ${SHIP_OUT_LATERAL}
+      ${PREBOX_FACTS_LATERAL}
       ${DOCK_STAGING_LATERAL}
       ${PRICE_FACTS_LATERALS}
       LEFT JOIN LATERAL (
@@ -1038,15 +1042,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (shipByDate) {
-      sql += ` AND COALESCE(wa_deadline.deadline_at::date, o.created_at::date) = $${paramCount++}`;
+      sql += ` AND COALESCE(wa_deadline.deadline_at::date, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date) = $${paramCount++}`;
       params.push(shipByDate);
     } else {
       if (weekStart) {
-        sql += ` AND COALESCE(wa_deadline.deadline_at::date, o.created_at::date) >= $${paramCount++}`;
+        sql += ` AND COALESCE(wa_deadline.deadline_at::date, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date) >= $${paramCount++}`;
         params.push(weekStart);
       }
       if (weekEnd) {
-        sql += ` AND COALESCE(wa_deadline.deadline_at::date, o.created_at::date) <= $${paramCount++}`;
+        sql += ` AND COALESCE(wa_deadline.deadline_at::date, (o.created_at AT TIME ZONE 'America/Los_Angeles')::date) <= $${paramCount++}`;
         params.push(weekEnd);
       }
     }

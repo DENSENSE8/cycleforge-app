@@ -118,6 +118,37 @@ Required on the phone take flow:
   see `next.config.ts` — never re-add `outputFileTracingIncludes` for `docs/**`), then repeat the
   take/pick smoke on `app.cycleforge.ai`.
 
+## Status — implemented 2026-09-25 (not yet deployed)
+
+- **1 · HTTP transport.** `POST /api/wms/commands` (`src/app/api/wms/commands/route.ts`, `orders.view`
+  like the WMS ticket; `putaway.adjust` also needs `bin.adjust` like the REST PATCH) → thin adapter
+  `src/lib/realtime/wms-command-http.ts` → `executeWmsExecutionCommand`. 400 schema · 403 identity /
+  permission · 422 domain message. `WmsRealtimeProvider.execute` picks the socket only when it is open
+  and ticketed (`chooseWmsTransport`, `src/lib/realtime/wms-command-transport.ts`), else HTTP; a socket
+  that drops mid-command fails over to HTTP with the same `commandId` (replays). Connection trouble no
+  longer paints the status strip; only a failed command does. A never-opened socket backs off to a 60s
+  probe. Note: on this box `127.0.0.1:3050` is served by `next-server` directly and does not route
+  `/__wms` (upgrade hangs), so locally every command also rides HTTP today.
+- **2 · Location record.** `/m/loc/[code]` (+ `/info`) on `DetailHubScreen`; new optional `content`
+  slot (between card and doors) carries `LocationStockList` (take-reason chips + `LocationQtyStrip` ±,
+  one write per burst). Dock Take · Put · Scan next (Take/Put open the keypad for a sole SKU; with
+  several, each row's `123`). Door: Pair a product. `/m/scan` pushes the route
+  (`locationHubHref`, X → `/m/scan`); tape rows reopen it. `MobileLocationBindSheet` and the one-SKU
+  Unpair button are deleted (a keypad take of the full count does the same). Non-flat barcodes
+  (`QA-PICK-DEMO`) read as-is; flat codes auto-register on 404. The keypad (`/m/pair/[code]/[sku]`)
+  takes `?return=` and `?mode=take` and returns to the location record by default.
+- **3 · Take reasons.** `ReasonCodePicker` is gone from the phone keypad. `TakeReasonChooser`
+  (FBA · Orders · Custom…) on keypad takes and on the location record's quick −;
+  `src/lib/inventory/take-reason.ts` writes `TAKE_FBA` / `TAKE_ORDER` / `TAKE_CUSTOM` (+ text in
+  `notes`), no reason → `BIN_PULL`, never `SOLD`. SKU ledger, SKU audit timeline and the SKU stock
+  audit log print `Taken · FBA` / `Taken · Orders` and the note.
+- **Verified on :3050 (QA org, staff 67):** HTTP route commit → `committed`, same id → `replayed`,
+  one ledger row; staff mismatch 403; anon 401; pick.confirm / pick.short reach the kernel (422 on a
+  missing allocation). Browser 390×844: scan `QA-PICK-DEMO` → full page → X back to scan; quick −
+  FBA, quick − Custom ("Sample for photo shoot"; empty text refused), keypad take Orders and puts
+  with the gateway stopped. Ledger ids 6228–6233. `/m/pick` had no QA work, so a live pick
+  confirm/short was not exercised.
+
 ## Known context
 
 - `.next-*` dirs are gitignored; never run a second `next build` into the lane checkout while the

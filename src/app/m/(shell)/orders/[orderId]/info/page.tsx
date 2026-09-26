@@ -1,12 +1,11 @@
 'use client';
 
 import { Suspense } from 'react';
-import { DetailFactRow } from '@/components/mobile/detail/DetailParts';
+import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { orderChannel } from '@/components/mobile/orders/OrderInfoCard';
 import { useOrderHub } from '@/components/mobile/orders/useOrderHub';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
-import { Panel } from '@/design-system/primitives';
 import { isEmptyMetaDash, orderRowConditionLabel } from '@/lib/conditions';
 import { workStageLifecycleState } from '@/lib/order-lifecycle';
 import {
@@ -45,56 +44,59 @@ function OrderInfoInner() {
         const condition = orderRowConditionLabel(work?.product.condition ?? order.condition);
         const shipBy = formatOrderStamp(work?.priority.shipBy ?? order.ship_by_date);
         const ack = work?.acknowledgment;
+        const itemNumber = work?.product.itemNumber ?? order.item_number;
         return (
-          <div className="flex-1 space-y-4 px-mode-page py-mode-page">
-            <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-              <DetailFactRow label="Order" value={<span className="font-mono">{order.order_id}</span>} />
-              <DetailFactRow
+          <div className="flex-1 divide-y divide-mode-rule">
+            <DetailFacts>
+              <DetailFact label="Product" value={orderHubTitle(d)} />
+              <DetailFact label="Order" value={order.order_id} mono copy={order.order_id} />
+              <DetailFact
                 label="Stage"
                 value={state ? `${LIFECYCLE[state].code} · ${LIFECYCLE[state].label}` : hub.workPending ? '…' : 'Not in outbound'}
                 hint={work ? words(work.warehouseStage) ?? undefined : hub.workError ?? undefined}
               />
-              <DetailFactRow label="Product" value={orderHubTitle(d)} />
-              <DetailFactRow
+              <DetailFact
                 label="SKU"
-                value={order.sku ? <span className="font-mono">{order.sku}</span> : '—'}
+                value={order.sku || null}
+                mono
+                copy={order.sku}
                 hint={work && !work.product.paired ? 'Not paired to the catalog' : undefined}
               />
-              <DetailFactRow
-                label="Item #"
-                value={(work?.product.itemNumber ?? order.item_number) ? <span className="font-mono">{work?.product.itemNumber ?? order.item_number}</span> : '—'}
-              />
-              <DetailFactRow label="Quantity" value={String(Number(work?.product.quantity ?? order.quantity) || 1)} />
-              <DetailFactRow label="Condition" value={isEmptyMetaDash(condition) ? '—' : condition} />
-              <DetailFactRow label="Channel" value={orderChannel(work?.source ?? order.account_source) ?? '—'} />
-            </Panel>
-            <Panel radius="none" padding="none" elevation="none" className="rounded-mode">
-              <DetailFactRow label="Customer" value={order.customer_name ?? '—'} />
-              <DetailFactRow label="Ship to" value={orderShipTo(order) ?? '—'} />
-              <DetailFactRow label="Ship by" value={shipBy ?? '—'} hint={work?.priority.urgent ? 'Urgent' : undefined} />
-              <DetailFactRow
+              <DetailFact label="Item #" value={itemNumber || null} mono copy={itemNumber} />
+              <DetailFact label="Quantity" value={String(Number(work?.product.quantity ?? order.quantity) || 1)} />
+              <DetailFact label="Condition" value={isEmptyMetaDash(condition) ? null : condition} />
+              <DetailFact label="Channel" value={orderChannel(work?.source ?? order.account_source) ?? null} />
+            </DetailFacts>
+            <DetailSectionHeading>Shipping</DetailSectionHeading>
+            <DetailFacts label="Shipping">
+              <DetailFact label="Customer" value={order.customer_name ?? null} />
+              <DetailFact label="Ship by" value={shipBy ?? null} hint={work?.priority.urgent ? 'Urgent' : undefined} />
+              <DetailFact label="Ship to" value={orderShipTo(order) ?? null} />
+              <DetailFact
                 label="Tracking"
-                value={tracking.number ? <span className="font-mono">{tracking.number}</span> : '—'}
+                value={tracking.number || null}
+                mono
+                copy={tracking.number}
                 hint={tracking.carrier ?? undefined}
               />
-              <DetailFactRow
+              <DetailFact
                 label="Label"
-                value={work ? (work.shippingLabel.live ? 'Live label' : 'No shipping label yet') : '—'}
+                value={work ? (work.shippingLabel.live ? 'Live label' : 'No shipping label yet') : null}
                 hint={work?.shippingLabel.source ?? (work ? words(work.label.state) ?? undefined : undefined)}
               />
-              <DetailFactRow
+              <DetailFact
                 label="Acknowledged"
-                value={ack?.at ? formatOrderStamp(ack.at) ?? '—' : 'Not yet'}
+                value={ack?.at ? formatOrderStamp(ack.at) ?? null : 'Not yet'}
                 hint={[ack?.byName, words(ack?.route)].filter(Boolean).join(' · ') || undefined}
               />
-              <DetailFactRow
+              <DetailFact
                 label="Stock"
-                value={work ? `${work.stock.ready} ready` : '—'}
+                value={work ? `${work.stock.ready} ready` : null}
                 hint={work && work.stock.received > 0 ? `${work.stock.received} received, not tested` : undefined}
               />
-              <DetailFactRow label="Notes" value={order.note_count > 0 ? plural(order.note_count, 'note') : 'None'} />
-              <DetailFactRow label="Ordered" value={formatOrderStamp(order.order_date ?? order.created_at) ?? '—'} />
-            </Panel>
+              <DetailFact label="Ordered" value={formatOrderStamp(order.order_date ?? order.created_at) ?? null} />
+              <DetailFact label="Notes" value={order.note_count > 0 ? plural(order.note_count, 'note') : 'None'} />
+            </DetailFacts>
           </div>
         );
       }}

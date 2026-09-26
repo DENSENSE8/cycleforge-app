@@ -141,7 +141,7 @@ export function MobilePrintWorkspace() {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [hydrated, setHydrated] = useState(false);
   const bridge = useStaffPrintBridgeClient({ active: step === 'options' || step === 'print' });
-  const { staffName, target, now, patchStation, sendJob } = bridge;
+  const { target, now, patchStation, sendJob } = bridge;
 
   useEffect(() => {
     setDraft(readDraft());
@@ -244,13 +244,13 @@ export function MobilePrintWorkspace() {
 
   const patchOptions = useCallback(
     async (patch: StaffPrintPatch) => {
-      if (!(await patchStation(patch))) toast.error('Could not reach the print station');
+      if (!(await patchStation(patch))) toast.error('Could not reach the printer');
     },
     [patchStation],
   );
 
   const firePrint = useCallback(async () => {
-    const stationName = target?.status.stationName ?? 'The print station';
+    const stationName = target?.status.stationName ?? 'The printer';
     const acked = await sendJob(
       isTote
         ? {
@@ -272,8 +272,8 @@ export function MobilePrintWorkspace() {
             },
           },
     );
-    if (acked) toast.success(`${stationName} accepted the print job`);
-    else toast.error(`${stationName} did not answer — keep the desk app open on it, then retry`);
+    if (acked) toast.success(`Sent to ${stationName}.`);
+    else toast.error(`${stationName} didn't respond. Try again.`);
   }, [
     sendJob,
     target,
@@ -446,7 +446,6 @@ export function MobilePrintWorkspace() {
               target={target}
               now={now}
               role={role}
-              staffName={staffName}
               onPick={bridge.pickStation}
               onPatch={patchOptions}
               onRefresh={() => void bridge.requestStatus()}
@@ -465,9 +464,8 @@ export function MobilePrintWorkspace() {
                   stations={bridge.stations}
                   target={target}
                   now={now}
-                  staffName={staffName}
+                  role={role}
                   onPick={bridge.pickStation}
-                  onRefresh={() => void bridge.requestStatus()}
                 />
                 {target ? (
                   <MobilePrintOptionsDropdown status={target.status} role={role} onPatch={patchOptions} />
@@ -483,8 +481,7 @@ export function MobilePrintWorkspace() {
               ) : null}
               {bridge.state === 'timed_out' && (
                 <p className="mt-2 text-role-caption text-text-danger">
-                  {target?.status.stationName ?? 'The print station'} did not answer. Keep the desk app open on it
-                  signed in as {staffName}, or retry Print.
+                  {target?.status.stationName ?? 'The printer'} didn&apos;t respond. Try again.
                 </p>
               )}
             </div>

@@ -7,6 +7,7 @@ import {
   listUnitTimelinePhotos,
   type UnitTimelinePhoto,
 } from '@/lib/photos/queries/unit-timeline-photos';
+import { listShipmentCarrierEvents } from '@/lib/shipments/carrier-events';
 
 /**
  * GET /api/orders/[id]/timeline — the order's event trail, newest first.
@@ -409,22 +410,10 @@ export async function GET(
     // is GLOBAL by design (no organization_id; a tracking number is carrier-global),
     // so tenant isolation rides on `shipmentId`, which came from the org-checked
     // order row above — never from the request. Degrades to [] on its own.
-    let carrierEvents: any[] = [];
+    let carrierEvents: unknown[] = [];
     if (shipmentId != null) {
       try {
-        const carrier = await withTenantTransaction(orgId, (client) =>
-          client.query(
-            `SELECT id, event_occurred_at, normalized_status_category,
-                    external_status_label, external_status_description,
-                    event_city, event_state, exception_description, signed_by
-               FROM shipment_tracking_events
-              WHERE shipment_id = $1
-              ORDER BY event_occurred_at DESC NULLS LAST, id DESC
-              LIMIT 200`,
-            [shipmentId],
-          ),
-        );
-        carrierEvents = carrier.rows;
+        carrierEvents = await listShipmentCarrierEvents(shipmentId);
       } catch (carrierErr: any) {
         console.warn('[GET /api/orders/[id]/timeline] carrier spine degraded:', carrierErr?.message);
       }

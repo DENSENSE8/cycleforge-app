@@ -323,15 +323,13 @@ export default function SignInPage() {
   const [pinless, setPinless] = useState(false);
   const [showPhoneQr, setShowPhoneQr] = useState(false);
   // Phone /m shell or UA-CH mobile → no desk companion QR (phone cannot scan
-  // itself). Detect path on first client paint so /m/signin never mounts the QR.
-  const [mobileSignInFace, setMobileSignInFace] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.location.pathname.startsWith('/m');
-  });
-  const [showDeskQr, setShowDeskQr] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !window.location.pathname.startsWith('/m');
-  });
+  // itself). Both start false on server AND client so hydration matches; the
+  // effect below decides after mount. Reading `window` in the initializer made
+  // the desk client render the QR card the server never sent — a hydration
+  // failure that regenerated the whole tree and tripped React's "script tag"
+  // error on the root layout's boot scripts.
+  const [mobileSignInFace, setMobileSignInFace] = useState(false);
+  const [showDeskQr, setShowDeskQr] = useState(false);
   useEffect(() => {
     const onMobilePath = window.location.pathname.startsWith('/m');
     const mobile = onMobilePath || isMobileDevice();

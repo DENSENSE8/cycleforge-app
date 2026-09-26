@@ -26,10 +26,9 @@
  *   release facts are absent because this feed filters `state <> 'RELEASED'`;
  *   the type marks them optional for exactly this case.
  * - {@link skuLedgerTableRows}: `sku_stock_ledger` rows →
- *   {@link SkuLedgerTableRow}. `notes` stops HERE: it is selected by the
- *   loader and painted by nothing, and the boundary is where an unpainted fact
- *   is dropped rather than shipped to the client (the `toAuditLogRow`
- *   precedent).
+ *   {@link SkuLedgerTableRow}. `notes` crosses trimmed (blank ⇒ `null`): the
+ *   phone take flow writes the operator's reason text there, and the row's
+ *   note line paints it under the reason.
  *
  * Pure: no React, no clock, no I/O.
  */
@@ -95,6 +94,7 @@ export interface SkuLedgerLoaderRow {
   ref_serial_unit_id: number | null;
   ref_order_id: number | null;
   ref_receiving_line_id: number | null;
+  notes: string | null;
 }
 
 /** The SKU this page is about, plus its catalog title when there is one. */
@@ -203,14 +203,12 @@ export function skuLedgerTableRows(rows: readonly SkuLedgerLoaderRow[]): SkuLedg
     created_at: isoOrNull(l.created_at) ?? '',
     delta: Number(l.delta),
     reason: l.reason,
+    notes: l.notes?.trim() || null,
     dimension: l.dimension,
     staff_id: l.staff_id,
     staff_name: l.staff_name,
     ref_order_id: l.ref_order_id,
     ref_receiving_line_id: l.ref_receiving_line_id,
     ref_serial_unit_id: l.ref_serial_unit_id,
-    // `notes` stops here. The loader selects it, the retired table had no notes
-    // column and no row expansion, and a fact nothing paints does not cross the
-    // boundary (`toAuditLogRow` drops the audit diff payload the same way).
   }));
 }

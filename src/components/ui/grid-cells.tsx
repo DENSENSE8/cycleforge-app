@@ -3,8 +3,8 @@
 /**
  * Shared Kinetic Ledger grid VALUE cells (grid-surface-descriptor plan Phase B).
  *
- * The Workbench spreadsheets (Pending `OrdersQueueTableRow`, Incoming
- * `IncomingGridRow`, Receiving `ReceivingGridRow`, and their group summaries)
+ * The Workbench spreadsheets (Pending `OrdersQueueTableRow`, Receiving
+ * `ReceivingGridRow`, and their group summaries)
  * copy-adapted the same cell value markup per surface — the em-dash empty, the
  * civil-day + tooltip date, the days-late / lane-age urgency value, the fixed
  * platform brand mark, the staff name, and the live-format timestamp. This
@@ -13,7 +13,7 @@
  *
  * Contract: these are dumb value cells — resolved facts in (label/tone SoTs
  * already applied upstream where domain-specific), spans out. They never fetch,
- * never own cell-track chrome (`ordersQueueGridCell` / `incomingGridCell` stay
+ * never own cell-track chrome (`ordersQueueGridCell` / `receivingGridCell` stay
  * with the surface), and never invent tones — urgency hues come from
  * `getDaysLateTone` / `getLaneAgeTone` (`src/utils/date.ts`), marks from
  * `PlatformMark`. Size/density varies per surface via `className`
@@ -153,7 +153,7 @@ export function GridStatusCellValue({
 /**
  * Civil-day date value — compact label (e.g. `Jul 21`) with the full day in a
  * tooltip; missing → em dash. Callers resolve the label/tooltip through their
- * date SoT helper (`formatQueueRowDateCell`, `incomingDateCell`).
+ * date SoT helper (`formatQueueRowDateCell`).
  */
 export function GridDateCellValue({
   label,
