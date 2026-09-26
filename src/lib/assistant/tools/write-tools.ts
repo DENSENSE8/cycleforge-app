@@ -8,7 +8,9 @@
  *   • propose_mutation — the AI describes ONE change by mutation_kind +
  *     payload. applyAgentMutation decides: view-layer → applied now; draft
  *     graph edit → applied to the draft; masters → queued for review. The AI
- *     never chooses whether to apply — the trust class does.
+ *     never chooses whether to apply — the trust class or the org's
+ *     per-automation Auto-approve setting does (operator ruling 2026-09-26:
+ *     approval-first by default; the auto-approve setting is not wired here yet).
  *   • revert_mutation — undo an applied, revertable mutation by id.
  *
  * Gated on studio.manage (the same permission as draft editing / publish);

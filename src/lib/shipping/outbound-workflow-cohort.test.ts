@@ -144,24 +144,6 @@ test('the mobile Outbound shell cannot restore raw danger-palette error chrome',
   assert.ok(ids.includes('raw-style-utility'));
 });
 
-test('the shared mobile Scan verdict cannot restore raw semantic-tone utilities', () => {
-  const sources = Object.fromEntries(
-    Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),
-  ) as Parameters<typeof evaluateOutboundWorkflowCohort>[0];
-  const regressed = {
-    ...sources,
-    mobileScanVerdict: sources.mobileScanVerdict
-      .replaceAll('border-border-success bg-surface-success', 'border-emerald-300 bg-emerald-50')
-      .replaceAll('border-border-warning bg-surface-warning', 'border-amber-300 bg-amber-50')
-      .replaceAll('border-border-danger bg-surface-danger', 'border-rose-300 bg-rose-50'),
-  };
-  const ids = evaluateOutboundWorkflowCohort(regressed).violations.map((violation) => violation.id);
-  assert.ok(ids.includes('missing-mobile-scan-success-tokens'));
-  assert.ok(ids.includes('missing-mobile-scan-warning-tokens'));
-  assert.ok(ids.includes('missing-mobile-scan-danger-tokens'));
-  assert.ok(ids.includes('raw-style-utility'));
-});
-
 test('outbound raw-style checks inspect executable class positions, not comments or motion values', () => {
   const sources = Object.fromEntries(
     Object.entries(OUTBOUND_WORKFLOW_COHORT_FILES).map(([key, path]) => [key, source(path)]),
@@ -197,13 +179,11 @@ test('Outbound station projections cannot fork their facts, host, or floor mouth
     scanOutStationDock: sources.scanOutStationDock
       .replaceAll('StationComposerHost', 'LocalScanDock')
       .replaceAll('useRegisterScanSink', 'useLocalScanSink'),
-    stagedDeskQueue: sources.stagedDeskQueue.replace("fetch('/api/shipping/mark-staged'", "fetch('/api/shipping/local-stage'"),
   };
   const ids = evaluateOutboundWorkflowCohort(regressed).violations.map((violation) => violation.id);
   assert.ok(ids.includes('missing-pack-station-checklist'));
   assert.ok(ids.includes('missing-scanout-composer-host'));
   assert.ok(ids.includes('missing-scanout-wedge-sink'));
-  assert.ok(ids.includes('missing-desk-dock-stage-write'));
 });
 
 test('mobile dock staging cannot make a worker wait for its background refresh', () => {

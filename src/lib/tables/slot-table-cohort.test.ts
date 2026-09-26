@@ -303,7 +303,6 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       'outbound spreadsheet must not freeze newest/deadline — useQueueDisplaySort is the SoT',
     );
     for (const host of [
-      'src/components/outbound/scan-out/StagedQueueTable.tsx',
       'src/features/review/ReviewPackingTable.tsx',
       'src/features/review/pairing/ReviewPairingTable.tsx',
       'src/components/outbound/orders/OrderImportRecordsHost.tsx',

@@ -65,12 +65,11 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
      * `UnboxWorkbenchSkeleton` / `UnboxStationFirstPaint` are gone and the
      * cover is the house loading field, which owns no geometry to drift.
      * The SSR stand-in is the field's own token plane (it renders on the
-     * server; only the canvas needs hydration) plus UnboxStationEmptyShell.
+     * server; only the canvas needs hydration).
      */
     skeleton: 'src/design-system/components/UniversalLoader.tsx',
     lcpHosts: [
       'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
-      'src/components/receiving/unbox/UnboxStationEmptyShell.tsx',
     ],
     markRoute: 'unbox',
   },

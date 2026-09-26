@@ -23,7 +23,6 @@ export const OUTBOUND_WORKFLOW_COHORT_FILES = {
   mobileTopBar: 'src/components/mobile/redesign/MobileTopBar.tsx',
   mobileShell: 'src/components/mobile/redesign/MobileShell.tsx',
   mobileScanCta: 'src/components/mobile/redesign/mobile-scan-cta.tsx',
-  mobileScanVerdict: 'src/components/mobile/redesign/MobileScanVerdictBanner.tsx',
   realtimeInvalidation: 'src/hooks/useRealtimeInvalidation.ts',
   realtimePaint: 'src/lib/shipping/outbound-realtime-paint.ts',
   orderViews: 'src/lib/work-orders/to-ship-assignment.ts',
@@ -94,7 +93,6 @@ export const OUTBOUND_WORKFLOW_COHORT_FILES = {
   packerLogWriter: 'src/lib/packing/packer-log-writer.ts',
   packerLogCompletion: 'src/lib/packing/packer-log-completion.ts',
   scanOutDomain: 'src/lib/outbound/scan-out.ts',
-  stagedDeskQueue: 'src/components/outbound/scan-out/StagedQueueTable.tsx',
   packStationPanel: 'src/components/packer/PackOrderPanel.tsx',
   packAwaitingFeedback: 'src/components/packer/PackAwaitingFeedback.tsx',
   packPapersStatus: 'src/components/packer/PackPapersStatusCard.tsx',
@@ -276,9 +274,6 @@ export function evaluateOutboundWorkflowCohort(
   requireText(sources, 'mobileShell', 'border-border-danger bg-surface-danger', 'missing-mobile-shell-error-tokens', 'The mobile error boundary must use semantic danger surface roles.', violations);
   requireText(sources, 'mobileScanCta', "const MOBILE_SCAN_PATH = '/m/scan';", 'missing-shell-scan-route', 'The permanent Scan control must target the canonical shared scan route.', violations);
   requireText(sources, 'mobileScanCta', 'router.push(MOBILE_SCAN_PATH)', 'missing-shell-scan-navigation', 'The permanent Scan control must navigate through the canonical mobile scan door.', violations);
-  requireText(sources, 'mobileScanVerdict', 'border-border-success bg-surface-success', 'missing-mobile-scan-success-tokens', 'The shared scan verdict must use semantic success roles.', violations);
-  requireText(sources, 'mobileScanVerdict', 'border-border-warning bg-surface-warning', 'missing-mobile-scan-warning-tokens', 'The shared scan verdict must use semantic warning roles.', violations);
-  requireText(sources, 'mobileScanVerdict', 'border-border-danger bg-surface-danger', 'missing-mobile-scan-danger-tokens', 'The shared scan verdict must use semantic danger roles.', violations);
   forbidPattern(sources, 'queue', /\b(?:MobileCameraPanel|MobileCaptureWindow|MobileScanCta)\b|Scan order/, 'orders-local-scan-fork', 'Orders must not mount a local scanner, camera sheet, or competing Scan order CTA.', violations);
   requireText(sources, 'row', 'formatOutboundStoragePath', 'missing-storage-path-law', 'Rows must use the shared storage-path formatter.', violations);
   requireText(sources, 'row', 'PICKED ${', 'missing-pick-progress', 'Rows must paint server-derived pick progress.', violations);
@@ -448,7 +443,6 @@ export function evaluateOutboundWorkflowCohort(
   requireText(sources, 'mobileDockStagingTask', "fetch('/api/shipping/mark-staged'", 'missing-mobile-dock-stage-write', 'Phone staging must persist the physical dock fact through the canonical writer.', violations);
   requireText(sources, 'mobileDockStagingTask', 'void queryClient.invalidateQueries', 'missing-mobile-dock-stage-nonblocking-refresh', 'A completed rack scan must refresh staging work without delaying the carrier-scan handoff.', violations);
   requireText(sources, 'mobileDockStagingTask', "router.replace('/m/shipping/scan-out')", 'missing-mobile-dock-stage-handoff', 'A staged carton must advance to the canonical mobile carrier scan-out queue.', violations);
-  requireText(sources, 'stagedDeskQueue', "fetch('/api/shipping/mark-staged'", 'missing-desk-dock-stage-write', 'Desktop staging must share the canonical dock-stage writer used by phone.', violations);
   requireText(sources, 'mobileScanOutTask', 'identificationFromScanOut', 'missing-mobile-scanout-facts', 'Phone scan-out must map its carton through the canonical scan-out identity facts.', violations);
   requireText(sources, 'scanOutStationWorkspace', 'motionRole.swap.scan', 'missing-scanout-station-motion-role', 'Scan-out station must use the named station swap role.', violations);
   requireText(sources, 'scanOutStationWorkspace', 'ScanOutComposerDock', 'missing-scanout-station-mouth', 'Scan-out station must retain its one governed floor mouth.', violations);

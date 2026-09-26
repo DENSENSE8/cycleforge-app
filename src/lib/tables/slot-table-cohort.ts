@@ -131,7 +131,6 @@ export const SLOT_TABLE_ENGINE = {
 export const STAFF_COMBOBOX_HOSTS = [
   'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
   'src/components/shipped/stacks/MarkAsShippedForm.tsx',
-  'src/components/dashboard/BulkAssignDialog.tsx',
 ] as const;
 
 /**
@@ -305,8 +304,6 @@ export const SLOT_TABLE_GRID_ROW_ALLOWLIST = [
   'src/components/inventory/units-grid/UnitsGridRow.tsx',
   'src/components/outbound/orders/import-staging/CsvImportStagingGridRow.tsx',
   'src/components/outbound/ready/grid/ReadyGridRow.tsx',
-  'src/components/products/catalog/catalog-grid/CatalogGridRow.tsx',
-  'src/components/receiving/unfound/grid/UnfoundGridRow.tsx',
   'src/components/repair/repair-grid/RepairGridRow.tsx',
   'src/components/station/receiving-grid/ReceivingGridRow.tsx',
   'src/components/tech/all/TechAllGridRow.tsx',

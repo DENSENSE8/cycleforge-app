@@ -53,8 +53,6 @@ export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
   'src/components/mobile/redesign/MobileOrderDocumentsSheet.tsx': 'dock-verb', // Documents verb
   'src/components/mobile/redesign/MobileToShipPickerSheet.tsx': 'picker', // pass pick to another picker
   'src/components/mobile/redesign/MobileToShipSheet.tsx': 'record', // the order, from the to-ship queue
-  'src/components/mobile/redesign/PrepackedProductSheet.tsx': 'record', // the scanned unit (+ a location-scan step)
-  'src/components/mobile/redesign/ScanModeFeeds.tsx': 'record', // a receiving line (+ a serial step)
   // repair
   'src/components/mobile/repair/RepairCustomerPickerSheet.tsx': 'picker',
   'src/components/mobile/repair/RepairInfoEditSheet.tsx': 'edit', // /m/rs/[id]/info pencil
@@ -78,4 +76,4 @@ export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
  * record sheet onto its hub route, delete its entry, and drop this number in
  * the same commit. Raising it is the one edit this constant exists to stop.
  */
-export const MOBILE_RECORD_SHEET_BASELINE = 6;
+export const MOBILE_RECORD_SHEET_BASELINE = 4;

@@ -35,7 +35,6 @@ export const SHORTCUT_DISPLAY_ENGINE = {
   cheatSheet: 'src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx',
   overview: 'src/lib/keyboard/shortcut-overview.ts',
     statusBar: 'src/components/tables/TableStatusBar.tsx',
-    columnActionRow: 'src/components/tables/DataTableColumnActionRow.tsx',
     inlineHotkeys: 'src/hooks/useSelectionStatusBarHotkeys.ts',
   graphSymbols: [
     'KeyboardKey',
@@ -47,7 +46,6 @@ export const SHORTCUT_DISPLAY_ENGINE = {
     'src/design-system/primitives/KeyboardKey.tsx',
     'src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx',
     'src/components/tables/TableStatusBar.tsx',
-    'src/components/tables/DataTableColumnActionRow.tsx',
   ] as const,
 } as const;
 
@@ -90,7 +88,7 @@ export const SHORTCUT_DISPLAY_PAINT_LAW = {
   overview:
     'Keyboard `?` (while selection CTAs are mounted) reveals each CTA’s letter via KeyboardKey overlay, right-aligned inside the Button (bg-surface-sunken gray face + text-text-default black letter). Zero layout change. Not a Dialog. Not a foot `?`. Not outside-park / iconRight widen. Ignore key-repeat.',
   buttons:
-    'Bind keys always (useSelectionActionHotkeys / aria-keyshortcuts). After `?`, HotkeyGlyph mounts KeyboardKey size=sm absolute right-1.5. Never standing letters. Never HoverTooltip. Never a local `<kbd>` recipe.',
+    'Bind keys always (useSelectionStatusBarHotkeys / aria-keyshortcuts). After `?`, HotkeyGlyph mounts KeyboardKey size=sm absolute right-1.5. Never standing letters. Never HoverTooltip. Never a local `<kbd>` recipe.',
   refuse:
     'If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.',
   exception:
@@ -152,19 +150,9 @@ export function discoverShortcutDisplay(repoRoot = process.cwd()): ShortcutDispl
       why: 'Reveal-only KeyboardKey after keyboard `?`. Absolute overlay inside the face (right) — zero layout shift.',
     },
     {
-      id: 'engine:DataTableColumnActionRow',
-      path: SHORTCUT_DISPLAY_ENGINE.columnActionRow,
-      why: 'Icon-only column-aligned selection foot. Same HotkeyGlyph overlay law as TableStatusBar.',
-    },
-    {
       id: 'engine:useSelectionStatusBarHotkeys',
       path: SHORTCUT_DISPLAY_ENGINE.inlineHotkeys,
       why: 'ONE hook: bind letters + `?` reveal store. TableStatusBar and the cheat sheet both read it.',
-    },
-    {
-      id: 'engine:useSelectionActionHotkeys',
-      path: 'src/hooks/useSelectionActionHotkeys.ts',
-      why: 'Re-export seam onto useSelectionStatusBarHotkeys — keep until stale importers die.',
     },
     {
       id: 'engine:KeyboardShortcutsCheatSheet',
@@ -279,21 +267,6 @@ export function discoverShortcutDisplay(repoRoot = process.cwd()): ShortcutDispl
         why: '`?` key does not yield to overlay glyphs while the CTA strip is mounted.',
         keep: 'KeyboardShortcutsCheatSheet for `?` when no CTA strip exists',
         next: 'If isSelectionInlineHotkeySurfaceActive(), return without opening the Dialog — useSelectionStatusBarHotkeys owns the toggle (do not stopPropagation or double-toggle).',
-      });
-    }
-
-    if (
-      rel.endsWith('DataTableColumnActionRow.tsx') &&
-      /function HotkeyGlyph/.test(src) &&
-      !/absolute right-1\.5/.test(src)
-    ) {
-      findings.push({
-        id: 'anchor:DataTableColumnActionRow:missing-inside-right-overlay',
-        verdict: 'delete',
-        path: rel,
-        why: 'HotkeyGlyph is not an inside-right overlay.',
-        keep: 'pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2',
-        next: 'Wrap IconButton; position HotkeyGlyph inside the face on the right.',
       });
     }
 
