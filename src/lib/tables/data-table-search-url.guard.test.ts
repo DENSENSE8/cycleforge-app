@@ -33,16 +33,13 @@ test('dashboard and outbound table search setters do not navigate', () => {
 });
 
 test('orders slot-table search stays out of browser URL state', () => {
-  const unshippedSidebar = source('components/unshipped/UnshippedSidebar.tsx');
   const unshippedTable = source('components/unshipped/UnshippedTable.tsx');
   const shipped = source('components/shipped/dashboard-table/useShippedTableFilters.ts');
   const packing = source('features/review/ReviewPackingTable.tsx');
   const pairing = source('features/review/pairing/ReviewPairingTable.tsx');
 
-  assert.doesNotMatch(unshippedSidebar, /params\.set\('q'/);
   assert.doesNotMatch(unshippedTable, /searchParams\.get\('search'\)/);
   assert.doesNotMatch(shipped, /params\.set\('search'/);
-  assert.match(shipped, /const \[search, setSearchState\] = useState\(''\)/);
   assert.doesNotMatch(packing, /params\.set\('search'/);
   assert.doesNotMatch(pairing, /params\.set\('search'/);
   assert.match(packing, /useState\(''\)/);

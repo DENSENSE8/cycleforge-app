@@ -1666,7 +1666,9 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // SKU, fix an item number) is not the work To ship does (pack and ship).
       // It carries a live count so "22 blocked" is legible without navigating.
       { id: 'exceptions', label: 'Exceptions', icon: AlertTriangle,             requires: 'orders.view',  to: () => ({ pathname: SHIPPING_EXCEPTIONS_PATH, params: {} }) },
-      { id: 'shortage', label: 'Pending',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
+      // "Picking", not "Pending" (operator 2026-09-26): these orders are not in
+      // limbo — they are waiting to be picked (PO paired · pick list).
+      { id: 'shortage', label: 'Picking',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
       // No `fba` child — FBA is a lane row now (see the docblock above).
       // `packing.view` because the archive IS the packer log: `/api/packerlogs`

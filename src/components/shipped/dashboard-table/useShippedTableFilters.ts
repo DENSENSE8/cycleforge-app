@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { normalizeShippedSearchField } from '@/lib/shipped-search';
+import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 import {
   readShippedFilterPreference,
   writeShippedFilterPreference,
@@ -118,9 +119,9 @@ export function useShippedTableFilters({
   const effectiveWeekStart = dateWindow.start;
   const effectiveWeekEnd = dateWindow.end;
 
-  // Free-text search is local to the mounted table. Keep URL state for durable
-  // facets/date/sort, but never navigate once per typed character.
-  const [search, setSearchState] = useState('');
+  // Free-text search is desk-local (never navigates once per typed character):
+  // one in-memory query per desk path, shared with the desk sidebar's input.
+  const [search, setSearchState] = useDeskSearch(pathname || '/shipping/shipped');
   const normalizedSearch = search.trim().toLowerCase();
 
   // Dashboard Shipped is list-only flat spreadsheet. Board layout URL is ignored.

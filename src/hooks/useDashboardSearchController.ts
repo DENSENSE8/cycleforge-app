@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
@@ -18,6 +18,7 @@ import {
   type DetailsOpenBehaviorPreference,
 } from '@/utils/dashboard-preferences';
 import { normalizeShippedSearchField, type ShippedSearchField } from '@/lib/shipped-search';
+import { useDeskSearch } from '@/lib/outbound/desk-search-store';
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
 /**
@@ -32,9 +33,10 @@ export function useDashboardSearchController() {
   const searchParams = useSearchParams();
 
   const orderView = getDashboardOrderViewFromSearch(searchParams);
-  // Search is session-local. URL replacement per character causes a soft
-  // navigation/remount and clears the controlled table field.
-  const [searchQuery, setSearchQuery] = useState('');
+  // Search is desk-local and never in the URL (URL replacement per character
+  // causes a soft navigation/remount and clears the controlled table field).
+  // One in-memory query per desk path, shared with the desk sidebar's input.
+  const [searchQuery, setSearchQuery] = useDeskSearch(pathname || '/shipping/orders');
   const shippedFilterParam = searchParams.get('shippedFilter');
   const shippedFilter: ShippedTypeFilter = useMemo(() => {
     if (shippedFilterParam === 'orders') return 'orders';
