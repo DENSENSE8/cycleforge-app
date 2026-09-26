@@ -32,8 +32,13 @@ Net since `92a32d00d`: ~6.8k files touched, ~397k lines deleted. `docs/` 36 MB �
 
 **Gates now in `pnpm verify:fast`:** Lint, Typecheck, Cron contract, Tenancy isolation,
 Schema drift, Boundary, Nav names, Sku identity, Design tokens, V1 OpenAPI.
-**Known red:** none in the unit sweep. Phase 0 (2026-09-26) fixed the 10 stale tests
-(Orders Pick+Pack tracks, strike via `text-decoration-thickness`, repairs default tab
+**Known red:** the 10 Phase-0 tests are fixed (`c5c55a8d3`), but 15 live-DB tests
+(`tenancy/idor-regression`, `neon/reason-codes-queries`, `auth/password-reset`,
+`tenancy/resolve-org-from-request`) fail with `cannot execute INSERT in a read-only
+transaction`: the Neon branch in `.env` (`ep-shiny-hall-adz0n0nu`) is primary with
+`default_transaction_read_only=on` (quota/branch lock suspected). The prod lane logged 103
+such INSERT failures 11:17–11:23 on 2026-09-26 — owner must lift it in the Neon console.
+Phase 0 test fixes: Orders Pick+Pack tracks, strike via `text-decoration-thickness`, repairs default tab
 `all`, full `TaskDeskRow` fixture) and moved the live-DB test to
 `label-ingestions/database.live-db-test.ts` — it runs only under `test:v1:data` with
 `scripts/v1-disposable-db.sh` env, never in the generic sweep.
@@ -62,7 +67,7 @@ completely; iOS/Android/desktop call CycleForge server routes); owner cherry-pic
 
 ## 4. Phases (owner-reviewed order; work top-down, one face at a time)
 
-**Phase 0 — trunk you can trust. DONE 2026-09-26.** Unit sweep green; knip's false
+**Phase 0 — trunk you can trust. Code DONE 2026-09-26; DB red above.** Test fixes landed; knip's false
 positives are in `knip.json` (script/tool/test/vision entries, `tailwind.config.mjs`,
 generated + `public/` ignored). What knip still lists (21 `src/` files) is real dead
 code — cut it in Phase 1; the `shipped-filter/*` cluster sits beside another session's
