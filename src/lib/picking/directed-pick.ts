@@ -67,7 +67,7 @@ export interface DirectedPickOrder {
   backups: PickStaffRef[];
 }
 
-/** `POST /api/picking/next` — one line, or `line: null` when the run is empty. */
+/** `POST /api/v1/picking/next` — one line, or `line: null` when the run is empty. */
 export interface DirectedPickNext {
   sessionId: number | null;
   order: DirectedPickOrder | null;
@@ -80,7 +80,7 @@ export interface DirectedPickNext {
   unassignedCount: number;
 }
 
-/** One order on the pick board (`GET /api/picking/board`). */
+/** One order on the pick board (`GET /api/v1/picking/board`). */
 export interface PickBoardRow {
   orderId: number;
   orderLabel: string;

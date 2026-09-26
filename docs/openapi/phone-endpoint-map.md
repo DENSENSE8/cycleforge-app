@@ -31,8 +31,13 @@ Already v1: `GET /api/v1/outbound/work` (order hub), `/api/v1/session`, `/api/v1
 
 ## Promotion order (one endpoint family per step)
 
-1. **Pick loop** — `/api/picking/{next,release,tote,board,session/{id}/note}`: phone-only
-   callers (`useDirectedPick`, `PickBoardScreen`), the densest core verb.
+1. **Pick loop — DONE 2026-09-26.** `/api/v1/picking/{next,board,release,sessions,
+   sessions/{id}/tote,sessions/{id}/notes}` (contract `src/lib/picking/picking-v1-contract.ts`,
+   client `src/lib/api/v1-client.ts`); the six `/api/picking/*` routes are deleted.
+   Still off v1 on the pick screens: confirm / short-pick run over the realtime WMS
+   channel (`/api/realtime/wms-ticket` + `execute({ name: 'pick.confirm' })`) — a native
+   picker needs that channel next. `/api/picking/session/{id}/{confirm-pick,short-pick,complete}`
+   have no caller in the repo (owner decides whether to delete).
 2. **Work / orders** — move `/m/work` onto the existing `GET /api/v1/outbound/work`
    rather than promoting `/api/orders`.
 3. **Tasks + daily checks** (home).

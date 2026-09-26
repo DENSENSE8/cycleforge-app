@@ -10,6 +10,8 @@ import { toteRefFromScan } from '@/lib/picking/tote-ref';
 import { setScanSubject } from '@/lib/stations/scan-subject-store';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
+import { v1Request } from '@/lib/api/v1-client';
+import { pickSessionSchema } from '@/lib/picking/picking-v1-contract';
 
 /** Owns the mobile picker session: */
 export function useMobilePicker() {
@@ -63,21 +65,18 @@ export function useMobilePicker() {
     let cancelled = false;
     (async () => {
       try {
-        const [tasksRes, sessionRes] = await Promise.all([
+        const [tasksRes, session] = await Promise.all([
           fetch(`/api/orders/${orderId}/pick-tasks`, { cache: 'no-store' }),
-          fetch('/api/picking/session', {
+          v1Request('/api/v1/picking/sessions', pickSessionSchema, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId }),
+            body: { orderId },
+            fallbackMessage: 'Could not start the pick session',
           }),
         ]);
         if (!tasksRes.ok) throw new Error(`pick-tasks ${tasksRes.status}`);
-        if (!sessionRes.ok) throw new Error(`session ${sessionRes.status}`);
         const tasks = await tasksRes.json();
-        const session = await sessionRes.json();
         if (cancelled) return;
         if (!tasks.ok) throw new Error(tasks.error || 'pick-tasks failed');
-        if (!session.ok) throw new Error(session.error || 'session start failed');
         setOrder({
           orderId: tasks.orderId,
           orderLabel: tasks.orderLabel,

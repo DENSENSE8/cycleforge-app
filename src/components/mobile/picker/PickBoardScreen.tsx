@@ -17,6 +17,8 @@ import { ItemRecordThumb } from '@/design-system/components/item-record/ItemReco
 import { Button } from '@/design-system/primitives';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { v1Request } from '@/lib/api/v1-client';
+import { pickBoardSchema } from '@/lib/picking/picking-v1-contract';
 import {
   locationFace,
   type PickBoardRow,
@@ -39,10 +41,11 @@ const OWNER_VIA_LABEL: Record<PickOwnerVia, string> = {
 };
 
 async function fetchPickBoard(scope: PickBoardScope, signal: AbortSignal): Promise<PickBoardRow[]> {
-  const res = await fetch(`/api/picking/board?scope=${scope}`, { signal, cache: 'no-store' });
-  const body = await res.json().catch(() => null);
-  if (!res.ok || !body?.ok) throw new Error(body?.error || `Could not load the pick board (${res.status})`);
-  return body.rows as PickBoardRow[];
+  const board = await v1Request(`/api/v1/picking/board?scope=${scope}`, pickBoardSchema, {
+    signal,
+    fallbackMessage: 'Could not load the pick board',
+  });
+  return board.rows;
 }
 
 export function PickBoardScreen() {

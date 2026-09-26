@@ -19,6 +19,13 @@ import {
   type DirectedPickStep,
 } from '@/lib/picking/directed-pick';
 import { toteRefFromScan } from '@/lib/picking/tote-ref';
+import { v1Request } from '@/lib/api/v1-client';
+import {
+  directedPickNextSchema,
+  pickNoteSchema,
+  pickReleaseSchema,
+  pickToteSchema,
+} from '@/lib/picking/picking-v1-contract';
 import { playScanTone, vibrateScan, type ScanFeedbackKind } from '@/lib/scan-feedback/play';
 
 /** Survives a reload so the run's progress bar does not restart at zero. */
@@ -112,13 +119,11 @@ function writeSkipped(ids: readonly number[]): void {
 
 /** End the caller's open session(s) on an order so it is not held by this picker. */
 async function releaseOrder(orderId: number): Promise<void> {
-  const res = await fetch('/api/picking/release', {
+  await v1Request('/api/v1/picking/release', pickReleaseSchema, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ order_id: orderId }),
+    body: { orderId },
+    fallbackMessage: 'Could not release the order',
   });
-  const body = await res.json().catch(() => null);
-  if (!res.ok || !body?.ok) throw new Error(body?.error || `Could not release the order (${res.status})`);
 }
 
 /** Every accepted or refused scan is heard and felt — the worker rarely looks down. */
@@ -185,14 +190,11 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     if (!runStartedAt) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/picking/next', {
+      const next = await v1Request('/api/v1/picking/next', directedPickNextSchema, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run_started_at: runStartedAt, skip_order_ids: skipped.current }),
+        body: { runStartedAt, skipOrderIds: skipped.current },
+        fallbackMessage: 'Could not load the next pick',
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.ok) throw new Error(body?.error || `Could not load the next pick (${res.status})`);
-      const next = body as DirectedPickNext;
       setData(next);
       setLoadError(null);
       setLocationConfirmed(false);
@@ -325,16 +327,14 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     if (!order || data?.sessionId == null) return;
     setBusy(true);
     try {
-      const response = await fetch('/api/picking/tote', {
+      const paired = await v1Request(`/api/v1/picking/sessions/${data.sessionId}/tote`, pickToteSchema, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: data.sessionId, orderId: order.orderId, toteScan: ref }),
+        body: { orderId: order.orderId, toteScan: ref },
+        fallbackMessage: 'Could not pair tote',
       });
-      const body = await response.json().catch(() => null);
-      if (!response.ok || !body?.ok) throw new Error(body?.error || 'Could not pair tote');
       feedback('success');
-      setToteByOrder((prev) => ({ ...prev, [order.orderId]: body.toteCode }));
-      setMessage({ tone: 'success', text: `Tote ${body.toteCode} paired to ${order.orderLabel}` });
+      setToteByOrder((prev) => ({ ...prev, [order.orderId]: paired.toteCode }));
+      setMessage({ tone: 'success', text: `Tote ${paired.toteCode} paired to ${order.orderLabel}` });
     } catch (error) {
       feedback('reject');
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'Could not pair tote' });
@@ -439,14 +439,14 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
   const saveNote = useCallback(
     async (text: string): Promise<boolean> => {
       if (!line || data?.sessionId == null) return false;
-      const res = await fetch(`/api/picking/session/${data.sessionId}/note`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ allocation_ids: line.units.map((u) => u.allocationId), text }),
-      });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || !body?.ok) {
-        setMessage({ tone: 'error', text: body?.error || 'Note not saved' });
+      try {
+        await v1Request(`/api/v1/picking/sessions/${data.sessionId}/notes`, pickNoteSchema, {
+          method: 'POST',
+          body: { allocationIds: line.units.map((u) => u.allocationId), text },
+          fallbackMessage: 'Note not saved',
+        });
+      } catch (err) {
+        setMessage({ tone: 'error', text: err instanceof Error ? err.message : 'Note not saved' });
         return false;
       }
       setMessage({ tone: 'info', text: 'Note saved on this line' });

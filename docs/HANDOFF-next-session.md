@@ -105,6 +105,10 @@ and migrate; the `actionStrip` typed contract lands here.
    opens nothing. `authenticateAccountPassword` takes injectable deps; unit tests cover
    ok / org choice / slug / throttle / generic failure. **Apply that migration to every
    other DB (production) before deploying this code** — deploys don't run migrations.
+   **Step 3 (same day): pick loop on v1** — see `docs/openapi/phone-endpoint-map.md`.
+   Pattern for every next family: Zod contract → `z.toJSONSchema` components → routes
+   answer `{ data }` / `{ error: { code, message } }` → callers use `v1Request` (parses
+   the response with the same schema) → delete the old routes.
    (`api/identification/methods/author` in 2.1's list was deleted in `270795058`.)
 
 **Phase 3 — port features from `main` (owner drives).** Inventory main-only features

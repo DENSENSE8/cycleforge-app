@@ -1,4 +1,4 @@
-/** Directed picking feed — `POST /api/picking/next`. */
+/** Directed picking feed — `POST /api/v1/picking/next`. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

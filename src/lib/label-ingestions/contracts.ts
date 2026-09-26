@@ -7,6 +7,7 @@ import {
 import { buildOutboundWorkComponents, buildOutboundWorkOpenApi } from '@/lib/outbound/work-contract';
 import { buildReminderFeedComponents, buildReminderFeedOpenApi } from '@/lib/reminders/reminder-openapi';
 import { buildV1SessionComponents, buildV1SessionOpenApi } from '@/lib/auth/v1-session-contract';
+import { buildPickingV1Components, buildPickingV1OpenApi } from '@/lib/picking/picking-v1-contract';
 
 /** The bounded manual-upload contract. Tenant, actor, device and source are server-owned. */
 export const MAX_LABEL_PDF_BYTES = 5 * 1024 * 1024;
@@ -75,9 +76,10 @@ export function buildLabelIngestionOpenApi(): Record<string, unknown> {
       ...buildOutboundWorkOpenApi(),
       ...buildReminderFeedOpenApi(),
       ...buildV1SessionOpenApi(),
+      ...buildPickingV1OpenApi(),
     },
     // Native clients authenticate every call with the token from POST /api/v1/session.
     security: [{ bearerAuth: [] }],
-    components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', description: 'Opaque session token from POST /api/v1/session.' } }, schemas: { LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES }, LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS }, LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES }, Error: error, ...buildOutboundWorkComponents(), ...buildReminderFeedComponents(), ...buildV1SessionComponents() } },
+    components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer', description: 'Opaque session token from POST /api/v1/session.' } }, schemas: { LabelIngestionState: { type: 'string', enum: LABEL_INGESTION_STATES }, LabelMatchMethod: { type: 'string', enum: LABEL_MATCH_METHODS }, LabelQuarantineReason: { type: 'string', enum: LABEL_QUARANTINE_REASON_CODES }, Error: error, ...buildOutboundWorkComponents(), ...buildReminderFeedComponents(), ...buildV1SessionComponents(), ...buildPickingV1Components() } },
   };
 }

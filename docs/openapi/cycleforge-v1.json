@@ -584,6 +584,341 @@
           }
         }
       }
+    },
+    "/api/v1/picking/next": {
+      "post": {
+        "description": "The caller's next directed pick. Closes the caller's finished sessions (staging their totes), then opens or reuses a session on the first eligible order. Calling it claims that order for the caller.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickNextBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Next line, or an empty run",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectedPickNextPayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          }
+        }
+      }
+    },
+    "/api/v1/picking/board": {
+      "get": {
+        "description": "Orders with open picks: `unassigned` (no owner) or `all`.",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unassigned",
+                "all"
+              ],
+              "default": "unassigned"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pick board",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickBoardPayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          }
+        }
+      }
+    },
+    "/api/v1/picking/release": {
+      "post": {
+        "description": "End the caller's open session(s) on an order without staging its tote (skip / pass). Picked units stay picked.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickOrderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sessions released",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickReleasePayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          }
+        }
+      }
+    },
+    "/api/v1/picking/sessions": {
+      "post": {
+        "description": "Open (or reuse) the caller’s picking session on a chosen order.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickOrderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickSessionPayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          },
+          "404": {
+            "description": "Order not in this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Order not pickable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/picking/sessions/{id}/tote": {
+      "post": {
+        "description": "Pair a tote to the order of the caller's open session before the first unit leaves its bin.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickToteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tote paired (or already paired)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickTotePayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          },
+          "404": {
+            "description": "Tote not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Session not active (ended, or not the caller's), or the tote carries another order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/picking/sessions/{id}/notes": {
+      "post": {
+        "description": "Record a picker note on units of the session.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PickNoteBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Note recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickNotePayload"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authenticated device or session required"
+          },
+          "403": {
+            "description": "Missing orders.view"
+          },
+          "404": {
+            "description": "An allocation is not on this session (or the session is not the caller's)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "security": [
@@ -1518,6 +1853,843 @@
                 "format": "date-time"
               }
             }
+          }
+        }
+      },
+      "PickNextBody": {
+        "type": "object",
+        "properties": {
+          "runStartedAt": {
+            "description": "When this picker began the run; progress counts picks since then.",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "skipOrderIds": {
+            "default": [],
+            "description": "Orders skipped this run — never fed back.",
+            "maxItems": 500,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PickOrderBody": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "orderId"
+        ],
+        "additionalProperties": false
+      },
+      "PickToteBody": {
+        "type": "object",
+        "properties": {
+          "orderId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "toteScan": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Raw scan: H-{id}, numeric id, or an external tote barcode."
+          }
+        },
+        "required": [
+          "orderId",
+          "toteScan"
+        ],
+        "additionalProperties": false
+      },
+      "PickNoteBody": {
+        "type": "object",
+        "properties": {
+          "allocationIds": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "description": "Units on the line the note is about."
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "allocationIds",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "DirectedPickNext": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Open picking session on `order`; null when the run is empty."
+          },
+          "order": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "orderLabel": {
+                    "type": "string"
+                  },
+                  "accountSource": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "itemNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "deadlineAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "rush": {
+                    "type": "boolean"
+                  },
+                  "unitsRemaining": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "toteCode": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "OPEN tote already paired to the order — arm it without a scan."
+                  },
+                  "owner": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "staffId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "via": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "sku",
+                              "backup"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "staffId",
+                          "name",
+                          "via"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "backups": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "staffId": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "staffId",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "orderId",
+                  "orderLabel",
+                  "accountSource",
+                  "itemNumber",
+                  "deadlineAt",
+                  "rush",
+                  "unitsRemaining",
+                  "toteCode",
+                  "owner",
+                  "backups"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string"
+                  },
+                  "orderId": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "sku": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "imageUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "barcode": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "room": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "barcode",
+                          "room"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "units": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "allocationId": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "serialUnitId": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "serialNumber": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "allocationId",
+                        "serialUnitId",
+                        "serialNumber"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "platforms": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "platformSku": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "platformItemId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "platformSku",
+                        "platformItemId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "key",
+                  "orderId",
+                  "sku",
+                  "title",
+                  "imageUrl",
+                  "location",
+                  "units",
+                  "platforms"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "type": "object",
+            "properties": {
+              "done": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "total": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "done",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "stagedTotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Totes staged for pack by sessions this call closed."
+          },
+          "unassignedCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sessionId",
+          "order",
+          "line",
+          "progress",
+          "stagedTotes",
+          "unassignedCount"
+        ],
+        "additionalProperties": false
+      },
+      "PickBoard": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "unassigned",
+              "all"
+            ]
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "orderId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "orderLabel": {
+                  "type": "string"
+                },
+                "accountSource": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "deadlineAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rush": {
+                  "type": "boolean"
+                },
+                "openUnits": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "title": {
+                  "type": "string"
+                },
+                "imageUrl": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "location": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "barcode": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "room": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "barcode",
+                        "room"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "owner": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "staffId": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "via": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "sku",
+                            "backup"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "staffId",
+                        "name",
+                        "via"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "backups": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "staffId": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "staffId",
+                      "name"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "heldBy": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "staffId": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "staffId",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Another picker's live session on the order."
+                }
+              },
+              "required": [
+                "orderId",
+                "orderLabel",
+                "accountSource",
+                "deadlineAt",
+                "rush",
+                "openUnits",
+                "title",
+                "imageUrl",
+                "location",
+                "owner",
+                "backups",
+                "heldBy"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "scope",
+          "rows"
+        ],
+        "additionalProperties": false
+      },
+      "PickSession": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "reopen": {
+            "type": "boolean",
+            "description": "true when the caller's open session on the order was reused."
+          }
+        },
+        "required": [
+          "sessionId",
+          "reopen"
+        ],
+        "additionalProperties": false
+      },
+      "PickRelease": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sessions ended."
+          }
+        },
+        "required": [
+          "released"
+        ],
+        "additionalProperties": false
+      },
+      "PickTote": {
+        "type": "object",
+        "properties": {
+          "toteId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "toteCode": {
+            "type": "string"
+          },
+          "alreadyPaired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "toteId",
+          "toteCode",
+          "alreadyPaired"
+        ],
+        "additionalProperties": false
+      },
+      "PickNote": {
+        "type": "object",
+        "properties": {
+          "recorded": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "recorded"
+        ],
+        "additionalProperties": false
+      },
+      "DirectedPickNextPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DirectedPickNext"
+          }
+        }
+      },
+      "PickBoardPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PickBoard"
+          }
+        }
+      },
+      "PickSessionPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PickSession"
+          }
+        }
+      },
+      "PickReleasePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PickRelease"
+          }
+        }
+      },
+      "PickTotePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PickTote"
+          }
+        }
+      },
+      "PickNotePayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PickNote"
           }
         }
       }
